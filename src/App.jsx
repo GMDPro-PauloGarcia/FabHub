@@ -985,7 +985,9 @@ export default function App(){
   const totOut    =useMemo(()=>wonDeals.reduce((s,d)=>s+d.invoiced-d.amountPaid,0),[wonDeals]);
 
   // ── Modals ────────────────────────────────────────────────────────────────
-  const[dealModal, setDealModal]=useState(false);
+  const[dealModal,  setDealModal] =useState(false);
+  const[awardModal, setAwardModal]=useState(null); // deal being awarded
+  const[awardForm,  setAwardForm] =useState({invoiced:"",amountPaid:"",paymentStatus:"Deposited",dueDate:"",terms:"50% downpayment upon PO, balance upon delivery",notes:""});
   const[clientSugg, setClientSugg]=useState([]); // autocomplete suggestions
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
@@ -1007,6 +1009,7 @@ export default function App(){
   const[confirmDel, setConfirmDel] =useState(null);
   const[page,       setPage]       =useState("home");
   const[aiOpen,     setAiOpen]     =useState(false);
+  const[showExport, setShowExport] =useState(false);
   const[aiCtx,      setAiCtx]      =useState(null);   // context object passed to AI
   const[joStep,     setJoStep]     =useState("select");
   const[joSel,      setJoSel]      =useState(null);
@@ -1035,6 +1038,27 @@ export default function App(){
     upDeals(ds=>ds.map(d=>d.id===id?{...d,stage:st,probability:WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability}:d));
   };
   const payQ=(id,ps)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
+
+  const openAward=(deal)=>{
+    setAwardForm({invoiced:String(deal.value||""),amountPaid:"",paymentStatus:"Deposited",dueDate:"",terms:"50% downpayment upon PO, balance upon delivery",notes:""});
+    setAwardModal(deal);
+  };
+  const confirmAward=()=>{
+    if(!awardModal) return;
+    const id=awardModal.id;
+    upDeals(ds=>ds.map(d=>d.id===id?{...d,
+      stage:"06 · Project Kickoff",
+      probability:100,
+      invoiced:Number(awardForm.invoiced)||d.value,
+      amountPaid:Number(awardForm.amountPaid)||0,
+      paymentStatus:awardForm.paymentStatus,
+      dueDate:awardForm.dueDate,
+      notes:awardForm.notes||d.notes,
+    }:d));
+    if(!projs[id]) upProjs(ps=>({...ps,[id]:emptyProject()}));
+    setTimeout(()=>loadChecklistTemplate(id,awardModal.client),200);
+    setAwardModal(null);
+  };
   const logPayment=({dealId,amount,note,date})=>{
     const amt=Number(amount);
     upDeals(ds=>ds.map(d=>{
@@ -1108,7 +1132,7 @@ export default function App(){
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role];
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Procurement"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"},{id:"accounts",l:"👥 Accounts"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Procurement"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
     Sales:        [{id:"home",l:"My Pipeline"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
     "Cost Control":[{id:"home",l:"Overview"},{id:"collections",l:"Collections"},{id:"expenses",l:"Expenses"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
     Operations:   [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Swatchboard"}],
@@ -1132,6 +1156,12 @@ export default function App(){
         <div style={{background:roleColor+"18",borderRadius:20,padding:"3px 11px",fontSize:".72rem",fontWeight:700,color:roleColor,border:`1px solid ${roleColor}33`}}>
           {session?.name?.split(" ")[0]} · {role}
         </div>
+        {role==="Manager"&&(
+          <button onClick={()=>setPage("accounts")} title="Account Management" style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>
+            👥{users.filter(u=>u.status==="pending").length>0&&<span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",width:14,height:14,fontSize:".55rem",display:"inline-flex",alignItems:"center",justifyContent:"center",marginLeft:3}}>{users.filter(u=>u.status==="pending").length}</span>}
+          </button>
+        )}
+        <button onClick={()=>setShowExport(s=>!s)} title="Export / Backup Data" style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>💾</button>
         <button onClick={logout} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Log out</button>
       </div>
     </nav>
@@ -1141,6 +1171,20 @@ export default function App(){
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus,select:focus,textarea:focus{outline:none;border-color:${roleColor}!important;box-shadow:0 0 0 3px ${roleColor}22!important;} @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}} .fi{animation:fi .2s ease;} @media print{.noprint{display:none!important;}}`}</style>
       <Nav/>
       <div style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px"}} className="fi">{children}</div>
+      {/* ── Export / Backup Panel ── */}
+      {showExport&&(
+        <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>💾 Data Backup</div>
+            <button onClick={()=>setShowExport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:6,width:28,height:28,cursor:"pointer",color:"#64748b",fontSize:".9rem"}}>✕</button>
+          </div>
+          <div style={{fontSize:".78rem",color:"#64748b",marginBottom:16,lineHeight:1.6}}>
+            Your data lives in this browser. Export a backup before any update so you never lose your real financials, deals, or expenses.
+          </div>
+          <ExportImportPanel KEYS={KEYS} onClose={()=>setShowExport(false)}/>
+        </div>
+      )}
+
       {/* ── GMD AI Devil's Advocate ── */}
       {/* Floating trigger button */}
       <button onClick={()=>openAI({type:"general",page,role,deals,exps,wonDeals:deals.filter(d=>WON_STAGES.includes(d.stage)),projList:deals.filter(d=>WON_STAGES.includes(d.stage)&&projs[d.id])})}
@@ -1279,47 +1323,203 @@ export default function App(){
     );
     if(page==="pipeline") return(
       <Wrap>
-        <SecHead title="Sales Pipeline" action={<Btn onClick={openAddDeal}>+ Add Deal</Btn>}/>
-        {deals.map(d=>(
-          <Card key={d.id} accent={d.stage==="Won"?"#6ee7b7":undefined}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
-              <div style={{flex:1}}>
-                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                  <span style={{fontWeight:700,fontSize:"1rem",color:"#0f172a"}}>{d.client}</span>
-                  <Badge label={d.stage} color={STAGE_CLR[d.stage]}/>
-                  <Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>
-                  {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
-                </div>
-                <div style={{fontSize:".78rem",color:"#64748b"}}>{d.product} · {d.contact}</div>
-                {d.followUp&&<div style={{fontSize:".72rem",color:d.followUp<today&&d.stage!=="Won"&&d.stage!=="Lost"?"#ef4444":"#94a3b8",marginTop:4}}>📅 Follow-up: {d.followUp}</div>}
-                {d.notes&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>{d.notes}</div>}
-                <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
-                  {d.ceNo&&<span style={{fontSize:".68rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:5}}>{d.ceNo}</span>}
-                  {d.ceType&&<span style={{fontSize:".68rem",color:d.ceType==="Construction"?"#3b82f6":"#8b5cf6",background:d.ceType==="Construction"?"#eff6ff":"#faf5ff",padding:"1px 8px",borderRadius:5}}>{d.ceType}</span>}
-                  {d.salesOwner&&<span style={{fontSize:".68rem",color:"#64748b"}}>👤 {d.salesOwner}</span>}
-                  {d.salesRepoLink&&<a href={d.salesRepoLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:".68rem",color:"#3b82f6",textDecoration:"none",background:"#eff6ff",padding:"1px 8px",borderRadius:5}}>📁 Repo</a>}
-                  {d.proposalFolderLink&&<a href={d.proposalFolderLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:".68rem",color:"#6d28d9",textDecoration:"none",background:"#faf5ff",padding:"1px 8px",borderRadius:5}}>📋 Proposal</a>}
-                  {d.commsGroup&&<span style={{fontSize:".68rem",color:"#059669",background:"#f0fdf4",padding:"1px 8px",borderRadius:5}}>💬 {d.commsGroup}</span>}
-                  {PAULO_GATE.includes(d.stage)&&<span style={{fontSize:".68rem",color:"#d97706",background:"#fffbeb",padding:"1px 8px",borderRadius:5,fontWeight:700}}>⚠ Paulo Gate</span>}
-                  {Number(d.value)>=3000000&&<span style={{fontSize:".68rem",color:"#dc2626",background:"#fef2f2",padding:"1px 8px",borderRadius:5,fontWeight:700}}>🚨 ₱3M+</span>}
-                  {STAGE_OWNER[d.stage]&&<span style={{fontSize:".65rem",color:"#94a3b8"}}>Owner: {STAGE_OWNER[d.stage]}</span>}
-                </div>
+        {/* KPIs */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
+          <div>
+            <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
+            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL}</div>
+          </div>
+          <Btn onClick={openAddDeal}>+ Add Deal</Btn>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
+          {[
+            {l:"Total Pipeline",    v:fmtK(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
+            {l:"Awarded Value",     v:fmtK(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
+            {l:"Collected",         v:fmtK(totColl),  c:"#10b981", sub:fmtK(totOut)+" outstanding"},
+            {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b"},
+            {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
+          ].map(({l,v,c,sub})=>(
+            <div key={l} style={{background:"#fff",borderRadius:12,padding:"15px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c,lineHeight:1}}>{v}</div>
+              {sub&&<div style={{fontSize:".68rem",color:c,opacity:.7,marginTop:2}}>{sub}</div>}
+              <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:6}}>{l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Stage groups — pre-award stages */}
+        {(()=>{
+          const preAward  = DEAL_STAGES.filter(s=>!WON_STAGES.includes(s)&&s!=="Cancelled");
+          const stageDeals= s=>deals.filter(d=>d.stage===s);
+          return(
+            <div>
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:10,height:10,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>
+                Active Pipeline
               </div>
-              <div style={{textAlign:"right",flexShrink:0}}>
-                <div style={{fontWeight:800,color:"#10b981",fontSize:"1.15rem"}}>{fmt(d.value)}</div>
-                {d.stage==="Won"&&d.invoiced>0&&(
-                  <div style={{fontSize:".73rem",color:"#64748b",marginTop:3}}>{fmt(d.amountPaid)} / {fmt(d.invoiced)} collected</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
+                {preAward.map(stage=>{
+                  const sDeals=stageDeals(stage);
+                  const stageColor=STAGE_CLR[stage]||"#94a3b8";
+                  const totalVal=sDeals.reduce((s,d)=>s+Number(d.value||0),0);
+                  return(
+                    <div key={stage} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${stageColor}33`,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                      {/* Stage header */}
+                      <div style={{background:stageColor+"18",borderBottom:`1.5px solid ${stageColor}22`,padding:"10px 12px"}}>
+                        <div style={{fontWeight:700,color:stageColor,fontSize:".75rem",lineHeight:1.3}}>{stage.replace(/^\d+ · /,"")}</div>
+                        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+                          <span style={{fontSize:".68rem",color:"#64748b"}}>{sDeals.length} deal{sDeals.length!==1?"s":""}</span>
+                          <span style={{fontSize:".68rem",fontWeight:700,color:stageColor}}>{totalVal>0?fmtK(totalVal):"—"}</span>
+                        </div>
+                      </div>
+                      {/* Deal cards */}
+                      <div style={{padding:"8px",maxHeight:320,overflowY:"auto"}}>
+                        {sDeals.length===0&&(
+                          <div style={{padding:"12px 8px",textAlign:"center",color:"#cbd5e1",fontSize:".73rem"}}>No deals</div>
+                        )}
+                        {sDeals.map(d=>(
+                          <div key={d.id} style={{background:"#f8fafc",borderRadius:8,padding:"10px 10px",marginBottom:6,border:"1px solid #e2e8f0",cursor:"pointer",transition:"all .15s"}}
+                            onMouseEnter={e=>{e.currentTarget.style.borderColor=stageColor;e.currentTarget.style.background="#fff";}}
+                            onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}>
+                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:3}}>{d.client}</div>
+                            <div style={{fontSize:".7rem",color:"#64748b",marginBottom:5}}>{d.product}</div>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
+                              <span style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
+                              {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
+                            </div>
+                            {d.salesOwner&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>👤 {d.salesOwner}</div>}
+                            {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:2}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
+                            {PAULO_GATE.includes(d.stage)&&<div style={{fontSize:".67rem",color:"#d97706",background:"#fffbeb",borderRadius:4,padding:"2px 6px",marginTop:4,fontWeight:600}}>⚠ Paulo Gate</div>}
+                            {Number(d.value)>=3000000&&<div style={{fontSize:".67rem",color:"#dc2626",background:"#fef2f2",borderRadius:4,padding:"2px 6px",marginTop:3,fontWeight:600}}>🚨 ₱3M+</div>}
+                            {/* Action buttons */}
+                            <div style={{display:"flex",gap:5,marginTop:8,flexWrap:"wrap"}}>
+                              <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                              {!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&(
+                                <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Awarded Projects */}
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:10,height:10,borderRadius:"50%",background:"#059669",display:"inline-block"}}/>
+                Awarded Projects ({wonDeals.length})
+              </div>
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                {wonDeals.length===0&&(
+                  <div style={{padding:"24px 0",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet. Use the 🏆 Award button above to award a deal.</div>
                 )}
-                <div style={{display:"flex",gap:6,marginTop:10,justifyContent:"flex-end"}}>
-                  <Btn small variant="ghost" onClick={()=>openEditDeal(d)}>✏ Edit</Btn>
-                  <Btn small variant="danger" onClick={()=>setConfirmDel(d.id)}>Delete</Btn>
-                </div>
+                {wonDeals.map(d=>{
+                  const bal=d.invoiced-d.amountPaid;
+                  const pct=d.invoiced>0?Math.round(d.amountPaid/d.invoiced*100):0;
+                  const od=d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid";
+                  return(
+                    <div key={d.id} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 18px",borderBottom:"1px solid #f1f5f9",flexWrap:"wrap",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                      <div style={{flex:1,minWidth:160}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
+                        <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.product} · <Badge label={d.stage.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]||"#10b981"}/></div>
+                      </div>
+                      <div style={{minWidth:100,textAlign:"right"}}>
+                        <div style={{fontWeight:700,color:"#10b981",fontSize:".9rem"}}>{fmtK(Number(d.value))}</div>
+                        <div style={{fontSize:".68rem",color:"#94a3b8"}}>Contract value</div>
+                      </div>
+                      <div style={{minWidth:160}}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:3}}>
+                          <span>{fmtK(d.amountPaid)} collected</span>
+                          <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
+                        </div>
+                        <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:3,transition:"width .5s"}}/>
+                        </div>
+                        {od&&<div style={{fontSize:".67rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Overdue since {d.dueDate}</div>}
+                      </div>
+                      <div style={{minWidth:100,textAlign:"right"}}>
+                        <Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>
+                        {bal>0&&<div style={{fontSize:".7rem",color:"#ef4444",marginTop:3,fontWeight:600}}>{fmtK(bal)} due</div>}
+                      </div>
+                      <div style={{display:"flex",gap:6}}>
+                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Cancelled */}
+              {deals.filter(d=>d.stage==="Cancelled").length>0&&(
+                <details style={{marginTop:8}}>
+                  <summary style={{cursor:"pointer",fontSize:".78rem",color:"#94a3b8",fontWeight:600,marginBottom:8}}>
+                    Cancelled ({deals.filter(d=>d.stage==="Cancelled").length})
+                  </summary>
+                  {deals.filter(d=>d.stage==="Cancelled").map(d=>(
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#f8fafc",borderRadius:8,marginBottom:6,opacity:.6}}>
+                      <span style={{fontSize:".82rem",color:"#64748b"}}>{d.client} · {d.product}</span>
+                      <span style={{fontSize:".82rem",color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
+                    </div>
+                  ))}
+                </details>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Award Confirmation Modal */}
+        {awardModal&&(
+          <Modal open title={`🏆 Award Project — ${awardModal.client}`} onClose={()=>setAwardModal(null)} wide>
+            <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+              <div style={{fontWeight:700,color:"#059669",marginBottom:8}}>Awarding this deal will:</div>
+              <div style={{fontSize:".82rem",color:"#065f46",lineHeight:1.8}}>
+                ✓ Move to <strong>Stage 06 · Project Kickoff</strong><br/>
+                ✓ Create the project in Operations<br/>
+                ✓ Auto-load the GMD standard checklist (19 items)<br/>
+                ✓ Set payment details below
               </div>
             </div>
-          </Card>
-        ))}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+              <Fld label="Invoice Amount (₱)" required>
+                <Inp type="number" value={awardForm.invoiced} onChange={e=>setAwardForm(p=>({...p,invoiced:e.target.value}))}/>
+              </Fld>
+              <Fld label="Initial Payment Received (₱)">
+                <Inp type="number" value={awardForm.amountPaid} onChange={e=>setAwardForm(p=>({...p,amountPaid:e.target.value}))} placeholder="0"/>
+              </Fld>
+              <Fld label="Payment Status">
+                <Sel value={awardForm.paymentStatus} onChange={e=>setAwardForm(p=>({...p,paymentStatus:e.target.value}))}>
+                  {PAY_STATUS.map(s=><option key={s}>{s}</option>)}
+                </Sel>
+              </Fld>
+              <Fld label="Payment Due Date">
+                <Inp type="date" value={awardForm.dueDate} onChange={e=>setAwardForm(p=>({...p,dueDate:e.target.value}))}/>
+              </Fld>
+              <div style={{gridColumn:"1/-1"}}>
+                <Fld label="Payment Terms">
+                  <Inp value={awardForm.terms} onChange={e=>setAwardForm(p=>({...p,terms:e.target.value}))}/>
+                </Fld>
+              </div>
+              <div style={{gridColumn:"1/-1"}}>
+                <Fld label="Award Notes">
+                  <Inp rows={2} value={awardForm.notes} onChange={e=>setAwardForm(p=>({...p,notes:e.target.value}))} placeholder="Any notes for this award…"/>
+                </Fld>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10,marginTop:8}}>
+              <Btn full variant="green" onClick={confirmAward}>🏆 Confirm Award</Btn>
+              <Btn variant="ghost" onClick={()=>setAwardModal(null)}>Cancel</Btn>
+            </div>
+          </Modal>
+        )}
+
+        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       </Wrap>
     );
+
     if(page==="finance") return(
       <Wrap>
         <DailyCashPosition
@@ -3412,6 +3612,132 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           Last saved: {new Date(pos.savedAt).toLocaleString("en-PH")}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── EXPORT / IMPORT PANEL ────────────────────────────────────────────────────
+function ExportImportPanel({KEYS, onClose}){
+  const[importing,  setImporting]  = useState(false);
+  const[importMsg,  setImportMsg]  = useState("");
+  const[importErr,  setImportErr]  = useState("");
+
+  const ALL_KEYS = [
+    {key:KEYS.deals,    label:"Deals / Pipeline"},
+    {key:KEYS.projects, label:"Projects & Operations"},
+    {key:KEYS.expenses, label:"Expenses"},
+    {key:KEYS.inflows,  label:"Inflows / Payments"},
+    {key:KEYS.checklist,label:"Checklists"},
+    {key:KEYS.swatches, label:"Swatchboard"},
+    {key:KEYS.jos,      label:"Job Orders"},
+    {key:KEYS.cashPos,  label:"Daily Cash Positions"},
+    {key:KEYS.users,    label:"User Accounts"},
+  ];
+
+  // Export all data as JSON file
+  const handleExport = () => {
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      exportedBy: "FabHub GMD",
+      version: "v1",
+      data: {}
+    };
+    ALL_KEYS.forEach(({key, label}) => {
+      try {
+        const raw = localStorage.getItem(key);
+        backup.data[key] = raw ? JSON.parse(raw) : null;
+      } catch { backup.data[key] = null; }
+    });
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {type:"application/json"});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `GMD_FabHub_Backup_${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import from JSON file
+  const handleImport = (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    setImporting(true);
+    setImportMsg(""); setImportErr("");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const backup = JSON.parse(ev.target.result);
+        if(!backup.data) throw new Error("Invalid backup file — missing data section.");
+        let restored = 0;
+        ALL_KEYS.forEach(({key}) => {
+          if(backup.data[key] !== undefined && backup.data[key] !== null) {
+            localStorage.setItem(key, JSON.stringify(backup.data[key]));
+            restored++;
+          }
+        });
+        setImportMsg(`✓ ${restored} data sets restored from backup dated ${backup.exportedAt?.split("T")[0]||"unknown"}. Refresh the page to see your data.`);
+      } catch(err) {
+        setImportErr(`Import failed: ${err.message}`);
+      }
+      setImporting(false);
+    };
+    reader.readAsText(file);
+    e.target.value = ""; // reset input
+  };
+
+  // Show data summary
+  const summary = ALL_KEYS.map(({key,label})=>{
+    try {
+      const raw = localStorage.getItem(key);
+      if(!raw) return {label, count:"Empty", hasData:false};
+      const parsed = JSON.parse(raw);
+      const count = Array.isArray(parsed) ? parsed.length
+        : typeof parsed === "object" && parsed !== null ? Object.keys(parsed).length
+        : 1;
+      return {label, count:`${count} record${count!==1?"s":""}`, hasData:count>0};
+    } catch { return {label, count:"Error", hasData:false}; }
+  });
+
+  return(
+    <div>
+      {/* Data summary */}
+      <div style={{background:"#f8fafc",borderRadius:10,padding:12,marginBottom:16}}>
+        <div style={{fontSize:".68rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:8}}>Current Data in Browser</div>
+        {summary.map(({label,count,hasData})=>(
+          <div key={label} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #e2e8f0",fontSize:".76rem"}}>
+            <span style={{color:"#475569"}}>{label}</span>
+            <span style={{fontWeight:600,color:hasData?"#059669":"#94a3b8"}}>{count}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Export */}
+      <button onClick={handleExport}
+        style={{width:"100%",background:"#1e293b",border:"none",borderRadius:10,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer",marginBottom:10,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        ⬇ Download Backup (.json)
+      </button>
+
+      {/* Import */}
+      <label style={{display:"block",width:"100%",background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#059669",cursor:"pointer",textAlign:"center",marginBottom:10}}>
+        ⬆ Restore from Backup
+        <input type="file" accept=".json" onChange={handleImport} style={{display:"none"}}/>
+      </label>
+
+      {importing&&<div style={{fontSize:".78rem",color:"#64748b",textAlign:"center",marginBottom:8}}>Restoring…</div>}
+      {importMsg&&(
+        <div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 12px",fontSize:".78rem",color:"#059669",marginBottom:8,lineHeight:1.5}}>
+          {importMsg}
+          <button onClick={()=>window.location.reload()} style={{display:"block",marginTop:8,background:"#059669",border:"none",borderRadius:6,padding:"6px 14px",color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:".78rem"}}>
+            Refresh Now →
+          </button>
+        </div>
+      )}
+      {importErr&&<div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"10px 12px",fontSize:".78rem",color:"#dc2626",marginBottom:8}}>{importErr}</div>}
+
+      <div style={{fontSize:".68rem",color:"#94a3b8",textAlign:"center",lineHeight:1.5}}>
+        Backup is a .json file saved to your computer.<br/>
+        Keep it somewhere safe — Google Drive recommended.
+      </div>
     </div>
   );
 }
