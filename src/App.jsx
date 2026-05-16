@@ -95,7 +95,42 @@ const today = new Date().toISOString().split("T")[0];
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 let _id=500; const uid=()=>String(++_id);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos"};
+
+// ─── GMD BANKS & CASH POSITION ───────────────────────────────────────────────
+const BANKS = [
+  { id:"bpi",      name:"Bank of Philippine Island",  short:"BPI",        color:"#dc2626" },
+  { id:"metro",    name:"Metrobank",                  short:"Metrobank",   color:"#1d4ed8" },
+  { id:"china",    name:"Chinabank",                  short:"Chinabank",   color:"#15803d" },
+  { id:"bdo",      name:"Banco de Oro",               short:"BDO",         color:"#b45309" },
+  { id:"security", name:"Security Bank",              short:"Security",    color:"#7c3aed" },
+  { id:"union",    name:"Unionbank of the Philippines",short:"Unionbank",  color:"#0e7490" },
+];
+
+const emptyBankRow = () => ({ beg:"", book:"", end:"" });
+const emptyDayPosition = (date) => ({
+  date,
+  banks: Object.fromEntries(BANKS.map(b=>[b.id, emptyBankRow()])),
+  collections: {         // auto-pulled + manual
+    fabhubAmt: 0,        // auto from FabHub inflows
+    manualAmt: "",       // manual adjustment
+    manualNote: "",
+  },
+  less: {
+    bizlink: "",
+    checkFloat: "",
+    otherNote: "",
+    otherAmt: "",
+  },
+  ytd: {
+    supplierPayable: "",
+    loansPayable: "",
+    accountsReceivable: "",
+    expectedCollection: "",
+  },
+  notes: "",
+  savedAt: null,
+});
 
 // ─── GMD PROACTIVE CHECKLIST TEMPLATE ────────────────────────────────────────
 // Auto-loads when a project hits Stage 06 (Project Kickoff)
@@ -784,7 +819,8 @@ function ExpenseModal({open,onClose,form,setForm,onSave,editId,projList,clientNa
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App(){
-  const[users,    setUsers]   = useState(DEFAULT_USERS);
+  const[users,      setUsers]     = useState(DEFAULT_USERS);
+  const[cashPositions,setCashPos]  = useState({});  // keyed by date string
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
   const[authView, setAuthView]= useState("login"); // login | register
   const[role,     setRole]    = useState(null);
@@ -800,7 +836,8 @@ export default function App(){
 
   useEffect(()=>{
     try{
-      const u=localStorage.getItem(KEYS.users);   if(u) setUsers(JSON.parse(u));
+      const u=localStorage.getItem(KEYS.users);    if(u) setUsers(JSON.parse(u));
+      const cp=localStorage.getItem(KEYS.cashPos);  if(cp) setCashPos(JSON.parse(cp));
       const s=localStorage.getItem(KEYS.session); if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role); }
       const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
       const d=localStorage.getItem(KEYS.deals); if(d) setDeals(JSON.parse(d));
@@ -821,6 +858,8 @@ export default function App(){
   },[]);
 
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
+  const upCashPos  =useCallback(fn=>setCashPos(p=>{const n=fn(p);persist(KEYS.cashPos,n);return n;}),[persist]);
+  const saveDayPos =(date,pos)=>upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
   const upProjs    =useCallback(fn=>setProjs(p=>{const n=fn(p);persist(KEYS.projects,n);return n;}),[persist]);
   const upExps     =useCallback(fn=>setExps(p=>{const n=fn(p);persist(KEYS.expenses,n);return n;}),[persist]);
@@ -1283,7 +1322,17 @@ export default function App(){
     );
     if(page==="finance") return(
       <Wrap>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        <DailyCashPosition
+          cashPositions={cashPositions}
+          saveDayPos={saveDayPos}
+          infs={infs}
+          wonDeals={wonDeals}
+          totRev={totRev}
+          totExp={totExp}
+          totColl={totColl}
+          totOut={totOut}
+        />
+        <div style={{marginTop:24,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           <KPI label="Revenue"      value={fmtK(totRev)}         color="#3b82f6"/>
           <KPI label="Expenses"     value={fmtK(totExp)}         color="#ef4444"/>
           <KPI label="Gross Profit" value={fmtK(totRev-totExp)}  color={totRev-totExp>=0?"#059669":"#ef4444"}/>
@@ -1395,7 +1444,21 @@ export default function App(){
   if(role==="Finance"||role==="Cost Control"){
     const grossPro=totRev-totExp;
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
-    if(page==="home"||page==="collections") return(
+    if(page==="home") return(
+      <Wrap>
+        <DailyCashPosition
+          cashPositions={cashPositions}
+          saveDayPos={saveDayPos}
+          infs={infs}
+          wonDeals={wonDeals}
+          totRev={totRev}
+          totExp={totExp}
+          totColl={totColl}
+          totOut={totOut}
+        />
+      </Wrap>
+    );
+    if(page==="collections") return(
       <Wrap>
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           <KPI label="Total Revenue"  value={fmtK(totRev)}        color="#3b82f6"/>
@@ -2988,6 +3051,367 @@ function AIAdvisor({ctx, role, session, onClose, deals, projs, exps, infs, check
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
+function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp,totColl,totOut}){
+  const[selDate,setSelDate]=useState(today);
+  const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
+  const[saved,setSaved]    =useState(false);
+  const[histOpen,setHistOpen]=useState(false);
+
+  // When date changes, load that day's position or start fresh
+  const switchDate=(d)=>{
+    setSelDate(d);
+    setPos(cashPositions[d]||emptyDayPosition(d));
+    setSaved(!!cashPositions[d]);
+  };
+
+  // Auto-pull today's FabHub collections
+  const todayInflows=useMemo(()=>{
+    const mo=new Date(selDate).getMonth();
+    // Simple: sum inflows for the selected month (daily breakdown not available)
+    return infs.filter(i=>i.month===mo).reduce((s,i)=>s+i.amount,0);
+  },[infs,selDate]);
+
+  const f=(path,val)=>{
+    setSaved(false);
+    setPos(p=>{
+      const parts=path.split(".");
+      if(parts.length===1) return {...p,[path]:val};
+      if(parts.length===2) return {...p,[parts[0]]:{...p[parts[0]],[parts[1]]:val}};
+      if(parts.length===3) return {...p,[parts[0]]:{...p[parts[0]],[parts[1]]:{...p[parts[0]][parts[1]],[parts[2]]:val}}};
+      return p;
+    });
+  };
+
+  const n=(v)=>Number(String(v).replace(/,/g,""))||0;
+  const fmt2=(v)=>n(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  // Bank totals
+  const bankTotals=useMemo(()=>{
+    let beg=0,book=0,end=0;
+    BANKS.forEach(b=>{
+      const row=pos.banks[b.id]||emptyBankRow();
+      beg+=n(row.beg); book+=n(row.book); end+=n(row.end);
+    });
+    return {beg,book,end};
+  },[pos.banks]);
+
+  // Collections total
+  const totalCollections=useMemo(()=>{
+    return todayInflows+n(pos.collections.manualAmt);
+  },[todayInflows,pos.collections.manualAmt]);
+
+  // Less total
+  const totalLess=useMemo(()=>{
+    return n(pos.less.bizlink)+n(pos.less.checkFloat)+n(pos.less.otherAmt);
+  },[pos.less]);
+
+  // Total Cash Available = Total Book Balance - Less
+  const totalCashAvailable=bankTotals.book-totalLess;
+
+  const handleSave=()=>{
+    const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
+    saveDayPos(selDate,toSave);
+    setSaved(true);
+  };
+
+  const histDates=Object.keys(cashPositions).sort().reverse().slice(0,30);
+
+  const inpStyle={
+    textAlign:"right",border:"1.5px solid #e2e8f0",borderRadius:6,
+    padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",
+    color:"#0f172a",background:"#fff",width:"100%",boxSizing:"border-box",outline:"none"
+  };
+  const cellStyle=(bg="#fff",bold=false)=>({
+    padding:"8px 12px",borderBottom:"1px solid #e2e8f0",
+    background:bg,fontWeight:bold?"700":"400",fontSize:".82rem",
+    color:"#0f172a"
+  });
+  const labelCell={
+    padding:"8px 12px",borderBottom:"1px solid #e2e8f0",
+    background:"#f8fafc",fontWeight:600,fontSize:".8rem",
+    color:"#475569",fontStyle:"italic",borderRight:"2px solid #e2e8f0",
+    whiteSpace:"nowrap"
+  };
+
+  return(
+    <div>
+      <style>{`
+        .cash-inp:focus{border-color:#1d4ed8!important;box-shadow:0 0 0 3px rgba(29,78,216,.1);}
+        .bank-header{background:#1e293b;color:#fff;padding:10px 12px;fontWeight:700;fontSize:.78rem;textAlign:center;borderRight:1px solid #334155;}
+        @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+      `}</style>
+
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.2rem"}}>Daily Cash Position</h2>
+          <div style={{fontSize:".78rem",color:"#64748b",marginTop:3}}>GMD Productions Inc. — Finance Summary</div>
+        </div>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          {/* Date picker */}
+          <input type="date" value={selDate} onChange={e=>switchDate(e.target.value)}
+            style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",cursor:"pointer"}}/>
+          {/* History */}
+          <button onClick={()=>setHistOpen(h=>!h)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>
+            📅 History ({histDates.length})
+          </button>
+          {/* Save */}
+          <button onClick={handleSave} style={{background:saved?"#f0fdf4":"#1e293b",border:`1.5px solid ${saved?"#6ee7b7":"#1e293b"}`,borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".84rem",color:saved?"#059669":"#fff",cursor:"pointer",fontWeight:700,transition:"all .2s"}}>
+            {saved?"✓ Saved":"Save Position"}
+          </button>
+        </div>
+      </div>
+
+      {/* History dropdown */}
+      {histOpen&&histDates.length>0&&(
+        <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:16,marginBottom:16,animation:"fadeIn .2s"}}>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:10,fontSize:".88rem"}}>Saved Positions</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {histDates.map(d=>(
+              <button key={d} onClick={()=>{switchDate(d);setHistOpen(false);}}
+                style={{padding:"5px 12px",borderRadius:20,border:`1.5px solid ${d===selDate?"#1e293b":"#e2e8f0"}`,background:d===selDate?"#1e293b":"#fff",color:d===selDate?"#fff":"#64748b",fontFamily:"inherit",fontSize:".78rem",cursor:"pointer",fontWeight:d===selDate?700:400}}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* KPI strip */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+        {[
+          ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
+          ["Total Book Balance",   "₱"+fmt2(bankTotals.book),    "#1d4ed8"],
+          ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
+          ["Outstanding Invoices", "₱"+totOut.toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
+          ["YTD Receivable",       pos.ytd.accountsReceivable?"₱"+fmt2(pos.ytd.accountsReceivable):"—", "#8b5cf6"],
+        ].map(([l,v,c])=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c,lineHeight:1}}>{v}</div>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:6}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Main cash position table */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+        {/* Table header */}
+        <div style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",background:"#1e293b"}}>
+          <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
+          {BANKS.map(b=>(
+            <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155"}}>
+              <div style={{fontWeight:800,color:"#fff",fontSize:".78rem"}}>{b.short}</div>
+              <div style={{fontSize:".62rem",color:"rgba(255,255,255,.45)",marginTop:1}}>{b.name.length>20?b.name.slice(0,18)+"…":b.name}</div>
+            </div>
+          ))}
+          <div style={{padding:"12px 8px",textAlign:"center",color:"#f59e0b",fontWeight:800,fontSize:".78rem"}}>TOTAL</div>
+        </div>
+
+        {/* Balance rows */}
+        {[
+          ["BANK BALANCE BEG",  "beg",  "#fafafa"],
+          ["BOOK BALANCE",      "book", "#fff"],
+          ["BANK BALANCE ENDING","end", "#fafafa"],
+        ].map(([label,key,bg])=>(
+          <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
+            <div style={labelCell}>{label}</div>
+            {BANKS.map(b=>(
+              <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #f1f5f9"}}>
+                <input className="cash-inp" type="text"
+                  key={`${b.id}-${key}-${selDate}`}
+                  defaultValue={pos.banks[b.id]?.[key]||""}
+                  onBlur={e=>f(`banks.${b.id}.${key}`,e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter"||e.key==="Tab")f(`banks.${b.id}.${key}`,e.target.value);}}
+                  placeholder="0.00"
+                  style={{...inpStyle,borderColor:"transparent",background:"transparent"}}/>
+              </div>
+            ))}
+            <div style={{padding:"8px 12px",textAlign:"right",fontWeight:700,fontSize:".85rem",
+              color:key==="end"?"#059669":key==="book"?"#1d4ed8":"#0f172a",
+              background:key==="end"?"#f0fdf4":key==="book"?"#eff6ff":"transparent"}}>
+              {fmt2(BANKS.reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
+            </div>
+          </div>
+        ))}
+
+        {/* Collections section */}
+        <div style={{background:"#f0fdf4",borderBottom:"1px solid #d1fae5",borderTop:"2px solid #6ee7b7"}}>
+          <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",padding:"0"}}>
+            <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center"}}>COLLECTIONS</div>
+            <div style={{padding:"8px 12px"}}>
+              <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                <div style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>
+                  🔗 FabHub Auto: ₱{fmt2(todayInflows)}
+                  <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}>
+                  <input type="text"
+                    key={`coll-manual-${selDate}`}
+                    defaultValue={pos.collections.manualAmt||""}
+                    onBlur={e=>f("collections.manualAmt",e.target.value)}
+                    onKeyDown={e=>{if(e.key==="Enter")f("collections.manualAmt",e.target.value);}}
+                    placeholder="+ Manual collection amt" className="cash-inp"
+                    style={{...inpStyle,width:180,textAlign:"left",borderColor:"#6ee7b7"}}/>
+                  <input type="text"
+                    key={`coll-note-${selDate}`}
+                    defaultValue={pos.collections.manualNote||""}
+                    onBlur={e=>f("collections.manualNote",e.target.value)}
+                    placeholder="Note (e.g. cash deposit, cheque)"
+                    style={{...inpStyle,flex:1,minWidth:150,textAlign:"left",borderColor:"#6ee7b7"}}/>
+                </div>
+              </div>
+            </div>
+            <div style={{padding:"8px 12px",textAlign:"right",fontWeight:800,color:"#059669",fontSize:".88rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+              {fmt2(totalCollections)}
+            </div>
+          </div>
+        </div>
+
+        {/* Less section */}
+        <div style={{background:"#fef2f2",borderBottom:"1px solid #fecaca",borderTop:"2px solid #fca5a5"}}>
+          <div style={{padding:"8px 14px",fontWeight:700,color:"#dc2626",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".5px"}}>LESS:</div>
+          {[
+            ["Online Transaction (Bizlink)","less.bizlink"],
+            ["Check Float",                "less.checkFloat"],
+          ].map(([label,path])=>(
+            <div key={path} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #fee2e2"}}>
+              <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem"}}>{label}</div>
+              <div style={{padding:"5px 12px"}}>
+                <input className="cash-inp" type="text"
+                  key={`${path}-${selDate}`}
+                  defaultValue={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
+                  onBlur={e=>f(path,e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter"||e.key==="Tab")f(path,e.target.value);}}
+                  placeholder="0.00"
+                  style={{...inpStyle,width:200,borderColor:"#fca5a5"}}/>
+              </div>
+              <div style={{padding:"8px 12px",textAlign:"right",fontWeight:600,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+                {fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}
+              </div>
+            </div>
+          ))}
+          {/* Other less */}
+          <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #fee2e2"}}>
+            <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem"}}>Other</div>
+            <div style={{padding:"5px 12px",display:"flex",gap:8}}>
+              <input className="cash-inp" type="text"
+                key={`other-amt-${selDate}`}
+                defaultValue={pos.less.otherAmt||""}
+                onBlur={e=>f("less.otherAmt",e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")f("less.otherAmt",e.target.value);}}
+                placeholder="0.00" style={{...inpStyle,width:150,borderColor:"#fca5a5"}}/>
+              <input className="cash-inp" type="text"
+                key={`other-note-${selDate}`}
+                defaultValue={pos.less.otherNote||""}
+                onBlur={e=>f("less.otherNote",e.target.value)}
+                placeholder="Description" style={{...inpStyle,flex:1,textAlign:"left",borderColor:"#fca5a5"}}/>
+            </div>
+            <div style={{padding:"8px 12px",textAlign:"right",fontWeight:600,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+              {fmt2(pos.less.otherAmt)}
+            </div>
+          </div>
+        </div>
+
+        {/* Total Cash Available — highlighted */}
+        <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",background:"#1e293b",borderTop:"3px solid #f59e0b"}}>
+          <div style={{padding:"14px 14px",color:"#f59e0b",fontWeight:800,fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center"}}>TOTAL CASH AVAILABLE</div>
+          <div style={{padding:"14px 12px",color:"rgba(255,255,255,.5)",fontSize:".78rem",display:"flex",alignItems:"center"}}>
+            Book Balance minus all deductions
+          </div>
+          <div style={{padding:"14px 12px",textAlign:"right",fontWeight:800,fontSize:"1.1rem",
+            color:totalCashAvailable>=0?"#4ade80":"#f87171",
+            fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+            ₱{fmt2(totalCashAvailable)}
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom grid: Key Areas + FabHub Collections breakdown */}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+
+        {/* YTD Key Areas */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>KEY AREAS</span>
+          </div>
+          {[
+            ["Expected Collection",   "ytd.expectedCollection",  "#f59e0b"],
+            ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444"],
+            ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316"],
+            ["YTD Accounts Receivable","ytd.accountsReceivable", "#10b981"],
+          ].map(([label,path,color])=>(
+            <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
+              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <input className="cash-inp" type="text"
+                  key={`${path}-${selDate}`}
+                  defaultValue={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
+                  onBlur={e=>f(path,e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter"||e.key==="Tab")f(path,e.target.value);}}
+                  placeholder="0.00"
+                  style={{...inpStyle,width:160,borderColor:`${color}44`}}/>
+                <span style={{fontWeight:700,color,minWidth:90,textAlign:"right",fontSize:".82rem"}}>
+                  {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* FabHub Collections breakdown */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#1e293b",padding:"12px 16px"}}>
+            <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>🔗 FabHub Collections</span>
+          </div>
+          <div style={{padding:"12px 16px"}}>
+            <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10}}>Outstanding invoices from active projects — auto-pulled from FabHub</div>
+            {wonDeals.filter(d=>d.invoiced>0&&d.amountPaid<d.invoiced).slice(0,6).map(d=>{
+              const bal=d.invoiced-d.amountPaid;
+              const pct=Math.round(d.amountPaid/d.invoiced*100);
+              return(
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f1f5f9",gap:10}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{d.paymentStatus} · {pct}% collected</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontWeight:700,color:"#ef4444",fontSize:".82rem"}}>₱{bal.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>of ₱{d.invoiced.toLocaleString("en-PH")}</div>
+                  </div>
+                </div>
+              );
+            })}
+            {wonDeals.filter(d=>d.invoiced>0&&d.amountPaid<d.invoiced).length===0&&(
+              <div style={{textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:".82rem"}}>No outstanding balances 🎉</div>
+            )}
+            <div style={{marginTop:10,display:"flex",justifyContent:"space-between",padding:"8px 0",borderTop:"1.5px solid #e2e8f0"}}>
+              <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Total Outstanding</span>
+              <span style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{totOut.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16}}>
+        <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Notes for {selDate}</div>
+        <textarea value={pos.notes||""} onChange={e=>f("notes",e.target.value)}
+          placeholder="Add any notes for this cash position (e.g. incoming wire, pending cheque, bank issues)…"
+          rows={2}
+          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+      </div>
+
+      {/* Last saved */}
+      {pos.savedAt&&(
+        <div style={{textAlign:"right",fontSize:".7rem",color:"#94a3b8",marginTop:8}}>
+          Last saved: {new Date(pos.savedAt).toLocaleString("en-PH")}
+        </div>
+      )}
     </div>
   );
 }
