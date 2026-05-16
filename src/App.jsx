@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+const SEED_CHECKLIST=[];const SEED_SWATCHES=[];import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD's real 11-stage pipeline
@@ -69,50 +69,238 @@ const today = new Date().toISOString().split("T")[0];
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 let _id=500; const uid=()=>String(++_id);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session"};
+
+// ─── GMD CLIENT DIRECTORY ────────────────────────────────────────────────────
+const GMD_CLIENTS = [
+  {name:"ADARNA HOUSE, INC", email:"karen@adarna.com.ph"},
+  {name:"Adm-Indicia", email:"Akzel.Balingit@adm-indicia.com"},
+  {name:"Adpro-4Acoustic", email:"angelobernardino@gmail.com"},
+  {name:"Agile Technologies"},
+  {name:"Ale Dela Paz", email:"ale@degsters.com"},
+  {name:"Alexandra Mascenon", email:"helloscenstudio@gmail.com"},
+  {name:"ALLIED VISION CONCEPTS INC.", city:"TAGUIG CITY"},
+  {name:"Altitude Digital", email:"sadam.tejol@ati.ph"},
+  {name:"Amen Jewelry"},
+  {name:"Anna Narvasa"},
+  {name:"Ar. Johnny Bumanlag"},
+  {name:"Argia Global Link Inc"},
+  {name:"Avita Philippines"},
+  {name:"Bang Muay Thai Philippines Inc.", city:"Makati"},
+  {name:"Bao Asia Corporation", email:"acdcobankiat14@gmail.com"},
+  {name:"Being Juice"},
+  {name:"Big Bark"},
+  {name:"Blanc Nue"},
+  {name:"Bounce Marketing Inc", email:"lizzie@fivestorygroup.com"},
+  {name:"Buena Rich Commissarry Corporation", email:"victorb@buenarich.com"},
+  {name:"BUKO JUAN"},
+  {name:"Catalytx Advertising Inc.", email:"a_butas@catalytx.com"},
+  {name:"CDO Foodsphere Inc", email:"mariz.manahan@cdo.com.ph"},
+  {name:"Cebuana Lhuillier"},
+  {name:"Chris Sports"},
+  {name:"Christine Victorio"},
+  {name:"Collecticons Inc.", email:"eric_cabochan@yahoo.com"},
+  {name:"Concepcion-Carrier Airconditioning Company", email:"rmandigma@ccac.com.ph", city:"Muntinlupa City,"},
+  {name:"Creat8 Stories Inc.", email:"ryz@creat8stories.com", city:"Taguig City"},
+  {name:"CREAT8 STORIES INC.,", email:"francinetobias@hedrinventures.com"},
+  {name:"Crusty Carb Corp."},
+  {name:"CTV Inc"},
+  {name:"D.Estrellas's Kitchen Food Services", email:"dbbonifacio.dekfs@gmail.com"},
+  {name:"Daliretail Inc"},
+  {name:"Diageo PH"},
+  {name:"Diageo Scotland Limited", email:"Lhen.Javier@diageo.com"},
+  {name:"Disteleria Limtuaco Co"},
+  {name:"Dizon Farms"},
+  {name:"Dot Coffee"},
+  {name:"Dragonfly"},
+  {name:"DUTY FREE PHILIPPINES"},
+  {name:"Eirin Jewelry"},
+  {name:"Elinora", email:"shop.elinora@gmail.com"},
+  {name:"Elsal Venture OPC"},
+  {name:"Emequinne Sarza (Ms)"},
+  {name:"Envirolyte"},
+  {name:"ESV International Corporation"},
+  {name:"Events100"},
+  {name:"Ever New", email:"pusha.amin@bhagis.com"},
+  {name:"Every Wear Retail Inc"},
+  {name:"Excellence Appliance Technologies, Inc."},
+  {name:"Excellence Technology", email:"kprago@extech.com"},
+  {name:"Experience by Maika Cruz"},
+  {name:"F Optics"},
+  {name:"FCOY 15 Trading Corp.", email:"mktgpina.meah@gmail.com"},
+  {name:"Finden Technologies Inc.", email:"msanpedro@finden.com.ph"},
+  {name:"Firefly Electric & Lighting Corporation", email:"nyl.mendoza@fireflyelectric.com"},
+  {name:"Five Sips and Swallows Inc", email:"fivesipsandswallowsinc@gmail.com", balance:40000.0},
+  {name:"Flipbox Events"},
+  {name:"Floret - Pam Lopez"},
+  {name:"Foptics Philippines, Inc", email:"ray@foptics.club"},
+  {name:"Forthinker Inc"},
+  {name:"Frameline"},
+  {name:"FRUITS & DAIRY SOMMELIER INC"},
+  {name:"Fruits & Dairy Sommelier Inc"},
+  {name:"FUJIFILM Philippines, Inc."},
+  {name:"Ganesh Import & Export Inc"},
+  {name:"Gattech Supply and Engineering"},
+  {name:"GDGT Trading", email:"noel@gdgttrading.com"},
+  {name:"General Heat Corporation", email:"rjocson@generalheat.com.ph"},
+  {name:"Genson Distribution Inc.", email:"kimloja888@genson.ph"},
+  {name:"Gilbert Tang", email:"Gilbert.tang@chrissports.com"},
+  {name:"GLOBAL SEED SELECTIONS INC", email:"cycabardo@dizonfarms.net"},
+  {name:"GMD Productions Inc.", email:"salesteam@gmd.ph"},
+  {name:"GNY Global Sourcing Corp", email:"linfred.yap@stylerightglobal.com"},
+  {name:"Go Rapid Active Marketing Inc"},
+  {name:"Gryn Collective"},
+  {name:"Hansman International Opc.", email:"louisepatriciamariano@gmail.com", city:"Valenzuela"},
+  {name:"Happy Hands Clinic", city:"Mandaluyong"},
+  {name:"HBH&HND Food Corporation"},
+  {name:"Holcim Philippines Inc."},
+  {name:"HOS CORPORATION", email:"mcasquete@mrktbingo.com"},
+  {name:"Icon Worldwide Inc.", email:"ronaldutan@gmail.com"},
+  {name:"Ideal Vision"},
+  {name:"iMaz Corp", email:"kim@imazcorp.com"},
+  {name:"Innovator"},
+  {name:"Innovention Food Resources Inc."},
+  {name:"Ivory Tree Inc.", email:"nicolenocom@gmail.com", city:"Quezon City", balance:2611200.0},
+  {name:"Jameson Ong"},
+  {name:"JBsy Food and Beverage", email:"boldstar72@yahoo.com"},
+  {name:"JC Mahusay", email:"jcmahusay16@gmail.com"},
+  {name:"Jen De Jesus", email:"jmdejesus@elcielitohotels.com"},
+  {name:"Josel Jalique"},
+  {name:"Juan Francisco Soriano", email:"jakemsoriano@gmail.com"},
+  {name:"Keydesign, inc", email:"Designs@keydesign.com.ph"},
+  {name:"Kiko Milano"},
+  {name:"KLN Food Services"},
+  {name:"Kumori PH", email:"levi.agustin@relish-group.com"},
+  {name:"Kyla Genato", email:"kyla.genato@vibelle.com"},
+  {name:"Laureen Arancon"},
+  {name:"Lawrence Lua"},
+  {name:"Leap & Learn Manila"},
+  {name:"Limitless Group Co."},
+  {name:"Limitless Group of Co"},
+  {name:"Lucky Win Food Corporation"},
+  {name:"Lulu He"},
+  {name:"Lulu Ignacio"},
+  {name:"Luvera Philippines"},
+  {name:"Luxasia Inc"},
+  {name:"LUXE CELEBRATIONS INC"},
+  {name:"Luxuriant Automotive Group Inc"},
+  {name:"Machi Machi", email:"e.lao@artan.com.ph"},
+  {name:"Manila Creamery"},
+  {name:"Manta Equities", email:"roy.ferdez@mantaequities.com"},
+  {name:"Mar Oscar B. Mungcal", email:"mar.mungcal@gmd.ph"},
+  {name:"Mariel Gatan"},
+  {name:"Max's Group Inc", email:"carevalo@maxsgroupinc.com"},
+  {name:"Maxicare Healthcare Corporation", email:"mark.darsantos@maxicare.com.ph"},
+  {name:"Maybel De Leon", email:"maybel.deleon@rbu.com.ph"},
+  {name:"Melissa Basit"},
+  {name:"Metro Promo Concepts", email:"joshua@mpc.ph"},
+  {name:"Mineski Global", email:"fatima.flores@mineskiglobal.com", city:"San Juan"},
+  {name:"Moibuen Marketing Solutions", email:"moibuenmarketingsolutions@gmail.com"},
+  {name:"Montari Builders"},
+  {name:"More Coffee"},
+  {name:"Motoitalia"},
+  {name:"Mr. Jose Alexander Subido"},
+  {name:"Mr. Stewart Lee Ong"},
+  {name:"Mrs. Regine Laguyo", email:"regine@vtlaguyo.com"},
+  {name:"Newtrends International Corporation", email:"daniella.camias@newtrends.ph", city:"Bacoor", balance:240000.0},
+  {name:"Nicolo Villasenor", email:"fivesipsandswallowsinc@gmail.com", city:"Pasig City"},
+  {name:"Nito's International Ventures, Inc", email:"ltan@highleap.com.ph"},
+  {name:"Nu Star Mall"},
+  {name:"Nuvie Inc.", email:"nuvie.inc@gmail.com"},
+  {name:"Olympia Ventures Inc.", email:"Olympiaventuresinc@gmail.com, theresechelsea1@gmail.com"},
+  {name:"Panco Coffee"},
+  {name:"Paulo Miguel Garcia"},
+  {name:"Payday Ph", email:"rai@escale.ph"},
+  {name:"Peachy Divina"},
+  {name:"Penny Pairs"},
+  {name:"Penser Q", email:"orazonpagsibigan@penserq.com"},
+  {name:"Permatology Philippines"},
+  {name:"Pharma Revolution Incorporated", email:"sab@pharmarev.biz, venice@pharmarev.biz, emman.delacruz@pharmarev.biz, ER@qubel.org"},
+  {name:"Philippine Football Federation", email:"procurement@futsalph.com"},
+  {name:"Photonergy", phone:"945885894.0"},
+  {name:"Picky Purveyors Corp.", email:"danella@pickypurveyors.co"},
+  {name:"Pinkberry", email:"gtiangco@essi.ph"},
+  {name:"Pino Studio"},
+  {name:"Pj Lhuillier Inc", email:"eateodoro@pjlhuillier.com"},
+  {name:"Popmart Ph Trading Corporation", email:"anne.lastrilla@popmart.com", city:"Taguig City"},
+  {name:"Premier Food Choice International Corporation"},
+  {name:"Prestige Brands Philippines, Inc.", email:"heidi.organo@prestigegrp.co", city:"Makati"},
+  {name:"PRIMER GROUP OF COMPANIES"},
+  {name:"Regent Distributor Phils. Inc", email:"justin.panibio@regent-trg.com"},
+  {name:"Renegade Folk"},
+  {name:"Reytech Construction & Development Corp", email:"efalculan@reytech.ph"},
+  {name:"Reytech Construction & Development Corp.", email:"rramos@reytech.ph"},
+  {name:"RG Meditron Inc", email:"ppabad@rgmed.ph"},
+  {name:"Robinsons Handyman Inc."},
+  {name:"Ronald Quintans"},
+  {name:"Run Rabbit Run"},
+  {name:"RUNWAYONE RETAIL CORP"},
+  {name:"Rustan Marketing Corporation", email:"cudelfin@rgoc.com.ph"},
+  {name:"Ruth Aurelle", city:"Makati City"},
+  {name:"Salted Babes"},
+  {name:"Salty Babes"},
+  {name:"Sanibeaute"},
+  {name:"Sapphire Carnation Leisure and Recreation Corp.", city:"Pasay City"},
+  {name:"Savior Medevices Inc", email:"ks_espinosa@saviourmedevices.com"},
+  {name:"Scottland Food Group Corporation"},
+  {name:"Senyor Sio", email:"paulo.garcia@gmd.ph"},
+  {name:"Shop Callie", email:"shop.callie@gmail.com"},
+  {name:"Showroom7 Inc", email:"a.chua.anthem@gmail.com"},
+  {name:"Skygo Group of Companies", email:"mcaballero@skygo.com.ph"},
+  {name:"SM Development Corporation"},
+  {name:"Specialty Lifestyle Concept, Inc.", email:"mrdelossantos@rgoc.com.ph"},
+  {name:"St. Ali Coffee"},
+  {name:"Star Eye Corp"},
+  {name:"Starbucks Coffee"},
+  {name:"Sto. Niño De Cebu", email:"ltan@highleap.com.ph"},
+  {name:"Stores Specialists, Inc", email:"atsarmiento@rgoc.com.ph"},
+  {name:"Stroca Inc.", email:"jpramirez.strocainc@gmail.com"},
+  {name:"Studio Mara"},
+  {name:"SUPERBING CORP"},
+  {name:"Texturia"},
+  {name:"TGMCO"},
+  {name:"Timeplus Corporation", email:"richmond.dy85@gmail.com"},
+  {name:"Tin Santos"},
+  {name:"Tinette Capistrano"},
+  {name:"TOPTEN10 PH", email:"tanhuancoandaluz@gmail.com"},
+  {name:"Toyo Corporation", email:"nicca.singanon@foodeology.com.ph", city:"Makati City"},
+  {name:"Vanity Couture Corp"},
+  {name:"Verite Pawn Corp"},
+  {name:"Veronica Ong", email:"nferdo.ong@gmail.com"},
+  {name:"Virginia Nicodemus"},
+  {name:"Vitamin Marketing Services"},
+  {name:"Viva Foods", email:"jstan@viva.com.ph"},
+  {name:"Viva International Foods and Restaurant Inc", email:"jruda@viva.com.ph"},
+  {name:"Vogue Concepts Inc.", email:"peter.cabrera@vogueconcepts.com"},
+  {name:"Warner Bros. Discovery", email:"ennelyn.Mortillero@wbd.com"},
+  {name:"Watsons SMDS Marikina- ID TOWER"},
+  {name:"Wave Creative Group"},
+  {name:"WHITEPLANE INC.", email:"NielsonPhilip.R.Corres@wpi.ph"},
+  {name:"Yellow House Inc"},
+  {name:"Yobo International Food Corp.", email:"Fergus.siasat@trimarkholdings.net", city:"Taguig"},
+  {name:"Yuan Dumandan", email:"yuandumandan@gmail.com", city:"Marikina city"},
+  {name:"Zephyre Group Inc.", email:"bizops.zephyre@gmail.com"},
+];
+
+// ─── DEFAULT ACCOUNTS ─────────────────────────────────────────────────────────
+// Simple hash — not cryptographic, just obfuscation for an internal tool
+const hashPw = pw => btoa(pw + ":gmd-salt-2026").split("").reverse().join("");
+const checkPw = (pw, hash) => hashPw(pw) === hash;
+
+const DEFAULT_USERS = [
+  { id:"u1", name:"Paulo Garcia",  username:"paulo",   passwordHash:hashPw("GMD2026!"),   role:"Manager", status:"active",  createdAt:today },
+  { id:"u2", name:"Mar Garcia",    username:"mar",     passwordHash:hashPw("GMD2026!"),   role:"Manager", status:"active",  createdAt:today },
+];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const mkDesign=(status="Briefing",designer="",type="in-house",dueDate="",link="",notes="")=>({
   status,designer,designerType:type,dueDate,link,notes,
   statusHistory:[{status,date:today,by:"System"}],deliverables:[]
 });
-const SEED_DEALS=[
-  {id:"d1",client:"ABC Retail Corp",product:"Retail Cabinetry",value:3200000,stage:"Stage 08 — Production",probability:100,contact:"Juan Santos",followUp:"2026-05-20",notes:"Retail Fit-Out – SM Megamall. On track; delivery target May 20.",invoiced:3040000,amountPaid:1520000,paymentStatus:"Deposited",dueDate:"2026-05-20",priority:"High",ceNo:"CE-2026-001",ceType:"Fabrication / General",salesOwner:"Juan Santos",discount:5,dateAcquired:"2026-03-10"},
-  {id:"d2",client:"XYZ Holdings",product:"Custom Shelving",value:1350000,stage:"Stage 05 — 4-Way Sign-Off",probability:85,contact:"Maria Cruz",followUp:"2026-05-05",notes:"Office Renovation – BGC Tower. Awaiting Sales Mgr, Finance & Dir sign-off.",invoiced:1242000,amountPaid:0,paymentStatus:"Unpaid",dueDate:"",priority:"Normal",ceNo:"CE-2026-002",ceType:"Fabrication / General",salesOwner:"Maria Cruz",discount:8,dateAcquired:"2026-04-02"},
-  {id:"d3",client:"MNO Brands Inc.",product:"Display Fixtures",value:980000,stage:"Stage 04 — Paulo Review",probability:70,contact:"Rico Reyes",followUp:"2026-04-30",notes:"Showroom – Quezon Ave. Draft submitted to Paulo for review.",invoiced:0,amountPaid:0,paymentStatus:"Unpaid",dueDate:"",priority:"Normal",ceNo:"CE-2026-003",ceType:"Fabrication / General",salesOwner:"Rico Reyes",discount:0,dateAcquired:"2026-04-18"},
-  {id:"d4",client:"PQR Development",product:"Millwork",value:8500000,stage:"Stage 04 — Paulo Review",probability:65,contact:"Ana Lim",followUp:"2026-04-30",notes:"Commercial Building Phase 1. Rodney template submitted; awaiting Paulo % adjustment.",invoiced:0,amountPaid:0,paymentStatus:"Unpaid",dueDate:"",priority:"High",ceNo:"CE-2026-004",ceType:"Construction",salesOwner:"Ana Lim",discount:0,dateAcquired:"2026-04-25"},
-  {id:"d5",client:"STU Events Co.",product:"Kiosks",value:0,stage:"Stage 02 — Briefing",probability:40,contact:"Bong Reyes",followUp:"2026-05-15",notes:"Event Booth – Manila FAME. Brief expected May 15.",invoiced:0,amountPaid:0,paymentStatus:"Unpaid",dueDate:"",priority:"Normal",ceNo:"",ceType:"Fabrication / General",salesOwner:"Bong Reyes",discount:0,dateAcquired:"2026-05-01"},
-  {id:"d6",client:"Ivory Tree Inc.",product:"Retail Cabinetry",value:2611200,stage:"Stage 10 — Balance Billing",probability:100,contact:"Paolo Gomez",followUp:"",notes:"Studio Ceremonie Opus. ⚠ OPEN BALANCE ₱2,611,200 — follow up urgently.",invoiced:2611200,amountPaid:0,paymentStatus:"Unpaid",dueDate:"2026-04-01",priority:"Urgent",ceNo:"CE-2025-018",ceType:"Fabrication / General",salesOwner:"Paolo Gomez",discount:0,dateAcquired:"2025-11-01"},
-  {id:"d7",client:"Newtrends International Corporation",product:"Display Fixtures",value:240000,stage:"Stage 10 — Balance Billing",probability:100,contact:"Gail De Ello",followUp:"",notes:"Watch Republic Ayala Center Cebu. ⚠ OPEN BALANCE ₱240,000.",invoiced:240000,amountPaid:0,paymentStatus:"Unpaid",dueDate:"2026-03-15",priority:"High",ceNo:"CE-2025-022",ceType:"Fabrication / General",salesOwner:"Gail De Ello",discount:0,dateAcquired:"2025-12-01"},
-];
-const SEED_PROJECTS={
-  "d1":{currentStage:"Delivery",  progress:{Design:100,Fabrication:100,QC:100,Delivery:85},stageDates:{Design:{s:"2026-02-01",e:"2026-02-10"},Fabrication:{s:"2026-02-11",e:"2026-03-05"},QC:{s:"2026-03-06",e:"2026-03-10"},Delivery:{s:"2026-03-11",e:"2026-04-15"}},team:["Carlo M.","Enzo P."],materials:[{id:"m1",name:"Steel angle bars",qty:40,unit:"pcs",cost:12000,received:true},{id:"m2",name:"MDF boards",qty:20,unit:"sheets",cost:8000,received:true}],laborCost:18000,overhead:4000,notes:"Final installation ongoing.",design:mkDesign("Done","Alex R.","in-house","2026-02-10","","Approved.")},
-  "d2":{currentStage:"QC",        progress:{Design:100,Fabrication:100,QC:60,Delivery:0}, stageDates:{Design:{s:"2026-02-15",e:"2026-02-22"},Fabrication:{s:"2026-02-23",e:"2026-03-20"},QC:{s:"2026-03-21",e:"2026-04-10"},Delivery:{s:"2026-04-11",e:"2026-04-20"}},team:["Faye T.","Gino A."],  materials:[{id:"m4",name:"Tempered glass",qty:12,unit:"pcs",cost:9600,received:true},{id:"m5",name:"LED strip lights",qty:8,unit:"rolls",cost:3200,received:false}],laborCost:12000,overhead:3000,notes:"QC punch list in progress.",design:mkDesign("Done","Bea T.","in-house","2026-02-22","","Signed off.")},
-  "d3":{currentStage:"Fabrication",progress:{Design:100,Fabrication:40,QC:0,Delivery:0},  stageDates:{Design:{s:"2026-03-01",e:"2026-03-15"},Fabrication:{s:"2026-03-16",e:"2026-04-30"},QC:{s:"2026-05-01",e:"2026-05-10"},Delivery:{s:"2026-05-11",e:"2026-05-25"}},team:["Carlo M.","Hana C."],  materials:[{id:"m7",name:"Steel square tubes",qty:80,unit:"pcs",cost:32000,received:true},{id:"m9",name:"Laminate sheets",qty:30,unit:"sheets",cost:9000,received:false}],laborCost:45000,overhead:12000,notes:"Assembly ongoing.",design:mkDesign("Done","Freelancer / Outsourced","outsourced","2026-03-15","","Plans submitted.")},
-  "d6":{currentStage:"Design",    progress:{Design:30,Fabrication:0,QC:0,Delivery:0},     stageDates:{Design:{s:"2026-04-01",e:"2026-04-18"},Fabrication:{s:"2026-04-19",e:"2026-05-10"},QC:{s:"2026-05-11",e:"2026-05-14"},Delivery:{s:"2026-05-15",e:"2026-05-22"}},team:["Dana R."],           materials:[{id:"m10",name:"Plywood 3/4\"",qty:25,unit:"sheets",cost:10000,received:false}],laborCost:14000,overhead:3500,notes:"Revisions pending.",design:mkDesign("Revision","Chris N.","in-house","2026-04-18","","2nd revision.")},
-};
-const SEED_EXP=[
-  {id:"e1",month:0,category:"Salaries",  amount:85000,note:"Jan full team",   projectId:null,receipt:""},
-  {id:"e2",month:0,category:"Rent",      amount:18000,note:"Workshop Jan",    projectId:null,receipt:""},
-  {id:"e3",month:0,category:"Materials", amount:12000,note:"Steel & MDF",     projectId:"d1",receipt:""},
-  {id:"e4",month:1,category:"Salaries",  amount:85000,note:"Feb full team",   projectId:null,receipt:""},
-  {id:"e5",month:1,category:"Materials", amount:9600, note:"Glass – Bloom",   projectId:"d2",receipt:""},
-  {id:"e6",month:1,category:"Rent",      amount:18000,note:"Workshop Feb",    projectId:null,receipt:""},
-  {id:"e7",month:2,category:"Salaries",  amount:85000,note:"Mar full team",   projectId:null,receipt:""},
-  {id:"e8",month:2,category:"Materials", amount:32000,note:"Steel – TechZone",projectId:"d3",receipt:""},
-  {id:"e9",month:2,category:"Rent",      amount:18000,note:"Workshop Mar",    projectId:null,receipt:""},
-  {id:"e10",month:3,category:"Salaries", amount:85000,note:"Apr full team",   projectId:null,receipt:""},
-  {id:"e11",month:3,category:"Materials",amount:10000,note:"Plywood – Urban", projectId:"d6",receipt:""},
-  {id:"e12",month:3,category:"Overhead", amount:8500, note:"Equipment maint", projectId:null,receipt:""},
-];
-const SEED_INF=[
-  {id:"i1",month:0,source:"Metro Retail Co.",amount:18000,note:"Partial payment",projectId:"d1"},
-  {id:"i2",month:1,source:"Metro Retail Co.",amount:6500, note:"Final payment",  projectId:"d1"},
-  {id:"i3",month:1,source:"Bloom Boutique",  amount:5600, note:"Deposit",        projectId:"d2"},
-  {id:"i4",month:2,source:"UrbanNest",       amount:9900, note:"50% deposit",    projectId:"d6"},
-  {id:"i5",month:3,source:"Metro Retail Co.",amount:24500,note:"Full payment",   projectId:"d1"},
-  {id:"i6",month:3,source:"Bloom Boutique",  amount:5600, note:"Partial",        projectId:"d2"},
-];
+const SEED_DEALS=[];
+const SEED_PROJECTS={};
+const SEED_EXP=[];
+const SEED_INF=[];
 const SEED_SWATCHES=[
   {id:"s1",projectId:"d3",name:"Brushed steel sample",category:"Metal",   qty:2, unit:"pcs",   supplier:"MetalWorks PH",estCost:800, swatchLink:"",addedBy:"Design",status:"Received",notes:"Kiosk frame",date:today},
   {id:"s2",projectId:"d3",name:"Matte black laminate", category:"Laminate",qty:10,unit:"sheets",supplier:"SurfacePro",   estCost:3500,swatchLink:"",addedBy:"Ops",   status:"Ordered", notes:"Cabinet interiors",date:today},
@@ -331,7 +519,11 @@ function DealModal({open,onClose,form,setForm,onSave,editId}){
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-        <div style={{gridColumn:"1/-1"}}><Fld label="Client Name" required><Inp value={form.client} onChange={e=>f("client",e.target.value)} placeholder="e.g. Metro Retail Co."/></Fld></div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Fld label="Client Name" required hint="Start typing to search from your 207 GMD clients">
+            <ClientAutocomplete value={form.client} onChange={v=>f("client",v)}/>
+          </Fld>
+        </div>
         <Fld label="Contact Person"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="Full name"/></Fld>
         <Fld label="Deal Value (₱)" required><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)}/></Fld>
         <Fld label="Product Type"><Sel value={form.product} onChange={e=>f("product",e.target.value)}>{PRODUCT_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
@@ -464,19 +656,24 @@ function ExpenseModal({open,onClose,form,setForm,onSave,editId,projList,clientNa
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 export default function App(){
+  const[users,    setUsers]   = useState(DEFAULT_USERS);
+  const[session,  setSession] = useState(null);   // {userId, username, name, role}
+  const[authView, setAuthView]= useState("login"); // login | register
   const[role,     setRole]    = useState(null);
-  const[deals,    setDeals]   = useState(SEED_DEALS);
-  const[projs,    setProjs]   = useState(SEED_PROJECTS);
-  const[exps,     setExps]    = useState(SEED_EXP);
-  const[infs,     setInfs]    = useState(SEED_INF);
+  const[deals,    setDeals]   = useState([]);
+  const[projs,    setProjs]   = useState({});
+  const[exps,     setExps]    = useState([]);
+  const[infs,     setInfs]    = useState([]);
   const[jos,      setJos]     = useState([]);
-  const[swatches, setSwatches]= useState(SEED_SWATCHES);
-  const[checklist,setChecklist]= useState(SEED_CHECKLIST);
+  const[swatches, setSwatches]= useState([]);
+  const[checklist,setChecklist]= useState([]);
   const[ready,    setReady]   = useState(false);
   const[sync,     setSync]    = useState("saved");
 
   useEffect(()=>{
     try{
+      const u=localStorage.getItem(KEYS.users);   if(u) setUsers(JSON.parse(u));
+      const s=localStorage.getItem(KEYS.session); if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role); }
       const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
       const d=localStorage.getItem(KEYS.deals); if(d) setDeals(JSON.parse(d));
       const p=localStorage.getItem(KEYS.projects); if(p) setProjs(JSON.parse(p));
@@ -495,6 +692,7 @@ export default function App(){
     catch{setSync("error");}
   },[]);
 
+  const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
   const upProjs    =useCallback(fn=>setProjs(p=>{const n=fn(p);persist(KEYS.projects,n);return n;}),[persist]);
   const upExps     =useCallback(fn=>setExps(p=>{const n=fn(p);persist(KEYS.expenses,n);return n;}),[persist]);
@@ -526,6 +724,44 @@ export default function App(){
 
   const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
 
+  // ── Auth helpers ───────────────────────────────────────────────────────────
+  const login=(username,password)=>{
+    const u=users.find(x=>x.username.toLowerCase()===username.toLowerCase().trim());
+    if(!u) return "Username not found.";
+    if(u.status==="pending") return "Your account is pending approval by a Manager.";
+    if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
+    if(!checkPw(password,u.passwordHash)) return "Incorrect password.";
+    const sess={userId:u.id,username:u.username,name:u.name,role:u.role};
+    setSession(sess); setRole(u.role);
+    localStorage.setItem(KEYS.session,JSON.stringify(sess));
+    localStorage.setItem(KEYS.role,u.role);
+    return null; // null = success
+  };
+  const logout=()=>{
+    setSession(null); setRole(null); setAuthView("login");
+    localStorage.removeItem(KEYS.session); localStorage.removeItem(KEYS.role);
+  };
+  const register=(name,username,password,requestedRole)=>{
+    if(!name||!username||!password) return "All fields are required.";
+    if(users.find(u=>u.username.toLowerCase()===username.toLowerCase())) return "Username already taken.";
+    if(password.length<6) return "Password must be at least 6 characters.";
+    const newUser={id:"u"+Date.now(),name,username:username.toLowerCase(),passwordHash:hashPw(password),role:requestedRole,status:"pending",createdAt:today};
+    upUsers(us=>[...us,newUser]);
+    return null; // null = success
+  };
+  const approveUser =(id,role)=>upUsers(us=>us.map(u=>u.id===id?{...u,status:"active",role}:u));
+  const rejectUser  =(id)    =>upUsers(us=>us.map(u=>u.id===id?{...u,status:"rejected"}:u));
+  const deactivateUser=(id)  =>upUsers(us=>us.map(u=>u.id===id?{...u,status:"inactive"}:u));
+  const deleteUser  =(id)    =>upUsers(us=>us.filter(u=>u.id!==id));
+  const resetPw     =(id,pw) =>upUsers(us=>us.map(u=>u.id===id?{...u,passwordHash:hashPw(pw)}:u));
+  const changePw    =(oldPw,newPw)=>{
+    const u=users.find(x=>x.id===session?.userId);
+    if(!u||!checkPw(oldPw,u.passwordHash)) return "Current password is incorrect.";
+    if(newPw.length<6) return "New password must be at least 6 characters.";
+    upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
+    return null;
+  };
+
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals  =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
   const projList  =useMemo(()=>wonDeals.filter(d=>projs[d.id]),[wonDeals,projs]);
@@ -541,6 +777,7 @@ export default function App(){
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal, setDealModal]=useState(false);
+  const[clientSugg, setClientSugg]=useState([]); // autocomplete suggestions
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
   const[expModal,  setExpModal] =useState(false);
@@ -636,6 +873,7 @@ export default function App(){
     upJos(j=>[jo,...j]);setViewJO(jo);setJoStep("preview");
   };
 
+  // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
   if(!ready) return(
     <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center"}}>
@@ -645,44 +883,15 @@ export default function App(){
     </div>
   );
 
-  // ── ROLE PICKER ───────────────────────────────────────────────────────────
-  if(!role) return(
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#f8fafc 0%,#eff6ff 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Segoe UI',sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;}`}</style>
-      <div style={{width:"100%",maxWidth:460}}>
-        <div style={{textAlign:"center",marginBottom:36}}>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2.4rem",color:"#0f172a",letterSpacing:-1}}>GMD <span style={{color:"#f59e0b"}}>PRODUCTIONS</span></div>
-          <div style={{color:"#64748b",marginTop:8,fontSize:".92rem"}}>Select your role to continue</div>
-        </div>
-        {[
-          {r:"Manager",   icon:"👑",desc:"Full access to everything",                           color:"#f59e0b"},
-          {r:"Sales",     icon:"🤝",desc:"Pipeline, deals & collection tracking",               color:"#10b981"},
-          {r:"Finance",   icon:"₱", desc:"Expenses, payments & profit reports",                 color:"#3b82f6"},
-          {r:"Operations",icon:"⚙", desc:"Project stages, materials & team",                    color:"#f97316"},
-          {r:"Design",    icon:"🎨",desc:"Design status, files & swatchboard",                  color:"#8b5cf6"},
-        ].map(({r,icon,desc,color})=>(
-          <div key={r} onClick={()=>pickRole(r)}
-            style={{background:"#fff",borderRadius:14,border:"2px solid #e2e8f0",padding:"16px 20px",marginBottom:10,cursor:"pointer",display:"flex",alignItems:"center",gap:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)",transition:"all .2s"}}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor=color;e.currentTarget.style.boxShadow=`0 6px 20px ${color}30`;e.currentTarget.style.transform="translateY(-1px)";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="0 1px 6px rgba(0,0,0,.05)";e.currentTarget.style.transform="none";}}>
-            <div style={{width:46,height:46,borderRadius:12,background:color+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.35rem",flexShrink:0}}>{icon}</div>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700,fontSize:"1rem",color:"#0f172a"}}>{r}</div>
-              <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>{desc}</div>
-            </div>
-            <div style={{color:color,fontSize:"1.1rem",fontWeight:700}}>→</div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  // ── AUTH GATE ─────────────────────────────────────────────────────────────
+  if(!session) return <AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/>;
 
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role];
   const navMap={
-    Manager:   [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Procurement"},{id:"joborders",l:"Job Orders"}],
-    Sales:     [{id:"home",l:"My Pipeline"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"}],
-    Finance:   [{id:"home",l:"Overview"},{id:"collections",l:"Collections"},{id:"expenses",l:"Expenses"},{id:"checklist",l:"Checklist"}],
+    Manager:   [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Procurement"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"},{id:"accounts",l:"👥 Accounts"}],
+    Sales:     [{id:"home",l:"My Pipeline"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
+    Finance:   [{id:"home",l:"Overview"},{id:"collections",l:"Collections"},{id:"expenses",l:"Expenses"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
     Operations:[{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Swatchboard"}],
     Design:    [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Swatchboard"}],
   };
@@ -696,8 +905,15 @@ export default function App(){
       </div>
       <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
         <span style={{fontSize:".67rem",color:sync==="saving"?"#f59e0b":sync==="error"?"#ef4444":"#94a3b8"}}>{sync==="saving"?"Saving…":sync==="error"?"! Error":"✓ Saved"}</span>
-        <div style={{background:roleColor+"18",borderRadius:20,padding:"3px 11px",fontSize:".72rem",fontWeight:700,color:roleColor,border:`1px solid ${roleColor}33`}}>{role}</div>
-        <button onClick={()=>{setRole(null);localStorage.removeItem(KEYS.role);setPage("home");}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Switch</button>
+        {role==="Manager"&&users.filter(u=>u.status==="pending").length>0&&(
+          <button onClick={()=>setPage("accounts")} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"2px 10px",fontSize:".68rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
+            {users.filter(u=>u.status==="pending").length} pending
+          </button>
+        )}
+        <div style={{background:roleColor+"18",borderRadius:20,padding:"3px 11px",fontSize:".72rem",fontWeight:700,color:roleColor,border:`1px solid ${roleColor}33`}}>
+          {session?.name?.split(" ")[0]} · {role}
+        </div>
+        <button onClick={logout} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Log out</button>
       </div>
     </nav>
   );
@@ -1115,6 +1331,19 @@ export default function App(){
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
   }
 
+  // Clients directory (Manager, Sales, Finance)
+  if(page==="clients") return(
+    <Wrap>
+      <ClientDirectory deals={deals} session={session} role={role}/>
+    </Wrap>
+  );
+
+  // Accounts management (Manager only)
+  if(role==="Manager"&&page==="accounts") return(
+    <Wrap>
+      <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} ROLES={ROLES}/>
+    </Wrap>
+  );
   return <Wrap><EmptyState icon="🔍" msg={`No view for ${role}/${page}`}/></Wrap>;
 }
 
@@ -1786,5 +2015,397 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
         </div>
       </Modal>
     </Wrap>
+  );
+}
+
+// ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
+function AuthScreen({authView,setAuthView,onLogin,onRegister}){
+  const[uname,  setUname]  = useState("");
+  const[pw,     setPw]     = useState("");
+  const[name,   setName]   = useState("");
+  const[pw2,    setPw2]    = useState("");
+  const[reqRole,setReqRole]= useState("Sales");
+  const[err,    setErr]    = useState("");
+  const[ok,     setOk]     = useState("");
+  const[showPw, setShowPw] = useState(false);
+
+  const doLogin = () => {
+    setErr("");
+    const e = onLogin(uname, pw);
+    if(e) setErr(e);
+  };
+  const doRegister = () => {
+    setErr(""); setOk("");
+    if(pw !== pw2){ setErr("Passwords do not match."); return; }
+    const e = onRegister(name, uname, pw, reqRole);
+    if(e){ setErr(e); return; }
+    setOk("Account created! A Manager will approve your access shortly. You will be able to log in once approved.");
+    setName(""); setUname(""); setPw(""); setPw2("");
+  };
+  const isLogin = authView==="login";
+
+  return(
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);}`}</style>
+      <div style={{width:"100%",maxWidth:400}}>
+        {/* Logo */}
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2.2rem",color:"#fff",letterSpacing:-1}}>
+            GMD <span style={{color:"#f59e0b"}}>PROD</span>
+          </div>
+          <div style={{color:"rgba(255,255,255,.4)",fontSize:".8rem",marginTop:4}}>Internal Operations Platform</div>
+        </div>
+
+        {/* Card */}
+        <div style={{background:"rgba(255,255,255,.05)",backdropFilter:"blur(20px)",borderRadius:18,border:"1px solid rgba(255,255,255,.1)",padding:"28px 28px 24px",boxShadow:"0 24px 60px rgba(0,0,0,.4)"}}>
+          {/* Tabs */}
+          <div style={{display:"flex",background:"rgba(0,0,0,.3)",borderRadius:10,padding:4,marginBottom:24}}>
+            {["login","register"].map(v=>(
+              <button key={v} onClick={()=>{setAuthView(v);setErr("");setOk("");}} style={{flex:1,padding:"8px",border:"none",borderRadius:8,background:authView===v?"#fff":"transparent",color:authView===v?"#0f172a":"rgba(255,255,255,.5)",fontWeight:authView===v?700:400,fontSize:".82rem",cursor:"pointer",fontFamily:"inherit",transition:"all .2s",textTransform:"capitalize"}}>
+                {v==="login"?"Log In":"Register"}
+              </button>
+            ))}
+          </div>
+
+          {/* Error / Success */}
+          {err&&<div style={{background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.3)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#fca5a5"}}>{err}</div>}
+          {ok &&<div style={{background:"rgba(16,185,129,.15)",border:"1px solid rgba(16,185,129,.3)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#6ee7b7"}}>{ok}</div>}
+
+          {/* Register fields */}
+          {!isLogin&&(
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Full Name *</label>
+              <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Juan dela Cruz" style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+            </div>
+          )}
+
+          {/* Username */}
+          <div style={{marginBottom:14}}>
+            <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Username *</label>
+            <input value={uname} onChange={e=>setUname(e.target.value)} placeholder="e.g. juan" onKeyDown={e=>isLogin&&e.key==="Enter"&&doLogin()} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+          </div>
+
+          {/* Password */}
+          <div style={{marginBottom:14,position:"relative"}}>
+            <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Password *</label>
+            <div style={{position:"relative"}}>
+              <input type={showPw?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="Min 6 characters" onKeyDown={e=>isLogin&&e.key==="Enter"&&doLogin()} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 40px 10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+              <button onClick={()=>setShowPw(s=>!s)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"rgba(255,255,255,.4)",cursor:"pointer",fontSize:".78rem"}}>{showPw?"Hide":"Show"}</button>
+            </div>
+          </div>
+
+          {/* Confirm password + role (register only) */}
+          {!isLogin&&(<>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Confirm Password *</label>
+              <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Request Role</label>
+              <select value={reqRole} onChange={e=>setReqRole(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem",cursor:"pointer"}}>
+                {["Sales","Finance","Operations","Design"].map(r=><option key={r} style={{background:"#1e293b"}}>{r}</option>)}
+              </select>
+              <div style={{fontSize:".7rem",color:"rgba(255,255,255,.3)",marginTop:5}}>A Manager will assign your final role upon approval.</div>
+            </div>
+          </>)}
+
+          {/* Submit */}
+          <button onClick={isLogin?doLogin:doRegister} style={{width:"100%",background:"#f59e0b",border:"none",borderRadius:10,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".92rem",color:"#0f172a",cursor:"pointer",marginTop:6,transition:"all .15s"}}
+            onMouseEnter={e=>e.currentTarget.style.background="#fbbf24"}
+            onMouseLeave={e=>e.currentTarget.style.background="#f59e0b"}>
+            {isLogin?"Log In →":"Create Account →"}
+          </button>
+
+          {isLogin&&(
+            <div style={{textAlign:"center",marginTop:16,fontSize:".75rem",color:"rgba(255,255,255,.3)"}}>
+              No account yet?{" "}
+              <button onClick={()=>setAuthView("register")} style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:600}}>Register here</button>
+            </div>
+          )}
+        </div>
+
+        <div style={{textAlign:"center",marginTop:20,fontSize:".7rem",color:"rgba(255,255,255,.2)"}}>
+          GMD Productions Inc. · Internal use only
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ACCOUNTS MANAGER ─────────────────────────────────────────────────────────
+function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete,onResetPw,ROLES}){
+  const[resetId,  setResetId]  = useState(null);
+  const[newPw,    setNewPw]    = useState("");
+  const[resetMsg, setResetMsg] = useState("");
+  const[editRole, setEditRole] = useState({});
+  const STATUS_CLR = {active:"#10b981",pending:"#f59e0b",inactive:"#94a3b8",rejected:"#ef4444"};
+
+  const pending  = users.filter(u=>u.status==="pending");
+  const active   = users.filter(u=>u.status==="active");
+  const inactive = users.filter(u=>u.status==="inactive"||u.status==="rejected");
+
+  return(
+    <div>
+      <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.2rem",marginBottom:4}}>Account Management</div>
+      <div style={{fontSize:".78rem",color:"#64748b",marginBottom:20}}>Approve registrations, manage roles, reset passwords.</div>
+
+      {/* Pending approvals */}
+      {pending.length>0&&(
+        <div style={{marginBottom:24}}>
+          <div style={{fontWeight:700,color:"#dc2626",fontSize:".88rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"1px 10px",fontSize:".72rem"}}>{pending.length} pending</span>
+            Pending Approvals
+          </div>
+          {pending.map(u=>(
+            <div key={u.id} style={{background:"#fff",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginBottom:8}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontWeight:700,color:"#0f172a"}}>{u.name}</div>
+                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>@{u.username} · Requested: <strong>{u.role}</strong> · Registered {u.createdAt}</div>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <select value={editRole[u.id]||u.role} onChange={e=>setEditRole(r=>({...r,[u.id]:e.target.value}))} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                    {["Sales","Finance","Operations","Design","Manager"].map(r=><option key={r}>{r}</option>)}
+                  </select>
+                  <button onClick={()=>onApprove(u.id,editRole[u.id]||u.role)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>✓ Approve</button>
+                  <button onClick={()=>onReject(u.id)} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Reject</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {pending.length===0&&<div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:".82rem",color:"#059669"}}>✓ No pending approvals</div>}
+
+      {/* Active accounts */}
+      <div style={{marginBottom:20}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10}}>Active Accounts ({active.length})</div>
+        {active.map(u=>(
+          <div key={u.id} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 18px",marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:"#0f172a"}}>{u.name}</span>
+                  {u.id===session?.userId&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",padding:"1px 7px",borderRadius:10,fontWeight:700}}>You</span>}
+                </div>
+                <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>@{u.username} · {u.role}</div>
+              </div>
+              <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                <button onClick={()=>{setResetId(u.id);setNewPw("");setResetMsg("");}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"5px 11px",fontSize:".75rem",color:"#3b82f6",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Reset PW</button>
+                {u.id!==session?.userId&&(
+                  <button onClick={()=>onDeactivate(u.id)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 11px",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Deactivate</button>
+                )}
+              </div>
+            </div>
+            {resetId===u.id&&(
+              <div style={{marginTop:12,padding:"12px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="New password (min 6 chars)" style={{flex:1,minWidth:180,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 11px",fontFamily:"inherit",fontSize:".83rem",color:"#0f172a"}}/>
+                <button onClick={()=>{if(newPw.length>=6){onResetPw(u.id,newPw);setResetId(null);setResetMsg("Password reset!");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
+                <button onClick={()=>setResetId(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+                {resetMsg&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>{resetMsg}</span>}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Inactive/rejected */}
+      {inactive.length>0&&(
+        <div>
+          <div style={{fontWeight:700,color:"#94a3b8",fontSize:".88rem",marginBottom:10}}>Inactive / Rejected ({inactive.length})</div>
+          {inactive.map(u=>(
+            <div key={u.id} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 16px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",opacity:.7}}>
+              <div>
+                <span style={{fontWeight:600,color:"#64748b"}}>{u.name}</span>
+                <span style={{fontSize:".73rem",color:"#94a3b8",marginLeft:8}}>@{u.username} · {u.status}</span>
+              </div>
+              <div style={{display:"flex",gap:7}}>
+                <button onClick={()=>onApprove(u.id,u.role)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#059669",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Reactivate</button>
+                <button onClick={()=>onDelete(u.id)} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
+function ClientAutocomplete({value, onChange}){
+  const[show,    setShow]   = useState(false);
+  const[focused, setFocused]= useState(false);
+  const ref = useRef ? useRef(null) : {current:null};
+
+  const suggestions = useMemo(()=>{
+    if(!value||value.length<2) return [];
+    const q = value.toLowerCase();
+    return GMD_CLIENTS.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
+  },[value]);
+
+  const pick = (name) => { onChange(name); setShow(false); };
+
+  return(
+    <div style={{position:"relative"}}>
+      <input
+        value={value||""}
+        onChange={e=>{onChange(e.target.value);setShow(true);}}
+        onFocus={()=>setShow(true)}
+        onBlur={()=>setTimeout(()=>setShow(false),150)}
+        placeholder="Start typing client name…"
+        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}
+      />
+      {show && suggestions.length>0 && (
+        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,maxHeight:280,overflowY:"auto",marginTop:4}}>
+          {suggestions.map((c,i)=>(
+            <div key={i} onMouseDown={()=>pick(c.name)}
+              style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #f1f5f9",transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              <div style={{fontWeight:600,color:"#0f172a",fontSize:".86rem"}}>{c.name}</div>
+              <div style={{display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
+                {c.city&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📍 {c.city}</span>}
+                {c.phone&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📞 {c.phone}</span>}
+                {c.balance>0&&<span style={{fontSize:".7rem",color:"#ef4444",fontWeight:700}}>⚠ ₱{c.balance.toLocaleString()} open balance</span>}
+              </div>
+            </div>
+          ))}
+          {value&&!GMD_CLIENTS.find(c=>c.name.toLowerCase()===value.toLowerCase())&&(
+            <div onMouseDown={()=>pick(value)}
+              style={{padding:"10px 14px",cursor:"pointer",background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:"#3b82f6",fontWeight:600}}>
+              + Add "{value}" as new client
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
+function ClientDirectory({deals, session, role}){
+  const[search, setSearch] = useState("");
+  const[filter, setFilter] = useState("all"); // all | with-projects | with-balance
+
+  const filtered = useMemo(()=>{
+    let list = GMD_CLIENTS;
+    if(search) list = list.filter(c=>
+      c.name.toLowerCase().includes(search.toLowerCase())||
+      (c.city||"").toLowerCase().includes(search.toLowerCase())||
+      (c.email||"").toLowerCase().includes(search.toLowerCase())
+    );
+    if(filter==="with-balance") list = list.filter(c=>c.balance>0);
+    if(filter==="with-projects") list = list.filter(c=>deals.some(d=>d.client===c.name));
+    return list;
+  },[search,filter,deals]);
+
+  const totalBalance = GMD_CLIENTS.reduce((s,c)=>s+c.balance,0);
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{marginBottom:20}}>
+        <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Client Directory</h2>
+        <p style={{margin:"4px 0 0",color:"#64748b",fontSize:".78rem"}}>{GMD_CLIENTS.length} clients on record · From QuickBooks import</p>
+      </div>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {l:"Total Clients",    v:GMD_CLIENTS.length,                                      c:"#3b82f6"},
+          {l:"With Active Deals",v:GMD_CLIENTS.filter(c=>deals.some(d=>d.client===c.name)).length, c:"#10b981"},
+          {l:"Open Balances",    v:GMD_CLIENTS.filter(c=>c.balance>0).length,               c:"#ef4444"},
+          {l:"Total Outstanding",v:"₱"+totalBalance.toLocaleString(),                       c:"#f59e0b"},
+        ].map(({l,v,c})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"15px 18px",border:"1.5px solid #e2e8f0"}}>
+            <div style={{fontWeight:800,fontSize:"1.4rem",color:c,fontFamily:"'Barlow Condensed',sans-serif"}}>{v}</div>
+            <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Open balances alert */}
+      {GMD_CLIENTS.filter(c=>c.balance>0).length>0&&(
+        <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:"1.2rem"}}>⚠️</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,color:"#dc2626",fontSize:".88rem"}}>Clients with outstanding balances</div>
+            <div style={{display:"flex",gap:16,marginTop:4,flexWrap:"wrap"}}>
+              {GMD_CLIENTS.filter(c=>c.balance>0).map(c=>(
+                <span key={c.name} style={{fontSize:".78rem",color:"#ef4444"}}>
+                  <strong>{c.name}</strong> — ₱{c.balance.toLocaleString()}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search + filters */}
+      <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+        <input
+          value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="Search by name, city, or email…"
+          style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 13px",fontFamily:"inherit",fontSize:".86rem",color:"#1e293b",outline:"none"}}
+        />
+        {[
+          {id:"all",           l:`All (${GMD_CLIENTS.length})`},
+          {id:"with-balance",  l:`Open Balance (${GMD_CLIENTS.filter(c=>c.balance>0).length})`},
+          {id:"with-projects", l:`Has Deals (${GMD_CLIENTS.filter(c=>deals.some(d=>d.client===c.name)).length})`},
+        ].map(({id,l})=>(
+          <button key={id} onClick={()=>setFilter(id)}
+            style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${filter===id?"#1e293b":"#e2e8f0"}`,background:filter===id?"#1e293b":"#fff",color:filter===id?"#fff":"#64748b",fontFamily:"inherit",fontWeight:filter===id?700:400,fontSize:".78rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {/* Client list */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:0,padding:"8px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".65rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8"}}>
+          {["Client Name","City","Contact","Status"].map(h=><div key={h}>{h}</div>)}
+        </div>
+        {filtered.map((c,i)=>{
+          const clientDeals = deals.filter(d=>d.client===c.name);
+          const hasBalance  = c.balance>0;
+          const hasDeals    = clientDeals.length>0;
+          return(
+            <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:0,padding:"12px 18px",borderBottom:"1px solid #f1f5f9",background:hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa",alignItems:"center",transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#f0f9ff"}
+              onMouseLeave={e=>e.currentTarget.style.background=hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa"}>
+              <div>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</div>
+                {c.email&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{c.email}</div>}
+                {hasBalance&&<div style={{fontSize:".72rem",color:"#ef4444",fontWeight:700,marginTop:2}}>⚠ ₱{c.balance.toLocaleString()} outstanding</div>}
+              </div>
+              <div style={{fontSize:".78rem",color:"#64748b"}}>{c.city||"—"}</div>
+              <div style={{fontSize:".78rem",color:"#64748b"}}>{c.phone||"—"}</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {hasDeals?(
+                  <span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>
+                    {clientDeals.length} deal{clientDeals.length>1?"s":""}
+                  </span>
+                ):(
+                  <span style={{fontSize:".68rem",color:"#cbd5e1"}}>No deals</span>
+                )}
+                {hasBalance&&(
+                  <span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>
+                    Balance due
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length===0&&(
+          <div style={{padding:"32px 0",textAlign:"center",color:"#94a3b8",fontSize:".84rem"}}>
+            No clients match your search.
+          </div>
+        )}
+      </div>
+      <div style={{marginTop:10,fontSize:".72rem",color:"#94a3b8",textAlign:"right"}}>
+        Showing {filtered.length} of {GMD_CLIENTS.length} clients
+      </div>
+    </div>
   );
 }
