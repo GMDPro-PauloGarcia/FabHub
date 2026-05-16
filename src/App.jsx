@@ -45,10 +45,10 @@ const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
 const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
 // GMD Real Team — 4 departments
-const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","Gail De Ello","Jena De Asis","Wyn Celmar","Rodney (Cost Estimator)","Jerome Mendoza (Cost Estimator)"];
-const COST_CONTROL_TEAM = ["Mar Garcia (Finance Manager)","Procurement Manager","Warehouse Manager"];
-const OPS_TEAM          = ["Operations Director","Carlo M. (PM)","Dana R. (PM)","Enzo P. (Coordinator)","Faye T. (Coordinator)","Gino A. (Production)","Hana C. (Production)","Ivan L. (Production)","Jade O. (Production)"];
-const DESIGN_MEMBERS    = ["Alex R.","Bea T.","Chris N.","Diana L.","Edric M.","Freelancer / Outsourced"];
+const SALES_TEAM        = ["Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
+const COST_CONTROL_TEAM = ["Aerwin Del Rosario (Finance Manager)","Marian Prile (Procurement Manager)"];
+const OPS_TEAM          = ["Arrius Catubay (Ops Director)","Ryon Santiago (PM)","David Melendez (PM)","Jay Bernardo (PM)","Angelo Nogra (Coordinator)","Arvin Jaca (Coordinator)","Jessie Singun (Coordinator)","Anthony Nogra (Coordinator)","Steve Jazmin (Coordinator)"];
+const DESIGN_MEMBERS    = ["Gab Florita","Miaa Villoria","Miel Vidallo","Adrian Adriano","Tisha Leyva","Freelancer / Outsourced"];
 const ALL_MEMBERS       = [...new Set([...SALES_TEAM,...COST_CONTROL_TEAM,...OPS_TEAM,...DESIGN_MEMBERS])];
 const PROD_MEMBERS      = ALL_MEMBERS; // backward compat
 const MAT_UNITS       = ["pcs","sheets","meters","kg","sets","rolls","liters","sqm"];
@@ -386,13 +386,33 @@ const hashPw = pw => btoa(pw + ":gmd-salt-2026").split("").reverse().join("");
 const checkPw = (pw, hash) => hashPw(pw) === hash;
 
 const DEFAULT_USERS = [
-  { id:"u1", name:"Paulo Garcia",  username:"paulo",   passwordHash:hashPw("GMD2026!"),      role:"Manager",      status:"active", createdAt:today },
-  { id:"u2", name:"Mar Garcia",    username:"mar",     passwordHash:hashPw("GMD2026!"),      role:"Cost Control", status:"active", createdAt:today },
-  { id:"u3", name:"Paolo Gomez",   username:"paolo",   passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
-  { id:"u4", name:"Gail De Ello",  username:"gail",    passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
-  { id:"u5", name:"Jena De Asis",  username:"jena",    passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
-  { id:"u6", name:"Wyn Celmar",    username:"wyn",     passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
-  { id:"u7", name:"Rodney",        username:"rodney",  passwordHash:hashPw("GMD2026!"),      role:"Sales",        status:"active", createdAt:today },
+  // ── Owners / Management ──────────────────────────────────────────────────
+  { id:"u01", name:"Paulo Garcia",       username:"paulo",    passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u02", name:"Mar Mungcal",        username:"mar",      passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  // ── Operations ───────────────────────────────────────────────────────────
+  { id:"u03", name:"Arrius Catubay",     username:"arrius",   passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u10", name:"Anthony Nogra",      username:"anthony",  passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  // ── Sales ─────────────────────────────────────────────────────────────────
+  { id:"u12", name:"Paolo Gomez",        username:"paolo",    passwordHash:hashPw("Sales2026!"), role:"Manager",      status:"active", createdAt:today },
+  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  // ── Cost Control ──────────────────────────────────────────────────────────
+  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:hashPw("GMD2026!"),   role:"Cost Control", status:"active", createdAt:today },
+  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:hashPw("GMD2026!"),   role:"Cost Control", status:"active", createdAt:today },
+  // ── Design ────────────────────────────────────────────────────────────────
+  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
 ];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
