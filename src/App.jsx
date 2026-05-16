@@ -1,32 +1,56 @@
 const SEED_CHECKLIST=[];const SEED_SWATCHES=[];import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-// GMD's real 11-stage pipeline
+// GMD Real 13-Stage Workflow
 const DEAL_STAGES = [
-  "Stage 01 — Acquisition",
-  "Stage 02 — Briefing",
-  "Stage 03 — CE Drafting",
-  "Stage 04 — Paulo Review",
-  "Stage 05 — 4-Way Sign-Off",
-  "Stage 06 — Signed CE/PO",
-  "Stage 07 — Initial Billing",
-  "Stage 08 — Production",
-  "Stage 09 — Delivery & Punchlist",
-  "Stage 10 — Balance Billing",
-  "Stage 11 — Closed",
+  "01 · BizDev",
+  "02 · Client Engagement",
+  "03 · Design Request & Folder Setup",
+  "04 · Design & CE in Progress",
+  "05 · Client Approval / Revision",
+  "06 · Project Kickoff",
+  "07 · Budget & Briefing",
+  "08 · Fabrication / Construction",
+  "09 · Site Visit & Progress Billing",
+  "10 · Installation",
+  "11 · Punchlist",
+  "12 · Project Close-Out",
+  "13 · Client Feedback",
   "Cancelled",
 ];
-const ACTIVE_STAGES  = ["Stage 01 — Acquisition","Stage 02 — Briefing","Stage 03 — CE Drafting","Stage 04 — Paulo Review","Stage 05 — 4-Way Sign-Off","Stage 06 — Signed CE/PO","Stage 07 — Initial Billing","Stage 08 — Production","Stage 09 — Delivery & Punchlist","Stage 10 — Balance Billing"];
-const WON_STAGES     = ["Stage 06 — Signed CE/PO","Stage 07 — Initial Billing","Stage 08 — Production","Stage 09 — Delivery & Punchlist","Stage 10 — Balance Billing","Stage 11 — Closed"];
-const PAULO_GATE     = ["Stage 04 — Paulo Review","Stage 05 — 4-Way Sign-Off"];
-const CE_TYPES       = ["Fabrication / General","Construction"];
+const WON_STAGES    = ["06 · Project Kickoff","07 · Budget & Briefing","08 · Fabrication / Construction","09 · Site Visit & Progress Billing","10 · Installation","11 · Punchlist","12 · Project Close-Out","13 · Client Feedback"];
+const ACTIVE_STAGES = ["01 · BizDev","02 · Client Engagement","03 · Design Request & Folder Setup","04 · Design & CE in Progress","05 · Client Approval / Revision"];
+const PAULO_GATE    = ["05 · Client Approval / Revision","06 · Project Kickoff"];
+const CE_TYPES      = ["Fabrication / General","Construction"];
+const STAGE_OWNER   = {
+  "01 · BizDev":                       "BizDev Director",
+  "02 · Client Engagement":            "Account Executive",
+  "03 · Design Request & Folder Setup":"Account Executive",
+  "04 · Design & CE in Progress":      "Design + Cost Estimator",
+  "05 · Client Approval / Revision":   "Account Executive + Paulo",
+  "06 · Project Kickoff":              "Sales + Finance + Ops",
+  "07 · Budget & Briefing":            "Cost Control + Project Manager",
+  "08 · Fabrication / Construction":   "Operations + Procurement",
+  "09 · Site Visit & Progress Billing":"Project Manager + Finance",
+  "10 · Installation":                 "Operations",
+  "11 · Punchlist":                    "Project Manager",
+  "12 · Project Close-Out":            "Project Manager + Finance",
+  "13 · Client Feedback":              "Account Executive",
+};
+const STAGE_DURATION = {
+  "04 · Design & CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
+  "08 · Fabrication / Construction":   "Fab: 45 days · Construction: 45–60 days",
+};
 const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
 const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
-// GMD Real Team
-const SALES_TEAM   = ["Paulo Garcia","Paolo Gomez","Gail De Ello","Jena De Asis","Wyn Celmar"];
-const PROD_MEMBERS = ["Paulo Garcia","Paolo Gomez","Gail De Ello","Jena De Asis","Wyn Celmar","Rodney (QS/CE)","Jerome Mendoza (On-call CE)","Carlo M.","Dana R.","Enzo P.","Faye T.","Gino A.","Hana C.","Ivan L.","Jade O."];
-const DESIGN_MEMBERS  = ["Alex R.","Bea T.","Chris N.","Diana L.","Edric M.","Freelancer / Outsourced"];
+// GMD Real Team — 4 departments
+const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","Gail De Ello","Jena De Asis","Wyn Celmar","Rodney (Cost Estimator)","Jerome Mendoza (Cost Estimator)"];
+const COST_CONTROL_TEAM = ["Mar Garcia (Finance Manager)","Procurement Manager","Warehouse Manager"];
+const OPS_TEAM          = ["Operations Director","Carlo M. (PM)","Dana R. (PM)","Enzo P. (Coordinator)","Faye T. (Coordinator)","Gino A. (Production)","Hana C. (Production)","Ivan L. (Production)","Jade O. (Production)"];
+const DESIGN_MEMBERS    = ["Alex R.","Bea T.","Chris N.","Diana L.","Edric M.","Freelancer / Outsourced"];
+const ALL_MEMBERS       = [...new Set([...SALES_TEAM,...COST_CONTROL_TEAM,...OPS_TEAM,...DESIGN_MEMBERS])];
+const PROD_MEMBERS      = ALL_MEMBERS; // backward compat
 const MAT_UNITS       = ["pcs","sheets","meters","kg","sets","rolls","liters","sqm"];
 const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Other"];
 const SWATCH_CATS     = ["Fabric","Paint","Hardware","Wood","Metal","Glass","Laminate","Tile","Lighting","Fixture","Trim","Adhesive","Other"];
@@ -36,31 +60,33 @@ const MONTHS          = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","
 const PRIORITIES      = ["Normal","High","Urgent"];
 
 const STAGE_CLR = {
-  "Stage 01 — Acquisition":"#94a3b8",
-  "Stage 02 — Briefing":"#60a5fa",
-  "Stage 03 — CE Drafting":"#a78bfa",
-  "Stage 04 — Paulo Review":"#f59e0b",
-  "Stage 05 — 4-Way Sign-Off":"#f97316",
-  "Stage 06 — Signed CE/PO":"#10b981",
-  "Stage 07 — Initial Billing":"#06b6d4",
-  "Stage 08 — Production":"#3b82f6",
-  "Stage 09 — Delivery & Punchlist":"#8b5cf6",
-  "Stage 10 — Balance Billing":"#ec4899",
-  "Stage 11 — Closed":"#059669",
-  "Cancelled":"#ef4444",
+  "01 · BizDev":                       "#94a3b8",
+  "02 · Client Engagement":            "#60a5fa",
+  "03 · Design Request & Folder Setup":"#a78bfa",
+  "04 · Design & CE in Progress":      "#f59e0b",
+  "05 · Client Approval / Revision":   "#f97316",
+  "06 · Project Kickoff":              "#10b981",
+  "07 · Budget & Briefing":            "#06b6d4",
+  "08 · Fabrication / Construction":   "#3b82f6",
+  "09 · Site Visit & Progress Billing":"#8b5cf6",
+  "10 · Installation":                 "#ec4899",
+  "11 · Punchlist":                    "#eab308",
+  "12 · Project Close-Out":            "#059669",
+  "13 · Client Feedback":              "#4ade80",
+  "Cancelled":                         "#ef4444",
 };
 const PROD_CLR  = { Design:"#8b5cf6",Fabrication:"#f97316",QC:"#eab308",Delivery:"#10b981" };
 const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b",Deposited:"#10b981",Paid:"#059669" };
 const PRI_CLR   = { Normal:"#3b82f6",High:"#f59e0b",Urgent:"#ef4444" };
 const DS_CLR    = { Briefing:"#94a3b8","On-going":"#3b82f6","First Pass":"#8b5cf6",Revision:"#f97316","Production Plans":"#eab308",Done:"#10b981" };
 const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b981" };
-const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Operations:"#f97316",Design:"#8b5cf6" };
+const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981","Cost Control":"#3b82f6",Operations:"#f97316",Design:"#8b5cf6" };
 
-const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval"];
+const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval","Module","Swatch","Risk Flag"];
 const CL_STATUS = ["To Do","In Progress","Done"];
 const CL_DEPT   = ["Operations","Design","Procurement","Sales","Finance","Management"];
-const TYPE_ICON = { Purchase:"🛒","Supplier Job":"🏭",Permit:"📋",Task:"✅","Site Visit":"📍","Client Approval":"🤝" };
-const TYPE_CLR  = { Purchase:"#f59e0b","Supplier Job":"#f97316",Permit:"#3b82f6",Task:"#8b5cf6","Site Visit":"#10b981","Client Approval":"#ec4899" };
+const TYPE_ICON = { Purchase:"🛒","Supplier Job":"🏭",Permit:"📋",Task:"✅","Site Visit":"📍","Client Approval":"🤝",Module:"📦",Swatch:"🎨","Risk Flag":"⚠️" };
+const TYPE_CLR  = { Purchase:"#f59e0b","Supplier Job":"#f97316",Permit:"#3b82f6",Task:"#8b5cf6","Site Visit":"#10b981","Client Approval":"#ec4899",Module:"#0ea5e9",Swatch:"#d946ef","Risk Flag":"#ef4444" };
 const CS_CLR    = { "To Do":"#94a3b8","In Progress":"#f59e0b",Done:"#10b981" };
 
 const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -70,6 +96,43 @@ const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long"
 let _id=500; const uid=()=>String(++_id);
 
 const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session"};
+
+// ─── GMD PROACTIVE CHECKLIST TEMPLATE ────────────────────────────────────────
+// Auto-loads when a project hits Stage 06 (Project Kickoff)
+// Based on the 13-stage workflow + Action Planning Workshop mindset
+const GMD_CHECKLIST_TEMPLATE = [
+  // Stage 06 — Kickoff
+  { type:"Task",           dept:"Sales",        title:"Create client comms group (WhatsApp/Viber)",     priority:"High",   notes:"Add all Sales + Ops stakeholders + client",           whatCouldGoWrong:"Client left out or wrong number added — confirm before sending first message" },
+  { type:"Task",           dept:"Cost Control", title:"Issue 50% downpayment billing to client",         priority:"High",   notes:"Per agreed payment terms in signed CE",               whatCouldGoWrong:"Terms misremembered — always reference the signed CE before billing" },
+  { type:"Task",           dept:"Operations",   title:"PM and Coordinators briefed on scope",            priority:"High",   notes:"PM reviews approved plans before production starts",  whatCouldGoWrong:"Production starts without reading approved plans — verify before Day 1" },
+  // Stage 07 — Budget & Briefing
+  { type:"Task",           dept:"Cost Control", title:"Cost Control creates project budget",             priority:"High",   notes:"Budget locked before any procurement begins",         whatCouldGoWrong:"Procurement buys before budget is set — nothing moves without approved budget" },
+  { type:"Task",           dept:"Operations",   title:"Production lead briefed with full plans",         priority:"Normal", notes:"Confirm all plan revisions are final versions",        whatCouldGoWrong:"Old revision used — always check revision number on plans before briefing" },
+  // Stage 08 — Fabrication
+  { type:"Risk Flag",      dept:"Operations",   title:"Identify long-lead items that need early order",  priority:"Urgent", notes:"Glass, custom hardware, imported materials take longer",whatCouldGoWrong:"Ordered too late — check lead times on Day 1 of fabrication, not Day 30" },
+  { type:"Purchase",       dept:"Procurement",  title:"All materials confirmed and scheduled for delivery",priority:"High", notes:"Confirm delivery dates align with production schedule", whatCouldGoWrong:"Material arrives late, stalling production — get written delivery commitments" },
+  { type:"Task",           dept:"Operations",   title:"Daily PM update logged (or per client agreement)", priority:"Normal",notes:"Client frequency: daily or weekly depending on project",whatCouldGoWrong:"Update missed = client sends 'any update?' — never let this happen" },
+  { type:"Risk Flag",      dept:"Operations",   title:"Flag any scope changes immediately as addenda",    priority:"High",  notes:"Coordinate with Sales before telling client any changes",whatCouldGoWrong:"Ops changes scope without telling Sales — client gets conflicting information" },
+  // Modules
+  { type:"Module",         dept:"Operations",   title:"Modules — confirm count, sizes, and specs",       priority:"High",  notes:"Cross-check against approved drawings",               whatCouldGoWrong:"Module count wrong on arrival — verify against PO and drawings before accepting delivery" },
+  { type:"Module",         dept:"Operations",   title:"Module delivery to site confirmed",               priority:"High",  notes:"Coordinate hauling and site access",                  whatCouldGoWrong:"Truck arrives and site is locked — confirm access and contact person night before" },
+  // Swatches
+  { type:"Swatch",         dept:"Procurement",  title:"All material swatches approved by client",        priority:"High",  notes:"Client must approve finishes before fabrication starts",whatCouldGoWrong:"Wrong finish fabricated — no production without written client swatch approval" },
+  { type:"Swatch",         dept:"Procurement",  title:"Swatch samples ordered and received",             priority:"Normal",notes:"Allow lead time — order swatches at Stage 04",         whatCouldGoWrong:"Swatch not yet arrived when fabrication starts — order early, not at kickoff" },
+  // Stage 09 — Site Visit & Progress Billing
+  { type:"Site Visit",     dept:"Operations",   title:"Mid-project client site visit scheduled",         priority:"Normal", notes:"Show progress, set expectations, build trust",        whatCouldGoWrong:"Client surprised by progress level — set expectations before the visit" },
+  { type:"Task",           dept:"Cost Control", title:"Progress billing issued per payment terms",       priority:"High",  notes:"Don't wait for client to ask — bill on time",          whatCouldGoWrong:"Billing delayed, cash flow suffers — set a billing date at project start" },
+  // Permits
+  { type:"Permit",         dept:"Operations",   title:"All mall/site permits secured before installation",priority:"High", notes:"CARI, DPWH, building admin — confirm requirements",   whatCouldGoWrong:"Installation day arrives with no permit — apply at kickoff, not the week before" },
+  // Stage 11 — Punchlist
+  { type:"Task",           dept:"Operations",   title:"Punchlist documented and signed by PM + client",  priority:"High",  notes:"All items listed before leaving site",                whatCouldGoWrong:"Verbal punchlist forgotten — always get written sign-off on site" },
+  { type:"Client Approval",dept:"Sales",        title:"Client signs delivery receipt",                   priority:"High",  notes:"No signature = no handover",                          whatCouldGoWrong:"Client refuses to sign — escalate to Paolo/Paulo immediately" },
+  // Stage 12 — Close-Out
+  { type:"Task",           dept:"Operations",   title:"PM creates COC and close-out report",             priority:"High",  notes:"Include all addenda, punchlist resolved, final specs", whatCouldGoWrong:"COC missing details — review against original scope before submitting" },
+  { type:"Task",           dept:"Cost Control", title:"Final billing issued to client",                  priority:"High",  notes:"Full remaining balance",                              whatCouldGoWrong:"Balance not collected — escalate if not paid within agreed terms" },
+  // Stage 13 — Feedback
+  { type:"Task",           dept:"Sales",        title:"Request client feedback (score + testimonial)",   priority:"Normal",notes:"Log in FabHub — Stage 13",                            whatCouldGoWrong:"Feedback never collected — ask within 1 week of close-out, not months later" },
+];
 
 // ─── GMD CLIENT DIRECTORY ────────────────────────────────────────────────────
 const GMD_CLIENTS = [
@@ -288,8 +351,13 @@ const hashPw = pw => btoa(pw + ":gmd-salt-2026").split("").reverse().join("");
 const checkPw = (pw, hash) => hashPw(pw) === hash;
 
 const DEFAULT_USERS = [
-  { id:"u1", name:"Paulo Garcia",  username:"paulo",   passwordHash:hashPw("GMD2026!"),   role:"Manager", status:"active",  createdAt:today },
-  { id:"u2", name:"Mar Garcia",    username:"mar",     passwordHash:hashPw("GMD2026!"),   role:"Manager", status:"active",  createdAt:today },
+  { id:"u1", name:"Paulo Garcia",  username:"paulo",   passwordHash:hashPw("GMD2026!"),      role:"Manager",      status:"active", createdAt:today },
+  { id:"u2", name:"Mar Garcia",    username:"mar",     passwordHash:hashPw("GMD2026!"),      role:"Cost Control", status:"active", createdAt:today },
+  { id:"u3", name:"Paolo Gomez",   username:"paolo",   passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
+  { id:"u4", name:"Gail De Ello",  username:"gail",    passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
+  { id:"u5", name:"Jena De Asis",  username:"jena",    passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
+  { id:"u6", name:"Wyn Celmar",    username:"wyn",     passwordHash:hashPw("Sales2026!"),    role:"Sales",        status:"active", createdAt:today },
+  { id:"u7", name:"Rodney",        username:"rodney",  passwordHash:hashPw("GMD2026!"),      role:"Sales",        status:"active", createdAt:today },
 ];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -317,8 +385,43 @@ const SEED_CHECKLIST=[
   {id:"c6",projectId:"d2",type:"Site Visit",title:"Pre-delivery site inspection",dept:"Operations",assignedTo:"Faye T.",status:"In Progress",priority:"High",dueDate:"2026-04-11",supplier:"",notes:"Check measurements before delivery",createdDate:today,createdBy:"Ops"},
   {id:"c7",projectId:"d1",type:"Task",title:"Final touch-up and cleaning",dept:"Operations",assignedTo:"Enzo P.",status:"Done",priority:"Normal",dueDate:"2026-04-13",supplier:"",notes:"Before client handover",createdDate:today,createdBy:"Ops"},
 ];
-const emptyDeal={client:"",product:"Custom Shelving",value:"",stage:"Stage 01 — Acquisition",probability:10,contact:"",followUp:"",notes:"",invoiced:"",amountPaid:"",paymentStatus:"Unpaid",dueDate:"",priority:"Normal",ceNo:"",ceType:"Fabrication / General",salesOwner:"",discount:0,dateAcquired:today};
-const emptyProject=()=>({currentStage:"Design",progress:{Design:0,Fabrication:0,QC:0,Delivery:0},stageDates:{Design:{s:"",e:""},Fabrication:{s:"",e:""},QC:{s:"",e:""},Delivery:{s:"",e:""}},team:[],materials:[],laborCost:0,overhead:0,notes:"",design:mkDesign()});
+const emptyDeal={
+  // Core
+  client:"",product:"Custom Shelving",value:"",stage:"01 · BizDev",
+  probability:10,contact:"",followUp:"",notes:"",priority:"Normal",
+  // Payment
+  invoiced:"",amountPaid:"",paymentStatus:"Unpaid",dueDate:"",discount:0,
+  progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
+  // GMD fields
+  ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,
+  assignedAE:"",bizDevSource:"",
+  // File links (Drive + FabHub)
+  salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
+  // Design Request
+  designRequestDate:"",designRequestNote:"",designApprovalDate:"",
+  // Comms
+  commsGroup:"",commsGroupLink:"",
+  // Addenda
+  addenda:[],
+  // Feedback
+  clientFeedback:"",feedbackDate:"",feedbackScore:"",
+};
+const emptyProject=()=>({
+  currentStage:"Design",
+  progress:{Design:0,Fabrication:0,QC:0,Delivery:0,Installation:0,Punchlist:0},
+  stageDates:{Design:{s:"",e:""},Fabrication:{s:"",e:""},QC:{s:"",e:""},Delivery:{s:"",e:""},Installation:{s:"",e:""},Punchlist:{s:"",e:""}},
+  team:[],pmAssigned:"",coordinatorAssigned:"",
+  materials:[],laborCost:0,overhead:0,notes:"",
+  design:mkDesign(),
+  // Budget (Cost Control)
+  budgetCreated:false,budgetLink:"",budgetNotes:"",
+  // COC
+  cocCreated:false,cocDate:"",cocLink:"",
+  // PM Updates
+  pmUpdates:[],
+  // Addenda
+  addenda:[],
+});
 
 // ─── UI ATOMS ─────────────────────────────────────────────────────────────────
 const Badge=({label,color})=>(
@@ -532,25 +635,62 @@ function DealModal({open,onClose,form,setForm,onSave,editId}){
         <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
         <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
       </div>
-      {/* CE + GMD-specific fields */}
+      {/* GMD Workflow Fields */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:4}}>
-        <Fld label="Sales Owner">
+        <Fld label="Sales Owner / AE">
           <Sel value={form.salesOwner||""} onChange={e=>f("salesOwner",e.target.value)}>
-            <option value="">— Assign —</option>
+            <option value="">— Assign AE —</option>
             {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
           </Sel>
         </Fld>
+        <Fld label="BizDev Source" hint="Who found this client?">
+          <Inp value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)} placeholder="e.g. Paulo referral, cold outreach"/>
+        </Fld>
         <Fld label="Date Acquired"><Inp type="date" value={form.dateAcquired||today} onChange={e=>f("dateAcquired",e.target.value)}/></Fld>
-        <Fld label="CE Number" hint="e.g. CE-2026-005"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
+        <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
         <Fld label="CE Type">
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
             {CE_TYPES.map(t=><option key={t}>{t}</option>)}
           </Sel>
         </Fld>
-        <Fld label="Discount %" hint="Paulo sets this — not sales team">
+        <Fld label="Discount %" hint="Paulo sets this only">
           <Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/>
         </Fld>
       </div>
+
+      {/* Sales Repository + Proposal Folder */}
+      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #e2e8f0"}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Sales Repository</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Fld label="Sales Repository Link (Google Drive)" hint="Main folder for all project info, plans, and files">
+            <Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/>
+          </Fld>
+          <Fld label="Proposal Folder Link" hint="CE + budget live here — inside Sales Repository">
+            <Inp type="url" value={form.proposalFolderLink||""} onChange={e=>f("proposalFolderLink",e.target.value)} placeholder="https://drive.google.com/…"/>
+          </Fld>
+          <Fld label="Repository Notes" hint="e.g. folder name, what's inside">
+            <Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall ABC Retail — all plans uploaded"/>
+          </Fld>
+          <Fld label="Comms Group" hint="WhatsApp or Viber group with client + team">
+            <Sel value={form.commsGroup||""} onChange={e=>f("commsGroup",e.target.value)}>
+              <option value="">— Not yet created —</option>
+              <option>WhatsApp</option><option>Viber</option><option>Both</option>
+            </Sel>
+          </Fld>
+        </div>
+      </div>
+
+      {/* Design Request */}
+      {["03 · Design Request & Folder Setup","04 · Design & CE in Progress","05 · Client Approval / Revision"].includes(form.stage)&&(
+        <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #ddd6fe"}}>
+          <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:12}}>🎨 Design Request</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <Fld label="Design Request Date"><Inp type="date" value={form.designRequestDate||""} onChange={e=>f("designRequestDate",e.target.value)}/></Fld>
+            <Fld label="Design Approval Date"><Inp type="date" value={form.designApprovalDate||""} onChange={e=>f("designApprovalDate",e.target.value)}/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Design Request Notes"><Inp rows={2} value={form.designRequestNote||""} onChange={e=>f("designRequestNote",e.target.value)} placeholder="Scope, specs, client references, revision notes…"/></Fld></div>
+          </div>
+        </div>
+      )}
       {PAULO_GATE.includes(form.stage)&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#92400e"}}>
           ⚠️ <strong>Paulo Gate:</strong> Stage {form.stage} requires Paulo Garcia's review and sign-off before proceeding to the next stage.
@@ -701,17 +841,55 @@ export default function App(){
   const upSwatches =useCallback(fn=>setSwatches(p=>{const n=fn(p);persist(KEYS.swatches,n);return n;}),[persist]);
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
 
+  // ── PM Update + Addendum helpers ─────────────────────────────────────────
+  // ── Proactive Checklist Template Auto-Load ──────────────────────────────────
+  const loadChecklistTemplate=(dealId,clientName)=>{
+    // Only load if no checklist items exist for this project yet
+    const existing=checklist.filter(c=>c.projectId===dealId);
+    if(existing.length>0) return; // already has items — don't overwrite
+    const items=GMD_CHECKLIST_TEMPLATE.map(t=>({
+      ...t,
+      id:uid(),
+      projectId:dealId,
+      title:t.title,
+      status:"To Do",
+      customType:"",
+      assignedTo:"",
+      dueDate:"",
+      supplier:"",
+      qty:"",
+      unit:"pcs",
+      createdDate:today,
+      createdBy:"System (Template)",
+    }));
+    upChecklist(cs=>[...cs,...items]);
+  };
+
+  const addPmUpdate=(projId,text,by)=>{
+    if(!text.trim()) return;
+    const entry={id:uid(),text,by:by||session?.name||"Team",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
+    upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
+  };
+  const addAddendum=(dealId,title,desc,requestedBy)=>{
+    const entry={id:uid(),title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
+    upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:[entry,...(d.addenda||[])]}:d));
+    upProj(dealId,p=>({...p,addenda:[entry,...(p.addenda||[])]}));
+  };
+  const updateAddendumStatus=(dealId,addId,status)=>{
+    upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:(d.addenda||[]).map(a=>a.id===addId?{...a,status}:a)}:d));
+  };
+
   // ── Checklist state ──────────────────────────────────────────────────────────
   const[clModal,   setClModal]  = useState(false);
-  const[clForm,    setClForm]   = useState({projectId:null,type:"Task",customType:"",title:"",dept:"Operations",assignedTo:"",status:"To Do",priority:"Normal",dueDate:"",supplier:"",notes:""});
+  const[clForm,    setClForm]   = useState({projectId:null,type:"Task",customType:"",title:"",dept:"Operations",assignedTo:"",status:"To Do",priority:"Normal",dueDate:"",supplier:"",notes:"",whatCouldGoWrong:"",qty:"",unit:"pcs"});
   const[editCl,    setEditCl]   = useState(null);
   const[clProjF,   setClProjF]  = useState("all");
   const[clTypeF,   setClTypeF]  = useState("All");
   const[clStatF,   setClStatF]  = useState("All");
   const[clDeptF,   setClDeptF]  = useState("All");
 
-  const openAddCl=(projId=null,dept="Operations")=>{setClForm({projectId:projId,type:"Task",customType:"",title:"",dept:dept,assignedTo:"",status:"To Do",priority:"Normal",dueDate:"",supplier:"",notes:""});setEditCl(null);setClModal(true);};
-  const openEditCl=item=>{setClForm({...item,customType:CL_TYPES.includes(item.type)?"":item.type});setEditCl(item.id);setClModal(true);};
+  const openAddCl=(projId=null,dept="Operations",type="Task")=>{setClForm({projectId:projId,type,customType:"",title:"",dept:dept,assignedTo:"",status:"To Do",priority:"Normal",dueDate:"",supplier:"",notes:"",whatCouldGoWrong:"",qty:"",unit:"pcs"});setEditCl(null);setClModal(true);};
+  const openEditCl=item=>{setClForm({...item,customType:CL_TYPES.includes(item.type)?"":item.type,whatCouldGoWrong:item.whatCouldGoWrong||"",qty:item.qty||"",unit:item.unit||"pcs"});setEditCl(item.id);setClModal(true);};
   const saveCl=()=>{
     if(!clForm.title) return;
     const finalType=clForm.type==="Custom"&&clForm.customType?clForm.customType:clForm.type;
@@ -723,6 +901,9 @@ export default function App(){
   const clStatusQ=(id,st)=>upChecklist(cs=>cs.map(c=>c.id===id?{...c,status:st}:c));
 
   const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
+
+  // ── AI Devil's Advocate ────────────────────────────────────────────────────
+  const openAI = (context) => { setAiCtx(context); setAiOpen(true); };
 
   // ── Auth helpers ───────────────────────────────────────────────────────────
   const login=(username,password)=>{
@@ -764,6 +945,7 @@ export default function App(){
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals  =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
+  const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"),[deals]);
   const projList  =useMemo(()=>wonDeals.filter(d=>projs[d.id]),[wonDeals,projs]);
   const isPauloGate = stage => PAULO_GATE.includes(stage);
   const clientName=useCallback(id=>deals.find(d=>d.id===id)?.client||`Project #${id}`,[deals]);
@@ -797,6 +979,8 @@ export default function App(){
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
   const[page,       setPage]       =useState("home");
+  const[aiOpen,     setAiOpen]     =useState(false);
+  const[aiCtx,      setAiCtx]      =useState(null);   // context object passed to AI
   const[joStep,     setJoStep]     =useState("select");
   const[joSel,      setJoSel]      =useState(null);
   const[joExtra,    setJoExtra]    =useState({address:"",phone:"",priority:"Normal",extraNotes:""});
@@ -810,6 +994,7 @@ export default function App(){
     const prob=WON_STAGES.includes(dealForm.stage)?100:dealForm.stage==="Cancelled"?0:Number(dealForm.probability);
     const rec={...dealForm,id:editDeal||uid(),value:Number(dealForm.value),invoiced:Number(dealForm.invoiced||0),amountPaid:Number(dealForm.amountPaid||0),probability:prob};
     if(WON_STAGES.includes(dealForm.stage)&&!editDeal) upProjs(ps=>({...ps,[rec.id]:{...emptyProject(),notes:""}}));
+    if(dealForm.stage==="06 · Project Kickoff"&&!editDeal) setTimeout(()=>loadChecklistTemplate(rec.id,rec.client),200);
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     setDealModal(false);
   };
@@ -889,11 +1074,11 @@ export default function App(){
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role];
   const navMap={
-    Manager:   [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Procurement"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"},{id:"accounts",l:"👥 Accounts"}],
-    Sales:     [{id:"home",l:"My Pipeline"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
-    Finance:   [{id:"home",l:"Overview"},{id:"collections",l:"Collections"},{id:"expenses",l:"Expenses"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
-    Operations:[{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Swatchboard"}],
-    Design:    [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Swatchboard"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Procurement"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"},{id:"accounts",l:"👥 Accounts"}],
+    Sales:        [{id:"home",l:"My Pipeline"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
+    "Cost Control":[{id:"home",l:"Overview"},{id:"collections",l:"Collections"},{id:"expenses",l:"Expenses"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
+    Operations:   [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Swatchboard"}],
+    Design:       [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"procurement",l:"Swatchboard"}],
   };
   const Nav=()=>(
     <nav style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"0 20px",display:"flex",alignItems:"center",height:56,gap:2,position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}} className="noprint">
@@ -922,6 +1107,17 @@ export default function App(){
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus,select:focus,textarea:focus{outline:none;border-color:${roleColor}!important;box-shadow:0 0 0 3px ${roleColor}22!important;} @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}} .fi{animation:fi .2s ease;} @media print{.noprint{display:none!important;}}`}</style>
       <Nav/>
       <div style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px"}} className="fi">{children}</div>
+      {/* ── GMD AI Devil's Advocate ── */}
+      {/* Floating trigger button */}
+      <button onClick={()=>openAI({type:"general",page,role,deals,exps,wonDeals:deals.filter(d=>WON_STAGES.includes(d.stage)),projList:deals.filter(d=>WON_STAGES.includes(d.stage)&&projs[d.id])})}
+        style={{position:"fixed",bottom:24,right:24,width:52,height:52,borderRadius:"50%",background:"#1a1a2e",border:"2px solid #f59e0b",boxShadow:"0 4px 20px rgba(0,0,0,.3)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.3rem",zIndex:500,transition:"all .2s"}}
+        onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.1)";e.currentTarget.style.boxShadow="0 6px 28px rgba(245,158,11,.4)";}}
+        onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="0 4px 20px rgba(0,0,0,.3)";}}>
+        🤔
+      </button>
+      {/* AI Panel */}
+      {aiOpen&&<AIAdvisor ctx={aiCtx} role={role} session={session} onClose={()=>setAiOpen(false)} deals={deals} projs={projs} exps={exps} infs={infs} checklist={checklist} wonDeals={deals.filter(d=>WON_STAGES.includes(d.stage))}/>}
+
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
@@ -1063,12 +1259,16 @@ export default function App(){
                 <div style={{fontSize:".78rem",color:"#64748b"}}>{d.product} · {d.contact}</div>
                 {d.followUp&&<div style={{fontSize:".72rem",color:d.followUp<today&&d.stage!=="Won"&&d.stage!=="Lost"?"#ef4444":"#94a3b8",marginTop:4}}>📅 Follow-up: {d.followUp}</div>}
                 {d.notes&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>{d.notes}</div>}
-                <div style={{display:"flex",gap:8,marginTop:5,flexWrap:"wrap"}}>
-                  {d.ceNo&&<span style={{fontSize:".7rem",color:"#64748b",background:"#f1f5f9",padding:"1px 7px",borderRadius:5}}>{d.ceNo}</span>}
-                  {d.ceType&&<span style={{fontSize:".7rem",color:d.ceType==="Construction"?"#3b82f6":"#8b5cf6",background:d.ceType==="Construction"?"#eff6ff":"#faf5ff",padding:"1px 7px",borderRadius:5}}>{d.ceType}</span>}
-                  {d.salesOwner&&<span style={{fontSize:".7rem",color:"#64748b"}}>👤 {d.salesOwner}</span>}
-                  {PAULO_GATE.includes(d.stage)&&<span style={{fontSize:".7rem",color:"#d97706",background:"#fffbeb",padding:"1px 7px",borderRadius:5,fontWeight:700}}>⚠ Paulo Gate</span>}
-                  {Number(d.value)>=3000000&&<span style={{fontSize:".7rem",color:"#dc2626",background:"#fef2f2",padding:"1px 7px",borderRadius:5,fontWeight:700}}>🚨 ₱3M+</span>}
+                <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
+                  {d.ceNo&&<span style={{fontSize:".68rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:5}}>{d.ceNo}</span>}
+                  {d.ceType&&<span style={{fontSize:".68rem",color:d.ceType==="Construction"?"#3b82f6":"#8b5cf6",background:d.ceType==="Construction"?"#eff6ff":"#faf5ff",padding:"1px 8px",borderRadius:5}}>{d.ceType}</span>}
+                  {d.salesOwner&&<span style={{fontSize:".68rem",color:"#64748b"}}>👤 {d.salesOwner}</span>}
+                  {d.salesRepoLink&&<a href={d.salesRepoLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:".68rem",color:"#3b82f6",textDecoration:"none",background:"#eff6ff",padding:"1px 8px",borderRadius:5}}>📁 Repo</a>}
+                  {d.proposalFolderLink&&<a href={d.proposalFolderLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{fontSize:".68rem",color:"#6d28d9",textDecoration:"none",background:"#faf5ff",padding:"1px 8px",borderRadius:5}}>📋 Proposal</a>}
+                  {d.commsGroup&&<span style={{fontSize:".68rem",color:"#059669",background:"#f0fdf4",padding:"1px 8px",borderRadius:5}}>💬 {d.commsGroup}</span>}
+                  {PAULO_GATE.includes(d.stage)&&<span style={{fontSize:".68rem",color:"#d97706",background:"#fffbeb",padding:"1px 8px",borderRadius:5,fontWeight:700}}>⚠ Paulo Gate</span>}
+                  {Number(d.value)>=3000000&&<span style={{fontSize:".68rem",color:"#dc2626",background:"#fef2f2",padding:"1px 8px",borderRadius:5,fontWeight:700}}>🚨 ₱3M+</span>}
+                  {STAGE_OWNER[d.stage]&&<span style={{fontSize:".65rem",color:"#94a3b8"}}>Owner: {STAGE_OWNER[d.stage]}</span>}
                 </div>
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
@@ -1120,11 +1320,11 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} Wrap={Wrap}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
   }
 
   // ─── SALES ────────────────────────────────────────────────────────────────
@@ -1164,10 +1364,11 @@ export default function App(){
                 <div style={{display:"flex",gap:6,marginTop:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
                   <Btn small variant="ghost" onClick={()=>openEditDeal(d)}>✏ Edit</Btn>
                 </div>
-                <div style={{marginTop:8,minWidth:130}}>
-                  <select value={d.stage} onChange={e=>{const st=e.target.value;const prob=WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st,probability:prob}:x));if(WON_STAGES.includes(st)&&!projs[d.id])upProjs(ps=>({...ps,[d.id]:emptyProject()}));}} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                <div style={{marginTop:8,minWidth:160}}>
+                  <select value={d.stage} onChange={e=>{const st=e.target.value;const prob=WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st,probability:prob}:x));if(WON_STAGES.includes(st)&&!projs[d.id])upProjs(ps=>({...ps,[d.id]:emptyProject()}));}} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                     {DEAL_STAGES.map(s=><option key={s}>{s}</option>)}
                   </select>
+                  {STAGE_OWNER[d.stage]&&<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:3}}>📌 {STAGE_OWNER[d.stage]}</div>}
                 </div>
               </div>
             </div>
@@ -1182,11 +1383,11 @@ export default function App(){
       </Wrap>
     );
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
   }
 
   // ─── FINANCE ──────────────────────────────────────────────────────────────
-  if(role==="Finance"){
+  if(role==="Finance"||role==="Cost Control"){
     const grossPro=totRev-totExp;
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
     if(page==="home"||page==="collections") return(
@@ -1233,7 +1434,7 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="expenses") return(
       <Wrap>
         <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
@@ -1273,9 +1474,9 @@ export default function App(){
 
   // ─── OPERATIONS ───────────────────────────────────────────────────────────
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} Wrap={Wrap}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -1348,7 +1549,7 @@ export default function App(){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,Wrap}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap}){
   const uid2=()=>String(Date.now());
   if(!selProj) return(
     <Wrap>
@@ -1382,7 +1583,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
     </Wrap>
   );
 
-  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"]];
+  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠ Addenda"]];
   return(
     <Wrap>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -1590,6 +1791,84 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
           </div>
         );
       })()}
+
+      {/* PM UPDATES TAB */}
+      {opsTab==="updates"&&(()=>{
+        const updates=proj.pmUpdates||[];
+        const[newUpd,setNewUpd]=useState("");
+        return(
+          <div>
+            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:14}}>
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:10}}>📝 Log PM Update <span style={{fontSize:".72rem",color:"#94a3b8",fontWeight:400,marginLeft:6}}>Daily/weekly — client-visible progress</span></div>
+              <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
+                <div style={{flex:1}}><Inp rows={2} value={newUpd} onChange={e=>setNewUpd(e.target.value)} placeholder="e.g. Steel frame 60% complete. Laminate delivery confirmed tomorrow. Client notified via Viber."/></div>
+                <Btn onClick={()=>{addPmUpdate(selProj,newUpd,session?.name);setNewUpd("");}} disabled={!newUpd.trim()}>Post Update</Btn>
+              </div>
+            </div>
+            {updates.length===0&&<EmptyState icon="📝" msg="No PM updates yet. Log daily or weekly updates here."/>}
+            {updates.map(u=>(
+              <Card key={u.id}>
+                <div style={{fontSize:".88rem",color:"#0f172a",lineHeight:1.6}}>{u.text}</div>
+                <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:5}}>{u.by} · {u.date}{u.time&&` at ${u.time}`}</div>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ADDENDA TAB */}
+      {opsTab==="addenda"&&(()=>{
+        const addenda=projDeal?.addenda||[];
+        const[showAF,setShowAF]=useState(false);
+        const[af,setAf]=useState({title:"",desc:"",requestedBy:"Client"});
+        const AC={"Pending":"#f59e0b","Approved":"#10b981","Rejected":"#ef4444","In Progress":"#3b82f6"};
+        return(
+          <div>
+            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}>
+              ⚠️ <strong>Addendum Protocol:</strong> Any scope change must be coordinated with ALL stakeholders — Sales (client comms), Ops (timeline), Finance (budget). Log every change here.
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <div style={{fontWeight:700,color:"#0f172a"}}>{addenda.length} Addendum{addenda.length!==1?"a":""}</div>
+              <Btn small onClick={()=>setShowAF(s=>!s)}>+ Log Addendum</Btn>
+            </div>
+            {showAF&&(
+              <Card style={{background:"#fff7ed",border:"1.5px solid #fed7aa",marginBottom:12}}>
+                <div style={{fontWeight:700,color:"#92400e",marginBottom:12}}>New Scope Change</div>
+                <Fld label="Title" required><Inp value={af.title} onChange={e=>setAf(p=>({...p,title:e.target.value}))} placeholder="e.g. Additional glass panel — Unit 3B"/></Fld>
+                <Fld label="Description / Impact"><Inp rows={3} value={af.desc} onChange={e=>setAf(p=>({...p,desc:e.target.value}))} placeholder="What changed, why, cost/time impact…"/></Fld>
+                <Fld label="Requested By"><Sel value={af.requestedBy} onChange={e=>setAf(p=>({...p,requestedBy:e.target.value}))}>{["Client","Sales Team","Operations","Design","Other"].map(r=><option key={r}>{r}</option>)}</Sel></Fld>
+                <div style={{display:"flex",gap:8,marginTop:4}}>
+                  <Btn onClick={()=>{addAddendum(selProj,af.title,af.desc,af.requestedBy);setAf({title:"",desc:"",requestedBy:"Client"});setShowAF(false);}}>Save</Btn>
+                  <Btn variant="ghost" onClick={()=>setShowAF(false)}>Cancel</Btn>
+                </div>
+              </Card>
+            )}
+            {addenda.length===0&&!showAF&&<EmptyState icon="📋" msg="No addenda yet. Log scope changes here to notify all stakeholders."/>}
+            {addenda.map(a=>(
+              <Card key={a.id} accent={AC[a.status]}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
+                      <span style={{fontWeight:700,color:"#0f172a"}}>{a.title}</span>
+                      <Badge label={a.status} color={AC[a.status]||"#94a3b8"}/>
+                      <span style={{fontSize:".7rem",color:"#94a3b8"}}>by {a.requestedBy} · {a.date}</span>
+                    </div>
+                    {a.desc&&<div style={{fontSize:".8rem",color:"#64748b",lineHeight:1.6}}>{a.desc}</div>}
+                    <div style={{display:"flex",gap:10,marginTop:8,fontSize:".72rem",flexWrap:"wrap"}}>
+                      <span style={{color:a.notifiedSales?"#059669":"#f59e0b",fontWeight:600}}>{a.notifiedSales?"✓ Sales notified":"⚠ Notify Sales"}</span>
+                      <span style={{color:a.notifiedOps?"#059669":"#f59e0b",fontWeight:600}}>{a.notifiedOps?"✓ Ops notified":"⚠ Notify Ops"}</span>
+                    </div>
+                  </div>
+                  <select value={a.status} onChange={e=>updateAddendumStatus(selProj,a.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                    {["Pending","In Progress","Approved","Rejected"].map(s=><option key={s}>{s}</option>)}
+                  </select>
+                </div>
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
+
     </Wrap>
   );
 }
@@ -1785,7 +2064,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
 
 
 // ─── CHECKLIST VIEW ───────────────────────────────────────────────────────────
-function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,Wrap}){
+function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,loadChecklistTemplate,Wrap}){
   const f=(k,v)=>setClForm(p=>({...p,[k]:v}));
   const allTypes=["All",...CL_TYPES,"Custom"];
   const isCustom=!CL_TYPES.includes(clForm.type)||clForm.type==="Custom";
@@ -1877,7 +2156,20 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
       </div>
 
       {/* Grouped by project */}
-      {Object.keys(byProject).length===0&&<EmptyState icon="✅" msg="No tasks match the current filters. Hit + Add Task to get started."/>}
+      {Object.keys(byProject).length===0&&(
+        <div>
+          <EmptyState icon="✅" msg="No tasks match the current filters. Hit + Add Task to get started."/>
+          {clProjF!=="all"&&checklist.filter(c=>c.projectId===clProjF).length===0&&(
+            <div style={{textAlign:"center",marginTop:8}}>
+              <div style={{fontSize:".8rem",color:"#64748b",marginBottom:10}}>Or start with the GMD standard template for this project:</div>
+              <button onClick={()=>loadChecklistTemplate(clProjF,"this project")}
+                style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
+                📋 Load GMD Standard Checklist Template
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {Object.entries(byProject).map(([projId,items])=>{
         const deal=deals.find(d=>d.id===projId);
@@ -1919,6 +2211,12 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
                           {item.supplier&&<span style={{fontSize:".72rem",color:"#64748b"}}>🏭 {item.supplier}</span>}
                         </div>
                         {item.notes&&<div style={{fontSize:".75rem",color:"#94a3b8",fontStyle:"italic"}}>{item.notes}</div>}
+                    {item.qty&&<div style={{fontSize:".72rem",color:"#0ea5e9",marginTop:2}}>Qty: {item.qty} {item.unit}</div>}
+                    {item.whatCouldGoWrong&&(
+                      <div style={{marginTop:6,background:"#fef9c3",border:"1px solid #fde047",borderRadius:6,padding:"5px 9px",fontSize:".72rem",color:"#854d0e"}}>
+                        ⚠️ <strong>Risk:</strong> {item.whatCouldGoWrong}
+                      </div>
+                    )}
                         <div style={{display:"flex",gap:12,marginTop:5,fontSize:".7rem",color:isOD?"#ef4444":"#94a3b8"}}>
                           {item.dueDate&&<span>{isOD?"⚠ Overdue: ":"Due: "}{item.dueDate}</span>}
                           <span>Added by {item.createdBy} · {item.createdDate}</span>
@@ -1974,6 +2272,22 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
         <Fld label="Task Title / Description" required>
           <Inp value={clForm.title} onChange={e=>f("title",e.target.value)} placeholder="What needs to be done?"/>
         </Fld>
+
+        {/* Qty + Unit for Module and Swatch types */}
+        {(clForm.type==="Module"||clForm.type==="Swatch"||clForm.type==="Purchase") && (
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:4}}>
+            <Fld label="Quantity"><Inp type="number" value={clForm.qty||""} onChange={e=>f("qty",e.target.value)} placeholder="e.g. 12"/></Fld>
+            <Fld label="Unit"><select value={clForm.unit||"pcs"} onChange={e=>f("unit",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer",outline:"none"}}>
+              {["pcs","sheets","meters","sqm","kg","sets","rolls","liters","lots"].map(u=><option key={u}>{u}</option>)}
+            </select></Fld>
+          </div>
+        )}
+
+        {/* Proactive mindset field — from Action Planning Workshop */}
+        <div style={{background:"#fef9c3",border:"1.5px solid #fde047",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+          <div style={{fontSize:".72rem",fontWeight:700,color:"#854d0e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>⚠️ What Could Go Wrong? <span style={{fontWeight:400,color:"#92400e"}}>(Think ahead — from Action Planning Workshop)</span></div>
+          <Inp value={clForm.whatCouldGoWrong||""} onChange={e=>f("whatCouldGoWrong",e.target.value)} placeholder="e.g. Material arrives late, wrong specs ordered, client unavailable for approval…" rows={2}/>
+        </div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
           <Fld label="Department">
@@ -2103,7 +2417,7 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister}){
             <div style={{marginBottom:14}}>
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Request Role</label>
               <select value={reqRole} onChange={e=>setReqRole(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem",cursor:"pointer"}}>
-                {["Sales","Finance","Operations","Design"].map(r=><option key={r} style={{background:"#1e293b"}}>{r}</option>)}
+                {["Sales","Cost Control","Operations","Design"].map(r=><option key={r} style={{background:"#1e293b"}}>{r}</option>)}
               </select>
               <div style={{fontSize:".7rem",color:"rgba(255,255,255,.3)",marginTop:5}}>A Manager will assign your final role upon approval.</div>
             </div>
@@ -2405,6 +2719,269 @@ function ClientDirectory({deals, session, role}){
       </div>
       <div style={{marginTop:10,fontSize:".72rem",color:"#94a3b8",textAlign:"right"}}>
         Showing {filtered.length} of {GMD_CLIENTS.length} clients
+      </div>
+    </div>
+  );
+}
+
+// ─── GMD AI DEVIL'S ADVOCATE ──────────────────────────────────────────────────
+const GMD_DA_SYSTEM = `You are the GMD Productions internal AI advisor — a direct, honest devil's advocate built into FabHub.
+
+YOUR PERSONALITY:
+- Paulo Garcia asked you to be his devil's advocate. He is a people pleaser and reactive by nature — your job is to challenge, not agree.
+- Be direct, practical, and honest. Never sugarcoat. Never just validate what you see.
+- Always ask the uncomfortable question nobody else is asking.
+- Keep responses tight — this is a busy operations team. No fluff.
+
+YOUR KNOWLEDGE:
+- GMD Productions Inc. — retail fabrication and design-build company, Philippines
+- 13-stage workflow: BizDev → Client Engagement → Design Request → Design & CE → Client Approval → Project Kickoff → Budget & Briefing → Fabrication/Construction → Site Visit & Progress Billing → Installation → Punchlist → Close-Out → Client Feedback
+- ₱3M Rule: ANY project ≥ ₱3M requires Paulo Garcia's direct involvement
+- Paulo Gates: Stage 05 (Client Approval) and Stage 06 (Kickoff) — nothing moves without Paulo
+- Discount rule: ONLY Paulo sets discounts — never the sales team
+- Standard margin: ~50-60% total (Materials + Labor + 20% Contractor's Profit)
+- Healthy margin benchmark: ≥20% gross margin on any project
+- Standard fabrication: 45 days. Construction: 45–60 days.
+- Open balances that need urgent follow-up: Ivory Tree ₱2.6M, Newtrends ₱240K, Five Sips ₱84K
+- Sales Protocol: Clients must NEVER ask "any update?" — team sends updates first
+
+DEVIL'S ADVOCATE RULES:
+1. If a deal has <20% margin — flag it hard
+2. If a deal is ≥₱3M and Paulo is not involved — flag it
+3. If a client has an open balance and a new deal is being created — flag it
+4. If a project has no PM updates in the current stage — challenge it
+5. If expenses are untagged (company-wide) when they should be project-specific — challenge it
+6. If a stage has been stuck too long — ask why
+7. If the team is asking Paulo for things they should own — call it out
+8. If someone presents a problem without a solution — push them back
+
+COACHING QUESTIONS (use these to guide the team):
+- "What would you do if Paulo wasn't available right now?"
+- "Have you confirmed this timeline with Operations before telling the client?"
+- "What are your two options for the client — don't give them a problem, give them choices."
+- "Is this a Paulo decision or a Paolo decision?"
+- "When did you last proactively update this client?"
+
+Always end with 1 specific action the person should take RIGHT NOW.`;
+
+function AIAdvisor({ctx, role, session, onClose, deals, projs, exps, infs, checklist, wonDeals}){
+  const[msgs,    setMsgs]   = useState([]);
+  const[input,   setInput]  = useState("");
+  const[loading, setLoading]= useState(false);
+  const[started, setStarted]= useState(false);
+  const bottomRef = useRef(null);
+
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:"smooth"}); },[msgs]);
+
+  // Build context summary for AI
+  const buildCtxSummary = () => {
+    const lines = [];
+    lines.push(`Current user: ${session?.name} (${role})`);
+    lines.push(`Current page: ${ctx?.page||"unknown"}`);
+
+    // Pipeline health
+    const activeDeals = deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled");
+    const wonD = wonDeals;
+    const lowMargin = wonD.filter(d=>{
+      const p=projs[d.id]; if(!p) return false;
+      const cost=(p.materials||[]).reduce((s,m)=>s+m.cost,0)+(p.laborCost||0)+(p.overhead||0);
+      return d.value>0&&cost>0&&Math.round((d.value-cost)/d.value*100)<20;
+    });
+    const bigDeals = deals.filter(d=>Number(d.value)>=3000000&&d.stage!=="Cancelled"&&d.stage!=="13 · Client Feedback");
+    const openBal  = wonD.filter(d=>d.invoiced>0&&d.amountPaid<d.invoiced);
+    const overdueBal = openBal.filter(d=>d.dueDate&&d.dueDate<today);
+    const untaggedExp = exps.filter(e=>!e.projectId);
+    const noUpdates = wonD.filter(d=>{const p=projs[d.id];return p&&["08 · Fabrication / Construction","10 · Installation","11 · Punchlist"].includes(d.stage)&&(!p.pmUpdates||p.pmUpdates.length===0);});
+    const pendingCL = checklist.filter(c=>c.status==="To Do"&&c.dueDate&&c.dueDate<today);
+
+    lines.push(`\nPIPELINE SNAPSHOT:`);
+    lines.push(`- ${activeDeals.length} active deals in pipeline`);
+    lines.push(`- ${wonD.length} awarded/active projects`);
+    lines.push(`- ${bigDeals.length} deals ≥₱3M: ${bigDeals.map(d=>d.client+" ("+d.stage+")").join(", ")||"none"}`);
+    lines.push(`- ${lowMargin.length} projects with <20% margin: ${lowMargin.map(d=>d.client).join(", ")||"none"}`);
+
+    lines.push(`\nCOLLECTIONS:`);
+    lines.push(`- ${openBal.length} clients with outstanding balances`);
+    lines.push(`- ${overdueBal.length} OVERDUE: ${overdueBal.map(d=>d.client+" ₱"+(d.invoiced-d.amountPaid).toLocaleString()).join(", ")||"none"}`);
+
+    lines.push(`\nOPERATIONS RISKS:`);
+    lines.push(`- ${noUpdates.length} active projects with NO PM updates: ${noUpdates.map(d=>d.client).join(", ")||"none"}`);
+    lines.push(`- ${pendingCL.length} overdue checklist tasks`);
+
+    lines.push(`\nFINANCE:`);
+    lines.push(`- ${untaggedExp.length} expenses logged as company-wide (not project-tagged)`);
+    lines.push(`- Total expenses: ₱${exps.reduce((s,e)=>s+e.amount,0).toLocaleString()}`);
+
+    // If viewing a specific deal
+    if(ctx?.deal){
+      const d=ctx.deal; const p=projs[d.id];
+      const cost=p?(p.materials||[]).reduce((s,m)=>s+m.cost,0)+(p.laborCost||0)+(p.overhead||0):0;
+      const margin=d.value>0&&cost>0?Math.round((d.value-cost)/d.value*100):null;
+      lines.push(`\nCURRENT DEAL FOCUS: ${d.client}`);
+      lines.push(`- Stage: ${d.stage} | Value: ₱${d.value.toLocaleString()} | CE: ${d.ceNo||"none"}`);
+      lines.push(`- Payment: ${d.paymentStatus} | Collected: ₱${d.amountPaid.toLocaleString()} of ₱${d.invoiced.toLocaleString()}`);
+      lines.push(`- Margin: ${margin!==null?margin+"%":"unknown (no cost data)"}`);
+      lines.push(`- Sales Repo: ${d.salesRepoLink?"✓ linked":"✗ NOT LINKED"} | Proposal: ${d.proposalFolderLink?"✓ linked":"✗ NOT LINKED"}`);
+      lines.push(`- Comms group: ${d.commsGroup||"NOT CREATED"}`);
+      if(p) lines.push(`- PM Updates: ${(p.pmUpdates||[]).length} logged | Addenda: ${(d.addenda||[]).length}`);
+    }
+
+    return lines.join("\n");
+  };
+
+  const getStarterPrompt = () => {
+    const ctx_summary = buildCtxSummary();
+    return `Here is the current GMD FabHub data snapshot:\n\n${ctx_summary}\n\nAs GMD's devil's advocate, give me:\n1. The 3 biggest risks or problems you see RIGHT NOW based on this data\n2. The one thing the ${role} should do immediately\n3. One uncomfortable question the ${role} should be asking themselves`;
+  };
+
+  const send = async(text) => {
+    const q = text||input.trim();
+    if(!q||loading) return;
+    setInput("");
+    const newMsgs = [...msgs, {role:"user",content:q}];
+    setMsgs(newMsgs);
+    setLoading(true);
+    try{
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1000,
+          system: GMD_DA_SYSTEM,
+          messages: newMsgs.map(m=>({role:m.role,content:m.content})),
+        })
+      });
+      const data = await res.json();
+      if(data.error) throw new Error(data.error.message);
+      setMsgs(m=>[...m,{role:"assistant",content:data.content?.[0]?.text||"No response."}]);
+    }catch(e){
+      setMsgs(m=>[...m,{role:"assistant",content:"Connection error. Check your API setup and try again."}]);
+    }
+    setLoading(false);
+  };
+
+  const start = () => { setStarted(true); send(getStarterPrompt()); };
+
+  const QUICK = {
+    Manager:[
+      "What's the biggest financial risk right now?",
+      "Which projects should I personally be watching?",
+      "Is my team handling things without me?",
+      "What open balance needs the most urgent attention?",
+    ],
+    Sales:[
+      "Challenge my latest deal — what am I missing?",
+      "Am I escalating the right things to Paolo?",
+      "Which of my clients haven't heard from me recently?",
+      "Is my pipeline healthy or am I fooling myself?",
+    ],
+    "Cost Control":[
+      "Are our project margins healthy?",
+      "Which expenses should be re-tagged to projects?",
+      "What billings are overdue?",
+      "Are we collecting fast enough vs spending?",
+    ],
+    Operations:[
+      "Which projects are behind and why?",
+      "Am I logging PM updates as I should?",
+      "Are there addenda I haven't told Sales about?",
+      "What will block us from hitting our delivery dates?",
+    ],
+    Design:[
+      "Are there design requests I haven't started?",
+      "Which projects are waiting on my approval?",
+      "Is my timeline realistic for current load?",
+      "Am I communicating enough with the AE on revisions?",
+    ],
+  };
+
+  const roleColor = ROLE_CLR[role]||"#f59e0b";
+
+  return(
+    <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",alignItems:"flex-end",justifyContent:"flex-end",pointerEvents:"none"}}>
+      <div style={{width:"100%",maxWidth:420,height:"92vh",background:"#0f172a",borderRadius:"16px 0 0 16px",boxShadow:"-8px 0 40px rgba(0,0,0,.4)",display:"flex",flexDirection:"column",pointerEvents:"all",border:"1px solid #21262d"}}>
+        <style>{`@keyframes fadeInRight{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}`}</style>
+
+        {/* Header */}
+        <div style={{padding:"14px 18px",borderBottom:"1px solid #21262d",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+          <div style={{width:36,height:36,borderRadius:"50%",background:"#1a1a2e",border:`2px solid ${roleColor}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>🤔</div>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,color:"#f0f6fc",fontSize:".92rem"}}>GMD Devil's Advocate</div>
+            <div style={{fontSize:".68rem",color:"#64748b"}}>Honest advice · No sugarcoating · {session?.name}</div>
+          </div>
+          <button onClick={onClose} style={{background:"transparent",border:"none",color:"#64748b",cursor:"pointer",fontSize:"1.1rem",padding:4}}>✕</button>
+        </div>
+
+        {/* Messages */}
+        <div style={{flex:1,overflowY:"auto",padding:"14px 16px",display:"flex",flexDirection:"column",gap:12}}>
+          {!started&&(
+            <div style={{textAlign:"center",padding:"20px 0",animation:"fadeInRight .3s ease"}}>
+              <div style={{fontSize:"2rem",marginBottom:10}}>🤔</div>
+              <div style={{fontWeight:700,color:"#f0f6fc",fontSize:"1rem",marginBottom:6}}>Your Devil's Advocate</div>
+              <div style={{fontSize:".78rem",color:"#64748b",lineHeight:1.6,marginBottom:18}}>I'll scan your current FabHub data and tell you what's wrong, what you're missing, and what you should be doing right now. I won't be polite about it.</div>
+              <button onClick={start} style={{background:"#f59e0b",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#0f172a",cursor:"pointer"}}>
+                🔍 Analyse My Data Now
+              </button>
+              <div style={{marginTop:18}}>
+                <div style={{fontSize:".68rem",color:"#334155",marginBottom:8,textTransform:"uppercase",letterSpacing:"1px"}}>Or ask directly</div>
+                <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                  {(QUICK[role]||QUICK.Manager).map(q=>(
+                    <button key={q} onClick={()=>{setStarted(true);send(q);}} style={{background:"#161b22",border:"1px solid #21262d",borderRadius:8,padding:"8px 12px",fontSize:".78rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=roleColor;e.currentTarget.style.color=roleColor;}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor="#21262d";e.currentTarget.style.color="#94a3b8";}}>
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {msgs.map((m,i)=>{
+            const isUser=m.role==="user";
+            return(
+              <div key={i} style={{display:"flex",gap:8,flexDirection:isUser?"row-reverse":"row",alignItems:"flex-start"}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:isUser?roleColor+"22":"#1a1a2e",border:`1.5px solid ${isUser?roleColor+"55":"#334155"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:".8rem",flexShrink:0,color:isUser?roleColor:"#f59e0b"}}>
+                  {isUser?(session?.name?.[0]||"U"):"🤔"}
+                </div>
+                <div style={{maxWidth:"82%",background:isUser?"#1e3a5f":"#161b22",borderRadius:isUser?"12px 3px 12px 12px":"3px 12px 12px 12px",padding:"10px 13px",border:`1px solid ${isUser?"#1d4ed833":"#21262d"}`,fontSize:".82rem",color:isUser?"#e2e8f0":"#cbd5e1",lineHeight:1.65,whiteSpace:"pre-wrap"}}>
+                  {m.content}
+                </div>
+              </div>
+            );
+          })}
+          {loading&&(
+            <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+              <div style={{width:28,height:28,borderRadius:"50%",background:"#1a1a2e",border:"1.5px solid #334155",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".8rem",flexShrink:0}}>🤔</div>
+              <div style={{background:"#161b22",borderRadius:"3px 12px 12px 12px",padding:"12px 14px",border:"1px solid #21262d"}}>
+                <div style={{display:"flex",gap:4}}>
+                  {[0,1,2].map(i=>(
+                    <span key={i} style={{width:6,height:6,borderRadius:"50%",background:"#f59e0b",display:"inline-block",animation:"pulse 1.2s infinite",animationDelay:`${i*0.2}s`}}>●</span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef}/>
+        </div>
+
+        {/* Input */}
+        {started&&(
+          <div style={{padding:"10px 14px",borderTop:"1px solid #21262d",flexShrink:0}}>
+            <div style={{display:"flex",gap:8,background:"#161b22",border:"1.5px solid #21262d",borderRadius:10,padding:"8px 12px"}}>
+              <textarea value={input} onChange={e=>setInput(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
+                placeholder="Ask anything or describe a situation…"
+                rows={1} style={{flex:1,background:"transparent",border:"none",color:"#e2e8f0",fontFamily:"inherit",fontSize:".82rem",lineHeight:1.5,maxHeight:100,overflowY:"auto",resize:"none",outline:"none"}}
+                onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,100)+"px";}}/>
+              <button onClick={()=>send()} disabled={!input.trim()||loading}
+                style={{background:input.trim()&&!loading?"#f59e0b":"#21262d",border:"none",borderRadius:7,width:32,height:32,cursor:input.trim()&&!loading?"pointer":"not-allowed",color:input.trim()&&!loading?"#0f172a":"#334155",fontSize:"1rem",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                ↑
+              </button>
+            </div>
+            <div style={{fontSize:".62rem",color:"#21262d",marginTop:5,textAlign:"center"}}>Enter to send · Powered by Claude AI</div>
+          </div>
+        )}
       </div>
     </div>
   );
