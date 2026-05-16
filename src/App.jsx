@@ -486,16 +486,32 @@ const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"
     </button>
   );
 };
-const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows})=>{
-  const base={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:readOnly?"#f8fafc":"#fff",boxSizing:"border-box",transition:"border-color .15s"};
-  if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
-  return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
+const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
+  // Local state — universal focus bug fix for ALL forms and inputs
+  // Stops parent re-renders from dropping focus on every keystroke
+  const[local,setLocal]=useState(value||"");
+  const prev=useRef(value);
+  useEffect(()=>{
+    if(prev.current!==value){setLocal(value||"");prev.current=value;}
+  },[value]);
+  const handle=e=>{setLocal(e.target.value);onChange&&onChange(e);};
+  const base={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:readOnly?"#f8fafc":"#fff",boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
+  if(rows) return <textarea value={local} onChange={handle} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
+  return <input type={type} value={local} onChange={handle} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
 const Sel=({value,onChange,children})=>(
   <select value={value} onChange={onChange} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
     {children}
   </select>
 );
+// Focus-safe raw input — use this instead of bare <input> inside forms
+const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max})=>{
+  const[local,setLocal]=useState(value||"");
+  const prev=useRef(value);
+  useEffect(()=>{if(prev.current!==value){setLocal(value||"");prev.current=value;}},[value]);
+  const handle=e=>{setLocal(e.target.value);onChange&&onChange(e);};
+  return <input type={type} value={local} onChange={handle} onKeyDown={onKeyDown} placeholder={placeholder} min={min} max={max} className={className} style={sx}/>;
+};
 const Fld=({label,required,children,hint})=>(
   <div style={{marginBottom:16}}>
     <label style={{display:"block",fontSize:".72rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>
@@ -659,9 +675,22 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
 }
 
 // ─── DEAL FORM MODAL ──────────────────────────────────────────────────────────
-function DealModal({open,onClose,form,setForm,onSave,editId}){
+function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId}){
+  // Local state — prevents App re-render on every keystroke (fixes focus bug)
+  const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const isWon=WON_STAGES.includes(form.stage);
+
+  // Sync when modal opens or editId changes
+  useEffect(()=>{
+    if(open) setForm(initialForm||emptyDeal);
+  },[open,editId]);
+
+  const handleSave=()=>{
+    // Push final form back up then save
+    _setForm(()=>form);
+    setTimeout(onSave,0);
+  };
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
@@ -670,9 +699,21 @@ function DealModal({open,onClose,form,setForm,onSave,editId}){
             <ClientAutocomplete value={form.client} onChange={v=>f("client",v)}/>
           </Fld>
         </div>
-        <Fld label="Contact Person"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="Full name"/></Fld>
-        <Fld label="Deal Value (₱)" required><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)}/></Fld>
-        <Fld label="Product Type"><Sel value={form.product} onChange={e=>f("product",e.target.value)}>{PRODUCT_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
+        <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out, BGC Office Renovation"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
+        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized — can be updated anytime"><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)} placeholder="To be confirmed"/></Fld>
+        <Fld label="Product Type">
+            <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
+              {PRODUCT_TYPES.map(t=><option key={t}>{t}</option>)}
+            </Sel>
+            {form.product==="Other"&&(
+              <Inp
+                value={form.customProductType||""}
+                onChange={e=>f("customProductType",e.target.value)}
+                placeholder="Describe the project type (e.g. Museum Display, Event Backdrop)…"
+                style={{marginTop:8}}
+              />
+            )}
+          </Fld>
         <Fld label="Stage"><Sel value={form.stage} onChange={e=>e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
         <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
@@ -761,7 +802,7 @@ function DealModal({open,onClose,form,setForm,onSave,editId}){
         </div>
       )}
       <div style={{display:"flex",gap:10,marginTop:20}}>
-        <Btn full onClick={onSave}>{editId?"Save Changes":"Add Deal"}</Btn>
+        <Btn full onClick={handleSave}>{editId?"Save Changes":"Add Deal"}</Btn>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
       </div>
     </Modal>
@@ -769,10 +810,12 @@ function DealModal({open,onClose,form,setForm,onSave,editId}){
 }
 
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
-function ExpenseModal({open,onClose,form,setForm,onSave,editId,projList,clientName}){
+function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,editId,projList,clientName}){
+  const[form,setForm]=useState(initialExpForm||{});
   const[step,setStep]=useState(1);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  useEffect(()=>{if(open) setStep(1);},[open]);
+  useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});}},[open,editId]);
+  const handleExpSave=()=>{_setExpForm(()=>form);setTimeout(onSave,0);};
   const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"}>
@@ -828,7 +871,7 @@ function ExpenseModal({open,onClose,form,setForm,onSave,editId,projList,clientNa
               : "⚠ This will be logged as a company-wide expense — not linked to any specific project."}
           </div>
           <div style={{display:"flex",gap:10}}>
-            <Btn full variant="green" onClick={onSave}>✓ Confirm &amp; Save</Btn>
+            <Btn full variant="green" onClick={handleExpSave}>✓ Confirm &amp; Save</Btn>
             <Btn variant="ghost" onClick={()=>setStep(1)}>← Go Back</Btn>
           </div>
         </>
@@ -1040,7 +1083,7 @@ export default function App(){
   const openAddDeal=()=>{setDealForm(emptyDeal);setEditDeal(null);setDealModal(true);};
   const openEditDeal=d=>{setDealForm({...d,value:String(d.value),invoiced:String(d.invoiced||0),amountPaid:String(d.amountPaid||0)});setEditDeal(d.id);setDealModal(true);};
   const saveDeal=()=>{
-    if(!dealForm.client||!dealForm.value) return;
+    if(!dealForm.client) return;
     const prob=WON_STAGES.includes(dealForm.stage)?100:dealForm.stage==="Cancelled"?0:Number(dealForm.probability);
     const rec={...dealForm,id:editDeal||uid(),value:Number(dealForm.value),invoiced:Number(dealForm.invoiced||0),amountPaid:Number(dealForm.amountPaid||0),probability:prob};
     if(WON_STAGES.includes(dealForm.stage)&&!editDeal) upProjs(ps=>({...ps,[rec.id]:{...emptyProject(),notes:""}}));
@@ -1402,7 +1445,10 @@ export default function App(){
                             onMouseEnter={e=>{e.currentTarget.style.borderColor=stageColor;e.currentTarget.style.background="#fff";}}
                             onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}>
                             <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:3}}>{d.client}</div>
-                            <div style={{fontSize:".7rem",color:"#64748b",marginBottom:5}}>{d.product}</div>
+                            <div style={{fontSize:".7rem",color:"#64748b",marginBottom:5}}>
+                      {d.product==="Other"&&d.customProductType?d.customProductType:d.product}
+                    </div>
+                    {d.contact&&<div style={{fontSize:".69rem",color:"#94a3b8",marginBottom:3,fontStyle:"italic"}}>{d.contact}</div>}
                             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
                               <span style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
                               {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
@@ -2089,7 +2135,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
             <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:14}}>
               <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:10}}>📝 Log PM Update <span style={{fontSize:".72rem",color:"#94a3b8",fontWeight:400,marginLeft:6}}>Daily/weekly — client-visible progress</span></div>
               <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
-                <div style={{flex:1}}><Inp rows={2} value={newUpd} onChange={e=>setNewUpd(e.target.value)} placeholder="e.g. Steel frame 60% complete. Laminate delivery confirmed tomorrow. Client notified via Viber."/></div>
+                <div style={{flex:1}}><FInp rows={2} value={newUpd} onChange={e=>setNewUpd(e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",boxSizing:"border-box",resize:"vertical"}} placeholder="e.g. Steel frame 60% complete. Laminate delivery confirmed tomorrow. Client notified via Viber."/></div>
                 <Btn onClick={()=>{addPmUpdate(selProj,newUpd,session?.name);setNewUpd("");}} disabled={!newUpd.trim()}>Post Update</Btn>
               </div>
             </div>
@@ -2677,21 +2723,21 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister}){
           {!isLogin&&(
             <div style={{marginBottom:14}}>
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Full Name *</label>
-              <input value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Juan dela Cruz" style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+              <FInp value={name} onChange={e=>setName(e.target.value)} placeholder="e.g. Juan dela Cruz" style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
             </div>
           )}
 
           {/* Username */}
           <div style={{marginBottom:14}}>
             <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Username *</label>
-            <input value={uname} onChange={e=>setUname(e.target.value)} placeholder="e.g. juan" onKeyDown={e=>isLogin&&e.key==="Enter"&&doLogin()} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+            <FInp value={uname} onChange={e=>setUname(e.target.value)} placeholder="e.g. juan" onKeyDown={e=>isLogin&&e.key==="Enter"&&doLogin()} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
           </div>
 
           {/* Password */}
           <div style={{marginBottom:14,position:"relative"}}>
             <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Password *</label>
             <div style={{position:"relative"}}>
-              <input type={showPw?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="Min 6 characters" onKeyDown={e=>isLogin&&e.key==="Enter"&&doLogin()} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 40px 10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+              <FInp type={showPw?"text":"password"} value={pw} onChange={e=>setPw(e.target.value)} placeholder="Min 6 characters" onKeyDown={e=>isLogin&&e.key==="Enter"&&doLogin()} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 40px 10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
               <button onClick={()=>setShowPw(s=>!s)} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"rgba(255,255,255,.4)",cursor:"pointer",fontSize:".78rem"}}>{showPw?"Hide":"Show"}</button>
             </div>
           </div>
@@ -2700,7 +2746,7 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister}){
           {!isLogin&&(<>
             <div style={{marginBottom:14}}>
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Confirm Password *</label>
-              <input type="password" value={pw2} onChange={e=>setPw2(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
+              <FInp type="password" value={pw2} onChange={e=>setPw2(e.target.value)} style={{width:"100%",background:"rgba(255,255,255,.08)",border:"1.5px solid rgba(255,255,255,.15)",borderRadius:9,padding:"10px 13px",color:"#fff",fontFamily:"inherit",fontSize:".88rem"}}/>
             </div>
             <div style={{marginBottom:14}}>
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Request Role</label>
@@ -2801,7 +2847,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
             </div>
             {resetId===u.id&&(
               <div style={{marginTop:12,padding:"12px 14px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <input type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="New password (min 6 chars)" style={{flex:1,minWidth:180,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 11px",fontFamily:"inherit",fontSize:".83rem",color:"#0f172a"}}/>
+                <FInp type="password" value={newPw} onChange={e=>setNewPw(e.target.value)} placeholder="New password (min 6 chars)" style={{flex:1,minWidth:180,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 11px",fontFamily:"inherit",fontSize:".83rem",color:"#0f172a"}}/>
                 <button onClick={()=>{if(newPw.length>=6){onResetPw(u.id,newPw);setResetId(null);setResetMsg("Password reset!");}else setResetMsg("Min 6 characters.");}} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>Save</button>
                 <button onClick={()=>setResetId(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
                 {resetMsg&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>{resetMsg}</span>}
@@ -2834,24 +2880,27 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
 }
 
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
-function ClientAutocomplete({value, onChange}){
-  const[show,    setShow]   = useState(false);
-  const[focused, setFocused]= useState(false);
+function ClientAutocomplete({value:initVal, onChange}){
+  const[localVal,setLocalVal]= useState(initVal||"");
+  const[show,    setShow]    = useState(false);
   const ref = useRef ? useRef(null) : {current:null};
 
-  const suggestions = useMemo(()=>{
-    if(!value||value.length<2) return [];
-    const q = value.toLowerCase();
-    return GMD_CLIENTS.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
-  },[value]);
+  // Sync if parent resets (e.g. new deal)
+  useEffect(()=>{ setLocalVal(initVal||""); },[initVal]);
 
-  const pick = (name) => { onChange(name); setShow(false); };
+  const suggestions = useMemo(()=>{
+    if(!localVal||localVal.length<2) return [];
+    const q = localVal.toLowerCase();
+    return GMD_CLIENTS.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
+  },[localVal]);
+
+  const pick = (name) => { setLocalVal(name); onChange(name); setShow(false); };
 
   return(
     <div style={{position:"relative"}}>
       <input
-        value={value||""}
-        onChange={e=>{onChange(e.target.value);setShow(true);}}
+        value={localVal}
+        onChange={e=>{setLocalVal(e.target.value);onChange(e.target.value);setShow(true);}}
         onFocus={()=>setShow(true)}
         onBlur={()=>setTimeout(()=>setShow(false),150)}
         placeholder="Start typing client name…"
@@ -2945,7 +2994,7 @@ function ClientDirectory({deals, session, role}){
 
       {/* Search + filters */}
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-        <input
+        <FInp
           value={search} onChange={e=>setSearch(e.target.value)}
           placeholder="Search by name, city, or email…"
           style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 13px",fontFamily:"inherit",fontSize:".86rem",color:"#1e293b",outline:"none"}}
@@ -3620,7 +3669,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       {/* Notes */}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16}}>
         <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Notes for {selDate}</div>
-        <textarea value={pos.notes||""} onChange={e=>f("notes",e.target.value)}
+        <FInp rows={2} value={pos.notes||""} onChange={e=>f("notes",e.target.value)}
           placeholder="Add any notes for this cash position (e.g. incoming wire, pending cheque, bank issues)…"
           rows={2}
           style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
