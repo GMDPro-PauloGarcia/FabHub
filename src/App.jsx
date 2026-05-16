@@ -400,7 +400,7 @@ function ExpenseModal({open,onClose,form,setForm,onSave,editId,projList,clientNa
   useEffect(()=>{if(open) setStep(1);},[open]);
   const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
   return(
-    <Modal open={onClose} onClose={onClose} title={editId?"Edit Expense":"Log Expense"}>
+    <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"}>
       {step===1?(
         <>
           <Fld label="Month">
