@@ -1,4 +1,4 @@
-const SEED_CHECKLIST=[];const SEED_SWATCHES=[];import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -369,22 +369,10 @@ const SEED_DEALS=[];
 const SEED_PROJECTS={};
 const SEED_EXP=[];
 const SEED_INF=[];
-const SEED_SWATCHES=[
-  {id:"s1",projectId:"d3",name:"Brushed steel sample",category:"Metal",   qty:2, unit:"pcs",   supplier:"MetalWorks PH",estCost:800, swatchLink:"",addedBy:"Design",status:"Received",notes:"Kiosk frame",date:today},
-  {id:"s2",projectId:"d3",name:"Matte black laminate", category:"Laminate",qty:10,unit:"sheets",supplier:"SurfacePro",   estCost:3500,swatchLink:"",addedBy:"Ops",   status:"Ordered", notes:"Cabinet interiors",date:today},
-  {id:"s3",projectId:"d6",name:"Walnut veneer roll",   category:"Wood",    qty:5, unit:"rolls", supplier:"WoodCraft MNL",estCost:2500,swatchLink:"",addedBy:"Design",status:"To Buy",  notes:"Match client sample",date:today},
-  {id:"s4",projectId:"d6",name:"Brass pulls 96mm",     category:"Hardware",qty:30,unit:"pcs",   supplier:"Casa Hardware",estCost:1200,swatchLink:"",addedBy:"Design",status:"To Buy",  notes:"Drawer pulls",date:today},
-];
 
-const SEED_CHECKLIST=[
-  {id:"c1",projectId:"d3",type:"Purchase",title:"Order laminate sheets",dept:"Procurement",assignedTo:"Gino A.",status:"To Do",priority:"High",dueDate:"2026-04-22",supplier:"SurfacePro",notes:"30 sheets matte black",createdDate:today,createdBy:"Ops"},
-  {id:"c2",projectId:"d3",type:"Supplier Job",title:"Send steel frame specs to MetalWorks",dept:"Operations",assignedTo:"Carlo M.",status:"In Progress",priority:"Urgent",dueDate:"2026-04-19",supplier:"MetalWorks PH",notes:"Include revised drawings v3",createdDate:today,createdBy:"Ops"},
-  {id:"c3",projectId:"d6",type:"Permit",title:"File DPWH clearance",dept:"Operations",assignedTo:"Dana R.",status:"To Do",priority:"Normal",dueDate:"2026-04-25",supplier:"",notes:"Required before installation",createdDate:today,createdBy:"Ops"},
-  {id:"c4",projectId:"d6",type:"Client Approval",title:"Get sign-off on revised design",dept:"Design",assignedTo:"Chris N.",status:"To Do",priority:"High",dueDate:"2026-04-18",supplier:"",notes:"2nd revision — client must approve before production",createdDate:today,createdBy:"Design"},
-  {id:"c5",projectId:"d6",type:"Purchase",title:"Walnut veneer rolls",dept:"Procurement",assignedTo:"",status:"To Do",priority:"Normal",dueDate:"2026-04-20",supplier:"WoodCraft MNL",notes:"5 rolls, match client sample",createdDate:today,createdBy:"Design"},
-  {id:"c6",projectId:"d2",type:"Site Visit",title:"Pre-delivery site inspection",dept:"Operations",assignedTo:"Faye T.",status:"In Progress",priority:"High",dueDate:"2026-04-11",supplier:"",notes:"Check measurements before delivery",createdDate:today,createdBy:"Ops"},
-  {id:"c7",projectId:"d1",type:"Task",title:"Final touch-up and cleaning",dept:"Operations",assignedTo:"Enzo P.",status:"Done",priority:"Normal",dueDate:"2026-04-13",supplier:"",notes:"Before client handover",createdDate:today,createdBy:"Ops"},
-];
+const SEED_SWATCHES=[];
+const SEED_CHECKLIST=[];
+
 const emptyDeal={
   // Core
   client:"",product:"Custom Shelving",value:"",stage:"01 · BizDev",
@@ -1001,6 +989,13 @@ export default function App(){
   const delDeal=id=>{upDeals(ds=>ds.filter(d=>d.id!==id));upProjs(ps=>{const n={...ps};delete n[id];return n;});setConfirmDel(null);};
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
+
+  const stageQ=(id,st)=>{
+    if(WON_STAGES.includes(st)&&!projs[id]) upProjs(ps=>({...ps,[id]:emptyProject()}));
+    if(st==="06 · Project Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
+    upDeals(ds=>ds.map(d=>d.id===id?{...d,stage:st,probability:WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability}:d));
+  };
+  const payQ=(id,ps)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
   const logPayment=({dealId,amount,note,date})=>{
     const amt=Number(amount);
     upDeals(ds=>ds.map(d=>{
@@ -1365,7 +1360,7 @@ export default function App(){
                   <Btn small variant="ghost" onClick={()=>openEditDeal(d)}>✏ Edit</Btn>
                 </div>
                 <div style={{marginTop:8,minWidth:160}}>
-                  <select value={d.stage} onChange={e=>{const st=e.target.value;const prob=WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st,probability:prob}:x));if(WON_STAGES.includes(st)&&!projs[d.id])upProjs(ps=>({...ps,[d.id]:emptyProject()}));}} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                  <select value={d.stage} onChange={e=>stageQ(d.id,e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                     {DEAL_STAGES.map(s=><option key={s}>{s}</option>)}
                   </select>
                   {STAGE_OWNER[d.stage]&&<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:3}}>📌 {STAGE_OWNER[d.stage]}</div>}
