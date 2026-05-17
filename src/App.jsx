@@ -45,7 +45,7 @@ const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
 const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
 // GMD Real Team — 4 departments
-const SALES_TEAM        = ["Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
+const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
 const COST_CONTROL_TEAM = ["Aerwin Del Rosario (Finance Manager)","Marian Prile (Procurement Manager)"];
 const OPS_TEAM          = ["Arrius Catubay (Ops Director)","Ryon Santiago (PM)","David Melendez (PM)","Jay Bernardo (PM)","Angelo Nogra (Coordinator)","Arvin Jaca (Coordinator)","Jessie Singun (Coordinator)","Anthony Nogra (Coordinator)","Steve Jazmin (Coordinator)"];
 const DESIGN_MEMBERS    = ["Gab Florita","Miaa Villoria","Miel Vidallo","Adrian Adriano","Tisha Leyva","Freelancer / Outsourced"];
@@ -1146,7 +1146,16 @@ export default function App(){
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals  =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
   const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"),[deals]);
-  const projList  =useMemo(()=>wonDeals.filter(d=>projs[d.id]),[wonDeals,projs]);
+  // Auto-create project entries for any won deal that doesn't have one yet
+  useEffect(()=>{
+    const missing=wonDeals.filter(d=>!projs[d.id]);
+    if(missing.length>0) upProjs(ps=>{
+      const n={...ps};
+      missing.forEach(d=>{n[d.id]=emptyProject();});
+      return n;
+    });
+  },[wonDeals]); // eslint-disable-line
+  const projList  =useMemo(()=>wonDeals,[wonDeals]);
   const isPauloGate = stage => PAULO_GATE.includes(stage);
   const clientName=useCallback(id=>deals.find(d=>d.id===id)?.client||`Project #${id}`,[deals]);
   const overallProg=p=>{const si=PROD_STAGES.indexOf(p.currentStage);return Math.round(si*25+(p.progress[p.currentStage]||0)*0.25);};
@@ -1208,7 +1217,8 @@ export default function App(){
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
   const stageQ=(id,st)=>{
-    if(WON_STAGES.includes(st)&&!projs[id]) upProjs(ps=>({...ps,[id]:emptyProject()}));
+    // Always create project when entering any won stage
+    if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="06 · Project Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
     upDeals(ds=>ds.map(d=>d.id===id?{...d,stage:st,probability:WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability}:d));
   };
@@ -1309,9 +1319,9 @@ export default function App(){
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role];
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
     Sales:        [{id:"home",l:"My Pipeline"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
-    "Cost Control":[{id:"home",l:"Overview"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"procurement",l:"Procurement"},{id:"swatchboard",l:"Swatchboard"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"collections",l:"Collections"},{id:"expenses",l:"Expenses"},{id:"clients",l:"🏢 Clients"}],
+    "Cost Control":[{id:"home",l:"Finance"},{id:"accounting",l:"Accounting"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"procurement",l:"Procurement"},{id:"swatchboard",l:"Swatchboard"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
     Operations:   [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"budget",l:"Budget"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
     Design:       [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
   };
@@ -1506,7 +1516,59 @@ export default function App(){
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
             <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL}</div>
           </div>
-          <Btn onClick={openAddDeal}>+ Add Deal</Btn>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <label style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              📥 Import Excel
+              <input type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>{
+                const file=e.target.files[0]; if(!file) return;
+                const reader=new FileReader();
+                reader.onload=async(ev)=>{
+                  try{
+                    const {read,utils}=await import("https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs");
+                    const wb=read(ev.target.result,{type:"array"});
+                    const ws=wb.Sheets[wb.SheetNames[0]];
+                    const rows=utils.sheet_to_json(ws,{range:4,header:["client","contact","ceNo","ceType","stage","value","invoiced","amountPaid","paymentStatus","receiptType","withholding","salesOwner","bizDevSource","dateAcquired","dueDate","notes"]});
+                    let imported=0,skipped=0;
+                    rows.forEach(r=>{
+                      if(!r.client) return;
+                      const exists=deals.find(d=>d.ceNo&&d.ceNo===r.ceNo);
+                      const rec={
+                        id:exists?.id||uid(),
+                        client:String(r.client||"").trim(),
+                        contact:String(r.contact||"").trim(),
+                        ceNo:String(r.ceNo||"").trim(),
+                        ceType:r.ceType||"Fabrication / General",
+                        stage:r.stage||"01 · BizDev",
+                        value:Number(r.value)||0,
+                        invoiced:Number(r.invoiced)||0,
+                        amountPaid:Number(r.amountPaid)||0,
+                        paymentStatus:r.paymentStatus||"Unpaid",
+                        receiptType:r.receiptType||"OR",
+                        withholding:String(r.withholding||"").toUpperCase()==="YES",
+                        salesOwner:String(r.salesOwner||"").trim(),
+                        bizDevSource:String(r.bizDevSource||"").trim(),
+                        dateAcquired:String(r.dateAcquired||today).trim(),
+                        dueDate:String(r.dueDate||"").trim(),
+                        notes:String(r.notes||"").trim(),
+                        product:"Custom Shelving",
+                        probability:WON_STAGES.includes(r.stage)?100:50,
+                        priority:"Normal",
+                        customProductType:"",
+                      };
+                      if(exists){upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));skipped++;}
+                      else{upDeals(ds=>[...ds,rec]);if(WON_STAGES.includes(rec.stage))upProjs(ps=>({...ps,[rec.id]:emptyProject()}));imported++;}
+                    });
+                    alert(`✅ Import complete!
+${imported} new deals added
+${skipped} existing deals updated`);
+                  }catch(err){alert("Import failed: "+err.message);}
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value="";
+              }}/>
+            </label>
+            <Btn onClick={openAddDeal}>+ Add Deal</Btn>
+          </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
           {[
@@ -1720,7 +1782,7 @@ export default function App(){
           <KPI label="Collected"    value={fmtK(totColl)}        color="#10b981" sub={`${fmtK(totOut)} out`}/>
         </div>
         <SecHead title="Collections" sub="Payment tracking for all awarded projects"/>
-        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment}/>
+        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"}/>
         <div style={{marginTop:24}}>
           <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>}/>
           {exps.slice(-10).reverse().map(e=>(
@@ -1819,7 +1881,7 @@ export default function App(){
     if(page==="collections") return(
       <Wrap>
         <SecHead title="Collections" sub="Track client payments for all awarded projects"/>
-        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment}/>
+        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"}/>
       </Wrap>
     );
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
@@ -1857,7 +1919,7 @@ export default function App(){
           <KPI label="Gross Margin"   value={grossMar+"%"}        color={grossMar>=20?"#059669":"#f59e0b"}/>
         </div>
         <SecHead title="Collections" sub="Log and track all client payments"/>
-        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment}/>
+        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"}/>
         <div style={{marginTop:20}}>
           <SecHead title="Per Project Profit" sub="Real-time margin based on logged expenses"/>
           {projList.map(d=>{
@@ -1994,6 +2056,37 @@ export default function App(){
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
   }
+
+  // ── ACCOUNTING (Expenses) ─────────────────────────────────────────────────
+  if(page==="accounting") return(
+    <Wrap>
+      <SecHead title="Accounting — Expenses" action={<Btn onClick={openAddExp}>+ Log Expense</Btn>}/>
+      <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}>
+        📋 <strong>Accounting</strong> — Record all expenses here and tag them to projects. This matches what is being released from the bank to actual project costs.
+      </div>
+      {exps.length===0&&<EmptyState icon="📋" msg="No expenses logged yet. Hit + Log Expense to start recording."/>}
+      {exps.map(e=>(
+        <Card key={e.id}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,color:"#0f172a"}}>{e.note}</div>
+              <div style={{fontSize:".75rem",color:"#64748b",marginTop:3,display:"flex",gap:10,flexWrap:"wrap"}}>
+                <span>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                <span>{e.category}</span>
+                {e.projectId&&<span>📁 {wonDeals.find(d=>d.id===e.projectId)?.client||e.projectId}</span>}
+                <span>{e.date||e.month}</span>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:7}}>
+              <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+              <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+            </div>
+          </div>
+        </Card>
+      ))}
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
+    </Wrap>
+  );
 
   // ── MATERIAL REQUESTS ────────────────────────────────────────────────────────
   if(page==="materialreq") return(
@@ -3515,8 +3608,25 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   // When date changes, load that day's position or start fresh
   const switchDate=(d)=>{
     setSelDate(d);
-    setPos(cashPositions[d]||emptyDayPosition(d));
-    setSaved(!!cashPositions[d]);
+    const existing=cashPositions[d];
+    if(existing){
+      setPos(existing); setSaved(true);
+    } else {
+      // Auto-carry: find most recent saved day before d
+      const prevDay=Object.keys(cashPositions).filter(k=>k<d).sort().reverse()[0];
+      if(prevDay){
+        const prev=cashPositions[prevDay];
+        const newBanks={};
+        BANKS.forEach(b=>{
+          const r=prev.banks?.[b.id]||{};
+          newBanks[b.id]={beg:r.end||r.book||"",book:"",end:""};
+        });
+        setPos({...emptyDayPosition(d),banks:newBanks});
+      } else {
+        setPos(emptyDayPosition(d));
+      }
+      setSaved(false);
+    }
   };
 
   // Auto-pull today's FabHub collections
@@ -3616,28 +3726,6 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           </button>
         </div>
       </div>
-
-      {/* Copy from Previous Day */}
-      {histDates.length>0&&(
-        <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 16px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-          <div style={{fontSize:".8rem",color:"#1d4ed8"}}>
-            <strong>💡 Copy from {histDates[0]}</strong> — Use last saved ending balances as today's opening balances
-          </div>
-          <button onClick={()=>{
-            const prev=cashPositions[histDates[0]];
-            if(!prev) return;
-            const newBanks={};
-            BANKS.forEach(b=>{
-              const prevRow=prev.banks?.[b.id]||{};
-              newBanks[b.id]={beg:prevRow.end||prevRow.book||"",book:"",end:""};
-            });
-            setPos(p=>({...p,banks:newBanks}));
-            setSaved(false);
-          }} style={{background:"#1d4ed8",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>
-            📋 Copy Balances
-          </button>
-        </div>
-      )}
 
       {/* History dropdown */}
       {histOpen&&histDates.length>0&&(
