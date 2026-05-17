@@ -92,10 +92,43 @@ const CS_CLR    = { "To Do":"#94a3b8","In Progress":"#f59e0b",Done:"#10b981" };
 const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
 const fmtK  = n => n>=1000000?"₱"+(n/1000000).toFixed(1)+"M":n>=1000?"₱"+(n/1000).toFixed(0)+"k":"₱"+(n||0);
 const today = new Date().toISOString().split("T")[0];
+
+// ─── TAX CALCULATIONS ─────────────────────────────────────────────────────────
+// VAT-exclusive: contract value is the base, VAT added on top
+const calcTax = (base, receiptType="OR", withholding=false) => {
+  const b   = Number(base)||0;
+  const vat = receiptType==="OR" ? b*0.12 : 0;        // 12% VAT on base (OR only)
+  const gross = b + vat;                                // total amount billed to client
+  const ewt = (receiptType==="OR" && withholding) ? b*0.02 : 0; // EWT only on OR, not AR
+  const netReceivable = gross - ewt;                    // what GMD actually receives
+  return { base:b, vat, gross, ewt, netReceivable };
+};
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 let _id=500; const uid=()=>String(++_id);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets"};
+
+// ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
+const PR_STATUSES  = ["Draft","Pending Approval","PO Issued","Partially Delivered","Delivered","Cancelled"];
+const PR_CATS      = ["Materials","Hardware","Fixtures","Signage","Electrical","Structural","Finishing","Tools & Equipment","Subcon","Other"];
+const BUDGET_CATS  = ["Materials","Labor","Overhead","Subcon"];
+const BUDGET_CAT_CLR = {Materials:"#3b82f6",Labor:"#10b981",Overhead:"#f59e0b",Subcon:"#8b5cf6"};
+
+const emptyPR = () => ({
+  id:"", projectId:"", projectName:"",
+  itemName:"", category:"Materials", description:"",
+  qty:1, unit:"pcs", estUnitCost:0, actUnitCost:0,
+  supplier:"", poNumber:"", poDate:"",
+  qtyDelivered:0, deliveryDate:"", deliveryNote:"",
+  status:"Draft", requestedBy:"", approvedBy:"",
+  budgetCategory:"Materials",  // which budget line this hits
+  notes:"", createdDate:"",
+});
+
+const emptyBudget = () => ({
+  Materials:0, Labor:0, Overhead:0, Subcon:0,
+  notes:"", lockedAt:null,
+});
 
 // ─── GMD BANKS & CASH POSITION ───────────────────────────────────────────────
 const BANKS = [
@@ -793,6 +826,67 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </div>
         </div>
       )}
+      {/* 🧾 Tax Settings */}
+      {Number(form.value)>0&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:8}}>
+          <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+            <div>
+              <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type</label>
+              <div style={{display:"flex",gap:8}}>
+                {["OR","AR"].map(rt=>(
+                  <button key={rt} type="button" onClick={()=>setForm(p=>({...p,receiptType:rt,withholding:rt==="AR"?false:p.withholding}))}
+                    style={{flex:1,padding:"8px",border:`2px solid ${form.receiptType===rt?"#d97706":"#e2e8f0"}`,borderRadius:8,background:form.receiptType===rt?"#fef3c7":"#fff",color:form.receiptType===rt?"#92400e":"#64748b",fontWeight:form.receiptType===rt?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".82rem"}}>
+                    {rt==="OR"?"🧾 OR (with VAT)":"📄 AR (no VAT)"}
+                  </button>
+                ))}
+              </div>
+              <div style={{fontSize:".7rem",color:"#92400e",marginTop:5,opacity:.8}}>
+                {form.receiptType==="OR"?"Official Receipt — VAT 12% applies":"Acknowledgement Receipt — VAT exempted"}
+              </div>
+            </div>
+            {form.receiptType==="OR"?(
+              <div>
+                <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Withholding Tax (EWT 2%)</label>
+                <div style={{display:"flex",gap:8}}>
+                  {[["Yes — client withholds",true],["No withholding",false]].map(([label,val])=>(
+                    <button key={String(val)} type="button" onClick={()=>setForm(p=>({...p,withholding:val}))}
+                      style={{flex:1,padding:"8px",border:`2px solid ${form.withholding===val?"#d97706":"#e2e8f0"}`,borderRadius:8,background:form.withholding===val?"#fef3c7":"#fff",color:form.withholding===val?"#92400e":"#64748b",fontWeight:form.withholding===val?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".75rem"}}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ):(
+              <div style={{display:"flex",alignItems:"center"}}>
+                <div style={{background:"#f1f5f9",borderRadius:8,padding:"12px 16px",fontSize:".78rem",color:"#94a3b8",width:"100%",textAlign:"center"}}>
+                  📄 AR — No EWT applicable
+                </div>
+              </div>
+            )}
+          </div>
+          {(()=>{
+            const tx=calcTax(form.value,form.receiptType||"OR",form.withholding||false);
+            return(
+              <div style={{background:"rgba(255,255,255,.8)",borderRadius:8,padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,borderTop:"1px solid #fde68a"}}>
+                {[
+                  ["Contract (Base)",  tx.base,          "#0f172a"],
+                  ["VAT 12%",          tx.vat,           tx.vat>0?"#f59e0b":"#94a3b8"],
+                  ["EWT 2%",           tx.ewt,           tx.ewt>0?"#ef4444":"#94a3b8"],
+                  ["Net Receivable",   tx.netReceivable, "#059669"],
+                ].map(([l,v,c])=>(
+                  <div key={l} style={{textAlign:"center"}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:c}}>
+                      ₱{Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})}
+                    </div>
+                    <div style={{fontSize:".62rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </div>
+      )}
       <div style={{display:"flex",gap:10,marginTop:20}}>
         <Btn full onClick={handleSave}>{editId?"Save Changes":"Add Deal"}</Btn>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
@@ -1446,6 +1540,7 @@ export default function App(){
                               <span style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
                               {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
                             </div>
+                            {Number(d.value)>0&&(()=>{const tx=calcTax(d.value,d.receiptType||"OR",d.withholding||false);return <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2}}>{d.receiptType==="AR"?"📄 AR":"🧾 OR"} · Net ₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}{d.withholding?" · EWT":""}</div>;})()}
                             {d.salesOwner&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>👤 {d.salesOwner}</div>}
                             {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:2}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
                             {PAULO_GATE.includes(d.stage)&&<div style={{fontSize:".67rem",color:"#d97706",background:"#fffbeb",borderRadius:4,padding:"2px 6px",marginTop:4,fontWeight:600}}>⚠ Paulo Gate</div>}
@@ -3170,7 +3265,7 @@ function AIAdvisor({ctx, role, session, onClose, deals, projs, exps, infs, check
     setMsgs(newMsgs);
     setLoading(true);
     try{
-      const res = await fetch("https://api.anthropic.com/v1/messages",{
+      const res = await fetch("/api/chat",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
