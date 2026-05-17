@@ -715,9 +715,9 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   },[open,editId]);
 
   const handleSave=()=>{
-    // Push final form back up then save
+    // Pass local form data directly to saveDeal — bypasses async state sync
     _setForm(()=>form);
-    setTimeout(onSave,0);
+    onSave(form);
   };
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
@@ -905,7 +905,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const expFormKey=`exp-${open}-${editId||"new"}`;
   useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});}},[open,editId]);
-  const handleExpSave=()=>{_setExpForm(()=>form);setTimeout(onSave,0);};
+  const handleExpSave=()=>{_setExpForm(()=>form);onSave(form);};
   const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"} key={expFormKey}>
@@ -1192,13 +1192,15 @@ export default function App(){
   // ── Helpers ───────────────────────────────────────────────────────────────
   const openAddDeal=()=>{setDealForm(emptyDeal);setEditDeal(null);setDealModal(true);};
   const openEditDeal=d=>{setDealForm({...d,value:String(d.value),invoiced:String(d.invoiced||0),amountPaid:String(d.amountPaid||0)});setEditDeal(d.id);setDealModal(true);};
-  const saveDeal=()=>{
-    if(!dealForm.client) return;
-    const prob=WON_STAGES.includes(dealForm.stage)?100:dealForm.stage==="Cancelled"?0:Number(dealForm.probability);
-    const rec={...dealForm,id:editDeal||uid(),value:Number(dealForm.value),invoiced:Number(dealForm.invoiced||0),amountPaid:Number(dealForm.amountPaid||0),probability:prob};
-    if(WON_STAGES.includes(dealForm.stage)&&!editDeal) upProjs(ps=>({...ps,[rec.id]:{...emptyProject(),notes:""}}));
-    if(dealForm.stage==="06 · Project Kickoff"&&!editDeal) setTimeout(()=>loadChecklistTemplate(rec.id,rec.client),200);
+  const saveDeal=(overrideData)=>{
+    const data = overrideData||dealForm;
+    if(!data.client) return;
+    const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
+    const rec={...data,id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob};
+    if(WON_STAGES.includes(data.stage)&&!editDeal) upProjs(ps=>({...ps,[rec.id]:{...emptyProject(),notes:""}}));
+    if(data.stage==="06 · Project Kickoff"&&!editDeal) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
+    setEditDeal(null);
     setDealModal(false);
   };
   const delDeal=id=>{upDeals(ds=>ds.filter(d=>d.id!==id));upProjs(ps=>{const n={...ps};delete n[id];return n;});setConfirmDel(null);};
@@ -1250,10 +1252,12 @@ export default function App(){
 
   const openAddExp=(projId=null)=>{setExpForm({month:new Date().getMonth(),category:"Materials",amount:"",note:"",projectId:projId,receipt:""});setEditExpId(null);setExpModal(true);};
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
-  const saveExp=()=>{
-    if(!expForm.amount||!expForm.note) return;
-    const rec={...expForm,amount:Number(expForm.amount),id:editExpId||uid()};
+  const saveExp=(overrideData)=>{
+    const data=overrideData||expForm;
+    if(!data.amount||!data.note) return;
+    const rec={...data,amount:Number(data.amount),id:editExpId||uid()};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
+    setEditExpId(null);
     setExpModal(false);
   };
   const delExp=id=>upExps(es=>es.filter(e=>e.id!==id));
@@ -1305,7 +1309,7 @@ export default function App(){
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role];
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"procurement",l:"Procurement"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"finance",l:"Finance"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
     Sales:        [{id:"home",l:"My Pipeline"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
     "Cost Control":[{id:"home",l:"Overview"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"procurement",l:"Procurement"},{id:"swatchboard",l:"Swatchboard"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"collections",l:"Collections"},{id:"expenses",l:"Expenses"},{id:"clients",l:"🏢 Clients"}],
     Operations:   [{id:"home",l:"Projects"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"budget",l:"Budget"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
@@ -1746,6 +1750,11 @@ export default function App(){
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
+    if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+    if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+    if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="clients") return(
       <Wrap>
         <ClientDirectory deals={deals} session={session} role={role}/>
