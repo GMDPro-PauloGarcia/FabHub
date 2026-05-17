@@ -710,15 +710,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
-  // Load SheetJS for Excel import
-  useEffect(()=>{
-    if(!window.XLSX){
-      const s=document.createElement("script");
-      s.src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js";
-      document.head.appendChild(s);
-    }
-  },[]);
-
   useEffect(()=>{
     if(open) setForm(initialForm||emptyDeal);
   },[open,editId]);
@@ -999,6 +990,15 @@ export default function App(){
   const[checklist,setChecklist]= useState([]);
   const[ready,    setReady]   = useState(false);
   const[sync,     setSync]    = useState("saved");
+
+  // Load SheetJS once for Excel import
+  useEffect(()=>{
+    if(!window.XLSX){
+      const s=document.createElement("script");
+      s.src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js";
+      document.head.appendChild(s);
+    }
+  },[]);
 
   useEffect(()=>{
     try{
