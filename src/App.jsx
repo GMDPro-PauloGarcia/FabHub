@@ -528,6 +528,38 @@ const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:s
   if(rows) return <textarea defaultValue={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
   return <input type={type} defaultValue={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
+// Currency input — shows commas when not focused, strips on focus
+const CurrInp=({value,onChange,placeholder="0.00",style:sx={}})=>{
+  const fmt=v=>{
+    const n=Number(String(v).replace(/,/g,""))||0;
+    if(!n&&n!==0) return "";
+    return n.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  };
+  const strip=v=>String(v).replace(/,/g,"");
+  const[display,setDisplay]=useState(value?fmt(value):"");
+  const prev=useRef(value);
+  useEffect(()=>{
+    if(prev.current!==value){setDisplay(value?fmt(value):"");prev.current=value;}
+  },[value]);
+  const base={textAlign:"right",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",background:"#fff",width:"100%",boxSizing:"border-box",outline:"none",...(sx||{})};
+  return(
+    <input
+      type="text"
+      value={display}
+      onChange={e=>setDisplay(e.target.value)}
+      onFocus={e=>{const raw=strip(e.target.value);setDisplay(raw);e.target.select();}}
+      onBlur={e=>{
+        const raw=strip(e.target.value);
+        const formatted=raw?fmt(raw):"";
+        setDisplay(formatted);
+        onChange&&onChange({target:{value:raw}});
+      }}
+      placeholder={placeholder}
+      style={base}
+    />
+  );
+};
+
 const Sel=({value,onChange,children})=>(
   <select value={value} onChange={onChange} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
     {children}
@@ -3793,12 +3825,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <div style={labelCell}>{label}</div>
             {BANKS.map(b=>(
               <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #f1f5f9"}}>
-                <input className="cash-inp" type="text"
-                  key={`${b.id}-${key}-${selDate}`}
-                  defaultValue={pos.banks[b.id]?.[key]||""}
-                  onBlur={e=>f(`banks.${b.id}.${key}`,e.target.value)}
-                  onKeyDown={e=>{if(e.key==="Enter"||e.key==="Tab")f(`banks.${b.id}.${key}`,e.target.value);}}
-                  placeholder="0.00"
+                <CurrInp
+                  value={pos.banks[b.id]?.[key]||""}
+                  onChange={e=>f(`banks.${b.id}.${key}`,e.target.value)}
                   style={{...inpStyle,borderColor:"transparent",background:"transparent"}}/>
               </div>
             ))}
@@ -3821,12 +3850,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
                   <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}>
-                  <input type="text"
-                    key={`coll-manual-${selDate}`}
-                    defaultValue={pos.collections.manualAmt||""}
-                    onBlur={e=>f("collections.manualAmt",e.target.value)}
-                    onKeyDown={e=>{if(e.key==="Enter")f("collections.manualAmt",e.target.value);}}
-                    placeholder="+ Manual collection amt" className="cash-inp"
+                  <CurrInp
+                    value={pos.collections.manualAmt||""}
+                    onChange={e=>f("collections.manualAmt",e.target.value)}
                     style={{...inpStyle,width:180,textAlign:"left",borderColor:"#6ee7b7"}}/>
                   <input type="text"
                     key={`coll-note-${selDate}`}
@@ -3853,12 +3879,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <div key={path} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #fee2e2"}}>
               <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem"}}>{label}</div>
               <div style={{padding:"5px 12px"}}>
-                <input className="cash-inp" type="text"
-                  key={`${path}-${selDate}`}
-                  defaultValue={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
-                  onBlur={e=>f(path,e.target.value)}
-                  onKeyDown={e=>{if(e.key==="Enter"||e.key==="Tab")f(path,e.target.value);}}
-                  placeholder="0.00"
+                <CurrInp
+                  value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
+                  onChange={e=>f(path,e.target.value)}
                   style={{...inpStyle,width:200,borderColor:"#fca5a5"}}/>
               </div>
               <div style={{padding:"8px 12px",textAlign:"right",fontWeight:600,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
@@ -3870,12 +3893,10 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #fee2e2"}}>
             <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem"}}>Other</div>
             <div style={{padding:"5px 12px",display:"flex",gap:8}}>
-              <input className="cash-inp" type="text"
-                key={`other-amt-${selDate}`}
-                defaultValue={pos.less.otherAmt||""}
-                onBlur={e=>f("less.otherAmt",e.target.value)}
-                onKeyDown={e=>{if(e.key==="Enter")f("less.otherAmt",e.target.value);}}
-                placeholder="0.00" style={{...inpStyle,width:150,borderColor:"#fca5a5"}}/>
+              <CurrInp
+                value={pos.less.otherAmt||""}
+                onChange={e=>f("less.otherAmt",e.target.value)}
+                style={{...inpStyle,width:150,borderColor:"#fca5a5"}}/>
               <input className="cash-inp" type="text"
                 key={`other-note-${selDate}`}
                 defaultValue={pos.less.otherNote||""}
@@ -3919,12 +3940,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
               <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <input className="cash-inp" type="text"
-                  key={`${path}-${selDate}`}
-                  defaultValue={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
-                  onBlur={e=>f(path,e.target.value)}
-                  onKeyDown={e=>{if(e.key==="Enter"||e.key==="Tab")f(path,e.target.value);}}
-                  placeholder="0.00"
+                <CurrInp
+                  value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
+                  onChange={e=>f(path,e.target.value)}
                   style={{...inpStyle,width:160,borderColor:`${color}44`}}/>
                 <span style={{fontWeight:700,color,minWidth:90,textAlign:"right",fontSize:".82rem"}}>
                   {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
