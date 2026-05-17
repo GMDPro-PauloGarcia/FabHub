@@ -706,7 +706,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               />
             )}
           </Fld>
-        <Fld label="Stage"><Sel value={form.stage} onChange={e=>e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+        <Fld label="Stage"><Sel value={form.stage} onChange={e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
         <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
         <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
@@ -2876,8 +2876,6 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
 function ClientAutocomplete({value:initVal, onChange}){
   const[localVal,setLocalVal]= useState(initVal||"");
   const[show,    setShow]    = useState(false);
-  const ref = useRef ? useRef(null) : {current:null};
-
   // Sync if parent resets (e.g. new deal)
   useEffect(()=>{ setLocalVal(initVal||""); },[initVal]);
 
@@ -2914,10 +2912,10 @@ function ClientAutocomplete({value:initVal, onChange}){
               </div>
             </div>
           ))}
-          {value&&!GMD_CLIENTS.find(c=>c.name.toLowerCase()===value.toLowerCase())&&(
-            <div onMouseDown={()=>pick(value)}
+          {localVal&&!GMD_CLIENTS.find(c=>c.name.toLowerCase()===localVal.toLowerCase())&&(
+            <div onMouseDown={()=>pick(localVal)}
               style={{padding:"10px 14px",cursor:"pointer",background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:"#3b82f6",fontWeight:600}}>
-              + Add "{value}" as new client
+              + Add "{localVal}" as new client
             </div>
           )}
         </div>
