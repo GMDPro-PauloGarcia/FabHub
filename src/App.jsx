@@ -106,9 +106,19 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 let _id=500; const uid=()=>String(++_id);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda"};
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
+const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
+const ADDENDUM_STATUS_CLR = {
+  "Discovered":"#94a3b8",
+  "Sales Notified":"#f59e0b",
+  "Client Coordinating":"#3b82f6",
+  "Approved":"#10b981",
+  "Billed":"#8b5cf6",
+  "Collected":"#059669",
+  "Rejected":"#ef4444",
+};
 const MR_STATUSES  = ["Submitted","Reviewed","Converted to PR","Rejected"];
 const BR_STATUSES  = ["Submitted","Under Review","Approved","Released","Rejected"];
 const BR_PURPOSES  = ["Installation","Mobilization","Site Expenses","Equipment Rental","Permits & Fees","Labor Additional","Emergency","Other"];
@@ -1007,6 +1017,7 @@ export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
   const[prs,         setPrs]       = useState([]);   // Purchase Requests
+  const[addenda,     setAddenda]   = useState([]);   // Project Addenda
   const[mreqs,       setMreqs]     = useState([]);   // Material Requests
   const[breqs,       setBreqs]     = useState([]);   // Budget Requests
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
@@ -1037,6 +1048,7 @@ export default function App(){
       const u=localStorage.getItem(KEYS.users);    if(u) setUsers(JSON.parse(u));
       const cp=localStorage.getItem(KEYS.cashPos);  if(cp) setCashPos(JSON.parse(cp));
       const pr=localStorage.getItem(KEYS.prs);      if(pr) setPrs(JSON.parse(pr));
+      const ad=localStorage.getItem(KEYS.addenda);  if(ad) setAddenda(JSON.parse(ad));
       const mr=localStorage.getItem(KEYS.mreqs);    if(mr) setMreqs(JSON.parse(mr));
       const br=localStorage.getItem(KEYS.breqs);    if(br) setBreqs(JSON.parse(br));
       const bg=localStorage.getItem(KEYS.budgets);  if(bg) setBudgets(JSON.parse(bg));
@@ -1062,6 +1074,10 @@ export default function App(){
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
   const upCashPos  =useCallback(fn=>setCashPos(p=>{const n=fn(p);persist(KEYS.cashPos,n);return n;}),[persist]);
   const upPrs      =useCallback(fn=>setPrs(p=>{const n=fn(p);persist(KEYS.prs,n);return n;}),[persist]);
+  const upAddenda  =useCallback(fn=>setAddenda(p=>{const n=fn(p);persist(KEYS.addenda,n);return n;}),[persist]);
+  const addAddendum2=(adm)=>upAddenda(as=>[{...adm,id:uid(),createdDate:today,status:"Discovered"},...as]);
+  const updateAddendum=(id,ch)=>upAddenda(as=>as.map(a=>a.id===id?{...a,...ch}:a));
+  const deleteAddendum=(id)=>upAddenda(as=>as.filter(a=>a.id!==id));
   const upMreqs    =useCallback(fn=>setMreqs(p=>{const n=fn(p);persist(KEYS.mreqs,n);return n;}),[persist]);
   const upBreqs    =useCallback(fn=>setBreqs(p=>{const n=fn(p);persist(KEYS.breqs,n);return n;}),[persist]);
   const addMR      =(mr)=>upMreqs(ms=>[{...mr,id:uid(),createdDate:today},...ms]);
@@ -1613,6 +1629,30 @@ ${skipped} existing deals updated`);
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
           </div>
         </div>
+        {/* Addenda requiring Sales action */}
+        {(()=>{
+          const myAddenda=addenda.filter(a=>{
+            const deal=deals.find(d=>d.id===a.projectId);
+            return deal&&!a.salesNotified&&a.status!=="Rejected";
+          });
+          return myAddenda.length>0?(
+            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem"}}>⚠️ {myAddenda.length} scope change{myAddenda.length>1?"s":""} need your attention</div>
+                <div style={{fontSize:".75rem",color:"#92400e",marginTop:3,opacity:.8}}>Operations logged scope changes — coordinate with clients before proceeding</div>
+                <div style={{marginTop:6,display:"flex",flexDirection:"column",gap:3}}>
+                  {myAddenda.slice(0,3).map(a=>(
+                    <div key={a.id} style={{fontSize:".75rem",color:"#92400e"}}>
+                      • <strong>{a.projectName||deals.find(d=>d.id===a.projectId)?.client}</strong>: {a.title}
+                      {Number(a.value)>0&&<span style={{marginLeft:6,fontWeight:700}}>₱{Number(a.value).toLocaleString("en-PH")}</span>}
+                    </div>
+                  ))}
+                  {myAddenda.length>3&&<div style={{fontSize:".72rem",color:"#92400e",opacity:.7}}>+{myAddenda.length-3} more</div>}
+                </div>
+              </div>
+            </div>
+          ):null;
+        })()}
         <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
           {[
             {l:"Total Pipeline",    v:fmtK(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
@@ -1712,6 +1752,7 @@ ${skipped} existing deals updated`);
                       <div style={{flex:1,minWidth:160}}>
                         <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
                         <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.product} · <Badge label={d.stage.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]||"#10b981"}/></div>
+                      {(()=>{const da=addenda.filter(a=>a.projectId===d.id&&a.status!=="Rejected");return da.length>0?<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:2}}>⚠️ {da.length} addendum{da.length>1?"a":""} · +₱{da.reduce((s,a)=>s+Number(a.value||0),0).toLocaleString("en-PH")}</div>:null;})()}
                       </div>
                       <div style={{minWidth:100,textAlign:"right"}}>
                         <div style={{fontWeight:700,color:"#10b981",fontSize:".9rem"}}>{fmtK(Number(d.value))}</div>
@@ -1850,7 +1891,7 @@ ${skipped} existing deals updated`);
         </div>
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
@@ -2037,7 +2078,7 @@ ${skipped} existing deals updated`);
 
   // ─── OPERATIONS ───────────────────────────────────────────────────────────
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -2202,7 +2243,7 @@ ${skipped} existing deals updated`);
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,updateAddendum,deleteAddendum}){
   const uid2=()=>String(Date.now());
   if(!selProj) return(
     <Wrap>
@@ -2236,7 +2277,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
     </Wrap>
   );
 
-  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠ Addenda"]];
+  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠️ Addenda"]];
   return(
     <Wrap>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -2469,55 +2510,161 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         );
       })()}
 
-      {/* ADDENDA TAB */}
+      {/* ADDENDA TAB — full workflow */}
       {opsTab==="addenda"&&(()=>{
-        const addenda=projDeal?.addenda||[];
+        const projAddenda=(addenda||[]).filter(a=>a.projectId===selProj);
         const[showAF,setShowAF]=useState(false);
-        const[af,setAf]=useState({title:"",desc:"",requestedBy:"Client"});
-        const AC={"Pending":"#f59e0b","Approved":"#10b981","Rejected":"#ef4444","In Progress":"#3b82f6"};
+        const[af,setAf]=useState({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
+        const faf=(k,v)=>setAf(p=>({...p,[k]:v}));
+        const totalApproved=projAddenda.filter(a=>a.status!=="Rejected").reduce((s,a)=>s+Number(a.value||0),0);
+        const originalVal=Number(projDeal?.value||0);
         return(
           <div>
-            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}>
-              ⚠️ <strong>Addendum Protocol:</strong> Any scope change must be coordinated with ALL stakeholders — Sales (client comms), Ops (timeline), Finance (budget). Log every change here.
+            {/* Header summary */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+              {[
+                {l:"Original Contract",  v:"₱"+originalVal.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#0f172a"},
+                {l:"Addenda Value",      v:"₱"+totalApproved.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#f59e0b"},
+                {l:"Total Project Value",v:"₱"+(originalVal+totalApproved).toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#10b981"},
+              ].map(({l,v,c})=>(
+                <div key={l} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #e2e8f0"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
+                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
+                </div>
+              ))}
             </div>
+
+            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#92400e"}}>
+              ⚠️ <strong>Addendum Protocol:</strong> Operations logs scope changes → Sales is notified to coordinate with client → Client approves → Separate billing created. Each addendum may have its own CE number depending on size.
+            </div>
+
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-              <div style={{fontWeight:700,color:"#0f172a"}}>{addenda.length} Addendum{addenda.length!==1?"a":""}</div>
-              <Btn small onClick={()=>setShowAF(s=>!s)}>+ Log Addendum</Btn>
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{projAddenda.length} Addendum{projAddenda.length!==1?"a":""}</div>
+              <Btn small onClick={()=>setShowAF(s=>!s)}>+ Log Scope Change</Btn>
             </div>
+
+            {/* Add form */}
             {showAF&&(
-              <Card style={{background:"#fff7ed",border:"1.5px solid #fed7aa",marginBottom:12}}>
-                <div style={{fontWeight:700,color:"#92400e",marginBottom:12}}>New Scope Change</div>
-                <Fld label="Title" required><Inp value={af.title} onChange={e=>setAf(p=>({...p,title:e.target.value}))} placeholder="e.g. Additional glass panel — Unit 3B"/></Fld>
-                <Fld label="Description / Impact"><Inp rows={3} value={af.desc} onChange={e=>setAf(p=>({...p,desc:e.target.value}))} placeholder="What changed, why, cost/time impact…"/></Fld>
-                <Fld label="Requested By"><Sel value={af.requestedBy} onChange={e=>setAf(p=>({...p,requestedBy:e.target.value}))}>{["Client","Sales Team","Operations","Design","Other"].map(r=><option key={r}>{r}</option>)}</Sel></Fld>
-                <div style={{display:"flex",gap:8,marginTop:4}}>
-                  <Btn onClick={()=>{addAddendum(selProj,af.title,af.desc,af.requestedBy);setAf({title:"",desc:"",requestedBy:"Client"});setShowAF(false);}}>Save</Btn>
+              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:16,marginBottom:14}}>
+                <div style={{fontWeight:700,color:"#92400e",marginBottom:12}}>New Scope Change / Addendum</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Title / Scope Change" required>
+                      <Inp value={af.title} onChange={e=>faf("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B — client requested during site visit"/>
+                    </Fld>
+                  </div>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Description / Impact">
+                      <Inp rows={3} value={af.desc} onChange={e=>faf("desc",e.target.value)} placeholder="What changed, why it changed, impact on timeline and cost…"/>
+                    </Fld>
+                  </div>
+                  <Fld label="Addendum Value (₱)" hint="Estimated cost of this scope change">
+                    <Inp type="number" value={af.value} onChange={e=>faf("value",e.target.value)} placeholder="0.00"/>
+                  </Fld>
+                  <Fld label="CE Number" hint="Assign if large enough to warrant separate CE">
+                    <Inp value={af.ceNo} onChange={e=>faf("ceNo",e.target.value)} placeholder="e.g. CE-2026-001-A (optional)"/>
+                  </Fld>
+                  <Fld label="Receipt Type">
+                    <Sel value={af.receiptType} onChange={e=>faf("receiptType",e.target.value)}>
+                      <option value="OR">🧾 OR (with VAT)</option>
+                      <option value="AR">📄 AR (no VAT)</option>
+                    </Sel>
+                  </Fld>
+                  <Fld label="Withholding Tax (EWT 2%)">
+                    <Sel value={af.withholding?"YES":"NO"} onChange={e=>faf("withholding",e.target.value==="YES")}>
+                      <option value="NO">No withholding</option>
+                      <option value="YES">Yes — client withholds 2%</option>
+                    </Sel>
+                  </Fld>
+                  <Fld label="Discovered By">
+                    <Inp value={af.discoveredBy} onChange={e=>faf("discoveredBy",e.target.value)} placeholder={session?.name||""}/>
+                  </Fld>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Notes">
+                      <Inp rows={2} value={af.notes} onChange={e=>faf("notes",e.target.value)} placeholder="Supporting details, client conversation notes, photos in Drive…"/>
+                    </Fld>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,marginTop:12}}>
+                  <Btn onClick={()=>{
+                    if(!af.title) return;
+                    addAddendum2({...af,projectId:selProj,projectName:projDeal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false});
+                    setAf({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
+                    setShowAF(false);
+                  }}>Log Scope Change</Btn>
                   <Btn variant="ghost" onClick={()=>setShowAF(false)}>Cancel</Btn>
                 </div>
-              </Card>
+              </div>
             )}
-            {addenda.length===0&&!showAF&&<EmptyState icon="📋" msg="No addenda yet. Log scope changes here to notify all stakeholders."/>}
-            {addenda.map(a=>(
-              <Card key={a.id} accent={AC[a.status]}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                  <div style={{flex:1}}>
-                    <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:4,flexWrap:"wrap"}}>
-                      <span style={{fontWeight:700,color:"#0f172a"}}>{a.title}</span>
-                      <Badge label={a.status} color={AC[a.status]||"#94a3b8"}/>
-                      <span style={{fontSize:".7rem",color:"#94a3b8"}}>by {a.requestedBy} · {a.date}</span>
-                    </div>
-                    {a.desc&&<div style={{fontSize:".8rem",color:"#64748b",lineHeight:1.6}}>{a.desc}</div>}
-                    <div style={{display:"flex",gap:10,marginTop:8,fontSize:".72rem",flexWrap:"wrap"}}>
-                      <span style={{color:a.notifiedSales?"#059669":"#f59e0b",fontWeight:600}}>{a.notifiedSales?"✓ Sales notified":"⚠ Notify Sales"}</span>
-                      <span style={{color:a.notifiedOps?"#059669":"#f59e0b",fontWeight:600}}>{a.notifiedOps?"✓ Ops notified":"⚠ Notify Ops"}</span>
+
+            {projAddenda.length===0&&!showAF&&<EmptyState icon="📋" msg="No addenda logged. When Operations discovers a scope change, log it here — Sales gets notified automatically."/>}
+
+            {/* Addenda list */}
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {projAddenda.map(a=>{
+                const tx=calcTax(a.value||0,a.receiptType||"OR",a.withholding||false);
+                const statusClr=ADDENDUM_STATUS_CLR[a.status]||"#94a3b8";
+                return(
+                  <div key={a.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${statusClr}44`,padding:"14px 18px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
+                          <span style={{fontWeight:700,color:"#0f172a"}}>{a.title}</span>
+                          <span style={{fontSize:".7rem",background:statusClr+"22",color:statusClr,border:`1px solid ${statusClr}55`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{a.status}</span>
+                          {a.ceNo&&<span style={{fontSize:".7rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:5}}>{a.ceNo}</span>}
+                        </div>
+                        {a.desc&&<div style={{fontSize:".8rem",color:"#475569",lineHeight:1.6,marginBottom:8}}>{a.desc}</div>}
+
+                        {/* Value breakdown */}
+                        {Number(a.value)>0&&(
+                          <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",marginBottom:8,fontSize:".75rem"}}>
+                            <div><span style={{color:"#94a3b8"}}>Base: </span><strong>₱{Number(a.value).toLocaleString("en-PH")}</strong></div>
+                            <div><span style={{color:"#94a3b8"}}>{a.receiptType==="OR"?"VAT 12%":"No VAT"}: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
+                            {a.withholding&&<div><span style={{color:"#94a3b8"}}>EWT 2%: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>}
+                            <div><span style={{color:"#94a3b8"}}>Net Receivable: </span><strong style={{color:"#059669"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
+                          </div>
+                        )}
+
+                        {/* Workflow status flags */}
+                        <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:".72rem"}}>
+                          <span style={{color:a.salesNotified?"#059669":"#f59e0b",fontWeight:600,background:a.salesNotified?"#f0fdf4":"#fffbeb",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`}}>
+                            {a.salesNotified?"✓ Sales notified":"⚠ Sales not yet notified"}
+                          </span>
+                          <span style={{color:a.clientApproved?"#059669":"#94a3b8",fontWeight:600,background:a.clientApproved?"#f0fdf4":"#f8fafc",padding:"2px 9px",borderRadius:20,border:`1px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`}}>
+                            {a.clientApproved?"✓ Client approved":"Pending client approval"}
+                          </span>
+                          <span style={{fontSize:".68rem",color:"#94a3b8"}}>By {a.discoveredBy} · {a.createdDate}</span>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0,minWidth:160}}>
+                        <select value={a.status} onChange={e=>updateAddendum(a.id,{status:e.target.value})}
+                          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer",width:"100%"}}>
+                          {ADDENDUM_STATUSES.map(s=><option key={s}>{s}</option>)}
+                        </select>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>updateAddendum(a.id,{salesNotified:true})}
+                            disabled={a.salesNotified}
+                            style={{flex:1,background:a.salesNotified?"#f0fdf4":"#fffbeb",border:`1.5px solid ${a.salesNotified?"#6ee7b7":"#fde68a"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.salesNotified?"#059669":"#92400e",cursor:a.salesNotified?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
+                            {a.salesNotified?"Notified":"Notify Sales"}
+                          </button>
+                          <button onClick={()=>updateAddendum(a.id,{clientApproved:true,status:"Approved"})}
+                            disabled={a.clientApproved}
+                            style={{flex:1,background:a.clientApproved?"#f0fdf4":"#f8fafc",border:`1.5px solid ${a.clientApproved?"#6ee7b7":"#e2e8f0"}`,borderRadius:7,padding:"5px 8px",fontSize:".68rem",color:a.clientApproved?"#059669":"#64748b",cursor:a.clientApproved?"default":"pointer",fontWeight:600,fontFamily:"inherit"}}>
+                            {a.clientApproved?"Approved":"Mark Approved"}
+                          </button>
+                        </div>
+                        <button onClick={()=>{if(window.confirm("Delete this addendum?"))deleteAddendum(a.id);}}
+                          style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
-                  <select value={a.status} onChange={e=>updateAddendumStatus(selProj,a.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                    {["Pending","In Progress","Approved","Rejected"].map(s=><option key={s}>{s}</option>)}
-                  </select>
-                </div>
-              </Card>
-            ))}
+                );
+              })}
+            </div>
           </div>
         );
       })()}
