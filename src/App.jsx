@@ -487,17 +487,10 @@ const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"
   );
 };
 const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
-  // Local state — universal focus bug fix for ALL forms and inputs
-  // Stops parent re-renders from dropping focus on every keystroke
-  const[local,setLocal]=useState(value||"");
-  const prev=useRef(value);
-  useEffect(()=>{
-    if(prev.current!==value){setLocal(value||"");prev.current=value;}
-  },[value]);
-  const handle=e=>{setLocal(e.target.value);onChange&&onChange(e);};
+  // Using key+defaultValue pattern — safest focus fix, no hooks needed
   const base={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:readOnly?"#f8fafc":"#fff",boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
-  if(rows) return <textarea value={local} onChange={handle} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
-  return <input type={type} value={local} onChange={handle} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
+  if(rows) return <textarea defaultValue={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
+  return <input type={type} defaultValue={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
 const Sel=({value,onChange,children})=>(
   <select value={value} onChange={onChange} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
@@ -505,12 +498,10 @@ const Sel=({value,onChange,children})=>(
   </select>
 );
 // Focus-safe raw input — use this instead of bare <input> inside forms
-const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max})=>{
-  const[local,setLocal]=useState(value||"");
-  const prev=useRef(value);
-  useEffect(()=>{if(prev.current!==value){setLocal(value||"");prev.current=value;}},[value]);
-  const handle=e=>{setLocal(e.target.value);onChange&&onChange(e);};
-  return <input type={type} value={local} onChange={handle} onKeyDown={onKeyDown} placeholder={placeholder} min={min} max={max} className={className} style={sx}/>;
+const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max,rows})=>{
+  const base={...sx};
+  if(rows) return <textarea defaultValue={value||""} onChange={onChange} placeholder={placeholder} rows={rows} className={className} style={base}/>;
+  return <input type={type} defaultValue={value||""} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder} min={min} max={max} className={className} style={base}/>;
 };
 const Fld=({label,required,children,hint})=>(
   <div style={{marginBottom:16}}>
@@ -682,6 +673,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const isWon=WON_STAGES.includes(form.stage);
 
   // Sync when modal opens or editId changes
+  const formKey=`${open}-${editId||"new"}`;
   useEffect(()=>{
     if(open) setForm(initialForm||emptyDeal);
   },[open,editId]);
@@ -692,7 +684,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     setTimeout(onSave,0);
   };
   return(
-    <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide>
+    <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="Client Name" required hint="Start typing to search from your 207 GMD clients">
@@ -814,11 +806,12 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
   const[form,setForm]=useState(initialExpForm||{});
   const[step,setStep]=useState(1);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const expFormKey=`exp-${open}-${editId||"new"}`;
   useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});}},[open,editId]);
   const handleExpSave=()=>{_setExpForm(()=>form);setTimeout(onSave,0);};
   const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
   return(
-    <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"}>
+    <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"} key={expFormKey}>
       {step===1?(
         <>
           <Fld label="Month">
