@@ -1158,13 +1158,14 @@ export default function App(){
   // Auto-create project entries for any won deal that doesn't have one yet
   useEffect(()=>{
     const missing=wonDeals.filter(d=>!projs[d.id]);
-    if(missing.length>0) upProjs(ps=>{
-      const n={...ps};
-      missing.forEach(d=>{n[d.id]=emptyProject();});
-      return n;
-    });
-  },[wonDeals]); // eslint-disable-line
-  const projList  =useMemo(()=>wonDeals,[wonDeals]);
+    if(missing.length>0){
+      const patch={};
+      missing.forEach(d=>{patch[d.id]=emptyProject();});
+      upProjs(ps=>({...ps,...patch}));
+    }
+  // eslint-disable-next-line
+  },[wonDeals.length]);
+  const projList  =useMemo(()=>wonDeals.filter(d=>projs[d.id]),[wonDeals,projs]);
   const isPauloGate = stage => PAULO_GATE.includes(stage);
   const clientName=useCallback(id=>deals.find(d=>d.id===id)?.client||`Project #${id}`,[deals]);
   const overallProg=p=>{const si=PROD_STAGES.indexOf(p.currentStage);return Math.round(si*25+(p.progress[p.currentStage]||0)*0.25);};
@@ -1502,14 +1503,14 @@ export default function App(){
           <div>
             <SecHead title="Project Margins" action={<Btn small onClick={()=>setPage("ops")}>All projects →</Btn>}/>
             {projList.slice(0,5).map(d=>{
-              const p=projs[d.id]; const m=marginOf(p,d);
+              const p=projs[d.id]; if(!p) return null; const m=marginOf(p,d);
               return(
                 <Card key={d.id} onClick={()=>{setSelProj(d.id);setPage("ops");}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <div><div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div><Badge label={p.currentStage} color={PROD_CLR[p.currentStage]}/></div>
+                    <div><div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div><Badge label={p.currentStage||"Active"} color={PROD_CLR[p.currentStage]||"#94a3b8"}/></div>
                     <div style={{fontWeight:800,color:m>=20?"#059669":"#f59e0b",fontSize:"1.05rem"}}>{m}%</div>
                   </div>
-                  <ProgBar pct={overallProg(p)} color={PROD_CLR[p.currentStage]}/>
+                  <ProgBar pct={overallProg(p)} color={PROD_CLR[p.currentStage]||"#94a3b8"}/>
                 </Card>
               );
             })}
@@ -1933,7 +1934,7 @@ ${skipped} existing deals updated`);
         <div style={{marginTop:20}}>
           <SecHead title="Per Project Profit" sub="Real-time margin based on logged expenses"/>
           {projList.map(d=>{
-            const p=projs[d.id];
+            const p=projs[d.id]; if(!p) return null;
             const projExpTotal=exps.filter(e=>e.projectId===d.id).reduce((s,e)=>s+e.amount,0);
             const opsCost=costOf(p);
             const profit=d.value-opsCost;
@@ -2019,10 +2020,10 @@ ${skipped} existing deals updated`);
       <Wrap>
         <SecHead title="Design Projects"/>
         {projList.map(d=>{
-          const p=projs[d.id]; const ds=p?.design?.status||"Briefing";
+          const p=projs[d.id]; if(!p) return null; const ds=p?.design?.status||"Briefing";
           const dsPct=Math.round((DESIGN_STATUSES.indexOf(ds))/(DESIGN_STATUSES.length-1)*100);
           return(
-            <Card key={d.id} onClick={()=>{setSelProj(d.id);setOpsTab("design");}} accent={p.currentStage==="Design"?DS_CLR[ds]:undefined}>
+            <Card key={d.id} onClick={()=>{setSelProj(d.id);setOpsTab("design");}} accent={p?.currentStage==="Design"?DS_CLR[ds]:undefined}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
                 <div>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:"1rem"}}>{d.client}</div>
@@ -2176,14 +2177,14 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
       <SecHead title="Projects" sub="Click any project to update stages, materials, and team"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
         {projList.map(d=>{
-          const p=projs[d.id]; const prog=overallProg(p);
+          const p=projs[d.id]; if(!p) return null; const prog=overallProg(p);
           const pending=swatches.filter(s=>s.projectId===d.id&&s.status==="To Buy").length;
           const m=marginOf(p,d);
           return(
-            <Card key={d.id} onClick={()=>{setSelProj(d.id);setOpsTab("progress");}} accent={p.currentStage==="Delivery"?"#6ee7b7":undefined}>
+            <Card key={d.id} onClick={()=>{setSelProj(d.id);setOpsTab("progress");}} accent={p?.currentStage==="Delivery"?"#6ee7b7":undefined}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                 <div><div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div><div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{d.product}</div></div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}><Badge label={p.currentStage} color={PROD_CLR[p.currentStage]}/>{p.currentStage==="Design"&&<Badge label={p.design?.status||"Briefing"} color={DS_CLR[p.design?.status||"Briefing"]}/>}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}><Badge label={p?.currentStage||"Active"} color={PROD_CLR[p?.currentStage]||"#94a3b8"}/>{p?.currentStage==="Design"&&<Badge label={p.design?.status||"Briefing"} color={DS_CLR[p.design?.status||"Briefing"]}/>}</div>
               </div>
               <div style={{display:"flex",gap:2,marginBottom:8}}>
                 {["Design","Fabrication","QC","Delivery"].map((s,i)=>{const done=["Design","Fabrication","QC","Delivery"].indexOf(p.currentStage)>i,cur=p.currentStage===s;return <div key={s} style={{flex:1,height:4,borderRadius:2,background:done||cur?PROD_CLR[s]:"#e2e8f0",opacity:cur?.6:1}}/>;  })}
