@@ -710,6 +710,15 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
+  // Load SheetJS for Excel import
+  useEffect(()=>{
+    if(!window.XLSX){
+      const s=document.createElement("script");
+      s.src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js";
+      document.head.appendChild(s);
+    }
+  },[]);
+
   useEffect(()=>{
     if(open) setForm(initialForm||emptyDeal);
   },[open,editId]);
@@ -1524,7 +1533,8 @@ export default function App(){
                 const reader=new FileReader();
                 reader.onload=async(ev)=>{
                   try{
-                    const {read,utils}=await import("https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs");
+                    const {read,utils}=window.XLSX||{};
+                    if(!read) throw new Error("Excel library not loaded yet. Please wait 5 seconds and try again.");
                     const wb=read(ev.target.result,{type:"array"});
                     const ws=wb.Sheets[wb.SheetNames[0]];
                     const rows=utils.sheet_to_json(ws,{range:4,header:["client","contact","ceNo","ceType","stage","value","invoiced","amountPaid","paymentStatus","receiptType","withholding","salesOwner","bizDevSource","dateAcquired","dueDate","notes"]});
