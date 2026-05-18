@@ -1361,6 +1361,12 @@ export default function App(){
   const addAddendum2=(adm)=>upAddenda(as=>[{...adm,id:uid(),createdDate:today,status:"Discovered"},...as]);
   const updateAddendum=(id,ch)=>upAddenda(as=>as.map(a=>a.id===id?{...a,...ch}:a));
   const deleteAddendum=(id)=>upAddenda(as=>as.filter(a=>a.id!==id));
+  const delJo        =(id)=>upJos(js=>js.filter(j=>j.id!==id));
+  const delMR        =(id)=>upMreqs(ms=>ms.filter(m=>m.id!==id));
+  const delBR        =(id)=>upBreqs(bs=>bs.filter(b=>b.id!==id));
+  const delPcard     =(id)=>upPcards(ps=>{const n={...ps};delete n[id];return n;});
+  const delBudget    =(id)=>upBudgets(bs=>{const n={...bs};delete n[id];return n;});
+  const delChecklist =(id)=>upChecklist(cs=>cs.filter(c=>c.id!==id));
   const upMreqs    =useCallback(fn=>setMreqs(p=>{const n=fn(p);persist(KEYS.mreqs,n);return n;}),[persist]);
   const upBreqs    =useCallback(fn=>setBreqs(p=>{const n=fn(p);persist(KEYS.breqs,n);return n;}),[persist]);
   const addMR      =(mr)=>upMreqs(ms=>[{...mr,id:uid(),createdDate:today},...ms]);
@@ -1510,7 +1516,21 @@ export default function App(){
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
   const[awardModal, setAwardModal]=useState(null); // deal being awarded
-  const[awardForm,  setAwardForm] =useState({invoiced:"",amountPaid:"",paymentStatus:"Deposited",dueDate:"",terms:"50% downpayment upon PO, balance upon delivery",notes:""});
+  const[awardStep,  setAwardStep] =useState(1);   // 1=trigger, 2=job order, 3=budget
+  const[awardForm,  setAwardForm] =useState({
+    // Step 1 — Sales fills
+    awardTrigger:"CE Signed",
+    triggerDate:today,
+    triggerNote:"",
+    // Step 2 — Ops/Manager/Sales fills
+    pm1:"", pm2:"", pm3:"",
+    coordinator:"",
+    aeAssigned:"",
+    startDate:today,
+    commsLink:"",
+    scopeNotes:"",
+    specialInstructions:"",
+  });
   const[clientSugg, setClientSugg]=useState([]); // autocomplete suggestions
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
@@ -1530,6 +1550,10 @@ export default function App(){
   const[designModal,setDesignModal]=useState(false);
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
+  const[stageFilter, setStageFilter] = useState(null);   // pipeline stage click filter
+  const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
+  const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
+  const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[aiOpen,     setAiOpen]     =useState(false);
   const[showExport, setShowExport] =useState(false);
@@ -1573,26 +1597,68 @@ export default function App(){
   };
   const payQ=(id,ps)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
 
-  const openAward=(deal)=>{
-    setAwardForm({invoiced:String(deal.value||""),amountPaid:"",paymentStatus:"Deposited",dueDate:"",terms:"50% downpayment upon PO, balance upon delivery",notes:""});
+   const openAward=(deal)=>{
+    setAwardStep(1);
+    setAwardForm({
+      awardTrigger:"CE Signed", triggerDate:today, triggerNote:"",
+      pm1:"", pm2:"", pm3:"", coordinator:"",
+      aeAssigned:deal.salesOwner||"",
+      startDate:today, commsLink:deal.commsGroup||"",
+      scopeNotes:"", specialInstructions:"",
+    });
     setAwardModal(deal);
   };
   const confirmAward=()=>{
     if(!awardModal) return;
     const id=awardModal.id;
+    // Update deal — payment is Unpaid (Finance will bill separately)
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
       stage:"06 · Project Kickoff",
       probability:100,
-      invoiced:Number(awardForm.invoiced)||d.value,
-      amountPaid:Number(awardForm.amountPaid)||0,
-      paymentStatus:awardForm.paymentStatus,
-      dueDate:awardForm.dueDate,
-      notes:awardForm.notes||d.notes,
+      paymentStatus:"Unpaid",
+      notes:awardForm.scopeNotes||d.notes,
     }:d));
-    if(!projs[id]) upProjs(ps=>({...ps,[id]:emptyProject()}));
+    // Create project record
+    if(!projs[id]) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
+    // Build PM list
+    const pms=[awardForm.pm1,awardForm.pm2,awardForm.pm3].filter(Boolean);
+    const pmDisplay=pms.join(", ")||"TBA";
+    // Create Job Order
+    const jo={
+      id:uid(), dealId:id,
+      joNo:"JO-"+String(jos.length+1).padStart(4,"0"),
+      client:awardModal.client,
+      ceNo:awardModal.ceNo,
+      projectName:awardModal.contact||awardModal.client,
+      ceType:awardModal.ceType,
+      product:awardModal.product,
+      value:awardModal.value||0,
+      awardTrigger:awardForm.awardTrigger,
+      triggerDate:awardForm.triggerDate,
+      triggerNote:awardForm.triggerNote,
+      pm1:awardForm.pm1, pm2:awardForm.pm2, pm3:awardForm.pm3,
+      coordinator:awardForm.coordinator,
+      aeAssigned:awardForm.aeAssigned||awardModal.salesOwner,
+      startDate:awardForm.startDate,
+      commsLink:awardForm.commsLink,
+      scopeNotes:awardForm.scopeNotes,
+      specialInstructions:awardForm.specialInstructions,
+      budgetStatus:"QS Budget Pending",
+      issuedBy:session?.name||"Manager",
+      issuedDate:today,
+      status:"Active",
+    };
+    upJos(js=>[jo,...js]);
+    // Create project card with PM/AE pre-populated
+    createProjectCard(id,{...awardModal,
+      pmAssigned:pmDisplay,
+      aeAssigned:jo.aeAssigned,
+      awardDate:awardForm.triggerDate||today,
+    });
+    // Load checklist
     setTimeout(()=>loadChecklistTemplate(id,awardModal.client),200);
-    logActivity(id,"Project Awarded",`${awardModal.client} awarded at Stage 06`,session?.name);
-    createProjectCard(id,awardModal);
+    // Log
+    logActivity(id,"Project Awarded",`${awardModal.client} — JO ${jo.joNo} issued. PM: ${pmDisplay}. Budget pending QS.`,session?.name);
     setAwardModal(null);
   };
   const logPayment=({dealId,amount,note,date})=>{
@@ -1670,7 +1736,7 @@ export default function App(){
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role];
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"datamanagement",l:"⚙ Data"}],
     Sales:        [{id:"home",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
     Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
     Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
@@ -1818,45 +1884,202 @@ export default function App(){
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
     if(page==="home") return(
       <Wrap>
-        <SecHead title={`Dashboard · ${todayL}`}/>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:12}}>
-          <KPI label="Pipeline"     value={fmtK(deals.filter(d=>d.stage!=="Lost").reduce((s,d)=>s+d.value,0))} color="#3b82f6"/>
-          <KPI label="Won Revenue"  value={fmtK(totRev)}   color="#10b981"/>
-          <KPI label="Collected"    value={fmtK(totColl)}  color="#059669" sub={`${fmtK(totOut)} outstanding`}/>
-          <KPI label="Gross Margin" value={grossMar+"%"}   color={grossMar>=20?"#059669":"#f59e0b"}/>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-          <KPI label="Active Projects" value={projList.length}    color="#f97316"/>
-          <KPI label="In Design"       value={projList.filter(d=>projs[d.id]?.currentStage==="Design").length} color="#8b5cf6"/>
-          <KPI label="Gross Profit"    value={fmtK(grossPro)}    color={grossPro>=0?"#10b981":"#ef4444"}/>
-          <KPI label="Swatches To Buy" value={swatches.filter(s=>s.status==="To Buy").length} color="#ef4444"/>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        {/* ── HEADER ─────────────────────────────────────────────────── */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
           <div>
-            <SecHead title="Recent Deals" action={<Btn small onClick={()=>setPage("pipeline")}>All deals →</Btn>}/>
-            {deals.slice(0,5).map(d=>(
-              <Card key={d.id}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div><div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div><div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>{d.product}</div></div>
-                  <div style={{display:"flex",gap:7,alignItems:"center"}}><Badge label={d.stage} color={STAGE_CLR[d.stage]}/><span style={{fontWeight:800,color:"#10b981"}}>{fmt(d.value)}</span></div>
-                </div>
-              </Card>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a",letterSpacing:"-.5px"}}>
+              Good {new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening"}, {session?.name?.split(" ")[0]}
+            </div>
+            <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>{todayL} · FabHub GMD</div>
+          </div>
+          {/* Quick Actions */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {[
+              {l:"+ Add Deal",       icon:"🤝", action:()=>openAddDeal(),              bg:"#1e293b", fg:"#fff"},
+              {l:"+ Award Project",  icon:"🏆", action:()=>setPage("pipeline"),         bg:"#059669", fg:"#fff"},
+              {l:"+ Log Expense",    icon:"💸", action:()=>openAddExp(),                bg:"#3b82f6", fg:"#fff"},
+              {l:"+ Log Payment",    icon:"💵", action:()=>setPage("billing"),           bg:"#8b5cf6", fg:"#fff"},
+              {l:"+ New PO",         icon:"📦", action:()=>setPage("procurement"),       bg:"#f59e0b", fg:"#fff"},
+            ].map(({l,icon,action,bg,fg})=>(
+              <button key={l} onClick={action}
+                style={{background:bg,border:"none",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:fg,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
+                {icon} {l}
+              </button>
             ))}
           </div>
-          <div>
-            <SecHead title="Project Margins" action={<Btn small onClick={()=>setPage("ops")}>All projects →</Btn>}/>
-            {projList.slice(0,5).map(d=>{
-              const p=projs[d.id]; if(!p) return null; const m=marginOf(p,d);
-              return(
-                <Card key={d.id} onClick={()=>{setSelProj(d.id);setPage("ops");}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                    <div><div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div><Badge label={p.currentStage||"Active"} color={PROD_CLR[p.currentStage]||"#94a3b8"}/></div>
-                    <div style={{fontWeight:800,color:m>=20?"#059669":"#f59e0b",fontSize:"1.05rem"}}>{m}%</div>
+        </div>
+
+        {/* ── ALERT BANNER ROW ────────────────────────────────────────── */}
+        {(()=>{
+          const alerts=[];
+          // Overdue invoices
+          const overdueInv=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
+          if(overdueInv.length) alerts.push({icon:"🚨",msg:`${overdueInv.length} overdue invoice${overdueInv.length>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
+          // Projects past TAT
+          const overdueTAT=Object.values(pcards).filter(p=>p.targetEndDate&&p.targetEndDate<today&&!DEPT_ORDER.every(d=>p.departments?.[d]?.done));
+          if(overdueTAT.length) alerts.push({icon:"⏰",msg:`${overdueTAT.length} project${overdueTAT.length>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>setPage("projects")});
+          // QS budget pending
+          const qsPending=jos.filter(j=>j.budgetStatus==="QS Budget Pending");
+          if(qsPending.length) alerts.push({icon:"⚠️",msg:`${qsPending.length} project${qsPending.length>1?"s":""} need QS budget`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("costanalysis")});
+          // MRs pending
+          const mrPending=mreqs.filter(m=>m.status==="Submitted");
+          if(mrPending.length) alerts.push({icon:"📋",msg:`${mrPending.length} material request${mrPending.length>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("procurement")});
+          // Addenda needing Sales
+          const addendaAlert=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");
+          if(addendaAlert.length) alerts.push({icon:"⚠️",msg:`${addendaAlert.length} scope change${addendaAlert.length>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
+          if(!alerts.length) return null;
+          return(
+            <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(alerts.length,3)},1fr)`,gap:8,marginBottom:16}}>
+              {alerts.slice(0,3).map((a,i)=>(
+                <div key={i} onClick={a.action} style={{background:a.bg,border:`1.5px solid ${a.border}`,borderRadius:10,padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:"1rem"}}>{a.icon}</span>
+                  <span style={{fontSize:".78rem",fontWeight:700,color:a.color}}>{a.msg}</span>
+                  <span style={{marginLeft:"auto",fontSize:".72rem",color:a.color}}>→</span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* ── KPI STRIP ───────────────────────────────────────────────── */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
+          {[
+            {l:"Pipeline",      v:fmtK(deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)).length+" deals"},
+            {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects"},
+            {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`},
+            {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
+            {l:"Active JOs",    v:jos.filter(j=>j.status==="Active").length, c:"#f97316", sub:"job orders issued"},
+            {l:"Pending PRs",   v:prs.filter(p=>p.status==="Pending Approval").length, c:"#8b5cf6", sub:"awaiting approval"},
+          ].map(({l,v,c,sub})=>(
+            <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.35rem",color:c}}>{v}</div>
+              <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
+              {sub&&<div style={{fontSize:".67rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* ── MAIN CONTENT GRID ───────────────────────────────────────── */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+
+          {/* Active Projects — TAT status */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>🏗 Active Projects</span>
+              <button onClick={()=>setPage("projects")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View all</button>
+            </div>
+            <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
+              {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No active projects</div>}
+              {wonDeals.slice(0,6).map(d=>{
+                const pc=pcards[d.id];
+                const jo=jos.find(j=>j.dealId===d.id);
+                const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date())/(1000*60*60*24)):null;
+                const isOver=daysLeft!==null&&daysLeft<0;
+                const deptsDone=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
+                return(
+                  <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                      <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{jo?.pm1||"No PM"} · {deptsDone}/6 depts</div>
+                    </div>
+                    {daysLeft!==null?(
+                      <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",padding:"2px 8px",borderRadius:20,flexShrink:0}}>
+                        {isOver?`${Math.abs(daysLeft)}d over`:`${daysLeft}d left`}
+                      </span>
+                    ):<span style={{fontSize:".68rem",color:"#e2e8f0",flexShrink:0}}>No TAT</span>}
                   </div>
-                  <ProgBar pct={overallProg(p)} color={PROD_CLR[p.currentStage]||"#94a3b8"}/>
-                </Card>
-              );
-            })}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Collections snapshot */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#4ade80",fontSize:".85rem"}}>💵 Collections</span>
+              <button onClick={()=>setPage("billing")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View billing</button>
+            </div>
+            <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
+              {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No awarded projects</div>}
+              {wonDeals.slice(0,6).map(d=>{
+                const ms=billings.filter(b=>b.dealId===d.id);
+                const billed=ms.reduce((s,m)=>s+Number(m.amount||0),0);
+                const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+                const balance=billed-collected;
+                const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+                return(
+                  <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {hasOverdue&&<span style={{color:"#ef4444",marginRight:4}}>🔴</span>}{d.client}
+                      </div>
+                      <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{ms.length} milestone{ms.length!==1?"s":""} · Billed ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                    </div>
+                    <div style={{textAlign:"right",flexShrink:0}}>
+                      <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".82rem"}}>
+                        {balance>0?`-₱${balance.toLocaleString("en-PH",{minimumFractionDigits:0})}`:"✓ Clear"}
+                      </div>
+                      {balance>0&&<div style={{fontSize:".65rem",color:"#94a3b8"}}>outstanding</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── BOTTOM ROW ──────────────────────────────────────────────── */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+
+          {/* Recent Activity */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#a78bfa",fontSize:".85rem"}}>📋 Recent Activity</span>
+            </div>
+            <div style={{padding:"4px 0",maxHeight:200,overflowY:"auto"}}>
+              {actLog.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No activity yet</div>}
+              {actLog.slice(0,10).map(entry=>{
+                const clr={"New Deal":"#10b981","Project Awarded":"#f59e0b","Stage Change":"#3b82f6","Deal Updated":"#94a3b8","Department Done":"#8b5cf6","TAT Set":"#06b6d4"}[entry.action]||"#94a3b8";
+                return(
+                  <div key={entry.id} style={{display:"flex",gap:10,padding:"7px 14px",borderBottom:"1px solid #f8fafc",alignItems:"flex-start"}}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:clr,flexShrink:0,marginTop:5}}/>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".78rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.detail}</div>
+                      <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1}}>{entry.by} · {entry.date} {entry.time}</div>
+                    </div>
+                    <span style={{fontSize:".62rem",color:clr,background:clr+"18",padding:"1px 6px",borderRadius:20,flexShrink:0,fontWeight:600}}>{entry.action}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Department Status Overview */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#fb923c",fontSize:".85rem"}}>🏢 Dept Status — Active Projects</span>
+            </div>
+            <div style={{padding:"12px 16px"}}>
+              {DEPT_ORDER.map(dept=>{
+                const clr=DEPT_CLR[dept];
+                const total=wonDeals.length;
+                const done=Object.values(pcards).filter(p=>p.departments?.[dept]?.done).length;
+                const pct=total>0?Math.round(done/total*100):0;
+                return(
+                  <div key={dept} style={{marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:".75rem",marginBottom:3}}>
+                      <span style={{fontWeight:600,color:"#475569"}}>{dept}</span>
+                      <span style={{color:clr,fontWeight:700}}>{done}/{total} done</span>
+                    </div>
+                    <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:pct+"%",background:clr,borderRadius:3,transition:"width .5s"}}/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </Wrap>
@@ -1867,7 +2090,7 @@ export default function App(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
-            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL}</div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL} · <span style={{color:"#3b82f6"}}>drag cards between stages</span></div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <label style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
@@ -2069,6 +2292,7 @@ export default function App(){
                       </div>
                       <div style={{display:"flex",gap:8}}>
                         <button onClick={()=>{openEditDeal(d);setStageFilter(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>✏ Edit</button>
+                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>✕</button>}
                         {!WON_STAGES.includes(d.stage)&&<button onClick={()=>{openAward(d);setStageFilter(null);}} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>}
                       </div>
                     </div>
@@ -2095,7 +2319,22 @@ export default function App(){
                   const stageColor=STAGE_CLR[stage]||"#94a3b8";
                   const totalVal=sDeals.reduce((s,d)=>s+Number(d.value||0),0);
                   return(
-                    <div key={stage} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${stageColor}33`,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                    <div key={stage}
+                      onDragOver={e=>{e.preventDefault();setDragOver(stage);}}
+                      onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOver(null);}}
+                      onDrop={e=>{
+                        e.preventDefault(); setDragOver(null);
+                        if(!dragDeal) return;
+                        const deal=deals.find(d=>d.id===dragDeal);
+                        if(!deal||deal.stage===stage) return;
+                        if(WON_STAGES.includes(stage)){openAward(deal);setDragDeal(null);return;}
+                        if(PAULO_GATE.includes(stage)&&role==="Sales"){
+                          if(!window.confirm("Moving to "+stage.replace(/^\d+ · /,"")+" requires manager approval. Continue?"))return;
+                        }
+                        stageQ(dragDeal,stage);
+                        setDragDeal(null);
+                      }}
+                      style={{background:dragOver===stage?"#eff6ff":"#fff",borderRadius:12,border:`1.5px solid ${dragOver===stage?"#93c5fd":stageColor+"44"}`,transition:"all .15s",minHeight:100}}>
                       {/* Stage header */}
                       <div style={{background:stageColor+"18",borderBottom:`1.5px solid ${stageColor}22`,padding:"10px 12px"}}>
                         <div style={{fontWeight:700,color:stageColor,fontSize:".75rem",lineHeight:1.3}}>{stage.replace(/^\d+ · /,"")}</div>
@@ -2110,8 +2349,13 @@ export default function App(){
                           <div style={{padding:"12px 8px",textAlign:"center",color:"#cbd5e1",fontSize:".73rem"}}>No deals</div>
                         )}
                         {sDeals.map(d=>(
-                          <div key={d.id} style={{background:"#f8fafc",borderRadius:8,padding:"10px 10px",marginBottom:6,border:"1px solid #e2e8f0",cursor:"pointer",transition:"all .15s"}}
-                            onMouseEnter={e=>{e.currentTarget.style.borderColor=stageColor;e.currentTarget.style.background="#fff";}}
+                          <div key={d.id}
+                            draggable
+                            onDragStart={e=>{setDragDeal(d.id);e.currentTarget.style.opacity=".45";}}
+                            onDragEnd={e=>{setDragDeal(null);setDragOver(null);e.currentTarget.style.opacity="1";}}
+                            style={{background:dragDeal===d.id?"#f0f9ff":"#f8fafc",borderRadius:8,padding:"10px 10px",marginBottom:6,border:"1.5px solid #e2e8f0",cursor:"grab",transition:"all .15s"}}
+                            onMouseEnter={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor=stageColor;e.currentTarget.style.background="#fff";}}}
+                            onMouseLeave={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}}
                             onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}>
                             <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:3}}>{d.client}</div>
                             <div style={{fontSize:".7rem",color:"#64748b",marginBottom:5}}>
@@ -2196,6 +2440,7 @@ export default function App(){
                       </div>
                       <div style={{display:"flex",gap:6}}>
                         <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"? This removes the deal, project card, checklist, and JO."))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
                       </div>
                     </div>
                   );
@@ -2222,46 +2467,159 @@ export default function App(){
 
         {/* Award Confirmation Modal */}
         {awardModal&&(
-          <Modal open title={`🏆 Award Project — ${awardModal.client}`} onClose={()=>setAwardModal(null)} wide>
-            <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
-              <div style={{fontWeight:700,color:"#059669",marginBottom:8}}>Awarding this deal will:</div>
-              <div style={{fontSize:".82rem",color:"#065f46",lineHeight:1.8}}>
-                ✓ Move to <strong>Stage 06 · Project Kickoff</strong><br/>
-                ✓ Create the project in Operations<br/>
-                ✓ Auto-load the GMD standard checklist (19 items)<br/>
-                ✓ Set payment details below
-              </div>
+          <Modal open title={`🏆 Award — ${awardModal.client}`} onClose={()=>setAwardModal(null)} wide>
+
+            {/* Step indicator — 2 steps only, QS budget is separate */}
+            <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
+              {[["1","Confirm Award","#10b981",awardStep>=1],["2","Job Order","#3b82f6",awardStep>=2]].map(([num,label,clr,active],i)=>(
+                <div key={num} onClick={()=>awardStep>i+1&&setAwardStep(i+1)}
+                  style={{flex:1,padding:"12px 8px",textAlign:"center",background:awardStep===i+1?clr:active?"#f8fafc":"#fff",cursor:awardStep>i+1?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
+                  <div style={{fontSize:".82rem",fontWeight:700,color:awardStep===i+1?"#fff":active?"#374151":"#cbd5e1"}}>{num}. {label}</div>
+                  <div style={{fontSize:".68rem",color:awardStep===i+1?"rgba(255,255,255,.75)":awardStep>i+1?"#10b981":"#e2e8f0",marginTop:2}}>{awardStep>i+1?"✓ Done":awardStep===i+1?"In progress":"—"}</div>
+                </div>
+              ))}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-              <Fld label="Invoice Amount (₱)" required>
-                <Inp type="number" value={awardForm.invoiced} onChange={e=>setAwardForm(p=>({...p,invoiced:e.target.value}))}/>
-              </Fld>
-              <Fld label="Initial Payment Received (₱)">
-                <Inp type="number" value={awardForm.amountPaid} onChange={e=>setAwardForm(p=>({...p,amountPaid:e.target.value}))} placeholder="0"/>
-              </Fld>
-              <Fld label="Payment Status">
-                <Sel value={awardForm.paymentStatus} onChange={e=>setAwardForm(p=>({...p,paymentStatus:e.target.value}))}>
-                  {PAY_STATUS.map(s=><option key={s}>{s}</option>)}
-                </Sel>
-              </Fld>
-              <Fld label="Payment Due Date">
-                <Inp type="date" value={awardForm.dueDate} onChange={e=>setAwardForm(p=>({...p,dueDate:e.target.value}))}/>
-              </Fld>
-              <div style={{gridColumn:"1/-1"}}>
-                <Fld label="Payment Terms">
-                  <Inp value={awardForm.terms} onChange={e=>setAwardForm(p=>({...p,terms:e.target.value}))}/>
-                </Fld>
+
+            {/* ── STEP 1: Confirm Award — Sales fills ─────────────────────── */}
+            {awardStep===1&&(
+              <div>
+                <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"14px 18px",marginBottom:20}}>
+                  <div style={{fontWeight:700,color:"#059669",marginBottom:8,fontSize:".9rem"}}>Confirming this award will:</div>
+                  <div style={{fontSize:".82rem",color:"#065f46",lineHeight:2}}>
+                    ✓ Move to <strong>Stage 06 · Project Kickoff</strong><br/>
+                    ✓ Issue a <strong>Job Order</strong> to all departments<br/>
+                    ✓ Create a <strong>Project Card</strong> — all depts start their task checklists<br/>
+                    ✓ Notify <strong>Finance</strong> to set up billing milestones<br/>
+                    ✓ Flag <strong>QS</strong> to set the budget target in Cost Analysis
+                  </div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                  <Fld label="Award Trigger" required hint="What officially confirmed this project?">
+                    <Sel value={awardForm.awardTrigger} onChange={e=>setAwardForm(p=>({...p,awardTrigger:e.target.value}))}>
+                      {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="Date Confirmed">
+                    <Inp type="date" value={awardForm.triggerDate} onChange={e=>setAwardForm(p=>({...p,triggerDate:e.target.value}))}/>
+                  </Fld>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Notes" hint="PO number, email confirmation details, etc. (optional)">
+                      <Inp rows={2} value={awardForm.triggerNote} onChange={e=>setAwardForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from client@email.com on May 18…"/>
+                    </Fld>
+                  </div>
+                </div>
+                {/* Payment notice */}
+                <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",marginTop:14,fontSize:".8rem",color:"#1d4ed8"}}>
+                  💳 <strong>Payment status will be set to Unpaid.</strong> Finance will receive a notification to set up billing milestones and track collections.
+                </div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginTop:18}}>
+                  <button onClick={()=>setAwardStep(2)}
+                    style={{background:"#1e293b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>
+                    Next: Job Order →
+                  </button>
+                </div>
               </div>
-              <div style={{gridColumn:"1/-1"}}>
-                <Fld label="Award Notes">
-                  <Inp rows={2} value={awardForm.notes} onChange={e=>setAwardForm(p=>({...p,notes:e.target.value}))} placeholder="Any notes for this award…"/>
-                </Fld>
+            )}
+
+            {/* ── STEP 2: Job Order — Ops/Manager/Sales fills ─────────────── */}
+            {awardStep===2&&(
+              <div>
+                <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"12px 16px",marginBottom:18,fontSize:".82rem",color:"#1d4ed8"}}>
+                  📋 This Job Order is the official start signal. Once issued, every department sees a new project in their queue.
+                  <strong> QS (Rodney) will set the budget target separately in Cost Analysis.</strong>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+
+                  {/* PM fields — up to 3 */}
+                  <Fld label="Project Manager 1" required hint="Primary PM — owns day-to-day execution">
+                    <Sel value={awardForm.pm1} onChange={e=>setAwardForm(p=>({...p,pm1:e.target.value}))}>
+                      <option value="">— Assign PM —</option>
+                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="Project Manager 2" hint="For large scope — second PM">
+                    <Sel value={awardForm.pm2} onChange={e=>setAwardForm(p=>({...p,pm2:e.target.value}))}>
+                      <option value="">— Optional —</option>
+                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="Coordinator" hint="Handles logistics, permits, site coordination">
+                    <Sel value={awardForm.coordinator} onChange={e=>setAwardForm(p=>({...p,coordinator:e.target.value}))}>
+                      <option value="">— Optional —</option>
+                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="PM 3 / Support" hint="Additional PM for complex multi-site projects">
+                    <Sel value={awardForm.pm3} onChange={e=>setAwardForm(p=>({...p,pm3:e.target.value}))}>
+                      <option value="">— Optional —</option>
+                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+                    </Sel>
+                  </Fld>
+
+                  {/* AE + dates */}
+                  <Fld label="Account Executive (AE)" hint="Client relationship owner — pre-filled from deal, change if needed">
+                    <Sel value={awardForm.aeAssigned} onChange={e=>setAwardForm(p=>({...p,aeAssigned:e.target.value}))}>
+                      <option value="">— Assign AE —</option>
+                      {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="Target Start Date">
+                    <Inp type="date" value={awardForm.startDate} onChange={e=>setAwardForm(p=>({...p,startDate:e.target.value}))}/>
+                  </Fld>
+
+                  {/* Comms */}
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
+                      <Inp value={awardForm.commsLink} onChange={e=>setAwardForm(p=>({...p,commsLink:e.target.value}))} placeholder="https://chat.whatsapp.com/…"/>
+                    </Fld>
+                  </div>
+
+                  {/* Scope */}
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Scope of Work" required hint="Sales + PM align on this together — what exactly is being built?">
+                      <Inp rows={4} value={awardForm.scopeNotes} onChange={e=>setAwardForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, electrical (8 downlights, 2 track lights)"/>
+                    </Fld>
+                  </div>
+
+                  {/* Special instructions */}
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Special Instructions / Venue Requirements"
+                      hint="Delivery restrictions, permit requirements, mall rules, client preferences (Venue Memory coming soon)">
+                      <Inp rows={3} value={awardForm.specialInstructions} onChange={e=>setAwardForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
+                    </Fld>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>
+                      💡 Venue Memory (SM, Ayala, Robinsons requirements) — coming in a future update
+                    </div>
+                  </div>
+                </div>
+
+                {/* JO Preview */}
+                {awardForm.pm1&&(
+                  <div style={{background:"#f8fafc",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 16px",marginTop:14}}>
+                    <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>JO Preview</div>
+                    <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:".8rem"}}>
+                      <div><span style={{color:"#94a3b8"}}>Client: </span><strong>{awardModal.client}</strong></div>
+                      <div><span style={{color:"#94a3b8"}}>CE: </span><strong>{awardModal.ceNo||"TBA"}</strong></div>
+                      <div><span style={{color:"#94a3b8"}}>PM: </span><strong>{[awardForm.pm1,awardForm.pm2,awardForm.pm3].filter(Boolean).join(", ")}</strong></div>
+                      {awardForm.coordinator&&<div><span style={{color:"#94a3b8"}}>Coordinator: </span><strong>{awardForm.coordinator}</strong></div>}
+                      <div><span style={{color:"#94a3b8"}}>AE: </span><strong>{awardForm.aeAssigned||"—"}</strong></div>
+                      <div><span style={{color:"#f59e0b",fontWeight:700}}>⏳ QS Budget: Pending</span></div>
+                    </div>
+                  </div>
+                )}
+
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
+                  <button onClick={()=>setAwardStep(1)}
+                    style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>
+                    ← Back
+                  </button>
+                  <button onClick={confirmAward} disabled={!awardForm.pm1||!awardForm.scopeNotes}
+                    style={{background:awardForm.pm1&&awardForm.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:awardForm.pm1&&awardForm.scopeNotes?"#fff":"#94a3b8",cursor:awardForm.pm1&&awardForm.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
+                    🏆 Confirm Award & Issue Job Order
+                  </button>
+                </div>
               </div>
-            </div>
-            <div style={{display:"flex",gap:10,marginTop:8}}>
-              <Btn full variant="green" onClick={confirmAward}>🏆 Confirm Award</Btn>
-              <Btn variant="ghost" onClick={()=>setAwardModal(null)}>Cancel</Btn>
-            </div>
+            )}
           </Modal>
         )}
 
@@ -2371,6 +2729,7 @@ export default function App(){
                 <div style={{fontWeight:800,color:"#10b981",fontSize:"1.15rem"}}>{fmt(d.value)}</div>
                 <div style={{display:"flex",gap:6,marginTop:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
                   <Btn small variant="ghost" onClick={()=>openEditDeal(d)}>✏ Edit</Btn>
+                  {role==="Manager"&&<Btn small variant="danger" onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}}>✕</Btn>}
                 </div>
                 <div style={{marginTop:8,minWidth:160}}>
                   <select value={d.stage} onChange={e=>stageQ(d.id,e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
@@ -2400,6 +2759,27 @@ export default function App(){
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
     if(page==="home"&&role==="QS") return(
       <Wrap>
+        {/* QS action items */}
+        {(()=>{
+          const pendingBudget=jos.filter(j=>j.budgetStatus==="QS Budget Pending");
+          return pendingBudget.length>0?(
+            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"14px 18px",marginBottom:20}}>
+              <div style={{fontWeight:700,color:"#92400e",marginBottom:8}}>⚠️ {pendingBudget.length} project{pendingBudget.length>1?"s":""} need{pendingBudget.length===1?"s":""} your budget target</div>
+              {pendingBudget.map(j=>(
+                <div key={j.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 10px",background:"rgba(255,255,255,.7)",borderRadius:8,marginBottom:6,flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{j.client}</div>
+                    <div style={{fontSize:".73rem",color:"#64748b"}}>{j.ceNo||"No CE"} · {j.joNo} · Start: {j.startDate||"TBA"}</div>
+                  </div>
+                  <button onClick={()=>setPage("costanalysis")}
+                    style={{background:"#d97706",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>
+                    Set Budget →
+                  </button>
+                </div>
+              ))}
+            </div>
+          ):null;
+        })()}
         <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
       </Wrap>
     );
@@ -2425,6 +2805,25 @@ export default function App(){
     );
     if(page==="home") return(
       <Wrap>
+        {/* Finance: new awarded projects needing billing milestones */}
+        {(()=>{
+          const needsBilling=wonDeals.filter(d=>{
+            const ms=billings.filter(b=>b.dealId===d.id);
+            return ms.length===0;
+          });
+          return needsBilling.length>0?(
+            <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".88rem"}}>📋 {needsBilling.length} project{needsBilling.length>1?"s":""} need{needsBilling.length===1?"s":""} billing milestones set up</div>
+                <div style={{fontSize:".73rem",color:"#1d4ed8",marginTop:3,opacity:.8}}>{needsBilling.slice(0,3).map(d=>d.client).join(", ")}{needsBilling.length>3?` +${needsBilling.length-3} more`:""}</div>
+              </div>
+              <button onClick={()=>setPage("billing")}
+                style={{background:"#1d4ed8",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>
+                Set Up Billing →
+              </button>
+            </div>
+          ):null;
+        })()}
         <DailyCashPosition
           cashPositions={cashPositions}
           saveDayPos={saveDayPos}
@@ -2602,7 +3001,7 @@ export default function App(){
       <ProjectCards
         pcards={pcards} wonDeals={wonDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
-        setProjectTAT={setProjectTAT}
+        setProjectTAT={setProjectTAT} jos={jos}
         session={session} role={role}/>
     </Wrap>
   );
@@ -2652,6 +3051,22 @@ export default function App(){
         addMilestone={addMilestone} updateMilestone={updateMilestone}
         deleteMilestone={deleteMilestone} logBillingPayment={logBillingPayment}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}/>
+    </Wrap>
+  );
+
+  // ── DATA MANAGEMENT (Manager only) ──────────────────────────────────────────
+  if(page==="datamanagement"&&role==="Manager") return(
+    <Wrap>
+      <DataManagement
+        deals={deals} exps={exps} inflows={inflows} jos={jos} prs={prs}
+        mreqs={mreqs} breqs={breqs} addenda={addenda} billings={billings}
+        pcards={pcards} checklist={checklist} cashPositions={cashPositions}
+        actLog={actLog} budgets={budgets}
+        upDeals={upDeals} upExps={upExps} upInflows={upInflows} upJos={upJos}
+        upPrs={upPrs} upMreqs={upMreqs} upBreqs={upBreqs} upAddenda={upAddenda}
+        upBillings={upBillings} upPcards={upPcards} upChecklist={upChecklist}
+        upCashPos={upCashPos} setActLog={setActLog} upBudgets={upBudgets}
+        persist={persist}/>
     </Wrap>
   );
 
@@ -5531,6 +5946,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                   </div>
                 )}
                 {mr.status==="Converted to PR"&&<span style={{fontSize:".75rem",color:"#059669",fontWeight:700}}>✓ PO Created</span>}
+                {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete this material request?"))delMR(mr.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>}
               </div>
             </div>
           );
@@ -5680,6 +6096,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
                       style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
                       ✕ Reject
                     </button>
+                    {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete this budget request?"))delBR(br.id);}} style={{background:"#fee2e2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 10px",fontWeight:700,fontSize:".73rem",color:"#991b1b",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
                   </div>
                 )}
                 {br.status==="Approved"&&canApprove&&(
@@ -6078,7 +6495,7 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
 }
 
 // ─── PROJECT CARDS ────────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,session,role}){
+function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,session,role}){
   const[selDeal,setSelDeal]=useState(null);
   const[selDept,setSelDept]=useState(null);
 
@@ -6151,6 +6568,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                       <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>{d.client}</div>
                       {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
                       <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{d.ceNo||"No CE"} · {fmt(d.value)}</div>
+                  {(()=>{const j=jos.find(j=>j.dealId===d.id);return j?(<div style={{fontSize:".7rem",color:"#3b82f6",marginTop:2}}>📋 {j.joNo} · PM: {[j.pm1,j.pm2,j.pm3].filter(Boolean).join(", ")||"TBA"}{j.coordinator?` · Coord: ${j.coordinator}`:""}</div>):null;})()}
                     </div>
                     <div style={{textAlign:"right"}}>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
@@ -6757,6 +7175,224 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ─── DATA MANAGEMENT (Manager Only) ──────────────────────────────────────────
+function DataManagement({
+  deals,exps,inflows,jos,prs,mreqs,breqs,addenda,billings,pcards,checklist,
+  cashPositions,actLog,budgets,
+  upDeals,upExps,upInflows,upJos,upPrs,upMreqs,upBreqs,upAddenda,
+  upBillings,upPcards,upChecklist,upCashPos,setActLog,upBudgets,persist
+}){
+  const[confirmPurge,setConfirmPurge]=useState(null); // holds purge config
+  const[purgeWord,setPurgeWord]=useState("");
+  const[purgeResult,setPurgeResult]=useState(null);
+
+  const PURGE_WORD = "PURGE";
+
+  // Data counts for summary
+  const counts = {
+    "Deals / Pipeline":    deals.length,
+    "Expenses":            exps.length,
+    "Inflows":             inflows.length,
+    "Job Orders":          jos.length,
+    "Purchase Requests":   prs.length,
+    "Material Requests":   mreqs.length,
+    "Budget Requests":     breqs.length,
+    "Addenda":             addenda.length,
+    "Billing Milestones":  billings.length,
+    "Project Cards":       Object.keys(pcards).length,
+    "Checklist Items":     checklist.length,
+    "Cash Position Days":  Object.keys(cashPositions).length,
+    "Activity Log":        actLog.length,
+  };
+
+  const totalRecords = Object.values(counts).reduce((s,v)=>s+v,0);
+
+  // Purge options
+  const PURGE_OPTIONS = [
+    {
+      key:"all_transactions",
+      label:"🧹 Full Purge — Go Live Clean",
+      desc:"Removes ALL transaction data. Keeps users, clients, and system settings. Use this when you're ready to start for real.",
+      color:"#dc2626",
+      bgColor:"#fef2f2",
+      borderColor:"#fecaca",
+      items:["Deals / Pipeline","Expenses","Inflows","Job Orders","Purchase Requests","Material Requests","Budget Requests","Addenda","Billing Milestones","Project Cards","Checklist Items","Cash Position Days","Activity Log"],
+      action:()=>{
+        upDeals(()=>[]);upExps(()=>[]);upInflows(()=>[]);upJos(()=>[]);
+        upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);upAddenda(()=>[]);
+        upBillings(()=>[]);upPcards(()=>({}));upChecklist(()=>[]);
+        upCashPos(()=>({}));upBudgets(()=>({}));
+        setActLog([]);persist("gmdv5:actlog",[]);
+        return "Full purge complete. FabHub is clean and ready for real data.";
+      }
+    },
+    {
+      key:"deals_only",
+      label:"🗑 Clear Pipeline Only",
+      desc:"Removes all deals, project cards, JOs, checklists, addenda. Keeps expenses, billing, and cash position.",
+      color:"#f59e0b",
+      bgColor:"#fffbeb",
+      borderColor:"#fde68a",
+      items:["Deals / Pipeline","Job Orders","Project Cards","Checklist Items","Addenda"],
+      action:()=>{
+        upDeals(()=>[]);upJos(()=>[]);upPcards(()=>({}));
+        upChecklist(()=>[]);upAddenda(()=>[]);
+        return "Pipeline cleared. Expenses, billing, and cash position preserved.";
+      }
+    },
+    {
+      key:"finance_only",
+      label:"🗑 Clear Finance Data Only",
+      desc:"Removes expenses, inflows, billing milestones, and cash position history. Pipeline and project cards untouched.",
+      color:"#3b82f6",
+      bgColor:"#eff6ff",
+      borderColor:"#93c5fd",
+      items:["Expenses","Inflows","Billing Milestones","Cash Position Days"],
+      action:()=>{
+        upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));
+        return "Finance data cleared. Pipeline and projects untouched.";
+      }
+    },
+    {
+      key:"procurement_only",
+      label:"🗑 Clear Procurement Only",
+      desc:"Removes all PRs, MRs, and Budget Requests. Deals and billing untouched.",
+      color:"#06b6d4",
+      bgColor:"#ecfeff",
+      borderColor:"#a5f3fc",
+      items:["Purchase Requests","Material Requests","Budget Requests"],
+      action:()=>{
+        upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);
+        return "Procurement data cleared.";
+      }
+    },
+    {
+      key:"log_only",
+      label:"🗑 Clear Activity Log Only",
+      desc:"Clears the activity feed. No other data affected.",
+      color:"#6b7280",
+      bgColor:"#f9fafb",
+      borderColor:"#e5e7eb",
+      items:["Activity Log"],
+      action:()=>{
+        setActLog([]);persist("gmdv5:actlog",[]);
+        return "Activity log cleared.";
+      }
+    },
+  ];
+
+  const executePurge=()=>{
+    if(purgeWord!==PURGE_WORD) return;
+    const opt=PURGE_OPTIONS.find(o=>o.key===confirmPurge);
+    if(!opt) return;
+    const msg=opt.action();
+    setPurgeResult(msg);
+    setConfirmPurge(null);
+    setPurgeWord("");
+  };
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{marginBottom:24}}>
+        <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>⚙ Data Management</h2>
+        <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:3}}>Manager only — surgical delete and purge controls</div>
+      </div>
+
+      {/* Success banner */}
+      {purgeResult&&(
+        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"12px 18px",marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontWeight:700,color:"#059669"}}> ✅ {purgeResult}</span>
+          <button onClick={()=>setPurgeResult(null)} style={{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:"1rem"}}>✕</button>
+        </div>
+      )}
+
+      {/* Current data summary */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"18px 20px",marginBottom:20}}>
+        <div style={{fontWeight:700,color:"#0f172a",marginBottom:14,fontSize:".9rem"}}>Current Data Summary</div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          {Object.entries(counts).map(([label,count])=>(
+            <div key={label} style={{display:"flex",justifyContent:"space-between",padding:"7px 12px",background:count>0?"#f8fafc":"#fff",borderRadius:8,border:"1px solid #f1f5f9"}}>
+              <span style={{fontSize:".78rem",color:"#475569"}}>{label}</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:count>0?"#0f172a":"#cbd5e1"}}>{count}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{borderTop:"1px solid #f1f5f9",paddingTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontSize:".82rem",color:"#64748b"}}>Total records in system</span>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#0f172a"}}>{totalRecords.toLocaleString()}</span>
+        </div>
+        <div style={{marginTop:8,fontSize:".72rem",color:"#94a3b8",fontStyle:"italic"}}>
+          🔒 Protected (never deleted): {22} team members · 207 GMD clients · System configuration
+        </div>
+      </div>
+
+      {/* Purge options */}
+      <div style={{marginBottom:12,fontWeight:700,color:"#dc2626",fontSize:".88rem"}}>⚠️ Purge Controls — These actions are permanent and cannot be undone</div>
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {PURGE_OPTIONS.map(opt=>(
+          <div key={opt.key} style={{background:opt.bgColor,border:`1.5px solid ${opt.borderColor}`,borderRadius:12,padding:"16px 20px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,color:opt.color,fontSize:".9rem",marginBottom:4}}>{opt.label}</div>
+                <div style={{fontSize:".78rem",color:"#475569",marginBottom:8}}>{opt.desc}</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {opt.items.map(item=>(
+                    <span key={item} style={{fontSize:".68rem",background:"rgba(0,0,0,.06)",color:"#475569",padding:"1px 9px",borderRadius:20}}>
+                      {item} ({counts[item]||0})
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <button onClick={()=>{setConfirmPurge(opt.key);setPurgeWord("");}}
+                style={{background:opt.color,border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:"pointer",flexShrink:0}}>
+                Purge →
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Confirm purge modal */}
+      {confirmPurge&&(()=>{
+        const opt=PURGE_OPTIONS.find(o=>o.key===confirmPurge);
+        return(
+          <Modal open title="⚠️ Confirm Purge" onClose={()=>{setConfirmPurge(null);setPurgeWord("");}}>
+            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"14px 16px",marginBottom:18}}>
+              <div style={{fontWeight:700,color:"#dc2626",marginBottom:6}}>{opt.label}</div>
+              <div style={{fontSize:".82rem",color:"#7f1d1d"}}>{opt.desc}</div>
+            </div>
+            <div style={{fontSize:".85rem",color:"#0f172a",marginBottom:12}}>
+              This will permanently delete <strong>{opt.items.reduce((s,i)=>s+(counts[i]||0),0)} records</strong>. This cannot be undone.
+            </div>
+            <div style={{fontSize:".85rem",color:"#0f172a",marginBottom:8}}>
+              Type <strong style={{color:"#dc2626",letterSpacing:"2px"}}>{PURGE_WORD}</strong> to confirm:
+            </div>
+            <input
+              type="text"
+              value={purgeWord}
+              onChange={e=>setPurgeWord(e.target.value.toUpperCase())}
+              placeholder={`Type ${PURGE_WORD} to confirm`}
+              autoFocus
+              style={{width:"100%",border:`2px solid ${purgeWord===PURGE_WORD?"#10b981":"#e2e8f0"}`,borderRadius:8,padding:"10px 14px",fontFamily:"inherit",fontSize:"1rem",fontWeight:700,letterSpacing:"3px",color:"#dc2626",boxSizing:"border-box",outline:"none",textTransform:"uppercase",marginBottom:16}}
+            />
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>{setConfirmPurge(null);setPurgeWord("");}}
+                style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#475569",cursor:"pointer"}}>
+                Cancel — Keep Data
+              </button>
+              <button onClick={executePurge} disabled={purgeWord!==PURGE_WORD}
+                style={{flex:1,background:purgeWord===PURGE_WORD?"#dc2626":"#e2e8f0",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:purgeWord===PURGE_WORD?"#fff":"#94a3b8",cursor:purgeWord===PURGE_WORD?"pointer":"not-allowed"}}>
+                ✓ Confirm Purge
+              </button>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
