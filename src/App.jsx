@@ -3002,6 +3002,7 @@ export default function App(){
         pcards={pcards} wonDeals={wonDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
+        delDeal={delDeal} delPcard={delPcard}
         session={session} role={role}/>
     </Wrap>
   );
@@ -6495,7 +6496,7 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
 }
 
 // ─── PROJECT CARDS ────────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,session,role}){
+function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role}){
   const[selDeal,setSelDeal]=useState(null);
   const[selDept,setSelDept]=useState(null);
 
@@ -6530,6 +6531,20 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
         <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>One card per awarded project — all departments work from the same source</div>
       </div>
 
+      {/* Duplicate warning */}
+      {(()=>{
+        const ceCounts={};
+        wonDeals.forEach(d=>{
+          const key=d.ceNo&&d.ceNo.trim()&&d.ceNo!=="No CE"?d.ceNo:null;
+          if(key) ceCounts[key]=(ceCounts[key]||0)+1;
+        });
+        const dupes=Object.entries(ceCounts).filter(([,c])=>c>1);
+        return dupes.length>0?(
+          <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 16px",marginBottom:16,fontSize:".82rem",color:"#dc2626"}}>
+            ⚠️ <strong>{dupes.length} duplicate CE number{dupes.length>1?"s":""} detected</strong> — {dupes.map(([k,c])=>`${k} (×${c})`).join(", ")}. Delete the extras using the ✕ button on each card.
+          </div>
+        ):null;
+      })()}
       {/* Summary KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
         {[
@@ -6559,15 +6574,28 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
               const pct=pc?projectProgress(pc):0;
               const doneCount=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
               return(
-                <div key={d.id} onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}}
-                  style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 18px",cursor:"pointer",transition:"all .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
+                <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 18px",transition:"all .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)",position:"relative"}}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor="#3b82f6";e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)";}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)";}}>
+                  {/* Delete button — Manager only */}
+                  {role==="Manager"&&(
+                    <button
+                      onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+" ("+( d.contact||d.ceNo||"No CE")+")?\nThis will also delete the deal, project card, JO, checklist, and addenda."))
+                        {delDeal(d.id);delPcard(d.id);}
+                      }}
+                      style={{position:"absolute",top:10,right:10,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 9px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit",zIndex:2}}>
+                      ✕ Delete
+                    </button>
+                  )}
+                  <div onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}} style={{cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                     <div>
                       <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>{d.client}</div>
                       {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
-                      <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{d.ceNo||"No CE"} · {fmt(d.value)}</div>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
+                    <span style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo||"No CE"} · {fmt(d.value)}</span>
+                    {(()=>{const same=wonDeals.filter(x=>x.ceNo&&x.ceNo===d.ceNo&&x.ceNo!=="No CE");return same.length>1?<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 7px",fontWeight:700}}>DUPLICATE</span>:null;})()}
+                  </div>
                   {(()=>{const j=jos.find(j=>j.dealId===d.id);return j?(<div style={{fontSize:".7rem",color:"#3b82f6",marginTop:2}}>📋 {j.joNo} · PM: {[j.pm1,j.pm2,j.pm3].filter(Boolean).join(", ")||"TBA"}{j.coordinator?` · Coord: ${j.coordinator}`:""}</div>):null;})()}
                     </div>
                     <div style={{textAlign:"right"}}>
@@ -6610,6 +6638,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                   {!pc&&(
                     <div style={{fontSize:".7rem",color:"#f59e0b",marginTop:6,fontWeight:600}}>⚠ No project card yet — award via Pipeline to create one</div>
                   )}
+                  </div>{/* end clickable area */}
                 </div>
               );
             })}
