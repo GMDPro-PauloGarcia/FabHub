@@ -1502,6 +1502,20 @@ export default function App(){
     }
   // eslint-disable-next-line
   },[wonDeals.length]);
+
+  // Auto-mark Finance DONE when project is fully paid
+  useEffect(()=>{
+    wonDeals.forEach(d=>{
+      const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
+      if(ms.length===0) return;
+      const allPaid=ms.every(m=>m.status==="Fully Paid");
+      const card=pcards[d.id];
+      if(allPaid&&card&&!card.departments?.Finance?.done){
+        markDeptDone(d.id,"Finance",true);
+      }
+    });
+  // eslint-disable-next-line
+  },[billings.length]);
   const projList  =useMemo(()=>wonDeals.filter(d=>projs[d.id]),[wonDeals,projs]);
   const isPauloGate = stage => PAULO_GATE.includes(stage);
   const clientName=useCallback(id=>deals.find(d=>d.id===id)?.client||`Project #${id}`,[deals]);
@@ -1511,7 +1525,7 @@ export default function App(){
   const totRev    =useMemo(()=>wonDeals.reduce((s,d)=>s+d.value,0),[wonDeals]);
   const totExp    =useMemo(()=>exps.reduce((s,e)=>s+e.amount,0),[exps]);
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
-  const totOut    =useMemo(()=>wonDeals.reduce((s,d)=>s+d.invoiced-d.amountPaid,0),[wonDeals]);
+  const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
@@ -3183,6 +3197,9 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
           const p=projs[d.id]; if(!p) return null; const prog=overallProg(p);
           const pending=swatches.filter(s=>s.projectId===d.id&&s.status==="To Buy").length;
           const m=marginOf(p,d);
+          const pc=pcards[d.id];
+          const projDone=pc?DEPT_ORDER.every(dept=>pc.departments?.[dept]?.done):false;
+          if(projDone) return null; // Completed projects filtered out below
           return(
             <Card key={d.id} onClick={()=>{setSelProj(d.id);setOpsTab("progress");}} accent={p?.currentStage==="Delivery"?"#6ee7b7":undefined}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -3202,6 +3219,33 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
             </Card>
           );
         })}
+        {/* ── Completed Projects ── */}
+        {(()=>{
+          const completed=projList.filter(d=>{
+            const pc=pcards[d.id];
+            return pc&&DEPT_ORDER.every(dept=>pc.departments?.[dept]?.done);
+          });
+          if(!completed.length) return null;
+          return(
+            <div style={{gridColumn:"1/-1",marginTop:12}}>
+              <div style={{fontWeight:700,color:"#94a3b8",fontSize:".78rem",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:8,height:8,borderRadius:"50%",background:"#10b981",display:"inline-block"}}/>
+                Completed Projects ({completed.length})
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+                {completed.map(d=>(
+                  <div key={d.id} style={{background:"#f0fdf4",borderRadius:10,border:"1.5px solid #6ee7b7",padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:.8}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#059669",fontSize:".85rem"}}>{d.client}</div>
+                      <div style={{fontSize:".7rem",color:"#64748b",marginTop:1}}>{d.contact||d.ceNo} · {fmt(d.value)}</div>
+                    </div>
+                    <span style={{background:"#059669",color:"#fff",fontSize:".68rem",fontWeight:800,padding:"3px 10px",borderRadius:20}}>✅ DONE</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         {projList.length===0&&<div style={{gridColumn:"1/-1"}}><EmptyState icon="⚙" msg="No active projects. Mark a deal as Won in the Pipeline to create a project."/></div>}
       </div>
     </Wrap>
@@ -4887,7 +4931,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
           ["Total Book Balance",   "₱"+fmt2(bankTotals.book),    "#1d4ed8"],
           ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
-          ["Outstanding Invoices", "₱"+totOut.toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
+          ["Outstanding Invoices", "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
           ["YTD Receivable",       pos.ytd.accountsReceivable?"₱"+fmt2(pos.ytd.accountsReceivable):"—", "#8b5cf6"],
         ].map(([l,v,c])=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
@@ -5603,7 +5647,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
 
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
 function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
-  const[view,setView]=useState("project"); // project | company
+  const[view,setView]=useState("list"); // list | project | company
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -5660,12 +5704,12 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Costing Study</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Budget vs actual — understand if you're charging right</div>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Budget vs actual · {projectData.length} projects · {overBudget.length>0?`${overBudget.length} over budget`:""} {lowMargin.length>0?`· ${lowMargin.length} low margin`:""}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
-          {["project","company"].map(v=>(
-            <button key={v} onClick={()=>setView(v)} style={{padding:"7px 16px",borderRadius:20,border:`1.5px solid ${view===v?"#1e293b":"#e2e8f0"}`,background:view===v?"#1e293b":"#fff",color:view===v?"#fff":"#64748b",fontFamily:"inherit",fontWeight:view===v?700:400,fontSize:".8rem",cursor:"pointer"}}>
-              {v==="project"?"Per Project":"Company-Wide"}
+          {[["list","📋 List"],["project","Per Project"],["company","Company-Wide"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setView(v)} style={{padding:"7px 14px",borderRadius:20,border:`1.5px solid ${view===v?"#1e293b":"#e2e8f0"}`,background:view===v?"#1e293b":"#fff",color:view===v?"#fff":"#64748b",fontFamily:"inherit",fontWeight:view===v?700:400,fontSize:".8rem",cursor:"pointer"}}>
+              {l}
             </button>
           ))}
         </div>
@@ -5722,6 +5766,42 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
             })}
           </div>
         </>
+      )}
+
+      {view==="list"&&(
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:12}}>
+            {["Project","Contract","Budget","Actual Spend","Margin","Status"].map(h=>(
+              <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+            ))}
+          </div>
+          {projectData.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects yet.</div>}
+          {projectData.map((pd,i)=>{
+            const isOver=pd.isOverBudget;
+            const isLow=pd.grossMargin!==null&&pd.grossMargin<20;
+            return(
+              <div key={pd.deal.id} onClick={()=>setView("project")} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+                onMouseLeave={e=>e.currentTarget.style.background=i%2?"#fafafa":"#fff"}>
+                <div>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{pd.deal.client}</div>
+                  <div style={{fontSize:".7rem",color:"#64748b",marginTop:1}}>{pd.deal.ceNo||"No CE"} · {pd.deal.contact||pd.deal.product}</div>
+                </div>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>₱{pd.contractVal.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                <div style={{fontWeight:600,color:"#3b82f6",fontSize:".85rem"}}>{pd.totalBudget>0?"₱"+pd.totalBudget.toLocaleString("en-PH",{minimumFractionDigits:0}):<span style={{color:"#cbd5e1"}}>Not set</span>}</div>
+                <div style={{fontWeight:700,color:isOver?"#ef4444":"#10b981",fontSize:".85rem"}}>₱{pd.totalActual.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                <div style={{fontWeight:800,fontSize:".9rem",color:pd.grossMargin===null?"#94a3b8":isLow?"#ef4444":"#059669"}}>
+                  {pd.grossMargin!==null?pd.grossMargin+"%":"—"}
+                </div>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {isOver&&<span style={{fontSize:".62rem",background:"#fef2f2",color:"#dc2626",padding:"1px 6px",borderRadius:20,fontWeight:700}}>Over</span>}
+                  {isLow&&<span style={{fontSize:".62rem",background:"#fff7ed",color:"#c2410c",padding:"1px 6px",borderRadius:20,fontWeight:700}}>Low</span>}
+                  {!isOver&&!isLow&&pd.totalBudget>0&&<span style={{fontSize:".62rem",background:"#f0fdf4",color:"#059669",padding:"1px 6px",borderRadius:20,fontWeight:700}}>OK</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {view==="project"&&(
@@ -6117,34 +6197,23 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
 function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,nextInvoiceNo,session,role}){
-  const[selDeal,setSelDeal]   =useState(wonDeals[0]?.id||"");
-  const[showForm,setShowForm] =useState(false);
-  const[showPay,setShowPay]   =useState(null); // milestone id
-  const[showInv,setShowInv]   =useState(null); // milestone id for invoice preview
-  const[payForm,setPayForm]   =useState({amount:"",date:today,refNo:"",note:""});
-  const[msForm,setMsForm]     =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft"});
+  const[selDeal,  setSelDeal]  =useState(null);     // selected deal for popup
+  const[showForm, setShowForm] =useState(false);    // add milestone form
+  const[showPay,  setShowPay]  =useState(null);     // milestone id for payment log
+  const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft"});
+  const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:""});
 
-  const n=v=>Number(String(v).replace(/,/g,""))||0;
+  const n =v=>Number(String(v||0).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-  const fmtS=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const fm=(k,v)=>setMsForm(p=>({...p,[k]:v}));
-  const fp=(k,v)=>setPayForm(p=>({...p,[k]:v}));
-
-  const deal=wonDeals.find(d=>d.id===selDeal);
-  const dealMs=billings.filter(b=>b.dealId===selDeal);
+  const fm =(k,v)=>setMsForm(p=>({...p,[k]:v}));
+  const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Finance";
-
-  // Totals
-  const totalBilled =dealMs.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
-  const totalCollected=dealMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
-  const outstanding =totalBilled-totalCollected;
-  const contractVal =n(deal?.value||0);
-  const addendaVal  =(deal?.id ? [] : []).reduce((s,a)=>s+n(a.value||0),0); // from addenda
+  const deal=wonDeals.find(d=>d.id===selDeal);
 
   // Company-wide stats
-  const allBilled   =billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
-  const allCollected=billings.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
-  const overdueMilestones=billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+  const allBilled    =billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+  const allCollected =billings.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+  const overdue      =billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
 
   const submitMS=()=>{
     if(!msForm.name||!msForm.amount) return;
@@ -6158,122 +6227,64 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
     setPayForm({amount:"",date:today,refNo:"",note:""});
     setShowPay(null);
   };
-
-  // Invoice print function
   const printInvoice=(ms)=>{
     const d=wonDeals.find(x=>x.id===ms.dealId);
     const tx=calcTax(ms.amount,d?.receiptType||"OR",d?.withholding||false);
     const totalPaid=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
     const win=window.open("","_blank");
     win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${ms.invoiceNo}</title>
-    <style>
-      body{font-family:Arial,sans-serif;margin:40px;color:#1e293b;font-size:13px;}
-      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;border-bottom:3px solid #1e293b;padding-bottom:18px;}
-      .logo{font-size:22px;font-weight:900;letter-spacing:-1px;}
-      .logo span{color:#f59e0b;}
-      .inv-no{text-align:right;}
-      .inv-no h2{font-size:20px;margin:0;color:#1e293b;}
-      .inv-no p{margin:3px 0;color:#64748b;font-size:12px;}
-      .section{margin-bottom:20px;}
-      .section h3{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin:0 0 6px;}
-      table{width:100%;border-collapse:collapse;margin-bottom:16px;}
-      th{background:#1e293b;color:#fff;padding:9px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px;}
-      td{padding:9px 12px;border-bottom:1px solid #e2e8f0;font-size:13px;}
-      tr:nth-child(even) td{background:#f8fafc;}
-      .totals{margin-left:auto;width:300px;}
-      .totals td{padding:6px 12px;}
-      .totals .grand{font-weight:900;font-size:15px;color:#1e293b;border-top:2px solid #1e293b;}
-      .net{color:#059669;font-weight:900;}
-      .paid{color:#3b82f6;}
-      .balance{color:#ef4444;font-weight:900;}
-      .footer{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center;}
-      .status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:${BILLING_STATUS_CLR[ms.status]||'#94a3b8'}22;color:${BILLING_STATUS_CLR[ms.status]||'#94a3b8'};border:1px solid ${BILLING_STATUS_CLR[ms.status]||'#94a3b8'}44;}
-      @media print{body{margin:20px;} button{display:none;}}
-    </style></head><body>
-    <div class="header">
-      <div>
-        <div class="logo">GMD <span>PROD</span></div>
-        <div style="color:#64748b;font-size:12px;margin-top:6px;">GMD Productions Inc.<br/>Philippines</div>
-      </div>
-      <div class="inv-no">
-        <h2>INVOICE</h2>
-        <p><strong>${ms.invoiceNo}</strong></p>
-        <p>Date: ${ms.invoiceDate||today}</p>
-        <p>Due: ${ms.dueDate||'—'}</p>
-        <p><span class="status-badge">${ms.status}</span></p>
-      </div>
-    </div>
-
+    <style>body{font-family:Arial,sans-serif;margin:40px;color:#1e293b;font-size:13px;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;border-bottom:3px solid #1e293b;padding-bottom:18px;}.logo{font-size:22px;font-weight:900;letter-spacing:-1px;}.logo span{color:#f59e0b;}table{width:100%;border-collapse:collapse;margin-bottom:16px;}th{background:#1e293b;color:#fff;padding:9px 12px;text-align:left;font-size:11px;}td{padding:9px 12px;border-bottom:1px solid #e2e8f0;}.totals{margin-left:auto;width:300px;}.grand{font-weight:900;font-size:15px;border-top:2px solid #1e293b;}.net{color:#059669;font-weight:900;}@media print{button{display:none;}}</style>
+    </head><body>
+    <div class="header"><div><div class="logo">GMD <span>PROD</span></div><div style="color:#64748b;font-size:12px;margin-top:6px;">GMD Productions Inc.</div></div>
+    <div style="text-align:right"><h2 style="margin:0">INVOICE</h2><p style="margin:3px 0"><strong>${ms.invoiceNo}</strong></p><p style="margin:3px 0;color:#64748b">Date: ${ms.invoiceDate||today}</p><p style="margin:3px 0;color:#64748b">Due: ${ms.dueDate||"—"}</p></div></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
-      <div class="section">
-        <h3>Bill To</h3>
-        <strong style="font-size:15px;">${d?.client||'—'}</strong><br/>
-        ${d?.contact?`Project: ${d.contact}<br/>`:''}
-        ${d?.ceNo?`CE No: ${d.ceNo}`:''}
-      </div>
-      <div class="section">
-        <h3>Invoice Details</h3>
-        <table style="font-size:12px;">
-          <tr><td style="color:#64748b;border:none;padding:2px 0;">Milestone</td><td style="border:none;padding:2px 8px;font-weight:700;">${ms.name}</td></tr>
-          ${ms.description?`<tr><td style="color:#64748b;border:none;padding:2px 0;">Description</td><td style="border:none;padding:2px 8px;">${ms.description}</td></tr>`:''}
-          <tr><td style="color:#64748b;border:none;padding:2px 0;">Receipt Type</td><td style="border:none;padding:2px 8px;">${d?.receiptType==="AR"?"AR (Acknowledgement Receipt — no VAT)":"OR (Official Receipt — VAT inclusive)"}</td></tr>
-        </table>
-      </div>
-    </div>
-
-    <table>
-      <thead><tr><th>Description</th><th style="text-align:right;">Amount</th></tr></thead>
-      <tbody>
-        <tr><td>${ms.name}${ms.description?` — ${ms.description}`:''}</td><td style="text-align:right;">${fmt(ms.amount)}</td></tr>
-        ${tx.vat>0?`<tr><td style="color:#64748b;">Value Added Tax (12%)</td><td style="text-align:right;color:#f59e0b;">${fmt(tx.vat)}</td></tr>`:'<tr><td style="color:#94a3b8;font-style:italic;">VAT Exempt (AR)</td><td style="text-align:right;color:#94a3b8;">—</td></tr>'}
-      </tbody>
-    </table>
-
-    <div class="totals">
-      <table>
-        <tr><td>Gross Amount</td><td style="text-align:right;font-weight:700;">${fmt(tx.gross)}</td></tr>
-        ${tx.ewt>0?`<tr><td style="color:#ef4444;">Less: EWT 2%</td><td style="text-align:right;color:#ef4444;">(${fmt(tx.ewt)})</td></tr>`:''}
-        <tr class="grand"><td>Net Amount Due</td><td style="text-align:right;" class="net">${fmt(tx.netReceivable)}</td></tr>
-        ${totalPaid>0?`<tr><td class="paid">Amount Paid</td><td style="text-align:right;" class="paid">(${fmt(totalPaid)})</td></tr>`:''}
-        ${totalPaid>0?`<tr class="grand"><td>Balance Due</td><td style="text-align:right;" class="${totalPaid>=n(tx.netReceivable)?'net':'balance'}">${fmt(Math.max(0,tx.netReceivable-totalPaid))}</td></tr>`:''}
-      </table>
-    </div>
-
-    ${(ms.payments||[]).length>0?`
-    <div class="section" style="margin-top:28px;">
-      <h3>Payment History</h3>
-      <table>
-        <thead><tr><th>Date</th><th>Reference No.</th><th>Note</th><th style="text-align:right;">Amount</th></tr></thead>
-        <tbody>${(ms.payments||[]).map(p=>`<tr><td>${p.date}</td><td>${p.refNo||'—'}</td><td>${p.note||'—'}</td><td style="text-align:right;">${fmt(p.amount)}</td></tr>`).join('')}</tbody>
-      </table>
-    </div>`:''}
-
-    <div class="footer">
-      Thank you for your business. For questions about this invoice, please contact your Account Executive.<br/>
-      GMD Productions Inc. · Generated via FabHub · ${new Date().toLocaleDateString("en-PH",{dateStyle:"long"})}
-    </div>
-    <div style="text-align:center;margin-top:24px;"><button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;">🖨 Print / Save as PDF</button></div>
+    <div><h3 style="font-size:11px;text-transform:uppercase;color:#94a3b8;margin:0 0 6px">Bill To</h3><strong style="font-size:15px">${d?.client||"—"}</strong><br/>${d?.ceNo?"CE: "+d.ceNo:""}</div>
+    <div><h3 style="font-size:11px;text-transform:uppercase;color:#94a3b8;margin:0 0 6px">Details</h3>${ms.description||ms.name}</div></div>
+    <table><thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody><tr><td>${ms.name}${ms.description?" — "+ms.description:""}</td><td style="text-align:right">${fmt(ms.amount)}</td></tr>
+    ${tx.vat>0?"<tr><td style='color:#64748b'>VAT (12%)</td><td style='text-align:right;color:#f59e0b'>"+fmt(tx.vat)+"</td></tr>":""}
+    </tbody></table>
+    <div class="totals"><table>
+    <tr><td>Gross Amount</td><td style="text-align:right;font-weight:700">${fmt(tx.gross)}</td></tr>
+    ${tx.ewt>0?"<tr><td style='color:#ef4444'>Less: EWT (2%)</td><td style='text-align:right;color:#ef4444'>("+fmt(tx.ewt)+")</td></tr>":""}
+    <tr class="grand"><td>Net Amount Due</td><td style="text-align:right" class="net">${fmt(tx.netReceivable)}</td></tr>
+    ${totalPaid>0?"<tr><td style='color:#3b82f6'>Amount Paid</td><td style='text-align:right;color:#3b82f6'>("+fmt(totalPaid)+")</td></tr>":""}
+    ${totalPaid>0?"<tr class='grand'><td>Balance Due</td><td style='text-align:right;color:"+(totalPaid>=n(tx.netReceivable)?"#059669":"#ef4444")+"'>"+fmt(Math.max(0,tx.netReceivable-totalPaid))+"</td></tr>":""}
+    </table></div>
+    <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">GMD Productions Inc. · Generated via FabHub · ${new Date().toLocaleDateString("en-PH",{dateStyle:"long"})}</div>
+    <div style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700">Print / Save as PDF</button></div>
     </body></html>`);
     win.document.close();
   };
 
+  // Per-project summary for list
+  const projectSummaries=wonDeals.map(d=>{
+    const ms=billings.filter(b=>b.dealId===d.id);
+    const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+    const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+    const balance  =Math.max(0,billed-collected);
+    const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+    const fullyPaid=billed>0&&balance===0;
+    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
+  });
+
   return(
     <div>
       {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Billing</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Manage billing milestones, generate invoices, log payments</div>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Click any project to manage milestones and log payments</div>
         </div>
       </div>
 
-      {/* Company KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Total Billed",      v:fmt(allBilled),      c:"#3b82f6"},
-          {l:"Total Collected",   v:fmt(allCollected),   c:"#059669"},
-          {l:"Outstanding",       v:fmt(allBilled-allCollected), c:allBilled-allCollected>0?"#ef4444":"#059669"},
-          {l:"Overdue Invoices",  v:overdueMilestones.length, c:overdueMilestones.length>0?"#ef4444":"#94a3b8"},
+          {l:"Total Billed",      v:fmt(allBilled),                c:"#3b82f6"},
+          {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
+          {l:"Outstanding",       v:fmt(Math.max(0,allBilled-allCollected)), c:allBilled>allCollected?"#ef4444":"#059669"},
+          {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
@@ -6283,214 +6294,218 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
       </div>
 
       {/* Overdue alert */}
-      {overdueMilestones.length>0&&(
-        <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".82rem",color:"#dc2626"}}>
-          🚨 <strong>{overdueMilestones.length} overdue invoice{overdueMilestones.length>1?"s":" "}</strong> —{" "}
-          {overdueMilestones.slice(0,3).map(m=>{const d=wonDeals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo})`;}).join(", ")}
-          {overdueMilestones.length>3&&` +${overdueMilestones.length-3} more`}
+      {overdue.length>0&&(
+        <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 16px",marginBottom:12,fontSize:".82rem",color:"#dc2626"}}>
+          🚨 <strong>{overdue.length} overdue invoice{overdue.length>1?"s":""}:</strong>{" "}
+          {overdue.slice(0,3).map(m=>{const d=wonDeals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo})`;}).join(", ")}
+          {overdue.length>3&&` +${overdue.length-3} more`}
         </div>
       )}
 
-      {/* Project selector */}
-      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:16}}>
-        <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-          <select value={selDeal} onChange={e=>setSelDeal(e.target.value)}
-            style={{flex:1,minWidth:220,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 13px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-            <option value="">— Select Project —</option>
-            {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-          </select>
-          {canEdit&&selDeal&&<button onClick={()=>setShowForm(s=>!s)}
-            style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
-            + Add Milestone
-          </button>}
+      {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        {/* Table header */}
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",background:"#1e293b",padding:"10px 18px",gap:12}}>
+          {["Project","Billed","Collected","Balance","Status","Action"].map(h=>(
+            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+          ))}
         </div>
-
-        {/* Project billing summary */}
-        {deal&&(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginTop:14}}>
-            {[
-              {l:"Contract Value", v:fmt(contractVal),   c:"#0f172a"},
-              {l:"Total Billed",   v:fmt(totalBilled),   c:"#3b82f6"},
-              {l:"Collected",      v:fmt(totalCollected),c:"#059669"},
-              {l:"Outstanding",    v:fmt(outstanding),   c:outstanding>0?"#ef4444":"#059669"},
-            ].map(({l,v,c})=>(
-              <div key={l} style={{textAlign:"center",padding:"10px",background:"#f8fafc",borderRadius:8}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
-                <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginTop:3}}>{l}</div>
+        {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
+        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>(
+          <div key={d.id}
+            onClick={()=>setSelDeal(d.id)}
+            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+            onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+            onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                {hasOverdue&&<span style={{color:"#ef4444",fontSize:".8rem"}}>🔴</span>}
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
+                {d.contact&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>— {d.contact}</span>}
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Add milestone form */}
-      {showForm&&canEdit&&(
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16}}>
-          <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>New Billing Milestone</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-            <Fld label="Milestone Name" required hint="e.g. 50% Downpayment, Progress Billing, Final Billing">
-              <Inp value={msForm.name} onChange={e=>fm("name",e.target.value)} placeholder="e.g. 50% Downpayment upon PO"/>
-            </Fld>
-            <Fld label="Amount (₱)" required hint="VAT-exclusive base amount">
-              <Inp type="number" value={msForm.amount} onChange={e=>fm("amount",e.target.value)} placeholder="0.00"/>
-            </Fld>
-            <Fld label="Invoice No." hint="Auto-generated if left blank">
-              <Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder={nextInvoiceNo()}/>
-            </Fld>
-            <Fld label="Invoice Date">
-              <Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/>
-            </Fld>
-            <Fld label="Due Date">
-              <Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/>
-            </Fld>
-            <Fld label="Status">
-              <Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>
-                {BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}
-              </Sel>
-            </Fld>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Description">
-                <Inp value={msForm.description} onChange={e=>fm("description",e.target.value)} placeholder="What this billing covers…"/>
-              </Fld>
+              <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>
+                {d.ceNo||"No CE"} · {milestoneCount} milestone{milestoneCount!==1?"s":""}
+                {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
+              </div>
+            </div>
+            <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>
+              {billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>}
+            </div>
+            <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>
+              {collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>}
+            </div>
+            <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>
+              {balance>0?fmt(balance):"✓ Clear"}
+            </div>
+            <div>
+              {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
+              {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
+              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
+              {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
+            </div>
+            <div>
+              <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
+                style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
+                Open →
+              </button>
             </div>
           </div>
-          {/* Preview tax */}
-          {n(msForm.amount)>0&&deal&&(()=>{
-            const tx=calcTax(msForm.amount,deal.receiptType||"OR",deal.withholding||false);
+        ))}
+      </div>
+
+      {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
+      {selDeal&&(
+        <Modal open title={`${deal?.client||""}${deal?.contact?" — "+deal?.contact:""}`} onClose={()=>{setSelDeal(null);setShowForm(false);setShowPay(null);}} wide>
+          {/* Project billing summary */}
+          {(()=>{
+            const ms=billings.filter(b=>b.dealId===selDeal);
+            const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+            const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+            const tx=calcTax(deal?.value||0,deal?.receiptType||"OR",deal?.withholding||false);
             return(
-              <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 14px",marginTop:10,display:"flex",gap:20,flexWrap:"wrap",fontSize:".78rem"}}>
-                <div><span style={{color:"#92400e"}}>Base: </span><strong>₱{n(msForm.amount).toLocaleString("en-PH")}</strong></div>
-                <div><span style={{color:"#92400e"}}>VAT: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                {tx.ewt>0&&<div><span style={{color:"#92400e"}}>EWT: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>}
-                <div><span style={{color:"#92400e"}}>Net Receivable: </span><strong style={{color:"#059669",fontSize:".88rem"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+                {[
+                  {l:"Contract Value",v:fmt(deal?.value||0),    c:"#0f172a"},
+                  {l:"Total Billed",  v:fmt(billed),            c:"#3b82f6"},
+                  {l:"Collected",     v:fmt(collected),          c:"#059669"},
+                  {l:"Outstanding",   v:fmt(Math.max(0,billed-collected)), c:billed>collected?"#ef4444":"#059669"},
+                ].map(({l,v,c})=>(
+                  <div key={l} style={{textAlign:"center",padding:"10px",background:"#f8fafc",borderRadius:8}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
+                    <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginTop:3}}>{l}</div>
+                  </div>
+                ))}
               </div>
             );
           })()}
-          <div style={{display:"flex",gap:10,marginTop:14}}>
-            <button onClick={submitMS} disabled={!msForm.name||!msForm.amount}
-              style={{background:msForm.name&&msForm.amount?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:msForm.name&&msForm.amount?"#fff":"#94a3b8",cursor:msForm.name&&msForm.amount?"pointer":"not-allowed"}}>
-              Add Milestone
-            </button>
-            <button onClick={()=>setShowForm(false)}
-              style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* Milestone list */}
-      {!selDeal&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8"}}>Select a project above to manage its billing.</div>}
-      {selDeal&&dealMs.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No billing milestones yet. Hit + Add Milestone to create the first billing.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {dealMs.map(ms=>{
-          const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
-          const tx=calcTax(ms.amount,deal?.receiptType||"OR",deal?.withholding||false);
-          const balance=Math.max(0,tx.netReceivable-paidTotal);
-          const pct=tx.netReceivable>0?Math.round(paidTotal/tx.netReceivable*100):0;
-          const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
-          const isOverdue=ms.dueDate&&ms.dueDate<today&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled";
-          return(
-            <div key={ms.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isOverdue?"#fecaca":sClr+"33"}`,padding:"16px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>{ms.name}</span>
-                    <span style={{fontSize:".7rem",background:sClr+"22",color:sClr,border:`1px solid ${sClr}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{ms.status}</span>
-                    {isOverdue&&<span style={{fontSize:".7rem",color:"#ef4444",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"1px 9px",fontWeight:700}}>🚨 OVERDUE</span>}
-                    <span style={{fontSize:".7rem",color:"#64748b"}}>{ms.invoiceNo}</span>
+          {/* Add milestone form */}
+          {canEdit&&(
+            <div style={{marginBottom:12}}>
+              {!showForm?(
+                <button onClick={()=>setShowForm(true)}
+                  style={{background:"#1e293b",border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
+                  + Add Milestone
+                </button>
+              ):(
+                <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:8}}>
+                  <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".88rem"}}>New Billing Milestone</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <Fld label="Milestone Name" required hint="e.g. 50% Downpayment, Progress Billing, Final Billing">
+                      <Inp value={msForm.name} onChange={e=>fm("name",e.target.value)} placeholder="e.g. 50% Downpayment upon PO"/>
+                    </Fld>
+                    <Fld label="Amount (₱)" required><Inp type="number" value={msForm.amount} onChange={e=>fm("amount",e.target.value)} placeholder="0.00"/></Fld>
+                    <Fld label="Invoice No." hint="Auto-generated if blank"><Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder={nextInvoiceNo()}/></Fld>
+                    <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
+                    <Fld label="Due Date"><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
+                    <Fld label="Status"><Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+                    <div style={{gridColumn:"1/-1"}}><Fld label="Description"><Inp value={msForm.description} onChange={e=>fm("description",e.target.value)} placeholder="What this billing covers…"/></Fld></div>
+                    {/* Tax preview */}
+                    {n(msForm.amount)>0&&deal&&(()=>{
+                      const tx=calcTax(msForm.amount,deal.receiptType||"OR",deal.withholding||false);
+                      return<div style={{gridColumn:"1/-1",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem"}}>
+                        <span><span style={{color:"#92400e"}}>Base: </span><strong>₱{n(msForm.amount).toLocaleString("en-PH")}</strong></span>
+                        {tx.vat>0&&<span><span style={{color:"#92400e"}}>VAT: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
+                        {tx.ewt>0&&<span><span style={{color:"#92400e"}}>EWT: </span><strong style={{color:"#ef4444"}}>-₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
+                        <span><span style={{color:"#92400e"}}>Net: </span><strong style={{color:"#059669",fontSize:".88rem"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
+                      </div>;
+                    })()}
                   </div>
-                  {ms.description&&<div style={{fontSize:".78rem",color:"#64748b",marginBottom:8}}>{ms.description}</div>}
-
-                  {/* Amounts */}
-                  <div style={{display:"flex",gap:16,flexWrap:"wrap",marginBottom:10,fontSize:".8rem"}}>
-                    <div><span style={{color:"#94a3b8"}}>Invoice: </span><strong>₱{n(ms.amount).toLocaleString("en-PH")}</strong></div>
-                    <div><span style={{color:"#94a3b8"}}>Net Due: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                    <div><span style={{color:"#94a3b8"}}>Collected: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>
-                    {balance>0&&<div><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></div>}
-                    {ms.dueDate&&<div><span style={{color:"#94a3b8"}}>Due: </span><span style={{color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>{ms.dueDate}</span></div>}
-                  </div>
-
-                  {/* Progress bar */}
-                  <div style={{marginBottom:10}}>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:3}}>
-                      <span>Collection progress</span>
-                      <span style={{fontWeight:700,color:pct>=100?"#059669":"#64748b"}}>{pct}%</span>
-                    </div>
-                    <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:pct+"%",background:pct>=100?"#10b981":"#3b82f6",borderRadius:3,transition:"width .5s"}}/>
-                    </div>
-                  </div>
-
-                  {/* Payment log */}
-                  {(ms.payments||[]).length>0&&(
-                    <div style={{background:"#f0fdf4",borderRadius:8,padding:"8px 12px",marginBottom:8}}>
-                      <div style={{fontSize:".7rem",fontWeight:700,color:"#059669",marginBottom:6,textTransform:"uppercase",letterSpacing:".5px"}}>Payment History</div>
-                      {(ms.payments||[]).map(p=>(
-                        <div key={p.id} style={{display:"flex",gap:12,fontSize:".75rem",color:"#475569",marginBottom:3,flexWrap:"wrap"}}>
-                          <span>{p.date}</span>
-                          <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
-                          {p.refNo&&<span style={{color:"#64748b"}}>Ref: {p.refNo}</span>}
-                          {p.note&&<span style={{color:"#94a3b8",fontStyle:"italic"}}>{p.note}</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Log payment form */}
-                  {showPay===ms.id&&canEdit&&(
-                    <div style={{background:"#eff6ff",borderRadius:8,padding:"12px 14px",border:"1.5px solid #93c5fd",marginTop:8}}>
-                      <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:10,fontSize:".84rem"}}>Log Payment Received</div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                        <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>fp("amount",e.target.value)} placeholder="0.00"/></Fld>
-                        <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
-                        <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque no., transfer ref…"/></Fld>
-                        <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. Online transfer BPI"/></Fld>
-                      </div>
-                      <div style={{display:"flex",gap:8,marginTop:10}}>
-                        <button onClick={submitPay} disabled={!payForm.amount}
-                          style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>
-                          Save Payment
-                        </button>
-                        <button onClick={()=>setShowPay(null)}
-                          style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:"#64748b",cursor:"pointer"}}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
-                  <button onClick={()=>printInvoice(ms)}
-                    style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>
-                    🖨 Invoice
-                  </button>
-                  {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
-                    <button onClick={()=>setShowPay(showPay===ms.id?null:ms.id)}
-                      style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#059669",cursor:"pointer"}}>
-                      + Log Payment
+                  <div style={{display:"flex",gap:8,marginTop:12}}>
+                    <button onClick={submitMS} disabled={!msForm.name||!msForm.amount}
+                      style={{background:msForm.name&&msForm.amount?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"8px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:msForm.name&&msForm.amount?"#fff":"#94a3b8",cursor:msForm.name&&msForm.amount?"pointer":"not-allowed"}}>
+                      Add Milestone
                     </button>
-                  )}
-                  {canEdit&&(
-                    <select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})}
-                      style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                      {BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}
-                    </select>
-                  )}
-                  {canEdit&&(
-                    <button onClick={()=>{if(window.confirm("Delete this milestone?"))deleteMilestone(ms.id);}}
-                      style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px",fontFamily:"inherit",fontWeight:600,fontSize:".72rem",color:"#dc2626",cursor:"pointer"}}>
-                      Delete
-                    </button>
-                  )}
+                    <button onClick={()=>setShowForm(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
-          );
-        })}
-      </div>
+          )}
+
+          {/* Milestone list */}
+          {billings.filter(b=>b.dealId===selDeal).length===0&&!showForm&&(
+            <div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:".84rem"}}>No milestones yet. Hit + Add Milestone to create the first billing.</div>
+          )}
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {billings.filter(b=>b.dealId===selDeal).map(ms=>{
+              const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
+              const tx=calcTax(ms.amount,deal?.receiptType||"OR",deal?.withholding||false);
+              const balance=Math.max(0,tx.netReceivable-paidTotal);
+              const pct=tx.netReceivable>0?Math.round(paidTotal/tx.netReceivable*100):0;
+              const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
+              const isOverdue=ms.dueDate&&ms.dueDate<today&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled";
+              return(
+                <div key={ms.id} style={{background:"#f8fafc",borderRadius:10,border:`1.5px solid ${isOverdue?"#fecaca":sClr+"33"}`,padding:"12px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
+                        <span style={{fontWeight:700,color:"#0f172a"}}>{ms.name}</span>
+                        <span style={{fontSize:".68rem",background:sClr+"22",color:sClr,border:`1px solid ${sClr}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>{ms.status}</span>
+                        {isOverdue&&<span style={{fontSize:".68rem",color:"#ef4444",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"1px 8px",fontWeight:700}}>🚨 Overdue</span>}
+                        <span style={{fontSize:".68rem",color:"#94a3b8"}}>{ms.invoiceNo}</span>
+                      </div>
+                      <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:".78rem",marginBottom:8}}>
+                        <span><span style={{color:"#94a3b8"}}>Base: </span>₱{n(ms.amount).toLocaleString("en-PH")}</span>
+                        <span><span style={{color:"#94a3b8"}}>Net Due: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
+                        <span><span style={{color:"#94a3b8"}}>Paid: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
+                        {balance>0&&<span><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
+                        {ms.dueDate&&<span style={{color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>Due: {ms.dueDate}</span>}
+                      </div>
+                      {/* Progress */}
+                      <div style={{height:5,background:"#e2e8f0",borderRadius:3,overflow:"hidden",marginBottom:6}}>
+                        <div style={{height:"100%",width:pct+"%",background:pct>=100?"#10b981":"#3b82f6",borderRadius:3,transition:"width .5s"}}/>
+                      </div>
+                      {/* Payment history */}
+                      {(ms.payments||[]).length>0&&(
+                        <div style={{background:"#f0fdf4",borderRadius:7,padding:"7px 10px",marginTop:4}}>
+                          <div style={{fontSize:".67rem",fontWeight:700,color:"#059669",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Payments</div>
+                          {(ms.payments||[]).map(p=>(
+                            <div key={p.id} style={{display:"flex",gap:10,fontSize:".73rem",color:"#475569",marginBottom:2,flexWrap:"wrap"}}>
+                              <span>{p.date}</span>
+                              <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
+                              {p.refNo&&<span style={{color:"#64748b"}}>Ref: {p.refNo}</span>}
+                              {p.note&&<span style={{color:"#94a3b8",fontStyle:"italic"}}>{p.note}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {/* Log payment inline */}
+                      {showPay===ms.id&&canEdit&&(
+                        <div style={{background:"#eff6ff",borderRadius:8,padding:"10px 12px",border:"1.5px solid #93c5fd",marginTop:8}}>
+                          <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Log Payment</div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            <Fld label="Amount (₱)"><Inp type="number" value={payForm.amount} onChange={e=>fp("amount",e.target.value)} placeholder="0.00"/></Fld>
+                            <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
+                            <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque / transfer ref…"/></Fld>
+                            <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. BPI online transfer"/></Fld>
+                          </div>
+                          <div style={{display:"flex",gap:8,marginTop:8}}>
+                            <button onClick={submitPay} disabled={!payForm.amount}
+                              style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>
+                              Save Payment
+                            </button>
+                            <button onClick={()=>setShowPay(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {/* Action buttons */}
+                    <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
+                      <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Invoice</button>
+                      {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
+                        <button onClick={()=>setShowPay(showPay===ms.id?null:ms.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
+                      )}
+                      {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
+                      {canEdit&&<button onClick={()=>{if(window.confirm("Delete this milestone?"))deleteMilestone(ms.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontFamily:"inherit",fontWeight:600,fontSize:".7rem",color:"#dc2626",cursor:"pointer"}}>Delete</button>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -6654,8 +6669,15 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
               <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem"}}>{deal?.client}</div>
               <div style={{fontSize:".73rem",color:"#64748b"}}>{deal?.ceNo} · {fmt(deal?.value)} · {deal?.stage?.replace(/^\d+ · /,"")}</div>
             </div>
-            <div style={{marginLeft:"auto",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:projectProgress(card)===100?"#059669":"#3b82f6"}}>
-              {projectProgress(card)}% Complete
+            <div style={{marginLeft:"auto",display:"flex",gap:12,alignItems:"center"}}>
+              {projectProgress(card)===100&&(
+                <span style={{background:"#059669",color:"#fff",fontWeight:800,fontSize:".82rem",padding:"5px 14px",borderRadius:20,letterSpacing:".5px"}}>
+                  ✅ PROJECT DONE
+                </span>
+              )}
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:projectProgress(card)===100?"#059669":"#3b82f6"}}>
+                {projectProgress(card)}% Complete
+              </div>
             </div>
           </div>
 
