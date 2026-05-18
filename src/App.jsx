@@ -911,18 +911,11 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out, BGC Office Renovation"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
         <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized — can be updated anytime"><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)} placeholder="To be confirmed"/></Fld>
-        <Fld label="Product Type">
+        <Fld label="Project Sub-Type" hint="Kiosk, Fit-Out, Signage, Event — helps categorize within the CE Type">
             <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
-              {PRODUCT_TYPES.map(t=><option key={t}>{t}</option>)}
+              <option value="">— Select Sub-Type —</option>
+              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
             </Sel>
-            {form.product==="Other"&&(
-              <Inp
-                value={form.customProductType||""}
-                onChange={e=>f("customProductType",e.target.value)}
-                placeholder="Describe the project type (e.g. Museum Display, Event Backdrop)…"
-                style={{marginTop:8}}
-              />
-            )}
           </Fld>
         <Fld label="Stage"><Sel value={form.stage} onChange={e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
@@ -1554,8 +1547,10 @@ export default function App(){
     if(!data.client) return;
     const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
     const rec={...data,id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob};
-    if(WON_STAGES.includes(data.stage)&&!editDeal) upProjs(ps=>({...ps,[rec.id]:{...emptyProject(),notes:""}}));
-    if(data.stage==="06 · Project Kickoff"&&!editDeal) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
+    // Only trigger award logic for NEW deals entering won stages — never on edit
+    const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
+    if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+    if(data.stage==="06 · Project Kickoff" && !editDeal && !wasAlreadyAwarded) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     if(!editDeal) logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
     else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
@@ -1675,14 +1670,13 @@ export default function App(){
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role];
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Pipeline"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"},{id:"accounting",l:"Accounting"},{id:"inventory",l:"Inventory"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
-    Sales:        [{id:"home",l:"My Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"clients",l:"🏢 Clients"}],
-    Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"inventory",l:"Inventory"},{id:"clients",l:"🏢 Clients"}],
-    Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"inventory",l:"Inventory"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
-    QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"inventory",l:"Inventory"},{id:"budget",l:"Budget"},{id:"costing",l:"Costing Study"}],
-    Operations:   [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"budget",l:"Budget"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
+    Sales:        [{id:"home",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
+    Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
+    Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
+    QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}],
+    Operations:   [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
     Design:       [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
-    Warehouse:    [{id:"home",l:"Inventory"},{id:"stockmove",l:"Stock Movement"},{id:"materialreq",l:"Material Requests"}],
   };
   const Nav=()=>(
     <nav style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"0 20px",display:"flex",alignItems:"center",height:56,gap:2,position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}} className="noprint">
@@ -1916,11 +1910,16 @@ export default function App(){
                         customProductType:"",
                       };
                       if(exists){upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));skipped++;}
-                      else{upDeals(ds=>[...ds,rec]);if(WON_STAGES.includes(rec.stage))upProjs(ps=>({...ps,[rec.id]:emptyProject()}));imported++;}
+                      else{
+                        upDeals(ds=>[...ds,rec]);
+                        if(WON_STAGES.includes(rec.stage)){
+                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
+                        }
+                        imported++;
+                      }
                     });
-                    alert(`✅ Import complete!
-${imported} new deals added
-${skipped} existing deals updated`);
+                    alert("Import complete! "+imported+" new deals added, "+skipped+" existing updated. Awarded deals now appear in Operations + Project Cards.");
                   }catch(err){alert("Import failed: "+err.message);}
                 };
                 reader.readAsArrayBuffer(file);
@@ -2037,6 +2036,48 @@ ${skipped} existing deals updated`);
             </div>
           </div>
         </div>
+
+        {/* Stage filter expanded view */}
+        {stageFilter&&(()=>{
+          const filtered=deals.filter(d=>d.stage===stageFilter&&d.stage!=="Cancelled");
+          return(
+            <div style={{background:"#fff",borderRadius:14,border:`2px solid ${STAGE_CLR[stageFilter]||"#e2e8f0"}`,padding:"16px 18px",marginBottom:20}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                <div>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>{stageFilter.replace(/^\d+ · /,"")}</div>
+                  <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{filtered.length} deal{filtered.length!==1?"s":""} in this stage</div>
+                </div>
+                <button onClick={()=>setStageFilter(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✕ Close</button>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {filtered.map(d=>{
+                  const{pct,missing}=dealCompleteness(d);
+                  return(
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f8fafc",borderRadius:10,border:"1px solid #e2e8f0",flexWrap:"wrap",gap:10}}>
+                      <div style={{flex:1}}>
+                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontWeight:700,color:"#0f172a"}}>{d.client}</span>
+                          {d.contact&&<span style={{fontSize:".75rem",color:"#64748b"}}>{d.contact}</span>}
+                          {d.ceNo&&<span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:4}}>{d.ceNo}</span>}
+                          {vvipClients?.has(d.client)&&<span style={{fontSize:".65rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>⭐ VVIP</span>}
+                        </div>
+                        <div style={{fontSize:".73rem",color:"#64748b",marginTop:3,display:"flex",gap:12,flexWrap:"wrap"}}>
+                          {d.salesOwner&&<span>👤 {d.salesOwner}</span>}
+                          {d.value>0&&<span style={{color:"#10b981",fontWeight:600}}>₱{Number(d.value).toLocaleString("en-PH")}</span>}
+                          {pct<100&&<span style={{color:"#f59e0b"}}>⚠ Profile {pct}%</span>}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>{openEditDeal(d);setStageFilter(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>✏ Edit</button>
+                        {!WON_STAGES.includes(d.stage)&&<button onClick={()=>{openAward(d);setStageFilter(null);}} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Stage groups — pre-award stages */}
         {(()=>{
@@ -2272,7 +2313,7 @@ ${skipped} existing deals updated`);
         </div>
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
@@ -2492,7 +2533,7 @@ ${skipped} existing deals updated`);
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -2582,6 +2623,24 @@ ${skipped} existing deals updated`);
       <StockMovementView
         inventory={inventory} stocklog={stocklog} wonDeals={wonDeals}
         logStockMove={logStockMove} session={session} role={role}/>
+    </Wrap>
+  );
+
+  // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
+  if(page==="costanalysis") return(
+    <Wrap>
+      <div style={{display:"flex",gap:10,marginBottom:20,borderBottom:"2px solid #e2e8f0",paddingBottom:12}}>
+        {[["budget","💰 Budget"],["costing","📊 Costing Study"]].map(([tab,label])=>(
+          <button key={tab} onClick={()=>setCostTab(tab)}
+            style={{padding:"8px 20px",borderRadius:20,border:`2px solid ${costTab===tab?"#1e293b":"#e2e8f0"}`,background:costTab===tab?"#1e293b":"#fff",color:costTab===tab?"#fff":"#64748b",fontFamily:"inherit",fontWeight:costTab===tab?700:400,fontSize:".84rem",cursor:"pointer"}}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {costTab==="budget"
+        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
+        :<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/>
+      }
     </Wrap>
   );
 
@@ -2698,7 +2757,7 @@ ${skipped} existing deals updated`);
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,updateAddendum,deleteAddendum}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum}){
   const uid2=()=>String(Date.now());
   if(!selProj) return(
     <Wrap>
@@ -3876,7 +3935,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
     return list;
   },[search,filter,deals,vvipClients]);
 
-  const totalBalance = GMD_CLIENTS.reduce((s,c)=>s+c.balance,0);
+  const totalBalance = GMD_CLIENTS.reduce((s,c)=>s+(Number(c.balance)||0),0);
 
   return(
     <div>
