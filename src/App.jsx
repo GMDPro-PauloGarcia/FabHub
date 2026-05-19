@@ -1782,6 +1782,10 @@ export default function App(){
           </button>
         )}
         <button onClick={()=>setShowExport(s=>!s)} title="Export / Backup Data" style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>💾</button>
+        <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Open FabHub Handbook"
+          style={{background:"rgba(245,158,11,.12)",border:"1.5px solid rgba(245,158,11,.4)",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#d97706",cursor:"pointer",fontFamily:"inherit",fontWeight:700,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
+          📘 Handbook
+        </a>
         <button onClick={logout} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Log out</button>
       </div>
     </nav>
