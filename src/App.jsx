@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {supabase,sbSignIn,sbSignOut,sbGetSession,sbGetProfile,sb,sbSubscribe} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -1208,7 +1208,7 @@ export default function App(){
         // Check for existing Supabase session first
         const { data: { session: sbSession } } = await supabase.auth.getSession();
         if (sbSession) {
-          const { data: profile } = await sbGetProfile(sbSession.user.id);
+          const { data: profile } = supabase ? await supabase.from('user_profiles').select('*').eq('id', sbSession.user.id).single() : {data:null};
           if (profile) {
             const sess = { userId: sbSession.user.id, name: profile.full_name, username: profile.username, role: profile.role };
             setSession(sess);
@@ -1249,7 +1249,7 @@ export default function App(){
     // Listen for auth state changes (login/logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        const { data: profile } = await sbGetProfile(session.user.id);
+        const { data: profile } = supabase ? await supabase.from('user_profiles').select('*').eq('id', session.user.id).single() : {data:null};
         if (profile && profile.status === 'active') {
           const sess = { userId: session.user.id, name: profile.full_name, username: profile.username, role: profile.role };
           setSession(sess);
@@ -1270,137 +1270,25 @@ export default function App(){
 
   // ── SUPABASE: Load all data ───────────────────────────────────────────────
   const loadAllFromSupabase = async () => {
-    try {
-      const [
-        { data: dealsData },
-        { data: josData },
-        { data: pcardsData },
-        { data: tasksData },
-        { data: deptStatusData },
-        { data: milestonesData },
-        { data: paymentsData },
-        { data: expensesData },
-        { data: inflowsData },
-        { data: prsData },
-        { data: mrsData },
-        { data: brsData },
-        { data: addendaData },
-        { data: cashData },
-        { data: budgetsData },
-        { data: actData },
-        { data: checklistData },
-        { data: swatchData },
-        { data: usersData },
-      ] = await Promise.all([
-        sb.list('deals'),
-        sb.list('job_orders'),
-        sb.list('project_cards'),
-        sb.list('project_card_dept_tasks'),
-        sb.list('project_card_dept_status'),
-        sb.list('billing_milestones'),
-        sb.list('billing_payments'),
-        sb.list('expenses'),
-        sb.list('inflows'),
-        sb.list('purchase_requests'),
-        sb.list('material_requests'),
-        sb.list('budget_requests'),
-        sb.list('addenda'),
-        sb.list('cash_positions', {order:'date'}),
-        sb.list('project_budgets'),
-        sb.list('activity_log', {order:'created_at'}),
-        sb.list('checklists', {order:'sort_order'}),
-        sb.list('swatches'),
-        sb.list('user_profiles'),
-      ]);
-
-      // Transform Supabase data to FabHub format
-      if(dealsData) setDeals(dealsData.map(d=>({
-        ...d, id:d.id, ceNo:d.ce_no, ceType:d.ce_type, product:d.product,
-        salesOwner:d.sales_owner, bizDevSource:d.biz_dev_source,
-        dateAcquired:d.date_acquired, dueDate:d.due_date, value:d.value||0,
-        amountPaid:d.amount_paid||0, paymentStatus:d.payment_status,
-        receiptType:d.receipt_type, commsGroup:d.comms_group,
-        salesRepoLink:d.sales_repo_link, proposalFolderLink:d.proposal_folder_link,
-      })));
-
-      if(josData) setJos(josData.map(j=>({
-        ...j, id:j.id, dealId:j.deal_id, joNo:j.jo_no,
-        projectName:j.project_name, awardTrigger:j.award_trigger,
-        triggerDate:j.trigger_date, triggerNote:j.trigger_note,
-        startDate:j.start_date, commsLink:j.comms_link,
-        scopeNotes:j.scope_notes, specialInstructions:j.special_instructions,
-        budgetStatus:j.budget_status, issuedBy:j.issued_by, issuedDate:j.issued_date,
-        aeAssigned:j.ae_assigned,
-      })));
-
-      // Build pcards from project_cards + tasks + dept_status
-      if(pcardsData && tasksData && deptStatusData) {
-        const builtCards = {};
-        pcardsData.forEach(card=>{
-          const tasks = tasksData.filter(t=>t.card_id===card.id);
-          const deptStatus = deptStatusData.filter(d=>d.card_id===card.id);
-          const departments = {};
-          ['Sales','Design','QS','Procurement','Operations','Finance'].forEach(dept=>{
-            const ds = deptStatus.find(d=>d.department===dept)||{};
-            const deptTasks = tasks.filter(t=>t.department===dept).sort((a,b)=>a.sort_order-b.sort_order);
-            departments[dept] = {
-              done: ds.done||false, doneAt:ds.done_at, doneBy:ds.done_by,
-              tasks: deptTasks.map(t=>({id:t.id,text:t.task_text,done:t.done,doneAt:t.done_at,doneBy:t.done_by}))
-            };
-          });
-          builtCards[card.deal_id] = {
-            ...card, dealId:card.deal_id, ceNo:card.ce_no,
-            awardDate:card.award_date, targetDays:card.target_days,
-            targetEndDate:card.target_end_date, tatCategory:card.tat_category,
-            tatSetBy:card.tat_set_by, tatSetAt:card.tat_set_at,
-            departments,
-          };
-        });
-        setPcards(builtCards);
-      }
-
-      // Build billings with payments
-      if(milestonesData && paymentsData) {
-        const bills = milestonesData.map(m=>({
-          ...m, id:m.id, dealId:m.deal_id, invoiceNo:m.invoice_no,
-          invoiceDate:m.invoice_date, dueDate:m.due_date,
-          createdBy:m.created_by,
-          payments: paymentsData.filter(p=>p.milestone_id===m.id).map(p=>({
-            ...p, id:p.id, refNo:p.ref_no, recordedBy:p.recorded_by,
-          }))
-        }));
-        setBillings(bills);
-      }
-
-      if(expensesData) setExps(expensesData.map(e=>({...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by})));
-      if(inflowsData) setInfs(inflowsData.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
-      if(prsData) setPrs(prsData.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
-      if(mrsData) setMreqs(mrsData.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
-      if(brsData) setBreqs(brsData.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
-      if(addendaData) setAddenda(addendaData.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
-      if(checklistData) setChecklist(checklistData.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
-      if(swatchData) setSwatches(swatchData.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
-      if(actData) setActLog(actData.map(a=>({...a,dealId:a.deal_id})));
-
-      // Cash positions - convert to object keyed by date
-      if(cashData){
-        const cp={};
-        cashData.forEach(c=>{cp[c.date]={...c};});
-        setCashPos(cp);
-      }
-
-      // Budgets - convert to object keyed by dealId
-      if(budgetsData){
-        const bg={};
-        budgetsData.forEach(b=>{bg[b.deal_id]={Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes,setBy:b.set_by};});
-        setBudgets(bg);
-      }
-
-      if(usersData) setUsers(usersData.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,status:u.status})));
-
-    } catch(err) {
-      console.error("loadAllFromSupabase error:", err);
-    }
+    if(!isSupabaseReady()) return;
+    const data = await sbLoadAll();
+    if(!data) return;
+    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link})));
+    if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+    if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
+    if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
+    if(data.exps?.length)        setExps(data.exps.map(e=>({...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by})));
+    if(data.inflows?.length)     setInflows(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
+    if(data.prs?.length)         setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
+    if(data.mreqs?.length)       setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
+    if(data.breqs?.length)       setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
+    if(data.addenda?.length)     setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
+    if(data.checklist?.length)   setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
+    if(data.swatches?.length)    setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
+    if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
+    if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
+    if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
+    if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,status:u.status})));
   };
 
 
@@ -1796,10 +1684,10 @@ export default function App(){
       // Check if UUID (Supabase) or old ID
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(rec.id);
       if(isUUID){
-        await sb.update('deals', rec.id, payload);
+        await sbUpdate('deals', rec.id, payload);
       } else {
-        const {data} = await sb.insert('deals', payload);
-        if(data) return data.id; // return new Supabase UUID
+        const data = await sbInsert('deals', payload);
+        if(data?.id) return data.id; // return new Supabase UUID
       }
     } catch(err){ console.warn("Supabase deal save failed, localStorage only:", err.message); }
     return rec.id;
