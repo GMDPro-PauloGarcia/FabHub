@@ -1429,6 +1429,7 @@ export default function App(){
   const[clModal,   setClModal]  = useState(false);
   const[clForm,    setClForm]   = useState({projectId:null,type:"Task",customType:"",title:"",dept:"Operations",assignedTo:"",status:"To Do",priority:"Normal",dueDate:"",supplier:"",notes:"",whatCouldGoWrong:"",qty:"",unit:"pcs"});
   const[editCl,    setEditCl]   = useState(null);
+  const[selClient, setSelClient] = useState(null); // client name for history popup
   const[clProjF,   setClProjF]  = useState("all");
   const[clTypeF,   setClTypeF]  = useState("All");
   const[clStatF,   setClStatF]  = useState("All");
@@ -1565,6 +1566,7 @@ export default function App(){
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
   const[stageFilter,  setStageFilter]  = useState(null);   // pipeline stage click filter
+  const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
@@ -2109,6 +2111,20 @@ export default function App(){
           <div>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
             <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL} · <span style={{color:"#3b82f6"}}>drag cards between stages</span></div>
+            {/* Search bar */}
+            <div style={{position:"relative",marginTop:8}}>
+              <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
+              <input
+                type="text"
+                value={pipeSearch}
+                onChange={e=>setPipeSearch(e.target.value)}
+                placeholder="Search by client, CE number, project name, AE..."
+                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"8px 12px 8px 32px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",background:"#fff"}}
+                onFocus={e=>e.target.style.borderColor="#3b82f6"}
+                onBlur={e=>e.target.style.borderColor="#e2e8f0"}
+              />
+              {pipeSearch&&<button onClick={()=>setPipeSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>✕</button>}
+            </div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <label style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
@@ -2279,6 +2295,16 @@ export default function App(){
         </div>
 
         {/* Stage filter expanded view */}
+        {/* Search results notice */}
+        {pipeSearch&&(
+          <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"8px 16px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:".82rem",color:"#1d4ed8"}}>
+              🔍 Showing results for "<strong>{pipeSearch}</strong>" — {deals.filter(d=>d.stage!=="Cancelled"&&[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())).length} deals found
+            </span>
+            <button onClick={()=>setPipeSearch("")} style={{background:"transparent",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".8rem",fontWeight:700}}>Clear ✕</button>
+          </div>
+        )}
+
         {stageFilter&&(()=>{
           const filtered=deals.filter(d=>d.stage===stageFilter&&d.stage!=="Cancelled");
           return(
@@ -2324,7 +2350,7 @@ export default function App(){
         {/* Stage groups — pre-award stages */}
         {(()=>{
           const preAward  = DEAL_STAGES.filter(s=>!WON_STAGES.includes(s)&&s!=="Cancelled");
-          const stageDeals= s=>deals.filter(d=>d.stage===s);
+          const stageDeals= s=>deals.filter(d=>d.stage===s&&(!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())));
           return(
             <div>
               <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
@@ -2764,6 +2790,45 @@ export default function App(){
     if(page==="collections") return(
       <Wrap>
         <SecHead title="Collections" sub="Track client payments for all awarded projects"/>
+        {/* Priority call list */}
+        {(()=>{
+          const today2=new Date();
+          const callList=wonDeals.map(d=>{
+            const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled"&&b.status!=="Fully Paid");
+            const totalDue=ms.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,pay)=>ps+Number(pay.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+            const mostOverdue=ms.filter(m=>m.dueDate&&m.dueDate<today).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate))[0];
+            const daysOverdue=mostOverdue?Math.floor((today2-new Date(mostOverdue.dueDate))/(1000*60*60*24)):null;
+            return{d,totalDue,daysOverdue,msCount:ms.length};
+          }).filter(x=>x.totalDue>0).sort((a,b)=>((b.daysOverdue||0)-(a.daysOverdue||0))||(b.totalDue-a.totalDue));
+          if(!callList.length) return null;
+          return(
+            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
+              <div style={{background:"#1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Call List — ₱{callList.reduce((s,x)=>s+x.totalDue,0).toLocaleString("en-PH",{minimumFractionDigits:0})} outstanding</span>
+                <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{callList.length} clients to follow up</span>
+              </div>
+              {callList.slice(0,8).map(({d,totalDue,daysOverdue,msCount})=>(
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 18px",borderBottom:"1px solid #f8fafc",flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {msCount} milestone{msCount!==1?"s":""}</div>
+                  </div>
+                  <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{totalDue.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>outstanding</div>
+                    </div>
+                    {daysOverdue!==null&&(
+                      <span style={{background:daysOverdue>60?"#fef2f2":daysOverdue>30?"#fff7ed":"#fffbeb",color:daysOverdue>60?"#dc2626":daysOverdue>30?"#c2410c":"#d97706",border:`1px solid ${daysOverdue>60?"#fecaca":daysOverdue>30?"#fed7aa":"#fde68a"}`,borderRadius:20,padding:"2px 9px",fontSize:".72rem",fontWeight:700}}>
+                        {daysOverdue}d overdue
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
         <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"||role==="QS"||role==="Procurement"||role==="Operations"||role==="Design"}/>
       </Wrap>
     );
@@ -3730,9 +3795,18 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
           <SecHead title="Issued JOs"/>
           {jos.map((jo,i)=>(
             <Card key={i} onClick={()=>{setViewJO(jo);setJoStep("preview");}}>
-              <div style={{fontWeight:700,color:"#0f172a"}}>{jo.joNum}</div>
-              <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{jo.deal?.client}</div>
-              <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{jo.dateIssued}</div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                <div>
+                  <div style={{fontWeight:700,color:"#0f172a"}}>{jo.joNo||jo.joNum}</div>
+                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{jo.client||jo.deal?.client}</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{jo.issuedDate||jo.dateIssued}</div>
+                  {jo.pm1&&<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>PM: {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")}</div>}
+                </div>
+                <button onClick={e=>{e.stopPropagation();printJO(jo);}}
+                  style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:600,flexShrink:0}}>
+                  🖨 Print
+                </button>
+              </div>
             </Card>
           ))}
           {jos.length===0&&<EmptyState icon="📄" msg="No JOs issued yet."/>}
@@ -4377,6 +4451,8 @@ function ClientAutocomplete({value:initVal, onChange}){
 
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
+  const[selClient, setSelClient] = useState(null);
+
   const[search, setSearch] = useState("");
   const[filter, setFilter] = useState("all"); // all | with-projects | with-balance
 
@@ -4471,7 +4547,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
           const hasBalance  = c.balance>0;
           const hasDeals    = clientDeals.length>0;
           return(
-            <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:0,padding:"12px 18px",borderBottom:"1px solid #f1f5f9",background:hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa",alignItems:"center",transition:"background .1s"}}
+            <div key={i} onClick={()=>setSelClient(c.name)} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:0,padding:"12px 18px",cursor:"pointer",borderBottom:"1px solid #f1f5f9",background:hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa",alignItems:"center",transition:"background .1s"}}
               onMouseEnter={e=>e.currentTarget.style.background="#f0f9ff"}
               onMouseLeave={e=>e.currentTarget.style.background=hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa"}>
               <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
@@ -6297,14 +6373,35 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
         ))}
       </div>
 
-      {/* Overdue alert */}
-      {overdue.length>0&&(
-        <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 16px",marginBottom:12,fontSize:".82rem",color:"#dc2626"}}>
-          🚨 <strong>{overdue.length} overdue invoice{overdue.length>1?"s":""}:</strong>{" "}
-          {overdue.slice(0,3).map(m=>{const d=wonDeals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo})`;}).join(", ")}
-          {overdue.length>3&&` +${overdue.length-3} more`}
-        </div>
-      )}
+      {/* Overdue alert + Aging Summary */}
+      {overdue.length>0&&(()=>{
+        const today2=new Date();
+        const age=ms=>{const d=new Date(ms.dueDate);return Math.floor((today2-d)/(1000*60*60*24));};
+        const d30 =overdue.filter(m=>age(m)<=30);
+        const d60 =overdue.filter(m=>age(m)>30&&age(m)<=60);
+        const d90 =overdue.filter(m=>age(m)>60&&age(m)<=90);
+        const d90p=overdue.filter(m=>age(m)>90);
+        return(
+          <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"14px 18px",marginBottom:12}}>
+            <div style={{fontWeight:700,color:"#dc2626",marginBottom:10,fontSize:".88rem"}}>🚨 Overdue Invoice Aging Summary</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:10}}>
+              {[[d30,"1–30 days","#f59e0b","#fffbeb"],[d60,"31–60 days","#f97316","#fff7ed"],[d90,"61–90 days","#ef4444","#fef2f2"],[d90p,"90+ days","#dc2626","#fef2f2"]].map(([grp,lbl,clr,bg])=>(
+                <div key={lbl} style={{background:bg,borderRadius:8,padding:"10px 12px",textAlign:"center",border:`1px solid ${clr}33`}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:clr}}>{grp.length}</div>
+                  <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:clr,marginTop:3}}>{lbl}</div>
+                  <div style={{fontSize:".72rem",color:clr,fontWeight:600,marginTop:2}}>
+                    ₱{grp.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0);return s+Math.max(0,calcTax(m.amount,"OR",false).netReceivable-p);},0).toLocaleString("en-PH",{minimumFractionDigits:0})}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{fontSize:".78rem",color:"#dc2626"}}>
+              {overdue.slice(0,4).map(m=>{const d=wonDeals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo}, ${age(m)}d overdue)`;}).join(" · ")}
+              {overdue.length>4&&` +${overdue.length-4} more`}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
@@ -6520,6 +6617,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
   const[selDept,     setSelDept]    =useState(null);
   const[pcFilter,    setPcFilter]   =useState(null);   // "done"|"attention"|null
   const[pcDeptFilter,setPcDeptFilter]=useState("All"); // dept filter
+  const[pcSort,      setPcSort]     =useState("tat");  // "client"|"tat"|"pct"|"ce"
 
   const card = selDeal ? pcards[selDeal] : null;
   const deal = wonDeals.find(d=>d.id===selDeal);
@@ -6611,12 +6709,40 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
             )}
           </div>
 
+          {/* Sort controls */}
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
+            <span style={{fontSize:".75rem",fontWeight:700,color:"#64748b"}}>Sort by:</span>
+            {[["client","Client"],["tat","TAT (urgent first)"],["pct","Progress"],["ce","CE Number"]].map(([val,lbl])=>(
+              <button key={val} onClick={()=>setPcSort(s=>s===val?null:val)}
+                style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${pcSort===val?"#1e293b":"#e2e8f0"}`,background:pcSort===val?"#1e293b":"#fff",color:pcSort===val?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcSort===val?700:400,fontSize:".75rem",cursor:"pointer"}}>
+                {lbl}
+              </button>
+            ))}
+          </div>
+
           {/* Cards grid */}
           {(()=>{
             let filtered=wonDeals;
             if(pcFilter==="done") filtered=filtered.filter(d=>pcards[d.id]&&DEPT_ORDER.every(dept=>pcards[d.id].departments?.[dept]?.done));
             if(pcFilter==="attention") filtered=filtered.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dept=>!pcards[d.id]?.departments?.[dept]?.done));
             if(pcDeptFilter!=="All") filtered=filtered.filter(d=>pcards[d.id]&&!pcards[d.id].departments?.[pcDeptFilter]?.done);
+            // Sort
+            filtered=[...filtered].sort((a,b)=>{
+              if(pcSort==="client") return a.client.localeCompare(b.client);
+              if(pcSort==="ce") return (a.ceNo||"").localeCompare(b.ceNo||"");
+              if(pcSort==="pct"){
+                const pa=pcards[a.id]?projectProgress(pcards[a.id]):0;
+                const pb=pcards[b.id]?projectProgress(pcards[b.id]):0;
+                return pa-pb; // least complete first
+              }
+              if(pcSort==="tat"){
+                const today2=new Date();
+                const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/(1000*60*60*24)):999;
+                const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/(1000*60*60*24)):999;
+                return da-db; // most urgent first
+              }
+              return 0;
+            });
             return(
               <div>
                 {filtered.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>}
@@ -6695,7 +6821,15 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                         })()}
 
                         {!pc&&(
-                          <div style={{fontSize:".7rem",color:"#f59e0b",marginTop:6,fontWeight:600}}>⚠ No project card yet — award via Pipeline to create one</div>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
+                            <div style={{fontSize:".7rem",color:"#f59e0b",fontWeight:600}}>⚠ No project card yet</div>
+                            {role==="Manager"&&(
+                              <button onClick={e=>{e.stopPropagation();createProjectCard(d.id,d);}}
+                                style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"3px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
+                                + Create Card
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
@@ -7493,3 +7627,134 @@ function DataManagement({
     </div>
   );
 }
+  const printJO=(jo)=>{
+    const d=deals.find(x=>x.id===jo.dealId)||{};
+    const win=window.open("","_blank");
+    win.document.write(`<!DOCTYPE html><html><head><title>Job Order ${jo.joNo||jo.joNum}</title>
+    <style>
+      body{font-family:Arial,sans-serif;margin:40px;color:#1e293b;font-size:13px;}
+      .hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:16px;border-bottom:3px solid #1e293b;margin-bottom:24px;}
+      .logo{font-size:24px;font-weight:900;letter-spacing:-1px;}
+      .logo span{color:#f59e0b;}
+      .jo-no{font-size:20px;font-weight:900;color:#1e293b;}
+      .section{margin-bottom:20px;}
+      .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-bottom:8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px;}
+      .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+      .field label{font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:2px;}
+      .field span{font-size:13px;color:#0f172a;font-weight:600;}
+      .scope-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:12px;font-size:13px;line-height:1.6;min-height:60px;}
+      .pm-badge{display:inline-block;background:#eff6ff;color:#1d4ed8;border:1px solid #93c5fd;border-radius:20px;padding:3px 12px;font-weight:700;font-size:12px;margin:2px;}
+      .status{display:inline-block;background:#f0fdf4;color:#059669;border:1px solid #6ee7b7;border-radius:20px;padding:4px 14px;font-weight:700;font-size:12px;}
+      .footer{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;}
+      .sig-box{text-align:center;}
+      .sig-line{border-top:1px solid #1e293b;margin-top:40px;padding-top:6px;font-size:11px;color:#64748b;}
+      @media print{button{display:none;}}
+    </style></head><body>
+    <div class="hdr">
+      <div>
+        <div class="logo">GMD <span>PROD</span></div>
+        <div style="color:#64748b;font-size:11px;margin-top:4px;">GMD Productions Inc. · TIN: 010-063-229-00000</div>
+        <div style="color:#64748b;font-size:11px;">32 Unit-H Santan St., Fortune, Marikina City</div>
+      </div>
+      <div style="text-align:right">
+        <div class="jo-no">JOB ORDER</div>
+        <div style="font-size:18px;font-weight:800;color:#f59e0b;">${jo.joNo||jo.joNum||"JO-XXXX"}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:4px;">Issued: ${jo.issuedDate||jo.dateIssued||""}</div>
+        <div class="status" style="margin-top:6px;">${jo.status||"Active"}</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Project Details</div>
+      <div class="grid">
+        <div class="field"><label>Client</label><span>${jo.client||d.client||"—"}</span></div>
+        <div class="field"><label>CE Number</label><span>${jo.ceNo||d.ceNo||"—"}</span></div>
+        <div class="field"><label>Project Name</label><span>${jo.projectName||d.contact||"—"}</span></div>
+        <div class="field"><label>CE Type</label><span>${jo.ceType||d.ceType||"—"} ${jo.product||d.product?("· "+(jo.product||d.product)):"" }</span></div>
+        <div class="field"><label>Contract Value</label><span>₱${(jo.value||d.value||0).toLocaleString("en-PH")}</span></div>
+        <div class="field"><label>Award Trigger</label><span>${jo.awardTrigger||"—"} ${jo.triggerDate?("· "+jo.triggerDate):""}</span></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Team Assignment</div>
+      <div class="grid">
+        <div class="field">
+          <label>Project Manager(s)</label>
+          <div>${[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).map(pm=>'<span class="pm-badge">'+pm+'</span>').join("")||'<span style="color:#94a3b8">Not assigned</span>'}</div>
+        </div>
+        <div class="field">
+          <label>Coordinator</label>
+          <span>${jo.coordinator||"—"}</span>
+        </div>
+        <div class="field"><label>Account Executive</label><span>${jo.aeAssigned||d.salesOwner||"—"}</span></div>
+        <div class="field"><label>Target Start Date</label><span>${jo.startDate||"—"}</span></div>
+      </div>
+      ${jo.commsLink?('<div style="margin-top:10px"><div class="field"><label>Comms Group</label><a href="'+jo.commsLink+'" style="color:#3b82f6">'+jo.commsLink+'</a></div></div>'):""}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Scope of Work</div>
+      <div class="scope-box">${(jo.scopeNotes||"").replace(/\n/g,"<br/>")}</div>\n'
+    </div>
+
+    ${jo.specialInstructions?'<div class="section"><div class="section-title">Special Instructions / Venue Requirements</div><div class="scope-box" style="background:#fffbeb;border-color:#fde68a;">'+(jo.specialInstructions||"").replace(/\\n/g,"<br/>")+'</div></div>':""}
+
+    <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:#1d4ed8;">
+      <strong>Budget Status:</strong> ${jo.budgetStatus||"QS Budget Pending"} &nbsp;·&nbsp;
+      <strong>Issued by:</strong> ${jo.issuedBy||"Manager"} &nbsp;·&nbsp;
+      <strong>Date:</strong> ${jo.issuedDate||jo.dateIssued||""}
+    </div>
+
+    <div class="footer">
+      <div class="sig-box"><div class="sig-line">Prepared by / Account Executive</div></div>
+      <div class="sig-box"><div class="sig-line">Project Manager</div></div>
+      <div class="sig-box"><div class="sig-line">Approved by / Director</div></div>
+    </div>
+
+    <div style="text-align:center;margin-top:30px;">
+      <button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;">🖨 Print / Save as PDF</button>
+    </div>
+    </body></html>`);
+    win.document.close();
+  };
+
+      {/* Client History Modal */}
+      {selClient&&(()=>{
+        const clientDeals=deals.filter(d=>d.client===selClient);
+        const totalValue=clientDeals.reduce((s,d)=>s+Number(d.value||0),0);
+        const totalCollected=clientDeals.reduce((s,d)=>s+Number(d.amountPaid||0),0);
+        const isVvip=vvipClients?.has(selClient);
+        return(
+          <Modal open title={`${isVvip?"⭐ ":""}${selClient}`} onClose={()=>setSelClient(null)} wide>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+              {[
+                {l:"Total Projects",  v:clientDeals.length,                           c:"#3b82f6"},
+                {l:"Total Value",     v:"₱"+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#0f172a"},
+                {l:"Total Collected", v:"₱"+totalCollected.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#059669"},
+              ].map(({l,v,c})=>(
+                <div key={l} style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c}}>{v}</div>
+                  <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            {clientDeals.length===0&&<div style={{textAlign:"center",padding:"24px",color:"#94a3b8"}}>No projects on record for this client.</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {clientDeals.sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0)).map(d=>(
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f8fafc",borderRadius:9,border:"1px solid #e2e8f0",flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.ceNo||"No project name"}</div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {d.ceType} · {d.dateAcquired||""}</div>
+                  </div>
+                  <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>₱{Number(d.value||0).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+                    <span style={{fontSize:".72rem",background:d.paymentStatus==="Paid"?"#f0fdf4":d.paymentStatus==="Deposited"?"#eff6ff":"#f8fafc",color:d.paymentStatus==="Paid"?"#059669":d.paymentStatus==="Deposited"?"#3b82f6":"#94a3b8",border:"1px solid #e2e8f0",borderRadius:20,padding:"2px 9px",fontWeight:600}}>{d.paymentStatus||"—"}</span>
+                    <span style={{fontSize:".72rem",color:"#64748b",background:"#f1f5f9",borderRadius:20,padding:"2px 9px"}}>{d.stage?.replace(/^\d+ · /,"")}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Modal>
+        );
+      })()}
