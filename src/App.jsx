@@ -1564,7 +1564,7 @@ export default function App(){
   const[designModal,setDesignModal]=useState(false);
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
-  const[stageFilter, setStageFilter] = useState(null);   // pipeline stage click filter
+  const[stageFilter,  setStageFilter]  = useState(null);   // pipeline stage click filter
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
@@ -6516,8 +6516,10 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
 
 // ─── PROJECT CARDS ────────────────────────────────────────────────────────────
 function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role}){
-  const[selDeal,setSelDeal]=useState(null);
-  const[selDept,setSelDept]=useState(null);
+  const[selDeal,     setSelDeal]    =useState(null);
+  const[selDept,     setSelDept]    =useState(null);
+  const[pcFilter,    setPcFilter]   =useState(null);   // "done"|"attention"|null
+  const[pcDeptFilter,setPcDeptFilter]=useState("All"); // dept filter
 
   const card = selDeal ? pcards[selDeal] : null;
   const deal = wonDeals.find(d=>d.id===selDeal);
@@ -6564,104 +6566,144 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
           </div>
         ):null;
       })()}
-      {/* Summary KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
-        {[
-          {l:"Active Projects",  v:wonDeals.length,                                              c:"#0f172a"},
-          {l:"Project Cards",    v:Object.keys(pcards).length,                                  c:"#3b82f6"},
-          {l:"Fully Complete",   v:Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length, c:"#059669"},
-          {l:"Needs Attention",  v:Object.values(pcards).filter(p=>DEPT_ORDER.some(d=>!p.departments?.[d]?.done)).length, c:"#f59e0b"},
-        ].map(({l,v,c})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+      {/* Summary KPIs — clickable */}
+      {(()=>{
+        const totalCards=Object.keys(pcards).length;
+        const fullyDone=Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length;
+        const needsAttn=Object.values(pcards).filter(p=>DEPT_ORDER.some(d=>!p.departments?.[d]?.done)).length;
+        return(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+            {[
+              {l:"Active Projects",  v:wonDeals.length,  c:"#0f172a",  filter:null,    hint:"Show all"},
+              {l:"Project Cards",    v:totalCards,       c:"#3b82f6",  filter:null,    hint:"Show all"},
+              {l:"Fully Complete",   v:fullyDone,        c:"#059669",  filter:"done",  hint:"Click to filter"},
+              {l:"Needs Attention",  v:needsAttn,        c:"#f59e0b",  filter:"attention", hint:"Click to filter"},
+            ].map(({l,v,c,filter,hint})=>(
+              <div key={l}
+                onClick={()=>setPcFilter(f=>f===filter?null:filter)}
+                style={{background:pcFilter===filter?"#1e293b":"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${pcFilter===filter?c:"#e2e8f0"}`,cursor:filter?"pointer":"default",transition:"all .15s"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pcFilter===filter?"#fff":c}}>{v}</div>
+                <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:pcFilter===filter?"rgba(255,255,255,.6)":"#94a3b8",marginTop:5}}>{l}</div>
+                {filter&&<div style={{fontSize:".6rem",color:pcFilter===filter?"#f59e0b":"#cbd5e1",marginTop:3}}>{pcFilter===filter?"✓ Active filter — click to clear":hint}</div>}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {!selDeal?(
         // ── PROJECT LIST ─────────────────────────────────────────────────────
         <div>
-          {wonDeals.length===0&&(
-            <div style={{textAlign:"center",padding:"48px 0",color:"#94a3b8",fontSize:".84rem"}}>
-              No awarded projects yet. Award a deal from the Pipeline to create a Project Card.
-            </div>
-          )}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
-            {wonDeals.map(d=>{
-              const pc=pcards[d.id];
-              const pct=pc?projectProgress(pc):0;
-              const doneCount=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
-              return(
-                <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 18px",transition:"all .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)",position:"relative"}}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="#3b82f6";e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)";}}>
-                  {/* Delete button — Manager only */}
-                  {role==="Manager"&&(
-                    <button
-                      onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+" ("+( d.contact||d.ceNo||"No CE")+")?\nThis will also delete the deal, project card, JO, checklist, and addenda."))
-                        {delDeal(d.id);delPcard(d.id);}
-                      }}
-                      style={{position:"absolute",top:10,right:10,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 9px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit",zIndex:2}}>
-                      ✕ Delete
-                    </button>
-                  )}
-                  <div onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}} style={{cursor:"pointer"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                    <div>
-                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>{d.client}</div>
-                      {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginTop:2}}>
-                    <span style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo||"No CE"} · {fmt(d.value)}</span>
-                    {(()=>{const same=wonDeals.filter(x=>x.ceNo&&x.ceNo===d.ceNo&&x.ceNo!=="No CE");return same.length>1?<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 7px",fontWeight:700}}>DUPLICATE</span>:null;})()}
-                  </div>
-                  {(()=>{const j=jos.find(j=>j.dealId===d.id);return j?(<div style={{fontSize:".7rem",color:"#3b82f6",marginTop:2}}>📋 {j.joNo} · PM: {[j.pm1,j.pm2,j.pm3].filter(Boolean).join(", ")||"TBA"}{j.coordinator?` · Coord: ${j.coordinator}`:""}</div>):null;})()}
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
-                      <div style={{fontSize:".62rem",color:"#94a3b8"}}>{doneCount}/{DEPT_ORDER.length} depts</div>
-                    </div>
-                  </div>
-                  {/* Dept status pills */}
-                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:10}}>
-                    {DEPT_ORDER.map(dept=>{
-                      const done=pc?.departments?.[dept]?.done;
-                      const tasksDone=pc?.departments?.[dept]?.tasks?.filter(t=>t.done).length||0;
-                      const tasksTotal=pc?.departments?.[dept]?.tasks?.length||DEFAULT_DEPT_TASKS[dept].length;
-                      return(
-                        <div key={dept} style={{fontSize:".62rem",padding:"2px 8px",borderRadius:20,fontWeight:600,background:done?(DEPT_CLR[dept]+"22"):pc?((DEPT_CLR[dept]+"11")):"#f8fafc",color:done?DEPT_CLR[dept]:"#94a3b8",border:`1px solid ${done?(DEPT_CLR[dept]+"44"):"#e2e8f0"}`}} title={`${dept}: ${tasksDone}/${tasksTotal} tasks`}>
-                          {done?"✓ ":""}{dept}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {/* Progress bar */}
-                  <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":"#3b82f6",borderRadius:3,transition:"width .5s"}}/>
-                  </div>
-                  {/* TAT badge */}
-                  {pc?.targetDays&&(()=>{
-                    const today2=new Date(); const end=new Date(pc.targetEndDate);
-                    const daysLeft=Math.ceil((end-today2)/(1000*60*60*24));
-                    const isOver=daysLeft<0;
+          {/* Filter bar */}
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+            <span style={{fontSize:".75rem",fontWeight:700,color:"#64748b"}}>Filter by dept:</span>
+            {["All",...DEPT_ORDER].map(dept=>(
+              <button key={dept} onClick={()=>setPcDeptFilter(f=>f===dept?"All":dept)}
+                style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#e2e8f0"}`,background:pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#fff",color:pcDeptFilter===dept&&dept!=="All"?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcDeptFilter===dept?700:400,fontSize:".75rem",cursor:"pointer"}}>
+                {dept}
+              </button>
+            ))}
+            {(pcFilter||pcDeptFilter!=="All")&&(
+              <button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");}}
+                style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer"}}>
+                ✕ Clear all filters
+              </button>
+            )}
+          </div>
+
+          {/* Cards grid */}
+          {(()=>{
+            let filtered=wonDeals;
+            if(pcFilter==="done") filtered=filtered.filter(d=>pcards[d.id]&&DEPT_ORDER.every(dept=>pcards[d.id].departments?.[dept]?.done));
+            if(pcFilter==="attention") filtered=filtered.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dept=>!pcards[d.id]?.departments?.[dept]?.done));
+            if(pcDeptFilter!=="All") filtered=filtered.filter(d=>pcards[d.id]&&!pcards[d.id].departments?.[pcDeptFilter]?.done);
+            return(
+              <div>
+                {filtered.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+                  {filtered.map(d=>{
+                    const pc=pcards[d.id];
+                    const pct=pc?projectProgress(pc):0;
+                    const doneCount=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
+                    const hasDupe=wonDeals.filter(x=>x.ceNo&&x.ceNo===d.ceNo&&x.ceNo!=="No CE").length>1;
                     return(
-                      <div style={{marginTop:8,display:"flex",gap:8,alignItems:"center",fontSize:".72rem"}}>
-                        <span style={{color:"#94a3b8"}}>🕐 {pc.targetDays}d target</span>
-                        <span style={{fontWeight:700,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669"}}>
-                          {isOver?`${Math.abs(daysLeft)}d overdue`:`${daysLeft}d left`}
-                        </span>
-                        <span style={{color:"#94a3b8"}}>· Due {pc.targetEndDate}</span>
+                      <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"14px 16px",transition:"all .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
+                        onMouseEnter={e=>{e.currentTarget.style.borderColor="#3b82f6";e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)";}}
+                        onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)";}}>
+
+                        {/* Card top row: client info + pct + delete */}
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                          {/* Left: client info */}
+                          <div style={{flex:1,cursor:"pointer",minWidth:0}} onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}}>
+                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                            {d.contact&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact}</div>}
+                            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,flexWrap:"wrap"}}>
+                              <span style={{fontSize:".7rem",color:"#94a3b8"}}>{d.ceNo||"No CE"} · {fmt(d.value)}</span>
+                              {hasDupe&&<span style={{fontSize:".62rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 7px",fontWeight:700}}>DUPLICATE</span>}
+                            </div>
+                            {(()=>{const j=jos.find(j=>j.dealId===d.id);return j?(<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>📋 {j.joNo} · {[j.pm1,j.pm2,j.pm3].filter(Boolean).join(", ")||"No PM"}</div>):null;})()}
+                          </div>
+                          {/* Right: pct + delete stacked */}
+                          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0,marginLeft:10}}>
+                            {pct===100&&<span style={{fontSize:".62rem",background:"#059669",color:"#fff",fontWeight:800,padding:"2px 7px",borderRadius:20}}>✅ DONE</span>}
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
+                            <div style={{fontSize:".6rem",color:"#94a3b8"}}>{doneCount}/{DEPT_ORDER.length} depts</div>
+                            {role==="Manager"&&(
+                              <button
+                                onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+"? This removes the deal, project card, JO and checklist."))
+                                  {delDeal(d.id);delPcard(d.id);}}}
+                                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit",marginTop:2}}>
+                                ✕ Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Dept pills — clickable */}
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8,cursor:"pointer"}} onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}}>
+                          {DEPT_ORDER.map(dept=>{
+                            const done=pc?.departments?.[dept]?.done;
+                            const tasksDone=pc?.departments?.[dept]?.tasks?.filter(t=>t.done).length||0;
+                            const tasksTotal=pc?.departments?.[dept]?.tasks?.length||DEFAULT_DEPT_TASKS[dept].length;
+                            return(
+                              <div key={dept} style={{fontSize:".62rem",padding:"2px 8px",borderRadius:20,fontWeight:600,background:done?(DEPT_CLR[dept]+"22"):pc?((DEPT_CLR[dept]+"11")):"#f8fafc",color:done?DEPT_CLR[dept]:"#94a3b8",border:`1px solid ${done?(DEPT_CLR[dept]+"44"):"#e2e8f0"}`}} title={`${dept}: ${tasksDone}/${tasksTotal} tasks`}>
+                                {done?"✓ ":""}{dept}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Progress bar */}
+                        <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}}>
+                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":"#3b82f6",borderRadius:3,transition:"width .5s"}}/>
+                        </div>
+
+                        {/* TAT badge */}
+                        {pc?.targetDays&&(()=>{
+                          const today2=new Date(); const end=new Date(pc.targetEndDate);
+                          const daysLeft=Math.ceil((end-today2)/(1000*60*60*24));
+                          const isOver=daysLeft<0;
+                          return(
+                            <div style={{marginTop:7,display:"flex",gap:8,alignItems:"center",fontSize:".7rem"}}>
+                              <span style={{color:"#94a3b8"}}>🕐 {pc.targetDays}d</span>
+                              <span style={{fontWeight:700,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669"}}>
+                                {isOver?`${Math.abs(daysLeft)}d overdue`:`${daysLeft}d left`}
+                              </span>
+                              <span style={{color:"#94a3b8"}}>Due {pc.targetEndDate}</span>
+                            </div>
+                          );
+                        })()}
+
+                        {!pc&&(
+                          <div style={{fontSize:".7rem",color:"#f59e0b",marginTop:6,fontWeight:600}}>⚠ No project card yet — award via Pipeline to create one</div>
+                        )}
                       </div>
                     );
-                  })()}
-                  {!pc&&(
-                    <div style={{fontSize:".7rem",color:"#f59e0b",marginTop:6,fontWeight:600}}>⚠ No project card yet — award via Pipeline to create one</div>
-                  )}
-                  </div>{/* end clickable area */}
+                  })}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })()}
         </div>
       ):(
         // ── SINGLE PROJECT CARD ───────────────────────────────────────────────
