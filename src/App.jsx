@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import {supabase,sbSignIn,sbSignOut,sbGetSession,sbGetProfile,sb,sbSubscribe} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -1200,33 +1201,208 @@ export default function App(){
     }
   },[]);
 
+  // ── SUPABASE: Initialize auth + load all data ──────────────────────────────
   useEffect(()=>{
-    try{
-      const u=localStorage.getItem(KEYS.users);    if(u) setUsers(JSON.parse(u));
-      const cp=localStorage.getItem(KEYS.cashPos);  if(cp) setCashPos(JSON.parse(cp));
-      const vv=localStorage.getItem(KEYS.vvip);      if(vv) setVvip(new Set(JSON.parse(vv)));
-      const al=localStorage.getItem(KEYS.actlog);   if(al) setActLog(JSON.parse(al));
-      const pc=localStorage.getItem(KEYS.pcards);  if(pc) setPcards(JSON.parse(pc));
-      const iv=localStorage.getItem(KEYS.inventory); if(iv) setInventory(JSON.parse(iv));
-      const sl=localStorage.getItem(KEYS.stocklog);  if(sl) setStocklog(JSON.parse(sl));
-      const pr=localStorage.getItem(KEYS.prs);      if(pr) setPrs(JSON.parse(pr));
-      const ad=localStorage.getItem(KEYS.addenda);  if(ad) setAddenda(JSON.parse(ad));
-      const bl=localStorage.getItem(KEYS.billings); if(bl) setBillings(JSON.parse(bl));
-      const mr=localStorage.getItem(KEYS.mreqs);    if(mr) setMreqs(JSON.parse(mr));
-      const br=localStorage.getItem(KEYS.breqs);    if(br) setBreqs(JSON.parse(br));
-      const bg=localStorage.getItem(KEYS.budgets);  if(bg) setBudgets(JSON.parse(bg));
-      const s=localStorage.getItem(KEYS.session); if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role); }
-      const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
-      const d=localStorage.getItem(KEYS.deals); if(d) setDeals(JSON.parse(d));
-      const p=localStorage.getItem(KEYS.projects); if(p) setProjs(JSON.parse(p));
-      const e=localStorage.getItem(KEYS.expenses); if(e) setExps(JSON.parse(e));
-      const i=localStorage.getItem(KEYS.inflows); if(i) setInfs(JSON.parse(i));
-      const j=localStorage.getItem(KEYS.jos); if(j) setJos(JSON.parse(j));
-      const sw=localStorage.getItem(KEYS.swatches); if(sw) setSwatches(JSON.parse(sw));
-      const cl=localStorage.getItem(KEYS.checklist); if(cl) setChecklist(JSON.parse(cl));
-    }catch{}
-    setReady(true);
+    const init = async () => {
+      try {
+        // Check for existing Supabase session first
+        const { data: { session: sbSession } } = await supabase.auth.getSession();
+        if (sbSession) {
+          const { data: profile } = await sbGetProfile(sbSession.user.id);
+          if (profile) {
+            const sess = { userId: sbSession.user.id, name: profile.full_name, username: profile.username, role: profile.role };
+            setSession(sess);
+            setRole(profile.role);
+            // Load all data from Supabase
+            await loadAllFromSupabase();
+            setReady(true);
+            return;
+          }
+        }
+        // Fallback: check localStorage session (for migration period)
+        const s=localStorage.getItem(KEYS.session);
+        if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); }
+        const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
+        const d=localStorage.getItem(KEYS.deals); if(d) setDeals(JSON.parse(d));
+        const p=localStorage.getItem(KEYS.projects); if(p) setProjs(JSON.parse(p));
+        const e=localStorage.getItem(KEYS.expenses); if(e) setExps(JSON.parse(e));
+        const i=localStorage.getItem(KEYS.inflows); if(i) setInfs(JSON.parse(i));
+        const j=localStorage.getItem(KEYS.jos); if(j) setJos(JSON.parse(j));
+        const sw=localStorage.getItem(KEYS.swatches); if(sw) setSwatches(JSON.parse(sw));
+        const cl=localStorage.getItem(KEYS.checklist); if(cl) setChecklist(JSON.parse(cl));
+        const u=localStorage.getItem(KEYS.users); if(u) setUsers(JSON.parse(u));
+        const cp=localStorage.getItem(KEYS.cashPos); if(cp) setCashPos(JSON.parse(cp));
+        const prs2=localStorage.getItem(KEYS.prs); if(prs2) setPrs(JSON.parse(prs2));
+        const mq=localStorage.getItem(KEYS.mreqs); if(mq) setMreqs(JSON.parse(mq));
+        const bq=localStorage.getItem(KEYS.breqs); if(bq) setBreqs(JSON.parse(bq));
+        const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
+        const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
+        const bl=localStorage.getItem(KEYS.billings); if(bl) setBillings(JSON.parse(bl));
+        const vv=localStorage.getItem(KEYS.vvip); if(vv) setVvip(JSON.parse(vv));
+        const al=localStorage.getItem(KEYS.actlog); if(al) setActLog(JSON.parse(al));
+        const pc=localStorage.getItem(KEYS.pcards); if(pc) setPcards(JSON.parse(pc));
+      }catch(err){ console.error("Init error:", err); }
+      setReady(true);
+    };
+    init();
+
+    // Listen for auth state changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        const { data: profile } = await sbGetProfile(session.user.id);
+        if (profile && profile.status === 'active') {
+          const sess = { userId: session.user.id, name: profile.full_name, username: profile.username, role: profile.role };
+          setSession(sess);
+          setRole(profile.role);
+          persist(KEYS.session, sess);
+          await loadAllFromSupabase();
+          setReady(true);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setRole(null);
+        localStorage.clear();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   },[]);
+
+  // ── SUPABASE: Load all data ───────────────────────────────────────────────
+  const loadAllFromSupabase = async () => {
+    try {
+      const [
+        { data: dealsData },
+        { data: josData },
+        { data: pcardsData },
+        { data: tasksData },
+        { data: deptStatusData },
+        { data: milestonesData },
+        { data: paymentsData },
+        { data: expensesData },
+        { data: inflowsData },
+        { data: prsData },
+        { data: mrsData },
+        { data: brsData },
+        { data: addendaData },
+        { data: cashData },
+        { data: budgetsData },
+        { data: actData },
+        { data: checklistData },
+        { data: swatchData },
+        { data: usersData },
+      ] = await Promise.all([
+        sb.list('deals'),
+        sb.list('job_orders'),
+        sb.list('project_cards'),
+        sb.list('project_card_dept_tasks'),
+        sb.list('project_card_dept_status'),
+        sb.list('billing_milestones'),
+        sb.list('billing_payments'),
+        sb.list('expenses'),
+        sb.list('inflows'),
+        sb.list('purchase_requests'),
+        sb.list('material_requests'),
+        sb.list('budget_requests'),
+        sb.list('addenda'),
+        sb.list('cash_positions', {order:'date'}),
+        sb.list('project_budgets'),
+        sb.list('activity_log', {order:'created_at'}),
+        sb.list('checklists', {order:'sort_order'}),
+        sb.list('swatches'),
+        sb.list('user_profiles'),
+      ]);
+
+      // Transform Supabase data to FabHub format
+      if(dealsData) setDeals(dealsData.map(d=>({
+        ...d, id:d.id, ceNo:d.ce_no, ceType:d.ce_type, product:d.product,
+        salesOwner:d.sales_owner, bizDevSource:d.biz_dev_source,
+        dateAcquired:d.date_acquired, dueDate:d.due_date, value:d.value||0,
+        amountPaid:d.amount_paid||0, paymentStatus:d.payment_status,
+        receiptType:d.receipt_type, commsGroup:d.comms_group,
+        salesRepoLink:d.sales_repo_link, proposalFolderLink:d.proposal_folder_link,
+      })));
+
+      if(josData) setJos(josData.map(j=>({
+        ...j, id:j.id, dealId:j.deal_id, joNo:j.jo_no,
+        projectName:j.project_name, awardTrigger:j.award_trigger,
+        triggerDate:j.trigger_date, triggerNote:j.trigger_note,
+        startDate:j.start_date, commsLink:j.comms_link,
+        scopeNotes:j.scope_notes, specialInstructions:j.special_instructions,
+        budgetStatus:j.budget_status, issuedBy:j.issued_by, issuedDate:j.issued_date,
+        aeAssigned:j.ae_assigned,
+      })));
+
+      // Build pcards from project_cards + tasks + dept_status
+      if(pcardsData && tasksData && deptStatusData) {
+        const builtCards = {};
+        pcardsData.forEach(card=>{
+          const tasks = tasksData.filter(t=>t.card_id===card.id);
+          const deptStatus = deptStatusData.filter(d=>d.card_id===card.id);
+          const departments = {};
+          ['Sales','Design','QS','Procurement','Operations','Finance'].forEach(dept=>{
+            const ds = deptStatus.find(d=>d.department===dept)||{};
+            const deptTasks = tasks.filter(t=>t.department===dept).sort((a,b)=>a.sort_order-b.sort_order);
+            departments[dept] = {
+              done: ds.done||false, doneAt:ds.done_at, doneBy:ds.done_by,
+              tasks: deptTasks.map(t=>({id:t.id,text:t.task_text,done:t.done,doneAt:t.done_at,doneBy:t.done_by}))
+            };
+          });
+          builtCards[card.deal_id] = {
+            ...card, dealId:card.deal_id, ceNo:card.ce_no,
+            awardDate:card.award_date, targetDays:card.target_days,
+            targetEndDate:card.target_end_date, tatCategory:card.tat_category,
+            tatSetBy:card.tat_set_by, tatSetAt:card.tat_set_at,
+            departments,
+          };
+        });
+        setPcards(builtCards);
+      }
+
+      // Build billings with payments
+      if(milestonesData && paymentsData) {
+        const bills = milestonesData.map(m=>({
+          ...m, id:m.id, dealId:m.deal_id, invoiceNo:m.invoice_no,
+          invoiceDate:m.invoice_date, dueDate:m.due_date,
+          createdBy:m.created_by,
+          payments: paymentsData.filter(p=>p.milestone_id===m.id).map(p=>({
+            ...p, id:p.id, refNo:p.ref_no, recordedBy:p.recorded_by,
+          }))
+        }));
+        setBillings(bills);
+      }
+
+      if(expensesData) setExps(expensesData.map(e=>({...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by})));
+      if(inflowsData) setInfs(inflowsData.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
+      if(prsData) setPrs(prsData.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
+      if(mrsData) setMreqs(mrsData.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
+      if(brsData) setBreqs(brsData.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
+      if(addendaData) setAddenda(addendaData.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
+      if(checklistData) setChecklist(checklistData.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
+      if(swatchData) setSwatches(swatchData.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
+      if(actData) setActLog(actData.map(a=>({...a,dealId:a.deal_id})));
+
+      // Cash positions - convert to object keyed by date
+      if(cashData){
+        const cp={};
+        cashData.forEach(c=>{cp[c.date]={...c};});
+        setCashPos(cp);
+      }
+
+      // Budgets - convert to object keyed by dealId
+      if(budgetsData){
+        const bg={};
+        budgetsData.forEach(b=>{bg[b.deal_id]={Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes,setBy:b.set_by};});
+        setBudgets(bg);
+      }
+
+      if(usersData) setUsers(usersData.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,status:u.status})));
+
+    } catch(err) {
+      console.error("loadAllFromSupabase error:", err);
+    }
+  };
+
 
   const persist=useCallback((key,val)=>{
     setSync("saving");
@@ -1322,6 +1498,26 @@ export default function App(){
       return{...ps,[dealId]:card};
     });
   };
+
+  // ── Supabase realtime subscriptions ────────────────────────────────────────
+  useEffect(()=>{
+    if(!session) return;
+    // Subscribe to deal changes — all 22 users see updates in real time
+    const dealsSub = sbSubscribe('deals', payload=>{
+      const {eventType, new: newRow, old: oldRow} = payload;
+      if(eventType==='INSERT') setDeals(p=>[newRow,...p.filter(d=>d.id!==newRow.id)]);
+      if(eventType==='UPDATE') setDeals(p=>p.map(d=>d.id===newRow.id?{...d,...newRow,ceNo:newRow.ce_no,ceType:newRow.ce_type,salesOwner:newRow.sales_owner,paymentStatus:newRow.payment_status,receiptType:newRow.receipt_type,dateAcquired:newRow.date_acquired,dueDate:newRow.due_date,amountPaid:newRow.amount_paid}:d));
+      if(eventType==='DELETE') setDeals(p=>p.filter(d=>d.id!==oldRow.id));
+    });
+    // Subscribe to activity log — dashboard feed updates live
+    const actSub = sbSubscribe('activity_log', payload=>{
+      if(payload.eventType==='INSERT') setActLog(p=>[payload.new,...p].slice(0,100));
+    });
+    return ()=>{
+      dealsSub.unsubscribe?.();
+      actSub.unsubscribe?.();
+    };
+  },[session?.userId]);
 
   const toggleVvip=(name)=>{
     setVvip(prev=>{
@@ -1429,7 +1625,6 @@ export default function App(){
   const[clModal,   setClModal]  = useState(false);
   const[clForm,    setClForm]   = useState({projectId:null,type:"Task",customType:"",title:"",dept:"Operations",assignedTo:"",status:"To Do",priority:"Normal",dueDate:"",supplier:"",notes:"",whatCouldGoWrong:"",qty:"",unit:"pcs"});
   const[editCl,    setEditCl]   = useState(null);
-  const[selClient, setSelClient] = useState(null); // client name for history popup
   const[clProjF,   setClProjF]  = useState("all");
   const[clTypeF,   setClTypeF]  = useState("All");
   const[clStatF,   setClStatF]  = useState("All");
@@ -1582,6 +1777,34 @@ export default function App(){
   // ── Helpers ───────────────────────────────────────────────────────────────
   const openAddDeal=()=>{setDealForm({...emptyDeal,ceNo:nextCENo()});setEditDeal(null);setDealModal(true);};
   const openEditDeal=d=>{setDealForm({...d,value:String(d.value),invoiced:String(d.invoiced||0),amountPaid:String(d.amountPaid||0)});setEditDeal(d.id);setDealModal(true);};
+  // ── Supabase deal writers ───────────────────────────────────────────────────
+  const sbSaveDeal=async(rec)=>{
+    try {
+      const payload={
+        ce_no:rec.ceNo, client:rec.client, contact:rec.contact,
+        ce_type:rec.ceType, product:rec.product, stage:rec.stage,
+        priority:rec.priority, sales_owner:rec.salesOwner,
+        biz_dev_source:rec.bizDevSource, date_acquired:rec.dateAcquired||null,
+        due_date:rec.dueDate||null, value:Number(rec.value)||0,
+        invoiced:Number(rec.invoiced)||0, amount_paid:Number(rec.amountPaid)||0,
+        payment_status:rec.paymentStatus, receipt_type:rec.receiptType,
+        withholding:rec.withholding||false, comms_group:rec.commsGroup,
+        sales_repo_link:rec.salesRepoLink, proposal_folder_link:rec.proposalFolderLink,
+        notes:rec.notes, probability:rec.probability||0,
+        updated_at:new Date().toISOString(),
+      };
+      // Check if UUID (Supabase) or old ID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(rec.id);
+      if(isUUID){
+        await sb.update('deals', rec.id, payload);
+      } else {
+        const {data} = await sb.insert('deals', payload);
+        if(data) return data.id; // return new Supabase UUID
+      }
+    } catch(err){ console.warn("Supabase deal save failed, localStorage only:", err.message); }
+    return rec.id;
+  };
+
   const saveDeal=(overrideData)=>{
     const data = overrideData||dealForm;
     if(!data.client) return;
@@ -4451,9 +4674,9 @@ function ClientAutocomplete({value:initVal, onChange}){
 
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
-  const[selClient, setSelClient] = useState(null);
 
-  const[search, setSearch] = useState("");
+  const[selClient, setSelClient] = useState(null); // client history popup
+    const[search, setSearch] = useState("");
   const[filter, setFilter] = useState("all"); // all | with-projects | with-balance
 
   const filtered = useMemo(()=>{
