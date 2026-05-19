@@ -1263,7 +1263,10 @@ export default function App(){
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         setRole(null);
-        localStorage.clear();
+        setAuthView("login");
+        setPage("home");
+        localStorage.removeItem(KEYS.session);
+        localStorage.removeItem(KEYS.role);
       }
     });
 
@@ -1550,9 +1553,15 @@ export default function App(){
     localStorage.setItem(KEYS.role,u.role);
     return null; // null = success
   };
-  const logout=()=>{
-    setSession(null); setRole(null); setAuthView("login");
-    localStorage.removeItem(KEYS.session); localStorage.removeItem(KEYS.role);
+  const logout=async()=>{
+    // Sign out of Supabase if connected
+    if(supabase){ try{ await supabase.auth.signOut(); }catch(e){} }
+    setSession(null);
+    setRole(null);
+    setAuthView("login");
+    setPage("home");
+    localStorage.removeItem(KEYS.session);
+    localStorage.removeItem(KEYS.role);
   };
   const register=(name,username,password,requestedRole)=>{
     if(!name||!username||!password) return "All fields are required.";
@@ -1866,50 +1875,87 @@ export default function App(){
   const roleColor=ROLE_CLR[role];
   const navMap={
     Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"datamanagement",l:"⚙ Data"}],
-    Sales:        [{id:"home",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
+    Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
     Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
     Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
     QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}],
     Operations:   [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
     Design:       [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
   };
-  const Nav=()=>(
-    <nav style={{background:"#fff",borderBottom:"1.5px solid #e2e8f0",padding:"0 20px",display:"flex",alignItems:"center",height:56,gap:2,position:"sticky",top:0,zIndex:100,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}} className="noprint">
-      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.05rem",color:"#0f172a",marginRight:14,letterSpacing:-.5,whiteSpace:"nowrap"}}>GMD <span style={{color:"#f59e0b"}}>PROD</span></div>
-      <div style={{display:"flex",gap:2,flex:1,overflowX:"auto"}}>
-        {(navMap[role]||[]).map(({id,l})=>(
-          <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}} style={{background:page===id?roleColor+"18":"transparent",border:"none",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontWeight:page===id?700:400,fontSize:".8rem",color:page===id?roleColor:"#64748b",cursor:"pointer",transition:"all .15s",whiteSpace:"nowrap",flexShrink:0}}>{l}</button>
-        ))}
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
-        <span style={{fontSize:".67rem",color:sync==="saving"?"#f59e0b":sync==="error"?"#ef4444":"#94a3b8"}}>{sync==="saving"?"Saving…":sync==="error"?"! Error":"✓ Saved"}</span>
-        {role==="Manager"&&users.filter(u=>u.status==="pending").length>0&&(
-          <button onClick={()=>setPage("accounts")} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"2px 10px",fontSize:".68rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
-            {users.filter(u=>u.status==="pending").length} pending
+  const Nav=()=>{
+    const NAV_ICONS={
+      home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
+      checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
+      procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
+      collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
+      "Sales Pipeline":"📊","My Pipeline":"📊",
+    };
+    const tabs=navMap[role]||[];
+    const W = navCollapsed ? 64 : 220;
+    return(
+      <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
+        {/* Logo + collapse toggle */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:navCollapsed?"center":"space-between",padding:navCollapsed?"16px 0":"14px 16px",borderBottom:"1px solid rgba(255,255,255,.08)",minHeight:56,flexShrink:0}}>
+          {!navCollapsed&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"#fff",letterSpacing:-.5}}>GMD <span style={{color:"#f59e0b"}}>PROD</span></div>}
+          <button onClick={()=>setNavCollapsed(c=>!c)} style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,width:28,height:28,cursor:"pointer",color:"#94a3b8",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            {navCollapsed?"→":"←"}
           </button>
-        )}
-        <div style={{background:roleColor+"18",borderRadius:20,padding:"3px 11px",fontSize:".72rem",fontWeight:700,color:roleColor,border:`1px solid ${roleColor}33`}}>
-          {session?.name?.split(" ")[0]} · {role}
         </div>
-        {role==="Manager"&&(
-          <button onClick={()=>setPage("accounts")} title="Account Management" style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>
-            👥{users.filter(u=>u.status==="pending").length>0&&<span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",width:14,height:14,fontSize:".55rem",display:"inline-flex",alignItems:"center",justifyContent:"center",marginLeft:3}}>{users.filter(u=>u.status==="pending").length}</span>}
-          </button>
-        )}
-        <button onClick={()=>setShowExport(s=>!s)} title="Export / Backup Data" style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>💾</button>
-        <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Open FabHub Handbook"
-          style={{background:"rgba(245,158,11,.12)",border:"1.5px solid rgba(245,158,11,.4)",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#d97706",cursor:"pointer",fontFamily:"inherit",fontWeight:700,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>
-          📘 Handbook
-        </a>
-        <button onClick={logout} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Log out</button>
-      </div>
-    </nav>
-  );
-  const Wrap=({children})=>(
-    <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus,select:focus,textarea:focus{outline:none;border-color:${roleColor}!important;box-shadow:0 0 0 3px ${roleColor}22!important;} @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}} .fi{animation:fi .2s ease;} @media print{.noprint{display:none!important;}}`}</style>
-      <Nav/>
-      <div style={{maxWidth:1100,margin:"0 auto",padding:"22px 18px"}} className="fi">{children}</div>
+        {/* Nav items */}
+        <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
+          {tabs.map(({id,l})=>{
+            const active=page===id;
+            const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
+            return(
+              <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
+                title={navCollapsed?l:""}
+                style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:navCollapsed?"10px 0":"9px 16px",justifyContent:navCollapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
+                <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+                {!navCollapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {/* Bottom: user info + actions */}
+        <div style={{borderTop:"1px solid rgba(255,255,255,.08)",padding:navCollapsed?"12px 0":"12px 14px",flexShrink:0}}>
+          {!navCollapsed&&(
+            <>
+              <div style={{background:roleColor+"22",borderRadius:20,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:roleColor,marginBottom:8,textAlign:"center"}}>
+                {session?.name?.split(" ")[0]} · {role}
+              </div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:8}}>
+                {sync!=="saved"&&<span style={{fontSize:".62rem",color:sync==="saving"?"#f59e0b":"#ef4444"}}>{sync==="saving"?"saving…":"⚠ error"}</span>}
+                {role==="Manager"&&users.filter(u=>u.status==="pending").length>0&&(
+                  <button onClick={()=>setPage("accounts")} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 8px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+                    {users.filter(u=>u.status==="pending").length} pending
+                  </button>
+                )}
+              </div>
+              <div style={{display:"flex",gap:5,justifyContent:"center"}}>
+                <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>💾</button>
+                <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"5px 8px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none"}}>📘</a>
+                <button onClick={logout} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>Out</button>
+              </div>
+            </>
+          )}
+          {navCollapsed&&(
+            <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
+              <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>💾</button>
+              <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Handbook" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"6px",color:"#f59e0b",fontSize:".85rem",textDecoration:"none"}}>📘</a>
+              <button onClick={logout} title="Log out" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".75rem",fontFamily:"inherit"}}>↩</button>
+            </div>
+          )}
+        </div>
+      </aside>
+    );
+  };
+  const Wrap=({children})=>{
+    const W=navCollapsed?64:220;
+    return(
+      <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:W,transition:"margin-left .2s"}}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); .fi{animation:fadeIn .2s ease} @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} @media print{.noprint{display:none}}`}</style>
+        <Nav/>
+        <div style={{maxWidth:1140,margin:"0 auto",padding:"22px 24px"}} className="fi">{children}</div>
       {/* ── Export / Backup Panel ── */}
       {showExport&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
@@ -2010,6 +2056,7 @@ export default function App(){
       </Modal>
     </div>
   );
+  };
 
   // ─── MANAGER ──────────────────────────────────────────────────────────────
   if(role==="Manager"){
@@ -2279,7 +2326,15 @@ export default function App(){
                         priority:"Normal",
                         customProductType:"",
                       };
-                      if(exists){upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));skipped++;}
+                      if(exists){
+                        upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));
+                        // Also create project card if won and missing
+                        if(WON_STAGES.includes(rec.stage)){
+                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
+                        }
+                        skipped++;
+                      }
                       else{
                         upDeals(ds=>[...ds,rec]);
                         if(WON_STAGES.includes(rec.stage)){
@@ -2450,7 +2505,11 @@ export default function App(){
                       <div style={{display:"flex",gap:8}}>
                         <button onClick={()=>{openEditDeal(d);setStageFilter(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>✏ Edit</button>
                         {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>✕</button>}
-                        {!WON_STAGES.includes(d.stage)&&<button onClick={()=>{openAward(d);setStageFilter(null);}} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>}
+                        {!WON_STAGES.includes(d.stage)&&(
+                          role==="Manager"
+                          ? <button onClick={()=>{openAward(d);setStageFilter(null);}} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>
+                          : <button onClick={()=>{if(window.confirm(`Request Manager approval to award ${d.client}?\n\nPaulo will be notified via Dashboard.`)){upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logAct("Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`,d.id);setStageFilter(null);alert("✅ Flagged! Paulo sees this on his Dashboard.");}}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request Award</button>
+                        )}
                       </div>
                     </div>
                   );
@@ -2484,7 +2543,7 @@ export default function App(){
                         if(!dragDeal) return;
                         const deal=deals.find(d=>d.id===dragDeal);
                         if(!deal||deal.stage===stage) return;
-                        if(WON_STAGES.includes(stage)){openAward(deal);setDragDeal(null);return;}
+                        if(WON_STAGES.includes(stage)){if(role==="Sales"){alert("Sales cannot directly award.\n\nMove to Stage 05 and click 🏆 Request Award to notify a Manager.");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
                         if(PAULO_GATE.includes(stage)&&role==="Sales"){
                           if(!window.confirm("Moving to "+stage.replace(/^\d+ · /,"")+" requires manager approval. Continue?"))return;
                         }
@@ -2544,7 +2603,14 @@ export default function App(){
                             <div style={{display:"flex",gap:5,marginTop:8,flexWrap:"wrap"}}>
                               <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
                               {!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&(
-                                <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
+                                role==="Manager"
+                                ? <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
+                                : <button onClick={e=>{e.stopPropagation();
+                                    if(window.confirm(`Request Manager approval to award ${d.client}?`)){
+                                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+session?.name+" flagged for award."}:x));
+                                      logAct("Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`,d.id);
+                                      alert("✅ Flagged for Manager review.");
+                                    }}} style={{flex:1,background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
                               )}
                             </div>
                           </div>
