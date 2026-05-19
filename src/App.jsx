@@ -1206,6 +1206,7 @@ export default function App(){
     const init = async () => {
       try {
         // Check for existing Supabase session first
+        if(!supabase){setReady(true);return;}
         const { data: { session: sbSession } } = await supabase.auth.getSession();
         if (sbSession) {
           const { data: profile } = supabase ? await supabase.from('user_profiles').select('*').eq('id', sbSession.user.id).single() : {data:null};
@@ -1247,6 +1248,7 @@ export default function App(){
     init();
 
     // Listen for auth state changes (login/logout)
+    if(!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         const { data: profile } = supabase ? await supabase.from('user_profiles').select('*').eq('id', session.user.id).single() : {data:null};
@@ -4705,6 +4707,45 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
       <div style={{marginTop:10,fontSize:".72rem",color:"#94a3b8",textAlign:"right"}}>
         Showing {filtered.length} of {GMD_CLIENTS.length} clients
       </div>
+      {/* Client History Modal */}
+      {selClient&&(()=>{
+        const clientDeals=deals.filter(d=>d.client===selClient);
+        const totalValue=clientDeals.reduce((s,d)=>s+Number(d.value||0),0);
+        const totalCollected=clientDeals.reduce((s,d)=>s+Number(d.amountPaid||0),0);
+        const isVvip=vvipClients?.has(selClient);
+        return(
+          <Modal open title={`${isVvip?"⭐ ":""}${selClient}`} onClose={()=>setSelClient(null)} wide>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+              {[
+                {l:"Total Projects",  v:clientDeals.length,                           c:"#3b82f6"},
+                {l:"Total Value",     v:"₱"+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#0f172a"},
+                {l:"Total Collected", v:"₱"+totalCollected.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#059669"},
+              ].map(({l,v,c})=>(
+                <div key={l} style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c}}>{v}</div>
+                  <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            {clientDeals.length===0&&<div style={{textAlign:"center",padding:"24px",color:"#94a3b8"}}>No projects on record.</div>}
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {clientDeals.sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0)).map(d=>(
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f8fafc",borderRadius:9,border:"1px solid #e2e8f0",flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.ceNo||"No project name"}</div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {d.ceType} · {d.dateAcquired||""}</div>
+                  </div>
+                  <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>₱{Number(d.value||0).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+                    <span style={{fontSize:".72rem",background:d.paymentStatus==="Paid"?"#f0fdf4":"#f8fafc",color:d.paymentStatus==="Paid"?"#059669":"#94a3b8",border:"1px solid #e2e8f0",borderRadius:20,padding:"2px 9px",fontWeight:600}}>{d.paymentStatus||"—"}</span>
+                    <span style={{fontSize:".72rem",color:"#64748b",background:"#f1f5f9",borderRadius:20,padding:"2px 9px"}}>{(d.stage||"").replace(/^[0-9]+ · /,"")}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
@@ -7829,43 +7870,3 @@ function DataManagement({
     </body></html>`);
     win.document.close();
   };
-
-      {/* Client History Modal */}
-      {selClient&&(()=>{
-        const clientDeals=deals.filter(d=>d.client===selClient);
-        const totalValue=clientDeals.reduce((s,d)=>s+Number(d.value||0),0);
-        const totalCollected=clientDeals.reduce((s,d)=>s+Number(d.amountPaid||0),0);
-        const isVvip=vvipClients?.has(selClient);
-        return(
-          <Modal open title={`${isVvip?"⭐ ":""}${selClient}`} onClose={()=>setSelClient(null)} wide>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
-              {[
-                {l:"Total Projects",  v:clientDeals.length,                           c:"#3b82f6"},
-                {l:"Total Value",     v:"₱"+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#0f172a"},
-                {l:"Total Collected", v:"₱"+totalCollected.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#059669"},
-              ].map(({l,v,c})=>(
-                <div key={l} style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c}}>{v}</div>
-                  <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
-                </div>
-              ))}
-            </div>
-            {clientDeals.length===0&&<div style={{textAlign:"center",padding:"24px",color:"#94a3b8"}}>No projects on record for this client.</div>}
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {clientDeals.sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0)).map(d=>(
-                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f8fafc",borderRadius:9,border:"1px solid #e2e8f0",flexWrap:"wrap",gap:8}}>
-                  <div>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.ceNo||"No project name"}</div>
-                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {d.ceType} · {d.dateAcquired||""}</div>
-                  </div>
-                  <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>₱{Number(d.value||0).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
-                    <span style={{fontSize:".72rem",background:d.paymentStatus==="Paid"?"#f0fdf4":d.paymentStatus==="Deposited"?"#eff6ff":"#f8fafc",color:d.paymentStatus==="Paid"?"#059669":d.paymentStatus==="Deposited"?"#3b82f6":"#94a3b8",border:"1px solid #e2e8f0",borderRadius:20,padding:"2px 9px",fontWeight:600}}>{d.paymentStatus||"—"}</span>
-                    <span style={{fontSize:".72rem",color:"#64748b",background:"#f1f5f9",borderRadius:20,padding:"2px 9px"}}>{d.stage?.replace(/^\d+ · /,"")}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Modal>
-        );
-      })()}
