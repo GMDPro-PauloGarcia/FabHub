@@ -1238,22 +1238,8 @@ export default function App(){
   useEffect(()=>{
     const init = async () => {
       try {
-        // Check for existing Supabase session first
-        if(!supabase){setReady(true);return;}
-        const { data: { session: sbSession } } = await supabase.auth.getSession();
-        if (sbSession) {
-          const { data: profile } = supabase ? await supabase.from('user_profiles').select('*').eq('id', sbSession.user.id).single() : {data:null};
-          if (profile) {
-            const sess = { userId: sbSession.user.id, name: profile.full_name, username: profile.username, role: profile.role };
-            setSession(sess);
-            setRole(profile.role);
-            // Load all data from Supabase
-            await loadAllFromSupabase();
-            setReady(true);
-            return;
-          }
-        }
-        // Fallback: check localStorage session (for migration period)
+        // PRIMARY: Load from localStorage (always works, instant)
+        // Supabase sync happens in background after ready
         const s=localStorage.getItem(KEYS.session);
         if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); }
         const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
@@ -1284,15 +1270,17 @@ export default function App(){
     if(!supabase) return;
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        const { data: profile } = supabase ? await supabase.from('user_profiles').select('*').eq('id', session.user.id).single() : {data:null};
-        if (profile && profile.status === 'active') {
-          const sess = { userId: session.user.id, name: profile.full_name, username: profile.username, role: profile.role };
-          setSession(sess);
-          setRole(profile.role);
-          persist(KEYS.session, sess);
-          await loadAllFromSupabase();
-          setReady(true);
-        }
+        // Silently sync Supabase data in background — never blocks login
+        try {
+          const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single();
+          if (profile && profile.status === 'active') {
+            const sess = { userId: session.user.id, name: profile.full_name, username: profile.username, role: profile.role, title: profile.title||profile.role };
+            setSession(sess);
+            setRole(profile.role);
+            persist(KEYS.session, sess);
+            loadAllFromSupabase(); // fire-and-forget, don't await
+          }
+        } catch(e) { /* Supabase profile not found — user logged in via localStorage, that's fine */ }
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
         setRole(null);
