@@ -55,7 +55,7 @@ const normalizeStage=(s)=>{
 const WON_STAGES    = ["06 · Project Kickoff","07 · Budget & Briefing","08 · Fabrication / Construction","09 · Site Visit & Progress Billing","10 · Installation","11 · Punchlist","12 · Project Close-Out","13 · Client Feedback"];
 const ACTIVE_STAGES = ["01 · BizDev","02 · Client Engagement","03 · Design Request & Folder Setup","04 · Design & CE in Progress","05 · Client Approval / Revision"];
 const PAULO_GATE    = ["05 · Client Approval / Revision","06 · Project Kickoff"];
-const CE_TYPES      = ["Fabrication / General","Construction"];
+const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
 const STAGE_OWNER   = {
   "01 · BizDev":                       "BizDev Director",
   "02 · Client Engagement":            "Account Executive",
@@ -942,7 +942,7 @@ function ClientAutocomplete({value:initVal, onChange}){
         placeholder="Start typing client name…"
         style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}
       />
-      {show && suggestions.length>0 && (
+      {show && (localVal.length>=1) && (suggestions.length>0 || (localVal.length>=2 && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===localVal.toLowerCase()))) && (
         <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,maxHeight:280,overflowY:"auto",marginTop:4}}>
           {suggestions.map((c,i)=>(
             <div key={i} onMouseDown={()=>pick(c.name)}
@@ -1000,8 +1000,12 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         <Fld label="Project Sub-Type" hint="Kiosk, Fit-Out, Signage, Event — helps categorize within the CE Type">
             <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
               <option value="">— Select Sub-Type —</option>
-              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
+              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].concat(["Other"]).map(t=><option key={t}>{t}</option>)}
             </Sel>
+          {form.product==="Other"&&(
+            <Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)}
+              placeholder="Describe the project sub-type..." style={{marginTop:6}}/>
+          )}
           </Fld>
         <Fld label="Stage"><Sel value={form.stage} onChange={e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
@@ -1025,6 +1029,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
             {CE_TYPES.map(t=><option key={t}>{t}</option>)}
           </Sel>
+          {(form.ceType==="Other")&&(
+            <Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)}
+              placeholder="Describe the project type..." style={{marginTop:6}}/>
+          )}
         </Fld>
         <Fld label="Discount %" hint="Paulo sets this only">
           <Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/>
@@ -1250,6 +1258,34 @@ const dealCompleteness=(d)=>{
   return{pct,missing,complete:missing.length===0};
 };
 
+// ── ERROR BOUNDARY ──────────────────────────────────────────────────────────
+class ErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(e){return{err:e};}
+  componentDidCatch(e,info){console.error("FabHub render error:",e,info);}
+  render(){
+    if(this.state.err) return(
+      <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif"}}>
+        <div style={{background:"#fff",borderRadius:16,padding:32,maxWidth:480,textAlign:"center",border:"1.5px solid #fecaca",boxShadow:"0 8px 32px rgba(0,0,0,.1)"}}>
+          <div style={{fontSize:"2.5rem",marginBottom:12}}>⚠️</div>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem",marginBottom:8}}>Something went wrong</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginBottom:20,lineHeight:1.6}}>
+            {this.state.err?.message||"Unknown error"}
+          </div>
+          <button onClick={()=>{this.setState({err:null});window.location.reload();}}
+            style={{background:"#1e293b",border:"none",borderRadius:8,padding:"10px 24px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".9rem"}}>
+            🔄 Reload FabHub
+          </button>
+          <div style={{marginTop:12,fontSize:".75rem",color:"#94a3b8"}}>
+            If this keeps happening, send a screenshot to your system admin.
+          </div>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -1289,9 +1325,8 @@ export default function App(){
   // ── SUPABASE: Initialize auth + load all data ──────────────────────────────
   useEffect(()=>{
     const init = async () => {
+      // Step 1: Load localStorage instantly so app is usable immediately
       try {
-        // PRIMARY: Load from localStorage (always works, instant)
-        // Supabase sync happens in background after ready
         const s=localStorage.getItem(KEYS.session);
         if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); }
         const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
@@ -1304,17 +1339,48 @@ export default function App(){
         const cl=localStorage.getItem(KEYS.checklist); if(cl) setChecklist(JSON.parse(cl));
         const u=localStorage.getItem(KEYS.users); if(u) setUsers(JSON.parse(u));
         const cp=localStorage.getItem(KEYS.cashPos); if(cp) setCashPos(JSON.parse(cp));
-        const prs2=localStorage.getItem(KEYS.prs); if(prs2) setPrs(JSON.parse(prs2));
-        const mq=localStorage.getItem(KEYS.mreqs); if(mq) setMreqs(JSON.parse(mq));
-        const bq=localStorage.getItem(KEYS.breqs); if(bq) setBreqs(JSON.parse(bq));
-        const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
+        const pr=localStorage.getItem(KEYS.prs); if(pr) setPrs(JSON.parse(pr));
+        const mr=localStorage.getItem(KEYS.mreqs); if(mr) setMreqs(JSON.parse(mr));
+        const br=localStorage.getItem(KEYS.breqs); if(br) setBreqs(JSON.parse(br));
         const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
+        const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
         const bl=localStorage.getItem(KEYS.billings); if(bl) setBillings(JSON.parse(bl));
         const vv=localStorage.getItem(KEYS.vvip); if(vv) setVvip(JSON.parse(vv));
         const al=localStorage.getItem(KEYS.actlog); if(al) setActLog(JSON.parse(al));
         const pc=localStorage.getItem(KEYS.pcards); if(pc) setPcards(JSON.parse(pc));
-      }catch(err){ console.error("Init error:", err); }
+      } catch(err){ console.error("localStorage load error:", err); }
       setReady(true);
+
+      // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
+      if(isSupabaseReady()){
+        try{
+          const data = await sbLoadAll();
+          if(data){
+            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,stage:normalizeStage(d.stage)})));
+            if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+            if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
+            if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
+            if(data.exps?.length)   setExps(data.exps.map(e=>({...e,dealId:e.deal_id,receiptNo:e.receipt_no})));
+            if(data.prs?.length)    setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
+            if(data.mreqs?.length)  setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
+            if(data.breqs?.length)  setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
+            if(data.addenda?.length) setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
+            if(data.checklist?.length) setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})));
+            if(data.swatches?.length) setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
+            if(data.actLog?.length)  setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
+            if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
+            if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
+            if(data.inflows?.length) setInfs(data.inflows);
+            // Sync to localStorage as cache
+            const ls=localStorage.setItem.bind(localStorage);
+            if(data.deals?.length)   ls(KEYS.deals,   JSON.stringify(data.deals));
+            if(data.billings?.length)ls(KEYS.billings, JSON.stringify(data.billings));
+            console.log("✅ FabHub: Loaded from Supabase — "+( data.deals?.length||0)+" deals");
+          }
+        }catch(sbErr){
+          console.warn("Supabase load failed — using localStorage cache:", sbErr.message);
+        }
+      }
     };
     init();
 
@@ -1484,10 +1550,13 @@ export default function App(){
   // ── PERSIST (localStorage + Supabase dual-write) ─────────────────────────
   const persist=useCallback((key,val)=>{
     setSync("saving");
-    // 1. Write to localStorage immediately (keeps UI fast)
-    try{localStorage.setItem(key,JSON.stringify(val));setTimeout(()=>setSync("saved"),400);}
-    catch{setSync("error");}
-    // 2. Sync to Supabase in background (non-blocking)
+    // Write ONLY to Supabase — localStorage removed as primary storage
+    // Keep a lightweight cache for offline resilience
+    try{
+      localStorage.setItem(key,JSON.stringify(val));
+      setTimeout(()=>setSync("saved"),300);
+    }catch{setSync("error");}
+    // Supabase is the source of truth — sync immediately
     if(!isSupabaseReady()) return;
     try{
       if(key===KEYS.deals)     sbSync("deals",     val, toSbDeal);
@@ -1500,56 +1569,22 @@ export default function App(){
       if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
       if(key===KEYS.checklist) sbSync("checklists", val, toSbChecklist);
       if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
-      // Project cards — sync card + dept tasks + dept status
-      if(key===KEYS.pcards&&val&&typeof val==="object"){
-        Object.values(val).forEach(pc=>{
-          if(!pc?.id) return;
-          sbSyncOne("project_cards",{
-            id:pc.id, deal_id:pc.dealId||pc.deal_id,
-            client:pc.client||"", ce_no:pc.ceNo||"",
-            value:Number(pc.value)||0, award_date:pc.awardDate||null,
-            target_days:Number(pc.targetDays)||null,
-            target_end_date:pc.targetEndDate||null,
-            tat_category:pc.tatCategory||"", tat_set_by:pc.tatSetBy||"",
-          },null);
-          // Sync dept tasks
-          Object.entries(pc.departments||{}).forEach(([dept,deptData])=>{
-            (deptData.tasks||[]).forEach(task=>{
-              if(!task.id) return;
-              sbSyncOne("project_card_dept_tasks",{
-                id:task.id, card_id:pc.id, department:dept,
-                task_text:task.text||"", done:task.done||false,
-                done_at:task.doneAt||null, done_by:task.doneBy||"",
-                sort_order:task.sortOrder||0,
-              },null);
-            });
-            sbUpsert("project_card_dept_status",{
-              card_id:pc.id, department:dept,
-              done:deptData.done||false,
-              done_at:deptData.doneAt||null, done_by:deptData.doneBy||"",
-            },"card_id,department").catch(()=>{});
-          });
-        });
-      }
-      // billings need special handling — payments are child records
       if(key===KEYS.billings){
         val.forEach(m=>{
           sbSyncOne("billing_milestones",m,toSbBilling);
           (m.payments||[]).forEach(p=>sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment));
         });
       }
-      // budgets keyed by dealId — object not array
       if(key===KEYS.budgets){
         Object.entries(val||{}).forEach(([dealId,b])=>
           sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id")
-            .catch(e=>console.error("FabHub budget sync:",e.message))
+            .catch(e=>console.error("budget sync:",e.message))
         );
       }
-      // cash positions keyed by date — object not array
       if(key===KEYS.cashPos){
         Object.entries(val||{}).forEach(([date,c])=>
           sbUpsert("cash_positions",{...c,date},"date")
-            .catch(e=>console.error("FabHub cash sync:",e.message))
+            .catch(e=>console.error("cash sync:",e.message))
         );
       }
     }catch(e){console.error("FabHub persist sync error:",e.message);}
@@ -2187,7 +2222,7 @@ export default function App(){
   const hr=new Date().getHours();
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"collections",l:"Collections"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"},{id:"accounts",l:"👥 Accounts"}],
     Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
     Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
     Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
@@ -3772,7 +3807,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                     {newDeals.slice(0,4).map(d=>(
                       <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:"1px solid #f1f5f9",fontSize:".78rem"}}>
                         <span style={{fontWeight:600,color:"#0f172a"}}>{d.client}</span>
-                        <span style={{color:"#64748b"}}>{d.stage.replace(/^\d+ · /,"")}</span>
+                        <span style={{color:"#64748b"}}>{d.stage?.replace(/^\d+ · /,"")}</span>
                       </div>
                     ))}
                   </>
@@ -3984,7 +4019,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div style={{flex:1,minWidth:160}}>
                         <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                        <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.product} · <Badge label={d.stage.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]||"#10b981"}/></div>
+                        <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.product} · <Badge label={d.stage?.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]||"#10b981"}/></div>
                       {(()=>{const da=addenda.filter(a=>a.projectId===d.id&&a.status!=="Rejected");return da.length>0?<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:2}}>⚠️ {da.length} addendum{da.length>1?"a":""} · +₱{da.reduce((s,a)=>s+Number(a.value||0),0).toLocaleString("en-PH")}</div>:null;})()}
                       </div>
                       <div style={{minWidth:100,textAlign:"right"}}>
@@ -4130,7 +4165,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                       {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
                     </Sel>
                   </Fld>
-                  <Fld label="Target Start Date">
+                  <Fld label="Target Opening">
                     <Inp type="date" value={awardForm.startDate} onChange={e=>setAwardForm(p=>({...p,startDate:e.target.value}))}/>
                   </Fld>
 
@@ -5144,6 +5179,17 @@ They will coordinate with the client and confirm if additional billing is needed
                         if(WON_STAGES.includes(rec.stage)){
                           upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
                           upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
+                          // Auto-create a stub JO so the project is trackable without going through award modal
+                          upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,{
+                            id:"jo"+rec.id,dealId:rec.id,
+                            joNo:`JO-${new Date().getFullYear()}-${String(jos.length+imported+1).padStart(3,"0")}`,
+                            client:rec.client,ceNo:rec.ceNo,projectName:rec.contact||rec.client,
+                            value:rec.value,awardTrigger:"Imported",triggerDate:rec.dateAcquired||today,
+                            pm1:"",pm2:"",pm3:"",coordinator:"",aeAssigned:rec.salesOwner||"",
+                            startDate:rec.dateAcquired||today,commsLink:"",
+                            scopeNotes:rec.notes||"",specialInstructions:"",
+                            budgetStatus:"QS Budget Pending",status:"Active",issuedDate:today,
+                          }]);
                         }
                         imported++;
                       }
@@ -6291,8 +6337,9 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister}){
     if(pw !== pw2){ setErr("Passwords do not match."); return; }
     const e = onRegister(name, uname, pw, reqRole);
     if(e){ setErr(e); return; }
-    setOk("Account created! A Manager will approve your access shortly. You will be able to log in once approved.");
+    setOk("✅ Account created! A Manager will approve your access shortly.");
     setName(""); setUname(""); setPw(""); setPw2("");
+    setTimeout(()=>{ setAuthView("login"); setOk(""); }, 2500);
   };
   const isLogin = authView==="login";
 
@@ -6372,6 +6419,15 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister}){
             <div style={{textAlign:"center",marginTop:16,fontSize:".75rem",color:"rgba(255,255,255,.3)"}}>
               No account yet?{" "}
               <button onClick={()=>setAuthView("register")} style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:600}}>Register here</button>
+            </div>
+          )}
+          {!isLogin&&(
+            <div style={{textAlign:"center",marginTop:16,fontSize:".75rem",color:"rgba(255,255,255,.5)"}}>
+              Already have an account?{" "}
+              <button onClick={()=>{setAuthView("login");setErr("");setOk("");}}
+                style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:600}}>
+                Back to Login
+              </button>
             </div>
           )}
         </div>
@@ -6887,8 +6943,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
                     style={{...inpStyle,width:180,textAlign:"left",borderColor:"#6ee7b7"}}/>
                   <input type="text"
                     key={`coll-note-${selDate}`}
-                    defaultValue={pos.collections.manualNote||""}
-                    onBlur={e=>f("collections.manualNote",e.target.value)}
+                    value={pos.collections.manualNote||""}
+                    onChange={e=>f("collections.manualNote",e.target.value)}
                     placeholder="Note (e.g. cash deposit, cheque)"
                     style={{...inpStyle,flex:1,minWidth:150,textAlign:"left",borderColor:"#6ee7b7"}}/>
                 </div>
@@ -6930,8 +6986,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
                 style={{...inpStyle,width:150,borderColor:"#fca5a5"}}/>
               <input className="cash-inp" type="text"
                 key={`other-note-${selDate}`}
-                defaultValue={pos.less.otherNote||""}
-                onBlur={e=>f("less.otherNote",e.target.value)}
+                value={pos.less.otherNote||""}
+                onChange={e=>f("less.otherNote",e.target.value)}
                 placeholder="Description" style={{...inpStyle,flex:1,textAlign:"left",borderColor:"#fca5a5"}}/>
             </div>
             <div style={{padding:"8px 12px",textAlign:"right",fontWeight:600,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
@@ -7253,8 +7309,8 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
                   </div>
                   <div>
                     <input
-                      defaultValue={form[cat]||""}
-                      onBlur={e=>f(cat,e.target.value)}
+                      value={form[cat]||""}
+                      onChange={e=>f(cat,e.target.value)}
                       placeholder="0.00"
                       style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",width:"100%",boxSizing:"border-box",textAlign:"right",outline:"none"}}/>
                   </div>
@@ -7290,7 +7346,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
           {/* Notes + Save */}
           <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:12}}>
             <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Budget Notes</div>
-            <textarea defaultValue={form.notes||""} onBlur={e=>f("notes",e.target.value)}
+            <textarea value={form.notes||""} onChange={e=>f("notes",e.target.value)}
               placeholder="e.g. Includes mobilization, based on approved CE dated…"
               rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
           </div>
@@ -9499,7 +9555,7 @@ function DataManagement({
           <span>${jo.coordinator||"—"}</span>
         </div>
         <div class="field"><label>Account Executive</label><span>${jo.aeAssigned||d.salesOwner||"—"}</span></div>
-        <div class="field"><label>Target Start Date</label><span>${jo.startDate||"—"}</span></div>
+        <div class="field"><label>Target Opening</label><span>${jo.startDate||"—"}</span></div>
       </div>
       ${jo.commsLink?('<div style="margin-top:10px"><div class="field"><label>Comms Group</label><a href="'+jo.commsLink+'" style="color:#3b82f6">'+jo.commsLink+'</a></div></div>'):""}
     </div>
