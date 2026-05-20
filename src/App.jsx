@@ -19,39 +19,6 @@ const DEAL_STAGES = [
   "13 · Client Feedback",
   "Cancelled",
 ];
-
-// Normalize any stage string to canonical format
-const STAGE_ALIASES={
-  "bizdev":"01 · BizDev","biz dev":"01 · BizDev","01":"01 · BizDev","1":"01 · BizDev",
-  "client engagement":"02 · Client Engagement","engagement":"02 · Client Engagement","02":"02 · Client Engagement","2":"02 · Client Engagement",
-  "design request":"03 · Design Request & Folder Setup","folder setup":"03 · Design Request & Folder Setup","03":"03 · Design Request & Folder Setup","3":"03 · Design Request & Folder Setup",
-  "design & ce in progress":"04 · Design & CE in Progress","ce in progress":"04 · Design & CE in Progress","04":"04 · Design & CE in Progress","4":"04 · Design & CE in Progress",
-  "client approval":"05 · Client Approval / Revision","approval":"05 · Client Approval / Revision","revision":"05 · Client Approval / Revision","05":"05 · Client Approval / Revision","5":"05 · Client Approval / Revision",
-  "project kickoff":"06 · Project Kickoff","kickoff":"06 · Project Kickoff","awarded":"06 · Project Kickoff","06":"06 · Project Kickoff","6":"06 · Project Kickoff",
-  "budget & briefing":"07 · Budget & Briefing","briefing":"07 · Budget & Briefing","07":"07 · Budget & Briefing","7":"07 · Budget & Briefing",
-  "fabrication":"08 · Fabrication / Construction","construction":"08 · Fabrication / Construction","fabrication / construction":"08 · Fabrication / Construction","08":"08 · Fabrication / Construction","8":"08 · Fabrication / Construction",
-  "site visit":"09 · Site Visit & Progress Billing","progress billing":"09 · Site Visit & Progress Billing","09":"09 · Site Visit & Progress Billing","9":"09 · Site Visit & Progress Billing",
-  "installation":"10 · Installation","10":"10 · Installation",
-  "punchlist":"11 · Punchlist","punch list":"11 · Punchlist","11":"11 · Punchlist",
-  "project close-out":"12 · Project Close-Out","close out":"12 · Project Close-Out","closeout":"12 · Project Close-Out","close-out":"12 · Project Close-Out","12":"12 · Project Close-Out",
-  "client feedback":"13 · Client Feedback","feedback":"13 · Client Feedback","13":"13 · Client Feedback",
-  "cancelled":"Cancelled","canceled":"Cancelled",
-};
-const normalizeStage=(s)=>{
-  if(!s) return "01 · BizDev";
-  const clean=String(s).trim();
-  if(DEAL_STAGES.includes(clean)) return clean;
-  const lower=clean.toLowerCase().replace(/·/g,"").replace(/\s+/g," ").trim();
-  if(STAGE_ALIASES[lower]) return STAGE_ALIASES[lower];
-  // Try numeric prefix match
-  const m=clean.match(/^(\d+)/);
-  if(m){const f=DEAL_STAGES.find(x=>x.startsWith(m[1].padStart(2,"0")+" ·"));if(f)return f;}
-  // Partial match
-  for(const [alias,canonical] of Object.entries(STAGE_ALIASES)){
-    if(lower.includes(alias)) return canonical;
-  }
-  return "01 · BizDev";
-};
 const WON_STAGES    = ["06 · Project Kickoff","07 · Budget & Briefing","08 · Fabrication / Construction","09 · Site Visit & Progress Billing","10 · Installation","11 · Punchlist","12 · Project Close-Out","13 · Client Feedback"];
 const ACTIVE_STAGES = ["01 · BizDev","02 · Client Engagement","03 · Design Request & Folder Setup","04 · Design & CE in Progress","05 · Client Approval / Revision"];
 const PAULO_GATE    = ["05 · Client Approval / Revision","06 · Project Kickoff"];
@@ -603,20 +570,20 @@ const checkPw = (pw, hash) => hashPw(pw) === hash;
 
 const DEFAULT_USERS = [
   // ── Owners / Management ──────────────────────────────────────────────────
-  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u01", name:"Paulo Garcia",       username:"paulo",    passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u02", name:"Mar Mungcal",        username:"mar",      passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
   // ── Operations ───────────────────────────────────────────────────────────
-  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u03", name:"Arrius Catubay",     username:"arrius",   passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u10", name:"Anthony Nogra",      username:"anthony",  passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
+  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:hashPw("GMD2026!"),   role:"Operations",   status:"active", createdAt:today },
   // ── Sales ─────────────────────────────────────────────────────────────────
-  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:hashPw("Sales2026!"), role:"Manager",      status:"active", createdAt:today },
+  { id:"u12", name:"Paolo Gomez",        username:"paolo",    passwordHash:hashPw("Sales2026!"), role:"Manager",      status:"active", createdAt:today },
   { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
   { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
   { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
@@ -1257,7 +1224,7 @@ export default function App(){
         const s=localStorage.getItem(KEYS.session);
         if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); }
         const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
-        const d=localStorage.getItem(KEYS.deals); if(d){const parsed=JSON.parse(d);setDeals(parsed.map(x=>({...x,stage:normalizeStage(x.stage)})));}
+        const d=localStorage.getItem(KEYS.deals); if(d) setDeals(JSON.parse(d));
         const p=localStorage.getItem(KEYS.projects); if(p) setProjs(JSON.parse(p));
         const e=localStorage.getItem(KEYS.expenses); if(e) setExps(JSON.parse(e));
         const i=localStorage.getItem(KEYS.inflows); if(i) setInfs(JSON.parse(i));
@@ -1311,7 +1278,7 @@ export default function App(){
     if(!isSupabaseReady()) return;
     const data = await sbLoadAll();
     if(!data) return;
-    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link})));
+    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link})));
     if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
@@ -1326,193 +1293,14 @@ export default function App(){
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
     if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
-    if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,title:u.title||u.role,status:u.status})));
+    if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,status:u.status})));
   };
 
 
-  // ── SUPABASE FIELD MAPPERS (camelCase → snake_case) ─────────────────────────
-  const toSbDeal = r=>({
-    id:r.id, ce_no:r.ceNo, client:r.client, contact:r.contact,
-    ce_type:r.ceType, product:r.product, stage:r.stage,
-    priority:r.priority||"Normal", sales_owner:r.salesOwner||"",
-    biz_dev_source:r.bizDevSource||"", date_acquired:r.dateAcquired||null,
-    due_date:r.dueDate||null, value:Number(r.value)||0,
-    invoiced:Number(r.invoiced)||0, amount_paid:Number(r.amountPaid)||0,
-    payment_status:r.paymentStatus||"Unpaid", receipt_type:r.receiptType||"OR",
-    withholding:r.withholding||false, comms_group:r.commsGroup||"",
-    sales_repo_link:r.salesRepoLink||"", proposal_folder_link:r.proposalFolderLink||"",
-    notes:r.notes||"", probability:Number(r.probability)||0,
-    updated_at:new Date().toISOString(),
-  });
-  const toSbJO = r=>({
-    id:r.id, deal_id:r.dealId, jo_no:r.joNo||r.joNum||"",
-    client:r.client||"", ce_no:r.ceNo||"", project_name:r.projectName||r.contact||"",
-    value:Number(r.value)||0, award_trigger:r.awardTrigger||"",
-    trigger_date:r.triggerDate||null, trigger_note:r.triggerNote||"",
-    pm1:r.pm1||"", pm2:r.pm2||"", pm3:r.pm3||"", coordinator:r.coordinator||"",
-    ae_assigned:r.aeAssigned||"", start_date:r.startDate||null,
-    comms_link:r.commsLink||"", scope_notes:r.scopeNotes||"",
-    special_instructions:r.specialInstructions||"",
-    budget_status:r.budgetStatus||"QS Budget Pending",
-    status:r.status||"Active", issued_date:r.issuedDate||r.dateIssued||null,
-  });
-  const toSbBilling = r=>({
-    id:r.id, deal_id:r.dealId, name:r.name||"", description:r.description||"",
-    amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
-    invoice_date:r.invoiceDate||null, due_date:r.dueDate||null,
-    status:r.status||"Draft", created_by:r.createdBy||"",
-  });
-  const toSbPayment = r=>({
-    id:r.id, milestone_id:r.milestoneId, amount:Number(r.amount)||0,
-    date:r.date||null, ref_no:r.refNo||"", note:r.note||"",
-    recorded_by:r.recordedBy||"",
-  });
-  const toSbExpense = r=>({
-    id:r.id, deal_id:r.dealId||null, date:r.date||null,
-    category:r.category||"", description:r.description||"",
-    amount:Number(r.amount)||0, supplier:r.supplier||"",
-    receipt_no:r.receiptNo||"",
-  });
-  const toSbPR = r=>({
-    id:r.id, deal_id:r.dealId||null, item:r.item||"",
-    supplier:r.supplier||"", qty:Number(r.qty)||0, unit:r.unit||"",
-    estimated_cost:Number(r.estimatedCost)||0, actual_cost:Number(r.actualCost)||0,
-    budget_category:r.budgetCategory||"", status:r.status||"Pending Approval",
-    qty_delivered:Number(r.qtyDelivered)||0, delivery_date:r.deliveryDate||null,
-    dr_no:r.drNo||"", notes:r.notes||"", created_by:r.createdBy||"",
-  });
-  const toSbMR = r=>({
-    id:r.id, deal_id:r.dealId||null, item:r.item||"", category:r.category||"",
-    qty:Number(r.qty)||0, unit:r.unit||"", estimated_cost:Number(r.estimatedCost)||0,
-    urgency:r.urgency||"Normal", purpose:r.purpose||"",
-    status:r.status||"Submitted", submitted_by:r.submittedBy||"",
-  });
-  const toSbBR = r=>({
-    id:r.id, deal_id:r.dealId||null, purpose:r.purpose||"",
-    amount:Number(r.amount)||0, urgency:r.urgency||"Normal",
-    date_needed:r.dateNeeded||null, status:r.status||"Pending",
-    approved_by:r.approvedBy||"", submitted_by:r.submittedBy||"",
-  });
-  const toSbAddendum = r=>({
-    id:r.id, deal_id:r.dealId, title:r.title||"", description:r.description||"",
-    value:Number(r.value)||0, ce_no:r.ceNo||"",
-    receipt_type:r.receiptType||"OR", withholding:r.withholding||false,
-    status:r.status||"Discovered", sales_notified:r.salesNotified||false,
-    discovered_by:r.discoveredBy||"",
-  });
-  const toSbSwatch = r=>({
-    id:r.id, deal_id:r.dealId||null, name:r.name||"", category:r.category||"",
-    qty:Number(r.qty)||0, unit:r.unit||"", supplier:r.supplier||"",
-    ref_link:r.refLink||"", status:r.status||"To Buy", notes:r.notes||"",
-  });
-  const toSbChecklist = r=>({
-    id:r.id, deal_id:r.dealId||null, type:r.type||"Task", title:r.title||"",
-    description:r.description||"", status:r.status||"Pending",
-    assigned_to:r.assignedTo||"", due_date:r.dueDate||null,
-    risk_note:r.riskNote||"", sort_order:r.sortOrder||0,
-  });
-  const toSbBudget = (dealId,b)=>({
-    deal_id:dealId, materials:Number(b.Materials)||0, labor:Number(b.Labor)||0,
-    overhead:Number(b.Overhead)||0, subcon:Number(b.Subcon)||0, notes:b.notes||"",
-    set_by:b.setBy||"",
-  });
-  const toSbActivity = r=>({
-    id:r.id||("act"+Date.now()), deal_id:r.dealId||null,
-    action:r.action||"", detail:r.detail||"",
-    by:r.by||"", date:r.date||today, time:r.time||"",
-  });
-
-  // ── SUPABASE SYNC HELPERS ─────────────────────────────────────────────────
-  // Fire-and-forget — never blocks the UI. Errors logged to console only.
-  const sbSync=(table,records,mapper)=>{
-    if(!isSupabaseReady()||!records?.length) return;
-    Promise.all(records.map(r=>{
-      const payload=mapper?mapper(r):r;
-      return sbUpsert(table,payload,'id');
-    })).catch(e=>console.error("FabHub sbSync "+table+":",e.message));
-  };
-  const sbSyncOne=(table,record,mapper)=>{
-    if(!isSupabaseReady()||!record) return;
-    sbUpsert(table,mapper?mapper(record):record,'id')
-      .catch(e=>console.error("FabHub sbSyncOne "+table+":",e.message));
-  };
-  const sbSyncDelete=(table,id)=>{
-    if(!isSupabaseReady()||!id) return;
-    sbDelete(table,id).catch(e=>console.error("FabHub sbDelete "+table+":",e.message));
-  };
-
-  // ── PERSIST (localStorage + Supabase dual-write) ─────────────────────────
   const persist=useCallback((key,val)=>{
     setSync("saving");
-    // 1. Write to localStorage immediately (keeps UI fast)
     try{localStorage.setItem(key,JSON.stringify(val));setTimeout(()=>setSync("saved"),400);}
     catch{setSync("error");}
-    // 2. Sync to Supabase in background (non-blocking)
-    if(!isSupabaseReady()) return;
-    try{
-      if(key===KEYS.deals)     sbSync("deals",     val, toSbDeal);
-      if(key===KEYS.jos)       sbSync("job_orders", val, toSbJO);
-      if(key===KEYS.expenses)  sbSync("expenses",   val, toSbExpense);
-      if(key===KEYS.prs)       sbSync("purchase_requests", val, toSbPR);
-      if(key===KEYS.mreqs)     sbSync("material_requests", val, toSbMR);
-      if(key===KEYS.breqs)     sbSync("budget_requests",   val, toSbBR);
-      if(key===KEYS.addenda)   sbSync("addenda",    val, toSbAddendum);
-      if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
-      if(key===KEYS.checklist) sbSync("checklists", val, toSbChecklist);
-      if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
-      // Project cards — sync card + dept tasks + dept status
-      if(key===KEYS.pcards&&val&&typeof val==="object"){
-        Object.values(val).forEach(pc=>{
-          if(!pc?.id) return;
-          sbSyncOne("project_cards",{
-            id:pc.id, deal_id:pc.dealId||pc.deal_id,
-            client:pc.client||"", ce_no:pc.ceNo||"",
-            value:Number(pc.value)||0, award_date:pc.awardDate||null,
-            target_days:Number(pc.targetDays)||null,
-            target_end_date:pc.targetEndDate||null,
-            tat_category:pc.tatCategory||"", tat_set_by:pc.tatSetBy||"",
-          },null);
-          // Sync dept tasks
-          Object.entries(pc.departments||{}).forEach(([dept,deptData])=>{
-            (deptData.tasks||[]).forEach(task=>{
-              if(!task.id) return;
-              sbSyncOne("project_card_dept_tasks",{
-                id:task.id, card_id:pc.id, department:dept,
-                task_text:task.text||"", done:task.done||false,
-                done_at:task.doneAt||null, done_by:task.doneBy||"",
-                sort_order:task.sortOrder||0,
-              },null);
-            });
-            sbUpsert("project_card_dept_status",{
-              card_id:pc.id, department:dept,
-              done:deptData.done||false,
-              done_at:deptData.doneAt||null, done_by:deptData.doneBy||"",
-            },"card_id,department").catch(()=>{});
-          });
-        });
-      }
-      // billings need special handling — payments are child records
-      if(key===KEYS.billings){
-        val.forEach(m=>{
-          sbSyncOne("billing_milestones",m,toSbBilling);
-          (m.payments||[]).forEach(p=>sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment));
-        });
-      }
-      // budgets keyed by dealId — object not array
-      if(key===KEYS.budgets){
-        Object.entries(val||{}).forEach(([dealId,b])=>
-          sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id")
-            .catch(e=>console.error("FabHub budget sync:",e.message))
-        );
-      }
-      // cash positions keyed by date — object not array
-      if(key===KEYS.cashPos){
-        Object.entries(val||{}).forEach(([date,c])=>
-          sbUpsert("cash_positions",{...c,date},"date")
-            .catch(e=>console.error("FabHub cash sync:",e.message))
-        );
-      }
-    }catch(e){console.error("FabHub persist sync error:",e.message);}
   },[]);
 
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
@@ -1604,81 +1392,25 @@ export default function App(){
     });
   };
 
-  // ── Supabase real-time subscriptions ─────────────────────────────────────────
-  // When any user makes a change, ALL other logged-in users see it instantly
+  // ── Supabase realtime subscriptions ────────────────────────────────────────
   useEffect(()=>{
-    if(!session||!isSupabaseReady()) return;
-
-    // Deals — Paulo awards, Paolo sees it; Aerwin updates billing, everyone sees it
-    const dealsSub = sbSubscribe('deals-rt', 'deals', payload=>{
-      const{eventType,new:rec,old:oldRow}=payload;
-      if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={...rec,ceNo:rec.ce_no,ceType:rec.ce_type,salesOwner:rec.sales_owner,
-          bizDevSource:rec.biz_dev_source,dateAcquired:rec.date_acquired,
-          dueDate:rec.due_date,amountPaid:Number(rec.amount_paid)||0,
-          paymentStatus:rec.payment_status,receiptType:rec.receipt_type,
-          commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
-          proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage)};
-        setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
-          return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
-      }
-      if(eventType==='DELETE') setDeals(ds=>ds.filter(d=>d.id!==oldRow.id));
+    if(!session) return;
+    // Subscribe to deal changes — all 22 users see updates in real time
+    const dealsSub = sbSubscribe('deals', payload=>{
+      const {eventType, new: newRow, old: oldRow} = payload;
+      if(eventType==='INSERT') setDeals(p=>[newRow,...p.filter(d=>d.id!==newRow.id)]);
+      if(eventType==='UPDATE') setDeals(p=>p.map(d=>d.id===newRow.id?{...d,...newRow,ceNo:newRow.ce_no,ceType:newRow.ce_type,salesOwner:newRow.sales_owner,paymentStatus:newRow.payment_status,receiptType:newRow.receipt_type,dateAcquired:newRow.date_acquired,dueDate:newRow.due_date,amountPaid:newRow.amount_paid}:d));
+      if(eventType==='DELETE') setDeals(p=>p.filter(d=>d.id!==oldRow.id));
     });
-
-    // Project card dept status — Ryon checks a task, Arrius sees it live
-    const pcardSub = sbSubscribe('pcards-rt', 'project_card_dept_status', payload=>{
-      if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
-        const{card_id,department,done,done_at,done_by}=payload.new;
-        setPcards(pc=>{
-          if(!pc) return pc;
-          const card=Object.values(pc).find(c=>c.id===card_id);
-          if(!card) return pc;
-          return{...pc,[card.dealId||card.deal_id]:{...card,departments:{
-            ...card.departments,
-            [department]:{...card.departments?.[department],done,doneAt:done_at,doneBy:done_by}
-          }}};
-        });
-      }
+    // Subscribe to activity log — dashboard feed updates live
+    const actSub = sbSubscribe('activity_log', payload=>{
+      if(payload.eventType==='INSERT') setActLog(p=>[payload.new,...p].slice(0,100));
     });
-
-    // Billing — Aerwin logs a payment, Mar's dashboard updates
-    const billSub = sbSubscribe('bill-rt', 'billing_milestones', payload=>{
-      if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
-        const rec=payload.new;
-        const mapped={...rec,dealId:rec.deal_id,invoiceNo:rec.invoice_no,
-          invoiceDate:rec.invoice_date,dueDate:rec.due_date,createdBy:rec.created_by,payments:[]};
-        setBillings(bs=>{const ex=bs.find(b=>b.id===rec.id);
-          return ex?bs.map(b=>b.id===rec.id?{...b,...mapped}:b):[...bs,mapped];});
-      }
-      if(payload.eventType==='DELETE') setBillings(bs=>bs.filter(b=>b.id!==payload.old.id));
-    });
-
-    // Addenda — PM flags scope, AE + Paolo see it on their dashboard immediately
-    const addSub = sbSubscribe('add-rt', 'addenda', payload=>{
-      if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
-        const rec=payload.new;
-        const mapped={...rec,dealId:rec.deal_id,receiptType:rec.receipt_type,
-          salesNotified:rec.sales_notified,discoveredBy:rec.discovered_by};
-        setAddenda(as=>{const ex=as.find(a=>a.id===rec.id);
-          return ex?as.map(a=>a.id===rec.id?{...a,...mapped}:a):[...as,mapped];});
-      }
-    });
-
-    // Activity log — PM update shows on Arrius's dashboard live
-    const actSub = sbSubscribe('actlog-rt', 'activity_log', payload=>{
-      if(payload.eventType==='INSERT')
-        setActLog(al=>[{...payload.new,dealId:payload.new.deal_id},...al].slice(0,200));
-    });
-
     return ()=>{
-      dealsSub?.unsubscribe?.();
-      pcardSub?.unsubscribe?.();
-      billSub?.unsubscribe?.();
-      addSub?.unsubscribe?.();
-      actSub?.unsubscribe?.();
+      dealsSub.unsubscribe?.();
+      actSub.unsubscribe?.();
     };
   },[session?.userId]);
-
 
   const toggleVvip=(name)=>{
     setVvip(prev=>{
@@ -1815,12 +1547,8 @@ export default function App(){
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
     if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
     if(!checkPw(password,u.passwordHash)) return "Incorrect password.";
-    const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
+    const sess={userId:u.id,username:u.username,name:u.name,role:u.role};
     setSession(sess); setRole(u.role);
-    // Set default landing page per role
-    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",
-      Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home",ProjectMover:"home"};
-    setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
     return null; // null = success
@@ -1931,12 +1659,8 @@ export default function App(){
   const[designModal,setDesignModal]=useState(false);
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
-  const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
+  const[stageFilter,  setStageFilter]  = useState(null);   // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
-  const[pmUpdateModal,setPmUpdateModal]= useState(null);   // {dealId, dealName} — PM update entry
-  const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
-  const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
-  const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
@@ -2157,7 +1881,6 @@ export default function App(){
     QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}],
     Operations:   [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
     Design:       [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
-    ProjectMover: [{id:"home",l:"My Projects"},{id:"pmupdates",l:"📝 PM Updates"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"},{id:"addenda",l:"⚠️ Scope Changes"}],
   };
   const Nav=()=>{
     const NAV_ICONS={
@@ -2198,7 +1921,7 @@ export default function App(){
           {!navCollapsed&&(
             <>
               <div style={{background:roleColor+"22",borderRadius:20,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:roleColor,marginBottom:8,textAlign:"center"}}>
-                {session?.name?.split(" ")[0]} · {session?.title||role}
+                {session?.name?.split(" ")[0]} · {role}
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:8}}>
                 {sync!=="saved"&&<span style={{fontSize:".62rem",color:sync==="saving"?"#f59e0b":"#ef4444"}}>{sync==="saving"?"saving…":"⚠ error"}</span>}
@@ -2208,12 +1931,10 @@ export default function App(){
                   </button>
                 )}
               </div>
-              <div style={{display:"flex",gap:5,justifyContent:"center",flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:5,justifyContent:"center"}}>
                 <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>💾</button>
                 <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"5px 8px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none"}}>📘</a>
-                <button onClick={()=>setPage("myaccount")} title="My Account" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>⚙️</button>
-                <button onClick={()=>setPage("myaccount")} title="My Account & Settings" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>⚙️</button>
-                <button onClick={logout} style={{background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.2)",borderRadius:6,padding:"5px 8px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>↩ Out</button>
+                <button onClick={logout} style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>Out</button>
               </div>
             </>
           )}
@@ -2221,9 +1942,7 @@ export default function App(){
             <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
               <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>💾</button>
               <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Handbook" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"6px",color:"#f59e0b",fontSize:".85rem",textDecoration:"none"}}>📘</a>
-              <button onClick={()=>setPage("myaccount")} title="My Account / Settings" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem",fontFamily:"inherit"}}>⚙️</button>
-              <button onClick={logout} title="Log out" style={{background:"rgba(239,68,68,.12)",border:"none",borderRadius:6,padding:"6px",color:"#ef4444",cursor:"pointer",fontSize:".75rem",fontFamily:"inherit"}}>↩</button>
-              <button onClick={()=>setPage("myaccount")} title="My Account" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem",fontFamily:"inherit"}}>⚙️</button>
+              <button onClick={logout} title="Log out" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".75rem",fontFamily:"inherit"}}>↩</button>
             </div>
           )}
         </div>
@@ -2343,1027 +2062,7 @@ export default function App(){
   if(role==="Manager"){
     const grossPro=totRev-totExp;
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
-    if(page==="home"){
-
-  // ── FINANCE HOME ──────────────────────────────────────────────────────────
-  if(role==="Finance") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Aerwin 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Finance Dashboard · {todayL}</div>
-        </div>
-        <button onClick={()=>setPage("billing")} style={{background:"#3b82f6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Open Billing</button>
-      </div>
-
-      {/* KPI row */}
-      {(()=>{
-        const allMs=billings.filter(b=>b.dealId);
-        const totalBilled=allMs.reduce((s,m)=>s+Number(m.amount||0),0);
-        const totalPaid=allMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-        const totalOutstanding=totalBilled-totalPaid;
-        const today2=new Date();
-        const overdue30=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
-        const todayCash=Object.values(cashPos).find(c=>c.date===today)||null;
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-            {[
-              {l:"Total Billed YTD",   v:"₱"+Math.round(totalBilled/1000)+"K",              c:"#3b82f6", icon:"🧾"},
-              {l:"Collected",          v:"₱"+Math.round(totalPaid/1000)+"K",                c:"#059669", icon:"✅"},
-              {l:"Outstanding",        v:"₱"+Math.round(totalOutstanding/1000)+"K",         c:"#ef4444", icon:"⏰"},
-              {l:"Overdue Invoices",   v:overdue30.length+" invoices",                      c:"#f59e0b", icon:"🚨"},
-            ].map(({l,v,c,icon})=>(
-              <div key={l} style={{background:"#fff",borderRadius:12,padding:"16px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
-                <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
-                <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-        {/* Cash position shortcut */}
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-          <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>💰 Daily Cash Position</span>
-            <button onClick={()=>setPage("finance")} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Open →</button>
-          </div>
-          <div style={{padding:"14px 16px"}}>
-            {Object.keys(cashPos).length===0
-              ? <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No cash position entries yet. Click Open to start today's entry.</div>
-              : (()=>{
-                  const latest=Object.values(cashPos).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-                  const total=["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latest[b+"_end"]||latest[b+"End"]||0),0);
-                  return(
-                    <div>
-                      <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:8}}>Last entry: {latest.date}</div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.8rem",color:"#059669"}}>₱{total.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                      <div style={{fontSize:".72rem",color:"#64748b"}}>Total ending balance across 6 banks</div>
-                    </div>
-                  );
-                })()
-            }
-          </div>
-        </div>
-
-        {/* Overdue invoices */}
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-          <div style={{background:"#dc2626",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Overdue Invoices</span>
-            <button onClick={()=>setPage("billing")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View All →</button>
-          </div>
-          <div style={{padding:"0"}}>
-            {(()=>{
-              const today2=new Date();
-              const od=billings.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid")
-                .sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,5);
-              if(!od.length) return <div style={{padding:"16px",color:"#94a3b8",fontSize:".82rem",textAlign:"center"}}>✅ No overdue invoices</div>;
-              return od.map((m,i)=>{
-                const d=wonDeals.find(x=>x.id===m.dealId);
-                const days=Math.floor((today2-new Date(m.dueDate))/(1000*60*60*24));
-                const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-                const bal=Number(m.amount||0)-paid;
-                return(
-                  <div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",flexWrap:"wrap",gap:4}}>
-                    <div>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{d?.client||"?"}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>{m.invoiceNo||"No invoice #"}</div>
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:700,color:"#dc2626",fontSize:".82rem"}}>₱{Math.round(bal).toLocaleString()}</div>
-                      <div style={{fontSize:".68rem",color:"#f59e0b"}}>{days}d overdue</div>
-                    </div>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        </div>
-      </div>
-
-      {/* Projects needing billing setup */}
-      {(()=>{
-        const noBilling=wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
-        if(!noBilling.length) return null;
-        return(
-          <div style={{marginTop:16,background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"14px 18px"}}>
-            <div style={{fontWeight:700,color:"#92400e",marginBottom:10,fontSize:".88rem"}}>⚠️ {noBilling.length} awarded projects have no billing milestones set up</div>
-            <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-              {noBilling.slice(0,6).map(d=>(
-                <button key={d.id} onClick={()=>{setPage("billing");}} style={{background:"#fff",border:"1px solid #fde68a",borderRadius:20,padding:"4px 12px",fontSize:".75rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>{d.client} — {d.ceNo}</button>
-              ))}
-              {noBilling.length>6&&<span style={{fontSize:".75rem",color:"#92400e",padding:"4px 8px"}}>+{noBilling.length-6} more</span>}
-            </div>
-          </div>
-        );
-      })()}
-    </Wrap>
-  );
-
-  // ── QS HOME ──────────────────────────────────────────────────────────────
-  if(role==="QS") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Rodney 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>QS Dashboard · {todayL}</div>
-        </div>
-        <button onClick={()=>setPage("costanalysis")} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📈 Cost Analysis</button>
-      </div>
-
-      {/* KPIs */}
-      {(()=>{
-        const noBudget=wonDeals.filter(d=>!budgets[d.id]||(!budgets[d.id].Materials&&!budgets[d.id].Labor&&!budgets[d.id].Overhead&&!budgets[d.id].Subcon));
-        const withBudget=wonDeals.filter(d=>budgets[d.id]);
-        const overBudget=withBudget.filter(d=>{
-          const b=budgets[d.id];const total=(b.Materials||0)+(b.Labor||0)+(b.Overhead||0)+(b.Subcon||0);
-          const spent=exps.filter(e=>e.dealId===d.id).reduce((s,e)=>s+Number(e.amount||0),0);
-          return spent>total&&total>0;
-        });
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-            {[
-              {l:"Active Projects",     v:wonDeals.length,    c:"#0f172a", icon:"📋"},
-              {l:"Budget Set",          v:withBudget.length,  c:"#059669", icon:"✅"},
-              {l:"Needs Budget",        v:noBudget.length,    c:"#f59e0b", icon:"⏳", click:()=>setPage("costanalysis")},
-              {l:"Over Budget",         v:overBudget.length,  c:"#ef4444", icon:"🚨", click:()=>setPage("costanalysis")},
-            ].map(({l,v,c,icon,click})=>(
-              <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c==="0f172a"?"#e2e8f0":c+"33"}`,textAlign:"center",cursor:click?"pointer":"default"}}>
-                <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:"#"+c}}>{v}</div>
-                <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* Projects needing budget */}
-      {(()=>{
-        const noBudget=wonDeals.filter(d=>!budgets[d.id]||(!budgets[d.id].Materials&&!budgets[d.id].Labor&&!budgets[d.id].Overhead&&!budgets[d.id].Subcon));
-        if(!noBudget.length) return <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px",textAlign:"center",color:"#059669",fontWeight:700}}>✅ All active projects have budgets set.</div>;
-        return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#f59e0b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏳ {noBudget.length} Projects Need Your Budget Target</span>
-            </div>
-            {noBudget.slice(0,8).map((d,i)=>{
-              const jo=jos.find(j=>j.dealId===d.id);
-              return(
-                <div key={d.id} onClick={()=>setPage("costanalysis")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<noBudget.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{d.client}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo} · {d.ceType} · PM: {jo?.pm1||"Not assigned"}</div>
-                  </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>₱{Number(d.value||0).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
-                    <span style={{fontSize:".72rem",background:"#fef9c3",color:"#ca8a04",border:"1px solid #fde047",borderRadius:20,padding:"2px 8px",fontWeight:600}}>No budget</span>
-                  </div>
-                </div>
-              );
-            })}
-            {noBudget.length>8&&<div style={{padding:"10px 16px",color:"#94a3b8",fontSize:".78rem",borderTop:"1px solid #f8fafc"}}>+{noBudget.length-8} more · Open Cost Analysis to see all</div>}
-          </div>
-        );
-      })()}
-    </Wrap>
-  );
-
-  // ── PROCUREMENT HOME ──────────────────────────────────────────────────────
-  if(role==="Procurement") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Marian 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Procurement Overview · {todayL}</div>
-        </div>
-        <button onClick={()=>setPage("procurement")} style={{background:"#06b6d4",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📦 Purchase Orders</button>
-      </div>
-
-      {/* KPIs */}
-      {(()=>{
-        const pendingPRs=prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status));
-        const pendingMRs=mreqs.filter(m=>m.status==="Submitted"||m.status==="Approved");
-        const pendingBRs=breqs.filter(b=>b.status==="Pending"||b.status==="Approved");
-        const deliveredToday=prs.filter(p=>p.deliveryDate===today&&p.status==="Delivered");
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-            {[
-              {l:"Open Purchase Orders", v:pendingPRs.length, c:"#06b6d4", icon:"📦", click:()=>setPage("procurement")},
-              {l:"Material Requests",    v:pendingMRs.length, c:"#f97316", icon:"🔧", click:()=>setPage("materialreq")},
-              {l:"Budget Requests",      v:pendingBRs.length, c:"#8b5cf6", icon:"💳", click:()=>setPage("budgetreq")},
-              {l:"Arriving Today",       v:deliveredToday.length, c:"#059669", icon:"🚚"},
-            ].map(({l,v,c,icon,click})=>(
-              <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:click?"pointer":"default"}}>
-                <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:c}}>{v}</div>
-                <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* Pending MRs needing action */}
-      {(()=>{
-        const pending=mreqs.filter(m=>m.status==="Submitted").slice(0,6);
-        if(!pending.length) return null;
-        return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-            <div style={{background:"#f97316",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🔧 Material Requests Waiting for Your Action ({pending.length})</span>
-            </div>
-            {pending.map((m,i)=>{
-              const d=wonDeals.find(x=>x.id===m.dealId);
-              return(
-                <div key={m.id} onClick={()=>setPage("materialreq")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<pending.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{m.item}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · Qty: {m.qty} {m.unit} · {m.urgency||"Normal"}</div>
-                  </div>
-                  <span style={{fontSize:".72rem",background:"#fff7ed",color:"#c2410c",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 8px",fontWeight:600}}>Waiting</span>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
-
-      {/* Swatchboard items to source */}
-      {(()=>{
-        const toBuy=swatches.filter(s=>s.status==="To Buy").slice(0,5);
-        if(!toBuy.length) return null;
-        return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#06b6d4",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🎨 Swatchboard — Items To Source ({toBuy.length})</span>
-            </div>
-            {toBuy.map((s,i)=>{
-              const d=wonDeals.find(x=>x.id===s.dealId);
-              return(
-                <div key={s.id} onClick={()=>setPage("swatchboard")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<toBuy.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{s.name}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {s.qty} {s.unit} · {s.category}</div>
-                  </div>
-                  <span style={{fontSize:".72rem",background:"#ecfeff",color:"#0891b2",border:"1px solid #a5f3fc",borderRadius:20,padding:"2px 8px",fontWeight:600}}>To Buy</span>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
-    </Wrap>
-  );
-
-  // ── OPERATIONS HOME ───────────────────────────────────────────────────────
-  if(role==="Operations") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"Team"} 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Operations · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setPage("projects")} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 My Projects</button>
-          <button onClick={()=>setPage("materialreq")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🔧 Material Request</button>
-        </div>
-      </div>
-
-      {/* My active projects - filtered to this PM */}
-      {(()=>{
-        const myName=session?.name||"";
-        const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
-          return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
-        });
-        const allOpsProjects=wonDeals; // fallback - show all if no PM match
-        const display=myProjects.length>0?myProjects:allOpsProjects;
-        const today2=new Date();
-
-        return(
-          <div>
-            {myProjects.length>0&&(
-              <div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"8px 14px",marginBottom:12,fontSize:".8rem",color:"#c2410c",fontWeight:600}}>
-                📍 Showing your {myProjects.length} assigned project{myProjects.length!==1?"s":""} · <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("projects")}>See all projects →</span>
-              </div>
-            )}
-
-            {/* TAT-sorted project list */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>🏗 Active Projects — Sorted by Urgency</span>
-                <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{display.length} projects</span>
-              </div>
-              {display.slice(0,8).map((d,i)=>{
-                const pc=pcards[d.id];
-                const jo=jos.find(j=>j.dealId===d.id);
-                const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
-                const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/(1000*60*60*24)):null;
-                const isOver=daysLeft!==null&&daysLeft<0;
-                return(
-                  <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<display.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client} — {d.contact||d.ceNo}</div>
-                      <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>PM: {jo?.pm1||"—"} · {pct}% complete</div>
-                      <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:5,width:120}}>
-                        <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#3b82f6",borderRadius:2}}/>
-                      </div>
-                    </div>
-                    {daysLeft!==null&&(
-                      <span style={{marginLeft:12,fontSize:".72rem",fontWeight:700,color:isOver?"#dc2626":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",border:`1px solid ${isOver?"#fecaca":daysLeft<=7?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}>
-                        {isOver?`${Math.abs(daysLeft)}d over`:`${daysLeft}d left`}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-              {display.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No active projects assigned to you.</div>}
-            </div>
-
-            {/* Quick actions row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginTop:16}}>
-              {[
-                {l:"Pending MRs",  v:mreqs.filter(m=>m.status==="Submitted").length, icon:"🔧", page:"materialreq", c:"#f97316"},
-                {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length, icon:"💳", page:"budgetreq",   c:"#8b5cf6"},
-                {l:"Open Checklists", v:checklist.filter(c2=>c2.status!=="Done"&&c2.status!=="Completed").length, icon:"✅", page:"checklist", c:"#3b82f6"},
-              ].map(({l,v,icon,page:pg,c})=>(
-                <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:10,padding:"14px",border:`1.5px solid ${c}22`,textAlign:"center",cursor:"pointer"}}>
-                  <div style={{fontSize:"1.2rem"}}>{icon}</div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c,marginTop:4}}>{v}</div>
-                  <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-    </Wrap>
-  );
-
-  // ── DESIGN HOME ───────────────────────────────────────────────────────────
-  if(role==="Design") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"Team"} 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Design Dashboard · {todayL}</div>
-        </div>
-        <button onClick={()=>setPage("projects")} style={{background:"#ec4899",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Project Cards</button>
-      </div>
-
-      {/* Design queue - projects where Design dept is not done */}
-      {(()=>{
-        const inQueue=wonDeals.filter(d=>{
-          const pc=pcards[d.id];
-          return pc&&!pc.departments?.Design?.done;
-        }).sort((a,b)=>{
-          // Sort by how long they've been waiting
-          const pa=pcards[a.id]; const pb=pcards[b.id];
-          return new Date(pa?.awardDate||pa?.created_at||0)-new Date(pb?.awardDate||pb?.created_at||0);
-        });
-        const done=wonDeals.filter(d=>pcards[d.id]?.departments?.Design?.done);
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:20}}>
-            {[
-              {l:"In Your Queue",     v:inQueue.length,                     c:"#ec4899", icon:"📐"},
-              {l:"Design Done",       v:done.length,                        c:"#059669", icon:"✅"},
-              {l:"Swatches To Buy",   v:swatches.filter(s=>s.status==="To Buy").length, c:"#06b6d4", icon:"🎨"},
-            ].map(({l,v,c,icon})=>(
-              <div key={l} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center"}}>
-                <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:c}}>{v}</div>
-                <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* Design queue list */}
-      {(()=>{
-        const inQueue=wonDeals.filter(d=>{
-          const pc=pcards[d.id];
-          return pc&&!pc.departments?.Design?.done;
-        }).sort((a,b)=>new Date(pcards[a.id]?.awardDate||0)-new Date(pcards[b.id]?.awardDate||0));
-
-        if(!inQueue.length) return(
-          <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"24px",textAlign:"center"}}>
-            <div style={{fontSize:"2rem",marginBottom:8}}>🎉</div>
-            <div style={{fontWeight:700,color:"#059669",fontSize:"1rem"}}>All caught up! No projects in your design queue.</div>
-          </div>
-        );
-
-        return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#be185d",padding:"12px 16px",display:"flex",justifyContent:"space-between"}}>
-              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📐 Your Design Queue — {inQueue.length} projects</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.6)"}}>Oldest first</span>
-            </div>
-            {inQueue.slice(0,8).map((d,i)=>{
-              const pc=pcards[d.id];
-              const tasks=pc?.departments?.Design?.tasks||[];
-              const doneTasks=tasks.filter(t=>t.done).length;
-              const totalTasks=tasks.length||8;
-              const pct=Math.round(doneTasks/totalTasks*100);
-              const waitDays=pc?.awardDate?Math.floor((new Date()-new Date(pc.awardDate))/(1000*60*60*24)):null;
-              return(
-                <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<inQueue.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client} — {d.contact||d.ceNo}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d.ceNo} · {doneTasks}/{totalTasks} design tasks done</div>
-                    <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:5,width:120}}>
-                      <div style={{height:"100%",width:pct+"%",background:"#ec4899",borderRadius:2}}/>
-                    </div>
-                  </div>
-                  {waitDays!==null&&(
-                    <span style={{marginLeft:12,fontSize:".72rem",fontWeight:700,color:waitDays>14?"#dc2626":waitDays>7?"#f59e0b":"#64748b",background:waitDays>14?"#fef2f2":waitDays>7?"#fffbeb":"#f8fafc",border:"1px solid #e2e8f0",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}>
-                      {waitDays===0?"Today":waitDays+"d waiting"}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
-    </Wrap>
-  );
-
-
-  // ── PROJECT MOVER HOME ───────────────────────────────────────────────────
-  if(role==="ProjectMover") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"PM"} 👷</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Project Mover · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setPage("pmupdates")} style={{background:"#0ea5e9",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📝 Log Update</button>
-          <button onClick={()=>setPage("addenda")} style={{background:"#dc2626",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>⚠️ Flag Scope Change</button>
-        </div>
-      </div>
-
-      {(()=>{
-        const myName=session?.name||"";
-        const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
-          return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
-            p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
-        });
-        const otherProjects=wonDeals.filter(d=>!myProjects.find(m=>m.id===d.id));
-        const today2=new Date();
-
-        return(
-          <div style={{display:"flex",flexDirection:"column",gap:20}}>
-            {/* KPIs */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-              {[
-                {l:"My Projects",    v:myProjects.length,  c:"#0ea5e9", icon:"🏗"},
-                {l:"All Active",     v:wonDeals.length,    c:"#0f172a", icon:"📋"},
-                {l:"My Updates Today",v:actLog.filter(a=>a.action==="PM Update"&&a.date===today&&myProjects.find(d=>d.id===a.dealId)).length, c:"#059669", icon:"✅"},
-                {l:"Scope Changes",  v:addenda.filter(a=>a.discoveredBy===myName).length, c:"#ef4444", icon:"⚠️"},
-              ].map(({l,v,c,icon})=>(
-                <div key={l} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c==="0f172a"?"#e2e8f0":c+"33"}`,textAlign:"center"}}>
-                  <div style={{fontSize:"1.3rem",marginBottom:4}}>{icon}</div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:"#"+c.replace("#","")}}>{v}</div>
-                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* My assigned projects */}
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#0ea5e9",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>🏗 My Assigned Projects ({myProjects.length})</span>
-                <span style={{fontSize:".72rem",color:"rgba(255,255,255,.6)"}}>Sorted by urgency</span>
-              </div>
-              {myProjects.length===0
-                ? <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>
-                    No projects assigned to you yet.<br/>Contact Arrius or Paulo to get added as PM on a Job Order.
-                  </div>
-                : myProjects
-                    .sort((a,b)=>{
-                      const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/(1000*60*60*24)):999;
-                      const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/(1000*60*60*24)):999;
-                      return da-db;
-                    })
-                    .map((d,i)=>{
-                      const jo=jos.find(j=>j.dealId===d.id);
-                      const pc=pcards[d.id];
-                      const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
-                      const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/(1000*60*60*24)):null;
-                      const isOver=daysLeft!==null&&daysLeft<0;
-                      const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update");
-                      const lastUpdate=myUpdates[0];
-                      return(
-                        <div key={d.id} style={{padding:"12px 16px",borderBottom:i<myProjects.length-1?"1px solid #f8fafc":""}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{d.client}</div>
-                              <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo} · {d.contact||""}</div>
-                              <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>
-                                PM: {[jo?.pm1,jo?.pm2,jo?.pm3].filter(Boolean).join(", ")||"—"} · Coord: {jo?.coordinator||"—"}
-                              </div>
-                              {lastUpdate&&(
-                                <div style={{fontSize:".72rem",color:"#0ea5e9",marginTop:3,fontStyle:"italic"}}>
-                                  Last update ({lastUpdate.date}): {lastUpdate.detail?.slice(0,60)}{lastUpdate.detail?.length>60?"…":""}
-                                </div>
-                              )}
-                            </div>
-                            <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</span>
-                                {daysLeft!==null&&(
-                                  <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#dc2626":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",border:"1px solid",borderColor:isOver?"#fecaca":daysLeft<=7?"#fde68a":"#6ee7b7",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>
-                                    {isOver?`${Math.abs(daysLeft)}d OVER`:`${daysLeft}d left`}
-                                  </span>
-                                )}
-                              </div>
-                              <button onClick={()=>setPmUpdateModal({dealId:d.id,dealName:d.client,ceNo:d.ceNo,ae:jo?.aeAssigned||d.salesOwner})}
-                                style={{background:"#0ea5e9",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer"}}>
-                                + Update
-                              </button>
-                            </div>
-                          </div>
-                          <div style={{height:4,background:"#f1f5f9",borderRadius:2,marginTop:8}}>
-                            <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#0ea5e9",borderRadius:2,transition:"width .4s"}}/>
-                          </div>
-                        </div>
-                      );
-                    })
-              }
-            </div>
-
-            {/* Other projects — read-only */}
-            {otherProjects.length>0&&(
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{background:"#475569",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📋 All Other Active Projects ({otherProjects.length})</span>
-                  <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>Read-only</span>
-                </div>
-                {otherProjects.slice(0,5).map((d,i)=>{
-                  const jo=jos.find(j=>j.dealId===d.id);
-                  const pc=pcards[d.id];
-                  const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
-                  return(
-                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<4?"1px solid #f8fafc":""}}>
-                      <div>
-                        <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo} · PM: {jo?.pm1||"—"}</div>
-                      </div>
-                      <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct}%</span>
-                    </div>
-                  );
-                })}
-                {otherProjects.length>5&&<div style={{padding:"8px 16px",fontSize:".75rem",color:"#94a3b8",borderTop:"1px solid #f8fafc"}}>+{otherProjects.length-5} more projects</div>}
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&(()=>{
-        const[note,setNote]=React.useState("");
-        const[stage,setStage]=React.useState("");
-        const[pct,setPct]=React.useState("");
-        return(
-          <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Stage</label>
-                <select value={stage} onChange={e=>setStage(e.target.value)}
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-                  <option value="">Select stage...</option>
-                  {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete</label>
-                <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Update Notes <span style={{color:"#ef4444"}}>*</span></label>
-                <textarea value={note} onChange={e=>setNote(e.target.value)} rows={4}
-                  placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
-              </div>
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                <button onClick={()=>{
-                  if(!note.trim()){alert("Please enter an update note.");return;}
-                  const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
-                  logAct("PM Update",updateText,pmUpdateModal.dealId);
-                  setPmUpdateModal(null);
-                  alert("✅ Update logged!");
-                }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                  ✅ Submit Update
-                </button>
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
-    </Wrap>
-  );
-
-  // ── OWNER DASHBOARDS — customized by title ─────────────────────────────────
-  const ownerTitle = session?.title || role;
-
-  // ─── MAR MUNGCAL — COO ──────────────────────────────────────────────────────
-  if(ownerTitle === "COO") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Mar 👋</div>
-          <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>COO Dashboard · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setPage("finance")} style={{background:"#3b82f6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>💰 Cash Position</button>
-          <button onClick={()=>setPage("billing")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>🧾 Billing</button>
-        </div>
-      </div>
-
-      {(()=>{
-        const allMs = billings;
-        const totalBilled   = allMs.reduce((s,m)=>s+Number(m.amount||0),0);
-        const totalPaid     = allMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-        const outstanding   = totalBilled - totalPaid;
-        const today2        = new Date();
-        const overdue       = allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
-        const overdueValue  = overdue.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,py)=>ps+Number(py.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
-        const latestCash    = Object.values(cashPos).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
-        const totalCash     = latestCash?["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latestCash[b+"_end"]||latestCash[b+"End"]||0),0):0;
-        const noBilling     = wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
-        const collRate      = totalBilled>0?Math.round(totalPaid/totalBilled*100):0;
-        const totalPipeVal  = deals.filter(d=>d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0);
-
-        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {/* KPI Row 1 — Financial health */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-            {[
-              {l:"Total Cash (6 banks)",   v:"₱"+Math.round(totalCash/1000)+"K",        c:"#059669",  icon:"🏦", sub:latestCash?"As of "+latestCash.date:"No entry yet"},
-              {l:"Total Collected YTD",    v:"₱"+Math.round(totalPaid/1000)+"K",         c:"#3b82f6",  icon:"✅", sub:"Collection rate: "+collRate+"%"},
-              {l:"Outstanding",            v:"₱"+Math.round(outstanding/1000)+"K",       c:"#f59e0b",  icon:"⏰", sub:overdue.length+" invoices overdue"},
-              {l:"Overdue Value",          v:"₱"+Math.round(overdueValue/1000)+"K",      c:"#ef4444",  icon:"🚨", sub:"Needs immediate follow-up", click:()=>setPage("billing")},
-            ].map(({l,v,c,icon,sub,click})=>(
-              <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,cursor:click?"pointer":"default",textAlign:"center"}}>
-                <div style={{fontSize:"1.3rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
-                <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
-                {sub&&<div style={{fontSize:".7rem",color:"#64748b",marginTop:3}}>{sub}</div>}
-              </div>
-            ))}
-          </div>
-
-          {/* KPI Row 2 — Pipeline */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-            {[
-              {l:"Pipeline Value",      v:"₱"+Math.round(totalPipeVal/1000000)+"M", c:"#8b5cf6", icon:"📊"},
-              {l:"Awarded Projects",    v:wonDeals.length,                           c:"#0f172a",  icon:"🏆"},
-              {l:"No Billing Setup",    v:noBilling.length,                          c:"#f59e0b",  icon:"⚠️", click:()=>setPage("billing")},
-              {l:"Projects Complete",   v:wonDeals.filter(d=>Object.values(pcards[d.id]?.departments||{}).every(dept=>dept.done)).length, c:"#059669", icon:"🎉"},
-            ].map(({l,v,c,icon,click})=>(
-              <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"14px",border:`1.5px solid ${c==="0f172a"?"#e2e8f0":c+"33"}`,cursor:click?"pointer":"default",textAlign:"center"}}>
-                <div style={{fontSize:"1.2rem",marginBottom:3}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#"+c.replace("#","")}}>{v}</div>
-                <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-            {/* Overdue invoices */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#dc2626",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Overdue Invoices ({overdue.length})</span>
-                <button onClick={()=>setPage("billing")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View all →</button>
-              </div>
-              {overdue.length===0
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No overdue invoices</div>
-                :overdue.sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,5).map((m,i)=>{
-                  const d=wonDeals.find(x=>x.id===m.dealId);
-                  const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-                  const bal=Number(m.amount||0)-paid;
-                  const days=Math.floor((today2-new Date(m.dueDate))/(1000*60*60*24));
-                  return(<div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",flexWrap:"wrap",gap:4}}>
-                    <div>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{d?.client||"?"}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>{m.invoiceNo} · {days}d overdue</div>
-                    </div>
-                    <div style={{fontWeight:700,color:"#dc2626",fontSize:".82rem"}}>₱{Math.round(bal).toLocaleString()}</div>
-                  </div>);
-                })
-              }
-            </div>
-
-            {/* Cash position by bank */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>🏦 Cash Position {latestCash?"("+latestCash.date+")":""}</span>
-                <button onClick={()=>setPage("finance")} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Update →</button>
-              </div>
-              {!latestCash
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No cash position entered yet. Aerwin needs to update daily.</div>
-                :[["BPI","bpi"],["Metrobank","metrobank"],["Chinabank","chinabank"],["BDO","bdo"],["Security Bank","secbank"],["Unionbank","unionbank"]].map(([label,key],i)=>{
-                  const val=Number(latestCash[key+"_end"]||latestCash[key+"End"]||0);
-                  return(<div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",borderBottom:i<5?"1px solid #f8fafc":""}}>
-                    <span style={{fontSize:".82rem",color:"#475569",fontWeight:500}}>{label}</span>
-                    <span style={{fontWeight:700,color:val>0?"#059669":"#94a3b8",fontSize:".82rem"}}>₱{val.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
-                  </div>);
-                })
-              }
-            </div>
-          </div>
-
-          {/* Recent activity */}
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#475569",padding:"11px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📋 Recent Activity</span></div>
-            {actLog.slice(0,6).map((a,i)=>{
-              const d=wonDeals.find(x=>x.id===a.dealId);
-              return(<div key={i} style={{display:"flex",gap:12,alignItems:"flex-start",padding:"9px 14px",borderBottom:i<5?"1px solid #f8fafc":""}}>
-                <span style={{fontSize:".72rem",color:"#94a3b8",whiteSpace:"nowrap",marginTop:1}}>{a.date}</span>
-                <div style={{fontSize:".82rem",color:"#475569"}}><strong style={{color:"#0f172a"}}>{a.action}</strong>{a.detail?" — "+a.detail:""}{d?" ("+d.client+")":""}</div>
-              </div>);
-            })}
-            {actLog.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No activity yet.</div>}
-          </div>
-        </div>);
-      })()}
-    </Wrap>
-  );
-
-  // ─── ARRIUS CATUBAY — Operations Director ─────────────────────────────────
-  if(ownerTitle === "Operations Director") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Arrius 👋</div>
-          <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>Operations Director · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setPage("projects")} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>📋 Project Cards</button>
-          <button onClick={()=>setPage("joborders")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>📄 Job Orders</button>
-        </div>
-      </div>
-
-      {(()=>{
-        const today2=new Date();
-        const noBudget=wonDeals.filter(d=>!budgets[d.id]||(!budgets[d.id].Materials&&!budgets[d.id].Labor&&!budgets[d.id].Overhead&&!budgets[d.id].Subcon));
-        const overBudget=wonDeals.filter(d=>{
-          const b=budgets[d.id]; if(!b) return false;
-          const total=(b.Materials||0)+(b.Labor||0)+(b.Overhead||0)+(b.Subcon||0);
-          const spent=exps.filter(e=>e.dealId===d.id).reduce((s,e)=>s+Number(e.amount||0),0);
-          return spent>total&&total>0;
-        });
-        const overdueProjects=wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&new Date(pcards[d.id].targetEndDate)<today2);
-        const newScope=addenda.filter(a=>a.status==="Discovered");
-        const pendingMRs=mreqs.filter(m=>m.status==="Submitted");
-        const todayPMUpdates=actLog.filter(a=>a.action==="PM Update"&&a.date===today);
-
-        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {/* KPI Row */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-            {[
-              {l:"Active Projects",    v:wonDeals.length,          c:"#f97316", icon:"🏗",  click:()=>setPage("projects")},
-              {l:"TAT Overdue",        v:overdueProjects.length,   c:"#ef4444", icon:"⏰",  click:()=>setPage("projects")},
-              {l:"New Scope Changes",  v:newScope.length,          c:"#f59e0b", icon:"⚠️"},
-              {l:"PM Updates Today",   v:todayPMUpdates.length,    c:"#059669", icon:"📝"},
-            ].map(({l,v,c,icon,click})=>(
-              <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,cursor:click?"pointer":"default",textAlign:"center"}}>
-                <div style={{fontSize:"1.3rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:c}}>{v}</div>
-                <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-            {/* TAT overdue projects */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#dc2626",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ TAT Overdue ({overdueProjects.length})</span>
-                <button onClick={()=>setPage("projects")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View all →</button>
-              </div>
-              {overdueProjects.length===0
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No overdue projects</div>
-                :overdueProjects.sort((a,b)=>new Date(pcards[a.id]?.targetEndDate||0)-new Date(pcards[b.id]?.targetEndDate||0)).slice(0,6).map((d,i)=>{
-                  const pc=pcards[d.id];
-                  const jo=jos.find(j=>j.dealId===d.id);
-                  const daysOver=Math.ceil((today2-new Date(pc.targetEndDate))/(1000*60*60*24));
-                  return(<div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<5?"1px solid #f8fafc":"",cursor:"pointer"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{d.client}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>PM: {jo?.pm1||"—"} · {d.ceNo}</div>
-                    </div>
-                    <span style={{fontSize:".72rem",fontWeight:700,color:"#dc2626",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px"}}>{daysOver}d over</span>
-                  </div>);
-                })
-              }
-            </div>
-
-            {/* PM Updates feed */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#0ea5e9",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📝 Latest PM Updates</span>
-              </div>
-              {actLog.filter(a=>a.action==="PM Update").length===0
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No PM updates logged yet.</div>
-                :actLog.filter(a=>a.action==="PM Update").slice(0,6).map((a,i)=>{
-                  const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={i} style={{padding:"9px 14px",borderBottom:i<5?"1px solid #f8fafc":""}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{d?.client||"?"}</div>
-                        <div style={{fontSize:".75rem",color:"#475569",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{a.detail}</div>
-                      </div>
-                      <span style={{fontSize:".68rem",color:"#94a3b8",whiteSpace:"nowrap"}}>{a.date}</span>
-                    </div>
-                  </div>);
-                })
-              }
-            </div>
-          </div>
-
-          {/* Scope changes + MRs row */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#f59e0b",padding:"11px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⚠️ Scope Changes Needing Action ({newScope.length})</span></div>
-              {newScope.length===0
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
-                :newScope.slice(0,5).map((a,i)=>{
-                  const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} style={{padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":""}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy} · ₱{Number(a.value||0).toLocaleString()}</div>
-                  </div>);
-                })
-              }
-            </div>
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#f97316",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🔧 Pending Material Requests ({pendingMRs.length})</span>
-                <button onClick={()=>setPage("materialreq")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View →</button>
-              </div>
-              {pendingMRs.length===0
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No pending MRs</div>
-                :pendingMRs.slice(0,5).map((m,i)=>{
-                  const d=wonDeals.find(x=>x.id===m.dealId);
-                  return(<div key={m.id} style={{display:"flex",justifyContent:"space-between",padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",alignItems:"center"}}>
-                    <div>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{m.item}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>{d?.client||"?"} · {m.urgency||"Normal"}</div>
-                    </div>
-                    <span style={{fontSize:".7rem",fontWeight:700,color:"#c2410c",background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 8px"}}>Waiting</span>
-                  </div>);
-                })
-              }
-            </div>
-          </div>
-        </div>);
-      })()}
-    </Wrap>
-  );
-
-  // ─── PAOLO GOMEZ — Sales Manager ──────────────────────────────────────────
-  if(ownerTitle === "Sales Manager") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Paolo 👋</div>
-          <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>Sales Manager · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setPage("pipeline")} style={{background:"#10b981",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>📊 Pipeline</button>
-          <button onClick={()=>setPage("collections")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>💵 Collections</button>
-        </div>
-      </div>
-
-      {(()=>{
-        const today2=new Date();
-        const activePipe=deals.filter(d=>d.stage!=="Cancelled");
-        const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
-        const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
-        const thisMonth=new Date().toISOString().slice(0,7);
-        const newThisMonth=deals.filter(d=>d.dateAcquired?.slice(0,7)===thisMonth);
-        const allMs=billings;
-        const totalPaid=allMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-        const outstanding=allMs.reduce((s,m)=>s+Number(m.amount||0),0)-totalPaid;
-        const newScope=addenda.filter(a=>a.status==="Discovered"||a.status==="Sales Notified");
-        const overdue=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
-
-        // AE performance
-        const aeNames=["Gail De Ello","April Gail De Ello","Jena De Asis","Don Wyn Celmar"];
-        const aeStats=aeNames.map(ae=>({
-          name:ae.split(" ")[0]+(ae.includes("Gail")?" (Gail)":""),
-          deals:deals.filter(d=>d.salesOwner===ae||d.salesOwner?.includes(ae.split(" ")[0])).length,
-          awarded:wonDeals.filter(d=>d.salesOwner===ae||d.salesOwner?.includes(ae.split(" ")[0])).length,
-        })).filter(a=>a.deals>0);
-
-        return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
-          {/* KPI Row */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
-            {[
-              {l:"Total Pipeline",     v:"₱"+Math.round(totalPipeVal/1000000)+"M",  c:"#10b981", icon:"📊", click:()=>setPage("pipeline")},
-              {l:"Awarded Value",      v:"₱"+Math.round(awardedVal/1000000)+"M",    c:"#3b82f6", icon:"🏆"},
-              {l:"New This Month",     v:newThisMonth.length+" deals",               c:"#8b5cf6", icon:"✨"},
-              {l:"Outstanding AR",     v:"₱"+Math.round(outstanding/1000)+"K",      c:"#f59e0b", icon:"💵", click:()=>setPage("collections")},
-            ].map(({l,v,c,icon,click})=>(
-              <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,cursor:click?"pointer":"default",textAlign:"center"}}>
-                <div style={{fontSize:"1.3rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
-                <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-            {/* Scope changes needing AE action */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#dc2626",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⚠️ Scope Changes Needing AE Action ({newScope.length})</span>
-              </div>
-              {newScope.length===0
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
-                :newScope.slice(0,5).map((a,i)=>{
-                  const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} style={{padding:"9px 14px",borderBottom:i<newScope.length-1?"1px solid #f8fafc":""}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · AE: {d?.salesOwner||"—"} · {a.status}</div>
-                    {a.value>0&&<div style={{fontSize:".72rem",color:"#059669",marginTop:1}}>Est. ₱{Number(a.value).toLocaleString()} additional</div>}
-                  </div>);
-                })
-              }
-            </div>
-
-            {/* Collections call list */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Collections ({overdue.length})</span>
-                <button onClick={()=>setPage("collections")} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Full list →</button>
-              </div>
-              {overdue.length===0
-                ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No overdue collections</div>
-                :overdue.sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate)).slice(0,5).map((m,i)=>{
-                  const d=wonDeals.find(x=>x.id===m.dealId);
-                  const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-                  const bal=Number(m.amount||0)-paid;
-                  const days=Math.floor((today2-new Date(m.dueDate))/(1000*60*60*24));
-                  return(<div key={m.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",flexWrap:"wrap",gap:4}}>
-                    <div>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{d?.client||"?"}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>AE: {d?.salesOwner||"—"} · {days}d overdue</div>
-                    </div>
-                    <div style={{fontWeight:700,color:"#dc2626",fontSize:".82rem"}}>₱{Math.round(bal).toLocaleString()}</div>
-                  </div>);
-                })
-              }
-            </div>
-          </div>
-
-          {/* AE performance */}
-          {aeStats.length>0&&(
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#059669",padding:"11px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>👥 AE Performance — {new Date().toLocaleString("en-PH",{month:"long",year:"numeric"})}</span></div>
-              <div style={{display:"grid",gridTemplateColumns:`repeat(${aeStats.length},1fr)`,gap:0}}>
-                {aeStats.map((ae,i)=>(
-                  <div key={ae.name} style={{padding:"14px 16px",textAlign:"center",borderRight:i<aeStats.length-1?"1px solid #f8fafc":""}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:6}}>{ae.name}</div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#10b981"}}>{ae.deals}</div>
-                    <div style={{fontSize:".65rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Total Deals</div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#3b82f6",marginTop:6}}>{ae.awarded}</div>
-                    <div style={{fontSize:".65rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Awarded</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>);
-      })()}
-    </Wrap>
-  );
-
-  // ── PAULO GARCIA — CEO (full system overview) ──────────────────────────────
-  return(
+    if(page==="home") return(
       <Wrap>
         {/* ── HEADER ─────────────────────────────────────────────────── */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
@@ -3589,84 +2288,68 @@ export default function App(){
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <label style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-              📥 Smart Import
-              <input type="file" accept=".xlsx,.xls,.csv,.pdf" style={{display:"none"}} onChange={async e=>{
+              📥 Import Excel
+              <input type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>{
                 const file=e.target.files[0]; if(!file) return;
-                e.target.value="";
-                setImportLoading(true);
-                try{
-                  // Step 1: Parse the file
-                  let rawRows=[], rawText="", fileType=file.name.split(".").pop().toLowerCase();
-                  if(fileType==="csv"){
-                    rawText=await file.text();
-                    const lines=rawText.split("\n").filter(Boolean);
-                    const headers=lines[0].split(",").map(h=>h.trim().replace(/"/g,""));
-                    rawRows=lines.slice(1).map(line=>{
-                      const vals=line.split(",").map(v=>v.trim().replace(/"/g,""));
-                      return Object.fromEntries(headers.map((h,i)=>[h,vals[i]||""]));
-                    }).filter(r=>Object.values(r).some(v=>v));
-                    rawText=lines.slice(0,6).join("\n");
-                  } else if(["xlsx","xls"].includes(fileType)){
-                    const {read,utils}=window.XLSX||{};
-                    if(!read) throw new Error("Excel library not loaded. Wait 5 seconds and retry.");
-                    const buf=await file.arrayBuffer();
-                    const wb=read(buf,{type:"array"});
-                    const ws=wb.Sheets[wb.SheetNames[0]];
-                    const allRows=utils.sheet_to_json(ws,{defval:""});
-                    rawRows=allRows;
-                    // Get first 5 rows as text preview
-                    rawText=utils.sheet_to_json(ws,{header:1}).slice(0,6).map(r=>r.join(" | ")).join("\n");
-                  }
-
-                  // Step 2: Send to Claude for understanding
-                  const sampleData=rawRows.slice(0,8);
-                  const allColumns=[...new Set(rawRows.flatMap(r=>Object.keys(r)))];
-                  const prompt=`You are analyzing a file uploaded to FabHub, GMD Productions Inc.'s operations system.
-
-File: "${file.name}" (${rawRows.length} rows, ${allColumns.length} columns)
-Columns found: ${allColumns.slice(0,20).join(", ")}
-First few rows:
-${JSON.stringify(sampleData, null, 2).slice(0,1500)}
-
-Analyze this data and respond ONLY in this exact JSON format (no markdown, no explanation):
-{
-  "dataType": "deals|expenses|clients|inventory|payroll|unknown",
-  "confidence": 0-100,
-  "summary": "2-3 sentence plain English description of what this file contains",
-  "rowCount": ${rawRows.length},
-  "fieldsFound": ["list","of","key","fields","detected"],
-  "issues": ["any data quality issues or warnings"],
-  "importAction": "what FabHub should do with this data",
-  "samplePreview": [{"field":"value"}, {"field":"value"}],
-  "canImport": true|false,
-  "cantImportReason": "reason if canImport is false"
-}`;
-
-                  const resp=await fetch("https://api.anthropic.com/v1/messages",{
-                    method:"POST",
-                    headers:{"Content-Type":"application/json"},
-                    body:JSON.stringify({
-                      model:"claude-sonnet-4-20250514",
-                      max_tokens:1000,
-                      messages:[{role:"user",content:prompt}]
-                    })
-                  });
-                  const aiData=await resp.json();
-                  const aiText=aiData.content?.[0]?.text||"{}";
-                  let analysis={};
+                const reader=new FileReader();
+                reader.onload=async(ev)=>{
                   try{
-                    const clean=aiText.replace(/```json|```/g,"").trim();
-                    analysis=JSON.parse(clean);
-                  }catch{
-                    analysis={dataType:"unknown",confidence:0,summary:"Could not analyze file automatically.",canImport:false,cantImportReason:"AI analysis failed.",fieldsFound:[],issues:[],rowCount:rawRows.length};
-                  }
-                  setSmartImport({rows:rawRows,analysis,fileName:file.name,fileType});
-                }catch(err){
-                  alert("Error reading file: "+err.message);
-                }
-                setImportLoading(false);
+                    const {read,utils}=window.XLSX||{};
+                    if(!read) throw new Error("Excel library not loaded yet. Please wait 5 seconds and try again.");
+                    const wb=read(ev.target.result,{type:"array"});
+                    const ws=wb.Sheets[wb.SheetNames[0]];
+                    const rows=utils.sheet_to_json(ws,{range:4,header:["client","contact","ceNo","ceType","stage","value","invoiced","amountPaid","paymentStatus","receiptType","withholding","salesOwner","bizDevSource","dateAcquired","dueDate","notes"]});
+                    let imported=0,skipped=0;
+                    rows.forEach(r=>{
+                      if(!r.client) return;
+                      const exists=deals.find(d=>d.ceNo&&d.ceNo===r.ceNo);
+                      const rec={
+                        id:exists?.id||uid(),
+                        client:String(r.client||"").trim(),
+                        contact:String(r.contact||"").trim(),
+                        ceNo:String(r.ceNo||"").trim(),
+                        ceType:r.ceType||"Fabrication / General",
+                        stage:r.stage||"01 · BizDev",
+                        value:Number(r.value)||0,
+                        invoiced:Number(r.invoiced)||0,
+                        amountPaid:Number(r.amountPaid)||0,
+                        paymentStatus:r.paymentStatus||"Unpaid",
+                        receiptType:r.receiptType||"OR",
+                        withholding:String(r.withholding||"").toUpperCase()==="YES",
+                        salesOwner:String(r.salesOwner||"").trim(),
+                        bizDevSource:String(r.bizDevSource||"").trim(),
+                        dateAcquired:String(r.dateAcquired||today).trim(),
+                        dueDate:String(r.dueDate||"").trim(),
+                        notes:String(r.notes||"").trim(),
+                        product:"Custom Shelving",
+                        probability:WON_STAGES.includes(r.stage)?100:50,
+                        priority:"Normal",
+                        customProductType:"",
+                      };
+                      if(exists){
+                        upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));
+                        // Also create project card if won and missing
+                        if(WON_STAGES.includes(rec.stage)){
+                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
+                        }
+                        skipped++;
+                      }
+                      else{
+                        upDeals(ds=>[...ds,rec]);
+                        if(WON_STAGES.includes(rec.stage)){
+                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
+                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
+                        }
+                        imported++;
+                      }
+                    });
+                    alert("Import complete! "+imported+" new deals added, "+skipped+" existing updated. Awarded deals now appear in Operations + Project Cards.");
+                  }catch(err){alert("Import failed: "+err.message);}
+                };
+                reader.readAsArrayBuffer(file);
+                e.target.value="";
               }}/>
-              {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>🤔 Analyzing…</span>}
             </label>
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
           </div>
@@ -4575,399 +3258,6 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
   }
 
   // ── PROJECT CARDS ────────────────────────────────────────────────────────────
-  // ── MY ACCOUNT PAGE ─────────────────────────────────────────────────────
-  if(page==="myaccount") return(
-    <Wrap>
-      <div style={{maxWidth:520,margin:"0 auto"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-          <button onClick={()=>setPage("home")} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>← Back</button>
-          <div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.5rem",color:"#0f172a"}}>⚙️ My Account</div>
-            <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:1}}>Logged in as <strong>{session?.username}</strong> · {role}</div>
-          </div>
-        </div>
-
-        {(()=>{
-          const[tab,setTab]=React.useState("password");
-          const[curPw,setCurPw]=React.useState("");
-          const[newPw,setNewPw]=React.useState("");
-          const[confPw,setConfPw]=React.useState("");
-          const[newName,setNewName]=React.useState(session?.name||"");
-          const[newUsername,setNewUsername]=React.useState(session?.username||"");
-          const[msg,setMsg]=React.useState(null); // {type:"success"|"error", text}
-          const[showCur,setShowCur]=React.useState(false);
-          const[showNew,setShowNew]=React.useState(false);
-
-          const savePassword=()=>{
-            const u=users.find(x=>x.id===session?.userId);
-            if(!u){setMsg({type:"error",text:"Session error. Please log out and log back in."});return;}
-            if(!checkPw(curPw,u.passwordHash)){setMsg({type:"error",text:"Current password is incorrect."});return;}
-            if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
-            if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
-            if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
-            upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
-            setCurPw(""); setNewPw(""); setConfPw("");
-            setMsg({type:"success",text:"✅ Password changed successfully! Use your new password next time you log in."});
-            logAct("Password Changed","User changed their password",null);
-          };
-
-          const saveProfile=()=>{
-            if(!newName.trim()){setMsg({type:"error",text:"Name cannot be empty."});return;}
-            if(!newUsername.trim()){setMsg({type:"error",text:"Username cannot be empty."});return;}
-            const taken=users.find(x=>x.username.toLowerCase()===newUsername.toLowerCase().trim()&&x.id!==session?.userId);
-            if(taken){setMsg({type:"error",text:"That username is already taken by another user."});return;}
-            upUsers(us=>us.map(x=>x.id===session?.userId?{...x,name:newName.trim(),username:newUsername.toLowerCase().trim()}:x));
-            // Update session
-            const newSess={...session,name:newName.trim(),username:newUsername.toLowerCase().trim()};
-            setSession(newSess);
-            localStorage.setItem(KEYS.session,JSON.stringify(newSess));
-            setMsg({type:"success",text:"✅ Profile updated successfully!"});
-            logAct("Profile Updated","User updated their name/username",null);
-          };
-
-          return(
-            <div style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              {/* Profile banner */}
-              <div style={{background:"#1e293b",padding:"20px 24px",display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:52,height:52,borderRadius:"50%",background:"#0ea5e9",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:"#fff",flexShrink:0}}>
-                  {(session?.name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
-                </div>
-                <div>
-                  <div style={{fontWeight:700,color:"#fff",fontSize:"1rem"}}>{session?.name}</div>
-                  <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:2}}>@{session?.username}</div>
-                  <div style={{display:"inline-block",marginTop:4,background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 10px",fontSize:".7rem",fontWeight:700,color:"#f59e0b"}}>{session?.title||role}</div>
-                </div>
-              </div>
-
-              {/* Tabs */}
-              <div style={{display:"flex",borderBottom:"1.5px solid #e2e8f0"}}>
-                {[["password","🔑 Change Password"],["profile","👤 Edit Profile"]].map(([t,l])=>(
-                  <button key={t} onClick={()=>{setTab(t);setMsg(null);}}
-                    style={{flex:1,padding:"12px",background:"transparent",border:"none",borderBottom:tab===t?"2.5px solid #0ea5e9":"2.5px solid transparent",fontFamily:"inherit",fontSize:".85rem",fontWeight:tab===t?700:400,color:tab===t?"#0ea5e9":"#64748b",cursor:"pointer"}}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{padding:"24px"}}>
-                {msg&&(
-                  <div style={{background:msg.type==="success"?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.type==="success"?"#6ee7b7":"#fecaca"}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:".85rem",color:msg.type==="success"?"#059669":"#dc2626",fontWeight:600}}>
-                    {msg.text}
-                  </div>
-                )}
-
-                {tab==="password"&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Current Password <span style={{color:"#ef4444"}}>*</span></label>
-                      <div style={{position:"relative"}}>
-                        <input type={showCur?"text":"password"} value={curPw} onChange={e=>setCurPw(e.target.value)}
-                          placeholder="Enter your current password"
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 40px 10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                          onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                        <button type="button" onClick={()=>setShowCur(v=>!v)}
-                          style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:".85rem"}}>
-                          {showCur?"🙈":"👁"}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>New Password <span style={{color:"#ef4444"}}>*</span></label>
-                      <div style={{position:"relative"}}>
-                        <input type={showNew?"text":"password"} value={newPw} onChange={e=>setNewPw(e.target.value)}
-                          placeholder="At least 6 characters"
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 40px 10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                          onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                        <button type="button" onClick={()=>setShowNew(v=>!v)}
-                          style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:".85rem"}}>
-                          {showNew?"🙈":"👁"}
-                        </button>
-                      </div>
-                      {/* Password strength indicator */}
-                      {newPw&&(()=>{
-                        const strength=newPw.length>=12&&/[A-Z]/.test(newPw)&&/[0-9]/.test(newPw)?"Strong":newPw.length>=8?"Good":newPw.length>=6?"Weak":"Too short";
-                        const clr={"Strong":"#059669","Good":"#0ea5e9","Weak":"#f59e0b","Too short":"#ef4444"};
-                        return <div style={{fontSize:".75rem",color:clr[strength],marginTop:4,fontWeight:600}}>Password strength: {strength}</div>;
-                      })()}
-                    </div>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Confirm New Password <span style={{color:"#ef4444"}}>*</span></label>
-                      <input type="password" value={confPw} onChange={e=>setConfPw(e.target.value)}
-                        placeholder="Re-enter new password"
-                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                      {confPw&&newPw&&(
-                        <div style={{fontSize:".75rem",marginTop:4,fontWeight:600,color:confPw===newPw?"#059669":"#ef4444"}}>
-                          {confPw===newPw?"✅ Passwords match":"❌ Passwords do not match"}
-                        </div>
-                      )}
-                    </div>
-                    <button onClick={savePassword}
-                      style={{background:"#0ea5e9",border:"none",borderRadius:9,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".9rem",color:"#fff",cursor:"pointer",marginTop:4}}>
-                      🔑 Change Password
-                    </button>
-                    <div style={{fontSize:".78rem",color:"#94a3b8",textAlign:"center"}}>
-                      Forgot your password? Ask Paulo or Mar to reset it in the Manager → Accounts panel.
-                    </div>
-                  </div>
-                )}
-
-                {tab==="profile"&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Display Name</label>
-                      <input value={newName} onChange={e=>setNewName(e.target.value)}
-                        placeholder="Your full name"
-                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                      <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:4}}>This name appears on Job Orders, checklists, and activity logs.</div>
-                    </div>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Username</label>
-                      <input value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase())}
-                        placeholder="Your login username"
-                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                      <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:4}}>Lowercase letters and numbers only. You will use this to log in.</div>
-                    </div>
-                    <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"10px 14px",fontSize:".8rem",color:"#64748b"}}>
-                      🔒 Your <strong>role</strong> ({role}) can only be changed by a Manager.
-                    </div>
-                    <button onClick={saveProfile}
-                      style={{background:"#0f172a",border:"none",borderRadius:9,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".9rem",color:"#fff",cursor:"pointer"}}>
-                      💾 Save Profile
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-    </Wrap>
-  );
-
-  // ── PM UPDATES PAGE ──────────────────────────────────────────────────────
-  if(page==="pmupdates") return(
-    <Wrap>
-      <SecHead title="📝 PM Updates" sub="Log progress updates on your active projects"/>
-      {(()=>{
-        const myName=session?.name||"";
-        const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
-          return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
-            p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
-        });
-        return myProjects.length===0
-          ? <div style={{textAlign:"center",padding:"40px",color:"#94a3b8"}}>No projects assigned to you yet. Contact Arrius or Paulo to get assigned.</div>
-          : (
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
-              {myProjects.map(d=>{
-                const jo=jos.find(j=>j.dealId===d.id);
-                const pc=pcards[d.id];
-                const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
-                const myUpdates=actLog.filter(a=>a.dealId===d.id&&a.action==="PM Update").slice(0,3);
-                return(
-                  <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                    <div style={{background:"#0ea5e9",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div>
-                        <div style={{fontWeight:700,color:"#fff",fontSize:".92rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {jo?.pm1||"—"} · {pct}% complete</div>
-                      </div>
-                      <button onClick={()=>setPmUpdateModal({dealId:d.id,dealName:d.client,ceNo:d.ceNo,ae:jo?.aeAssigned||d.salesOwner})}
-                        style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>
-                        + Log Update
-                      </button>
-                    </div>
-                    <div style={{padding:"12px 16px"}}>
-                      {myUpdates.length===0
-                        ? <div style={{color:"#94a3b8",fontSize:".8rem",fontStyle:"italic"}}>No updates logged yet for this project.</div>
-                        : myUpdates.map((u,i)=>(
-                          <div key={i} style={{fontSize:".82rem",color:"#475569",padding:"6px 0",borderBottom:i<myUpdates.length-1?"1px solid #f8fafc":"",display:"flex",gap:10}}>
-                            <span style={{color:"#94a3b8",whiteSpace:"nowrap",fontSize:".75rem"}}>{u.date} {u.time||""}</span>
-                            <span>{u.detail}</span>
-                          </div>
-                        ))
-                      }
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-      })()}
-
-      {/* PM Update Modal */}
-      {pmUpdateModal&&(()=>{
-        const[note,setNote]=React.useState("");
-        const[stage,setStage]=React.useState("");
-        const[pct,setPct]=React.useState("");
-        return(
-          <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Progress Stage</label>
-                <select value={stage} onChange={e=>setStage(e.target.value)}
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a"}}>
-                  <option value="">Select stage...</option>
-                  {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete (overall)</label>
-                <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a"}}/>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Update Notes <span style={{color:"#ef4444"}}>*</span></label>
-                <textarea value={note} onChange={e=>setNote(e.target.value)} rows={4} placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",resize:"vertical"}}/>
-              </div>
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                <button onClick={()=>{
-                  if(!note.trim()){alert("Please enter an update note.");return;}
-                  const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
-                  logAct("PM Update", updateText, pmUpdateModal.dealId);
-                  // Also add to checklist as a note if there's a PM update task
-                  setPmUpdateModal(null);
-                  alert("✅ Update logged! Arrius and Paulo can see this on the Dashboard.");
-                }}
-                style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                  ✅ Submit Update
-                </button>
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
-    </Wrap>
-  );
-
-  // ── ADDENDA PAGE FOR PROJECT MOVERS ───────────────────────────────────────
-  if(page==="addenda") return(
-    <Wrap>
-      <SecHead title="⚠️ Scope Changes" sub="Flag addenda discovered on site — AE and Paolo will be notified"/>
-      {(()=>{
-        const myName=session?.name||"";
-        const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
-          return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
-            p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
-        });
-        const[selDealId,setSelDealId]=React.useState(myProjects[0]?.id||"");
-        const[title,setTitle]=React.useState("");
-        const[desc,setDesc]=React.useState("");
-        const[value,setValue]=React.useState("");
-        const[submitting,setSubmitting]=React.useState(false);
-
-        const myAddenda=addenda.filter(a=>myProjects.find(d=>d.id===a.dealId));
-
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-            {/* Log new addendum */}
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#dc2626",padding:"12px 16px"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>⚠️ Flag New Scope Change</span>
-              </div>
-              <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
-                  <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-                    {myProjects.map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Scope Change Title <span style={{color:"#ef4444"}}>*</span></label>
-                  <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Additional wall cladding — Unit B"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Description <span style={{color:"#ef4444"}}>*</span></label>
-                  <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3} placeholder="What changed? Where? Who requested it? Client verbal approval received?"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Estimated Additional Value (₱)</label>
-                  <input type="number" value={value} onChange={e=>setValue(e.target.value)} placeholder="0 if unknown"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
-                </div>
-                <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 12px",fontSize:".8rem",color:"#92400e"}}>
-                  📣 Submitting this will notify: <strong>{wonDeals.find(d=>d.id===selDealId)?.salesOwner||"AE"}</strong> (AE) and <strong>Paolo Gomez</strong> for coordination.
-                </div>
-                <button
-                  onClick={()=>{
-                    if(!title.trim()||!desc.trim()||!selDealId){alert("Please fill in all required fields.");return;}
-                    const deal=wonDeals.find(d=>d.id===selDealId);
-                    const jo=jos.find(j=>j.dealId===selDealId);
-                    const newAdd={
-                      id:"add"+Date.now(),dealId:selDealId,
-                      title:title.trim(),description:desc.trim(),
-                      value:Number(value)||0,
-                      ceNo:deal?.ceNo||"",
-                      receiptType:deal?.receiptType||"OR",
-                      withholding:deal?.withholding||false,
-                      status:"Discovered",salesNotified:true,
-                      discoveredBy:session?.name||role,
-                    };
-                    upAddenda(as=>[...as,newAdd]);
-                    // Notify AE + Paolo via activity log (banner will appear on their screens)
-                    const ae=deal?.salesOwner||"AE";
-                    logAct("Scope Change Flagged",
-                      `${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`,
-                      selDealId);
-                    setTitle(""); setDesc(""); setValue("");
-                    alert(`✅ Scope change logged!
-
-${ae} and Paolo Gomez have been notified via their Dashboard.
-
-They will coordinate with the client and confirm if additional billing is needed.`);
-                  }}
-                  style={{background:"#dc2626",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
-                  ⚠️ Submit Scope Change
-                </button>
-              </div>
-            </div>
-
-            {/* My addenda history */}
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#1e293b",padding:"12px 16px"}}>
-                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".9rem"}}>📋 Your Scope Change History ({myAddenda.length})</span>
-              </div>
-              {myAddenda.length===0
-                ? <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No scope changes logged yet.</div>
-                : myAddenda.slice(0,8).map((a,i)=>{
-                    const d=wonDeals.find(x=>x.id===a.dealId);
-                    const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
-                    return(
-                      <div key={a.id} style={{padding:"11px 16px",borderBottom:i<myAddenda.length-1?"1px solid #f8fafc":""}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
-                            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d?.client||"?"} · {d?.ceNo||"?"}</div>
-                          </div>
-                          <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
-                        </div>
-                        {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3}}>Est. value: ₱{Number(a.value).toLocaleString("en-PH")}</div>}
-                      </div>
-                    );
-                  })
-              }
-            </div>
-          </div>
-        );
-      })()}
-    </Wrap>
-  );
-
   if(page==="projects") return(
     <Wrap>
       <ProjectCards
@@ -4976,166 +3266,6 @@ They will coordinate with the client and confirm if additional billing is needed
         setProjectTAT={setProjectTAT} jos={jos}
         delDeal={delDeal} delPcard={delPcard}
         session={session} role={role}/>
-      {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
-      {smartImport&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:760,maxHeight:"90vh",overflow:"auto",boxShadow:"0 24px 64px rgba(0,0,0,.3)"}}>
-            {/* Header */}
-            <div style={{background:"#1e293b",borderRadius:"16px 16px 0 0",padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div>
-                <div style={{fontWeight:800,color:"#fff",fontSize:"1rem"}}>🤔 Smart Import — AI Analysis</div>
-                <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>{smartImport.fileName}</div>
-              </div>
-              <button onClick={()=>setSmartImport(null)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem"}}>✕ Cancel</button>
-            </div>
-            <div style={{padding:24}}>
-              {/* AI Summary */}
-              <div style={{background:smartImport.analysis.canImport?"#f0fdf4":"#fef2f2",border:`1.5px solid ${smartImport.analysis.canImport?"#6ee7b7":"#fecaca"}`,borderRadius:10,padding:"14px 18px",marginBottom:20}}>
-                <div style={{display:"flex",gap:10,alignItems:"flex-start"}}>
-                  <span style={{fontSize:"1.4rem"}}>{smartImport.analysis.canImport?"✅":"⚠️"}</span>
-                  <div>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:4}}>
-                      {smartImport.analysis.dataType?.toUpperCase()||"UNKNOWN"} DATA
-                      <span style={{marginLeft:8,fontSize:".72rem",background:smartImport.analysis.confidence>70?"#059669":"#f59e0b",color:"#fff",borderRadius:20,padding:"2px 8px",fontWeight:600}}>
-                        {smartImport.analysis.confidence}% confidence
-                      </span>
-                    </div>
-                    <div style={{fontSize:".85rem",color:"#475569",lineHeight:1.6}}>{smartImport.analysis.summary}</div>
-                    {!smartImport.analysis.canImport&&(
-                      <div style={{marginTop:8,fontSize:".82rem",color:"#dc2626",fontWeight:600}}>⛔ {smartImport.analysis.cantImportReason}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats row */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
-                {[
-                  {l:"Total Rows",     v:smartImport.analysis.rowCount||smartImport.rows.length, c:"#3b82f6"},
-                  {l:"Columns Found",  v:smartImport.analysis.fieldsFound?.length||0,            c:"#8b5cf6"},
-                  {l:"Import Action",  v:smartImport.analysis.importAction||"Manual review",     c:"#0f172a"},
-                ].map(({l,v,c})=>(
-                  <div key={l} style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px"}}>
-                    <div style={{fontWeight:800,fontSize:".9rem",color:c}}>{v}</div>
-                    <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Fields detected */}
-              {smartImport.analysis.fieldsFound?.length>0&&(
-                <div style={{marginBottom:16}}>
-                  <div style={{fontWeight:700,fontSize:".82rem",color:"#0f172a",marginBottom:8}}>Fields Detected</div>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                    {smartImport.analysis.fieldsFound.map(f=>(
-                      <span key={f} style={{background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",borderRadius:20,padding:"3px 10px",fontSize:".75rem",fontWeight:600}}>{f}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Issues/warnings */}
-              {smartImport.analysis.issues?.length>0&&(
-                <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"12px 14px",marginBottom:16}}>
-                  <div style={{fontWeight:700,fontSize:".8rem",color:"#92400e",marginBottom:6}}>⚠️ Data Quality Notes</div>
-                  {smartImport.analysis.issues.map((iss,i)=>(
-                    <div key={i} style={{fontSize:".8rem",color:"#78350f",marginBottom:3}}>• {iss}</div>
-                  ))}
-                </div>
-              )}
-
-              {/* Data preview table */}
-              <div style={{marginBottom:20}}>
-                <div style={{fontWeight:700,fontSize:".82rem",color:"#0f172a",marginBottom:8}}>Data Preview (first 5 rows)</div>
-                <div style={{overflowX:"auto",border:"1px solid #e2e8f0",borderRadius:8}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
-                    <thead>
-                      <tr style={{background:"#1e293b"}}>
-                        {Object.keys(smartImport.rows[0]||{}).slice(0,8).map(k=>(
-                          <th key={k} style={{padding:"8px 10px",textAlign:"left",color:"#fff",fontWeight:700,whiteSpace:"nowrap"}}>{k}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {smartImport.rows.slice(0,5).map((row,i)=>(
-                        <tr key={i} style={{background:i%2?"#f8fafc":"#fff"}}>
-                          {Object.values(row).slice(0,8).map((v,j)=>(
-                            <td key={j} style={{padding:"7px 10px",color:"#475569",borderBottom:"1px solid #f1f5f9",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{String(v||"")}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:5}}>Showing 5 of {smartImport.rows.length} rows · {Object.keys(smartImport.rows[0]||{}).length} total columns</div>
-              </div>
-
-              {/* Action buttons */}
-              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
-                <button onClick={()=>setSmartImport(null)}
-                  style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"10px 20px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>
-                  Cancel
-                </button>
-                {smartImport.analysis.canImport&&smartImport.analysis.dataType==="deals"&&(
-                  <button onClick={()=>{
-                    const rows=smartImport.rows;
-                    let imported=0,skipped=0;
-                    rows.forEach(r=>{
-                      const client=String(r.client||r.Client||r["Client Name"]||r["client_name"]||r.company||"").trim();
-                      if(!client) return;
-                      const ceNo=String(r.ceNo||r["CE No"]||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
-                      const exists=deals.find(d=>ceNo&&d.ceNo&&d.ceNo===ceNo);
-                      const rec={
-                        id:exists?.id||uid(),
-                        client,
-                        contact:String(r.contact||r.Contact||r["Project Name"]||r.project||"").trim(),
-                        ceNo:ceNo||("CE-"+Date.now()),
-                        ceType:String(r.ceType||r["CE Type"]||r.type||"Fabrication / General").trim(),
-                        stage:normalizeStage(r.stage||r.Stage||r.status||"01 · BizDev"),
-                        value:Number(r.value||r.Value||r["Contract Value"]||r.amount||0),
-                        invoiced:Number(r.invoiced||r.Invoiced||0),
-                        amountPaid:Number(r.amountPaid||r["Amount Paid"]||r.paid||0),
-                        paymentStatus:String(r.paymentStatus||r["Payment Status"]||"Unpaid").trim(),
-                        receiptType:String(r.receiptType||r["Receipt Type"]||"OR").trim(),
-                        salesOwner:String(r.salesOwner||r["Sales Owner"]||r.ae||r.AE||"").trim(),
-                        dateAcquired:String(r.dateAcquired||r["Date Acquired"]||r.date||today).trim(),
-                        notes:String(r.notes||r.Notes||"").trim(),
-                        product:"Custom Shelving",probability:50,priority:"Normal",
-                      };
-                      if(exists){
-                        upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));
-                        if(WON_STAGES.includes(rec.stage)){
-                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
-                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
-                        }
-                        skipped++;
-                      } else {
-                        upDeals(ds=>[...ds,rec]);
-                        if(WON_STAGES.includes(rec.stage)){
-                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
-                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
-                        }
-                        imported++;
-                      }
-                    });
-                    logAct("Excel Import",`${imported} new + ${skipped} updated via Smart Import`);
-                    setSmartImport(null);
-                    alert(`✅ Import complete!\n${imported} new deals added\n${skipped} existing updated\n\nProject cards created for all awarded projects.`);
-                  }}
-                  style={{background:"#059669",border:"none",borderRadius:8,padding:"10px 20px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                    ✅ Confirm Import ({smartImport.rows.length} rows)
-                  </button>
-                )}
-                {smartImport.analysis.canImport&&smartImport.analysis.dataType!=="deals"&&(
-                  <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"10px 16px",fontSize:".82rem",color:"#1d4ed8"}}>
-                    ℹ️ {smartImport.analysis.dataType} data detected — use the matching module to import this data type.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </Wrap>
   );
 
@@ -9806,4 +7936,3 @@ function DataManagement({
     </body></html>`);
     win.document.close();
   };
-}
