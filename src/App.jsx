@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -616,7 +616,7 @@ const DEFAULT_USERS = [
   { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
   { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
   // ── Sales ─────────────────────────────────────────────────────────────────
-  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:hashPw("Sales2026!"), role:"Manager",      status:"active", createdAt:today },
+  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
   { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
   { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
   { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
