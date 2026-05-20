@@ -709,8 +709,8 @@ const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"
 const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
   // Using key+defaultValue pattern — safest focus fix, no hooks needed
   const base={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:readOnly?"#f8fafc":"#fff",boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
-  if(rows) return <textarea defaultValue={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
-  return <input type={type} defaultValue={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
+  if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
+  return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
 // Currency input — shows commas when not focused, strips on focus
 const CurrInp=({value,onChange,placeholder="0.00",style:sx={}})=>{
@@ -2252,7 +2252,6 @@ export default function App(){
               <div style={{display:"flex",gap:5,justifyContent:"center",flexWrap:"wrap"}}>
                 <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>💾</button>
                 <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"5px 8px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none"}}>📘</a>
-                <button onClick={()=>setPage("myaccount")} title="My Account" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>⚙️</button>
                 <button onClick={()=>setPage("myaccount")} title="My Account & Settings" style={{background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.1)",borderRadius:6,padding:"5px 8px",color:"#94a3b8",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>⚙️</button>
                 <button onClick={logout} style={{background:"rgba(239,68,68,.15)",border:"1px solid rgba(239,68,68,.2)",borderRadius:6,padding:"5px 8px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>↩ Out</button>
               </div>
@@ -2262,7 +2261,6 @@ export default function App(){
             <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"center"}}>
               <button onClick={()=>setShowExport(s=>!s)} title="Backup" style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>💾</button>
               <a href="/handbook.html" target="_blank" rel="noopener noreferrer" title="Handbook" style={{background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.3)",borderRadius:6,padding:"6px",color:"#f59e0b",fontSize:".85rem",textDecoration:"none"}}>📘</a>
-              <button onClick={()=>setPage("myaccount")} title="My Account / Settings" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem",fontFamily:"inherit"}}>⚙️</button>
               <button onClick={logout} title="Log out" style={{background:"rgba(239,68,68,.12)",border:"none",borderRadius:6,padding:"6px",color:"#ef4444",cursor:"pointer",fontSize:".75rem",fontFamily:"inherit"}}>↩</button>
               <button onClick={()=>setPage("myaccount")} title="My Account" style={{background:"rgba(255,255,255,.06)",border:"none",borderRadius:6,padding:"6px",color:"#94a3b8",cursor:"pointer",fontSize:".85rem",fontFamily:"inherit"}}>⚙️</button>
             </div>
@@ -2408,7 +2406,7 @@ export default function App(){
         const totalOutstanding=totalBilled-totalPaid;
         const today2=new Date();
         const overdue30=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
-        const todayCash=Object.values(cashPos).find(c=>c.date===today)||null;
+        const todayCash=Object.values(cashPositions).find(c=>c.date===today)||null;
         return(
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
             {[
@@ -2435,10 +2433,10 @@ export default function App(){
             <button onClick={()=>setPage("finance")} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Open →</button>
           </div>
           <div style={{padding:"14px 16px"}}>
-            {Object.keys(cashPos).length===0
+            {Object.keys(cashPositions).length===0
               ? <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No cash position entries yet. Click Open to start today's entry.</div>
               : (()=>{
-                  const latest=Object.values(cashPos).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+                  const latest=Object.values(cashPositions).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
                   const total=["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latest[b+"_end"]||latest[b+"End"]||0),0);
                   return(
                     <div>
@@ -3053,7 +3051,7 @@ export default function App(){
         const today2        = new Date();
         const overdue       = allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
         const overdueValue  = overdue.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,py)=>ps+Number(py.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
-        const latestCash    = Object.values(cashPos).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+        const latestCash    = Object.values(cashPositions).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
         const totalCash     = latestCash?["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latestCash[b+"_end"]||latestCash[b+"End"]||0),0):0;
         const noBilling     = wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
         const collRate      = totalBilled>0?Math.round(totalPaid/totalBilled*100):0;
