@@ -2135,7 +2135,9 @@ export default function App(){
   if(!session) return <AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/>;
 
   // ── SHARED NAV ────────────────────────────────────────────────────────────
-  const roleColor=ROLE_CLR[role];
+  const roleColor=ROLE_CLR[role]||"#64748b";
+  const hr=new Date().getHours();
+  const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
     Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"datamanagement",l:"⚙ Data"}],
     Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
