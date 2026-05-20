@@ -385,28 +385,79 @@
         <span class="role-badge" style="background:#f59e0b">Manager</span>
         <span class="role-badge" style="background:#ec4899">Design</span>
       </div>
+
       <h3>Your 8 Department Tasks</h3>
-      <ul>
-        <li>Design brief received from Sales AE</li>
-        <li>Design proposal created and presented to client</li>
-        <li>Client design approved (all revisions complete)</li>
-        <li>Production plans and shop drawings complete</li>
-        <li>Signage plans complete</li>
-        <li>Swatchboard provided to Procurement</li>
-        <li>Renders finalized</li>
-        <li>PMs and Coordinators briefed by Design team</li>
-      </ul>
-      <h3>Swatchboard</h3>
-      <p>Log all material selections here — fabric, hardware, finishes, colors. Procurement uses this to source the correct materials. Set status: To Buy → Ordered → Delivered → Used.</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">1</div>
+          <div class="step-content"><b>Design brief received from Sales AE</b><span>Triggers when AE marks "Brief Sent" on the Project Card — project appears in your queue</span></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">2</div>
+          <div class="step-content"><b>Design proposal created and presented to client</b><span>Mood board, initial layout draft, and concept renders shared via Comms Group</span></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">3</div>
+          <div class="step-content"><b>Client design approved</b><span>All revisions complete — AE marks "Client design approved" in Sales dept tasks</span></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">4</div>
+          <div class="step-content"><b>Production plans and shop drawings complete</b><span>Paste Google Drive folder link into the "Shop Drawings Link" field — do not upload files directly</span></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">5</div>
+          <div class="step-content"><b>Signage plans complete</b><span>All signage specs documented and accessible to Operations</span></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">6</div>
+          <div class="step-content"><b>Swatchboard provided to Procurement</b><span>All materials tagged "To Buy" — Marian sees them in real time</span></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">7</div>
+          <div class="step-content"><b>Renders finalized</b><span>Final 3D renders saved to Drive and linked in Project Card</span></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#ec4899;">8</div>
+          <div class="step-content"><b>PMs and Coordinators briefed by Design team</b><span>Handoff complete — Operations queue updates automatically when all 8 tasks are done</span></div>
+        </div>
+      </div>
+
+      <h3 style="margin-top:24px;">Swatchboard</h3>
+      <p>Log every material selection here — fabric, hardware, finishes, colors, acrylic specs. Procurement uses this as their single source of truth to source and order materials. Design owns the Swatchboard; Procurement executes it.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0 6px;">
+        <div style="background:#fdf2f8;border:1.5px solid #f9a8d4;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:1.2rem;margin-bottom:4px;">🛒</div>
+          <div style="font-weight:700;color:#be185d;font-size:.8rem;margin-bottom:4px;">To Buy</div>
+          <div style="font-size:.75rem;color:#64748b;">Design tags item as needed</div>
+        </div>
+        <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:1.2rem;margin-bottom:4px;">📋</div>
+          <div style="font-weight:700;color:#c2410c;font-size:.8rem;margin-bottom:4px;">Ordered</div>
+          <div style="font-size:.75rem;color:#64748b;">Procurement raised PO</div>
+        </div>
+        <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:1.2rem;margin-bottom:4px;">📦</div>
+          <div style="font-weight:700;color:#15803d;font-size:.8rem;margin-bottom:4px;">Delivered</div>
+          <div style="font-size:.75rem;color:#64748b;">Received at warehouse</div>
+        </div>
+        <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px;text-align:center;">
+          <div style="font-size:1.2rem;margin-bottom:4px;">✅</div>
+          <div style="font-weight:700;color:#1d4ed8;font-size:.8rem;margin-bottom:4px;">Used</div>
+          <div style="font-size:.75rem;color:#64748b;">Deployed on site</div>
+        </div>
+      </div>
+
+      <div style="background:#fdf2f8;border:1px solid #f9a8d4;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:13px;color:#9d174d;">
+        ⚠️ <strong>Shop Drawings:</strong> Paste the <strong>Google Drive folder link</strong> into the Project Card's "Shop Drawings Link" field — do not upload drawing files directly to FabHub. Files stay in Drive; FabHub holds the link.
+      </div>
     </div>
 
     <!-- CH12 -->
     <div class="chapter" id="ch12">
       <div class="chapter-header" style="background:var(--dark)">
-        <span class="ch-num">12</span>
-      <!-- ═══════════════════════════════════════════════════ -->
-      <div class="chapter-break"></div>
-      <h2>Design Workflow — End-to-End Flow</h2>
+        <span class="ch-num">12</span><h2>Design Workflow — End-to-End Flow</h2>
+      </div>
       <div class="roles">
         <span class="role-badge" style="background:#ec4899">Design</span>
         <span class="role-badge" style="background:#10b981">Sales</span>
@@ -415,164 +466,225 @@
       </div>
 
       <p style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
-        <strong>Purpose of this chapter:</strong> How a project moves from Award through Design, into Production hands, and out to Procurement — so everyone knows exactly when to act and where to look in FabHub.
+        <strong>Purpose:</strong> How a project moves from Award → Design → Production → Procurement. Everyone knows exactly when to act and where to look in FabHub.
       </p>
 
-      <h3>The 7-Stage Flow</h3>
-
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="background:#10b981;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">1</div>
-          <strong style="color:#10b981;">Project Awarded — Sales</strong>
+      <!-- PROCESS FLOW TRACKER -->
+      <div style="display:flex;align-items:center;gap:0;margin:0 0 24px;overflow-x:auto;padding-bottom:4px;">
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:90px;">
+          <div style="background:#10b981;color:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;white-space:nowrap;">1 — AWARD</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center;">Sales</div>
         </div>
-        <div style="margin-left:38px;">
-          <p style="margin:0 0 6px;">Paulo or Paolo clicks 🏆 Award in the pipeline. A Job Order is issued. FabHub <strong>automatically creates a Project Card</strong> visible to all 6 departments at the same time.</p>
-          <div class="tip">📍 FabHub: Pipeline → Award Modal → Job Order issued → Project Card created</div>
+        <div style="height:2px;background:#e2e8f0;flex:1;min-width:8px;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:90px;">
+          <div style="background:#3b82f6;color:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;white-space:nowrap;">2 — BRIEF</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center;">Sales→Design</div>
+        </div>
+        <div style="height:2px;background:#e2e8f0;flex:1;min-width:8px;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:90px;">
+          <div style="background:#ec4899;color:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;white-space:nowrap;">3 — DESIGN</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center;">Design</div>
+        </div>
+        <div style="height:2px;background:#e2e8f0;flex:1;min-width:8px;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:90px;">
+          <div style="background:#f59e0b;color:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;white-space:nowrap;">4 — PRESENT</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center;">Sales+Design</div>
+        </div>
+        <div style="height:2px;background:#e2e8f0;flex:1;min-width:8px;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:90px;">
+          <div style="background:#f97316;color:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;white-space:nowrap;">5 — HANDOFF</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center;">Design→Ops</div>
+        </div>
+        <div style="height:2px;background:#e2e8f0;flex:1;min-width:8px;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:90px;">
+          <div style="background:#06b6d4;color:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;white-space:nowrap;">6 — PROCURE</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center;">Procurement</div>
+        </div>
+        <div style="height:2px;background:#e2e8f0;flex:1;min-width:8px;"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:90px;">
+          <div style="background:#8b5cf6;color:#fff;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;white-space:nowrap;">7 — BUILD</div>
+          <div style="font-size:10px;color:#64748b;margin-top:3px;text-align:center;">Operations</div>
         </div>
       </div>
 
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="background:#3b82f6;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">2</div>
-          <strong style="color:#3b82f6;">Design Brief Handed Over — Sales → Design</strong>
+      <!-- ACCORDION STAGES -->
+      <style>
+        .acc-item { border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+        .acc-header { display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; background:#fff; user-select:none; transition:background .15s; }
+        .acc-header:hover { background:#f8fafc; }
+        .acc-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; color:#fff; flex-shrink:0; }
+        .acc-title { font-size:13px; font-weight:700; flex:1; }
+        .acc-dept { font-size:11px; font-weight:600; padding:2px 8px; border-radius:20px; color:#fff; }
+        .acc-arrow { font-size:11px; color:#94a3b8; transition:transform .2s; }
+        .acc-body { display:none; padding:0 16px 14px 56px; background:#fff; border-top:1px solid var(--border); }
+        .acc-body.open { display:block; }
+        .acc-arrow.open { transform:rotate(180deg); }
+        .acc-body p { margin:10px 0 6px; }
+        .acc-body ul { margin:6px 0 10px; }
+        .acc-tip { background:#f1f5f9; border-radius:6px; padding:7px 12px; font-size:12px; color:#475569; margin-top:8px; }
+        .acc-warn { background:#fdf2f8; border:1px solid #f9a8d4; border-radius:6px; padding:8px 12px; font-size:12px; color:#9d174d; margin-top:8px; }
+      </style>
+
+      <!-- Stage 1 -->
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-dot" style="background:#10b981;">1</div>
+          <span class="acc-title">Project Awarded</span>
+          <span class="acc-dept" style="background:#10b981;">Sales</span>
+          <span class="acc-arrow">▼</span>
         </div>
-        <div style="margin-left:38px;">
-          <p style="margin:0 0 6px;">The Account Executive (Gail/Jena/Wyn) uploads concept references, client moodboard, and scope notes. They tick <strong>"Brief Sent" ✅</strong> in their Sales dept tasks on the Project Card. The project <strong>immediately appears</strong> in the Design team's queue.</p>
-          <div class="tip">📍 FabHub: Project Cards → Sales dept tasks → mark Brief Sent</div>
+        <div class="acc-body">
+          <p>Paulo or Paolo clicks 🏆 <strong>Award</strong> in the pipeline. A Job Order is issued. FabHub <strong>automatically creates a Project Card</strong> visible to all 6 departments at the same time.</p>
+          <div class="acc-tip">📍 FabHub: Pipeline → Award Modal → Job Order issued → Project Card created</div>
         </div>
       </div>
 
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="background:#ec4899;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">3</div>
-          <strong style="color:#ec4899;">Design & Shop Drawings — Design Team</strong>
+      <!-- Stage 2 -->
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-dot" style="background:#3b82f6;">2</div>
+          <span class="acc-title">Design Brief Handed Over</span>
+          <span class="acc-dept" style="background:#3b82f6;">Sales → Design</span>
+          <span class="acc-arrow">▼</span>
         </div>
-        <div style="margin-left:38px;">
-          <p style="margin:0 0 6px;">Designer ticks off their 8 dept tasks: Mood Board → Layout Draft → 3D Render → Production Plans → Shop Drawings → Signage Plans → Renders Finalized → PM Briefing. As they work, they populate the <strong>Swatchboard</strong> with every material needed — laminate type, metal finish, acrylic spec, fabric, hardware. Marian (Procurement) sees this in real time.</p>
+        <div class="acc-body">
+          <p>The Account Executive (Gail / Jena / Wyn) uploads concept references, client moodboard, and scope notes. They tick <strong>"Brief Sent" ✅</strong> in their Sales dept tasks on the Project Card.</p>
+          <p>The project <strong>immediately appears</strong> in the Design team's queue — no manual notification needed.</p>
+          <div class="acc-tip">📍 FabHub: Project Cards → Sales dept tasks → mark Brief Sent</div>
+        </div>
+      </div>
+
+      <!-- Stage 3 -->
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-dot" style="background:#ec4899;">3</div>
+          <span class="acc-title">Design & Shop Drawings</span>
+          <span class="acc-dept" style="background:#ec4899;">Design</span>
+          <span class="acc-arrow">▼</span>
+        </div>
+        <div class="acc-body">
+          <p>Designer works through all 8 dept tasks in sequence:</p>
           <ul>
-            <li>Open <strong>Design Dashboard → Home</strong> to see your personal queue (oldest projects first)</li>
+            <li>Mood Board → Layout Draft → 3D Render → Production Plans → Shop Drawings → Signage Plans → Renders Finalized → PM Briefing</li>
+          </ul>
+          <p>While working, populate the <strong>Swatchboard</strong> with every material — laminate type, metal finish, acrylic spec, fabric, hardware. Marian (Procurement) sees this in real time.</p>
+          <ul>
+            <li>Open <strong>Design Dashboard → Home</strong> for your personal queue (oldest first)</li>
             <li>Open <strong>Project Cards</strong> to tick off tasks</li>
-            <li>Open <strong>Swatchboard</strong> to add materials needed per project</li>
+            <li>Open <strong>Swatchboard</strong> to add materials per project</li>
           </ul>
-          <div class="tip">📍 FabHub: Design Home → Project Cards → Design dept tasks + Swatchboard</div>
-          <div style="background:#fdf2f8;border:1px solid #f9a8d4;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:.88rem;">
-            <strong>⚠️ Shop Drawings Note:</strong> Do not upload drawing files directly to FabHub — paste the <strong>Google Drive folder link</strong> into the Project Card's "Shop Drawings Link" field instead. Files stay in Drive, FabHub holds the link. This keeps the system fast.
-          </div>
+          <div class="acc-tip">📍 FabHub: Design Home → Project Cards → Design dept tasks + Swatchboard</div>
+          <div class="acc-warn">⚠️ <strong>Shop Drawings:</strong> Paste the <strong>Google Drive folder link</strong> into "Shop Drawings Link" — do not upload files directly to FabHub. Files stay in Drive; FabHub holds the link.</div>
         </div>
       </div>
 
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="background:#f59e0b;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">4</div>
-          <strong style="color:#f59e0b;">Client Presentation — Sales + Design</strong>
+      <!-- Stage 4 -->
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-dot" style="background:#f59e0b;">4</div>
+          <span class="acc-title">Client Presentation</span>
+          <span class="acc-dept" style="background:#f59e0b;">Sales + Design</span>
+          <span class="acc-arrow">▼</span>
         </div>
-        <div style="margin-left:38px;">
-          <p style="margin:0 0 6px;">The AE shares shop drawings with the client via the project Comms Group (WhatsApp/Viber link saved in the JO). Design marks <strong>"Design proposal presented"</strong> in their checklist task.</p>
+        <div class="acc-body">
+          <p>The AE shares shop drawings with the client via the Comms Group (WhatsApp/Viber link saved in the JO). Design marks <strong>"Design proposal presented"</strong> in their checklist task.</p>
           <ul>
-            <li>If client requests minor changes → designer revises and re-presents</li>
-            <li>If client requests <strong>scope changes</strong> (additional items, different materials) → AE or PM logs an <strong>Addendum</strong> — this notifies the AE and Paolo Gomez automatically for billing coordination</li>
-            <li>Once approved → AE marks <strong>"Client design approved"</strong> in Sales dept tasks</li>
+            <li><strong>Minor changes</strong> → designer revises and re-presents</li>
+            <li><strong>Scope changes</strong> (new items, different materials) → AE or PM logs an <strong>Addendum</strong> — notifies AE and Paolo Gomez automatically for billing</li>
+            <li><strong>Approved</strong> → AE marks "Client design approved" in Sales dept tasks</li>
           </ul>
-          <div class="tip">📍 FabHub: Checklist → Client Approval task / Addenda if scope changes</div>
+          <div class="acc-tip">📍 FabHub: Checklist → Client Approval task / Addenda if scope changes</div>
         </div>
       </div>
 
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="background:#f97316;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">5</div>
-          <strong style="color:#f97316;">Approved Drawings to Production — Design → Operations</strong>
+      <!-- Stage 5 -->
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-dot" style="background:#f97316;">5</div>
+          <span class="acc-title">Approved Drawings to Production</span>
+          <span class="acc-dept" style="background:#f97316;">Design → Ops</span>
+          <span class="acc-arrow">▼</span>
         </div>
-        <div style="margin-left:38px;">
-          <p style="margin:0 0 6px;">Design marks all their dept tasks <strong>Done ✅</strong>. The assigned Project Movers (Ryon, David, Jay, Angelo, Jessie, Arvin, Thony, Steve) see the project appear in their FabHub queue. They log their first PM Update: <em>"Received approved shop drawings — starting fabrication."</em></p>
-          <div class="tip">📍 FabHub: Project Cards → Design dept marked Done → Operations queue updates → PM Updates tab</div>
+        <div class="acc-body">
+          <p>Design marks all their dept tasks <strong>Done ✅</strong>. Project Movers (Ryon, David, Jay, Angelo, Jessie, Arvin, Thony, Steve) see the project appear in their FabHub queue automatically.</p>
+          <p>First PM Update logged: <em>"Received approved shop drawings — starting fabrication."</em></p>
+          <div class="acc-tip">📍 FabHub: Project Cards → Design dept marked Done → Operations queue updates → PM Updates tab</div>
         </div>
       </div>
 
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="background:#06b6d4;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">6</div>
-          <strong style="color:#06b6d4;">Materials Procurement — Procurement</strong>
+      <!-- Stage 6 -->
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-dot" style="background:#06b6d4;">6</div>
+          <span class="acc-title">Materials Procurement</span>
+          <span class="acc-dept" style="background:#06b6d4;">Procurement</span>
+          <span class="acc-arrow">▼</span>
         </div>
-        <div style="margin-left:38px;">
-          <p style="margin:0 0 6px;">Marian opens the <strong>Swatchboard</strong>. Every item Design tagged "To Buy" is listed with quantity and specification. She raises a <strong>Purchase Request (PO)</strong> per item, then updates the status: To Buy → Ordered → Sourced. If any item exceeds the approved budget, she raises a <strong>Budget Request</strong> for approval.</p>
+        <div class="acc-body">
+          <p>Marian opens the <strong>Swatchboard</strong>. Every item Design tagged "To Buy" is listed with quantity and specification. She raises a <strong>Purchase Request (PO)</strong> per item, then updates status:</p>
+          <p style="font-weight:600;color:#0891b2;">To Buy → Ordered → Sourced</p>
           <ul>
-            <li>Swatchboard is the single source of material truth — Design owns it, Procurement executes it</li>
+            <li>If any item exceeds approved budget → raise a <strong>Budget Request</strong> for approval</li>
             <li>Materials must be sourced before PMs can start fabrication on that component</li>
           </ul>
-          <div class="tip">📍 FabHub: Procurement Home → Swatchboard + Purchase Requests + Budget Requests</div>
+          <div class="acc-tip">📍 FabHub: Procurement Home → Swatchboard + Purchase Requests + Budget Requests</div>
         </div>
       </div>
 
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-          <div style="background:#8b5cf6;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">7</div>
-          <strong style="color:#8b5cf6;">Fabrication → Site Installation — Operations</strong>
+      <!-- Stage 7 -->
+      <div class="acc-item">
+        <div class="acc-header" onclick="toggleAcc(this)">
+          <div class="acc-dot" style="background:#8b5cf6;">7</div>
+          <span class="acc-title">Fabrication → Site Installation</span>
+          <span class="acc-dept" style="background:#8b5cf6;">Operations</span>
+          <span class="acc-arrow">▼</span>
         </div>
-        <div style="margin-left:38px;">
-          <p style="margin:0 0 6px;">PMs log daily PM Updates (stage, % complete, notes). Any scope change discovered on site is flagged as an Addendum — the AE and Paolo are notified immediately. Billing milestones are triggered at agreed completion points. Project closes through Stage 12 → 13.</p>
-          <div class="tip">📍 FabHub: PM Updates + Addenda + Billing Milestones</div>
+        <div class="acc-body">
+          <p>PMs log daily <strong>PM Updates</strong> (stage, % complete, notes). Any scope change on site → log as Addendum → AE and Paolo notified immediately. Billing milestones triggered at agreed completion points. Project closes through Stage 12 → 13.</p>
+          <div class="acc-tip">📍 FabHub: PM Updates + Addenda + Billing Milestones</div>
         </div>
       </div>
 
-      <h3>The 3 Goals — How FabHub Supports Each</h3>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:16px 0 24px;">
+      <h3 style="margin-top:24px;">The 3 Goals — How FabHub Supports Each</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin:12px 0 24px;">
         <div style="background:#fdf2f8;border:1.5px solid #f9a8d4;border-radius:10px;padding:14px;">
           <div style="font-size:1.3rem;margin-bottom:6px;">🎨</div>
           <div style="font-weight:700;color:#be185d;margin-bottom:6px;font-size:.9rem;">Sales presents design to client</div>
-          <div style="font-size:.8rem;color:#64748b;">Design Brief → Shop Drawings → Client Approval task → approved drawings shared via Comms Group</div>
+          <div style="font-size:.8rem;color:#64748b;">Brief → Shop Drawings → Client Approval → shared via Comms Group</div>
         </div>
         <div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:10px;padding:14px;">
           <div style="font-size:1.3rem;margin-bottom:6px;">🏗️</div>
           <div style="font-weight:700;color:#c2410c;margin-bottom:6px;font-size:.9rem;">Production receives shop drawings</div>
-          <div style="font-size:.8rem;color:#64748b;">Design Done → PM queue updates → PM logs "Received drawings" → Fabrication starts</div>
+          <div style="font-size:.8rem;color:#64748b;">Design Done → PM queue updates → PM logs "Received" → Fabrication starts</div>
         </div>
         <div style="background:#ecfeff;border:1.5px solid #a5f3fc;border-radius:10px;padding:14px;">
           <div style="font-size:1.3rem;margin-bottom:6px;">📦</div>
           <div style="font-weight:700;color:#0891b2;margin-bottom:6px;font-size:.9rem;">Procurement knows what to buy</div>
-          <div style="font-size:.8rem;color:#64748b;">Swatchboard (Design fills) → Marian sees To Buy items → PO raised → Materials ordered</div>
+          <div style="font-size:.8rem;color:#64748b;">Swatchboard (Design fills) → Marian sees To Buy → PO raised → Ordered</div>
         </div>
       </div>
 
       <h3>Quick Reference — Who Does What</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:.85rem;">
-        <thead>
-          <tr style="background:#1e293b;color:#fff;">
-            <th style="padding:10px 14px;text-align:left;border-radius:8px 0 0 0;">Department</th>
-            <th style="padding:10px 14px;text-align:left;">Action in FabHub</th>
-            <th style="padding:10px 14px;text-align:left;border-radius:0 8px 0 0;">Triggers</th>
-          </tr>
-        </thead>
+      <table class="data-table">
+        <thead><tr><th>Department</th><th>Action in FabHub</th><th>Triggers</th></tr></thead>
         <tbody>
-          <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:10px 14px;font-weight:600;color:#10b981;">Sales (AE)</td>
-            <td style="padding:10px 14px;">Mark Brief Sent on Project Card</td>
-            <td style="padding:10px 14px;color:#64748b;">Design queue updates</td>
-          </tr>
-          <tr style="border-bottom:1px solid #f1f5f9;background:#f8fafc;">
-            <td style="padding:10px 14px;font-weight:600;color:#ec4899;">Design</td>
-            <td style="padding:10px 14px;">Complete dept tasks + fill Swatchboard</td>
-            <td style="padding:10px 14px;color:#64748b;">PM queue + Procurement queue update</td>
-          </tr>
-          <tr style="border-bottom:1px solid #f1f5f9;">
-            <td style="padding:10px 14px;font-weight:600;color:#f97316;">Operations (PMs)</td>
-            <td style="padding:10px 14px;">Log PM Updates + flag Addenda</td>
-            <td style="padding:10px 14px;color:#64748b;">Billing milestones, AE + Paolo notified</td>
-          </tr>
-          <tr style="background:#f8fafc;">
-            <td style="padding:10px 14px;font-weight:600;color:#06b6d4;">Procurement</td>
-            <td style="padding:10px 14px;">Process Swatchboard → raise POs</td>
-            <td style="padding:10px 14px;color:#64748b;">Materials ordered, site receives goods</td>
-          </tr>
+          <tr><td><b style="color:#10b981;">Sales (AE)</b></td><td>Mark Brief Sent on Project Card</td><td>Design queue updates</td></tr>
+          <tr><td><b style="color:#ec4899;">Design</b></td><td>Complete dept tasks + fill Swatchboard</td><td>PM queue + Procurement queue update</td></tr>
+          <tr><td><b style="color:#f97316;">Operations (PMs)</b></td><td>Log PM Updates + flag Addenda</td><td>Billing milestones, AE + Paolo notified</td></tr>
+          <tr><td><b style="color:#06b6d4;">Procurement</b></td><td>Process Swatchboard → raise POs</td><td>Materials ordered, site receives goods</td></tr>
         </tbody>
       </table>
 
-      <h2>Warehouse Process (SOP GMD-WH-FAB-001)</h2>
-      </div>
-      <div class="roles">
-        <span class="role-badge" style="background:#f97316">Operations</span>
-        <span class="role-badge" style="background:#06b6d4">Procurement</span>
-      </div>
+      <!-- WAREHOUSE SOP sub-section -->
+      <div style="margin-top:32px;padding-top:24px;border-top:2px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="background:var(--dark);color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;">SOP GMD-WH-FAB-001</div>
+          <h3 style="margin:0;font-size:15px;">Warehouse Process</h3>
+        </div>
+        <div class="roles" style="margin-bottom:14px;">
+          <span class="role-badge" style="background:#f97316">Operations</span>
+          <span class="role-badge" style="background:#06b6d4">Procurement</span>
+        </div>
       <table class="data-table">
         <thead><tr><th>SOP Document</th><th>FabHub Feature</th><th>Who</th></tr></thead>
         <tbody>
@@ -669,6 +781,15 @@
 </div>
 
 <script>
+  // Accordion toggle
+  function toggleAcc(header) {
+    const body = header.nextElementSibling;
+    const arrow = header.querySelector('.acc-arrow');
+    const isOpen = body.classList.contains('open');
+    body.classList.toggle('open', !isOpen);
+    arrow.classList.toggle('open', !isOpen);
+  }
+
   // Active nav highlighting
   const sections = document.querySelectorAll('.chapter');
   const navLinks = document.querySelectorAll('.sidebar nav a');
