@@ -2191,7 +2191,7 @@ export default function App(){
   const hr=new Date().getHours();
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"datamanagement",l:"⚙ Data"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"}],
     Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
     Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
     Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
@@ -2221,7 +2221,7 @@ export default function App(){
         </div>
         {/* Nav items */}
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
-          {tabs.map(({id,l})=>{
+          {[...tabs,...(session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[])].map(({id,l})=>{
             const active=page===id;
             const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
             return(
@@ -2378,11 +2378,7 @@ export default function App(){
   );
   };
 
-  // ─── MANAGER ──────────────────────────────────────────────────────────────
-  if(role==="Manager"){
-    const grossPro=totRev-totExp;
-    const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
-    if(page==="home"){
+  if(page==="home"){
 
   // Sales should never land here — redirect to pipeline
   if(role==="Sales"){ setTimeout(()=>setPage("pipeline"),0); return null; }
@@ -3607,7 +3603,9 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="pipeline") return(
+  }
+
+  if(page==="pipeline") return(
       <Wrap>
         {/* KPIs */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
@@ -4268,12 +4266,15 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
         <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip}/>
       </Wrap>
     );
+    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse'];
     if(page==="accounts") return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} ROLES={ROLES}/>
       </Wrap>
     );
-  }
+  
+  
+
 
   // ─── SALES ────────────────────────────────────────────────────────────────
   if(role==="Sales"){
@@ -5230,6 +5231,13 @@ They will coordinate with the client and confirm if additional billing is needed
   );
 
   // ── DATA MANAGEMENT (Manager only) ──────────────────────────────────────────
+    if(page==="datamanagement"&&session?.username!=="paulo"){
+      return(<Wrap><div style={{textAlign:"center",padding:"60px",color:"#94a3b8"}}>
+        <div style={{fontSize:"3rem",marginBottom:12}}>🔒</div>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:"1.1rem"}}>CEO Only</div>
+        <div style={{fontSize:".85rem",marginTop:6,color:"#64748b"}}>Data management is restricted to Paulo Garcia.</div>
+      </div></Wrap>);
+    }
   if(page==="datamanagement"&&role==="Manager") return(
     <Wrap>
       <DataManagement
@@ -9796,4 +9804,5 @@ function DataManagement({
     </body></html>`);
     win.document.close();
   };
-}
+
+
