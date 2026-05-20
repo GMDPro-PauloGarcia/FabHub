@@ -918,6 +918,58 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
 }
 
 // ─── DEAL FORM MODAL ──────────────────────────────────────────────────────────
+function ClientAutocomplete({value:initVal, onChange}){
+  const[localVal,setLocalVal]= useState(initVal||"");
+  const[show,    setShow]    = useState(false);
+  // Sync if parent resets (e.g. new deal)
+  useEffect(()=>{ setLocalVal(initVal||""); },[initVal]);
+
+  const suggestions = useMemo(()=>{
+    if(!localVal||localVal.length<2) return [];
+    const q = localVal.toLowerCase();
+    return GMD_CLIENTS.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
+  },[localVal]);
+
+  const pick = (name) => { setLocalVal(name); onChange(name); setShow(false); };
+
+  return(
+    <div style={{position:"relative"}}>
+      <input
+        value={localVal}
+        onChange={e=>{setLocalVal(e.target.value);onChange(e.target.value);setShow(true);}}
+        onFocus={()=>setShow(true)}
+        onBlur={()=>setTimeout(()=>setShow(false),150)}
+        placeholder="Start typing client name…"
+        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}
+      />
+      {show && suggestions.length>0 && (
+        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,maxHeight:280,overflowY:"auto",marginTop:4}}>
+          {suggestions.map((c,i)=>(
+            <div key={i} onMouseDown={()=>pick(c.name)}
+              style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #f1f5f9",transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              <div style={{fontWeight:600,color:"#0f172a",fontSize:".86rem"}}>{c.name}</div>
+              <div style={{display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
+                {c.city&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📍 {c.city}</span>}
+                {c.phone&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📞 {c.phone}</span>}
+                {c.balance>0&&<span style={{fontSize:".7rem",color:"#ef4444",fontWeight:700}}>⚠ ₱{c.balance.toLocaleString()} open balance</span>}
+              </div>
+            </div>
+          ))}
+          {localVal&&!GMD_CLIENTS.find(c=>c.name.toLowerCase()===localVal.toLowerCase())&&(
+            <div onMouseDown={()=>pick(localVal)}
+              style={{padding:"10px 14px",cursor:"pointer",background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:"#3b82f6",fontWeight:600}}>
+              + Add "{localVal}" as new client
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
 function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId}){
   // Local state — prevents App re-render on every keystroke (fixes focus bug)
   const[form,setForm]=useState(initialForm||emptyDeal);
@@ -6439,58 +6491,6 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
 }
 
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
-function ClientAutocomplete({value:initVal, onChange}){
-  const[localVal,setLocalVal]= useState(initVal||"");
-  const[show,    setShow]    = useState(false);
-  // Sync if parent resets (e.g. new deal)
-  useEffect(()=>{ setLocalVal(initVal||""); },[initVal]);
-
-  const suggestions = useMemo(()=>{
-    if(!localVal||localVal.length<2) return [];
-    const q = localVal.toLowerCase();
-    return GMD_CLIENTS.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
-  },[localVal]);
-
-  const pick = (name) => { setLocalVal(name); onChange(name); setShow(false); };
-
-  return(
-    <div style={{position:"relative"}}>
-      <input
-        value={localVal}
-        onChange={e=>{setLocalVal(e.target.value);onChange(e.target.value);setShow(true);}}
-        onFocus={()=>setShow(true)}
-        onBlur={()=>setTimeout(()=>setShow(false),150)}
-        placeholder="Start typing client name…"
-        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}
-      />
-      {show && suggestions.length>0 && (
-        <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,maxHeight:280,overflowY:"auto",marginTop:4}}>
-          {suggestions.map((c,i)=>(
-            <div key={i} onMouseDown={()=>pick(c.name)}
-              style={{padding:"10px 14px",cursor:"pointer",borderBottom:"1px solid #f1f5f9",transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-              <div style={{fontWeight:600,color:"#0f172a",fontSize:".86rem"}}>{c.name}</div>
-              <div style={{display:"flex",gap:12,marginTop:2,flexWrap:"wrap"}}>
-                {c.city&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📍 {c.city}</span>}
-                {c.phone&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>📞 {c.phone}</span>}
-                {c.balance>0&&<span style={{fontSize:".7rem",color:"#ef4444",fontWeight:700}}>⚠ ₱{c.balance.toLocaleString()} open balance</span>}
-              </div>
-            </div>
-          ))}
-          {localVal&&!GMD_CLIENTS.find(c=>c.name.toLowerCase()===localVal.toLowerCase())&&(
-            <div onMouseDown={()=>pick(localVal)}
-              style={{padding:"10px 14px",cursor:"pointer",background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:"#3b82f6",fontWeight:600}}>
-              + Add "{localVal}" as new client
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
 
   const[selClient, setSelClient] = useState(null); // client history popup
@@ -8692,6 +8692,76 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
 }
 
 // ─── PROJECT CARDS ────────────────────────────────────────────────────────────
+function TATSetter({deal,card,onSet,refTable,ceType}){
+  const[open,setOpen]     =useState(!card?.targetDays);
+  const[days,setDays]     =useState(card?.targetDays||"");
+  const[category,setCategory]=useState(card?.tatCategory||"");
+
+  const refEntries=Object.entries(refTable||{});
+
+  if(!open) return(
+    <button onClick={()=>setOpen(true)}
+      style={{background:"transparent",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#059669",cursor:"pointer"}}>
+      ✏ Edit TAT
+    </button>
+  );
+
+  return(
+    <div style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",minWidth:280}}>
+      <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Set Turnaround Time</div>
+
+      {/* Reference table */}
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>
+          {ceType} — Reference
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:160,overflowY:"auto"}}>
+          {refEntries.map(([cat,ref])=>(
+            <div key={cat} onClick={()=>{setCategory(cat);setDays(String(ref.days));}}
+              style={{display:"flex",justifyContent:"space-between",padding:"5px 8px",borderRadius:6,cursor:"pointer",background:category===cat?"#eff6ff":"#f8fafc",border:`1px solid ${category===cat?"#93c5fd":"#f1f5f9"}`,transition:"all .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+              onMouseLeave={e=>e.currentTarget.style.background=category===cat?"#eff6ff":"#f8fafc"}>
+              <span style={{fontSize:".75rem",color:"#0f172a",fontWeight:category===cat?700:400}}>{cat}</span>
+              <span style={{fontSize:".75rem",color:"#3b82f6",fontWeight:700,flexShrink:0,marginLeft:8}}>{ref.days}d</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Manual input */}
+      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}>
+        <input
+          type="number" min={1} max={365}
+          value={days}
+          onChange={e=>setDays(e.target.value)}
+          placeholder="Days"
+          style={{width:70,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",textAlign:"center",outline:"none"}}
+        />
+        <span style={{fontSize:".78rem",color:"#64748b"}}>working days from award</span>
+      </div>
+
+      {days&&card?.awardDate&&(
+        <div style={{fontSize:".73rem",color:"#059669",marginTop:6,fontWeight:600}}>
+          → Due: {(()=>{const d=new Date(card.awardDate);d.setDate(d.getDate()+Number(days));return d.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"});})()}
+        </div>
+      )}
+
+      <div style={{display:"flex",gap:8,marginTop:10}}>
+        <button onClick={()=>{if(days)onSet(card.dealId,days,category);setOpen(false);}}
+          disabled={!days}
+          style={{background:days?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:days?"#fff":"#94a3b8",cursor:days?"pointer":"not-allowed"}}>
+          Set Target
+        </button>
+        <button onClick={()=>setOpen(false)}
+          style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
 function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role}){
   const[selDeal,     setSelDeal]    =useState(null);
   const[selDept,     setSelDept]    =useState(null);
@@ -9108,76 +9178,6 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
 }
 
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function TATSetter({deal,card,onSet,refTable,ceType}){
-  const[open,setOpen]     =useState(!card?.targetDays);
-  const[days,setDays]     =useState(card?.targetDays||"");
-  const[category,setCategory]=useState(card?.tatCategory||"");
-
-  const refEntries=Object.entries(refTable||{});
-
-  if(!open) return(
-    <button onClick={()=>setOpen(true)}
-      style={{background:"transparent",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#059669",cursor:"pointer"}}>
-      ✏ Edit TAT
-    </button>
-  );
-
-  return(
-    <div style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",minWidth:280}}>
-      <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Set Turnaround Time</div>
-
-      {/* Reference table */}
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>
-          {ceType} — Reference
-        </div>
-        <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:160,overflowY:"auto"}}>
-          {refEntries.map(([cat,ref])=>(
-            <div key={cat} onClick={()=>{setCategory(cat);setDays(String(ref.days));}}
-              style={{display:"flex",justifyContent:"space-between",padding:"5px 8px",borderRadius:6,cursor:"pointer",background:category===cat?"#eff6ff":"#f8fafc",border:`1px solid ${category===cat?"#93c5fd":"#f1f5f9"}`,transition:"all .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
-              onMouseLeave={e=>e.currentTarget.style.background=category===cat?"#eff6ff":"#f8fafc"}>
-              <span style={{fontSize:".75rem",color:"#0f172a",fontWeight:category===cat?700:400}}>{cat}</span>
-              <span style={{fontSize:".75rem",color:"#3b82f6",fontWeight:700,flexShrink:0,marginLeft:8}}>{ref.days}d</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Manual input */}
-      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}>
-        <input
-          type="number" min={1} max={365}
-          value={days}
-          onChange={e=>setDays(e.target.value)}
-          placeholder="Days"
-          style={{width:70,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",textAlign:"center",outline:"none"}}
-        />
-        <span style={{fontSize:".78rem",color:"#64748b"}}>working days from award</span>
-      </div>
-
-      {days&&card?.awardDate&&(
-        <div style={{fontSize:".73rem",color:"#059669",marginTop:6,fontWeight:600}}>
-          → Due: {(()=>{const d=new Date(card.awardDate);d.setDate(d.getDate()+Number(days));return d.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"});})()}
-        </div>
-      )}
-
-      <div style={{display:"flex",gap:8,marginTop:10}}>
-        <button onClick={()=>{if(days)onSet(card.dealId,days,category);setOpen(false);}}
-          disabled={!days}
-          style={{background:days?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:days?"#fff":"#94a3b8",cursor:days?"pointer":"not-allowed"}}>
-          Set Target
-        </button>
-        <button onClick={()=>setOpen(false)}
-          style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
 function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
