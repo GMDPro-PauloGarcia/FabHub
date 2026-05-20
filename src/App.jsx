@@ -3387,6 +3387,7 @@ export default function App(){
   );
 
   // ── PAULO GARCIA — CEO (full system overview) ──────────────────────────────
+  const grossMar=totRev>0?Math.round((totRev-totExp)/totRev*100):0;
   return(
       <Wrap>
         {/* ── HEADER ─────────────────────────────────────────────────── */}
