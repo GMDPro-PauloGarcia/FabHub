@@ -752,8 +752,8 @@ const Sel=({value,onChange,children})=>(
 // Focus-safe raw input — use this instead of bare <input> inside forms
 const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max,rows})=>{
   const base={...sx};
-  if(rows) return <textarea defaultValue={value||""} onChange={onChange} placeholder={placeholder} rows={rows} className={className} style={base}/>;
-  return <input type={type} defaultValue={value||""} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder} min={min} max={max} className={className} style={base}/>;
+  if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} className={className} style={base}/>;
+  return <input type={type} value={value||""} onChange={onChange} onKeyDown={onKeyDown} placeholder={placeholder} min={min} max={max} className={className} style={base}/>;
 };
 const Fld=({label,required,children,hint})=>(
   <div style={{marginBottom:16}}>
@@ -1818,8 +1818,7 @@ export default function App(){
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
     // Set default landing page per role
-    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",
-      Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home",ProjectMover:"home"};
+    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home"};
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
@@ -2344,6 +2343,9 @@ export default function App(){
     const grossPro=totRev-totExp;
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
     if(page==="home"){
+
+  // Sales should never land here — redirect to pipeline
+  if(role==="Sales"){ setTimeout(()=>setPage("pipeline"),0); return null; }
 
   // ── FINANCE HOME ──────────────────────────────────────────────────────────
   if(role==="Finance") return(
