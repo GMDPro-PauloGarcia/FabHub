@@ -1000,7 +1000,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         <Fld label="Project Sub-Type" hint="Kiosk, Fit-Out, Signage, Event — helps categorize within the CE Type">
             <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
               <option value="">— Select Sub-Type —</option>
-              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].concat(["Other"]).map(t=><option key={t}>{t}</option>)}
+              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
             </Sel>
           {form.product==="Other"&&(
             <Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)}
@@ -2012,8 +2012,19 @@ export default function App(){
   const[selProj,   setSelProj]  =useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[matModal,  setMatModal] =useState(false);
-  const[matForm,   setMatForm]  =useState({name:"",qty:"",unit:"pcs",cost:"",received:false});
+  const[matForm,   setMatForm]  =useState({projectId:"",name:"",category:"Materials",qty:1,unit:"pcs",cost:0,supplier:"",note:""});
   const[editMat,   setEditMat]  =useState(null);
+  const saveMat=(mat)=>{
+    const isEdit=editMat!=null;
+    const rec={...mat,id:isEdit?editMat:uid(),createdAt:today,by:session?.name||""};
+    upProjs(ps=>{
+      const p=ps[mat.projectId]||emptyProject();
+      const mats=isEdit?p.materials.map(m=>m.id===editMat?rec:m):[...(p.materials||[]),rec];
+      return{...ps,[mat.projectId]:{...p,materials:mats}};
+    });
+    setMatModal(false);setEditMat(null);
+    setMatForm({projectId:"",name:"",category:"Materials",qty:1,unit:"pcs",cost:0,supplier:"",note:""});
+  };
   const[swModal,   setSwModal]  =useState(false);
   const[swForm,    setSwForm]   =useState({projectId:null,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:"Design",status:"To Buy",notes:""});
   const[editSw,    setEditSw]   =useState(null);
@@ -4202,7 +4213,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                   {/* Scope */}
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Scope of Work" required hint="Sales + PM align on this together — what exactly is being built?">
-                      <Inp rows={4} value={awardForm.scopeNotes} onChange={e=>setAwardForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, electrical (8 downlights, 2 track lights)"/>
+                      <Inp rows={4} defaultValue={awardForm.scopeNotes} onBlur={e=>setAwardForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, electrical (8 downlights, 2 track lights)"/>
                     </Fld>
                   </div>
 
@@ -4210,7 +4221,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Special Instructions / Venue Requirements"
                       hint="Delivery restrictions, permit requirements, mall rules, client preferences (Venue Memory coming soon)">
-                      <Inp rows={3} value={awardForm.specialInstructions} onChange={e=>setAwardForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
+                      <Inp rows={3} defaultValue={awardForm.specialInstructions} onBlur={e=>setAwardForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
                     </Fld>
                     <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>
                       💡 Venue Memory (SM, Ayala, Robinsons requirements) — coming in a future update
@@ -4273,7 +4284,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
         <SecHead title="Collections" sub="Payment tracking for all awarded projects"/>
         <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"||role==="QS"||role==="Procurement"||role==="Operations"||role==="Design"}/>
         <div style={{marginTop:24}}>
-          <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>}/>
+          <SecHead title="Recent Expenses" sub="Recorded by Accounting — view only"/>
           {exps.slice(-10).reverse().map(e=>(
             <Card key={e.id}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
@@ -4297,7 +4308,12 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
       </Wrap>
     );
     if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
-    if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
+    if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
+        addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
+        openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
+        matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm}
+        editMat={editMat} setEditMat={setEditMat} saveMat={saveMat}
+        addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
@@ -6850,7 +6866,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   },[pos.less]);
 
   // Total Cash Available = Total Book Balance - Less
-  const totalCashAvailable=bankTotals.book-totalLess; // Working capital only — Unionbank (capital) excluded
+  const workingBook=bankTotals.book||bankTotals.end;
+  const totalCashAvailable=workingBook-totalLess; // Working capital only — Unionbank (capital) excluded
 
   const handleSave=()=>{
     const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
@@ -6925,7 +6942,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
           ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
-          ["Working Capital (5 Banks)", "₱"+fmt2(bankTotals.book), "#1d4ed8"],
+          ["Working Capital (5 Banks)", "₱"+fmt2(workingBook), "#1d4ed8"],
           ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook), "#0e7490"],
           ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
           ["Outstanding Invoices", "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
@@ -6943,11 +6960,10 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
         {/* Table header */}
         <div style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",background:"#1e293b"}}>
           <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
-          {BANKS.map(b=>(
-            <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155",background:b.capital?"rgba(14,116,144,.25)":"transparent"}}>
-              <div style={{fontWeight:800,color:b.capital?"#67e8f9":"#fff",fontSize:".78rem"}}>{b.short}</div>
+          {BANKS.filter(b=>!b.capital).map(b=>(
+            <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155"}}>
+              <div style={{fontWeight:800,color:"#fff",fontSize:".78rem"}}>{b.short}</div>
               <div style={{fontSize:".62rem",color:"rgba(255,255,255,.45)",marginTop:1}}>{b.name.length>20?b.name.slice(0,18)+"…":b.name}</div>
-              {b.capital&&<div style={{fontSize:".58rem",color:"#67e8f9",fontWeight:700,marginTop:2}}>🏛 CAPITAL</div>}
             </div>
           ))}
           <div style={{padding:"12px 8px",textAlign:"center",color:"#f59e0b",fontWeight:800,fontSize:".78rem"}}>TOTAL</div>
@@ -6961,7 +6977,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
         ].map(([label,key,bg])=>(
           <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
             <div style={labelCell}>{label}</div>
-            {BANKS.map(b=>(
+            {BANKS.filter(b=>!b.capital).map(b=>(
               <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #f1f5f9"}}>
                 <CurrInp
                   value={pos.banks[b.id]?.[key]||""}
@@ -7135,7 +7151,37 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           The net position stays the same — only the bank split changes.
         </div>
       </div>
-      {/* Notes */}
+      
+      {/* Unionbank — GMD Save-Up Capital */}
+      {(()=>{
+        const unionRow=pos.banks["union"]||emptyBankRow();
+        return(
+          <div style={{background:"#0e7490",borderRadius:12,padding:"14px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:12}}>
+            <div>
+              <div style={{fontWeight:800,color:"#fff",fontSize:".9rem"}}>🏛 Unionbank — GMD Save-Up Capital</div>
+              <div style={{fontSize:".75rem",color:"rgba(255,255,255,.6)",marginTop:2}}>Excluded from working capital · long-term savings only</div>
+            </div>
+            <div style={{display:"flex",gap:24,alignItems:"center"}}>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:".65rem",color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>Beginning</div>
+                <input type="number" value={unionRow.beg||""} onChange={e=>setPos(p=>({...p,banks:{...p.banks,union:{...(p.banks.union||emptyBankRow()),beg:e.target.value}}}))}
+                  style={{textAlign:"right",border:"1px solid rgba(255,255,255,.3)",borderRadius:6,padding:"5px 8px",background:"rgba(255,255,255,.1)",color:"#fff",fontFamily:"inherit",fontSize:".85rem",width:140}}/>
+              </div>
+              <div style={{textAlign:"center"}}>
+                <div style={{fontSize:".65rem",color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>Ending Balance</div>
+                <input type="number" value={unionRow.end||""} onChange={e=>setPos(p=>({...p,banks:{...p.banks,union:{...(p.banks.union||emptyBankRow()),end:e.target.value}}}))}
+                  style={{textAlign:"right",border:"1px solid rgba(255,255,255,.3)",borderRadius:6,padding:"5px 8px",background:"rgba(255,255,255,.15)",color:"#fff",fontFamily:"inherit",fontSize:".9rem",fontWeight:700,width:140}}/>
+              </div>
+              <div style={{textAlign:"center",minWidth:120}}>
+                <div style={{fontSize:".65rem",color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>Saved Capital</div>
+                <div style={{fontWeight:800,color:"#67e8f9",fontSize:"1.1rem"}}>₱{n(unionRow.end||unionRow.beg).toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+{/* Notes */}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16}}>
         <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Notes for {selDate}</div>
         <FInp rows={2} value={pos.notes||""} onChange={e=>f("notes",e.target.value)}
@@ -8751,9 +8797,13 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
           {/* Cards grid */}
           {(()=>{
             let filtered=wonDeals;
+            // Always include the currently selected deal even if filter hides it
+            const selectedDeal = wonDeals.find(d=>d.id===selDeal);
             if(pcFilter==="done") filtered=filtered.filter(d=>pcards[d.id]&&DEPT_ORDER.every(dept=>pcards[d.id].departments?.[dept]?.done));
             if(pcFilter==="attention") filtered=filtered.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dept=>!pcards[d.id]?.departments?.[dept]?.done));
             if(pcDeptFilter!=="All") filtered=filtered.filter(d=>pcards[d.id]&&!pcards[d.id].departments?.[pcDeptFilter]?.done);
+            // Re-add selected deal if filter removed it
+            if(selectedDeal && !filtered.find(d=>d.id===selDeal)) filtered=[selectedDeal,...filtered];
             // Sort
             filtered=[...filtered].sort((a,b)=>{
               if(pcSort==="client") return a.client.localeCompare(b.client);
