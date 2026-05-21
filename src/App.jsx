@@ -110,7 +110,7 @@ const STAGE_CLR = {
   "Cancelled":                         "#ef4444",
 };
 const PROD_CLR  = { Design:"#8b5cf6",Fabrication:"#f97316",QC:"#eab308",Delivery:"#10b981" };
-const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b",Deposited:"#10b981",Paid:"#059669" };
+const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b","Partially Paid":"#f59e0b",Deposited:"#10b981","Fully Paid":"#059669",Paid:"#059669" };
 const PRI_CLR   = { Normal:"#3b82f6",High:"#f59e0b",Urgent:"#ef4444" };
 const DS_CLR    = { Briefing:"#94a3b8","On-going":"#3b82f6","First Pass":"#8b5cf6",Revision:"#f97316","Production Plans":"#eab308",Done:"#10b981" };
 const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b981" };
@@ -1774,7 +1774,7 @@ export default function App(){
       if(b.id!==msId) return b;
       const payments=[...( b.payments||[]),{...payment,id:uid(),date:payment.date||today}];
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
-      const status=totalPaid>=Number(b.amount)?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
+      const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':b.status;
       return{...b,payments,status};
     }));
     // FIX 14: Auto-record payment to daily cash position under the correct bank
@@ -4390,7 +4390,59 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
     );
     if(page==="collections") return(
       <Wrap>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
         <SecHead title="Collections" sub="Track client payments for all awarded projects"/>
+        <button onClick={()=>{
+          const rows=[["Client","CE No","Milestone","Amount","Total Paid","Outstanding","Status","Due Date","Days Overdue","Bank"]];
+          billings.forEach(b=>{
+            const d=wonDeals.find(x=>x.id===b.dealId)||deals.find(x=>x.id===b.dealId);
+            const totalPaid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+            const outstanding=Math.max(0,Number(b.amount||0)-totalPaid);
+            const daysOD=b.dueDate?Math.max(0,Math.floor((new Date()-new Date(b.dueDate))/(1000*60*60*24))):0;
+            const banks=[...new Set((b.payments||[]).map(p=>p.bank).filter(Boolean))].join("/");
+            rows.push([d?.client||"",d?.ceNo||"",b.name||"",
+              Number(b.amount||0).toFixed(2),totalPaid.toFixed(2),outstanding.toFixed(2),
+              b.status||"Unpaid",b.dueDate||"",daysOD,banks]);
+          });
+          const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+          const a=document.createElement("a");
+          a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
+          a.download=`GMD_Collections_${today}.csv`;a.click();
+        }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",flexShrink:0}}>
+          ⬇ Export CSV
+        </button>
+      </div>
+      {/* Aging Summary */}
+      {(()=>{
+        const now=new Date();
+        const aging={current:0,d30:0,d60:0,d90:0,over90:0};
+        billings.forEach(b=>{
+          const outstanding=Math.max(0,Number(b.amount||0)-(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0));
+          if(outstanding<=0||b.status==="Paid"||b.status==="Fully Paid") return;
+          const days=b.dueDate?Math.floor((now-new Date(b.dueDate))/(1000*60*60*24)):0;
+          if(days<=0)       aging.current+=outstanding;
+          else if(days<=30) aging.d30+=outstanding;
+          else if(days<=60) aging.d60+=outstanding;
+          else if(days<=90) aging.d90+=outstanding;
+          else              aging.over90+=outstanding;
+        });
+        const total=Object.values(aging).reduce((s,v)=>s+v,0);
+        if(total===0) return null;
+        return(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
+            {[["Current",aging.current,"#10b981"],["1–30 days",aging.d30,"#f59e0b"],
+              ["31–60 days",aging.d60,"#f97316"],["61–90 days",aging.d90,"#ef4444"],["90+ days",aging.over90,"#dc2626"]
+            ].map(([l,v,c])=>(
+              <div key={l} style={{background:"#fff",border:`1.5px solid ${c}33`,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>
+                  ₱{v.toLocaleString("en-PH",{minimumFractionDigits:0})}
+                </div>
+                <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".8px"}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
         {/* Priority call list */}
         {(()=>{
           const today2=new Date();
@@ -5329,7 +5381,24 @@ They will coordinate with the client and confirm if additional billing is needed
   // ── ACCOUNTING (Expenses) ─────────────────────────────────────────────────
   if(page==="accounting") return(
     <Wrap>
-      <SecHead title="Accounting — Expenses" action={<Btn onClick={openAddExp}>+ Log Expense</Btn>}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+        <SecHead title="Accounting — Expenses" action={<Btn onClick={openAddExp}>+ Log Expense</Btn>}/>
+        <button onClick={()=>{
+          const rows=[["Date","Category","Description","Amount","Project","Receipt"]];
+          exps.forEach(e=>rows.push([
+            e.date||MONTHS[e.month]||"",e.category||"",e.note||"",
+            Number(e.amount||0).toFixed(2),
+            wonDeals.find(d=>d.id===e.projectId)?.client||"Company-wide",
+            e.receipt||""
+          ]));
+          const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+          const a=document.createElement("a");
+          a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
+          a.download=`GMD_Expenses_${today}.csv`;a.click();
+        }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",flexShrink:0}}>
+          ⬇ Export CSV
+        </button>
+      </div>
       <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}>
         📋 <strong>Accounting</strong> — Record all expenses here and tag them to projects. This matches what is being released from the bank to actual project costs.
       </div>
@@ -6867,7 +6936,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   },[pos.less]);
 
   // Total Cash Available = Total Book Balance - Less
-  const workingBook=bankTotals.book||bankTotals.end;
+  // Book balance = what bank confirms; if not filled, use ending balance
+  const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
   const totalCashAvailable=workingBook-totalLess; // Working capital only — Unionbank (capital) excluded
 
   const handleSave=()=>{
@@ -6910,6 +6980,11 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           <div style={{fontSize:".78rem",color:"#64748b",marginTop:3}}>GMD Productions Inc. — Finance Summary</div>
         </div>
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+          {/* Export button */}
+          <button onClick={exportDCPCSV}
+            style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>
+            ⬇ Export CSV
+          </button>
           {/* Date picker */}
           <input type="date" value={selDate} onChange={e=>switchDate(e.target.value)}
             style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",cursor:"pointer"}}/>
@@ -6973,7 +7048,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
         {/* Balance rows */}
         {[
           ["BANK BALANCE BEG",  "beg",  "#fafafa"],
-          ["BOOK BALANCE",      "book", "#fff"],
+          ["BOOK BALANCE\n(per bank statement)", "book", "#fff"],
           ["BANK BALANCE ENDING","end", "#fafafa"],
         ].map(([label,key,bg])=>(
           <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
@@ -8331,6 +8406,55 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
     return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
   });
 
+  // CSV Export function
+  const exportBillingCSV=()=>{
+    const rows=[["Project","CE No","Milestone","Amount","Status","Due Date","Invoice No","Receipt Type","Payments Made","Total Paid","Outstanding","Bank"]];
+    billings.forEach(b=>{
+      const d=wonDeals.find(x=>x.id===b.dealId)||deals.find(x=>x.id===b.dealId);
+      const totalPaid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+      const outstanding=Math.max(0,Number(b.amount||0)-totalPaid);
+      const paymentsSummary=(b.payments||[]).map(p=>`${p.date||""}:₱${Number(p.amount||0).toLocaleString()}`).join(" | ");
+      const banks=[...new Set((b.payments||[]).map(p=>p.bank).filter(Boolean))].join("/");
+      rows.push([
+        d?.client||"",d?.ceNo||"",b.name||"",
+        Number(b.amount||0).toFixed(2),b.status||"Unpaid",
+        b.dueDate||"",b.invoiceNo||"",b.receiptType||"",
+        paymentsSummary,totalPaid.toFixed(2),outstanding.toFixed(2),banks
+      ]);
+    });
+    const csv=rows.map(r=>r.map(v=>(`"${String(v).replace(/"/g,'""')}"`)).join(",")).join("\n");
+    const a=document.createElement("a");
+    a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
+    a.download=`GMD_Billing_${today}.csv`;
+    a.click();
+  };
+
+  // DCP CSV Export
+  const exportDCPCSV=()=>{
+    const dates=Object.keys(cashPositions).sort();
+    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Collections","Less Total","Cash Available","Notes"]];
+    dates.forEach(date=>{
+      const pos=cashPositions[date];if(!pos)return;
+      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.end||0),0);
+      const less=Number(pos.less?.bizlink||0)+Number(pos.less?.checkFloat||0)+Number(pos.less?.otherAmt||0);
+      const coll=Number(pos.collections?.manualAmt||0);
+      rows.push([date,
+        pos.banks?.bpi?.beg||0,pos.banks?.bpi?.end||0,
+        pos.banks?.metro?.beg||0,pos.banks?.metro?.end||0,
+        pos.banks?.china?.beg||0,pos.banks?.china?.end||0,
+        pos.banks?.bdo?.beg||0,pos.banks?.bdo?.end||0,
+        pos.banks?.security?.beg||0,pos.banks?.security?.end||0,
+        wc.toFixed(2),coll.toFixed(2),less.toFixed(2),(wc+coll-less).toFixed(2),
+        pos.notes||""
+      ]);
+    });
+    const csv=rows.map(r=>r.map(v=>(`"${String(v).replace(/"/g,'""')}"`)).join(",")).join("\n");
+    const a=document.createElement("a");
+    a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
+    a.download=`GMD_CashPosition_${today}.csv`;
+    a.click();
+  };
+
   return(
     <div>
       {/* Header */}
@@ -8338,6 +8462,12 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Billing</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Click any project to manage milestones and log payments</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={exportBillingCSV}
+            style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>
+            ⬇ Export Billing CSV
+          </button>
         </div>
       </div>
 
