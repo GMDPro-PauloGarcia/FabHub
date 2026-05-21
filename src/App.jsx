@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -315,12 +315,12 @@ const emptyBudget = () => ({
 
 // ─── GMD BANKS & CASH POSITION ───────────────────────────────────────────────
 const BANKS = [
-  { id:"bpi",      name:"Bank of Philippine Island",  short:"BPI",        color:"#dc2626" },
-  { id:"metro",    name:"Metrobank",                  short:"Metrobank",   color:"#1d4ed8" },
-  { id:"china",    name:"Chinabank",                  short:"Chinabank",   color:"#15803d" },
-  { id:"bdo",      name:"Banco de Oro",               short:"BDO",         color:"#b45309" },
-  { id:"security", name:"Security Bank",              short:"Security",    color:"#7c3aed" },
-  { id:"union",    name:"Unionbank of the Philippines",short:"Unionbank",  color:"#0e7490" },
+  { id:"bpi",      name:"Bank of Philippine Island",  short:"BPI",        color:"#dc2626", capital:false },
+  { id:"metro",    name:"Metrobank",                  short:"Metrobank",   color:"#1d4ed8", capital:false },
+  { id:"china",    name:"Chinabank",                  short:"Chinabank",   color:"#15803d", capital:false },
+  { id:"bdo",      name:"Banco de Oro",               short:"BDO",         color:"#b45309", capital:false },
+  { id:"security", name:"Security Bank",              short:"Security",    color:"#7c3aed", capital:false },
+  { id:"union",    name:"Unionbank of the Philippines",short:"Unionbank",  color:"#0e7490", capital:true  }, // GMD Capital — excluded from working capital
 ];
 
 const emptyBankRow = () => ({ beg:"", book:"", end:"" });
@@ -1769,13 +1769,30 @@ export default function App(){
   const addMilestone  =(ms)=>upBillings(bs=>[...bs,{...ms,id:uid(),createdDate:today}]);
   const updateMilestone=(id,ch)=>upBillings(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
   const deleteMilestone=(id)=>upBillings(bs=>bs.filter(b=>b.id!==id));
-  const logBillingPayment=(msId,payment)=>upBillings(bs=>bs.map(b=>{
-    if(b.id!==msId) return b;
-    const payments=[...( b.payments||[]),{...payment,id:uid(),date:payment.date||today}];
-    const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
-    const status=totalPaid>=Number(b.amount)?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
-    return{...b,payments,status};
-  }));
+  const logBillingPayment=(msId,payment)=>{
+    upBillings(bs=>bs.map(b=>{
+      if(b.id!==msId) return b;
+      const payments=[...( b.payments||[]),{...payment,id:uid(),date:payment.date||today}];
+      const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
+      const status=totalPaid>=Number(b.amount)?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
+      return{...b,payments,status};
+    }));
+    // FIX 14: Auto-record payment to daily cash position under the correct bank
+    if(payment.bank && payment.amount){
+      const pDate=payment.date||today;
+      const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
+      setCashPos(cp=>{
+        const existing=cp[pDate]||{date:pDate,bpi_end:0,metrobank_end:0,chinabank_end:0,bdo_end:0,secbank_end:0,unionbank_end:0,notes:""};
+        const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
+        const field=fieldMap[bankKey]||null;
+        if(!field) return cp;
+        const updated={...existing,[field]:(Number(existing[field]||0)+Number(payment.amount))};
+        const newNote=`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
+        updated.notes=(updated.notes?updated.notes+" | ":"")+newNote;
+        return{...cp,[pDate]:updated};
+      });
+    }
+  };
   // Auto invoice number generator
   const nextCENo=()=>{
     const nums=deals.map(d=>d.ceNo).filter(Boolean)
@@ -2000,6 +2017,8 @@ export default function App(){
   const[swModal,   setSwModal]  =useState(false);
   const[swForm,    setSwForm]   =useState({projectId:null,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:"Design",status:"To Buy",notes:""});
   const[editSw,    setEditSw]   =useState(null);
+  const openAddSwatch=(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Furniture/Fixture",spec:"",qty:1,unit:"pcs",status:"To Buy",addedBy:by||session?.name||"",refLink:""});setEditSw(null);setSwModal(true);};
+  const openEditSwatch=(sw)=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);};
   const[designModal,setDesignModal]=useState(false);
   const[designForm, setDesignForm] =useState({});
   const[confirmDel, setConfirmDel] =useState(null);
@@ -2060,6 +2079,10 @@ export default function App(){
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     if(data.stage==="06 · Project Kickoff" && !editDeal && !wasAlreadyAwarded) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
+    // Save new client to master list if not already present
+    if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
+      GMD_CLIENTS.push({name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
+    }
     if(!editDeal) logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
     else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
     setEditDeal(null);
@@ -5274,7 +5297,7 @@ They will coordinate with the client and confirm if additional billing is needed
   if(page==="datamanagement"&&role==="Manager") return(
     <Wrap>
       <DataManagement
-        deals={deals} exps={exps} inflows={inflows} jos={jos} prs={prs}
+        deals={deals} exps={exps} inflows={infs} jos={jos} prs={prs}
         mreqs={mreqs} breqs={breqs} addenda={addenda} billings={billings}
         pcards={pcards} checklist={checklist} cashPositions={cashPositions}
         actLog={actLog} budgets={budgets}
@@ -6541,10 +6564,18 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
 
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
+  const[selClient,  setSelClient]  = useState(null);
+  const[search,     setSearch]     = useState("");
+  const[filter,     setFilter]     = useState("all");
+  const[editClient, setEditClient] = useState(null); // {name, idx} being edited
+  const[editName,   setEditName]   = useState("");
 
-  const[selClient, setSelClient] = useState(null); // client history popup
-    const[search, setSearch] = useState("");
-  const[filter, setFilter] = useState("all"); // all | with-projects | with-balance
+  const saveClientEdit=()=>{
+    if(!editName.trim()) return;
+    const idx = GMD_CLIENTS.findIndex(c=>c.name===editClient);
+    if(idx > -1) GMD_CLIENTS[idx].name = editName.trim();
+    setEditClient(null); setEditName("");
+  };
 
   const filtered = useMemo(()=>{
     let list = GMD_CLIENTS;
@@ -6649,8 +6680,21 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
                 )}
                 <div>
                   <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</span>
-                    {vvipClients?.has(c.name)&&<span style={{fontSize:".65rem",background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>VVIP</span>}
+                    {editClient===c.name ? (
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <input value={editName} onChange={e=>setEditName(e.target.value)}
+                          onKeyDown={e=>{if(e.key==="Enter")saveClientEdit();if(e.key==="Escape"){setEditClient(null);}}}
+                          autoFocus style={{border:"1.5px solid #3b82f6",borderRadius:6,padding:"3px 8px",fontFamily:"inherit",fontSize:".85rem",width:200}}/>
+                        <button onClick={saveClientEdit} style={{background:"#3b82f6",border:"none",borderRadius:5,padding:"3px 10px",color:"#fff",cursor:"pointer",fontSize:".75rem",fontWeight:700}}>Save</button>
+                        <button onClick={()=>setEditClient(null)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",color:"#64748b",cursor:"pointer",fontSize:".75rem"}}>✕</button>
+                      </div>
+                    ):(
+                      <>
+                        <span style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</span>
+                        {vvipClients?.has(c.name)&&<span style={{fontSize:".65rem",background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>VVIP</span>}
+                        {(role==="Manager")&&<button onClick={e=>{e.stopPropagation();setEditClient(c.name);setEditName(c.name);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:".75rem",color:"#94a3b8",padding:"0 2px"}} title="Edit client name">✏️</button>}
+                      </>
+                    )}
                   </div>
                   {c.email&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{c.email}</div>}
                   {hasBalance&&<div style={{fontSize:".72rem",color:"#ef4444",fontWeight:700,marginTop:2}}>⚠ ₱{c.balance.toLocaleString()} outstanding</div>}
@@ -6783,11 +6827,16 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   // Bank totals
   const bankTotals=useMemo(()=>{
     let beg=0,book=0,end=0;
+    let capBeg=0,capBook=0,capEnd=0;
     BANKS.forEach(b=>{
       const row=pos.banks[b.id]||emptyBankRow();
-      beg+=n(row.beg); book+=n(row.book); end+=n(row.end);
+      if(b.capital){
+        capBeg+=n(row.beg); capBook+=n(row.book); capEnd+=n(row.end);
+      } else {
+        beg+=n(row.beg); book+=n(row.book); end+=n(row.end);
+      }
     });
-    return {beg,book,end};
+    return {beg,book,end, capBeg,capBook,capEnd};
   },[pos.banks]);
 
   // Collections total
@@ -6801,7 +6850,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   },[pos.less]);
 
   // Total Cash Available = Total Book Balance - Less
-  const totalCashAvailable=bankTotals.book-totalLess;
+  const totalCashAvailable=bankTotals.book-totalLess; // Working capital only — Unionbank (capital) excluded
 
   const handleSave=()=>{
     const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
@@ -6876,7 +6925,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
           ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
-          ["Total Book Balance",   "₱"+fmt2(bankTotals.book),    "#1d4ed8"],
+          ["Working Capital (5 Banks)", "₱"+fmt2(bankTotals.book), "#1d4ed8"],
+          ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook), "#0e7490"],
           ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
           ["Outstanding Invoices", "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
           ["YTD Receivable",       pos.ytd.accountsReceivable?"₱"+fmt2(pos.ytd.accountsReceivable):"—", "#8b5cf6"],
@@ -6894,9 +6944,10 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
         <div style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",background:"#1e293b"}}>
           <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
           {BANKS.map(b=>(
-            <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155"}}>
-              <div style={{fontWeight:800,color:"#fff",fontSize:".78rem"}}>{b.short}</div>
+            <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155",background:b.capital?"rgba(14,116,144,.25)":"transparent"}}>
+              <div style={{fontWeight:800,color:b.capital?"#67e8f9":"#fff",fontSize:".78rem"}}>{b.short}</div>
               <div style={{fontSize:".62rem",color:"rgba(255,255,255,.45)",marginTop:1}}>{b.name.length>20?b.name.slice(0,18)+"…":b.name}</div>
+              {b.capital&&<div style={{fontSize:".58rem",color:"#67e8f9",fontWeight:700,marginTop:2}}>🏛 CAPITAL</div>}
             </div>
           ))}
           <div style={{padding:"12px 8px",textAlign:"center",color:"#f59e0b",fontWeight:800,fontSize:".78rem"}}>TOTAL</div>
@@ -7073,11 +7124,22 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
         </div>
       </div>
 
+      {/* Fund Transfer Helper */}
+      <div style={{background:"#eff6ff",borderRadius:10,border:"1px solid #bfdbfe",padding:"12px 16px",marginBottom:8}}>
+        <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".78rem",marginBottom:6}}>💸 Fund Transfer — How to Record</div>
+        <div style={{fontSize:".8rem",color:"#3b82f6",lineHeight:1.6}}>
+          To record a transfer between banks (e.g. BPI → BDO):<br/>
+          1. <strong>Decrease</strong> the ending balance of the source bank (BPI)<br/>
+          2. <strong>Increase</strong> the ending balance of the destination bank (BDO)<br/>
+          3. Note the transfer amount and banks in the remarks below<br/>
+          The net position stays the same — only the bank split changes.
+        </div>
+      </div>
       {/* Notes */}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16}}>
         <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Notes for {selDate}</div>
         <FInp rows={2} value={pos.notes||""} onChange={e=>f("notes",e.target.value)}
-          placeholder="Add any notes for this cash position (e.g. incoming wire, pending cheque, bank issues)…"
+          placeholder="e.g. Transfer ₱500k BPI→BDO, incoming wire from client, pending cheque clearance…"
           rows={2}
           style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
       </div>
@@ -7595,6 +7657,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
 function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
   const[view,setView]=useState("list"); // list | project | company
+  const[selCostProject,setSelCostProject]=useState(null); // selected project dealId
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -7727,7 +7790,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
             const isOver=pd.isOverBudget;
             const isLow=pd.grossMargin!==null&&pd.grossMargin<20;
             return(
-              <div key={pd.deal.id} onClick={()=>setView("project")} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+              <div key={pd.deal.id} onClick={()=>{setSelCostProject(pd.deal.id);setView("project");}} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
                 onMouseLeave={e=>e.currentTarget.style.background=i%2?"#fafafa":"#fff"}>
                 <div>
@@ -7753,8 +7816,14 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
       {view==="project"&&(
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <button onClick={()=>{setView("list");setSelCostProject(null);}}
+              style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 12px",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem",fontWeight:600,color:"#64748b"}}>
+              ← Back to All Projects
+            </button>
+          </div>
           {projectData.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8"}}>No awarded projects yet.</div>}
-          {projectData.map(pd=>(
+          {(selCostProject?projectData.filter(pd=>pd.deal.id===selCostProject):projectData).map(pd=>(
             <div key={pd.deal.id} style={{background:"#fff",borderRadius:14,border:`1.5px solid ${pd.isOverBudget?"#fecaca":"#e2e8f0"}`,overflow:"hidden"}}>
               {/* Project header */}
               <div style={{display:"flex",justifyContent:"space-between",padding:"14px 18px",background:pd.isOverBudget?"#fef9f9":"#f8fafc",borderBottom:"1px solid #e2e8f0",flexWrap:"wrap",gap:10}}>
@@ -8362,7 +8431,23 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
                     <Fld label="Milestone Name" required hint="e.g. 50% Downpayment, Progress Billing, Final Billing">
                       <Inp value={msForm.name} onChange={e=>fm("name",e.target.value)} placeholder="e.g. 50% Downpayment upon PO"/>
                     </Fld>
-                    <Fld label="Amount (₱)" required><Inp type="number" value={msForm.amount} onChange={e=>fm("amount",e.target.value)} placeholder="0.00"/></Fld>
+                    <Fld label="Amount (₱)" required>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <Inp type="number" value={msForm.amount} onChange={e=>fm("amount",e.target.value)} placeholder="0.00" style={{flex:1}}/>
+                        {selDeal&&(()=>{
+                          const d=wonDeals.find(x=>x.id===selDeal)||deals.find(x=>x.id===selDeal);
+                          const existingMs=billings.filter(b=>b.dealId===selDeal);
+                          const totalMs=existingMs.reduce((s,b)=>s+Number(b.amount||0),0);
+                          const remaining=Math.max(0,(Number(d?.value||0)-totalMs));
+                          return remaining>0?(
+                            <button type="button" onClick={()=>fm("amount",String(remaining))}
+                              style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"5px 10px",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,whiteSpace:"nowrap"}}>
+                              Bill Remaining ₱{remaining.toLocaleString()}
+                            </button>
+                          ):null;
+                        })()}
+                      </div>
+                    </Fld>
                     <Fld label="Invoice No." hint="Auto-generated if blank"><Inp value={msForm.invoiceNo} onChange={e=>fm("invoiceNo",e.target.value)} placeholder={nextInvoiceNo()}/></Fld>
                     <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
                     <Fld label="Due Date"><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
@@ -8444,6 +8529,12 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
                           <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Log Payment</div>
                           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
                             <Fld label="Amount (₱)"><Inp type="number" value={payForm.amount} onChange={e=>fp("amount",e.target.value)} placeholder="0.00"/></Fld>
+                            <Fld label="Bank Deposited To">
+                              <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
+                                <option value="">— Select Bank —</option>
+                                {["BPI","Metrobank","Chinabank","BDO","Security Bank","Unionbank","Cash"].map(b=><option key={b}>{b}</option>)}
+                              </Sel>
+                            </Fld>
                             <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
                             <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque / transfer ref…"/></Fld>
                             <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. BPI online transfer"/></Fld>
@@ -8584,7 +8675,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
       {/* Header */}
       <div style={{marginBottom:20}}>
         <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📋 Project Cards</h2>
-        <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>One card per awarded project — all departments work from the same source</div>
+        <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{wonDeals.length} awarded project{wonDeals.length!==1?"s":""} · {Object.keys(pcards).length} cards initialized · all departments work from the same source</div>
       </div>
 
       {/* Duplicate warning */}
@@ -8924,7 +9015,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                     <div style={{display:"flex",flexDirection:"column",gap:6}}>
                       {tasks.map(task=>{
                         return(
-                          <div key={task.id} onClick={()=>canEdit&&toggleDeptTask(selDeal,selDept,task.id)}
+                          <div key={task.id} onClick={e=>{e.stopPropagation();if(canEdit)toggleDeptTask(selDeal,selDept,task.id);}}
                             style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 12px",borderRadius:8,background:task.done?(clr+"09"):"#f8fafc",cursor:canEdit?"pointer":"default",border:`1px solid ${task.done?(clr+"33"):"#f1f5f9"}`,transition:"all .15s"}}
                             onMouseEnter={e=>{if(canEdit)e.currentTarget.style.background=task.done?(clr+"18"):"#f1f5f9";}}
                             onMouseLeave={e=>{e.currentTarget.style.background=task.done?(clr+"09"):"#f8fafc";}}>
