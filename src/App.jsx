@@ -1832,6 +1832,7 @@ export default function App(){
   const upProjs    =useCallback(fn=>setProjs(p=>{const n=fn(p);persist(KEYS.projects,n);return n;}),[persist]);
   const upExps     =useCallback(fn=>setExps(p=>{const n=fn(p);persist(KEYS.expenses,n);return n;}),[persist]);
   const upInfs     =useCallback(fn=>setInfs(p=>{const n=fn(p);persist(KEYS.inflows,n);return n;}),[persist]);
+  const upInflows  =upInfs; // alias for DataManagement
   const upJos      =useCallback(fn=>setJos(p=>{const n=fn(p);persist(KEYS.jos,n);return n;}),[persist]);
   const upSwatches =useCallback(fn=>setSwatches(p=>{const n=fn(p);persist(KEYS.swatches,n);return n;}),[persist]);
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
