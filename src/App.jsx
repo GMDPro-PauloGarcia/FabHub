@@ -1286,6 +1286,221 @@ class ErrorBoundary extends React.Component{
   }
 }
 
+
+// ── PM UPDATE MODAL (proper component — fixes focus loss from IIFE hooks) ──
+
+// ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
+function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
+          const[tab,setTab]=useState("password");
+          const[curPw,setCurPw]=useState("");
+          const[newPw,setNewPw]=useState("");
+          const[confPw,setConfPw]=useState("");
+          const[newName,setNewName]=useState(session?.name||"");
+          const[newUsername,setNewUsername]=useState(session?.username||"");
+          const[msg,setMsg]=useState(null); // {type:"success"|"error", text}
+          const[showCur,setShowCur]=useState(false);
+          const[showNew,setShowNew]=useState(false);
+
+          const savePassword=()=>{
+            const u=users.find(x=>x.id===session?.userId);
+            if(!u){setMsg({type:"error",text:"Session error. Please log out and log back in."});return;}
+            if(!checkPw(curPw,u.passwordHash)){setMsg({type:"error",text:"Current password is incorrect."});return;}
+            if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
+            if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
+            if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
+            upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
+            setCurPw(""); setNewPw(""); setConfPw("");
+            setMsg({type:"success",text:"✅ Password changed successfully! Use your new password next time you log in."});
+            logAct("Password Changed","User changed their password",null);
+          };
+
+          const saveProfile=()=>{
+            if(!newName.trim()){setMsg({type:"error",text:"Name cannot be empty."});return;}
+            if(!newUsername.trim()){setMsg({type:"error",text:"Username cannot be empty."});return;}
+            const taken=users.find(x=>x.username.toLowerCase()===newUsername.toLowerCase().trim()&&x.id!==session?.userId);
+            if(taken){setMsg({type:"error",text:"That username is already taken by another user."});return;}
+            upUsers(us=>us.map(x=>x.id===session?.userId?{...x,name:newName.trim(),username:newUsername.toLowerCase().trim()}:x));
+            // Update session
+            const newSess={...session,name:newName.trim(),username:newUsername.toLowerCase().trim()};
+            setSession(newSess);
+            localStorage.setItem(KEYS.session,JSON.stringify(newSess));
+            setMsg({type:"success",text:"✅ Profile updated successfully!"});
+            logAct("Profile Updated","User updated their name/username",null);
+          };
+
+          return(
+            <div style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+              {/* Profile banner */}
+              <div style={{background:"#1e293b",padding:"20px 24px",display:"flex",alignItems:"center",gap:14}}>
+                <div style={{width:52,height:52,borderRadius:"50%",background:"#0ea5e9",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:"#fff",flexShrink:0}}>
+                  {(session?.name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
+                </div>
+                <div>
+                  <div style={{fontWeight:700,color:"#fff",fontSize:"1rem"}}>{session?.name}</div>
+                  <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:2}}>@{session?.username}</div>
+                  <div style={{display:"inline-block",marginTop:4,background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 10px",fontSize:".7rem",fontWeight:700,color:"#f59e0b"}}>{session?.title||role}</div>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div style={{display:"flex",borderBottom:"1.5px solid #e2e8f0"}}>
+                {[["password","🔑 Change Password"],["profile","👤 Edit Profile"]].map(([t,l])=>(
+                  <button key={t} onClick={()=>{setTab(t);setMsg(null);}}
+                    style={{flex:1,padding:"12px",background:"transparent",border:"none",borderBottom:tab===t?"2.5px solid #0ea5e9":"2.5px solid transparent",fontFamily:"inherit",fontSize:".85rem",fontWeight:tab===t?700:400,color:tab===t?"#0ea5e9":"#64748b",cursor:"pointer"}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{padding:"24px"}}>
+                {msg&&(
+                  <div style={{background:msg.type==="success"?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.type==="success"?"#6ee7b7":"#fecaca"}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:".85rem",color:msg.type==="success"?"#059669":"#dc2626",fontWeight:600}}>
+                    {msg.text}
+                  </div>
+                )}
+
+                {tab==="password"&&(
+                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                    <div>
+                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Current Password <span style={{color:"#ef4444"}}>*</span></label>
+                      <div style={{position:"relative"}}>
+                        <input type={showCur?"text":"password"} value={curPw} onChange={e=>setCurPw(e.target.value)}
+                          placeholder="Enter your current password"
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 40px 10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
+                          onFocus={e=>e.target.style.borderColor="#0ea5e9"}
+                          onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
+                        <button type="button" onClick={()=>setShowCur(v=>!v)}
+                          style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:".85rem"}}>
+                          {showCur?"🙈":"👁"}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>New Password <span style={{color:"#ef4444"}}>*</span></label>
+                      <div style={{position:"relative"}}>
+                        <input type={showNew?"text":"password"} value={newPw} onChange={e=>setNewPw(e.target.value)}
+                          placeholder="At least 6 characters"
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 40px 10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
+                          onFocus={e=>e.target.style.borderColor="#0ea5e9"}
+                          onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
+                        <button type="button" onClick={()=>setShowNew(v=>!v)}
+                          style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:".85rem"}}>
+                          {showNew?"🙈":"👁"}
+                        </button>
+                      </div>
+                      {/* Password strength indicator */}
+                      {newPw&&(()=>{
+                        const strength=newPw.length>=12&&/[A-Z]/.test(newPw)&&/[0-9]/.test(newPw)?"Strong":newPw.length>=8?"Good":newPw.length>=6?"Weak":"Too short";
+                        const clr={"Strong":"#059669","Good":"#0ea5e9","Weak":"#f59e0b","Too short":"#ef4444"};
+                        return <div style={{fontSize:".75rem",color:clr[strength],marginTop:4,fontWeight:600}}>Password strength: {strength}</div>;
+                      })()}
+                    </div>
+                    <div>
+                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Confirm New Password <span style={{color:"#ef4444"}}>*</span></label>
+                      <input type="password" value={confPw} onChange={e=>setConfPw(e.target.value)}
+                        placeholder="Re-enter new password"
+                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
+                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
+                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
+                      {confPw&&newPw&&(
+                        <div style={{fontSize:".75rem",marginTop:4,fontWeight:600,color:confPw===newPw?"#059669":"#ef4444"}}>
+                          {confPw===newPw?"✅ Passwords match":"❌ Passwords do not match"}
+                        </div>
+                      )}
+                    </div>
+                    <button onClick={savePassword}
+                      style={{background:"#0ea5e9",border:"none",borderRadius:9,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".9rem",color:"#fff",cursor:"pointer",marginTop:4}}>
+                      🔑 Change Password
+                    </button>
+                    <div style={{fontSize:".78rem",color:"#94a3b8",textAlign:"center"}}>
+                      Forgot your password? Ask Paulo or Mar to reset it in the Manager → Accounts panel.
+                    </div>
+                  </div>
+                )}
+
+                {tab==="profile"&&(
+                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                    <div>
+                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Display Name</label>
+                      <input value={newName} onChange={e=>setNewName(e.target.value)}
+                        placeholder="Your full name"
+                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
+                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
+                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
+                      <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:4}}>This name appears on Job Orders, checklists, and activity logs.</div>
+                    </div>
+                    <div>
+                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Username</label>
+                      <input value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase())}
+                        placeholder="Your login username"
+                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
+                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
+                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
+                      <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:4}}>Lowercase letters and numbers only. You will use this to log in.</div>
+                    </div>
+                    <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"10px 14px",fontSize:".8rem",color:"#64748b"}}>
+                      🔒 Your <strong>role</strong> ({role}) can only be changed by a Manager.
+                    </div>
+                    <button onClick={saveProfile}
+                      style={{background:"#0f172a",border:"none",borderRadius:9,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".9rem",color:"#fff",cursor:"pointer"}}>
+                      💾 Save Profile
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+
+}
+
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logAct}){
+  const[note,setNote]=useState("");
+  const[stage,setStage]=useState("");
+  const[pct,setPct]=useState("");
+  // Reset when modal opens for a new deal
+  React.useEffect(()=>{if(pmUpdateModal){setNote("");setStage("");setPct("");}},[pmUpdateModal?.dealId]);
+  if(!pmUpdateModal) return null;
+  return(
+    <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+        <div>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Stage</label>
+          <select value={stage} onChange={e=>setStage(e.target.value)}
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
+            <option value="">Select stage...</option>
+            {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete</label>
+          <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
+        </div>
+        <div>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Update Notes <span style={{color:"#ef4444"}}>*</span></label>
+          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={4}
+            placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+          <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
+          <button onClick={()=>{
+            if(!note.trim()){alert("Please enter an update note.");return;}
+            const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
+            logAct("PM Update",updateText,pmUpdateModal.dealId);
+            setPmUpdateModal(null);
+            alert("✅ Update logged!");
+          }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
+            ✅ Submit Update
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -1386,6 +1601,23 @@ export default function App(){
 
     // Listen for auth state changes (login/logout)
     if(!supabase) return;
+
+  // Auto-refresh when user switches back to FabHub tab
+  React.useEffect(()=>{
+    const refresh=async()=>{
+      if(!isSupabaseReady()||!session) return;
+      try{
+        const data=await sbLoadAll();
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage)})));
+        if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
+        if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
+        if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id})));
+      }catch(e){console.warn("Focus refresh:",e.message);}
+    };
+    window.addEventListener("focus",refresh);
+    return()=>window.removeEventListener("focus",refresh);
+  },[session]);
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         // Silently sync Supabase data in background — never blocks login
@@ -2308,7 +2540,20 @@ export default function App(){
                 {session?.name?.split(" ")[0]} · {session?.title||role}
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:8}}>
-                {sync!=="saved"&&<span style={{fontSize:".62rem",color:sync==="saving"?"#f59e0b":"#ef4444"}}>{sync==="saving"?"saving…":"⚠ error"}</span>}
+                <span onClick={async()=>{
+                  if(!isSupabaseReady()) return;
+                  try{
+                    const data=await sbLoadAll();
+                    if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,stage:normalizeStage(d.stage)})));
+                    if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+                    if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
+                    setSync("saved");
+                  }catch(e){setSync("error");}
+                }}
+                title="Click to sync latest data from server"
+                style={{fontSize:".62rem",cursor:"pointer",userSelect:"none"}}>
+                {sync==="saving"?<span style={{color:"#f59e0b"}}>saving…</span>:sync!=="saved"?<span style={{color:"#ef4444"}}>⚠ error</span>:<span style={{color:"#10b981"}}>🔄</span>}
+              </span>
                 {role==="Manager"&&users.filter(u=>u.status==="pending").length>0&&(
                   <button onClick={()=>setPage("accounts")} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 8px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
                     {users.filter(u=>u.status==="pending").length} pending
@@ -3031,50 +3276,7 @@ export default function App(){
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&(()=>{
-        const[note,setNote]=React.useState("");
-        const[stage,setStage]=React.useState("");
-        const[pct,setPct]=React.useState("");
-        return(
-          <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Stage</label>
-                <select value={stage} onChange={e=>setStage(e.target.value)}
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-                  <option value="">Select stage...</option>
-                  {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete</label>
-                <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Update Notes <span style={{color:"#ef4444"}}>*</span></label>
-                <textarea value={note} onChange={e=>setNote(e.target.value)} rows={4}
-                  placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
-              </div>
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                <button onClick={()=>{
-                  if(!note.trim()){alert("Please enter an update note.");return;}
-                  const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
-                  logAct("PM Update",updateText,pmUpdateModal.dealId);
-                  setPmUpdateModal(null);
-                  alert("✅ Update logged!");
-                }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                  ✅ Submit Update
-                </button>
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logAct={logAct}/>}
     </Wrap>
   );
 
@@ -3352,6 +3554,34 @@ export default function App(){
         </div>
       </div>
 
+      {/* ── AWARD REQUESTS ── */}
+      {(()=>{
+        const reqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
+        if(!reqs.length) return null;
+        return(
+          <div style={{background:"#fffbeb",borderRadius:12,border:"2px solid #f59e0b",padding:"12px 16px",marginBottom:16}}>
+            <div style={{fontWeight:800,color:"#92400e",fontSize:".9rem",marginBottom:8}}>
+              🏆 {reqs.length} Deal{reqs.length>1?"s":""} Awaiting Award Approval
+            </div>
+            {reqs.map(d=>{
+              const reqLine=d.notes.split("\n").filter(l=>l.includes("[AWARD REQUEST")).pop()||"";
+              const reqBy=reqLine.match(/]: (.+?) flagged/)?.[1]||"Sales";
+              return(
+                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:"#fff",borderRadius:7,padding:"8px 12px",marginBottom:4,border:"1px solid #fde68a"}}>
+                  <div>
+                    <span style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{d.client}</span>
+                    <span style={{fontSize:".72rem",color:"#92400e",marginLeft:8}}>by {reqBy} · ₱{Number(d.value||0).toLocaleString()}</span>
+                  </div>
+                  <button onClick={()=>setPage("pipeline")} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>
+                    Review
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
       {(()=>{
         const today2=new Date();
         const activePipe=deals.filter(d=>d.stage!=="Cancelled");
@@ -3488,6 +3718,9 @@ export default function App(){
         {/* ── ALERT BANNER ROW ────────────────────────────────────────── */}
         {(()=>{
           const alerts=[];
+          // Award requests — highest priority
+          const awardReqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
+          if(awardReqs.length) alerts.push({icon:"🏆",msg:`${awardReqs.length} deal${awardReqs.length>1?"s":""} flagged for award`,color:"#f59e0b",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
           // Overdue invoices
           const overdueInv=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
           if(overdueInv.length) alerts.push({icon:"🚨",msg:`${overdueInv.length} overdue invoice${overdueInv.length>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
@@ -3537,6 +3770,41 @@ export default function App(){
 
         {/* ── MAIN CONTENT GRID ───────────────────────────────────────── */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+
+          {/* ── AWARD REQUESTS PANEL ──────────────────────────────── */}
+          {(()=>{
+            const reqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
+            if(!reqs.length) return null;
+            return(
+              <div style={{background:"#fffbeb",borderRadius:14,border:"2px solid #f59e0b",padding:"14px 18px",marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                  <span style={{fontSize:"1.2rem"}}>🏆</span>
+                  <span style={{fontWeight:800,color:"#92400e",fontSize:".95rem"}}>
+                    {reqs.length} Deal{reqs.length>1?"s":""} Pending Your Award Approval
+                  </span>
+                </div>
+                {reqs.map(d=>{
+                  const reqLine=d.notes.split("\n").filter(l=>l.includes("[AWARD REQUEST")).pop()||"";
+                  const reqBy=reqLine.match(/]: (.+?) flagged/)?.[1]||"Sales";
+                  const reqDate=reqLine.match(/REQUEST (.+?)]/)?.[1]||"";
+                  return(
+                    <div key={d.id} style={{background:"#fff",borderRadius:8,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:"1px solid #fde68a"}}>
+                      <div>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
+                        <div style={{fontSize:".72rem",color:"#92400e",marginTop:2}}>
+                          Requested by {reqBy} · {reqDate} · ₱{Number(d.value||0).toLocaleString()}
+                        </div>
+                      </div>
+                      <button onClick={()=>{setPage("pipeline");}}
+                        style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
+                        🏆 Review & Award
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           {/* Active Projects — TAT status */}
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
@@ -4743,172 +5011,10 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
             <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:1}}>Logged in as <strong>{session?.username}</strong> · {role}</div>
           </div>
         </div>
-
-        {(()=>{
-          const[tab,setTab]=React.useState("password");
-          const[curPw,setCurPw]=React.useState("");
-          const[newPw,setNewPw]=React.useState("");
-          const[confPw,setConfPw]=React.useState("");
-          const[newName,setNewName]=React.useState(session?.name||"");
-          const[newUsername,setNewUsername]=React.useState(session?.username||"");
-          const[msg,setMsg]=React.useState(null); // {type:"success"|"error", text}
-          const[showCur,setShowCur]=React.useState(false);
-          const[showNew,setShowNew]=React.useState(false);
-
-          const savePassword=()=>{
-            const u=users.find(x=>x.id===session?.userId);
-            if(!u){setMsg({type:"error",text:"Session error. Please log out and log back in."});return;}
-            if(!checkPw(curPw,u.passwordHash)){setMsg({type:"error",text:"Current password is incorrect."});return;}
-            if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
-            if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
-            if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
-            upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
-            setCurPw(""); setNewPw(""); setConfPw("");
-            setMsg({type:"success",text:"✅ Password changed successfully! Use your new password next time you log in."});
-            logAct("Password Changed","User changed their password",null);
-          };
-
-          const saveProfile=()=>{
-            if(!newName.trim()){setMsg({type:"error",text:"Name cannot be empty."});return;}
-            if(!newUsername.trim()){setMsg({type:"error",text:"Username cannot be empty."});return;}
-            const taken=users.find(x=>x.username.toLowerCase()===newUsername.toLowerCase().trim()&&x.id!==session?.userId);
-            if(taken){setMsg({type:"error",text:"That username is already taken by another user."});return;}
-            upUsers(us=>us.map(x=>x.id===session?.userId?{...x,name:newName.trim(),username:newUsername.toLowerCase().trim()}:x));
-            // Update session
-            const newSess={...session,name:newName.trim(),username:newUsername.toLowerCase().trim()};
-            setSession(newSess);
-            localStorage.setItem(KEYS.session,JSON.stringify(newSess));
-            setMsg({type:"success",text:"✅ Profile updated successfully!"});
-            logAct("Profile Updated","User updated their name/username",null);
-          };
-
-          return(
-            <div style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              {/* Profile banner */}
-              <div style={{background:"#1e293b",padding:"20px 24px",display:"flex",alignItems:"center",gap:14}}>
-                <div style={{width:52,height:52,borderRadius:"50%",background:"#0ea5e9",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:"#fff",flexShrink:0}}>
-                  {(session?.name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
-                </div>
-                <div>
-                  <div style={{fontWeight:700,color:"#fff",fontSize:"1rem"}}>{session?.name}</div>
-                  <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:2}}>@{session?.username}</div>
-                  <div style={{display:"inline-block",marginTop:4,background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 10px",fontSize:".7rem",fontWeight:700,color:"#f59e0b"}}>{session?.title||role}</div>
-                </div>
-              </div>
-
-              {/* Tabs */}
-              <div style={{display:"flex",borderBottom:"1.5px solid #e2e8f0"}}>
-                {[["password","🔑 Change Password"],["profile","👤 Edit Profile"]].map(([t,l])=>(
-                  <button key={t} onClick={()=>{setTab(t);setMsg(null);}}
-                    style={{flex:1,padding:"12px",background:"transparent",border:"none",borderBottom:tab===t?"2.5px solid #0ea5e9":"2.5px solid transparent",fontFamily:"inherit",fontSize:".85rem",fontWeight:tab===t?700:400,color:tab===t?"#0ea5e9":"#64748b",cursor:"pointer"}}>
-                    {l}
-                  </button>
-                ))}
-              </div>
-
-              <div style={{padding:"24px"}}>
-                {msg&&(
-                  <div style={{background:msg.type==="success"?"#f0fdf4":"#fef2f2",border:`1px solid ${msg.type==="success"?"#6ee7b7":"#fecaca"}`,borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:".85rem",color:msg.type==="success"?"#059669":"#dc2626",fontWeight:600}}>
-                    {msg.text}
-                  </div>
-                )}
-
-                {tab==="password"&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Current Password <span style={{color:"#ef4444"}}>*</span></label>
-                      <div style={{position:"relative"}}>
-                        <input type={showCur?"text":"password"} value={curPw} onChange={e=>setCurPw(e.target.value)}
-                          placeholder="Enter your current password"
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 40px 10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                          onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                        <button type="button" onClick={()=>setShowCur(v=>!v)}
-                          style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:".85rem"}}>
-                          {showCur?"🙈":"👁"}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>New Password <span style={{color:"#ef4444"}}>*</span></label>
-                      <div style={{position:"relative"}}>
-                        <input type={showNew?"text":"password"} value={newPw} onChange={e=>setNewPw(e.target.value)}
-                          placeholder="At least 6 characters"
-                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 40px 10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                          onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                          onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                        <button type="button" onClick={()=>setShowNew(v=>!v)}
-                          style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#94a3b8",fontSize:".85rem"}}>
-                          {showNew?"🙈":"👁"}
-                        </button>
-                      </div>
-                      {/* Password strength indicator */}
-                      {newPw&&(()=>{
-                        const strength=newPw.length>=12&&/[A-Z]/.test(newPw)&&/[0-9]/.test(newPw)?"Strong":newPw.length>=8?"Good":newPw.length>=6?"Weak":"Too short";
-                        const clr={"Strong":"#059669","Good":"#0ea5e9","Weak":"#f59e0b","Too short":"#ef4444"};
-                        return <div style={{fontSize:".75rem",color:clr[strength],marginTop:4,fontWeight:600}}>Password strength: {strength}</div>;
-                      })()}
-                    </div>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Confirm New Password <span style={{color:"#ef4444"}}>*</span></label>
-                      <input type="password" value={confPw} onChange={e=>setConfPw(e.target.value)}
-                        placeholder="Re-enter new password"
-                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                      {confPw&&newPw&&(
-                        <div style={{fontSize:".75rem",marginTop:4,fontWeight:600,color:confPw===newPw?"#059669":"#ef4444"}}>
-                          {confPw===newPw?"✅ Passwords match":"❌ Passwords do not match"}
-                        </div>
-                      )}
-                    </div>
-                    <button onClick={savePassword}
-                      style={{background:"#0ea5e9",border:"none",borderRadius:9,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".9rem",color:"#fff",cursor:"pointer",marginTop:4}}>
-                      🔑 Change Password
-                    </button>
-                    <div style={{fontSize:".78rem",color:"#94a3b8",textAlign:"center"}}>
-                      Forgot your password? Ask Paulo or Mar to reset it in the Manager → Accounts panel.
-                    </div>
-                  </div>
-                )}
-
-                {tab==="profile"&&(
-                  <div style={{display:"flex",flexDirection:"column",gap:16}}>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Display Name</label>
-                      <input value={newName} onChange={e=>setNewName(e.target.value)}
-                        placeholder="Your full name"
-                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                      <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:4}}>This name appears on Job Orders, checklists, and activity logs.</div>
-                    </div>
-                    <div>
-                      <label style={{display:"block",fontSize:".8rem",fontWeight:700,color:"#374151",marginBottom:6}}>Username</label>
-                      <input value={newUsername} onChange={e=>setNewUsername(e.target.value.toLowerCase())}
-                        placeholder="Your login username"
-                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}
-                        onFocus={e=>e.target.style.borderColor="#0ea5e9"}
-                        onBlur={e=>e.target.style.borderColor="#e2e8f0"}/>
-                      <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:4}}>Lowercase letters and numbers only. You will use this to log in.</div>
-                    </div>
-                    <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"10px 14px",fontSize:".8rem",color:"#64748b"}}>
-                      🔒 Your <strong>role</strong> ({role}) can only be changed by a Manager.
-                    </div>
-                    <button onClick={saveProfile}
-                      style={{background:"#0f172a",border:"none",borderRadius:9,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".9rem",color:"#fff",cursor:"pointer"}}>
-                      💾 Save Profile
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })()}
+        <MyAccountPage session={session} users={users} setUsers={setUsers} checkPw={checkPw} hashPw={hashPw}/>
       </div>
     </Wrap>
   );
-
   // ── PM UPDATES PAGE ──────────────────────────────────────────────────────
   if(page==="pmupdates") return(
     <Wrap>
@@ -4960,51 +5066,8 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
       })()}
 
       {/* PM Update Modal */}
-      {pmUpdateModal&&(()=>{
-        const[note,setNote]=React.useState("");
-        const[stage,setStage]=React.useState("");
-        const[pct,setPct]=React.useState("");
-        return(
-          <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
-            <div style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Progress Stage</label>
-                <select value={stage} onChange={e=>setStage(e.target.value)}
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a"}}>
-                  <option value="">Select stage...</option>
-                  {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
-                    <option key={s} value={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete (overall)</label>
-                <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a"}}/>
-              </div>
-              <div>
-                <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Update Notes <span style={{color:"#ef4444"}}>*</span></label>
-                <textarea value={note} onChange={e=>setNote(e.target.value)} rows={4} placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",resize:"vertical"}}/>
-              </div>
-              <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                <button onClick={()=>{
-                  if(!note.trim()){alert("Please enter an update note.");return;}
-                  const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
-                  logAct("PM Update", updateText, pmUpdateModal.dealId);
-                  // Also add to checklist as a note if there's a PM update task
-                  setPmUpdateModal(null);
-                  alert("✅ Update logged! Arrius and Paulo can see this on the Dashboard.");
-                }}
-                style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                  ✅ Submit Update
-                </button>
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
+      {/* PM Update Modal */}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logAct={logAct}/>}
     </Wrap>
   );
 
