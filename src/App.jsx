@@ -1490,7 +1490,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 
 }
 
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logAct}){
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp}){
   const[note,setNote]=useState("");
   const[stage,setStage]=useState("");
   const[pct,setPct]=useState("");
@@ -1524,11 +1524,11 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logAct}){
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
           <button onClick={()=>{
-            if(!note.trim()){alert("Please enter an update note.");return;}
+            if(!note.trim()){toastEmit("Please enter an update note.","warning");return;}
             const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
-            logAct("PM Update",updateText,pmUpdateModal.dealId);
+            logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",updateText);
             setPmUpdateModal(null);
-            alert("✅ Update logged!");
+            toastEmit("Update logged!");
           }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
             ✅ Submit Update
           </button>
@@ -2519,7 +2519,7 @@ export default function App(){
   );
 
   // ── AUTH GATE ─────────────────────────────────────────────────────────────
-  if(!session) return <AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/>;
+  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/><Toaster/></>;
 
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role]||"#64748b";
@@ -2623,6 +2623,7 @@ export default function App(){
       <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:W,transition:"margin-left .2s"}}>
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); .fi{animation:fadeIn .2s ease} @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} @media print{.noprint{display:none}}`}</style>
         <Nav/>
+        <Toaster/>
         <div style={{maxWidth:1140,margin:"0 auto",padding:"22px 24px"}} className="fi">{children}</div>
       {/* ── Export / Backup Panel ── */}
       {showExport&&(
@@ -3313,7 +3314,7 @@ export default function App(){
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logAct={logAct}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
     </Wrap>
   );
 
@@ -4064,7 +4065,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                   }
                   setSmartImport({rows:rawRows,analysis,fileName:file.name,fileType});
                 }catch(err){
-                  alert("Error reading file: "+err.message);
+                  toastEmit("Error reading file: "+err.message,"error");
                 }
                 setImportLoading(false);
               }}/>
@@ -4227,7 +4228,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                         {!WON_STAGES.includes(d.stage)&&(
                           role==="Manager"
                           ? <button onClick={()=>{openAward(d);setStageFilter(null);}} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>
-                          : <button onClick={()=>{if(window.confirm(`Request Manager approval to award ${d.client}?\n\nPaulo will be notified via Dashboard.`)){upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logAct("Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`,d.id);setStageFilter(null);alert("✅ Flagged! Paulo sees this on his Dashboard.");}}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request Award</button>
+                          : <button onClick={()=>{if(true){upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);setStageFilter(null);toastEmit("✅ Flagged! Paulo sees this on his Dashboard.");}}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request Award</button>
                         )}
                       </div>
                     </div>
@@ -4262,9 +4263,9 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                         if(!dragDeal) return;
                         const deal=deals.find(d=>d.id===dragDeal);
                         if(!deal||deal.stage===stage) return;
-                        if(WON_STAGES.includes(stage)){if(role==="Sales"){alert("Sales cannot directly award.\n\nMove to Stage 05 and click 🏆 Request Award to notify a Manager.");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
+                        if(WON_STAGES.includes(stage)){if(role==="Sales"){toastEmit("Sales cannot directly award. Move to Stage 05 and click Request Award to notify a Manager.","warning");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
                         if(PAULO_GATE.includes(stage)&&role==="Sales"){
-                          if(!window.confirm("Moving to "+stage.replace(/^\d+ · /,"")+" requires manager approval. Continue?"))return;
+                          toastEmit("This stage requires Manager approval. Your move has been logged — notify Paulo or Paolo.","warning");
                         }
                         stageQ(dragDeal,stage);
                         setDragDeal(null);
@@ -4325,10 +4326,10 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                                 role==="Manager"
                                 ? <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
                                 : <button onClick={e=>{e.stopPropagation();
-                                    if(window.confirm(`Request Manager approval to award ${d.client}?`)){
+                                    if(true){
                                       upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+session?.name+" flagged for award."}:x));
-                                      logAct("Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`,d.id);
-                                      alert("✅ Flagged for Manager review.");
+                                      logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);
+                                      toastEmit("Flagged for Manager review!");
                                     }}} style={{flex:1,background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
                               )}
                             </div>
@@ -5104,7 +5105,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logAct={logAct}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
     </Wrap>
   );
 
@@ -5162,7 +5163,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                 </div>
                 <button
                   onClick={()=>{
-                    if(!title.trim()||!desc.trim()||!selDealId){alert("Please fill in all required fields.");return;}
+                    if(!title.trim()||!desc.trim()||!selDealId){toastEmit("Please fill in all required fields.","warning");return;}
                     const deal=wonDeals.find(d=>d.id===selDealId);
                     const jo=jos.find(j=>j.dealId===selDealId);
                     const newAdd={
@@ -5178,15 +5179,9 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                     upAddenda(as=>[...as,newAdd]);
                     // Notify AE + Paolo via activity log (banner will appear on their screens)
                     const ae=deal?.salesOwner||"AE";
-                    logAct("Scope Change Flagged",
-                      `${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`,
-                      selDealId);
+                    logActivity(selDealId,"Scope Change Flagged",`${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`);
                     setTitle(""); setDesc(""); setValue("");
-                    alert(`✅ Scope change logged!
-
-${ae} and Paolo Gomez have been notified via their Dashboard.
-
-They will coordinate with the client and confirm if additional billing is needed.`);
+                    toastEmit("Scope change logged! Notified Sales.","success");
                   }}
                   style={{background:"#dc2626",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
                   ⚠️ Submit Scope Change
@@ -5386,9 +5381,9 @@ They will coordinate with the client and confirm if additional billing is needed
                         imported++;
                       }
                     });
-                    logAct("Excel Import",`${imported} new + ${skipped} updated via Smart Import`);
+                    logActivity(null,"Excel Import",`${imported} new + ${skipped} updated via Smart Import`);
                     setSmartImport(null);
-                    alert(`✅ Import complete!\n${imported} new deals added\n${skipped} existing updated\n\nProject cards created for all awarded projects.`);
+                    toastEmit(`Import complete! ${imported} new deals added, ${skipped} existing updated.`,"success");
                   }}
                   style={{background:"#059669",border:"none",borderRadius:8,padding:"10px 20px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
                     ✅ Confirm Import ({smartImport.rows.length} rows)
