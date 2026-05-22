@@ -1620,7 +1620,7 @@ export default function App(){
             if(data.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})));
             if(data.swatches?.length) setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
             if(data.actLog?.length)  setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
-            if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
+            if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
             if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
             if(data.inflows?.length) setInfs(data.inflows);
             // Sync to localStorage as cache
@@ -1699,11 +1699,32 @@ export default function App(){
     if(data.checklist?.length)   setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
     if(data.swatches?.length)    setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
-    if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
+    if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
     if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
     if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,title:u.title||u.role,status:u.status})));
   };
 
+
+  // Converts flat Supabase cash_positions rows back to the rich banks-object format
+  const convertSbCashPos=(raw)=>{
+    const out={};
+    Object.entries(raw).forEach(([date,c])=>{
+      out[date]=c.banks?c:{
+        ...emptyDayPosition(date),
+        banks:{
+          bpi:      {beg:"",book:"",end:String(c.bpi_end||0)},
+          metro:    {beg:"",book:"",end:String(c.metrobank_end||0)},
+          china:    {beg:"",book:"",end:String(c.chinabank_end||0)},
+          bdo:      {beg:"",book:"",end:String(c.bdo_end||0)},
+          security: {beg:"",book:"",end:String(c.secbank_end||0)},
+          union:    {beg:"",book:"",end:String(c.unionbank_end||0)},
+        },
+        notes:c.notes||"",
+        savedAt:c.updated_at||null,
+      };
+    });
+    return out;
+  };
 
   // ── SUPABASE FIELD MAPPERS (camelCase → snake_case) ─────────────────────────
   const toSbDeal = r=>({
@@ -1836,7 +1857,10 @@ export default function App(){
       if(key===KEYS.breqs)     sbSync("budget_requests",   val, toSbBR);
       if(key===KEYS.addenda)   sbSync("addenda",    val, toSbAddendum);
       if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
-      if(key===KEYS.checklist) sbSync("checklists", val, toSbChecklist);
+      if(key===KEYS.checklist){
+        const uuidRE=/^[0-9a-f]{8}-[0-9a-f]{4}-/i;
+        sbSync("checklists",val.filter(r=>uuidRE.test(r.id)),toSbChecklist);
+      }
       if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
       if(key===KEYS.billings){
         val.forEach(m=>{
@@ -1851,10 +1875,20 @@ export default function App(){
         );
       }
       if(key===KEYS.cashPos){
-        Object.entries(val||{}).forEach(([date,c])=>
-          sbUpsert("cash_positions",{...c,date},"date")
-            .catch(e=>console.error("cash sync:",e.message))
-        );
+        Object.entries(val||{}).forEach(([date,c])=>{
+          const payload={
+            date,
+            bpi_end:      Number(c.banks?.bpi?.end)     ||0,
+            metrobank_end:Number(c.banks?.metro?.end)   ||0,
+            chinabank_end:Number(c.banks?.china?.end)   ||0,
+            bdo_end:      Number(c.banks?.bdo?.end)     ||0,
+            secbank_end:  Number(c.banks?.security?.end)||0,
+            unionbank_end:Number(c.banks?.union?.end)   ||0,
+            notes:c.notes||"",
+          };
+          sbUpsert("cash_positions",payload,"date")
+            .catch(e=>console.error("cash sync:",e.message));
+        });
       }
     }catch(e){console.error("FabHub persist sync error:",e.message);}
   },[]);
