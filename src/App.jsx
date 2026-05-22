@@ -1879,7 +1879,7 @@ export default function App(){
       [KEYS.addenda,  addenda], [KEYS.swatches, swatches],
       [KEYS.checklist,checklist],[KEYS.actlog,   actLog],
       [KEYS.billings, billings],[KEYS.budgets,  budgets],
-      [KEYS.cashPos,  cashPos],
+      [KEYS.cashPos,  cashPositions],
     ];
     pairs.forEach(([key,val]) => { if(val && (Array.isArray(val)?val.length:Object.keys(val).length)) persist(key,val); });
     // Inflows (not in persist mapping)
@@ -1890,7 +1890,7 @@ export default function App(){
       }, 'id'))).catch(e=>console.error("inflows migrate:",e.message));
     }
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
-  },[persist, deals, jos, exps, prs, mreqs, breqs, addenda, swatches, checklist, actLog, billings, budgets, cashPos, infs]);
+  },[persist, deals, jos, exps, prs, mreqs, breqs, addenda, swatches, checklist, actLog, billings, budgets, cashPositions, infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
 
