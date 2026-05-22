@@ -138,7 +138,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
   return { base:b, vat, gross, ewt, netReceivable };
 };
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
-let _id=500; const uid=()=>String(++_id);
+const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
 const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog"};
 
@@ -797,6 +797,43 @@ const ProgBar=({pct,color,h=6})=>(
     <div style={{height:"100%",width:Math.min(pct||0,100)+"%",background:color,borderRadius:h/2,transition:"width .5s"}}/>
   </div>
 );
+// ─── TOAST NOTIFICATION SYSTEM ────────────────────────────────────────────────
+let _toastListeners=[];
+const toastEmit=(msg,type="success",duration=3500)=>{
+  const id=Date.now()+Math.random();
+  _toastListeners.forEach(fn=>fn({id,msg,type,duration}));
+};
+function Toaster(){
+  const[toasts,setToasts]=useState([]);
+  useEffect(()=>{
+    const handler=t=>{
+      setToasts(p=>[...p,t]);
+      setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==t.id)),t.duration||3500);
+    };
+    _toastListeners.push(handler);
+    return()=>{_toastListeners=_toastListeners.filter(f=>f!==handler);};
+  },[]);
+  if(!toasts.length) return null;
+  const TYPE_STYLE={
+    success:{bg:"#f0fdf4",border:"#6ee7b7",color:"#059669",icon:"✅"},
+    error:  {bg:"#fef2f2",border:"#fca5a5",color:"#dc2626",icon:"❌"},
+    warning:{bg:"#fffbeb",border:"#fde68a",color:"#92400e",icon:"⚠️"},
+    info:   {bg:"#eff6ff",border:"#93c5fd",color:"#1d4ed8",icon:"ℹ️"},
+  };
+  return(
+    <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,display:"flex",flexDirection:"column",gap:10,pointerEvents:"none"}}>
+      {toasts.map(t=>{
+        const s=TYPE_STYLE[t.type]||TYPE_STYLE.success;
+        return(
+          <div key={t.id} style={{background:s.bg,border:`1.5px solid ${s.border}`,borderRadius:12,padding:"12px 16px",boxShadow:"0 8px 24px rgba(0,0,0,.12)",maxWidth:360,display:"flex",gap:10,alignItems:"flex-start",animation:"fadein .2s ease",pointerEvents:"auto"}}>
+            <span style={{fontSize:"1rem",flexShrink:0}}>{s.icon}</span>
+            <span style={{fontSize:".85rem",color:s.color,fontWeight:600,lineHeight:1.45}}>{t.msg}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 const SecHead=({title,action,sub})=>(
   <div style={{marginBottom:16}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1290,7 +1327,7 @@ class ErrorBoundary extends React.Component{
 // ── PM UPDATE MODAL (proper component — fixes focus loss from IIFE hooks) ──
 
 // ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
-function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
+function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw}){
           const[tab,setTab]=useState("password");
           const[curPw,setCurPw]=useState("");
           const[newPw,setNewPw]=useState("");
@@ -1308,10 +1345,10 @@ function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
             if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
             if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
             if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
-            upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
+            (upUsersExt||setUsers)(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
             setCurPw(""); setNewPw(""); setConfPw("");
             setMsg({type:"success",text:"✅ Password changed successfully! Use your new password next time you log in."});
-            logAct("Password Changed","User changed their password",null);
+            logActivityExt&&logActivityExt(null,"Password Changed","User changed their password");
           };
 
           const saveProfile=()=>{
@@ -1319,13 +1356,13 @@ function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
             if(!newUsername.trim()){setMsg({type:"error",text:"Username cannot be empty."});return;}
             const taken=users.find(x=>x.username.toLowerCase()===newUsername.toLowerCase().trim()&&x.id!==session?.userId);
             if(taken){setMsg({type:"error",text:"That username is already taken by another user."});return;}
-            upUsers(us=>us.map(x=>x.id===session?.userId?{...x,name:newName.trim(),username:newUsername.toLowerCase().trim()}:x));
+            (upUsersExt||setUsers)(us=>us.map(x=>x.id===session?.userId?{...x,name:newName.trim(),username:newUsername.toLowerCase().trim()}:x));
             // Update session
             const newSess={...session,name:newName.trim(),username:newUsername.toLowerCase().trim()};
-            setSession(newSess);
+            setSessionExt&&setSessionExt(newSess);
             localStorage.setItem(KEYS.session,JSON.stringify(newSess));
             setMsg({type:"success",text:"✅ Profile updated successfully!"});
-            logAct("Profile Updated","User updated their name/username",null);
+            logActivityExt&&logActivityExt(null,"Profile Updated","User updated their name/username");
           };
 
           return(
@@ -1580,7 +1617,7 @@ export default function App(){
             if(data.mreqs?.length)  setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
             if(data.breqs?.length)  setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
             if(data.addenda?.length) setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
-            if(data.checklist?.length) setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})));
+            if(data.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})));
             if(data.swatches?.length) setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
             if(data.actLog?.length)  setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
             if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
@@ -1601,22 +1638,6 @@ export default function App(){
 
     // Listen for auth state changes (login/logout)
     if(!supabase) return;
-
-  // Auto-refresh when user switches back to FabHub tab
-  React.useEffect(()=>{
-    const refresh=async()=>{
-      if(!isSupabaseReady()||!session) return;
-      try{
-        const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage)})));
-        if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
-        if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
-        if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id})));
-      }catch(e){console.warn("Focus refresh:",e.message);}
-    };
-    window.addEventListener("focus",refresh);
-    return()=>window.removeEventListener("focus",refresh);
-  },[session]);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
@@ -1644,6 +1665,22 @@ export default function App(){
     return () => subscription.unsubscribe();
   },[]);
 
+  // Auto-refresh when user switches back to FabHub tab
+  useEffect(()=>{
+    const refresh=async()=>{
+      if(!isSupabaseReady()||!session) return;
+      try{
+        const data=await sbLoadAll();
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage)})));
+        if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
+        if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
+        if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
+      }catch(e){console.warn("Focus refresh:",e.message);}
+    };
+    window.addEventListener("focus",refresh);
+    return()=>window.removeEventListener("focus",refresh);
+  },[session]);
+
   // ── SUPABASE: Load all data ───────────────────────────────────────────────
   const loadAllFromSupabase = async () => {
     if(!isSupabaseReady()) return;
@@ -1654,12 +1691,12 @@ export default function App(){
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
     if(data.exps?.length)        setExps(data.exps.map(e=>({...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by})));
-    if(data.inflows?.length)     setInflows(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
+    if(data.inflows?.length)     setInfs(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
     if(data.prs?.length)         setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
     if(data.mreqs?.length)       setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
     if(data.breqs?.length)       setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
     if(data.addenda?.length)     setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
-    if(data.checklist?.length)   setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
+    if(data.checklist?.length)   setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
     if(data.swatches?.length)    setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
@@ -2073,7 +2110,7 @@ export default function App(){
   // ── Proactive Checklist Template Auto-Load ──────────────────────────────────
   const loadChecklistTemplate=(dealId,clientName)=>{
     // Only load if no checklist items exist for this project yet
-    const existing=checklist.filter(c=>c.projectId===dealId);
+    const existing=checklist.filter(c=>(c.projectId||c.dealId)===dealId);
     if(existing.length>0) return; // already has items — don't overwrite
     const items=GMD_CHECKLIST_TEMPLATE.map(t=>({
       ...t,
@@ -2806,7 +2843,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Rodney 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>QS Dashboard · {todayL}</div>
         </div>
         <button onClick={()=>setPage("costanalysis")} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📈 Cost Analysis</button>
@@ -2877,7 +2914,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Marian 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Procurement Overview · {todayL}</div>
         </div>
         <button onClick={()=>setPage("procurement")} style={{background:"#06b6d4",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📦 Purchase Orders</button>
@@ -5011,7 +5048,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
             <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:1}}>Logged in as <strong>{session?.username}</strong> · {role}</div>
           </div>
         </div>
-        <MyAccountPage session={session} users={users} setUsers={setUsers} checkPw={checkPw} hashPw={hashPw}/>
+        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw}/>
       </div>
     </Wrap>
   );
