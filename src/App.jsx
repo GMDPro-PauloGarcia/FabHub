@@ -7116,6 +7116,31 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
     whiteSpace:"nowrap"
   };
 
+  const exportDCPCSV=()=>{
+    const dates=Object.keys(cashPositions).sort();
+    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Collections","Less Total","Cash Available","Notes"]];
+    dates.forEach(date=>{
+      const pos=cashPositions[date];if(!pos)return;
+      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.end||0),0);
+      const less=Number(pos.less?.bizlink||0)+Number(pos.less?.checkFloat||0)+Number(pos.less?.otherAmt||0);
+      const coll=Number(pos.collections?.manualAmt||0);
+      rows.push([date,
+        pos.banks?.bpi?.beg||0,pos.banks?.bpi?.end||0,
+        pos.banks?.metro?.beg||0,pos.banks?.metro?.end||0,
+        pos.banks?.china?.beg||0,pos.banks?.china?.end||0,
+        pos.banks?.bdo?.beg||0,pos.banks?.bdo?.end||0,
+        pos.banks?.security?.beg||0,pos.banks?.security?.end||0,
+        wc.toFixed(2),coll.toFixed(2),less.toFixed(2),(wc+coll-less).toFixed(2),
+        pos.notes||""
+      ]);
+    });
+    const csv=rows.map(r=>r.map(v=>(`"${String(v).replace(/"/g,'""')}"`)).join(",")).join("\n");
+    const a=document.createElement("a");
+    a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);
+    a.download=`GMD_CashPosition_${today}.csv`;
+    a.click();
+  };
+
   return(
     <div>
       <style>{`
@@ -8580,31 +8605,6 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
     a.click();
   };
 
-  // DCP CSV Export
-  const exportDCPCSV=()=>{
-    const dates=Object.keys(cashPositions).sort();
-    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Collections","Less Total","Cash Available","Notes"]];
-    dates.forEach(date=>{
-      const pos=cashPositions[date];if(!pos)return;
-      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.end||0),0);
-      const less=Number(pos.less?.bizlink||0)+Number(pos.less?.checkFloat||0)+Number(pos.less?.otherAmt||0);
-      const coll=Number(pos.collections?.manualAmt||0);
-      rows.push([date,
-        pos.banks?.bpi?.beg||0,pos.banks?.bpi?.end||0,
-        pos.banks?.metro?.beg||0,pos.banks?.metro?.end||0,
-        pos.banks?.china?.beg||0,pos.banks?.china?.end||0,
-        pos.banks?.bdo?.beg||0,pos.banks?.bdo?.end||0,
-        pos.banks?.security?.beg||0,pos.banks?.security?.end||0,
-        wc.toFixed(2),coll.toFixed(2),less.toFixed(2),(wc+coll-less).toFixed(2),
-        pos.notes||""
-      ]);
-    });
-    const csv=rows.map(r=>r.map(v=>(`"${String(v).replace(/"/g,'""')}"`)).join(",")).join("\n");
-    const a=document.createElement("a");
-    a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
-    a.download=`GMD_CashPosition_${today}.csv`;
-    a.click();
-  };
 
   return(
     <div>
