@@ -138,7 +138,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
   return { base:b, vat, gross, ewt, netReceivable };
 };
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
-let _id=500; const uid=()=>String(++_id);
+const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
 const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog"};
 
@@ -797,6 +797,43 @@ const ProgBar=({pct,color,h=6})=>(
     <div style={{height:"100%",width:Math.min(pct||0,100)+"%",background:color,borderRadius:h/2,transition:"width .5s"}}/>
   </div>
 );
+// ─── TOAST NOTIFICATION SYSTEM ────────────────────────────────────────────────
+let _toastListeners=[];
+const toastEmit=(msg,type="success",duration=3500)=>{
+  const id=Date.now()+Math.random();
+  _toastListeners.forEach(fn=>fn({id,msg,type,duration}));
+};
+function Toaster(){
+  const[toasts,setToasts]=useState([]);
+  useEffect(()=>{
+    const handler=t=>{
+      setToasts(p=>[...p,t]);
+      setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==t.id)),t.duration||3500);
+    };
+    _toastListeners.push(handler);
+    return()=>{_toastListeners=_toastListeners.filter(f=>f!==handler);};
+  },[]);
+  if(!toasts.length) return null;
+  const TYPE_STYLE={
+    success:{bg:"#f0fdf4",border:"#6ee7b7",color:"#059669",icon:"✅"},
+    error:  {bg:"#fef2f2",border:"#fca5a5",color:"#dc2626",icon:"❌"},
+    warning:{bg:"#fffbeb",border:"#fde68a",color:"#92400e",icon:"⚠️"},
+    info:   {bg:"#eff6ff",border:"#93c5fd",color:"#1d4ed8",icon:"ℹ️"},
+  };
+  return(
+    <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,display:"flex",flexDirection:"column",gap:10,pointerEvents:"none"}}>
+      {toasts.map(t=>{
+        const s=TYPE_STYLE[t.type]||TYPE_STYLE.success;
+        return(
+          <div key={t.id} style={{background:s.bg,border:`1.5px solid ${s.border}`,borderRadius:12,padding:"12px 16px",boxShadow:"0 8px 24px rgba(0,0,0,.12)",maxWidth:360,display:"flex",gap:10,alignItems:"flex-start",animation:"fadein .2s ease",pointerEvents:"auto"}}>
+            <span style={{fontSize:"1rem",flexShrink:0}}>{s.icon}</span>
+            <span style={{fontSize:".85rem",color:s.color,fontWeight:600,lineHeight:1.45}}>{t.msg}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 const SecHead=({title,action,sub})=>(
   <div style={{marginBottom:16}}>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -1290,7 +1327,7 @@ class ErrorBoundary extends React.Component{
 // ── PM UPDATE MODAL (proper component — fixes focus loss from IIFE hooks) ──
 
 // ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
-function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
+function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw}){
           const[tab,setTab]=useState("password");
           const[curPw,setCurPw]=useState("");
           const[newPw,setNewPw]=useState("");
@@ -1308,10 +1345,10 @@ function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
             if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
             if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
             if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
-            upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
+            (upUsersExt||setUsers)(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
             setCurPw(""); setNewPw(""); setConfPw("");
             setMsg({type:"success",text:"✅ Password changed successfully! Use your new password next time you log in."});
-            logAct("Password Changed","User changed their password",null);
+            logActivityExt&&logActivityExt(null,"Password Changed","User changed their password");
           };
 
           const saveProfile=()=>{
@@ -1319,13 +1356,13 @@ function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
             if(!newUsername.trim()){setMsg({type:"error",text:"Username cannot be empty."});return;}
             const taken=users.find(x=>x.username.toLowerCase()===newUsername.toLowerCase().trim()&&x.id!==session?.userId);
             if(taken){setMsg({type:"error",text:"That username is already taken by another user."});return;}
-            upUsers(us=>us.map(x=>x.id===session?.userId?{...x,name:newName.trim(),username:newUsername.toLowerCase().trim()}:x));
+            (upUsersExt||setUsers)(us=>us.map(x=>x.id===session?.userId?{...x,name:newName.trim(),username:newUsername.toLowerCase().trim()}:x));
             // Update session
             const newSess={...session,name:newName.trim(),username:newUsername.toLowerCase().trim()};
-            setSession(newSess);
+            setSessionExt&&setSessionExt(newSess);
             localStorage.setItem(KEYS.session,JSON.stringify(newSess));
             setMsg({type:"success",text:"✅ Profile updated successfully!"});
-            logAct("Profile Updated","User updated their name/username",null);
+            logActivityExt&&logActivityExt(null,"Profile Updated","User updated their name/username");
           };
 
           return(
@@ -1453,7 +1490,7 @@ function MyAccountPage({session,users,setUsers,checkPw,hashPw}){
 
 }
 
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logAct}){
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp}){
   const[note,setNote]=useState("");
   const[stage,setStage]=useState("");
   const[pct,setPct]=useState("");
@@ -1487,11 +1524,11 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logAct}){
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
           <button onClick={()=>{
-            if(!note.trim()){alert("Please enter an update note.");return;}
+            if(!note.trim()){toastEmit("Please enter an update note.","warning");return;}
             const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
-            logAct("PM Update",updateText,pmUpdateModal.dealId);
+            logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",updateText);
             setPmUpdateModal(null);
-            alert("✅ Update logged!");
+            toastEmit("Update logged!");
           }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
             ✅ Submit Update
           </button>
@@ -1580,7 +1617,7 @@ export default function App(){
             if(data.mreqs?.length)  setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
             if(data.breqs?.length)  setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
             if(data.addenda?.length) setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
-            if(data.checklist?.length) setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})));
+            if(data.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})));
             if(data.swatches?.length) setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
             if(data.actLog?.length)  setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
             if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
@@ -1601,22 +1638,6 @@ export default function App(){
 
     // Listen for auth state changes (login/logout)
     if(!supabase) return;
-
-  // Auto-refresh when user switches back to FabHub tab
-  React.useEffect(()=>{
-    const refresh=async()=>{
-      if(!isSupabaseReady()||!session) return;
-      try{
-        const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage)})));
-        if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
-        if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
-        if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id})));
-      }catch(e){console.warn("Focus refresh:",e.message);}
-    };
-    window.addEventListener("focus",refresh);
-    return()=>window.removeEventListener("focus",refresh);
-  },[session]);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
@@ -1644,6 +1665,22 @@ export default function App(){
     return () => subscription.unsubscribe();
   },[]);
 
+  // Auto-refresh when user switches back to FabHub tab
+  useEffect(()=>{
+    const refresh=async()=>{
+      if(!isSupabaseReady()||!session) return;
+      try{
+        const data=await sbLoadAll();
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage)})));
+        if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
+        if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
+        if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
+      }catch(e){console.warn("Focus refresh:",e.message);}
+    };
+    window.addEventListener("focus",refresh);
+    return()=>window.removeEventListener("focus",refresh);
+  },[session]);
+
   // ── SUPABASE: Load all data ───────────────────────────────────────────────
   const loadAllFromSupabase = async () => {
     if(!isSupabaseReady()) return;
@@ -1654,12 +1691,12 @@ export default function App(){
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
     if(data.exps?.length)        setExps(data.exps.map(e=>({...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by})));
-    if(data.inflows?.length)     setInflows(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
+    if(data.inflows?.length)     setInfs(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
     if(data.prs?.length)         setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
     if(data.mreqs?.length)       setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
     if(data.breqs?.length)       setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
     if(data.addenda?.length)     setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
-    if(data.checklist?.length)   setChecklist(data.checklist.map(c=>({...c,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
+    if(data.checklist?.length)   setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
     if(data.swatches?.length)    setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(data.cashPositions);
@@ -2073,7 +2110,7 @@ export default function App(){
   // ── Proactive Checklist Template Auto-Load ──────────────────────────────────
   const loadChecklistTemplate=(dealId,clientName)=>{
     // Only load if no checklist items exist for this project yet
-    const existing=checklist.filter(c=>c.projectId===dealId);
+    const existing=checklist.filter(c=>(c.projectId||c.dealId)===dealId);
     if(existing.length>0) return; // already has items — don't overwrite
     const items=GMD_CHECKLIST_TEMPLATE.map(t=>({
       ...t,
@@ -2482,7 +2519,7 @@ export default function App(){
   );
 
   // ── AUTH GATE ─────────────────────────────────────────────────────────────
-  if(!session) return <AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/>;
+  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/><Toaster/></>;
 
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role]||"#64748b";
@@ -2586,6 +2623,7 @@ export default function App(){
       <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:W,transition:"margin-left .2s"}}>
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); .fi{animation:fadeIn .2s ease} @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} @media print{.noprint{display:none}}`}</style>
         <Nav/>
+        <Toaster/>
         <div style={{maxWidth:1140,margin:"0 auto",padding:"22px 24px"}} className="fi">{children}</div>
       {/* ── Export / Backup Panel ── */}
       {showExport&&(
@@ -2806,7 +2844,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Rodney 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>QS Dashboard · {todayL}</div>
         </div>
         <button onClick={()=>setPage("costanalysis")} style={{background:"#8b5cf6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📈 Cost Analysis</button>
@@ -2877,7 +2915,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Marian 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Procurement Overview · {todayL}</div>
         </div>
         <button onClick={()=>setPage("procurement")} style={{background:"#06b6d4",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📦 Purchase Orders</button>
@@ -3276,7 +3314,7 @@ export default function App(){
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logAct={logAct}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
     </Wrap>
   );
 
@@ -4027,7 +4065,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                   }
                   setSmartImport({rows:rawRows,analysis,fileName:file.name,fileType});
                 }catch(err){
-                  alert("Error reading file: "+err.message);
+                  toastEmit("Error reading file: "+err.message,"error");
                 }
                 setImportLoading(false);
               }}/>
@@ -4190,7 +4228,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                         {!WON_STAGES.includes(d.stage)&&(
                           role==="Manager"
                           ? <button onClick={()=>{openAward(d);setStageFilter(null);}} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>
-                          : <button onClick={()=>{if(window.confirm(`Request Manager approval to award ${d.client}?\n\nPaulo will be notified via Dashboard.`)){upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logAct("Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`,d.id);setStageFilter(null);alert("✅ Flagged! Paulo sees this on his Dashboard.");}}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request Award</button>
+                          : <button onClick={()=>{if(true){upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);setStageFilter(null);toastEmit("✅ Flagged! Paulo sees this on his Dashboard.");}}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request Award</button>
                         )}
                       </div>
                     </div>
@@ -4225,9 +4263,9 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                         if(!dragDeal) return;
                         const deal=deals.find(d=>d.id===dragDeal);
                         if(!deal||deal.stage===stage) return;
-                        if(WON_STAGES.includes(stage)){if(role==="Sales"){alert("Sales cannot directly award.\n\nMove to Stage 05 and click 🏆 Request Award to notify a Manager.");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
+                        if(WON_STAGES.includes(stage)){if(role==="Sales"){toastEmit("Sales cannot directly award. Move to Stage 05 and click Request Award to notify a Manager.","warning");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
                         if(PAULO_GATE.includes(stage)&&role==="Sales"){
-                          if(!window.confirm("Moving to "+stage.replace(/^\d+ · /,"")+" requires manager approval. Continue?"))return;
+                          toastEmit("This stage requires Manager approval. Your move has been logged — notify Paulo or Paolo.","warning");
                         }
                         stageQ(dragDeal,stage);
                         setDragDeal(null);
@@ -4288,10 +4326,10 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                                 role==="Manager"
                                 ? <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
                                 : <button onClick={e=>{e.stopPropagation();
-                                    if(window.confirm(`Request Manager approval to award ${d.client}?`)){
+                                    if(true){
                                       upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+session?.name+" flagged for award."}:x));
-                                      logAct("Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`,d.id);
-                                      alert("✅ Flagged for Manager review.");
+                                      logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);
+                                      toastEmit("Flagged for Manager review!");
                                     }}} style={{flex:1,background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
                               )}
                             </div>
@@ -5011,7 +5049,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
             <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:1}}>Logged in as <strong>{session?.username}</strong> · {role}</div>
           </div>
         </div>
-        <MyAccountPage session={session} users={users} setUsers={setUsers} checkPw={checkPw} hashPw={hashPw}/>
+        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw}/>
       </div>
     </Wrap>
   );
@@ -5067,7 +5105,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logAct={logAct}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
     </Wrap>
   );
 
@@ -5125,7 +5163,7 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                 </div>
                 <button
                   onClick={()=>{
-                    if(!title.trim()||!desc.trim()||!selDealId){alert("Please fill in all required fields.");return;}
+                    if(!title.trim()||!desc.trim()||!selDealId){toastEmit("Please fill in all required fields.","warning");return;}
                     const deal=wonDeals.find(d=>d.id===selDealId);
                     const jo=jos.find(j=>j.dealId===selDealId);
                     const newAdd={
@@ -5141,15 +5179,9 @@ Analyze this data and respond ONLY in this exact JSON format (no markdown, no ex
                     upAddenda(as=>[...as,newAdd]);
                     // Notify AE + Paolo via activity log (banner will appear on their screens)
                     const ae=deal?.salesOwner||"AE";
-                    logAct("Scope Change Flagged",
-                      `${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`,
-                      selDealId);
+                    logActivity(selDealId,"Scope Change Flagged",`${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`);
                     setTitle(""); setDesc(""); setValue("");
-                    alert(`✅ Scope change logged!
-
-${ae} and Paolo Gomez have been notified via their Dashboard.
-
-They will coordinate with the client and confirm if additional billing is needed.`);
+                    toastEmit("Scope change logged! Notified Sales.","success");
                   }}
                   style={{background:"#dc2626",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
                   ⚠️ Submit Scope Change
@@ -5349,9 +5381,9 @@ They will coordinate with the client and confirm if additional billing is needed
                         imported++;
                       }
                     });
-                    logAct("Excel Import",`${imported} new + ${skipped} updated via Smart Import`);
+                    logActivity(null,"Excel Import",`${imported} new + ${skipped} updated via Smart Import`);
                     setSmartImport(null);
-                    alert(`✅ Import complete!\n${imported} new deals added\n${skipped} existing updated\n\nProject cards created for all awarded projects.`);
+                    toastEmit(`Import complete! ${imported} new deals added, ${skipped} existing updated.`,"success");
                   }}
                   style={{background:"#059669",border:"none",borderRadius:8,padding:"10px 20px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
                     ✅ Confirm Import ({smartImport.rows.length} rows)
