@@ -4050,55 +4050,42 @@ export default function App(){
                     rawText=utils.sheet_to_json(ws,{header:1}).slice(0,6).map(r=>r.join(" | ")).join("\n");
                   }
 
-                  // Step 2: Send to Claude for understanding
-                  const sampleData=rawRows.slice(0,8);
+                  // Step 2: Analyze file structure locally
                   const allColumns=[...new Set(rawRows.flatMap(r=>Object.keys(r)))];
-                  const prompt=`You are analyzing a file uploaded to FabHub, GMD Productions Inc.'s operations system.
-
-File: "${file.name}" (${rawRows.length} rows, ${allColumns.length} columns)
-Columns found: ${allColumns.slice(0,20).join(", ")}
-First few rows:
-${JSON.stringify(sampleData, null, 2).slice(0,1500)}
-
-Analyze this data and respond ONLY in this exact JSON format (no markdown, no explanation):
-{
-  "dataType": "deals|expenses|clients|inventory|payroll|unknown",
-  "confidence": 0-100,
-  "summary": "2-3 sentence plain English description of what this file contains",
-  "rowCount": ${rawRows.length},
-  "fieldsFound": ["list","of","key","fields","detected"],
-  "issues": ["any data quality issues or warnings"],
-  "importAction": "what FabHub should do with this data",
-  "samplePreview": [{"field":"value"}, {"field":"value"}],
-  "canImport": true|false,
-  "cantImportReason": "reason if canImport is false"
-}`;
-
-                  const resp=await fetch("https://api.anthropic.com/v1/messages",{
-                    method:"POST",
-                    headers:{"Content-Type":"application/json"},
-                    body:JSON.stringify({
-                      model:"claude-sonnet-4-20250514",
-                      max_tokens:1000,
-                      messages:[{role:"user",content:prompt}]
-                    })
-                  });
-                  const aiData=await resp.json();
-                  const aiText=aiData.content?.[0]?.text||"{}";
-                  let analysis={};
-                  try{
-                    const clean=aiText.replace(/```json|```/g,"").trim();
-                    analysis=JSON.parse(clean);
-                  }catch{
-                    analysis={dataType:"unknown",confidence:0,summary:"Could not analyze file automatically.",canImport:false,cantImportReason:"AI analysis failed.",fieldsFound:[],issues:[],rowCount:rawRows.length};
-                  }
+                  const colsNorm=allColumns.map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,""));
+                  const score=(terms)=>terms.filter(t=>colsNorm.some(c=>c.includes(t))).length;
+                  const scores={
+                    deals:   score(["client","stage","value","ceno","cenum","deal","pipeline","acquired","sales"]),
+                    expenses:score(["expense","category","amount","vendor","cost","description","receipt"]),
+                    inflows: score(["inflow","payment","received","collection","income","deposited"]),
+                    clients: score(["company","contact","email","phone","address","industry"]),
+                    payroll: score(["employee","salary","wage","payroll","rate","allowance","deduction"]),
+                  };
+                  const best=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0];
+                  const dataType=best[1]>0?best[0]:"unknown";
+                  const confidence=Math.min(95,best[1]*20+5);
+                  const issues=[];
+                  if(rawRows.length===0) issues.push("File appears to be empty — no data rows found");
+                  if(allColumns.length>30) issues.push("Wide file — showing first 20 columns");
+                  const emptyCount=rawRows.filter(r=>Object.values(r).every(v=>!v)).length;
+                  if(emptyCount>0) issues.push(`${emptyCount} completely empty row${emptyCount>1?"s":""} detected`);
+                  const canImport=dataType==="deals"&&rawRows.length>0;
+                  const analysis={
+                    dataType,confidence,rowCount:rawRows.length,
+                    fieldsFound:allColumns.slice(0,20),
+                    issues,
+                    summary:`File contains ${rawRows.length} row${rawRows.length!==1?"s":""} and ${allColumns.length} column${allColumns.length!==1?"s":""}. ${dataType!=="unknown"?`Detected as ${dataType} data based on column names.`:"Column names did not match a known data type — manual review needed."}`,
+                    importAction:canImport?"Import as deals into the Sales Pipeline":`${dataType!=="unknown"?dataType.charAt(0).toUpperCase()+dataType.slice(1)+" data detected":"Unknown data type"} — use the matching module to import`,
+                    canImport,
+                    cantImportReason:canImport?"":dataType!=="deals"&&dataType!=="unknown"?`${dataType} data — import this using the ${dataType} module instead`:"Could not map columns to a known FabHub data type",
+                  };
                   setSmartImport({rows:rawRows,analysis,fileName:file.name,fileType});
                 }catch(err){
                   toastEmit("Error reading file: "+err.message,"error");
                 }
                 setImportLoading(false);
               }}/>
-              {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>🤔 Analyzing…</span>}
+              {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>📂 Reading…</span>}
             </label>
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
           </div>
