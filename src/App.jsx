@@ -1820,16 +1820,22 @@ export default function App(){
 
   // ── SUPABASE SYNC HELPERS ─────────────────────────────────────────────────
   // Fire-and-forget — never blocks the UI. Errors logged to console only.
+  const isUUID=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(s||''));
+  // Reject payloads where any UUID-typed column holds a non-UUID value (old numeric IDs).
+  const hasValidUUIDs=p=>(!p.id||isUUID(p.id))&&(!p.deal_id||isUUID(p.deal_id))&&(!p.milestone_id||isUUID(p.milestone_id))&&(!p.card_id||isUUID(p.card_id));
   const sbSync=(table,records,mapper)=>{
     if(!isSupabaseReady()||!records?.length) return;
     Promise.all(records.map(r=>{
       const payload=mapper?mapper(r):r;
+      if(!hasValidUUIDs(payload)) return Promise.resolve();
       return sbUpsert(table,payload,'id');
     })).catch(e=>console.error("FabHub sbSync "+table+":",e.message));
   };
   const sbSyncOne=(table,record,mapper)=>{
     if(!isSupabaseReady()||!record) return;
-    sbUpsert(table,mapper?mapper(record):record,'id')
+    const payload=mapper?mapper(record):record;
+    if(!hasValidUUIDs(payload)) return;
+    sbUpsert(table,payload,'id')
       .catch(e=>console.error("FabHub sbSyncOne "+table+":",e.message));
   };
   const sbSyncDelete=(table,id)=>{
@@ -1857,22 +1863,21 @@ export default function App(){
       if(key===KEYS.breqs)     sbSync("budget_requests",   val, toSbBR);
       if(key===KEYS.addenda)   sbSync("addenda",    val, toSbAddendum);
       if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
-      if(key===KEYS.checklist){
-        const uuidRE=/^[0-9a-f]{8}-[0-9a-f]{4}-/i;
-        sbSync("checklists",val.filter(r=>uuidRE.test(r.id)),toSbChecklist);
-      }
+      if(key===KEYS.checklist) sbSync("checklists",val,toSbChecklist);
       if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
       if(key===KEYS.billings){
         val.forEach(m=>{
+          if(!isUUID(m.id)) return;
           sbSyncOne("billing_milestones",m,toSbBilling);
-          (m.payments||[]).forEach(p=>sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment));
+          (m.payments||[]).forEach(p=>{ if(isUUID(p.id)) sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment); });
         });
       }
       if(key===KEYS.budgets){
-        Object.entries(val||{}).forEach(([dealId,b])=>
+        Object.entries(val||{}).forEach(([dealId,b])=>{
+          if(!isUUID(dealId)) return;
           sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id")
-            .catch(e=>console.error("budget sync:",e.message))
-        );
+            .catch(e=>console.error("budget sync:",e.message));
+        });
       }
       if(key===KEYS.cashPos){
         Object.entries(val||{}).forEach(([date,c])=>{
@@ -2520,7 +2525,7 @@ export default function App(){
   };
 
   const upProj=(id,fn)=>upProjs(ps=>({...ps,[id]:fn(ps[id]||emptyProject())}));
-  const proj=selProj?projs[selProj]:null;
+  const proj=selProj?{...emptyProject(),...(projs[selProj]||{})}:null;
   const projDeal=selProj?deals.find(d=>d.id===selProj):null;
 
   const openAddExp=(projId=null)=>{setExpForm({month:new Date().getMonth(),category:"Materials",amount:"",note:"",projectId:projId,receipt:""});setEditExpId(null);setExpModal(true);};
@@ -2835,6 +2840,7 @@ export default function App(){
               ? <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No cash position entries yet. Click Open to start today's entry.</div>
               : (()=>{
                   const latest=Object.values(cashPositions).sort((a,b)=>new Date(b.date)-new Date(a.date))[0];
+                  if(!latest) return <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No valid entries found.</div>;
                   const total=["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latest[b+"_end"]||latest[b+"End"]||0),0);
                   return(
                     <div>
