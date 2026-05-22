@@ -1867,6 +1867,30 @@ export default function App(){
     setActLog(prev=>{const next=[entry,...prev].slice(0,500);persist(KEYS.actlog,next);return next;});
   };
   const upPcards    =useCallback(fn=>setPcards(p=>{const n=fn(p);persist(KEYS.pcards,n);return n;}),[persist]);
+
+  // One-time migration: push all localStorage data to Supabase
+  const migrateToCloud = useCallback(async () => {
+    if (!isSupabaseReady()) { toastEmit("Supabase is not connected — check environment variables","error",5000); return; }
+    toastEmit("Pushing all data to cloud…","info",2500);
+    const pairs = [
+      [KEYS.deals,    deals],   [KEYS.jos,      jos],
+      [KEYS.expenses, exps],    [KEYS.prs,      prs],
+      [KEYS.mreqs,    mreqs],   [KEYS.breqs,    breqs],
+      [KEYS.addenda,  addenda], [KEYS.swatches, swatches],
+      [KEYS.checklist,checklist],[KEYS.actlog,   actLog],
+      [KEYS.billings, billings],[KEYS.budgets,  budgets],
+      [KEYS.cashPos,  cashPos],
+    ];
+    pairs.forEach(([key,val]) => { if(val && (Array.isArray(val)?val.length:Object.keys(val).length)) persist(key,val); });
+    // Inflows (not in persist mapping)
+    if (infs?.length) {
+      Promise.all(infs.map(r => sbUpsert("inflows", {
+        id:r.id, deal_id:r.dealId||r.projectId||null, date:r.date||r.month||null,
+        amount:Number(r.amount)||0, source:r.source||"", ref_no:r.refNo||"", note:r.note||""
+      }, 'id'))).catch(e=>console.error("inflows migrate:",e.message));
+    }
+    setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
+  },[persist, deals, jos, exps, prs, mreqs, breqs, addenda, swatches, checklist, actLog, billings, budgets, cashPos, infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
 
@@ -2635,6 +2659,11 @@ export default function App(){
           <div style={{fontSize:".78rem",color:"#64748b",marginBottom:16,lineHeight:1.6}}>
             Your data lives in this browser. Export a backup before any update so you never lose your real financials, deals, or expenses.
           </div>
+          {isSupabaseReady()&&(
+            <button onClick={migrateToCloud} style={{width:"100%",background:"#0ea5e9",border:"none",borderRadius:10,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+              ☁ Push All Data to Cloud
+            </button>
+          )}
           <ExportImportPanel KEYS={KEYS} onClose={()=>setShowExport(false)}/>
         </div>
       )}
