@@ -376,27 +376,25 @@ alter table public.activity_log             disable row level security;
 alter table public.user_profiles            disable row level security;
 
 -- ============================================================
--- ENABLE REALTIME ON ALL TABLES
+-- ENABLE REALTIME ON ALL TABLES (skips tables already added)
 -- ============================================================
-alter publication supabase_realtime add table public.deals;
-alter publication supabase_realtime add table public.job_orders;
-alter publication supabase_realtime add table public.project_cards;
-alter publication supabase_realtime add table public.project_card_dept_tasks;
-alter publication supabase_realtime add table public.project_card_dept_status;
-alter publication supabase_realtime add table public.billing_milestones;
-alter publication supabase_realtime add table public.billing_payments;
-alter publication supabase_realtime add table public.expenses;
-alter publication supabase_realtime add table public.inflows;
-alter publication supabase_realtime add table public.purchase_requests;
-alter publication supabase_realtime add table public.material_requests;
-alter publication supabase_realtime add table public.budget_requests;
-alter publication supabase_realtime add table public.addenda;
-alter publication supabase_realtime add table public.cash_positions;
-alter publication supabase_realtime add table public.project_budgets;
-alter publication supabase_realtime add table public.checklists;
-alter publication supabase_realtime add table public.swatches;
-alter publication supabase_realtime add table public.activity_log;
-alter publication supabase_realtime add table public.user_profiles;
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'deals','job_orders','project_cards','project_card_dept_tasks',
+    'project_card_dept_status','billing_milestones','billing_payments',
+    'expenses','inflows','purchase_requests','material_requests',
+    'budget_requests','addenda','cash_positions','project_budgets',
+    'checklists','swatches','activity_log','user_profiles'
+  ] LOOP
+    BEGIN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    EXCEPTION WHEN duplicate_object THEN
+      -- already a member, skip silently
+    END;
+  END LOOP;
+END $$;
 
 -- ============================================================
 -- VERIFY: list all tables and column counts
