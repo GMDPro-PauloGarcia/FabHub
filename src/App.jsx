@@ -1046,7 +1046,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               placeholder="Describe the project sub-type..." style={{marginTop:6}}/>
           )}
           </Fld>
-        <Fld label="Stage"><Sel value={form.stage} onChange={e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
         <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
         <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
@@ -4057,7 +4056,7 @@ export default function App(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
-            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL} · <span style={{color:"#3b82f6"}}>drag cards between stages</span></div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL} · <span style={{color:"#f59e0b"}}>🔥 hot = ≤15 days · ❄️ cold = 15+ days</span></div>
             {/* Search bar */}
             <div style={{position:"relative",marginTop:8}}>
               <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
@@ -4263,17 +4262,10 @@ export default function App(){
           </div>
         )}
 
-        {stageFilter&&(()=>{
-          const filtered=deals.filter(d=>d.stage===stageFilter&&d.stage!=="Cancelled");
+        {false&&(()=>{
+          const filtered=[];
           return(
-            <div style={{background:"#fff",borderRadius:14,border:`2px solid ${STAGE_CLR[stageFilter]||"#e2e8f0"}`,padding:"16px 18px",marginBottom:20}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                <div>
-                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>{stageFilter.replace(/^\d+ · /,"")}</div>
-                  <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{filtered.length} deal{filtered.length!==1?"s":""} in this stage</div>
-                </div>
-                <button onClick={()=>setStageFilter(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✕ Close</button>
-              </div>
+            <div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {filtered.map(d=>{
                   const{pct,missing}=dealCompleteness(d);
@@ -4309,107 +4301,77 @@ export default function App(){
           );
         })()}
 
-        {/* Stage groups — pre-award stages */}
+        {/* Hot / Cold pipeline — flat list replacing old Kanban columns */}
         {(()=>{
-          const preAward  = DEAL_STAGES.filter(s=>!WON_STAGES.includes(s)&&s!=="Cancelled");
-          const stageDeals= s=>deals.filter(d=>d.stage===s&&(!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())));
+          const daysSince=d=>Math.max(0,Math.floor((new Date(today)-new Date(d.dateAcquired||today))/86400000));
+          const activePipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&(!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())));
+          const hotLeads=activePipeline.filter(d=>daysSince(d)<=15);
+          const coldLeads=activePipeline.filter(d=>daysSince(d)>15);
+          const mkCard=(d,cold)=>{
+            const{pct,missing}=dealCompleteness(d);
+            const days=daysSince(d);
+            return(
+              <div key={d.id} style={{background:cold?"#f8fafc":"#fff",borderRadius:12,border:`1.5px solid ${cold?"#e2e8f0":"#cbd5e1"}`,padding:"14px 16px",opacity:cold?.8:1,transition:"all .15s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{d.client}</span>
+                      {vvipClients?.has(d.client)&&<span style={{fontSize:".65rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>⭐ VVIP</span>}
+                      {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
+                    </div>
+                    <div style={{fontSize:".78rem",color:"#64748b",marginBottom:8,display:"flex",gap:12,flexWrap:"wrap"}}>
+                      {d.contact&&<span>{d.contact}</span>}
+                      {Number(d.value)>0&&<span style={{color:"#10b981",fontWeight:700}}>₱{Number(d.value).toLocaleString("en-PH")}</span>}
+                      {d.salesOwner&&<span>👤 {d.salesOwner}</span>}
+                      {d.ceNo&&<span style={{color:"#94a3b8"}}>{d.ceNo}</span>}
+                    </div>
+                    {/* Completeness bar */}
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",marginBottom:3}}>
+                        <span style={{color:pct===100?"#10b981":pct>=60?"#f59e0b":"#ef4444",fontWeight:600}}>{pct===100?"✓ Profile complete":`Profile ${pct}%`}</span>
+                        {pct<100&&<span style={{color:"#94a3b8"}} title={missing.join(", ")}>Missing: {missing.slice(0,2).join(", ")}{missing.length>2?` +${missing.length-2} more`:""}</span>}
+                      </div>
+                      <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":pct>=60?"#f59e0b":"#ef4444",borderRadius:3,transition:"width .4s"}}/>
+                      </div>
+                    </div>
+                    {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:6}}>📅 Follow-up: {d.followUp}{d.followUp<today?" ⚠":""}</div>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}}>
+                    <div style={{background:cold?"#f1f5f9":days<=7?"#fef3c7":"#f0fdf4",border:`1px solid ${cold?"#e2e8f0":days<=7?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700,color:cold?"#94a3b8":days<=7?"#d97706":"#059669",whiteSpace:"nowrap"}}>
+                      {cold?`❄ ${days}d`:days===0?"Today":`🔥 ${days}d`}
+                    </div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",color:"#475569",cursor:"pointer",fontWeight:600}}>✏ Edit</button>
+                      {role==="Manager"
+                        ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>
+                        :<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);toastEmit("Flagged for Manager review!");}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          };
           return(
             <div>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{width:10,height:10,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>
-                Active Pipeline
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                <span>🔥 Hot Leads</span>
+                <span style={{fontWeight:400,color:"#64748b",fontSize:".78rem"}}>— engaged within 15 days ({hotLeads.length})</span>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
-                {preAward.map(stage=>{
-                  const sDeals=stageDeals(stage);
-                  const stageColor=STAGE_CLR[stage]||"#94a3b8";
-                  const totalVal=sDeals.reduce((s,d)=>s+Number(d.value||0),0);
-                  return(
-                    <div key={stage}
-                      onDragOver={e=>{e.preventDefault();setDragOver(stage);}}
-                      onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOver(null);}}
-                      onDrop={e=>{
-                        e.preventDefault(); setDragOver(null);
-                        if(!dragDeal) return;
-                        const deal=deals.find(d=>d.id===dragDeal);
-                        if(!deal||deal.stage===stage) return;
-                        if(WON_STAGES.includes(stage)){if(role==="Sales"){toastEmit("Sales cannot directly award. Move to Stage 05 and click Request Award to notify a Manager.","warning");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
-                        if(PAULO_GATE.includes(stage)&&role==="Sales"){
-                          toastEmit("This stage requires Manager approval. Your move has been logged — notify Paulo or Paolo.","warning");
-                        }
-                        stageQ(dragDeal,stage);
-                        setDragDeal(null);
-                      }}
-                      style={{background:dragOver===stage?"#eff6ff":"#fff",borderRadius:12,border:`1.5px solid ${dragOver===stage?"#93c5fd":stageColor+"44"}`,transition:"all .15s",minHeight:100}}>
-                      {/* Stage header */}
-                      <div style={{background:stageColor+"18",borderBottom:`1.5px solid ${stageColor}22`,padding:"10px 12px"}}>
-                        <div style={{fontWeight:700,color:stageColor,fontSize:".75rem",lineHeight:1.3}}>{stage.replace(/^\d+ · /,"")}</div>
-                        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                          <span style={{fontSize:".68rem",color:"#64748b"}}>{sDeals.length} deal{sDeals.length!==1?"s":""}</span>
-                          <span style={{fontSize:".68rem",fontWeight:700,color:stageColor}}>{totalVal>0?fmtK(totalVal):"—"}</span>
-                        </div>
-                      </div>
-                      {/* Deal cards */}
-                      <div style={{padding:"8px",maxHeight:320,overflowY:"auto"}}>
-                        {sDeals.length===0&&(
-                          <div style={{padding:"12px 8px",textAlign:"center",color:"#cbd5e1",fontSize:".73rem"}}>No deals</div>
-                        )}
-                        {sDeals.map(d=>(
-                          <div key={d.id}
-                            draggable
-                            onDragStart={e=>{setDragDeal(d.id);e.currentTarget.style.opacity=".45";}}
-                            onDragEnd={e=>{setDragDeal(null);setDragOver(null);e.currentTarget.style.opacity="1";}}
-                            style={{background:dragDeal===d.id?"#f0f9ff":"#f8fafc",borderRadius:8,padding:"10px 10px",marginBottom:6,border:"1.5px solid #e2e8f0",cursor:"grab",transition:"all .15s"}}
-                            onMouseEnter={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor=stageColor;e.currentTarget.style.background="#fff";}}}
-                            onMouseLeave={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}}
-                            onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}>
-                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:3}}>{d.client}</div>
-                            <div style={{fontSize:".7rem",color:"#64748b",marginBottom:5}}>
-                      {d.product==="Other"&&d.customProductType?d.customProductType:d.product}
-                    </div>
-                    {d.contact&&<div style={{fontSize:".69rem",color:"#94a3b8",marginBottom:3,fontStyle:"italic"}}>{d.contact}</div>}
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
-                              <span style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
-                              {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
-                            </div>
-                            {Number(d.value)>0&&(()=>{const tx=calcTax(d.value,d.receiptType||"OR",d.withholding||false);return <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2}}>{d.receiptType==="AR"?"📄 AR":"🧾 OR"} · Net ₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}{d.withholding?" · EWT":""}</div>;})()}
-                            {d.salesOwner&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>👤 {d.salesOwner}</div>}
-                            {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:2}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
-                            {PAULO_GATE.includes(d.stage)&&<div style={{fontSize:".67rem",color:"#d97706",background:"#fffbeb",borderRadius:4,padding:"2px 6px",marginTop:4,fontWeight:600}}>⚠ Paulo Gate</div>}
-                            {Number(d.value)>=3000000&&<div style={{fontSize:".67rem",color:"#dc2626",background:"#fef2f2",borderRadius:4,padding:"2px 6px",marginTop:3,fontWeight:600}}>🚨 ₱3M+</div>}
-                            {/* Completeness indicator */}
-                            {(()=>{const{pct,missing}=dealCompleteness(d);return pct<100?(
-                              <div style={{marginTop:6}} title={`Missing: ${missing.join(", ")}`}>
-                                <div style={{display:"flex",justifyContent:"space-between",fontSize:".62rem",color:"#94a3b8",marginBottom:2}}>
-                                  <span>Profile {pct}%</span>
-                                  <span style={{color:"#f59e0b"}}>⚠ {missing.length} missing</span>
-                                </div>
-                                <div style={{height:3,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}>
-                                  <div style={{height:"100%",width:pct+"%",background:pct>=80?"#10b981":"#f59e0b",borderRadius:2}}/>
-                                </div>
-                              </div>
-                            ):null;})()}
-                            {/* Action buttons */}
-                            <div style={{display:"flex",gap:5,marginTop:8,flexWrap:"wrap"}}>
-                              <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                              {!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&(
-                                role==="Manager"
-                                ? <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
-                                : <button onClick={e=>{e.stopPropagation();
-                                    if(true){
-                                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+session?.name+" flagged for award."}:x));
-                                      logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);
-                                      toastEmit("Flagged for Manager review!");
-                                    }}} style={{flex:1,background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+              {hotLeads.length===0&&<div style={{background:"#fff",borderRadius:12,border:"1.5px dashed #e2e8f0",padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem",marginBottom:16}}>No active hot leads. Add a deal above to start tracking.</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+                {hotLeads.map(d=>mkCard(d,false))}
               </div>
+              {coldLeads.length>0&&(<>
+                <div style={{fontWeight:700,color:"#94a3b8",fontSize:".88rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                  <span>❄️ Cold Leads</span>
+                  <span style={{fontWeight:400,fontSize:".78rem"}}>— no update in 15+ days ({coldLeads.length})</span>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+                  {coldLeads.map(d=>mkCard(d,true))}
+                </div>
+              </>)}
 
               {/* Awarded Projects */}
               <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
