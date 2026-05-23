@@ -88,7 +88,7 @@ const PROD_MEMBERS      = ALL_MEMBERS; // backward compat
 const MAT_UNITS       = ["pcs","sheets","meters","kg","sets","rolls","liters","sqm"];
 const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Other"];
 const SWATCH_CATS     = ["Fabric","Paint","Hardware","Wood","Metal","Glass","Laminate","Tile","Lighting","Fixture","Trim","Adhesive","Other"];
-const SWATCH_STATUS   = ["To Buy","Ordered","Received"];
+const SWATCH_STATUS   = ["To Buy","Ordered","Received","Client Approved"];
 const PAY_STATUS      = ["Unpaid","Partial","Deposited","Paid"];
 const MONTHS          = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const PRIORITIES      = ["Normal","High","Urgent"];
@@ -113,7 +113,7 @@ const PROD_CLR  = { Design:"#8b5cf6",Fabrication:"#f97316",QC:"#eab308",Delivery
 const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b","Partially Paid":"#f59e0b",Deposited:"#10b981","Fully Paid":"#059669",Paid:"#059669" };
 const PRI_CLR   = { Normal:"#3b82f6",High:"#f59e0b",Urgent:"#ef4444" };
 const DS_CLR    = { Briefing:"#94a3b8","On-going":"#3b82f6","First Pass":"#8b5cf6",Revision:"#f97316","Production Plans":"#eab308",Done:"#10b981" };
-const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b981" };
+const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b981","Client Approved":"#059669" };
 const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b" };
 
 const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval","Module","Swatch","Risk Flag"];
@@ -193,9 +193,11 @@ const DEFAULT_DEPT_TASKS = {
     "Client design approved (revisions complete)",
     "Production plans and shop drawings complete",
     "Signage plans complete",
+    "Final revision number confirmed and locked",
     "Swatchboard provided to Procurement",
     "Renders finalized",
     "PMs and Coordinators briefed by Design",
+    "Approved production drawings handed off to Operations (file link shared)",
   ],
   QS:[
     "Cost estimate (CE) prepared and submitted",
@@ -206,12 +208,16 @@ const DEFAULT_DEPT_TASKS = {
   Procurement:[
     "Swatchboard received from Design",
     "Suppliers sourced and quoted",
-    "Purchase Orders issued",
+    "Purchase Orders issued and approved",
     "Material delivery dates confirmed",
     "All materials delivered to warehouse/site",
+    "QC inspection completed on received materials",
+    "Materials confirmed ready — Operations notified to begin fabrication",
   ],
   Operations:[
     "PM and Coordinators briefed by Design team",
+    "Production drawings received and reviewed by PM (revision confirmed)",
+    "All materials confirmed present and ready — fabrication cleared to start",
     "Fabrication / construction started",
     "Daily/weekly PM updates logged",
     "Site visits done and progress billed",
@@ -303,7 +309,7 @@ const emptyPR = () => ({
   qty:1, unit:"pcs", estUnitCost:0, actUnitCost:0,
   supplier:"", poNumber:"", poDate:"",
   qtyDelivered:0, deliveryDate:"", deliveryNote:"",
-  status:"Draft", requestedBy:"", approvedBy:"",
+  status:"Draft", requestedBy:"", approvedBy:"", approvedAt:"",
   budgetCategory:"Materials",  // which budget line this hits
   notes:"", createdDate:"",
 });
@@ -637,7 +643,7 @@ const DEFAULT_USERS = [
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const mkDesign=(status="Briefing",designer="",type="in-house",dueDate="",link="",notes="")=>({
-  status,designer,designerType:type,dueDate,link,notes,
+  status,designer,designerType:type,dueDate,link,notes,revisionNo:"",
   statusHistory:[{status,date:today,by:"System"}],deliverables:[]
 });
 const SEED_DEALS=[];
@@ -2553,7 +2559,11 @@ export default function App(){
     upSwatches(ss=>editSw?ss.map(s=>s.id===editSw?rec:s):[...ss,rec]);
     setSwModal(false);setEditSw(null);
   };
-  const swQ=(id,st)=>upSwatches(ss=>ss.map(s=>s.id===id?{...s,status:st}:s));
+  const swQ=(id,st)=>upSwatches(ss=>ss.map(s=>{
+    if(s.id!==id) return s;
+    const extra=st==="Client Approved"?{clientApprovedBy:session?.name||"",clientApprovedAt:today}:{};
+    return {...s,status:st,...extra};
+  }));
 
   const openDesignEdit=()=>{setDesignForm({...(proj?.design||mkDesign())});setDesignModal(true);};
   const saveDesign=()=>{
@@ -5082,8 +5092,14 @@ export default function App(){
           <Modal open title={`Design Details — ${projDeal?.client}`} onClose={()=>setSelProj(null)} wide>
             <Fld label="Designer"><Sel value={proj.design?.designer||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,designer:e.target.value}}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
             <Fld label="Due Date"><Inp type="date" value={proj.design?.dueDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,dueDate:e.target.value}}))}/></Fld>
+            <Fld label="Approved Revision No." hint="Lock this before handoff to Ops e.g. Rev 3"><Inp value={proj.design?.revisionNo||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,revisionNo:e.target.value}}))} placeholder="e.g. Rev 3"/></Fld>
             <Fld label="File / Link"><Inp type="url" value={proj.design?.link||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,link:e.target.value}}))} placeholder="https://drive.google.com/…"/></Fld>
             <Fld label="Notes"><Inp rows={3} value={proj.design?.notes||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,notes:e.target.value}}))}/></Fld>
+            {proj.design?.revisionNo&&proj.design?.link&&(
+              <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 14px",marginTop:4,fontSize:".8rem",color:"#15803d"}}>
+                ✅ Ready to hand off — <strong>{proj.design.revisionNo}</strong> · <a href={proj.design.link} target="_blank" rel="noreferrer" style={{color:"#15803d"}}>View drawings</a>
+              </div>
+            )}
             <Btn full onClick={()=>setSelProj(null)}>Done</Btn>
           </Modal>
         )}
@@ -6113,20 +6129,22 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
   const toBuy=swatches.filter(s=>s.status==="To Buy");
   const ordered=swatches.filter(s=>s.status==="Ordered");
   const received=swatches.filter(s=>s.status==="Received");
+  const approved=swatches.filter(s=>s.status==="Client Approved");
   const[filter,setFilter]=useState("All");
   const shown=filter==="All"?swatches:swatches.filter(s=>s.status===filter);
   return(
     <Wrap>
       <SecHead title="Procurement Swatchboard" sub="Shared checklist — Design & Ops add, Procurement fulfills"/>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-        <KPI label="Total Items"  value={swatches.length}   color="#3b82f6"/>
-        <KPI label="To Buy"       value={toBuy.length}      color="#ef4444"/>
-        <KPI label="Ordered"      value={ordered.length}    color="#f59e0b"/>
-        <KPI label="Received"     value={received.length}   color="#10b981"/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
+        <KPI label="Total Items"     value={swatches.length}   color="#3b82f6"/>
+        <KPI label="To Buy"          value={toBuy.length}      color="#ef4444"/>
+        <KPI label="Ordered"         value={ordered.length}    color="#f59e0b"/>
+        <KPI label="Received"        value={received.length}   color="#10b981"/>
+        <KPI label="Client Approved" value={approved.length}   color="#059669"/>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",justifyContent:"space-between",alignItems:"center"}}>
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-          {["All","To Buy","Ordered","Received"].map(f=>(
+          {["All","To Buy","Ordered","Received","Client Approved"].map(f=>(
             <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${filter===f?SW_CLR[f]||"#3b82f6":"#e2e8f0"}`,background:filter===f?(SW_CLR[f]||"#3b82f6")+"18":"#fff",color:filter===f?SW_CLR[f]||"#3b82f6":"#64748b",fontWeight:filter===f?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".8rem"}}>{f}</button>
           ))}
         </div>
@@ -6142,10 +6160,13 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
                 <Badge label={sw.addedBy==="Design"?"🎨 Design":"⚙ Ops"} color={sw.addedBy==="Design"?"#8b5cf6":"#f97316"}/>
                 {sw.projectId&&<Badge label={clientName(sw.projectId)} color="#3b82f6"/>}
               </div>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".98rem",textDecoration:sw.status==="Received"?"line-through":"none"}}>{sw.name}</div>
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".98rem",textDecoration:sw.status==="Client Approved"?"line-through":"none"}}>{sw.name}</div>
               <div style={{fontSize:".75rem",color:"#64748b",marginTop:3}}>{sw.qty} {sw.unit} · {sw.supplier||"No supplier specified"}</div>
               {sw.notes&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:3,fontStyle:"italic"}}>{sw.notes}</div>}
               {sw.swatchLink&&<a href={sw.swatchLink} target="_blank" rel="noreferrer" style={{fontSize:".72rem",color:"#3b82f6",display:"block",marginTop:4}}>🔗 View reference</a>}
+              {sw.status==="Client Approved"&&sw.clientApprovedBy&&(
+                <div style={{fontSize:".72rem",color:"#059669",marginTop:4,fontWeight:600}}>✅ Approved by {sw.clientApprovedBy} · {sw.clientApprovedAt}</div>
+              )}
             </div>
             <div style={{flexShrink:0,textAlign:"right"}}>
               <div style={{fontWeight:700,color:"#f59e0b",fontSize:"1rem",marginBottom:8}}>{sw.estCost?fmt(sw.estCost):"—"}</div>
@@ -7886,6 +7907,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                     {pr.supplier&&<span>🏭 {pr.supplier}</span>}
                     {pr.poNumber&&<span>PO: {pr.poNumber}</span>}
                     <span>By: {pr.requestedBy||"—"}</span>
+                    {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ Approved by {pr.approvedBy}{pr.approvedAt?` · ${pr.approvedAt}`:""}</span>}
                   </div>
                   {/* Delivery progress */}
                   {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&(
@@ -7910,8 +7932,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                     )}
                   </div>
                   <div style={{display:"flex",gap:6}}>
-                    <select value={pr.status} onChange={e=>updatePR(pr.id,{status:e.target.value})}
-                      style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                    <select value={pr.status} onChange={e=>{
+                      const st=e.target.value;
+                      const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};
+                      updatePR(pr.id,{status:st,...extra});
+                    }} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                       {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
                     </select>
                     <button onClick={()=>openEdit(pr)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
