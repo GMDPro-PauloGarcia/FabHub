@@ -1676,6 +1676,7 @@ export default function App(){
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
+        if(data?.actLog?.length) setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
     window.addEventListener("focus",refresh);
