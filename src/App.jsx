@@ -7066,6 +7066,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   // Book balance = what bank confirms; if not filled, use ending balance
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
   const totalCashAvailable=workingBook-totalLess; // Working capital only — Unionbank (capital) excluded
+  const totalAssets=totalCashAvailable+n(pos.ytd.accountsReceivable);
 
   const handleSave=()=>{
     const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
@@ -7167,18 +7168,19 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       )}
 
       {/* KPI strip */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
         {[
-          ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
-          ["Working Capital (5 Banks)", "₱"+fmt2(workingBook), "#1d4ed8"],
-          ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook), "#0e7490"],
-          ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
-          ["Outstanding Invoices", "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
-          ["YTD Receivable",       pos.ytd.accountsReceivable?"₱"+fmt2(pos.ytd.accountsReceivable):"—", "#8b5cf6"],
-        ].map(([l,v,c])=>(
+          ["Total GMD Assets",         "₱"+fmt2(totalAssets),                                           totalAssets>=0?"#0f172a":"#ef4444", "Cash + Receivables"],
+          ["Total Cash Available",      "₱"+fmt2(totalCashAvailable),                                   totalCashAvailable>=0?"#059669":"#ef4444", "Working capital after deductions"],
+          ["Working Capital (5 Banks)", "₱"+fmt2(workingBook),                                          "#1d4ed8", "Gross bank balances"],
+          ["GMD Capital (Unionbank)",   "₱"+fmt2(bankTotals.capBook>0?bankTotals.capBook:bankTotals.capEnd), "#0e7490", "Savings — excluded from WC"],
+          ["Collections Today",         "₱"+fmt2(totalCollections),                                     "#10b981", "Auto + manual"],
+          ["Outstanding Invoices",      "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b", "Unpaid billings"],
+        ].map(([l,v,c,sub])=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c,lineHeight:1}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:6}}>{l}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,lineHeight:1}}>{v}</div>
+            {sub&&<div style={{fontSize:".6rem",color:c,opacity:.65,marginTop:3}}>{sub}</div>}
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
           </div>
         ))}
       </div>
@@ -7186,7 +7188,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       {/* Main cash position table */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
         {/* Table header */}
-        <div style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",background:"#1e293b"}}>
+        <div style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",background:"#1e293b"}}>
           <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
           {BANKS.filter(b=>!b.capital).map(b=>(
             <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155"}}>
@@ -7203,7 +7205,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           ["BOOK BALANCE\n(per bank statement)", "book", "#fff"],
           ["BANK BALANCE ENDING","end", "#fafafa"],
         ].map(([label,key,bg])=>(
-          <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
+          <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
             <div style={labelCell}>{label}</div>
             {BANKS.filter(b=>!b.capital).map(b=>(
               <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #f1f5f9"}}>
@@ -7216,7 +7218,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <div style={{padding:"8px 12px",textAlign:"right",fontWeight:700,fontSize:".85rem",
               color:key==="end"?"#059669":key==="book"?"#1d4ed8":"#0f172a",
               background:key==="end"?"#f0fdf4":key==="book"?"#eff6ff":"transparent"}}>
-              {fmt2(BANKS.reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
+              {fmt2(BANKS.filter(b=>!b.capital).reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
             </div>
           </div>
         ))}
