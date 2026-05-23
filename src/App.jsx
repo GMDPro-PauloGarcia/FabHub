@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -1027,7 +1027,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     onSave(form);
   };
   return(
-    <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
+    <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="Client Name" required hint="Start typing to search from your 207 GMD clients">
@@ -4479,7 +4479,7 @@ export default function App(){
                   </Fld>
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Notes" hint="PO number, email confirmation details, etc. (optional)">
-                      <Inp rows={2} value={awardForm.triggerNote} onChange={e=>setAwardForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from client@email.com on May 18…"/>
+                      <Inp rows={2} defaultValue={awardForm.triggerNote} onBlur={e=>setAwardForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from client@email.com on May 18…"/>
                     </Fld>
                   </div>
                 </div>
@@ -9718,12 +9718,19 @@ function DataManagement({
       bgColor:"#fef2f2",
       borderColor:"#fecaca",
       items:["Deals / Pipeline","Expenses","Inflows","Job Orders","Purchase Requests","Material Requests","Budget Requests","Addenda","Billing Milestones","Project Cards","Checklist Items","Cash Position Days","Activity Log"],
-      action:()=>{
+      action:async()=>{
         upDeals(()=>[]);upExps(()=>[]);upInflows(()=>[]);upJos(()=>[]);
         upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);upAddenda(()=>[]);
         upBillings(()=>[]);upPcards(()=>({}));upChecklist(()=>[]);
         upCashPos(()=>({}));upBudgets(()=>({}));
         setActLog([]);persist("gmdv5:actlog",[]);
+        await Promise.all([
+          sbClear('deals'),sbClear('expenses'),sbClear('inflows'),sbClear('job_orders'),
+          sbClear('purchase_requests'),sbClear('material_requests'),sbClear('budget_requests'),
+          sbClear('addenda'),sbClear('billing_milestones'),sbClear('billing_payments'),
+          sbClear('project_cards'),sbClear('project_card_dept_status'),sbClear('project_card_dept_tasks'),
+          sbClear('checklists'),sbClear('cash_positions'),sbClear('project_budgets'),sbClear('activity_log'),
+        ]);
         return "Full purge complete. FabHub is clean and ready for real data.";
       }
     },
@@ -9735,9 +9742,14 @@ function DataManagement({
       bgColor:"#fffbeb",
       borderColor:"#fde68a",
       items:["Deals / Pipeline","Job Orders","Project Cards","Checklist Items","Addenda"],
-      action:()=>{
+      action:async()=>{
         upDeals(()=>[]);upJos(()=>[]);upPcards(()=>({}));
         upChecklist(()=>[]);upAddenda(()=>[]);
+        await Promise.all([
+          sbClear('deals'),sbClear('job_orders'),sbClear('project_cards'),
+          sbClear('project_card_dept_status'),sbClear('project_card_dept_tasks'),
+          sbClear('checklists'),sbClear('addenda'),
+        ]);
         return "Pipeline cleared. Expenses, billing, and cash position preserved.";
       }
     },
@@ -9749,8 +9761,12 @@ function DataManagement({
       bgColor:"#eff6ff",
       borderColor:"#93c5fd",
       items:["Expenses","Inflows","Billing Milestones","Cash Position Days"],
-      action:()=>{
+      action:async()=>{
         upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));
+        await Promise.all([
+          sbClear('expenses'),sbClear('inflows'),
+          sbClear('billing_milestones'),sbClear('billing_payments'),sbClear('cash_positions'),
+        ]);
         return "Finance data cleared. Pipeline and projects untouched.";
       }
     },
@@ -9762,8 +9778,11 @@ function DataManagement({
       bgColor:"#ecfeff",
       borderColor:"#a5f3fc",
       items:["Purchase Requests","Material Requests","Budget Requests"],
-      action:()=>{
+      action:async()=>{
         upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);
+        await Promise.all([
+          sbClear('purchase_requests'),sbClear('material_requests'),sbClear('budget_requests'),
+        ]);
         return "Procurement data cleared.";
       }
     },
@@ -9775,21 +9794,22 @@ function DataManagement({
       bgColor:"#f9fafb",
       borderColor:"#e5e7eb",
       items:["Activity Log"],
-      action:()=>{
+      action:async()=>{
         setActLog([]);persist("gmdv5:actlog",[]);
+        await sbClear('activity_log');
         return "Activity log cleared.";
       }
     },
   ];
 
-  const executePurge=()=>{
+  const executePurge=async()=>{
     if(purgeWord!==PURGE_WORD) return;
     const opt=PURGE_OPTIONS.find(o=>o.key===confirmPurge);
     if(!opt) return;
-    const msg=opt.action();
-    setPurgeResult(msg);
     setConfirmPurge(null);
     setPurgeWord("");
+    const msg=await opt.action();
+    setPurgeResult(msg);
   };
 
   return(

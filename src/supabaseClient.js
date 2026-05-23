@@ -118,6 +118,12 @@ export const sbLoadAll = async () => {
   }
 }
 
+export const sbClear = async (table) => {
+  if (!supabase) return
+  const { error } = await supabase.from(table).delete().not('id', 'is', null)
+  if (error) console.error(`SB CLEAR ${table}:`, error.message)
+}
+
 export const sbSubscribe = (channel, table, callback) => {
   if (!supabase) return null
   return supabase.channel(channel)
