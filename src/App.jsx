@@ -2115,15 +2115,31 @@ export default function App(){
   const updateMilestone=(id,ch)=>upBillings(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
   const deleteMilestone=(id)=>upBillings(bs=>bs.filter(b=>b.id!==id));
   const logBillingPayment=(msId,payment)=>{
+    const ms=billings.find(b=>b.id===msId);
+    const dealId=ms?.dealId;
+    const amt=Number(payment.amount||0);
+    const pDate=payment.date||today;
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
-      const payments=[...( b.payments||[]),{...payment,id:uid(),date:payment.date||today}];
+      const payments=[...(b.payments||[]),{...payment,id:uid(),date:pDate}];
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
       const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':b.status;
       return{...b,payments,status};
     }));
-    // FIX 14: Auto-record payment to daily cash position under the correct bank
-    if(payment.bank && payment.amount){
+    // Sync deal.amountPaid — billing is the authoritative payment source for awarded projects
+    if(dealId && amt>0){
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==dealId) return d;
+        const newPaid=(d.amountPaid||0)+amt;
+        const newStatus=newPaid>=Number(d.invoiced||0)?'Paid':newPaid>0?'Deposited':'Unpaid';
+        return{...d,amountPaid:newPaid,paymentStatus:newStatus};
+      }));
+      // Create a dated inflows entry so DCP "collections today" is accurate
+      const client=deals.find(d=>d.id===dealId)?.client||'';
+      upInfs(is=>[...is,{id:uid(),date:pDate,month:new Date(pDate).getMonth(),source:client,amount:amt,note:payment.note||`Billing payment — ${ms?.name||'milestone'}`,projectId:dealId,bank:payment.bank||''}]);
+    }
+    // Auto-record payment to daily cash position under the correct bank
+    if(payment.bank && amt>0){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
       setCashPos(cp=>{
@@ -2131,8 +2147,8 @@ export default function App(){
         const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
         const field=fieldMap[bankKey]||null;
         if(!field) return cp;
-        const updated={...existing,[field]:(Number(existing[field]||0)+Number(payment.amount))};
-        const newNote=`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
+        const updated={...existing,[field]:(Number(existing[field]||0)+amt)};
+        const newNote=`+₱${amt.toLocaleString()} billing payment received`;
         updated.notes=(updated.notes?updated.notes+" | ":"")+newNote;
         return{...cp,[pDate]:updated};
       });
@@ -2328,6 +2344,12 @@ export default function App(){
   const totExp    =useMemo(()=>exps.reduce((s,e)=>s+e.amount,0),[exps]);
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
+  // Live accounts receivable — sum of unpaid milestone balances (auto, no manual entry needed)
+  const totalAR   =useMemo(()=>billings.reduce((sum,m)=>{
+    if(m.status==='Cancelled') return sum;
+    const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    return sum+Math.max(0,Number(m.amount||0)-paid);
+  },0),[billings]);
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
@@ -2535,8 +2557,9 @@ export default function App(){
       const newStatus=newPaid>=d.invoiced?"Paid":newPaid>0?"Deposited":"Unpaid";
       return{...d,amountPaid:newPaid,paymentStatus:newStatus};
     }));
-    const mo=new Date(date).getMonth();
-    upInfs(is=>[...is,{id:uid(),month:mo,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId}]);
+    const pDate=date||today;
+    const mo=new Date(pDate).getMonth();
+    upInfs(is=>[...is,{id:uid(),date:pDate,month:mo,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId}]);
   };
 
   const upProj=(id,fn)=>upProjs(ps=>({...ps,[id]:fn(ps[id]||emptyProject())}));
@@ -4652,6 +4675,7 @@ export default function App(){
           totExp={totExp}
           totColl={totColl}
           totOut={totOut}
+          totalAR={totalAR}
         />
         <div style={{marginTop:24,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           <KPI label="Revenue"      value={fmtK(totRev)}         color="#3b82f6"/>
@@ -4946,6 +4970,7 @@ export default function App(){
           totExp={totExp}
           totColl={totColl}
           totOut={totOut}
+          totalAR={totalAR}
         />
       </Wrap>
     );
@@ -7025,7 +7050,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
 
 
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
-function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp,totColl,totOut}){
+function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp,totColl,totOut,totalAR}){
   const[selDate,setSelDate]=useState(today);
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
@@ -7055,11 +7080,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
     }
   };
 
-  // Auto-pull today's FabHub collections
+  // Auto-pull collections for the selected date (exact date if available, else falls back to same-day month match)
   const todayInflows=useMemo(()=>{
-    const mo=new Date(selDate).getMonth();
-    // Simple: sum inflows for the selected month (daily breakdown not available)
-    return infs.filter(i=>i.month===mo).reduce((s,i)=>s+i.amount,0);
+    return infs.filter(i=>i.date?i.date===selDate:false).reduce((s,i)=>s+i.amount,0);
   },[infs,selDate]);
 
   const f=(path,val)=>{
@@ -7105,7 +7128,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   // Book balance = what bank confirms; if not filled, use ending balance
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
   const totalCashAvailable=workingBook-totalLess; // Working capital only — Unionbank (capital) excluded
-  const totalAssets=totalCashAvailable+n(pos.ytd.accountsReceivable);
+  // Use live AR from billing milestones; fall back to manual entry only if no billing data exists
+  const arValue=totalAR>0?totalAR:n(pos.ytd.accountsReceivable);
+  const totalAssets=totalCashAvailable+arValue;
 
   const handleSave=()=>{
     const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
@@ -7209,12 +7234,12 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       {/* KPI strip */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
         {[
-          ["Total GMD Assets",         "₱"+fmt2(totalAssets),                                           totalAssets>=0?"#0f172a":"#ef4444", "Cash + Receivables"],
-          ["Total Cash Available",      "₱"+fmt2(totalCashAvailable),                                   totalCashAvailable>=0?"#059669":"#ef4444", "Working capital after deductions"],
-          ["Working Capital (5 Banks)", "₱"+fmt2(workingBook),                                          "#1d4ed8", "Gross bank balances"],
-          ["GMD Capital (Unionbank)",   "₱"+fmt2(bankTotals.capBook>0?bankTotals.capBook:bankTotals.capEnd), "#0e7490", "Savings — excluded from WC"],
-          ["Collections Today",         "₱"+fmt2(totalCollections),                                     "#10b981", "Auto + manual"],
-          ["Outstanding Invoices",      "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b", "Unpaid billings"],
+          ["Total GMD Assets",         "₱"+fmt2(totalAssets),         totalAssets>=0?"#0f172a":"#ef4444", totalAR>0?"Cash + AR from billing":"Cash + manual AR"],
+          ["Total Cash Available",     "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444", "Working capital after deductions"],
+          ["Working Capital (5 Banks)","₱"+fmt2(workingBook),        "#1d4ed8", "Gross bank balances"],
+          ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook>0?bankTotals.capBook:bankTotals.capEnd), "#0e7490", "Savings — excluded from WC"],
+          ["Collections Today",        "₱"+fmt2(totalCollections),   "#10b981", "Inflows on this date"],
+          ["Accounts Receivable",      "₱"+fmt2(arValue),            "#8b5cf6", totalAR>0?"Auto from billing":"Manual entry"],
         ].map(([l,v,c,sub])=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,lineHeight:1}}>{v}</div>
@@ -7270,7 +7295,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
               <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>
                   🔗 FabHub Auto: ₱{fmt2(todayInflows)}
-                  <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
+                  <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(inflows on {selDate})</span>
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}>
                   <CurrInp
@@ -7355,21 +7380,29 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>KEY AREAS</span>
           </div>
           {[
-            ["Expected Collection",   "ytd.expectedCollection",  "#f59e0b"],
-            ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444"],
-            ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316"],
-            ["YTD Accounts Receivable","ytd.accountsReceivable", "#10b981"],
-          ].map(([label,path,color])=>(
+            ["Expected Collection",   "ytd.expectedCollection",  "#f59e0b", false],
+            ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444", false],
+            ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316", false],
+            ["Accounts Receivable",   "ytd.accountsReceivable",  "#10b981", true],
+          ].map(([label,path,color,isAR])=>(
             <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
-              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
+              <div>
+                <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
+                {isAR&&totalAR>0&&<div style={{fontSize:".65rem",color:"#10b981",marginTop:1}}>auto from billing</div>}
+              </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <CurrInp
-                  value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
-                  onChange={e=>f(path,e.target.value)}
-                  style={{...inpStyle,width:160,borderColor:`${color}44`}}/>
-                <span style={{fontWeight:700,color,minWidth:90,textAlign:"right",fontSize:".82rem"}}>
-                  {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
-                </span>
+                {isAR&&totalAR>0
+                  ? <span style={{fontWeight:800,color:"#10b981",fontSize:".88rem"}}>₱{fmt2(totalAR)}</span>
+                  : <>
+                      <CurrInp
+                        value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
+                        onChange={e=>f(path,e.target.value)}
+                        style={{...inpStyle,width:160,borderColor:`${color}44`}}/>
+                      <span style={{fontWeight:700,color,minWidth:90,textAlign:"right",fontSize:".82rem"}}>
+                        {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
+                      </span>
+                    </>
+                }
               </div>
             </div>
           ))}
