@@ -94,7 +94,7 @@ export const sbLoadAll = async () => {
     deptStatus.forEach(ds => {
       const card = Object.values(pcardsObj).find(c => c.id === ds.card_id)
       if (card?.departments[ds.department])
-        Object.assign(card.departments[ds.department], { done: ds.done, doneAt: ds.done_at, doneBy: ds.done_by })
+        Object.assign(card.departments[ds.department], { done: ds.done, doneAt: ds.done_at, doneBy: ds.done_by, statusId: ds.id })
     })
 
     // Embed payments into milestones (convert snake_case → camelCase for payment fields)

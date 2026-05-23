@@ -228,6 +228,7 @@ const DEFAULT_DEPT_TASKS = {
 };
 
 const emptyProjectCard=(dealId,dealData)=>({
+  id:uid(),
   dealId,
   client:dealData?.client||"",
   ceNo:dealData?.ceNo||"",
@@ -243,6 +244,7 @@ const emptyProjectCard=(dealId,dealData)=>({
     done:false,
     doneAt:null,
     doneBy:null,
+    statusId:uid(),
     tasks:DEFAULT_DEPT_TASKS[dept].map((t,i)=>({id:`${dept}-${i}`,text:t,done:false,doneAt:null,doneBy:null})),
   }]))),
 });
@@ -1865,6 +1867,18 @@ export default function App(){
       if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
       if(key===KEYS.checklist) sbSync("checklists",val,toSbChecklist);
       if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
+      if(key===KEYS.pcards){
+        Object.entries(val||{}).forEach(([dealId,c])=>{
+          if(!isUUID(dealId)||!c.id||!isUUID(c.id)) return;
+          sbUpsert("project_cards",{id:c.id,deal_id:dealId,client:c.client||"",ce_no:c.ceNo||"",award_date:c.awardDate||null,target_days:c.targetDays||null,target_end_date:c.targetEndDate||null,tat_category:c.tatCategory||"",tat_set_by:c.tatSetBy||null,tat_set_at:c.tatSetAt||null},"id")
+            .catch(e=>console.error("pcard sync:",e.message));
+          Object.entries(c.departments||{}).forEach(([dept,d])=>{
+            const sid=d.statusId&&isUUID(d.statusId)?d.statusId:uid();
+            sbUpsert("project_card_dept_status",{id:sid,card_id:c.id,department:dept,done:d.done||false,done_at:d.doneAt||null,done_by:d.doneBy||null},"id")
+              .catch(e=>console.error("dept status sync:",e.message));
+          });
+        });
+      }
       if(key===KEYS.billings){
         val.forEach(m=>{
           if(!isUUID(m.id)) return;
@@ -1918,7 +1932,7 @@ export default function App(){
       [KEYS.addenda,  addenda], [KEYS.swatches, swatches],
       [KEYS.checklist,checklist],[KEYS.actlog,   actLog],
       [KEYS.billings, billings],[KEYS.budgets,  budgets],
-      [KEYS.cashPos,  cashPositions],
+      [KEYS.cashPos,  cashPositions],[KEYS.pcards, pcards],
     ];
     pairs.forEach(([key,val]) => { if(val && (Array.isArray(val)?val.length:Object.keys(val).length)) persist(key,val); });
     // Inflows (not in persist mapping)
