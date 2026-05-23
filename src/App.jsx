@@ -1047,7 +1047,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           )}
           </Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
-        <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
         <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
       </div>
       {/* GMD Workflow Fields */}
@@ -2441,10 +2440,12 @@ export default function App(){
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
       GMD_CLIENTS.push({name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
     }
-    if(!editDeal) logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
-    else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+    const logClient = editDeal ? (deals.find(d=>d.id===editDeal)?.client||rec.client) : rec.client;
+    if(!editDeal) logActivity(rec.id,"New Deal",`${logClient} added at ${rec.stage}`,session?.name);
+    else logActivity(rec.id,"Deal Updated",`${logClient} — updated`,session?.name);
     setEditDeal(null);
     setDealModal(false);
+    setDealForm({...emptyDeal,ceNo:nextCENo()});
   };
   const delDeal=id=>{upDeals(ds=>ds.filter(d=>d.id!==id));upProjs(ps=>{const n={...ps};delete n[id];return n;});setConfirmDel(null);};
 
@@ -2723,7 +2724,7 @@ export default function App(){
 
 
       {/* Global Modals */}
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
+      <DealModal key={`dm-${dealModal}-${editDeal||"new"}`} open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
@@ -4168,11 +4169,10 @@ export default function App(){
             </div>
           ):null;
         })()}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
             {l:"Total Pipeline",    v:fmtK(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
             {l:"Awarded Value",     v:fmtK(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
-            {l:"Collected",         v:fmtK(totColl),  c:"#10b981", sub:fmtK(totOut)+" outstanding"},
             {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
@@ -4336,7 +4336,6 @@ export default function App(){
                         <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":pct>=60?"#f59e0b":"#ef4444",borderRadius:3,transition:"width .4s"}}/>
                       </div>
                     </div>
-                    {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:6}}>📅 Follow-up: {d.followUp}{d.followUp<today?" ⚠":""}</div>}
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}}>
                     <div style={{background:cold?"#f1f5f9":days<=7?"#fef3c7":"#f0fdf4",border:`1px solid ${cold?"#e2e8f0":days<=7?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700,color:cold?"#94a3b8":days<=7?"#d97706":"#059669",whiteSpace:"nowrap"}}>
@@ -4599,7 +4598,7 @@ export default function App(){
           </Modal>
         )}
 
-        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
+        <DealModal key={`dm-${dealModal}-${editDeal||"new"}`} open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       </Wrap>
     );
 
