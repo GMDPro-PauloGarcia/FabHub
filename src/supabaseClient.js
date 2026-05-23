@@ -94,11 +94,16 @@ export const sbLoadAll = async () => {
     deptStatus.forEach(ds => {
       const card = Object.values(pcardsObj).find(c => c.id === ds.card_id)
       if (card?.departments[ds.department])
-        Object.assign(card.departments[ds.department], { done: ds.done, doneAt: ds.done_at, doneBy: ds.done_by })
+        Object.assign(card.departments[ds.department], { done: ds.done, doneAt: ds.done_at, doneBy: ds.done_by, statusId: ds.id })
     })
 
-    // Embed payments into milestones
-    const billingsArr = milestones.map(m => ({ ...m, dealId: m.deal_id, payments: payments.filter(p => p.milestone_id === m.id) }))
+    // Embed payments into milestones (convert snake_case → camelCase for payment fields)
+    const billingsArr = milestones.map(m => ({
+      ...m, dealId: m.deal_id,
+      payments: payments.filter(p => p.milestone_id === m.id).map(p => ({
+        ...p, milestoneId: p.milestone_id, refNo: p.ref_no, recordedBy: p.recorded_by
+      }))
+    }))
 
     // Key objects
     const budgetsObj  = Object.fromEntries(budgets.map(b  => [b.deal_id, b]))
@@ -111,6 +116,12 @@ export const sbLoadAll = async () => {
     console.error('sbLoadAll failed:', err)
     return null
   }
+}
+
+export const sbClear = async (table) => {
+  if (!supabase) return
+  const { error } = await supabase.from(table).delete().not('id', 'is', null)
+  if (error) console.error(`SB CLEAR ${table}:`, error.message)
 }
 
 export const sbSubscribe = (channel, table, callback) => {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -228,6 +228,7 @@ const DEFAULT_DEPT_TASKS = {
 };
 
 const emptyProjectCard=(dealId,dealData)=>({
+  id:uid(),
   dealId,
   client:dealData?.client||"",
   ceNo:dealData?.ceNo||"",
@@ -243,6 +244,7 @@ const emptyProjectCard=(dealId,dealData)=>({
     done:false,
     doneAt:null,
     doneBy:null,
+    statusId:uid(),
     tasks:DEFAULT_DEPT_TASKS[dept].map((t,i)=>({id:`${dept}-${i}`,text:t,done:false,doneAt:null,doneBy:null})),
   }]))),
 });
@@ -706,11 +708,11 @@ const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"
     </button>
   );
 };
-const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
-  // Using key+defaultValue pattern — safest focus fix, no hooks needed
+const Inp=({value,defaultValue,onChange,onBlur,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
   const base={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:readOnly?"#f8fafc":"#fff",boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
-  if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
-  return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
+  const controlled=value!==undefined;
+  if(rows) return <textarea {...(controlled?{value:value||""}:{defaultValue:defaultValue||""})} onChange={onChange} onBlur={onBlur} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
+  return <input type={type} {...(controlled?{value:value||""}:{defaultValue:defaultValue||""})} onChange={onChange} onBlur={onBlur} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
 // Currency input — shows commas when not focused, strips on focus
 const CurrInp=({value,onChange,placeholder="0.00",style:sx={}})=>{
@@ -1025,7 +1027,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     onSave(form);
   };
   return(
-    <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
+    <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="Client Name" required hint="Start typing to search from your 207 GMD clients">
@@ -1044,9 +1046,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               placeholder="Describe the project sub-type..." style={{marginTop:6}}/>
           )}
           </Fld>
-        <Fld label="Stage"><Sel value={form.stage} onChange={e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
         <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
-        <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
         <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
       </div>
       {/* GMD Workflow Fields */}
@@ -1675,6 +1675,7 @@ export default function App(){
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
+        if(data?.actLog?.length) setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
     window.addEventListener("focus",refresh);
@@ -1865,6 +1866,18 @@ export default function App(){
       if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
       if(key===KEYS.checklist) sbSync("checklists",val,toSbChecklist);
       if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
+      if(key===KEYS.pcards){
+        Object.entries(val||{}).forEach(([dealId,c])=>{
+          if(!isUUID(dealId)||!c.id||!isUUID(c.id)) return;
+          sbUpsert("project_cards",{id:c.id,deal_id:dealId,client:c.client||"",ce_no:c.ceNo||"",award_date:c.awardDate||null,target_days:c.targetDays||null,target_end_date:c.targetEndDate||null,tat_category:c.tatCategory||"",tat_set_by:c.tatSetBy||null,tat_set_at:c.tatSetAt||null},"id")
+            .catch(e=>console.error("pcard sync:",e.message));
+          Object.entries(c.departments||{}).forEach(([dept,d])=>{
+            const sid=d.statusId&&isUUID(d.statusId)?d.statusId:uid();
+            sbUpsert("project_card_dept_status",{id:sid,card_id:c.id,department:dept,done:d.done||false,done_at:d.doneAt||null,done_by:d.doneBy||null},"id")
+              .catch(e=>console.error("dept status sync:",e.message));
+          });
+        });
+      }
       if(key===KEYS.billings){
         val.forEach(m=>{
           if(!isUUID(m.id)) return;
@@ -1918,7 +1931,7 @@ export default function App(){
       [KEYS.addenda,  addenda], [KEYS.swatches, swatches],
       [KEYS.checklist,checklist],[KEYS.actlog,   actLog],
       [KEYS.billings, billings],[KEYS.budgets,  budgets],
-      [KEYS.cashPos,  cashPositions],
+      [KEYS.cashPos,  cashPositions],[KEYS.pcards, pcards],
     ];
     pairs.forEach(([key,val]) => { if(val && (Array.isArray(val)?val.length:Object.keys(val).length)) persist(key,val); });
     // Inflows (not in persist mapping)
@@ -1979,6 +1992,17 @@ export default function App(){
         deptData.doneBy=session?.name;
         logActivity(dealId,"Department Done",`${dept} completed all tasks for ${card.client}`,session?.name);
       }
+      card.departments={...card.departments,[dept]:deptData};
+      return{...ps,[dealId]:card};
+    });
+  };
+  const addDeptTask=(dealId,dept,text)=>{
+    if(!text.trim()) return;
+    upPcards(ps=>{
+      const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
+      const deptData={...card.departments[dept]};
+      deptData.tasks=[...deptData.tasks,{id:uid(),text:text.trim(),done:false,doneAt:null,doneBy:null}];
+      deptData.done=false;
       card.departments={...card.departments,[dept]:deptData};
       return{...ps,[dealId]:card};
     });
@@ -2102,15 +2126,31 @@ export default function App(){
   const updateMilestone=(id,ch)=>upBillings(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
   const deleteMilestone=(id)=>upBillings(bs=>bs.filter(b=>b.id!==id));
   const logBillingPayment=(msId,payment)=>{
+    const ms=billings.find(b=>b.id===msId);
+    const dealId=ms?.dealId;
+    const amt=Number(payment.amount||0);
+    const pDate=payment.date||today;
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
-      const payments=[...( b.payments||[]),{...payment,id:uid(),date:payment.date||today}];
+      const payments=[...(b.payments||[]),{...payment,id:uid(),date:pDate}];
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
       const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':b.status;
       return{...b,payments,status};
     }));
-    // FIX 14: Auto-record payment to daily cash position under the correct bank
-    if(payment.bank && payment.amount){
+    // Sync deal.amountPaid — billing is the authoritative payment source for awarded projects
+    if(dealId && amt>0){
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==dealId) return d;
+        const newPaid=(d.amountPaid||0)+amt;
+        const newStatus=newPaid>=Number(d.invoiced||0)?'Paid':newPaid>0?'Deposited':'Unpaid';
+        return{...d,amountPaid:newPaid,paymentStatus:newStatus};
+      }));
+      // Create a dated inflows entry so DCP "collections today" is accurate
+      const client=deals.find(d=>d.id===dealId)?.client||'';
+      upInfs(is=>[...is,{id:uid(),date:pDate,month:new Date(pDate).getMonth(),source:client,amount:amt,note:payment.note||`Billing payment — ${ms?.name||'milestone'}`,projectId:dealId,bank:payment.bank||''}]);
+    }
+    // Auto-record payment to daily cash position under the correct bank
+    if(payment.bank && amt>0){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
       setCashPos(cp=>{
@@ -2118,8 +2158,8 @@ export default function App(){
         const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
         const field=fieldMap[bankKey]||null;
         if(!field) return cp;
-        const updated={...existing,[field]:(Number(existing[field]||0)+Number(payment.amount))};
-        const newNote=`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
+        const updated={...existing,[field]:(Number(existing[field]||0)+amt)};
+        const newNote=`+₱${amt.toLocaleString()} billing payment received`;
         updated.notes=(updated.notes?updated.notes+" | ":"")+newNote;
         return{...cp,[pDate]:updated};
       });
@@ -2315,6 +2355,12 @@ export default function App(){
   const totExp    =useMemo(()=>exps.reduce((s,e)=>s+e.amount,0),[exps]);
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
+  // Live accounts receivable — sum of unpaid milestone balances (auto, no manual entry needed)
+  const totalAR   =useMemo(()=>billings.reduce((sum,m)=>{
+    if(m.status==='Cancelled') return sum;
+    const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    return sum+Math.max(0,Number(m.amount||0)-paid);
+  },0),[billings]);
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
@@ -2427,10 +2473,12 @@ export default function App(){
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
       GMD_CLIENTS.push({name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
     }
-    if(!editDeal) logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
-    else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+    const logClient = editDeal ? (deals.find(d=>d.id===editDeal)?.client||rec.client) : rec.client;
+    if(!editDeal) logActivity(rec.id,"New Deal",`${logClient} added at ${rec.stage}`,session?.name);
+    else logActivity(rec.id,"Deal Updated",`${logClient} — updated`,session?.name);
     setEditDeal(null);
     setDealModal(false);
+    setDealForm({...emptyDeal,ceNo:nextCENo()});
   };
   const delDeal=id=>{upDeals(ds=>ds.filter(d=>d.id!==id));upProjs(ps=>{const n={...ps};delete n[id];return n;});setConfirmDel(null);};
 
@@ -2520,8 +2568,9 @@ export default function App(){
       const newStatus=newPaid>=d.invoiced?"Paid":newPaid>0?"Deposited":"Unpaid";
       return{...d,amountPaid:newPaid,paymentStatus:newStatus};
     }));
-    const mo=new Date(date).getMonth();
-    upInfs(is=>[...is,{id:uid(),month:mo,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId}]);
+    const pDate=date||today;
+    const mo=new Date(pDate).getMonth();
+    upInfs(is=>[...is,{id:uid(),date:pDate,month:mo,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId}]);
   };
 
   const upProj=(id,fn)=>upProjs(ps=>({...ps,[id]:fn(ps[id]||emptyProject())}));
@@ -2589,14 +2638,39 @@ export default function App(){
   const hr=new Date().getHours();
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"collections",l:"Collections"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"},{id:"accounts",l:"👥 Accounts"}],
-    Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
-    Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
-    Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
-    QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}],
-    Operations:   [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
-    Design:       [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
-    ProjectMover: [{id:"home",l:"My Projects"},{id:"pmupdates",l:"📝 PM Updates"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"},{id:"addenda",l:"⚠️ Scope Changes"}],
+    Manager:[
+      {group:"SALES",       items:[{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"PROJECTS",    items:[{id:"projects",l:"Project Cards"},{id:"joborders",l:"Job Orders"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"}]},
+      {group:"FINANCE",     items:[{id:"finance",l:"Cash Position"},{id:"billing",l:"Billing"},{id:"collections",l:"Collections"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"}]},
+      {group:"PROCUREMENT", items:[{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"}]},
+      {group:"ADMIN",       items:[{id:"accounts",l:"Accounts"}]},
+    ],
+    Sales:[
+      {group:"SALES",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"PROJECTS", items:[{id:"projects",l:"Project Cards"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"}]},
+    ],
+    Finance:[
+      {group:"FINANCE",  items:[{id:"home",l:"Cash Position"},{id:"billing",l:"Billing"},{id:"collections",l:"Collections"},{id:"accounting",l:"Accounting"}]},
+      {group:"PROJECTS", items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
+    ],
+    Procurement:[
+      {group:"PROCUREMENT", items:[{id:"home",l:"Overview"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"PROJECTS",    items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
+    ],
+    QS:[
+      {group:"PROJECTS", items:[{id:"home",l:"Dashboard"},{id:"projects",l:"Projects"},{id:"costanalysis",l:"Cost Analysis"}]},
+    ],
+    Operations:[
+      {group:"PROJECTS",    items:[{id:"home",l:"Projects"},{id:"projects",l:"Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"PROCUREMENT", items:[{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
+    ],
+    Design:[
+      {group:"PROJECTS",    items:[{id:"home",l:"Projects"},{id:"projects",l:"Project Cards"},{id:"checklist",l:"Checklist"}]},
+      {group:"PROCUREMENT", items:[{id:"swatchboard",l:"Swatchboard"}]},
+    ],
+    ProjectMover:[
+      {group:"MY WORK", items:[{id:"home",l:"My Projects"},{id:"pmupdates",l:"PM Updates"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"},{id:"addenda",l:"Scope Changes"}]},
+    ],
   };
   const Nav=()=>{
     const NAV_ICONS={
@@ -2606,8 +2680,23 @@ export default function App(){
       collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
       "Sales Pipeline":"📊","My Pipeline":"📊",
     };
-    const tabs=navMap[role]||[];
+    const groups=navMap[role]||[];
+    // Flatten groups for backward compat, then append admin tab
+    const adminExtra=session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[];
+    const allGroups=[...groups,...(adminExtra.length?[{group:"DEV",items:adminExtra}]:[])];
     const W = navCollapsed ? 64 : 220;
+    const renderNavBtn=(id,l)=>{
+      const active=page===id;
+      const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
+      return(
+        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
+          title={navCollapsed?l:""}
+          style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:navCollapsed?"10px 0":"8px 16px",justifyContent:navCollapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
+          <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+          {!navCollapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+        </button>
+      );
+    };
     return(
       <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
         {/* Logo + collapse toggle */}
@@ -2617,20 +2706,19 @@ export default function App(){
             {navCollapsed?"→":"←"}
           </button>
         </div>
-        {/* Nav items */}
+        {/* Nav groups */}
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
-          {[...tabs,...(session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[])].map(({id,l})=>{
-            const active=page===id;
-            const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
-            return(
-              <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
-                title={navCollapsed?l:""}
-                style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:navCollapsed?"10px 0":"9px 16px",justifyContent:navCollapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
-                <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
-                {!navCollapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
-              </button>
-            );
-          })}
+          {allGroups.map(({group,items})=>(
+            <div key={group}>
+              {!navCollapsed&&(
+                <div style={{padding:"10px 16px 4px",fontSize:".6rem",fontWeight:800,letterSpacing:"1.2px",textTransform:"uppercase",color:"rgba(255,255,255,.25)",userSelect:"none"}}>
+                  {group}
+                </div>
+              )}
+              {navCollapsed&&<div style={{height:1,background:"rgba(255,255,255,.08)",margin:"6px 10px"}}/>}
+              {items.map(({id,l})=>renderNavBtn(id,l))}
+            </div>
+          ))}
         </div>
         {/* Bottom: user info + actions */}
         <div style={{borderTop:"1px solid rgba(255,255,255,.08)",padding:navCollapsed?"12px 0":"12px 14px",flexShrink:0}}>
@@ -2709,7 +2797,7 @@ export default function App(){
 
 
       {/* Global Modals */}
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
+      <DealModal key={`dm-${dealModal}-${editDeal||"new"}`} open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
@@ -4043,7 +4131,7 @@ export default function App(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
-            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL} · <span style={{color:"#3b82f6"}}>drag cards between stages</span></div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL} · <span style={{color:"#f59e0b"}}>🔥 hot = ≤15 days · ❄️ cold = 15+ days</span></div>
             {/* Search bar */}
             <div style={{position:"relative",marginTop:8}}>
               <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
@@ -4154,11 +4242,10 @@ export default function App(){
             </div>
           ):null;
         })()}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
             {l:"Total Pipeline",    v:fmtK(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
             {l:"Awarded Value",     v:fmtK(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
-            {l:"Collected",         v:fmtK(totColl),  c:"#10b981", sub:fmtK(totOut)+" outstanding"},
             {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
@@ -4249,17 +4336,10 @@ export default function App(){
           </div>
         )}
 
-        {stageFilter&&(()=>{
-          const filtered=deals.filter(d=>d.stage===stageFilter&&d.stage!=="Cancelled");
+        {false&&(()=>{
+          const filtered=[];
           return(
-            <div style={{background:"#fff",borderRadius:14,border:`2px solid ${STAGE_CLR[stageFilter]||"#e2e8f0"}`,padding:"16px 18px",marginBottom:20}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                <div>
-                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>{stageFilter.replace(/^\d+ · /,"")}</div>
-                  <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{filtered.length} deal{filtered.length!==1?"s":""} in this stage</div>
-                </div>
-                <button onClick={()=>setStageFilter(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✕ Close</button>
-              </div>
+            <div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {filtered.map(d=>{
                   const{pct,missing}=dealCompleteness(d);
@@ -4295,107 +4375,76 @@ export default function App(){
           );
         })()}
 
-        {/* Stage groups — pre-award stages */}
+        {/* Hot / Cold pipeline — flat list replacing old Kanban columns */}
         {(()=>{
-          const preAward  = DEAL_STAGES.filter(s=>!WON_STAGES.includes(s)&&s!=="Cancelled");
-          const stageDeals= s=>deals.filter(d=>d.stage===s&&(!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())));
+          const daysSince=d=>Math.max(0,Math.floor((new Date(today)-new Date(d.dateAcquired||today))/86400000));
+          const activePipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&(!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())));
+          const hotLeads=activePipeline.filter(d=>daysSince(d)<=15);
+          const coldLeads=activePipeline.filter(d=>daysSince(d)>15);
+          const mkCard=(d,cold)=>{
+            const{pct,missing}=dealCompleteness(d);
+            const days=daysSince(d);
+            return(
+              <div key={d.id} style={{background:cold?"#f8fafc":"#fff",borderRadius:12,border:`1.5px solid ${cold?"#e2e8f0":"#cbd5e1"}`,padding:"14px 16px",opacity:cold?.8:1,transition:"all .15s"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:3}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{d.client}</span>
+                      {vvipClients?.has(d.client)&&<span style={{fontSize:".65rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>⭐ VVIP</span>}
+                      {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
+                    </div>
+                    <div style={{fontSize:".78rem",color:"#64748b",marginBottom:8,display:"flex",gap:12,flexWrap:"wrap"}}>
+                      {d.contact&&<span>{d.contact}</span>}
+                      {Number(d.value)>0&&<span style={{color:"#10b981",fontWeight:700}}>₱{Number(d.value).toLocaleString("en-PH")}</span>}
+                      {d.salesOwner&&<span>👤 {d.salesOwner}</span>}
+                      {d.ceNo&&<span style={{color:"#94a3b8"}}>{d.ceNo}</span>}
+                    </div>
+                    {/* Completeness bar */}
+                    <div>
+                      <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",marginBottom:3}}>
+                        <span style={{color:pct===100?"#10b981":pct>=60?"#f59e0b":"#ef4444",fontWeight:600}}>{pct===100?"✓ Profile complete":`Profile ${pct}%`}</span>
+                        {pct<100&&<span style={{color:"#94a3b8"}} title={missing.join(", ")}>Missing: {missing.slice(0,2).join(", ")}{missing.length>2?` +${missing.length-2} more`:""}</span>}
+                      </div>
+                      <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":pct>=60?"#f59e0b":"#ef4444",borderRadius:3,transition:"width .4s"}}/>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8,flexShrink:0}}>
+                    <div style={{background:cold?"#f1f5f9":days<=7?"#fef3c7":"#f0fdf4",border:`1px solid ${cold?"#e2e8f0":days<=7?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700,color:cold?"#94a3b8":days<=7?"#d97706":"#059669",whiteSpace:"nowrap"}}>
+                      {cold?`❄ ${days}d`:days===0?"Today":`🔥 ${days}d`}
+                    </div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",color:"#475569",cursor:"pointer",fontWeight:600}}>✏ Edit</button>
+                      {role==="Manager"
+                        ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>
+                        :<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);toastEmit("Flagged for Manager review!");}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontSize:".76rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          };
           return(
             <div>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{width:10,height:10,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>
-                Active Pipeline
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                <span>🔥 Hot Leads</span>
+                <span style={{fontWeight:400,color:"#64748b",fontSize:".78rem"}}>— engaged within 15 days ({hotLeads.length})</span>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
-                {preAward.map(stage=>{
-                  const sDeals=stageDeals(stage);
-                  const stageColor=STAGE_CLR[stage]||"#94a3b8";
-                  const totalVal=sDeals.reduce((s,d)=>s+Number(d.value||0),0);
-                  return(
-                    <div key={stage}
-                      onDragOver={e=>{e.preventDefault();setDragOver(stage);}}
-                      onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOver(null);}}
-                      onDrop={e=>{
-                        e.preventDefault(); setDragOver(null);
-                        if(!dragDeal) return;
-                        const deal=deals.find(d=>d.id===dragDeal);
-                        if(!deal||deal.stage===stage) return;
-                        if(WON_STAGES.includes(stage)){if(role==="Sales"){toastEmit("Sales cannot directly award. Move to Stage 05 and click Request Award to notify a Manager.","warning");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
-                        if(PAULO_GATE.includes(stage)&&role==="Sales"){
-                          toastEmit("This stage requires Manager approval. Your move has been logged — notify Paulo or Paolo.","warning");
-                        }
-                        stageQ(dragDeal,stage);
-                        setDragDeal(null);
-                      }}
-                      style={{background:dragOver===stage?"#eff6ff":"#fff",borderRadius:12,border:`1.5px solid ${dragOver===stage?"#93c5fd":stageColor+"44"}`,transition:"all .15s",minHeight:100}}>
-                      {/* Stage header */}
-                      <div style={{background:stageColor+"18",borderBottom:`1.5px solid ${stageColor}22`,padding:"10px 12px"}}>
-                        <div style={{fontWeight:700,color:stageColor,fontSize:".75rem",lineHeight:1.3}}>{stage.replace(/^\d+ · /,"")}</div>
-                        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                          <span style={{fontSize:".68rem",color:"#64748b"}}>{sDeals.length} deal{sDeals.length!==1?"s":""}</span>
-                          <span style={{fontSize:".68rem",fontWeight:700,color:stageColor}}>{totalVal>0?fmtK(totalVal):"—"}</span>
-                        </div>
-                      </div>
-                      {/* Deal cards */}
-                      <div style={{padding:"8px",maxHeight:320,overflowY:"auto"}}>
-                        {sDeals.length===0&&(
-                          <div style={{padding:"12px 8px",textAlign:"center",color:"#cbd5e1",fontSize:".73rem"}}>No deals</div>
-                        )}
-                        {sDeals.map(d=>(
-                          <div key={d.id}
-                            draggable
-                            onDragStart={e=>{setDragDeal(d.id);e.currentTarget.style.opacity=".45";}}
-                            onDragEnd={e=>{setDragDeal(null);setDragOver(null);e.currentTarget.style.opacity="1";}}
-                            style={{background:dragDeal===d.id?"#f0f9ff":"#f8fafc",borderRadius:8,padding:"10px 10px",marginBottom:6,border:"1.5px solid #e2e8f0",cursor:"grab",transition:"all .15s"}}
-                            onMouseEnter={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor=stageColor;e.currentTarget.style.background="#fff";}}}
-                            onMouseLeave={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}}
-                            onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}>
-                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:3}}>{d.client}</div>
-                            <div style={{fontSize:".7rem",color:"#64748b",marginBottom:5}}>
-                      {d.product==="Other"&&d.customProductType?d.customProductType:d.product}
-                    </div>
-                    {d.contact&&<div style={{fontSize:".69rem",color:"#94a3b8",marginBottom:3,fontStyle:"italic"}}>{d.contact}</div>}
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
-                              <span style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
-                              {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
-                            </div>
-                            {Number(d.value)>0&&(()=>{const tx=calcTax(d.value,d.receiptType||"OR",d.withholding||false);return <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2}}>{d.receiptType==="AR"?"📄 AR":"🧾 OR"} · Net ₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}{d.withholding?" · EWT":""}</div>;})()}
-                            {d.salesOwner&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>👤 {d.salesOwner}</div>}
-                            {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:2}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
-                            {PAULO_GATE.includes(d.stage)&&<div style={{fontSize:".67rem",color:"#d97706",background:"#fffbeb",borderRadius:4,padding:"2px 6px",marginTop:4,fontWeight:600}}>⚠ Paulo Gate</div>}
-                            {Number(d.value)>=3000000&&<div style={{fontSize:".67rem",color:"#dc2626",background:"#fef2f2",borderRadius:4,padding:"2px 6px",marginTop:3,fontWeight:600}}>🚨 ₱3M+</div>}
-                            {/* Completeness indicator */}
-                            {(()=>{const{pct,missing}=dealCompleteness(d);return pct<100?(
-                              <div style={{marginTop:6}} title={`Missing: ${missing.join(", ")}`}>
-                                <div style={{display:"flex",justifyContent:"space-between",fontSize:".62rem",color:"#94a3b8",marginBottom:2}}>
-                                  <span>Profile {pct}%</span>
-                                  <span style={{color:"#f59e0b"}}>⚠ {missing.length} missing</span>
-                                </div>
-                                <div style={{height:3,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}>
-                                  <div style={{height:"100%",width:pct+"%",background:pct>=80?"#10b981":"#f59e0b",borderRadius:2}}/>
-                                </div>
-                              </div>
-                            ):null;})()}
-                            {/* Action buttons */}
-                            <div style={{display:"flex",gap:5,marginTop:8,flexWrap:"wrap"}}>
-                              <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                              {!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&(
-                                role==="Manager"
-                                ? <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
-                                : <button onClick={e=>{e.stopPropagation();
-                                    if(true){
-                                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+session?.name+" flagged for award."}:x));
-                                      logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);
-                                      toastEmit("Flagged for Manager review!");
-                                    }}} style={{flex:1,background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+              {hotLeads.length===0&&<div style={{background:"#fff",borderRadius:12,border:"1.5px dashed #e2e8f0",padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem",marginBottom:16}}>No active hot leads. Add a deal above to start tracking.</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+                {hotLeads.map(d=>mkCard(d,false))}
               </div>
+              {coldLeads.length>0&&(<>
+                <div style={{fontWeight:700,color:"#94a3b8",fontSize:".88rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                  <span>❄️ Cold Leads</span>
+                  <span style={{fontWeight:400,fontSize:".78rem"}}>— no update in 15+ days ({coldLeads.length})</span>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:24}}>
+                  {coldLeads.map(d=>mkCard(d,true))}
+                </div>
+              </>)}
 
               {/* Awarded Projects */}
               <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
@@ -4503,7 +4552,7 @@ export default function App(){
                   </Fld>
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Notes" hint="PO number, email confirmation details, etc. (optional)">
-                      <Inp rows={2} value={awardForm.triggerNote} onChange={e=>setAwardForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from client@email.com on May 18…"/>
+                      <Inp rows={2} defaultValue={awardForm.triggerNote} onBlur={e=>setAwardForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from client@email.com on May 18…"/>
                     </Fld>
                   </div>
                 </div>
@@ -4569,7 +4618,7 @@ export default function App(){
                   {/* Comms */}
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
-                      <Inp value={awardForm.commsLink} onChange={e=>setAwardForm(p=>({...p,commsLink:e.target.value}))} placeholder="https://chat.whatsapp.com/…"/>
+                      <Inp defaultValue={awardForm.commsLink} onBlur={e=>setAwardForm(p=>({...p,commsLink:e.target.value}))} placeholder="https://chat.whatsapp.com/…"/>
                     </Fld>
                   </div>
 
@@ -4622,7 +4671,7 @@ export default function App(){
           </Modal>
         )}
 
-        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
+        <DealModal key={`dm-${dealModal}-${editDeal||"new"}`} open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       </Wrap>
     );
 
@@ -4637,6 +4686,7 @@ export default function App(){
           totExp={totExp}
           totColl={totColl}
           totOut={totOut}
+          totalAR={totalAR}
         />
         <div style={{marginTop:24,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
           <KPI label="Revenue"      value={fmtK(totRev)}         color="#3b82f6"/>
@@ -4670,16 +4720,16 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
         addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
         openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
         matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm}
         editMat={editMat} setEditMat={setEditMat} saveMat={saveMat}
         addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -4848,7 +4898,7 @@ export default function App(){
       </Wrap>
     );
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
   }
 
   // ─── FINANCE ──────────────────────────────────────────────────────────────
@@ -4931,6 +4981,7 @@ export default function App(){
           totExp={totExp}
           totColl={totColl}
           totOut={totOut}
+          totalAR={totalAR}
         />
       </Wrap>
     );
@@ -4982,7 +5033,7 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="expenses") return(
       <Wrap>
         <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
@@ -5030,9 +5081,9 @@ export default function App(){
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -5281,7 +5332,7 @@ export default function App(){
       <ProjectCards
         pcards={pcards} wonDeals={wonDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
-        setProjectTAT={setProjectTAT} jos={jos}
+        addDeptTask={addDeptTask} setProjectTAT={setProjectTAT} jos={jos}
         delDeal={delDeal} delPcard={delPcard}
         session={session} role={role}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
@@ -5648,7 +5699,7 @@ export default function App(){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards}){
   const uid2=()=>String(Date.now());
   if(!selProj) return(
     <Wrap>
@@ -5724,6 +5775,24 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         <Badge label={proj?.currentStage} color={PROD_CLR[proj?.currentStage||"Design"]}/>
         <span style={{fontWeight:800,color:"#10b981"}}>{fmt(projDeal?.value)}</span>
       </div>
+      {(()=>{
+        const pc=pcards?.[selProj];
+        if(!pc?.targetEndDate) return null;
+        const dl=Math.ceil((new Date(pc.targetEndDate)-new Date())/(1000*60*60*24));
+        const over=dl<0; const warn=dl>=0&&dl<=7;
+        if(!over&&!warn) return null;
+        return(
+          <div style={{background:over?"#fef2f2":"#fffbeb",border:`1.5px solid ${over?"#fecaca":"#fde68a"}`,borderRadius:10,padding:"10px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:"1.2rem"}}>{over?"🔴":"🟡"}</span>
+            <div>
+              <div style={{fontWeight:700,color:over?"#dc2626":"#b45309",fontSize:".88rem"}}>
+                {over?`${Math.abs(dl)} day${Math.abs(dl)!==1?"s":""} OVERDUE — target was ${pc.targetEndDate}`:`${dl} day${dl!==1?"s":""} remaining — due ${pc.targetEndDate}`}
+              </div>
+              {pc.tatCategory&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>Category: {pc.tatCategory} · {pc.targetDays}-day target</div>}
+            </div>
+          </div>
+        );
+      })()}
       <div style={{display:"flex",gap:2,borderBottom:"1.5px solid #e2e8f0",marginBottom:18}}>
         {tabs.map(([k,l])=>(
           <button key={k} onClick={()=>setOpsTab(k)} style={{background:"transparent",border:"none",borderBottom:`2.5px solid ${opsTab===k?"#f97316":"transparent"}`,padding:"8px 14px",fontFamily:"inherit",fontWeight:opsTab===k?700:400,fontSize:".82rem",color:opsTab===k?"#f97316":"#64748b",cursor:"pointer",marginBottom:-1.5,whiteSpace:"nowrap"}}>{l}</button>
@@ -5877,16 +5946,18 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         const p=proj; const d=projDeal;
         const projExpList=exps.filter(e=>e.projectId===selProj);
         const totalOps=costOf(p);
-        const profit=d.value-totalOps;
+        const expTotal=projExpList.reduce((s,e)=>s+Number(e.amount||0),0);
+        const grandTotal=totalOps+expTotal;
+        const profit=d.value-grandTotal;
         const margin=d.value>0?Math.round(profit/d.value*100):0;
         return(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <div>
               <Card>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Cost Breakdown</div>
-                {[["Materials",(p.materials||[]).reduce((s,m)=>s+m.cost,0),"#f59e0b"],["Labor",p.laborCost||0,"#8b5cf6"],["Overhead",p.overhead||0,"#3b82f6"],["Total",totalOps,"#ef4444"]].map(([l,v,c],i)=>(
-                  <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<3?"1px solid #f1f5f9":"none",fontSize:".87rem"}}>
-                    <span style={{color:"#64748b",fontWeight:i===3?700:400}}>{l}</span>
+                {[["Materials",(p.materials||[]).reduce((s,m)=>s+m.cost,0),"#f59e0b"],["Labor",p.laborCost||0,"#8b5cf6"],["Overhead",p.overhead||0,"#3b82f6"],["Expenses",expTotal,"#06b6d4"],["Grand Total",grandTotal,"#ef4444"]].map(([l,v,c],i)=>(
+                  <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<4?"1px solid #f1f5f9":"none",fontSize:".87rem"}}>
+                    <span style={{color:"#64748b",fontWeight:i===4?700:400}}>{l}</span>
                     <span style={{fontWeight:700,color:c}}>{fmt(v)}</span>
                   </div>
                 ))}
@@ -6308,7 +6379,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
 
 
 // ─── CHECKLIST VIEW ───────────────────────────────────────────────────────────
-function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,loadChecklistTemplate,Wrap}){
+function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,loadChecklistTemplate,Wrap,users}){
   const f=(k,v)=>setClForm(p=>({...p,[k]:v}));
   const allTypes=["All",...CL_TYPES,"Custom"];
   const isCustom=!CL_TYPES.includes(clForm.type)||clForm.type==="Custom";
@@ -6336,7 +6407,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
     byProject[key].push(c);
   });
 
-  const allMembers=["Carlo M.","Dana R.","Enzo P.","Faye T.","Gino A.","Hana C.","Ivan L.","Jade O.","Alex R.","Bea T.","Chris N.","Diana L.","Edric M."];
+  const allMembers=users?.filter(u=>u.status==="active").map(u=>u.name||u.username)||[];
 
   return(
     <Wrap>
@@ -7010,7 +7081,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
 
 
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
-function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp,totColl,totOut}){
+function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp,totColl,totOut,totalAR}){
   const[selDate,setSelDate]=useState(today);
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
@@ -7040,11 +7111,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
     }
   };
 
-  // Auto-pull today's FabHub collections
+  // Auto-pull collections for the selected date (exact date if available, else falls back to same-day month match)
   const todayInflows=useMemo(()=>{
-    const mo=new Date(selDate).getMonth();
-    // Simple: sum inflows for the selected month (daily breakdown not available)
-    return infs.filter(i=>i.month===mo).reduce((s,i)=>s+i.amount,0);
+    return infs.filter(i=>i.date?i.date===selDate:false).reduce((s,i)=>s+i.amount,0);
   },[infs,selDate]);
 
   const f=(path,val)=>{
@@ -7090,6 +7159,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
   // Book balance = what bank confirms; if not filled, use ending balance
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
   const totalCashAvailable=workingBook-totalLess; // Working capital only — Unionbank (capital) excluded
+  // Use live AR from billing milestones; fall back to manual entry only if no billing data exists
+  const arValue=totalAR>0?totalAR:n(pos.ytd.accountsReceivable);
+  const totalAssets=totalCashAvailable+arValue;
 
   const handleSave=()=>{
     const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
@@ -7114,6 +7186,31 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
     background:"#f8fafc",fontWeight:600,fontSize:".8rem",
     color:"#475569",fontStyle:"italic",borderRight:"2px solid #e2e8f0",
     whiteSpace:"nowrap"
+  };
+
+  const exportDCPCSV=()=>{
+    const dates=Object.keys(cashPositions).sort();
+    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Collections","Less Total","Cash Available","Notes"]];
+    dates.forEach(date=>{
+      const pos=cashPositions[date];if(!pos)return;
+      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.end||0),0);
+      const less=Number(pos.less?.bizlink||0)+Number(pos.less?.checkFloat||0)+Number(pos.less?.otherAmt||0);
+      const coll=Number(pos.collections?.manualAmt||0);
+      rows.push([date,
+        pos.banks?.bpi?.beg||0,pos.banks?.bpi?.end||0,
+        pos.banks?.metro?.beg||0,pos.banks?.metro?.end||0,
+        pos.banks?.china?.beg||0,pos.banks?.china?.end||0,
+        pos.banks?.bdo?.beg||0,pos.banks?.bdo?.end||0,
+        pos.banks?.security?.beg||0,pos.banks?.security?.end||0,
+        wc.toFixed(2),coll.toFixed(2),less.toFixed(2),(wc+coll-less).toFixed(2),
+        pos.notes||""
+      ]);
+    });
+    const csv=rows.map(r=>r.map(v=>(`"${String(v).replace(/"/g,'""')}"`)).join(",")).join("\n");
+    const a=document.createElement("a");
+    a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);
+    a.download=`GMD_CashPosition_${today}.csv`;
+    a.click();
   };
 
   return(
@@ -7166,18 +7263,19 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       )}
 
       {/* KPI strip */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
         {[
-          ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
-          ["Working Capital (5 Banks)", "₱"+fmt2(workingBook), "#1d4ed8"],
-          ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook), "#0e7490"],
-          ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
-          ["Outstanding Invoices", "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
-          ["YTD Receivable",       pos.ytd.accountsReceivable?"₱"+fmt2(pos.ytd.accountsReceivable):"—", "#8b5cf6"],
-        ].map(([l,v,c])=>(
+          ["Total GMD Assets",         "₱"+fmt2(totalAssets),         totalAssets>=0?"#0f172a":"#ef4444", totalAR>0?"Cash + AR from billing":"Cash + manual AR"],
+          ["Total Cash Available",     "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444", "Working capital after deductions"],
+          ["Working Capital (5 Banks)","₱"+fmt2(workingBook),        "#1d4ed8", "Gross bank balances"],
+          ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook>0?bankTotals.capBook:bankTotals.capEnd), "#0e7490", "Savings — excluded from WC"],
+          ["Collections Today",        "₱"+fmt2(totalCollections),   "#10b981", "Inflows on this date"],
+          ["Accounts Receivable",      "₱"+fmt2(arValue),            "#8b5cf6", totalAR>0?"Auto from billing":"Manual entry"],
+        ].map(([l,v,c,sub])=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c,lineHeight:1}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:6}}>{l}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,lineHeight:1}}>{v}</div>
+            {sub&&<div style={{fontSize:".6rem",color:c,opacity:.65,marginTop:3}}>{sub}</div>}
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
           </div>
         ))}
       </div>
@@ -7185,7 +7283,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       {/* Main cash position table */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
         {/* Table header */}
-        <div style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",background:"#1e293b"}}>
+        <div style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",background:"#1e293b"}}>
           <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
           {BANKS.filter(b=>!b.capital).map(b=>(
             <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155"}}>
@@ -7202,7 +7300,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           ["BOOK BALANCE\n(per bank statement)", "book", "#fff"],
           ["BANK BALANCE ENDING","end", "#fafafa"],
         ].map(([label,key,bg])=>(
-          <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
+          <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
             <div style={labelCell}>{label}</div>
             {BANKS.filter(b=>!b.capital).map(b=>(
               <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #f1f5f9"}}>
@@ -7215,7 +7313,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <div style={{padding:"8px 12px",textAlign:"right",fontWeight:700,fontSize:".85rem",
               color:key==="end"?"#059669":key==="book"?"#1d4ed8":"#0f172a",
               background:key==="end"?"#f0fdf4":key==="book"?"#eff6ff":"transparent"}}>
-              {fmt2(BANKS.reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
+              {fmt2(BANKS.filter(b=>!b.capital).reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
             </div>
           </div>
         ))}
@@ -7228,7 +7326,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
               <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>
                   🔗 FabHub Auto: ₱{fmt2(todayInflows)}
-                  <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
+                  <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(inflows on {selDate})</span>
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}>
                   <CurrInp
@@ -7313,21 +7411,29 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>KEY AREAS</span>
           </div>
           {[
-            ["Expected Collection",   "ytd.expectedCollection",  "#f59e0b"],
-            ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444"],
-            ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316"],
-            ["YTD Accounts Receivable","ytd.accountsReceivable", "#10b981"],
-          ].map(([label,path,color])=>(
+            ["Expected Collection",   "ytd.expectedCollection",  "#f59e0b", false],
+            ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444", false],
+            ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316", false],
+            ["Accounts Receivable",   "ytd.accountsReceivable",  "#10b981", true],
+          ].map(([label,path,color,isAR])=>(
             <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
-              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
+              <div>
+                <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
+                {isAR&&totalAR>0&&<div style={{fontSize:".65rem",color:"#10b981",marginTop:1}}>auto from billing</div>}
+              </div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <CurrInp
-                  value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
-                  onChange={e=>f(path,e.target.value)}
-                  style={{...inpStyle,width:160,borderColor:`${color}44`}}/>
-                <span style={{fontWeight:700,color,minWidth:90,textAlign:"right",fontSize:".82rem"}}>
-                  {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
-                </span>
+                {isAR&&totalAR>0
+                  ? <span style={{fontWeight:800,color:"#10b981",fontSize:".88rem"}}>₱{fmt2(totalAR)}</span>
+                  : <>
+                      <CurrInp
+                        value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
+                        onChange={e=>f(path,e.target.value)}
+                        style={{...inpStyle,width:160,borderColor:`${color}44`}}/>
+                      <span style={{fontWeight:700,color,minWidth:90,textAlign:"right",fontSize:".82rem"}}>
+                        {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
+                      </span>
+                    </>
+                }
               </div>
             </div>
           ))}
@@ -8580,31 +8686,6 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
     a.click();
   };
 
-  // DCP CSV Export
-  const exportDCPCSV=()=>{
-    const dates=Object.keys(cashPositions).sort();
-    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Collections","Less Total","Cash Available","Notes"]];
-    dates.forEach(date=>{
-      const pos=cashPositions[date];if(!pos)return;
-      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.end||0),0);
-      const less=Number(pos.less?.bizlink||0)+Number(pos.less?.checkFloat||0)+Number(pos.less?.otherAmt||0);
-      const coll=Number(pos.collections?.manualAmt||0);
-      rows.push([date,
-        pos.banks?.bpi?.beg||0,pos.banks?.bpi?.end||0,
-        pos.banks?.metro?.beg||0,pos.banks?.metro?.end||0,
-        pos.banks?.china?.beg||0,pos.banks?.china?.end||0,
-        pos.banks?.bdo?.beg||0,pos.banks?.bdo?.end||0,
-        pos.banks?.security?.beg||0,pos.banks?.security?.end||0,
-        wc.toFixed(2),coll.toFixed(2),less.toFixed(2),(wc+coll-less).toFixed(2),
-        pos.notes||""
-      ]);
-    });
-    const csv=rows.map(r=>r.map(v=>(`"${String(v).replace(/"/g,'""')}"`)).join(",")).join("\n");
-    const a=document.createElement("a");
-    a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
-    a.download=`GMD_CashPosition_${today}.csv`;
-    a.click();
-  };
 
   return(
     <div>
@@ -8968,12 +9049,14 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role}){
+function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,addDeptTask,setProjectTAT,jos,delDeal,delPcard,session,role}){
   const[selDeal,     setSelDeal]    =useState(null);
   const[selDept,     setSelDept]    =useState(null);
-  const[pcFilter,    setPcFilter]   =useState(null);   // "done"|"attention"|null
-  const[pcDeptFilter,setPcDeptFilter]=useState("All"); // dept filter
-  const[pcSort,      setPcSort]     =useState("tat");  // "client"|"tat"|"pct"|"ce"
+  const[pcFilter,    setPcFilter]   =useState(null);
+  const[pcDeptFilter,setPcDeptFilter]=useState("All");
+  const[pcSort,      setPcSort]     =useState("tat");
+  const[newTaskText, setNewTaskText]=useState("");
+  const[showTaskInput,setShowTaskInput]=useState(false);
 
   const card = selDeal ? pcards[selDeal] : null;
   const deal = wonDeals.find(d=>d.id===selDeal);
@@ -9363,6 +9446,40 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                       })}
                     </div>
 
+                    {/* Add task inline */}
+                    {canEdit&&(
+                      <div style={{marginTop:10}}>
+                        {showTaskInput?(
+                          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                            <input
+                              autoFocus
+                              value={newTaskText}
+                              onChange={e=>setNewTaskText(e.target.value)}
+                              onKeyDown={e=>{
+                                if(e.key==="Enter"&&newTaskText.trim()){addDeptTask(selDeal,selDept,newTaskText);setNewTaskText("");setShowTaskInput(false);}
+                                if(e.key==="Escape"){setNewTaskText("");setShowTaskInput(false);}
+                              }}
+                              placeholder="Describe the task…"
+                              style={{flex:1,border:`1.5px solid ${clr}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none"}}
+                            />
+                            <button onClick={()=>{if(newTaskText.trim()){addDeptTask(selDeal,selDept,newTaskText);setNewTaskText("");}setShowTaskInput(false);}}
+                              style={{background:clr,border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>
+                              Add
+                            </button>
+                            <button onClick={()=>{setNewTaskText("");setShowTaskInput(false);}}
+                              style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
+                              Cancel
+                            </button>
+                          </div>
+                        ):(
+                          <button onClick={()=>{setShowTaskInput(true);setNewTaskText("");}}
+                            style={{background:"transparent",border:`1.5px dashed ${clr}55`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:clr,cursor:"pointer",width:"100%",textAlign:"left",fontWeight:600}}>
+                            + Add task to {selDept}
+                          </button>
+                        )}
+                      </div>
+                    )}
+
                     {/* Completion status */}
                     <div style={{marginTop:12,padding:"10px 12px",background:"#f8fafc",borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div style={{fontSize:".75rem",color:"#64748b"}}>{tasks.filter(t=>t.done).length} of {tasks.length} tasks complete</div>
@@ -9742,12 +9859,19 @@ function DataManagement({
       bgColor:"#fef2f2",
       borderColor:"#fecaca",
       items:["Deals / Pipeline","Expenses","Inflows","Job Orders","Purchase Requests","Material Requests","Budget Requests","Addenda","Billing Milestones","Project Cards","Checklist Items","Cash Position Days","Activity Log"],
-      action:()=>{
+      action:async()=>{
         upDeals(()=>[]);upExps(()=>[]);upInflows(()=>[]);upJos(()=>[]);
         upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);upAddenda(()=>[]);
         upBillings(()=>[]);upPcards(()=>({}));upChecklist(()=>[]);
         upCashPos(()=>({}));upBudgets(()=>({}));
         setActLog([]);persist("gmdv5:actlog",[]);
+        await Promise.all([
+          sbClear('deals'),sbClear('expenses'),sbClear('inflows'),sbClear('job_orders'),
+          sbClear('purchase_requests'),sbClear('material_requests'),sbClear('budget_requests'),
+          sbClear('addenda'),sbClear('billing_milestones'),sbClear('billing_payments'),
+          sbClear('project_cards'),sbClear('project_card_dept_status'),sbClear('project_card_dept_tasks'),
+          sbClear('checklists'),sbClear('cash_positions'),sbClear('project_budgets'),sbClear('activity_log'),
+        ]);
         return "Full purge complete. FabHub is clean and ready for real data.";
       }
     },
@@ -9759,9 +9883,14 @@ function DataManagement({
       bgColor:"#fffbeb",
       borderColor:"#fde68a",
       items:["Deals / Pipeline","Job Orders","Project Cards","Checklist Items","Addenda"],
-      action:()=>{
+      action:async()=>{
         upDeals(()=>[]);upJos(()=>[]);upPcards(()=>({}));
         upChecklist(()=>[]);upAddenda(()=>[]);
+        await Promise.all([
+          sbClear('deals'),sbClear('job_orders'),sbClear('project_cards'),
+          sbClear('project_card_dept_status'),sbClear('project_card_dept_tasks'),
+          sbClear('checklists'),sbClear('addenda'),
+        ]);
         return "Pipeline cleared. Expenses, billing, and cash position preserved.";
       }
     },
@@ -9773,8 +9902,12 @@ function DataManagement({
       bgColor:"#eff6ff",
       borderColor:"#93c5fd",
       items:["Expenses","Inflows","Billing Milestones","Cash Position Days"],
-      action:()=>{
+      action:async()=>{
         upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));
+        await Promise.all([
+          sbClear('expenses'),sbClear('inflows'),
+          sbClear('billing_milestones'),sbClear('billing_payments'),sbClear('cash_positions'),
+        ]);
         return "Finance data cleared. Pipeline and projects untouched.";
       }
     },
@@ -9786,8 +9919,11 @@ function DataManagement({
       bgColor:"#ecfeff",
       borderColor:"#a5f3fc",
       items:["Purchase Requests","Material Requests","Budget Requests"],
-      action:()=>{
+      action:async()=>{
         upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);
+        await Promise.all([
+          sbClear('purchase_requests'),sbClear('material_requests'),sbClear('budget_requests'),
+        ]);
         return "Procurement data cleared.";
       }
     },
@@ -9799,21 +9935,22 @@ function DataManagement({
       bgColor:"#f9fafb",
       borderColor:"#e5e7eb",
       items:["Activity Log"],
-      action:()=>{
+      action:async()=>{
         setActLog([]);persist("gmdv5:actlog",[]);
+        await sbClear('activity_log');
         return "Activity log cleared.";
       }
     },
   ];
 
-  const executePurge=()=>{
+  const executePurge=async()=>{
     if(purgeWord!==PURGE_WORD) return;
     const opt=PURGE_OPTIONS.find(o=>o.key===confirmPurge);
     if(!opt) return;
-    const msg=opt.action();
-    setPurgeResult(msg);
     setConfirmPurge(null);
     setPurgeWord("");
+    const msg=await opt.action();
+    setPurgeResult(msg);
   };
 
   return(
