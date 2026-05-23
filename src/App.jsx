@@ -1996,6 +1996,17 @@ export default function App(){
       return{...ps,[dealId]:card};
     });
   };
+  const addDeptTask=(dealId,dept,text)=>{
+    if(!text.trim()) return;
+    upPcards(ps=>{
+      const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
+      const deptData={...card.departments[dept]};
+      deptData.tasks=[...deptData.tasks,{id:uid(),text:text.trim(),done:false,doneAt:null,doneBy:null}];
+      deptData.done=false;
+      card.departments={...card.departments,[dept]:deptData};
+      return{...ps,[dealId]:card};
+    });
+  };
   const setProjectTAT=(dealId,days,category)=>{
     if(!days||isNaN(days)) return;
     const card=pcards[dealId];
@@ -4716,9 +4727,9 @@ export default function App(){
         matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm}
         editMat={editMat} setEditMat={setEditMat} saveMat={saveMat}
         addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -4887,7 +4898,7 @@ export default function App(){
       </Wrap>
     );
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
   }
 
   // ─── FINANCE ──────────────────────────────────────────────────────────────
@@ -5022,7 +5033,7 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="expenses") return(
       <Wrap>
         <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
@@ -5072,7 +5083,7 @@ export default function App(){
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -5321,7 +5332,7 @@ export default function App(){
       <ProjectCards
         pcards={pcards} wonDeals={wonDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
-        setProjectTAT={setProjectTAT} jos={jos}
+        addDeptTask={addDeptTask} setProjectTAT={setProjectTAT} jos={jos}
         delDeal={delDeal} delPcard={delPcard}
         session={session} role={role}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
@@ -5764,6 +5775,24 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         <Badge label={proj?.currentStage} color={PROD_CLR[proj?.currentStage||"Design"]}/>
         <span style={{fontWeight:800,color:"#10b981"}}>{fmt(projDeal?.value)}</span>
       </div>
+      {(()=>{
+        const pc=pcards?.[selProj];
+        if(!pc?.targetEndDate) return null;
+        const dl=Math.ceil((new Date(pc.targetEndDate)-new Date())/(1000*60*60*24));
+        const over=dl<0; const warn=dl>=0&&dl<=7;
+        if(!over&&!warn) return null;
+        return(
+          <div style={{background:over?"#fef2f2":"#fffbeb",border:`1.5px solid ${over?"#fecaca":"#fde68a"}`,borderRadius:10,padding:"10px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:"1.2rem"}}>{over?"🔴":"🟡"}</span>
+            <div>
+              <div style={{fontWeight:700,color:over?"#dc2626":"#b45309",fontSize:".88rem"}}>
+                {over?`${Math.abs(dl)} day${Math.abs(dl)!==1?"s":""} OVERDUE — target was ${pc.targetEndDate}`:`${dl} day${dl!==1?"s":""} remaining — due ${pc.targetEndDate}`}
+              </div>
+              {pc.tatCategory&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>Category: {pc.tatCategory} · {pc.targetDays}-day target</div>}
+            </div>
+          </div>
+        );
+      })()}
       <div style={{display:"flex",gap:2,borderBottom:"1.5px solid #e2e8f0",marginBottom:18}}>
         {tabs.map(([k,l])=>(
           <button key={k} onClick={()=>setOpsTab(k)} style={{background:"transparent",border:"none",borderBottom:`2.5px solid ${opsTab===k?"#f97316":"transparent"}`,padding:"8px 14px",fontFamily:"inherit",fontWeight:opsTab===k?700:400,fontSize:".82rem",color:opsTab===k?"#f97316":"#64748b",cursor:"pointer",marginBottom:-1.5,whiteSpace:"nowrap"}}>{l}</button>
@@ -5917,16 +5946,18 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         const p=proj; const d=projDeal;
         const projExpList=exps.filter(e=>e.projectId===selProj);
         const totalOps=costOf(p);
-        const profit=d.value-totalOps;
+        const expTotal=projExpList.reduce((s,e)=>s+Number(e.amount||0),0);
+        const grandTotal=totalOps+expTotal;
+        const profit=d.value-grandTotal;
         const margin=d.value>0?Math.round(profit/d.value*100):0;
         return(
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <div>
               <Card>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Cost Breakdown</div>
-                {[["Materials",(p.materials||[]).reduce((s,m)=>s+m.cost,0),"#f59e0b"],["Labor",p.laborCost||0,"#8b5cf6"],["Overhead",p.overhead||0,"#3b82f6"],["Total",totalOps,"#ef4444"]].map(([l,v,c],i)=>(
-                  <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<3?"1px solid #f1f5f9":"none",fontSize:".87rem"}}>
-                    <span style={{color:"#64748b",fontWeight:i===3?700:400}}>{l}</span>
+                {[["Materials",(p.materials||[]).reduce((s,m)=>s+m.cost,0),"#f59e0b"],["Labor",p.laborCost||0,"#8b5cf6"],["Overhead",p.overhead||0,"#3b82f6"],["Expenses",expTotal,"#06b6d4"],["Grand Total",grandTotal,"#ef4444"]].map(([l,v,c],i)=>(
+                  <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:i<4?"1px solid #f1f5f9":"none",fontSize:".87rem"}}>
+                    <span style={{color:"#64748b",fontWeight:i===4?700:400}}>{l}</span>
                     <span style={{fontWeight:700,color:c}}>{fmt(v)}</span>
                   </div>
                 ))}
@@ -6348,7 +6379,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
 
 
 // ─── CHECKLIST VIEW ───────────────────────────────────────────────────────────
-function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,loadChecklistTemplate,Wrap}){
+function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,loadChecklistTemplate,Wrap,users}){
   const f=(k,v)=>setClForm(p=>({...p,[k]:v}));
   const allTypes=["All",...CL_TYPES,"Custom"];
   const isCustom=!CL_TYPES.includes(clForm.type)||clForm.type==="Custom";
@@ -6376,7 +6407,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
     byProject[key].push(c);
   });
 
-  const allMembers=["Carlo M.","Dana R.","Enzo P.","Faye T.","Gino A.","Hana C.","Ivan L.","Jade O.","Alex R.","Bea T.","Chris N.","Diana L.","Edric M."];
+  const allMembers=users?.filter(u=>u.status==="active").map(u=>u.name||u.username)||[];
 
   return(
     <Wrap>
@@ -9018,12 +9049,14 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role}){
+function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,addDeptTask,setProjectTAT,jos,delDeal,delPcard,session,role}){
   const[selDeal,     setSelDeal]    =useState(null);
   const[selDept,     setSelDept]    =useState(null);
-  const[pcFilter,    setPcFilter]   =useState(null);   // "done"|"attention"|null
-  const[pcDeptFilter,setPcDeptFilter]=useState("All"); // dept filter
-  const[pcSort,      setPcSort]     =useState("tat");  // "client"|"tat"|"pct"|"ce"
+  const[pcFilter,    setPcFilter]   =useState(null);
+  const[pcDeptFilter,setPcDeptFilter]=useState("All");
+  const[pcSort,      setPcSort]     =useState("tat");
+  const[newTaskText, setNewTaskText]=useState("");
+  const[showTaskInput,setShowTaskInput]=useState(false);
 
   const card = selDeal ? pcards[selDeal] : null;
   const deal = wonDeals.find(d=>d.id===selDeal);
@@ -9412,6 +9445,40 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                         );
                       })}
                     </div>
+
+                    {/* Add task inline */}
+                    {canEdit&&(
+                      <div style={{marginTop:10}}>
+                        {showTaskInput?(
+                          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                            <input
+                              autoFocus
+                              value={newTaskText}
+                              onChange={e=>setNewTaskText(e.target.value)}
+                              onKeyDown={e=>{
+                                if(e.key==="Enter"&&newTaskText.trim()){addDeptTask(selDeal,selDept,newTaskText);setNewTaskText("");setShowTaskInput(false);}
+                                if(e.key==="Escape"){setNewTaskText("");setShowTaskInput(false);}
+                              }}
+                              placeholder="Describe the task…"
+                              style={{flex:1,border:`1.5px solid ${clr}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none"}}
+                            />
+                            <button onClick={()=>{if(newTaskText.trim()){addDeptTask(selDeal,selDept,newTaskText);setNewTaskText("");}setShowTaskInput(false);}}
+                              style={{background:clr,border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>
+                              Add
+                            </button>
+                            <button onClick={()=>{setNewTaskText("");setShowTaskInput(false);}}
+                              style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
+                              Cancel
+                            </button>
+                          </div>
+                        ):(
+                          <button onClick={()=>{setShowTaskInput(true);setNewTaskText("");}}
+                            style={{background:"transparent",border:`1.5px dashed ${clr}55`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:clr,cursor:"pointer",width:"100%",textAlign:"left",fontWeight:600}}>
+                            + Add task to {selDept}
+                          </button>
+                        )}
+                      </div>
+                    )}
 
                     {/* Completion status */}
                     <div style={{marginTop:12,padding:"10px 12px",background:"#f8fafc",borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
