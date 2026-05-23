@@ -2604,14 +2604,39 @@ export default function App(){
   const hr=new Date().getHours();
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"collections",l:"Collections"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"},{id:"accounts",l:"👥 Accounts"}],
-    Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
-    Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
-    Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
-    QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}],
-    Operations:   [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
-    Design:       [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
-    ProjectMover: [{id:"home",l:"My Projects"},{id:"pmupdates",l:"📝 PM Updates"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"},{id:"addenda",l:"⚠️ Scope Changes"}],
+    Manager:[
+      {group:"SALES",       items:[{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"PROJECTS",    items:[{id:"projects",l:"Project Cards"},{id:"joborders",l:"Job Orders"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"}]},
+      {group:"FINANCE",     items:[{id:"finance",l:"Cash Position"},{id:"billing",l:"Billing"},{id:"collections",l:"Collections"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"}]},
+      {group:"PROCUREMENT", items:[{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"}]},
+      {group:"ADMIN",       items:[{id:"accounts",l:"Accounts"}]},
+    ],
+    Sales:[
+      {group:"SALES",    items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"PROJECTS", items:[{id:"projects",l:"Project Cards"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"}]},
+    ],
+    Finance:[
+      {group:"FINANCE",  items:[{id:"home",l:"Cash Position"},{id:"billing",l:"Billing"},{id:"collections",l:"Collections"},{id:"accounting",l:"Accounting"}]},
+      {group:"PROJECTS", items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
+    ],
+    Procurement:[
+      {group:"PROCUREMENT", items:[{id:"home",l:"Overview"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"PROJECTS",    items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
+    ],
+    QS:[
+      {group:"PROJECTS", items:[{id:"home",l:"Dashboard"},{id:"projects",l:"Projects"},{id:"costanalysis",l:"Cost Analysis"}]},
+    ],
+    Operations:[
+      {group:"PROJECTS",    items:[{id:"home",l:"Projects"},{id:"projects",l:"Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"PROCUREMENT", items:[{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
+    ],
+    Design:[
+      {group:"PROJECTS",    items:[{id:"home",l:"Projects"},{id:"projects",l:"Project Cards"},{id:"checklist",l:"Checklist"}]},
+      {group:"PROCUREMENT", items:[{id:"swatchboard",l:"Swatchboard"}]},
+    ],
+    ProjectMover:[
+      {group:"MY WORK", items:[{id:"home",l:"My Projects"},{id:"pmupdates",l:"PM Updates"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"},{id:"addenda",l:"Scope Changes"}]},
+    ],
   };
   const Nav=()=>{
     const NAV_ICONS={
@@ -2621,8 +2646,23 @@ export default function App(){
       collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
       "Sales Pipeline":"📊","My Pipeline":"📊",
     };
-    const tabs=navMap[role]||[];
+    const groups=navMap[role]||[];
+    // Flatten groups for backward compat, then append admin tab
+    const adminExtra=session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[];
+    const allGroups=[...groups,...(adminExtra.length?[{group:"DEV",items:adminExtra}]:[])];
     const W = navCollapsed ? 64 : 220;
+    const renderNavBtn=(id,l)=>{
+      const active=page===id;
+      const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
+      return(
+        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
+          title={navCollapsed?l:""}
+          style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:navCollapsed?"10px 0":"8px 16px",justifyContent:navCollapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
+          <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+          {!navCollapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+        </button>
+      );
+    };
     return(
       <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
         {/* Logo + collapse toggle */}
@@ -2632,20 +2672,19 @@ export default function App(){
             {navCollapsed?"→":"←"}
           </button>
         </div>
-        {/* Nav items */}
+        {/* Nav groups */}
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
-          {[...tabs,...(session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[])].map(({id,l})=>{
-            const active=page===id;
-            const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
-            return(
-              <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
-                title={navCollapsed?l:""}
-                style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:navCollapsed?"10px 0":"9px 16px",justifyContent:navCollapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
-                <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
-                {!navCollapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
-              </button>
-            );
-          })}
+          {allGroups.map(({group,items})=>(
+            <div key={group}>
+              {!navCollapsed&&(
+                <div style={{padding:"10px 16px 4px",fontSize:".6rem",fontWeight:800,letterSpacing:"1.2px",textTransform:"uppercase",color:"rgba(255,255,255,.25)",userSelect:"none"}}>
+                  {group}
+                </div>
+              )}
+              {navCollapsed&&<div style={{height:1,background:"rgba(255,255,255,.08)",margin:"6px 10px"}}/>}
+              {items.map(({id,l})=>renderNavBtn(id,l))}
+            </div>
+          ))}
         </div>
         {/* Bottom: user info + actions */}
         <div style={{borderTop:"1px solid rgba(255,255,255,.08)",padding:navCollapsed?"12px 0":"12px 14px",flexShrink:0}}>
