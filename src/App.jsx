@@ -708,11 +708,11 @@ const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"
     </button>
   );
 };
-const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
-  // Using key+defaultValue pattern — safest focus fix, no hooks needed
+const Inp=({value,defaultValue,onChange,onBlur,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
   const base={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:readOnly?"#f8fafc":"#fff",boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
-  if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
-  return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
+  const controlled=value!==undefined;
+  if(rows) return <textarea {...(controlled?{value:value||""}:{defaultValue:defaultValue||""})} onChange={onChange} onBlur={onBlur} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
+  return <input type={type} {...(controlled?{value:value||""}:{defaultValue:defaultValue||""})} onChange={onChange} onBlur={onBlur} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
 // Currency input — shows commas when not focused, strips on focus
 const CurrInp=({value,onChange,placeholder="0.00",style:sx={}})=>{
@@ -4583,7 +4583,7 @@ export default function App(){
                   {/* Comms */}
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
-                      <Inp value={awardForm.commsLink} onChange={e=>setAwardForm(p=>({...p,commsLink:e.target.value}))} placeholder="https://chat.whatsapp.com/…"/>
+                      <Inp defaultValue={awardForm.commsLink} onBlur={e=>setAwardForm(p=>({...p,commsLink:e.target.value}))} placeholder="https://chat.whatsapp.com/…"/>
                     </Fld>
                   </div>
 
