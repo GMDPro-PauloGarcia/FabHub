@@ -4072,9 +4072,10 @@ export default function App(){
                   if(fileType==="csv"){
                     rawText=await file.text();
                     const lines=rawText.split("\n").filter(Boolean);
-                    const headers=lines[0].split(",").map(h=>h.trim().replace(/"/g,""));
+                    const parseCSVLine=l=>{const f=[];let c="",q=false;for(const ch of l){if(ch==='"')q=!q;else if(ch===','&&!q){f.push(c.trim());c="";}else c+=ch;}f.push(c.trim());return f;};
+                    const headers=parseCSVLine(lines[0]).map(h=>h.replace(/^"|"$/g,""));
                     rawRows=lines.slice(1).map(line=>{
-                      const vals=line.split(",").map(v=>v.trim().replace(/"/g,""));
+                      const vals=parseCSVLine(line).map(v=>v.replace(/^"|"$/g,""));
                       return Object.fromEntries(headers.map((h,i)=>[h,vals[i]||""]));
                     }).filter(r=>Object.values(r).some(v=>v));
                     rawText=lines.slice(0,6).join("\n");
@@ -4127,6 +4128,19 @@ export default function App(){
               }}/>
               {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>📂 Reading…</span>}
             </label>
+            <button onClick={()=>{
+              const hdrs=["Client","Project Name","CE No","CE Type","Stage","Contract Value","Invoiced","Amount Paid","Payment Status","Receipt Type","Sales Owner","Date Acquired","Notes"];
+              const rows=[
+                ["Metro Retail Co.","SM Megamall Renovation","CE-2025-001","Fabrication / General","01 · BizDev","500000","0","0","Unpaid","OR","Paulo Garcia","2025-05-23","Sample entry — delete before importing"],
+                ["ABC Corporation","Office Fit-Out Phase 2","CE-2025-002","Retail Fit-Out","04 · Design & CE in Progress","750000","0","0","Unpaid","OR","Paolo Gomez","2025-05-20",""],
+                ["XYZ Holdings","Lobby Display Walls","CE-2025-003","Fabrication / General","06 · Project Kickoff","1200000","600000","300000","Partial","OR","April Gail De Ello","2025-04-15","50% down collected"],
+              ];
+              const csv=[hdrs,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+              const a=Object.assign(document.createElement("a"),{href:URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})),download:"GMD_Sales_Import_Template.csv"});
+              document.body.appendChild(a);a.click();document.body.removeChild(a);
+            }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#1d4ed8",cursor:"pointer"}}>
+              📄 Template
+            </button>
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
           </div>
         </div>
@@ -5408,7 +5422,10 @@ export default function App(){
                         salesOwner:String(r.salesOwner||r["Sales Owner"]||r.ae||r.AE||"").trim(),
                         dateAcquired:String(r.dateAcquired||r["Date Acquired"]||r.date||today).trim(),
                         notes:String(r.notes||r.Notes||"").trim(),
-                        product:"Custom Shelving",probability:50,priority:"Normal",
+                        product:String(r.product||r.Product||r["Product Type"]||"Custom Shelving").trim(),
+                        priority:String(r.priority||r.Priority||"Normal").trim(),
+                        bizDevSource:String(r.bizDevSource||r["Biz Dev Source"]||r.source||r.Source||"").trim(),
+                        probability:50,
                       };
                       if(exists){
                         upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));
