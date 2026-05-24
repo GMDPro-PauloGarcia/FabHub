@@ -2157,7 +2157,13 @@ export default function App(){
     const next=(nums.length?Math.max(...nums):0)+1;
     return'INV-'+String(next).padStart(4,'0');
   };
-  const addAddendum2=(adm)=>upAddenda(as=>[{...adm,id:uid(),createdDate:today,status:"Discovered"},...as]);
+  const addAddendum2=(adm)=>{
+    upAddenda(as=>[{...adm,id:uid(),createdDate:today,status:"Discovered"},...as]);
+    const deal=deals.find(d=>d.id===adm.dealId);
+    const msg=`⚠️ <b>Scope Change Discovered</b>\n${adm.title||"?"}\nProject: ${deal?.client||adm.dealId||"?"}\nValue: ₱${Number(adm.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nBy: ${adm.discoveredBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
+    sendTelegramNotification("sales",msg);
+    sendTelegramNotification("management",msg);
+  };
   const updateAddendum=(id,ch)=>upAddenda(as=>as.map(a=>a.id===id?{...a,...ch}:a));
   const deleteAddendum=(id)=>upAddenda(as=>as.filter(a=>a.id!==id));
   const delJo        =(id)=>upJos(js=>js.filter(j=>j.id!==id));
@@ -2174,12 +2180,23 @@ export default function App(){
     sendTelegramNotification("procurement",`🔧 <b>New Material Request</b>\n${mr.item||"?"}\nProject: ${deal?.client||mr.dealId||"?"}\nQty: ${mr.qty||"?"} ${mr.unit||""}\nUrgency: ${mr.urgency||"Normal"}\nBy: ${mr.submittedBy||"?"}`);
   };
   const updateMR   =(id,ch)=>upMreqs(ms=>ms.map(m=>m.id===id?{...m,...ch}:m));
-  const addBR      =(br)=>upBreqs(bs=>[{...br,id:uid(),createdDate:today},...bs]);
+  const addBR      =(br)=>{
+    upBreqs(bs=>[{...br,id:uid(),createdDate:today},...bs]);
+    const deal=deals.find(d=>d.id===br.dealId);
+    sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.dealId||"?"}\nAmount: ₱${Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.submittedBy||"?"}`);
+  };
   const updateBR   =(id,ch)=>upBreqs(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
   const upBudgets  =useCallback(fn=>setBudgets(p=>{const n=fn(p);persist(KEYS.budgets,n);return n;}),[persist]);
   const saveBudget =(dealId,budget)=>upBudgets(bs=>({...bs,[dealId]:{...budget,savedAt:new Date().toISOString()}}));
   const addPR      =(pr)=>upPrs(ps=>[{...pr,id:uid(),createdDate:today},  ...ps]);
-  const updatePR   =(id,changes)=>upPrs(ps=>ps.map(p=>p.id===id?{...p,...changes}:p));
+  const updatePR   =(id,changes)=>{
+    if(changes.status==="PO Issued"&&changes.approvedBy){
+      const pr=prs.find(p=>p.id===id);
+      const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
+      sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"?"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
+    }
+    upPrs(ps=>ps.map(p=>p.id===id?{...p,...changes}:p));
+  };
   const deletePR   =(id)=>upPrs(ps=>ps.filter(p=>p.id!==id));
   const saveDayPos =(date,pos)=>upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
@@ -2213,6 +2230,10 @@ export default function App(){
       });
     }catch(e){console.warn("Telegram notify failed:",e);}
   },[]);
+
+  const sendToAllChannels=(message)=>{
+    ["general","ops","design","procurement","sales","management"].forEach(dept=>sendTelegramNotification(dept,message));
+  };
 
   const addDRF=(drf)=>upDrfs(ds=>{
     const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;
@@ -2256,6 +2277,10 @@ export default function App(){
     const entry={id:uid(),title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:[entry,...(d.addenda||[])]}:d));
     upProj(dealId,p=>({...p,addenda:[entry,...(p.addenda||[])]}));
+    const deal=deals.find(d=>d.id===dealId);
+    const msg=`⚠️ <b>Scope Change Logged</b>\n${title||"?"}\nProject: ${deal?.client||dealId||"?"}\nBy: ${requestedBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
+    sendTelegramNotification("sales",msg);
+    sendTelegramNotification("management",msg);
   };
   const updateAddendumStatus=(dealId,addId,status)=>{
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:(d.addenda||[]).map(a=>a.id===addId?{...a,status}:a)}:d));
@@ -2564,6 +2589,17 @@ export default function App(){
     setTimeout(()=>loadChecklistTemplate(id,awardModal.client),200);
     // Log
     logActivity(id,"Project Awarded",`${awardModal.client} — JO ${jo.joNo} issued. PM: ${pmDisplay}. Budget pending QS.`,session?.name);
+    // Notify ALL departments
+    sendToAllChannels(
+      `🏆 <b>PROJECT AWARDED!</b>\n\n` +
+      `Client: <b>${awardModal.client}</b>\n` +
+      `CE No: ${awardModal.ceNo||"—"} · ${awardModal.ceType||""}\n` +
+      `Value: ₱${Number(awardModal.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\n` +
+      `PM: ${pmDisplay}\n` +
+      `JO: ${jo.joNo}\n` +
+      (awardForm.scopeNotes?`Scope: ${awardForm.scopeNotes}\n`:"")+
+      `\n🚀 All departments — please mobilize!`
+    );
     setAwardModal(null);
   };
   const logPayment=({dealId,amount,note,date})=>{
@@ -10750,11 +10786,15 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
         <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",marginBottom:20}}>
           <div style={{fontWeight:700,color:"#0f172a",marginBottom:10}}>🔔 What Gets Notified</div>
           {[
-            {icon:"📝",label:"PM Update logged",ch:"Operations group"},
-            {icon:"📋",label:"New Design Request (DRF) submitted",ch:"Design group"},
-            {icon:"📦",label:"Delivery received by Warehouse",ch:"Procurement group"},
-            {icon:"🔧",label:"New Material Request submitted",ch:"Procurement group"},
-            {icon:"✅",label:"Swatch client-approved",ch:"Procurement + Sales groups"},
+            {icon:"🏆",label:"Project awarded / JO issued",ch:"ALL departments"},
+            {icon:"📝",label:"PM Update logged",ch:"Operations"},
+            {icon:"📋",label:"New Design Request (DRF) submitted",ch:"Design"},
+            {icon:"📦",label:"Delivery received by Warehouse",ch:"Procurement"},
+            {icon:"🔧",label:"New Material Request submitted",ch:"Procurement"},
+            {icon:"✅",label:"PO approved (status → PO Issued)",ch:"Procurement"},
+            {icon:"✅",label:"Swatch client-approved",ch:"Procurement + Sales"},
+            {icon:"⚠️",label:"Scope change / addendum logged",ch:"Sales + Management"},
+            {icon:"💰",label:"Budget request submitted",ch:"Management"},
           ].map((t,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:i<4?"1px solid #e2e8f0":""}}>
               <span style={{fontSize:".9rem"}}>{t.icon}</span>
