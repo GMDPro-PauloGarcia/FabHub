@@ -144,7 +144,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings"};
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
@@ -1562,6 +1562,7 @@ export default function App(){
   const[mreqs,       setMreqs]     = useState([]);   // Material Requests
   const[breqs,       setBreqs]     = useState([]);   // Budget Requests
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
+  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",management:""}});
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
   const[authView, setAuthView]= useState("login"); // login | register
@@ -1606,6 +1607,7 @@ export default function App(){
         const mr=localStorage.getItem(KEYS.mreqs); if(mr) setMreqs(JSON.parse(mr));
         const br=localStorage.getItem(KEYS.breqs); if(br) setBreqs(JSON.parse(br));
         const drf=localStorage.getItem(KEYS.drfs); if(drf) setDrfs(JSON.parse(drf));
+        const bs=localStorage.getItem(KEYS.botsettings); if(bs) setBotSettings(JSON.parse(bs));
         const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
         const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
         const bl=localStorage.getItem(KEYS.billings); if(bl) setBillings(JSON.parse(bl));
@@ -1916,6 +1918,10 @@ export default function App(){
   const logActivity=(dealId,action,detail,by)=>{
     const entry={id:uid(),dealId,action,detail,by:by||session?.name||"System",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     setActLog(prev=>{const next=[entry,...prev].slice(0,500);persist(KEYS.actlog,next);return next;});
+    if(action==="PM Update"){
+      const deal=deals.find(d=>d.id===dealId);
+      sendTelegramNotification("ops",`📝 <b>PM Update</b>\n${deal?.client||dealId}\nBy: ${entry.by} · ${today}\n${detail||""}`);
+    }
   };
   const upPcards    =useCallback(fn=>setPcards(p=>{const n=fn(p);persist(KEYS.pcards,n);return n;}),[persist]);
 
@@ -2162,7 +2168,11 @@ export default function App(){
   const delChecklist =(id)=>upChecklist(cs=>cs.filter(c=>c.id!==id));
   const upMreqs    =useCallback(fn=>setMreqs(p=>{const n=fn(p);persist(KEYS.mreqs,n);return n;}),[persist]);
   const upBreqs    =useCallback(fn=>setBreqs(p=>{const n=fn(p);persist(KEYS.breqs,n);return n;}),[persist]);
-  const addMR      =(mr)=>upMreqs(ms=>[{...mr,id:uid(),createdDate:today},...ms]);
+  const addMR      =(mr)=>{
+    upMreqs(ms=>[{...mr,id:uid(),createdDate:today},...ms]);
+    const deal=deals.find(d=>d.id===mr.dealId);
+    sendTelegramNotification("procurement",`🔧 <b>New Material Request</b>\n${mr.item||"?"}\nProject: ${deal?.client||mr.dealId||"?"}\nQty: ${mr.qty||"?"} ${mr.unit||""}\nUrgency: ${mr.urgency||"Normal"}\nBy: ${mr.submittedBy||"?"}`);
+  };
   const updateMR   =(id,ch)=>upMreqs(ms=>ms.map(m=>m.id===id?{...m,...ch}:m));
   const addBR      =(br)=>upBreqs(bs=>[{...br,id:uid(),createdDate:today},...bs]);
   const updateBR   =(id,ch)=>upBreqs(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
@@ -2183,9 +2193,33 @@ export default function App(){
 
   // ── DRF CRUD ─────────────────────────────────────────────────────────────
   const upDrfs   =useCallback(fn=>setDrfs(p=>{const n=fn(p);persist(KEYS.drfs,n);return n;}),[persist]);
-  const addDRF   =(drf)=>upDrfs(ds=>{const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;return[...ds,{...drf,id:uid(),drfNo:no,createdAt:today,status:"New"}];});
   const updateDRF=(id,data)=>upDrfs(ds=>ds.map(d=>d.id===id?{...d,...data}:d));
   const deleteDRF=(id)=>upDrfs(ds=>ds.filter(d=>d.id!==id));
+
+  // ── BOT SETTINGS CRUD ────────────────────────────────────────────────────
+  const saveBotSettings=(data)=>{const n={...data};setBotSettings(n);localStorage.setItem(KEYS.botsettings,JSON.stringify(n));};
+
+  // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
+  const sendTelegramNotification=useCallback(async(dept,message)=>{
+    const bs=JSON.parse(localStorage.getItem(KEYS.botsettings)||"{}");
+    const token=bs.token;
+    if(!token) return;
+    const chatId=bs.chatIds?.[dept]||bs.chatIds?.management;
+    if(!chatId) return;
+    try{
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({chat_id:chatId,text:message,parse_mode:"HTML"})
+      });
+    }catch(e){console.warn("Telegram notify failed:",e);}
+  },[]);
+
+  const addDRF=(drf)=>upDrfs(ds=>{
+    const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;
+    const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New"};
+    sendTelegramNotification("design",`📝 <b>New Design Request</b>\n${no} · ${drf.client||"?"}\nProject: ${drf.projectTitle||"—"}\nDeadline: ${drf.designDeadline||"TBD"}\nBy: ${drf.createdBy||"?"}`);
+    return[...ds,rec];
+  });
 
   // ── PM Update + Addendum helpers ─────────────────────────────────────────
   // ── Proactive Checklist Template Auto-Load ──────────────────────────────────
@@ -2215,6 +2249,8 @@ export default function App(){
     if(!text.trim()) return;
     const entry={id:uid(),text,by:by||session?.name||"Team",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
     upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
+    const deal=deals.find(d=>d.id===projId);
+    sendTelegramNotification("ops",`📝 <b>PM Update</b>\n${deal?.client||projId}\nBy: ${entry.by} · ${today}\n${text}`);
   };
   const addAddendum=(dealId,title,desc,requestedBy)=>{
     const entry={id:uid(),title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
@@ -2574,6 +2610,7 @@ export default function App(){
   const swQ=(id,st)=>upSwatches(ss=>ss.map(s=>{
     if(s.id!==id) return s;
     const extra=st==="Client Approved"?{clientApprovedBy:session?.name||"",clientApprovedAt:today}:{};
+    if(st==="Client Approved") sendTelegramNotification("management",`✅ <b>Swatch Client Approved</b>\n${s.name} (${s.category})\nProject: ${deals.find(d=>d.id===s.projectId)?.client||s.projectId}\nApproved by: ${session?.name||"?"} · ${today}`);
     return {...s,status:st,...extra};
   }));
 
@@ -2611,7 +2648,7 @@ export default function App(){
   const hr=new Date().getHours();
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"drf",l:"📝 Design Requests"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"collections",l:"Collections"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"},{id:"accounts",l:"👥 Accounts"}],
+    Manager:      [{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"},{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"drf",l:"📝 Design Requests"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"collections",l:"Collections"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"},{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"}],
     Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
     Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
     Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
@@ -4094,6 +4131,7 @@ export default function App(){
               {l:"+ Log Expense",    icon:"💸", action:()=>openAddExp(),                bg:"#3b82f6", fg:"#fff"},
               {l:"+ Log Payment",    icon:"💵", action:()=>setPage("billing"),           bg:"#8b5cf6", fg:"#fff"},
               {l:"+ New PO",         icon:"📦", action:()=>setPage("procurement"),       bg:"#f59e0b", fg:"#fff"},
+              {l:"📅 Calendar",      icon:"",   action:()=>setPage("calendar"),          bg:"#0ea5e9", fg:"#fff"},
             ].map(({l,icon,action,bg,fg})=>(
               <button key={l} onClick={action}
                 style={{background:bg,border:"none",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:fg,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
@@ -4317,6 +4355,20 @@ export default function App(){
       </Wrap>
     );
   }
+
+  // ── CONSTRUCTION CALENDAR ─────────────────────────────────────────────────
+  if(page==="calendar") return(
+    <ConstructionCalendar
+      wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
+      prs={prs} billings={billings} drfs={drfs}
+      setPage={setPage} today={today} Wrap={Wrap}
+    />
+  );
+
+  // ── BOT SETTINGS (Manager only) ───────────────────────────────────────────
+  if(page==="botsettings"&&role==="Manager") return(
+    <BotSettingsView botSettings={botSettings} saveBotSettings={saveBotSettings} sendTelegramNotification={sendTelegramNotification} Wrap={Wrap}/>
+  );
 
   if(page==="pipeline") return(
       <Wrap>
@@ -5357,7 +5409,10 @@ export default function App(){
                           <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {pr.qty} {pr.unit} · {pr.supplier||"No supplier"}</div>
                           {pr.poNumber&&<div style={{fontSize:".68rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
                         </div>
-                        <button onClick={()=>updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:`Received by ${session?.name||"Warehouse"} on ${today}`})}
+                        <button onClick={()=>{
+                          updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:`Received by ${session?.name||"Warehouse"} on ${today}`});
+                          sendTelegramNotification("procurement",`📦 <b>Delivery Confirmed</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
+                        }}
                           style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
                           ✓ Mark Received
                         </button>
@@ -10281,6 +10336,437 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
         })}
       </div>
     </div>
+  );
+}
+
+// ─── CONSTRUCTION CALENDAR ────────────────────────────────────────────────────
+function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPage,today,Wrap}){
+  const[viewDate,setViewDate]=React.useState(new Date());
+  const[selectedDay,setSelectedDay]=React.useState(null);
+  const[calTab,setCalTab]=React.useState("calendar");
+
+  const events=React.useMemo(()=>{
+    const list=[];
+    wonDeals.forEach(d=>{
+      const pc=pcards[d.id];const jo=jos.find(j=>j.dealId===d.id);
+      if(pc?.targetEndDate) list.push({date:pc.targetEndDate,type:"end",label:d.client,sub:"PM: "+(jo?.pm1||"—"),color:"#3b82f6",icon:"🏗"});
+    });
+    prs.filter(p=>p.deliveryDate&&!["Delivered","Cancelled"].includes(p.status)).forEach(p=>{
+      const d=wonDeals.find(x=>x.id===(p.projectId||p.dealId));
+      list.push({date:p.deliveryDate,type:"delivery",label:p.itemName||"Delivery",sub:d?.client||"?",color:"#f97316",icon:"📦"});
+    });
+    billings.filter(b=>b.dueDate&&b.status!=="Fully Paid").forEach(b=>{
+      const d=wonDeals.find(x=>x.id===b.dealId);
+      list.push({date:b.dueDate,type:"billing",label:b.name||"Billing",sub:(d?.client||"?")+" · ₱"+Number(b.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0}),color:"#10b981",icon:"💵"});
+    });
+    drfs.filter(d=>d.designDeadline&&d.status!=="Done").forEach(d=>{
+      list.push({date:d.designDeadline,type:"drf",label:d.drfNo||"DRF",sub:d.client||"?",color:"#ec4899",icon:"📝"});
+    });
+    return list;
+  },[wonDeals,pcards,jos,prs,billings,drfs]);
+
+  const eventsByDate=React.useMemo(()=>{
+    const map={};events.forEach(e=>{if(!map[e.date])map[e.date]=[];map[e.date].push(e);});return map;
+  },[events]);
+
+  const year=viewDate.getFullYear(),month=viewDate.getMonth();
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const monthLabel=viewDate.toLocaleDateString("en-PH",{month:"long",year:"numeric"});
+  const cells=[];
+  for(let i=0;i<firstDay;i++)cells.push(null);
+  for(let d=1;d<=daysInMonth;d++)cells.push(d);
+  const dateStr=(d)=>`${year}-${String(month+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+
+  const todayD=new Date(today);
+  const weekEnd=new Date(todayD);weekEnd.setDate(weekEnd.getDate()+7);
+  const thisWeekEvents=events.filter(e=>{const d=new Date(e.date);return d>=todayD&&d<=weekEnd;}).sort((a,b)=>a.date.localeCompare(b.date));
+
+  const conflicts=React.useMemo(()=>{
+    const pmProjects={};
+    wonDeals.forEach(d=>{
+      const pc=pcards[d.id];const jo=jos.find(j=>j.dealId===d.id);const pm=jo?.pm1;
+      if(!pm||!pc?.targetEndDate)return;
+      if(!pmProjects[pm])pmProjects[pm]=[];
+      pmProjects[pm].push({client:d.client,endDate:pc.targetEndDate,ceNo:d.ceNo});
+    });
+    const flagged=[];
+    Object.entries(pmProjects).forEach(([pm,projects])=>{
+      if(projects.length<2)return;
+      for(let i=0;i<projects.length;i++)for(let j=i+1;j<projects.length;j++){
+        const diff=Math.abs(new Date(projects[i].endDate)-new Date(projects[j].endDate))/(1000*60*60*24);
+        if(diff<=14)flagged.push({pm,p1:projects[i],p2:projects[j],diff:Math.round(diff)});
+      }
+    });
+    return flagged;
+  },[wonDeals,pcards,jos]);
+
+  const deliveryWarnings=React.useMemo(()=>prs.filter(p=>{
+    const pid=p.projectId||p.dealId;const pc=pcards[pid];
+    if(!pc?.targetEndDate||!p.deliveryDate)return false;
+    if(["Delivered","Cancelled"].includes(p.status))return false;
+    return p.deliveryDate>pc.targetEndDate;
+  }).map(p=>{
+    const d=wonDeals.find(x=>x.id===(p.projectId||p.dealId));const pc=pcards[p.projectId||p.dealId];
+    return{item:p.itemName||"?",client:d?.client||"?",deliveryDate:p.deliveryDate,endDate:pc?.targetEndDate};
+  }),[prs,pcards,wonDeals]);
+
+  const cashFlowByMonth=React.useMemo(()=>{
+    const map={};
+    billings.filter(b=>b.dueDate&&b.status!=="Fully Paid").forEach(b=>{
+      const ym=b.dueDate.slice(0,7);if(!map[ym])map[ym]={month:ym,expected:0,count:0};
+      map[ym].expected+=Number(b.amount||0);map[ym].count++;
+    });
+    return Object.values(map).sort((a,b)=>a.month.localeCompare(b.month)).slice(0,6);
+  },[billings]);
+
+  const teamCapacity=React.useMemo(()=>{
+    const pmMap={};
+    wonDeals.forEach(d=>{
+      const jo=jos.find(j=>j.dealId===d.id);const pc=pcards[d.id];
+      const pm=jo?.pm1||"Unassigned";
+      if(!pmMap[pm])pmMap[pm]={pm,projects:[],overdue:0};
+      const isOver=pc?.targetEndDate&&pc.targetEndDate<today;
+      pmMap[pm].projects.push({client:d.client,endDate:pc?.targetEndDate,overdue:isOver});
+      if(isOver)pmMap[pm].overdue++;
+    });
+    return Object.values(pmMap).sort((a,b)=>b.projects.length-a.projects.length);
+  },[wonDeals,jos,pcards,today]);
+
+  const TABS=[{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"}];
+  const BTN=(p)=><button onClick={p.onClick} style={{...{background:p.active?"#1e293b":"#f8fafc",color:p.active?"#fff":"#64748b",border:`1.5px solid ${p.active?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"},...(p.style||{})}}>{p.children}</button>;
+
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:900,fontSize:"1.4rem",color:"#0f172a",fontFamily:"'Barlow Condensed',sans-serif"}}>📅 Project Calendar</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Conflict detection · cash flow · team capacity</div>
+        </div>
+        <button onClick={()=>setPage("home")} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:"#475569",cursor:"pointer"}}>← Dashboard</button>
+      </div>
+
+      <div style={{display:"flex",gap:4,marginBottom:16,flexWrap:"wrap"}}>
+        {TABS.map(t=><BTN key={t.id} active={calTab===t.id} onClick={()=>setCalTab(t.id)}>{t.l}</BTN>)}
+      </div>
+
+      {calTab==="calendar"&&(<>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <BTN onClick={()=>setViewDate(d=>{const n=new Date(d);n.setMonth(n.getMonth()-1);return n;})}>‹ Prev</BTN>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#0f172a"}}>{monthLabel}</div>
+          <BTN onClick={()=>setViewDate(d=>{const n=new Date(d);n.setMonth(n.getMonth()+1);return n;})}>Next ›</BTN>
+        </div>
+        <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12,padding:"8px 12px",background:"#f8fafc",borderRadius:10,border:"1px solid #e2e8f0"}}>
+          {[{c:"#3b82f6",l:"Project End"},{c:"#f97316",l:"PO Delivery"},{c:"#10b981",l:"Billing Due"},{c:"#ec4899",l:"DRF Deadline"}].map(({c,l})=>(
+            <div key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#475569"}}>
+              <div style={{width:10,height:10,borderRadius:"50%",background:c}}/>{l}
+            </div>
+          ))}
+        </div>
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#1e293b"}}>
+            {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>(
+              <div key={d} style={{padding:"8px 4px",textAlign:"center",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:"1px"}}>{d}</div>
+            ))}
+          </div>
+          {Array.from({length:Math.ceil(cells.length/7)},(_,wi)=>(
+            <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:wi<Math.ceil(cells.length/7)-1?"1px solid #f1f5f9":""}}>
+              {cells.slice(wi*7,(wi+1)*7).map((day,di)=>{
+                if(!day)return<div key={di} style={{minHeight:70,background:"#fafafa",borderRight:"1px solid #f1f5f9"}}/>;
+                const ds=dateStr(day);const dayEvents=eventsByDate[ds]||[];
+                const isToday=ds===today;const isSel=selectedDay===ds;
+                return(
+                  <div key={di} onClick={()=>setSelectedDay(isSel?null:ds)}
+                    style={{minHeight:70,padding:"4px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":"#fff",cursor:"pointer"}}>
+                    <div style={{fontWeight:isToday?800:500,fontSize:".75rem",color:isToday?"#f59e0b":"#0f172a",marginBottom:2,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined}}>{day}</div>
+                    {dayEvents.slice(0,3).map((e,ei)=>(
+                      <div key={ei} style={{background:e.color+"22",border:`1px solid ${e.color}44`,borderRadius:4,padding:"1px 4px",marginBottom:1,fontSize:".6rem",color:e.color,fontWeight:600,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
+                        {e.icon} {e.label}
+                      </div>
+                    ))}
+                    {dayEvents.length>3&&<div style={{fontSize:".58rem",color:"#94a3b8",paddingLeft:2}}>+{dayEvents.length-3}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+        {selectedDay&&(eventsByDate[selectedDay]||[]).length>0&&(
+          <div style={{marginTop:12,background:"#fff",borderRadius:12,border:"1.5px solid #3b82f633",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"10px 16px"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>
+                Events · {new Date(selectedDay+"T00:00:00").toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric"})}
+              </span>
+            </div>
+            {(eventsByDate[selectedDay]||[]).map((e,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 16px",borderBottom:i<(eventsByDate[selectedDay]||[]).length-1?"1px solid #f8fafc":""}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:e.color,flexShrink:0,marginTop:5}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{e.label}</div>
+                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{e.sub}</div>
+                </div>
+                <div style={{fontSize:".68rem",fontWeight:700,color:e.color,background:e.color+"18",border:`1px solid ${e.color}44`,borderRadius:20,padding:"2px 8px",flexShrink:0}}>
+                  {e.type==="end"?"End":e.type==="delivery"?"Delivery":e.type==="billing"?"Billing":"DRF"}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </>)}
+
+      {calTab==="thisweek"&&(
+        <div>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:12}}>Next 7 Days — All Scheduled Events</div>
+          {thisWeekEvents.length===0
+            ?<div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"24px",textAlign:"center",color:"#059669",fontWeight:700}}>✅ No events in the next 7 days</div>
+            :thisWeekEvents.map((e,i)=>{
+              const daysUntil=Math.ceil((new Date(e.date)-todayD)/(1000*60*60*24));
+              return(
+                <div key={i} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${e.color}33`,padding:"12px 16px",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:36,height:36,borderRadius:8,background:e.color+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>{e.icon}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{e.label}</div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{e.sub}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>{new Date(e.date+"T00:00:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</div>
+                  </div>
+                  <div style={{fontSize:".72rem",fontWeight:700,color:daysUntil<=1?"#dc2626":daysUntil<=3?"#f59e0b":"#059669",background:daysUntil<=1?"#fef2f2":daysUntil<=3?"#fffbeb":"#f0fdf4",border:`1px solid ${daysUntil<=1?"#fecaca":daysUntil<=3?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 10px",flexShrink:0}}>
+                    {daysUntil===0?"TODAY":daysUntil===1?"Tomorrow":daysUntil+"d away"}
+                  </div>
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+
+      {calTab==="conflicts"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:conflicts.length?"#dc2626":"#059669",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>⚠️ Installation Conflicts ({conflicts.length})</span>
+              <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:2}}>Same PM with 2+ projects ending within 14 days of each other</div>
+            </div>
+            {conflicts.length===0
+              ?<div style={{padding:"20px",textAlign:"center",color:"#059669",fontSize:".85rem",fontWeight:600}}>✅ No conflicts detected</div>
+              :conflicts.map((c,i)=>(
+                <div key={i} style={{padding:"12px 16px",borderBottom:i<conflicts.length-1?"1px solid #f8fafc":"",background:i%2?"#fafafa":"#fff"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#dc2626",fontSize:".85rem"}}>⚠️ {c.pm}</div>
+                      <div style={{fontSize:".75rem",color:"#475569",marginTop:4}}>
+                        <span style={{fontWeight:600}}>{c.p1.client}</span> ends <strong>{c.p1.endDate}</strong>
+                        &nbsp;&nbsp;vs&nbsp;&nbsp;
+                        <span style={{fontWeight:600}}>{c.p2.client}</span> ends <strong>{c.p2.endDate}</strong>
+                      </div>
+                    </div>
+                    <span style={{fontSize:".72rem",fontWeight:700,color:"#dc2626",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"3px 10px",flexShrink:0}}>
+                      {c.diff===0?"Same day":c.diff+"d apart"}
+                    </span>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:deliveryWarnings.length?"#d97706":"#059669",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📦 Delivery After Install Warnings ({deliveryWarnings.length})</span>
+              <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:2}}>PO delivery dates scheduled AFTER project completion</div>
+            </div>
+            {deliveryWarnings.length===0
+              ?<div style={{padding:"20px",textAlign:"center",color:"#059669",fontSize:".85rem",fontWeight:600}}>✅ All deliveries before project end dates</div>
+              :deliveryWarnings.map((w,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<deliveryWarnings.length-1?"1px solid #f8fafc":"",flexWrap:"wrap",gap:8}}>
+                  <div>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{w.item}</div>
+                    <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{w.client}</div>
+                  </div>
+                  <div style={{textAlign:"right",fontSize:".75rem"}}>
+                    <div style={{color:"#d97706",fontWeight:700}}>Delivery: {w.deliveryDate}</div>
+                    <div style={{color:"#dc2626",fontWeight:600}}>Install ends: {w.endDate}</div>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
+
+      {calTab==="cashflow"&&(
+        <div>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:12}}>Billing Milestones — Expected Cash by Month</div>
+          {cashFlowByMonth.length===0
+            ?<div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"24px",textAlign:"center",color:"#92400e",fontWeight:600}}>No upcoming billing milestones</div>
+            :(<>
+              {cashFlowByMonth.map((m,i)=>{
+                const maxVal=cashFlowByMonth.reduce((mx,x)=>Math.max(mx,x.expected),1);
+                const pct=m.expected/maxVal*100;
+                const label=new Date(m.month+"-01").toLocaleDateString("en-PH",{month:"long",year:"numeric"});
+                const isCurrent=m.month===today.slice(0,7);
+                return(
+                  <div key={i} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isCurrent?"#10b98133":"#e2e8f0"}`,padding:"14px 18px",marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                      <div>
+                        <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{label}</span>
+                        {isCurrent&&<span style={{marginLeft:8,fontSize:".68rem",background:"#dcfce7",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>THIS MONTH</span>}
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#10b981"}}>₱{Math.round(m.expected).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                        <div style={{fontSize:".68rem",color:"#94a3b8"}}>{m.count} milestone{m.count!==1?"s":""}</div>
+                      </div>
+                    </div>
+                    <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:pct+"%",background:"#10b981",borderRadius:4}}/>
+                    </div>
+                  </div>
+                );
+              })}
+              <div style={{background:"#f8fafc",borderRadius:10,border:"1px solid #e2e8f0",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>Total expected (next 6 months)</span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#059669"}}>₱{cashFlowByMonth.reduce((s,m)=>s+m.expected,0).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+              </div>
+            </>)
+          }
+        </div>
+      )}
+
+      {calTab==="capacity"&&(
+        <div>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:12}}>PM & Coordinator Workload</div>
+          {teamCapacity.length===0
+            ?<div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"24px",textAlign:"center",color:"#059669",fontWeight:600}}>No active projects assigned</div>
+            :teamCapacity.map((pm,i)=>{
+              const overload=pm.projects.length>=3;
+              return(
+                <div key={i} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${overload?"#fecaca":pm.overdue?"#fed7aa":"#e2e8f0"}`,marginBottom:10,overflow:"hidden"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:overload?"#fef2f2":pm.overdue?"#fffbeb":"#f8fafc"}}>
+                    <div>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>👷 {pm.pm}</span>
+                      {overload&&<span style={{marginLeft:8,fontSize:".65rem",background:"#dc2626",color:"#fff",borderRadius:20,padding:"2px 7px",fontWeight:700}}>OVERLOADED</span>}
+                      {pm.overdue>0&&!overload&&<span style={{marginLeft:8,fontSize:".65rem",background:"#f59e0b",color:"#fff",borderRadius:20,padding:"2px 7px",fontWeight:700}}>{pm.overdue} OVERDUE</span>}
+                    </div>
+                    <span style={{fontWeight:700,color:overload?"#dc2626":"#3b82f6",fontSize:".88rem"}}>{pm.projects.length} project{pm.projects.length!==1?"s":""}</span>
+                  </div>
+                  {pm.projects.map((p,j)=>(
+                    <div key={j} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 16px",borderTop:"1px solid #f8fafc"}}>
+                      <span style={{fontSize:".8rem",color:"#475569",fontWeight:500}}>{p.client}</span>
+                      {p.endDate
+                        ?<span style={{fontSize:".7rem",fontWeight:600,color:p.overdue?"#dc2626":"#059669",background:p.overdue?"#fef2f2":"#f0fdf4",border:`1px solid ${p.overdue?"#fecaca":"#6ee7b7"}`,borderRadius:20,padding:"2px 8px"}}>{p.overdue?"OVERDUE":"End: "+p.endDate}</span>
+                        :<span style={{fontSize:".7rem",color:"#e2e8f0"}}>No TAT</span>
+                      }
+                    </div>
+                  ))}
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+    </Wrap>
+  );
+}
+
+// ─── BOT SETTINGS VIEW ────────────────────────────────────────────────────────
+function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,Wrap}){
+  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",management:""},...(botSettings.chatIds||{})}});
+  const[testing,setTesting]=React.useState(null);
+  const[testResult,setTestResult]=React.useState({});
+  const[saved,setSaved]=React.useState(false);
+
+  const CHANNELS=[
+    {id:"general",   label:"🌐 General",       hint:"All-team announcements"},
+    {id:"ops",       label:"🏗 Operations",    hint:"PM updates, project alerts"},
+    {id:"design",    label:"🎨 Design",         hint:"DRF submissions, design deadlines"},
+    {id:"procurement",label:"📦 Procurement",  hint:"MRs, PO deliveries"},
+    {id:"management",label:"👔 Management",    hint:"Overdue alerts, swatch approvals"},
+  ];
+
+  const testChannel=async(chId)=>{
+    setTesting(chId);
+    const token=form.token;const chatId=form.chatIds?.[chId];
+    if(!token||!chatId){setTestResult(r=>({...r,[chId]:{ok:false,msg:"Token or Chat ID missing"}}));setTesting(null);return;}
+    try{
+      const res=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({chat_id:chatId,text:`🤖 <b>FabHub Test</b>\nChannel: <b>${chId}</b>\nBot is live! ✅`,parse_mode:"HTML"})
+      });
+      const json=await res.json();
+      setTestResult(r=>({...r,[chId]:json.ok?{ok:true,msg:"✅ Message sent!"}:{ok:false,msg:"❌ "+json.description}}));
+    }catch(e){setTestResult(r=>({...r,[chId]:{ok:false,msg:"❌ Network error"}}));}
+    setTesting(null);
+  };
+
+  const doSave=()=>{saveBotSettings(form);setSaved(true);setTimeout(()=>setSaved(false),2500);};
+
+  return(
+    <Wrap>
+      <div style={{maxWidth:660,margin:"0 auto"}}>
+        <h2 style={{margin:"0 0 4px",fontWeight:900,fontSize:"1.4rem",color:"#0f172a",fontFamily:"'Barlow Condensed',sans-serif"}}>🤖 Telegram Bot Settings</h2>
+        <p style={{margin:"0 0 20px",fontSize:".8rem",color:"#64748b"}}>Connect FabHub to your Telegram groups for instant notifications on key events.</p>
+
+        <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"14px 18px",marginBottom:20}}>
+          <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:6,fontSize:".85rem"}}>⚡ 4-Step Setup</div>
+          <ol style={{margin:0,paddingLeft:18,fontSize:".78rem",color:"#1e40af",lineHeight:1.75}}>
+            <li>Message <strong>@BotFather</strong> on Telegram → /newbot → copy the API token</li>
+            <li>Create a Telegram group for each department and add the bot as <strong>admin</strong></li>
+            <li>Send any message in each group, then open: <code style={{background:"#dbeafe",padding:"1px 5px",borderRadius:3}}>api.telegram.org/bot[TOKEN]/getUpdates</code></li>
+            <li>Find the <code>chat.id</code> (negative number) and paste it below</li>
+          </ol>
+        </div>
+
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"18px",marginBottom:16}}>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:8}}>🔑 Bot Token</div>
+          <input type="password" value={form.token||""} onChange={e=>setForm(f=>({...f,token:e.target.value}))} placeholder="7123456789:AAH9g3kXXX..."
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",boxSizing:"border-box"}}/>
+          <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>Keep this private. Never share it.</div>
+        </div>
+
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"18px",marginBottom:16}}>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>📢 Department Group Chat IDs</div>
+          {CHANNELS.map(ch=>(
+            <div key={ch.id} style={{marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:5}}>
+                <div>
+                  <div style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>{ch.label}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8"}}>{ch.hint}</div>
+                </div>
+                <button onClick={()=>testChannel(ch.id)} disabled={testing===ch.id}
+                  style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".72rem",color:"#475569",cursor:"pointer",opacity:testing===ch.id?.5:1}}>
+                  {testing===ch.id?"Testing...":"Test →"}
+                </button>
+              </div>
+              <input value={form.chatIds?.[ch.id]||""} onChange={e=>setForm(f=>({...f,chatIds:{...(f.chatIds||{}),[ch.id]:e.target.value}}))} placeholder="-100123456789"
+                style={{width:"100%",border:`1.5px solid ${testResult[ch.id]?.ok?"#6ee7b7":testResult[ch.id]?.ok===false?"#fecaca":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",boxSizing:"border-box"}}/>
+              {testResult[ch.id]&&<div style={{fontSize:".72rem",marginTop:4,color:testResult[ch.id].ok?"#059669":"#dc2626",fontWeight:600}}>{testResult[ch.id].msg}</div>}
+            </div>
+          ))}
+        </div>
+
+        <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",marginBottom:20}}>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:10}}>🔔 What Gets Notified</div>
+          {[
+            {icon:"📝",label:"PM Update logged",ch:"Ops group"},
+            {icon:"📋",label:"New DRF submitted",ch:"Design group"},
+            {icon:"📦",label:"Delivery confirmed by Warehouse",ch:"Procurement group"},
+            {icon:"🔧",label:"New Material Request submitted",ch:"Procurement group"},
+            {icon:"✅",label:"Swatch client-approved",ch:"Management group"},
+          ].map((t,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:i<4?"1px solid #e2e8f0":""}}>
+              <span style={{fontSize:".9rem"}}>{t.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".78rem",color:"#0f172a",fontWeight:500}}>{t.label}</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>→ {t.ch}</div>
+              </div>
+              <span style={{fontSize:".62rem",background:"#dcfce7",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>ACTIVE</span>
+            </div>
+          ))}
+        </div>
+
+        <button onClick={doSave}
+          style={{background:saved?"#059669":"#1e293b",border:"none",borderRadius:10,padding:"12px 28px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer",width:"100%",transition:"background .3s"}}>
+          {saved?"✅ Settings Saved!":"💾 Save Bot Settings"}
+        </button>
+      </div>
+    </Wrap>
   );
 }
 
