@@ -54,7 +54,7 @@ export const sbLoadAll = async () => {
       deals, jos, pcards, tasks, deptStatus,
       milestones, payments, expenses, inflows,
       prs, mreqs, breqs, addenda,
-      cashPos, budgets, checklists, swatches, actLog, users
+      cashPos, budgets, checklists, swatches, actLog, users, appSettings
     ] = await Promise.all([
       sbList('deals',                    { order: 'created_at' }),
       sbList('job_orders',               { order: 'created_at' }),
@@ -75,6 +75,7 @@ export const sbLoadAll = async () => {
       sbList('swatches',                 { order: 'created_at' }),
       sbList('activity_log',             { order: 'created_at', limit: 200 }),
       sbList('user_profiles',            { order: 'role' }),
+      sbList('app_settings',             {}),
     ])
 
     // Build pcards object with departments embedded
@@ -109,9 +110,11 @@ export const sbLoadAll = async () => {
     const budgetsObj  = Object.fromEntries(budgets.map(b  => [b.deal_id, b]))
     const cashPosObj  = Object.fromEntries(cashPos.map(c  => [c.date, c]))
 
+    const settingsObj = Object.fromEntries((appSettings||[]).map(s => [s.key, s.value]))
+
     return { deals, jos, pcards: pcardsObj, billings: billingsArr, exps: expenses, inflows,
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
-             checklist: checklists, swatches, actLog, users }
+             checklist: checklists, swatches, actLog, users, settings: settingsObj }
   } catch (err) {
     console.error('sbLoadAll failed:', err)
     return null

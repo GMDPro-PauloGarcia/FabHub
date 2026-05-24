@@ -414,3 +414,10 @@ WHERE table_schema = 'public'
   )
 GROUP BY table_name
 ORDER BY table_name;
+
+-- ── APP SETTINGS (bot tokens, system config) ──────────────
+CREATE TABLE IF NOT EXISTS public.app_settings (
+  key        text PRIMARY KEY,
+  value      jsonb NOT NULL DEFAULT '{}',
+  updated_at timestamptz DEFAULT now()
+);
