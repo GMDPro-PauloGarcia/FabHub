@@ -1562,7 +1562,7 @@ export default function App(){
   const[mreqs,       setMreqs]     = useState([]);   // Material Requests
   const[breqs,       setBreqs]     = useState([]);   // Budget Requests
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
-  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",management:""}});
+  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""}});
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
   const[authView, setAuthView]= useState("login"); // login | register
@@ -2610,7 +2610,11 @@ export default function App(){
   const swQ=(id,st)=>upSwatches(ss=>ss.map(s=>{
     if(s.id!==id) return s;
     const extra=st==="Client Approved"?{clientApprovedBy:session?.name||"",clientApprovedAt:today}:{};
-    if(st==="Client Approved") sendTelegramNotification("management",`✅ <b>Swatch Client Approved</b>\n${s.name} (${s.category})\nProject: ${deals.find(d=>d.id===s.projectId)?.client||s.projectId}\nApproved by: ${session?.name||"?"} · ${today}`);
+    if(st==="Client Approved"){
+      const msg=`✅ <b>Swatch Client Approved</b>\n${s.name} (${s.category})\nProject: ${deals.find(d=>d.id===s.projectId)?.client||s.projectId}\nApproved by: ${session?.name||"?"} · ${today}`;
+      sendTelegramNotification("procurement",msg);
+      sendTelegramNotification("sales",msg);
+    }
     return {...s,status:st,...extra};
   }));
 
@@ -2653,7 +2657,7 @@ export default function App(){
     Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
     Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
     QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}],
-    Operations:   [{id:"home",l:"Projects"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
+    Operations:   [{id:"home",l:"Projects"},{id:"calendar",l:"📅 Calendar"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
     Design:       [{id:"home",l:"Projects"},{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
     ProjectMover: [{id:"home",l:"My Projects"},{id:"pmupdates",l:"📝 PM Updates"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"},{id:"addenda",l:"⚠️ Scope Changes"}],
     Warehouse:    [{id:"home",l:"Dashboard"},{id:"deliveries",l:"📦 Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}],
@@ -5490,6 +5494,7 @@ export default function App(){
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} today={today} Wrap={Wrap}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -10667,17 +10672,18 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
 
 // ─── BOT SETTINGS VIEW ────────────────────────────────────────────────────────
 function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,Wrap}){
-  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",management:""},...(botSettings.chatIds||{})}});
+  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})}});
   const[testing,setTesting]=React.useState(null);
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
 
   const CHANNELS=[
-    {id:"general",   label:"🌐 General",       hint:"All-team announcements"},
-    {id:"ops",       label:"🏗 Operations",    hint:"PM updates, project alerts"},
-    {id:"design",    label:"🎨 Design",         hint:"DRF submissions, design deadlines"},
-    {id:"procurement",label:"📦 Procurement",  hint:"MRs, PO deliveries"},
-    {id:"management",label:"👔 Management",    hint:"Overdue alerts, swatch approvals"},
+    {id:"general",    label:"🌐 General",       hint:"All-team announcements"},
+    {id:"ops",        label:"🏗 Operations",    hint:"PM updates, project alerts"},
+    {id:"design",     label:"🎨 Design",         hint:"DRF submissions, design deadlines"},
+    {id:"procurement",label:"📦 Procurement",   hint:"MRs, deliveries, swatch approvals"},
+    {id:"sales",      label:"💼 Sales",          hint:"Swatch approvals, deal updates"},
+    {id:"management", label:"👔 Management",    hint:"High-level overdue alerts only"},
   ];
 
   const testChannel=async(chId)=>{
@@ -10744,11 +10750,11 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
         <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",marginBottom:20}}>
           <div style={{fontWeight:700,color:"#0f172a",marginBottom:10}}>🔔 What Gets Notified</div>
           {[
-            {icon:"📝",label:"PM Update logged",ch:"Ops group"},
-            {icon:"📋",label:"New DRF submitted",ch:"Design group"},
-            {icon:"📦",label:"Delivery confirmed by Warehouse",ch:"Procurement group"},
+            {icon:"📝",label:"PM Update logged",ch:"Operations group"},
+            {icon:"📋",label:"New Design Request (DRF) submitted",ch:"Design group"},
+            {icon:"📦",label:"Delivery received by Warehouse",ch:"Procurement group"},
             {icon:"🔧",label:"New Material Request submitted",ch:"Procurement group"},
-            {icon:"✅",label:"Swatch client-approved",ch:"Management group"},
+            {icon:"✅",label:"Swatch client-approved",ch:"Procurement + Sales groups"},
           ].map((t,i)=>(
             <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",borderBottom:i<4?"1px solid #e2e8f0":""}}>
               <span style={{fontSize:".9rem"}}>{t.icon}</span>
