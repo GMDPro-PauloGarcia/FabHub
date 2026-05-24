@@ -1637,6 +1637,7 @@ export default function App(){
             if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
             if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
             if(data.inflows?.length) setInfs(data.inflows);
+            if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);localStorage.setItem(KEYS.botsettings,JSON.stringify(bs));}
             // Sync to localStorage as cache
             const ls=localStorage.setItem.bind(localStorage);
             if(data.deals?.length)   ls(KEYS.deals,   JSON.stringify(data.deals));
@@ -2214,7 +2215,12 @@ export default function App(){
   const deleteDRF=(id)=>upDrfs(ds=>ds.filter(d=>d.id!==id));
 
   // ── BOT SETTINGS CRUD ────────────────────────────────────────────────────
-  const saveBotSettings=(data)=>{const n={...data};setBotSettings(n);localStorage.setItem(KEYS.botsettings,JSON.stringify(n));};
+  const saveBotSettings=async(data)=>{
+    const n={...data};
+    setBotSettings(n);
+    localStorage.setItem(KEYS.botsettings,JSON.stringify(n));
+    if(isSupabaseReady()) await sbUpsert('app_settings',{key:'botsettings',value:n,updated_at:new Date().toISOString()},'key');
+  };
 
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
   const sendTelegramNotification=useCallback(async(dept,message)=>{
