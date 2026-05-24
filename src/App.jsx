@@ -2704,15 +2704,54 @@ export default function App(){
   const hr=new Date().getHours();
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
-    Manager:      [{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"pipeline",l:"Sales Pipeline"},{id:"projects",l:"📋 Projects"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"ops",l:"Operations"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"drf",l:"📝 Design Requests"},{id:"costanalysis",l:"Cost Analysis"},{id:"accounting",l:"Accounting"},{id:"procurement",l:"Procurement"},{id:"clients",l:"🏢 Clients"},{id:"collections",l:"Collections"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"inventory",l:"Inventory"},{id:"accounts",l:"👥 Accounts"}],
-    Sales:        [{id:"pipeline",l:"Sales Pipeline"},{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"},{id:"checklist",l:"Checklist"},{id:"clients",l:"🏢 Clients"}],
-    Finance:      [{id:"home",l:"Cash Position"},{id:"projects",l:"📋 Projects"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"},{id:"clients",l:"🏢 Clients"}],
-    Procurement:  [{id:"home",l:"Overview"},{id:"projects",l:"📋 Projects"},{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"clients",l:"🏢 Clients"}],
-    QS:           [{id:"home",l:"Dashboard"},{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}],
-    Operations:   [{id:"home",l:"Projects"},{id:"calendar",l:"📅 Calendar"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"joborders",l:"Job Orders"},{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}],
-    Design:       [{id:"home",l:"Projects"},{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}],
-    ProjectMover: [{id:"home",l:"My Projects"},{id:"pmupdates",l:"📝 PM Updates"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"},{id:"addenda",l:"⚠️ Scope Changes"}],
-    Warehouse:    [{id:"home",l:"Dashboard"},{id:"deliveries",l:"📦 Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}],
+    Manager:[
+      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"},{id:"botsettings",l:"🤖 Bot Settings"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"collections",l:"Collections"},{id:"accounting",l:"Accounting"}]},
+      {group:"Operations",  items:[{id:"ops",l:"Operations"},{id:"projects",l:"📋 Projects"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
+      {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
+      {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"}]},
+    ],
+    Sales:[
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Projects",     items:[{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"}]},
+      {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"},{id:"checklist",l:"Checklist"}]},
+    ],
+    Finance:[
+      {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
+      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"}]},
+      {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
+    ],
+    Procurement:[
+      {group:"Overview",   items:[{id:"home",l:"Overview"}]},
+      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
+      {group:"Materials",  items:[{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
+    ],
+    QS:[
+      {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
+      {group:"Projects", items:[{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}]},
+    ],
+    Operations:[
+      {group:"Overview",  items:[{id:"home",l:"Projects"},{id:"calendar",l:"📅 Calendar"}]},
+      {group:"On-Site",   items:[{id:"projects",l:"📋 Project Cards"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
+      {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
+    ],
+    Design:[
+      {group:"Overview",    items:[{id:"home",l:"Projects"}]},
+      {group:"Design Work", items:[{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}]},
+    ],
+    ProjectMover:[
+      {group:"Overview", items:[{id:"home",l:"My Projects"}]},
+      {group:"Updates",  items:[{id:"pmupdates",l:"📝 PM Updates"},{id:"addenda",l:"⚠️ Scope Changes"}]},
+      {group:"Work",     items:[{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
+    ],
+    Warehouse:[
+      {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
+      {group:"Stock",    items:[{id:"deliveries",l:"📦 Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
+    ],
   };
   const Nav=()=>{
     const NAV_ICONS={
@@ -2723,7 +2762,21 @@ export default function App(){
       drf:"📝",deliveries:"🚚",stockmove:"📦",
       "Sales Pipeline":"📊","My Pipeline":"📊",
     };
-    const tabs=navMap[role]||[];
+    const groups=navMap[role]||[];
+    const allItems=groups.flatMap(g=>g.items||[]);
+    const pauloExtra=session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[];
+    const NavBtn=({id,l,collapsed})=>{
+      const active=page===id;
+      const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
+      return(
+        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
+          title={collapsed?l:""}
+          style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
+          <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+          {!collapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+        </button>
+      );
+    };
     const W = navCollapsed ? 64 : 220;
     return(
       <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
@@ -2736,18 +2789,21 @@ export default function App(){
         </div>
         {/* Nav items */}
         <div style={{flex:1,overflowY:"auto",padding:"8px 0"}}>
-          {[...tabs,...(session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[])].map(({id,l})=>{
-            const active=page===id;
-            const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
-            return(
-              <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
-                title={navCollapsed?l:""}
-                style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:navCollapsed?"10px 0":"9px 16px",justifyContent:navCollapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
-                <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
-                {!navCollapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
-              </button>
-            );
-          })}
+          {navCollapsed ? (
+            [...allItems,...pauloExtra].map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={true}/>)
+          ) : (
+            <>
+              {groups.map((section,si)=>(
+                <div key={si} style={{marginBottom:4}}>
+                  <div style={{padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                    {section.group}
+                  </div>
+                  {(section.items||[]).map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
+                </div>
+              ))}
+              {pauloExtra.map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
+            </>
+          )}
         </div>
         {/* Bottom: user info + actions */}
         <div style={{borderTop:"1px solid rgba(255,255,255,.08)",padding:navCollapsed?"12px 0":"12px 14px",flexShrink:0}}>
