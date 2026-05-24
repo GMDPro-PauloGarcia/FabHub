@@ -3144,7 +3144,7 @@ export default function App(){
         const toBuy=swatches.filter(s=>s.status==="To Buy").slice(0,5);
         if(!toBuy.length) return null;
         return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
             <div style={{background:"#06b6d4",padding:"12px 16px"}}>
               <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🎨 Swatchboard — Items To Source ({toBuy.length})</span>
             </div>
@@ -3165,82 +3165,240 @@ export default function App(){
           </div>
         );
       })()}
+
+      {/* Swatches received but not yet client-approved */}
+      {(()=>{
+        const pendingApproval=swatches.filter(s=>s.status==="Received").slice(0,5);
+        if(!pendingApproval.length) return null;
+        return(
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fde68a",overflow:"hidden",marginBottom:16}}>
+            <div style={{background:"#d97706",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⚠️ Swatches Received — Awaiting Client Approval ({pendingApproval.length})</span>
+              <button onClick={()=>setPage("swatchboard")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Open Swatchboard →</button>
+            </div>
+            {pendingApproval.map((s,i)=>{
+              const d=wonDeals.find(x=>x.id===s.projectId||x.id===s.dealId);
+              return(
+                <div key={s.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<pendingApproval.length-1?"1px solid #fef3c7":"",background:"#fff"}}>
+                  <div>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{s.name}</div>
+                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {s.category} · {s.qty} {s.unit}</div>
+                  </div>
+                  <span style={{fontSize:".72rem",background:"#fffbeb",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"2px 8px",fontWeight:600}}>Needs sign-off</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* Overdue deliveries */}
+      {(()=>{
+        const nowD=new Date();
+        const overdue=prs.filter(p=>p.deliveryDate&&new Date(p.deliveryDate)<nowD&&!["Delivered","Cancelled"].includes(p.status)).slice(0,5);
+        if(!overdue.length) return null;
+        return(
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fecaca",overflow:"hidden",marginBottom:16}}>
+            <div style={{background:"#dc2626",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Overdue Deliveries — Follow Up Now ({overdue.length})</span>
+            </div>
+            {overdue.map((pr,i)=>{
+              const d=wonDeals.find(x=>x.id===pr.projectId);
+              const daysLate=Math.ceil((nowD-new Date(pr.deliveryDate))/(1000*60*60*24));
+              return(
+                <div key={pr.id} onClick={()=>setPage("procurement")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<overdue.length-1?"1px solid #fee2e2":"",cursor:"pointer",background:"#fff"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#fef2f2"}
+                  onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                  <div>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</div>
+                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {pr.supplier||"No supplier"} · Expected {pr.deliveryDate}</div>
+                  </div>
+                  <span style={{fontSize:".72rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
+
+      {/* Expected deliveries this week */}
+      {(()=>{
+        const nowD=new Date();
+        const weekEnd=new Date(nowD); weekEnd.setDate(nowD.getDate()+7);
+        const thisWeek=prs.filter(p=>p.deliveryDate&&new Date(p.deliveryDate)>=nowD&&new Date(p.deliveryDate)<=weekEnd&&!["Delivered","Cancelled"].includes(p.status)).slice(0,5);
+        if(!thisWeek.length) return null;
+        return(
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#059669",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚚 Expected Deliveries This Week ({thisWeek.length})</span>
+            </div>
+            {thisWeek.map((pr,i)=>{
+              const d=wonDeals.find(x=>x.id===pr.projectId);
+              const daysUntil=Math.ceil((new Date(pr.deliveryDate)-nowD)/(1000*60*60*24));
+              return(
+                <div key={pr.id} onClick={()=>setPage("procurement")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<thisWeek.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <div>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</div>
+                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {pr.supplier||"No supplier"} · {pr.deliveryDate}</div>
+                  </div>
+                  <span style={{fontSize:".72rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>
+                    {daysUntil===0?"Today":daysUntil===1?"Tomorrow":`in ${daysUntil}d`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
     </Wrap>
   );
 
   // ── OPERATIONS HOME ───────────────────────────────────────────────────────
   if(role==="Operations") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"Team"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Operations · {todayL}</div>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={()=>setPage("projects")} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 My Projects</button>
           <button onClick={()=>setPage("materialreq")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🔧 Material Request</button>
         </div>
       </div>
 
-      {/* My active projects - filtered to this PM */}
       {(()=>{
         const myName=session?.name||"";
+        const firstWord=(myName||"").split(" ")[0]?.toLowerCase()||"";
         const myProjects=wonDeals.filter(d=>{
           const jo=jos.find(j=>j.dealId===d.id);
-          return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
+          return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>p===myName||p.toLowerCase().includes(firstWord));
         });
-        const allOpsProjects=wonDeals; // fallback - show all if no PM match
-        const display=myProjects.length>0?myProjects:allOpsProjects;
-        const today2=new Date();
+        const display=myProjects.length>0?myProjects:wonDeals;
+        const now=new Date();
+
+        // At-risk & needs-update flags
+        const needsUpdate=display.filter(d=>{
+          const last=actLog.filter(e=>e.dealId===d.id&&e.action==="PM Update")[0];
+          const daysSince=last?Math.ceil((now-new Date(last.date))/(1000*60*60*24)):999;
+          return daysSince>=3;
+        });
+        const atRisk=display.filter(d=>{
+          const pc=pcards[d.id];
+          if(!pc?.targetEndDate) return false;
+          const daysLeft=Math.ceil((new Date(pc.targetEndDate)-now)/(1000*60*60*24));
+          return daysLeft<=7;
+        });
+        const myOpenTasks=checklist.filter(c2=>c2.status!=="Done"&&display.some(d=>d.id===c2.projectId));
 
         return(
-          <div>
-            {myProjects.length>0&&(
-              <div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"8px 14px",marginBottom:12,fontSize:".8rem",color:"#c2410c",fontWeight:600}}>
-                📍 Showing your {myProjects.length} assigned project{myProjects.length!==1?"s":""} · <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("projects")}>See all projects →</span>
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* 🚨 Needs Update Now */}
+            {needsUpdate.length>0&&(
+              <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,overflow:"hidden"}}>
+                <div style={{background:"#dc2626",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Needs Update Now — {needsUpdate.length} project{needsUpdate.length!==1?"s":""} silent for 3+ days</span>
+                  <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)"}}>Log an update before your client asks</span>
+                </div>
+                {needsUpdate.map((d,i)=>{
+                  const last=actLog.filter(e=>e.dealId===d.id&&e.action==="PM Update")[0];
+                  const daysSince=last?Math.ceil((now-new Date(last.date))/(1000*60*60*24)):null;
+                  return(
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<needsUpdate.length-1?"1px solid #fee2e2":"",background:"#fff"}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{d.client}</div>
+                        <div style={{fontSize:".72rem",color:"#94a3b8"}}>{daysSince===null?"Never updated":daysSince+"d since last update"} · {d.product}</div>
+                      </div>
+                      <button onClick={()=>setPmUpdateModal({dealId:d.id,dealName:d.client})}
+                        style={{background:"#dc2626",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                        📝 Log Now
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
-            {/* TAT-sorted project list */}
+            {/* ⏰ At Risk This Week */}
+            {atRisk.length>0&&(
+              <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,overflow:"hidden"}}>
+                <div style={{background:"#d97706",padding:"10px 16px"}}>
+                  <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ At Risk — {atRisk.length} project{atRisk.length!==1?"s":""} finishing within 7 days or overdue</span>
+                </div>
+                {atRisk.map((d,i)=>{
+                  const pc=pcards[d.id];
+                  const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-now)/(1000*60*60*24)):null;
+                  return(
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<atRisk.length-1?"1px solid #fef3c7":"",background:"#fff"}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{d.client}</div>
+                        <div style={{fontSize:".72rem",color:"#94a3b8"}}>Target: {pc?.targetEndDate||"—"}</div>
+                      </div>
+                      <span style={{fontSize:".78rem",fontWeight:700,color:daysLeft!==null&&daysLeft<0?"#dc2626":"#d97706",background:daysLeft!==null&&daysLeft<0?"#fef2f2":"#fffbeb",border:"1px solid currentColor",borderRadius:20,padding:"3px 10px",whiteSpace:"nowrap"}}>
+                        {daysLeft===null?"No TAT set":daysLeft<0?`${Math.abs(daysLeft)}d OVERDUE`:`${daysLeft}d left`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* My Active Projects */}
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>🏗 Active Projects — Sorted by Urgency</span>
-                <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{display.length} projects</span>
+                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>🏗 My Active Projects</span>
+                <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{display.length} projects · <span style={{cursor:"pointer",textDecoration:"underline",color:"rgba(255,255,255,.6)"}} onClick={()=>setPage("projects")}>See all →</span></span>
               </div>
+              {display.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No active projects assigned to you.</div>}
               {display.slice(0,8).map((d,i)=>{
                 const pc=pcards[d.id];
                 const jo=jos.find(j=>j.dealId===d.id);
-                const pct=pc?Math.round(Object.values(pc.departments||{}).filter(dept=>dept.done).length/6*100):0;
-                const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/(1000*60*60*24)):null;
+                const depsTotal=Object.values(pc?.departments||{}).length||6;
+                const depsDone=Object.values(pc?.departments||{}).filter(dept=>dept.done).length;
+                const pct=Math.round(depsDone/depsTotal*100);
+                const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-now)/(1000*60*60*24)):null;
                 const isOver=daysLeft!==null&&daysLeft<0;
+                const lastUpd=actLog.filter(e=>e.dealId===d.id&&e.action==="PM Update")[0];
+                const daysSince=lastUpd?Math.ceil((now-new Date(lastUpd.date))/(1000*60*60*24)):null;
                 return(
-                  <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<display.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client} — {d.contact||d.ceNo}</div>
-                      <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>PM: {jo?.pm1||"—"} · {pct}% complete</div>
-                      <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:5,width:120}}>
-                        <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#3b82f6",borderRadius:2}}/>
+                  <div key={d.id} style={{padding:"12px 16px",borderBottom:i<display.length-1?"1px solid #f8fafc":""}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                        <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>
+                          PM: {jo?.pm1||"—"} · {pct}% complete
+                          {daysSince!==null&&<span style={{marginLeft:8,color:daysSince>=3?"#dc2626":"#94a3b8"}}>{daysSince===0?"Updated today":daysSince===1?"Updated yesterday":`Last update ${daysSince}d ago`}</span>}
+                        </div>
+                        <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:6,width:"100%",maxWidth:200}}>
+                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":isOver?"#dc2626":"#3b82f6",borderRadius:2}}/>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                        {daysLeft!==null&&(
+                          <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#dc2626":daysLeft<=7?"#d97706":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",border:`1px solid ${isOver?"#fecaca":daysLeft<=7?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>
+                            {isOver?`${Math.abs(daysLeft)}d over`:`${daysLeft}d left`}
+                          </span>
+                        )}
+                        <button onClick={e=>{e.stopPropagation();setPmUpdateModal({dealId:d.id,dealName:d.client});}}
+                          style={{background:"#0ea5e9",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                          📝 Update
+                        </button>
                       </div>
                     </div>
-                    {daysLeft!==null&&(
-                      <span style={{marginLeft:12,fontSize:".72rem",fontWeight:700,color:isOver?"#dc2626":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",border:`1px solid ${isOver?"#fecaca":daysLeft<=7?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}>
-                        {isOver?`${Math.abs(daysLeft)}d over`:`${daysLeft}d left`}
-                      </span>
-                    )}
                   </div>
                 );
               })}
-              {display.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No active projects assigned to you.</div>}
             </div>
 
-            {/* Quick actions row */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginTop:16}}>
+            {/* Quick action tiles */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
               {[
-                {l:"Pending MRs",  v:mreqs.filter(m=>m.status==="Submitted").length, icon:"🔧", page:"materialreq", c:"#f97316"},
-                {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length, icon:"💳", page:"budgetreq",   c:"#8b5cf6"},
-                {l:"Open Checklists", v:checklist.filter(c2=>c2.status!=="Done"&&c2.status!=="Completed").length, icon:"✅", page:"checklist", c:"#3b82f6"},
+                {l:"Pending MRs",     v:mreqs.filter(m=>m.status==="Submitted").length,                                      icon:"🔧", page:"materialreq", c:"#f97316"},
+                {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length,                                        icon:"💳", page:"budgetreq",   c:"#8b5cf6"},
+                {l:"Open Tasks",      v:myOpenTasks.length,                                                                   icon:"✅", page:"checklist",   c:"#3b82f6"},
               ].map(({l,v,icon,page:pg,c})=>(
                 <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:10,padding:"14px",border:`1.5px solid ${c}22`,textAlign:"center",cursor:"pointer"}}>
                   <div style={{fontSize:"1.2rem"}}>{icon}</div>
@@ -3249,6 +3407,35 @@ export default function App(){
                 </div>
               ))}
             </div>
+
+            {/* My open checklist tasks */}
+            {myOpenTasks.length>0&&(
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{background:"#3b82f6",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>✅ My Open Tasks ({myOpenTasks.length})</span>
+                  <button onClick={()=>setPage("checklist")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>See all →</button>
+                </div>
+                {myOpenTasks.slice(0,5).map((t,i)=>{
+                  const d=wonDeals.find(x=>x.id===t.projectId);
+                  return(
+                    <div key={t.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<Math.min(myOpenTasks.length,5)-1?"1px solid #f8fafc":""}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{t.title}</div>
+                        <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"General"} · {t.dept}</div>
+                      </div>
+                      <span style={{fontSize:".68rem",background:PRI_CLR[t.priority]+"18",color:PRI_CLR[t.priority],border:`1px solid ${PRI_CLR[t.priority]}44`,borderRadius:20,padding:"1px 8px",fontWeight:600}}>{t.priority||"Normal"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {myProjects.length>0&&(
+              <div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"8px 14px",fontSize:".8rem",color:"#c2410c",fontWeight:600}}>
+                📍 Showing your {myProjects.length} assigned project{myProjects.length!==1?"s":""} · <span style={{cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("projects")}>See all projects →</span>
+              </div>
+            )}
+
           </div>
         );
       })()}
@@ -3258,7 +3445,7 @@ export default function App(){
   // ── DESIGN HOME ───────────────────────────────────────────────────────────
   if(role==="Design") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"Team"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Design Dashboard · {todayL}</div>
@@ -3266,80 +3453,140 @@ export default function App(){
         <button onClick={()=>setPage("projects")} style={{background:"#ec4899",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Project Cards</button>
       </div>
 
-      {/* Design queue - projects where Design dept is not done */}
       {(()=>{
-        const inQueue=wonDeals.filter(d=>{
-          const pc=pcards[d.id];
-          return pc&&!pc.departments?.Design?.done;
-        }).sort((a,b)=>{
-          // Sort by how long they've been waiting
-          const pa=pcards[a.id]; const pb=pcards[b.id];
-          return new Date(pa?.awardDate||pa?.created_at||0)-new Date(pb?.awardDate||pb?.created_at||0);
-        });
+        const now=new Date();
+        const inQueue=wonDeals.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.Design?.done)
+          .sort((a,b)=>new Date(pcards[a.id]?.awardDate||0)-new Date(pcards[b.id]?.awardDate||0));
         const done=wonDeals.filter(d=>pcards[d.id]?.departments?.Design?.done);
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:20}}>
-            {[
-              {l:"In Your Queue",     v:inQueue.length,                     c:"#ec4899", icon:"📐"},
-              {l:"Design Done",       v:done.length,                        c:"#059669", icon:"✅"},
-              {l:"Swatches To Buy",   v:swatches.filter(s=>s.status==="To Buy").length, c:"#06b6d4", icon:"🎨"},
-            ].map(({l,v,c,icon})=>(
-              <div key={l} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center"}}>
-                <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.5rem",color:c}}>{v}</div>
-                <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
 
-      {/* Design queue list */}
-      {(()=>{
-        const inQueue=wonDeals.filter(d=>{
-          const pc=pcards[d.id];
-          return pc&&!pc.departments?.Design?.done;
-        }).sort((a,b)=>new Date(pcards[a.id]?.awardDate||0)-new Date(pcards[b.id]?.awardDate||0));
+        // Stuck in Revision: design status === "Revision" for 5+ days
+        const stuckInRevision=inQueue.filter(d=>{
+          const p=projs[d.id];
+          if(p?.design?.status!=="Revision") return false;
+          const hist=p.design?.statusHistory||[];
+          const revEntry=[...hist].reverse().find(h=>h.status==="Revision");
+          if(!revEntry) return true;
+          return Math.floor((now-new Date(revEntry.date))/(1000*60*60*24))>=5;
+        });
 
-        if(!inQueue.length) return(
-          <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"24px",textAlign:"center"}}>
-            <div style={{fontSize:"2rem",marginBottom:8}}>🎉</div>
-            <div style={{fontWeight:700,color:"#059669",fontSize:"1rem"}}>All caught up! No projects in your design queue.</div>
-          </div>
-        );
+        // Missing handoff: Production Plans status but no file link
+        const needsHandoff=inQueue.filter(d=>{
+          const p=projs[d.id];
+          return p?.design?.status==="Production Plans"&&!p?.design?.link;
+        });
 
         return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#be185d",padding:"12px 16px",display:"flex",justifyContent:"space-between"}}>
-              <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📐 Your Design Queue — {inQueue.length} projects</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.6)"}}>Oldest first</span>
-            </div>
-            {inQueue.slice(0,8).map((d,i)=>{
-              const pc=pcards[d.id];
-              const tasks=pc?.departments?.Design?.tasks||[];
-              const doneTasks=tasks.filter(t=>t.done).length;
-              const totalTasks=tasks.length||8;
-              const pct=Math.round(doneTasks/totalTasks*100);
-              const waitDays=pc?.awardDate?Math.floor((new Date()-new Date(pc.awardDate))/(1000*60*60*24)):null;
-              return(
-                <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<inQueue.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client} — {d.contact||d.ceNo}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d.ceNo} · {doneTasks}/{totalTasks} design tasks done</div>
-                    <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:5,width:120}}>
-                      <div style={{height:"100%",width:pct+"%",background:"#ec4899",borderRadius:2}}/>
-                    </div>
-                  </div>
-                  {waitDays!==null&&(
-                    <span style={{marginLeft:12,fontSize:".72rem",fontWeight:700,color:waitDays>14?"#dc2626":waitDays>7?"#f59e0b":"#64748b",background:waitDays>14?"#fef2f2":waitDays>7?"#fffbeb":"#f8fafc",border:"1px solid #e2e8f0",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}>
-                      {waitDays===0?"Today":waitDays+"d waiting"}
-                    </span>
-                  )}
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* KPI strip */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+              {[
+                {l:"In Your Queue",     v:inQueue.length,            c:"#ec4899", icon:"📐"},
+                {l:"Stuck in Revision", v:stuckInRevision.length,    c:"#dc2626", icon:"🔴"},
+                {l:"Needs Handoff",     v:needsHandoff.length,       c:"#d97706", icon:"📤"},
+                {l:"Design Done",       v:done.length,               c:"#059669", icon:"✅"},
+              ].map(({l,v,c,icon})=>(
+                <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px",border:`1.5px solid ${c}33`,textAlign:"center"}}>
+                  <div style={{fontSize:"1.2rem",marginBottom:4}}>{icon}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
+                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+
+            {/* Stuck in Revision alert */}
+            {stuckInRevision.length>0&&(
+              <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,overflow:"hidden"}}>
+                <div style={{background:"#dc2626",padding:"10px 16px"}}>
+                  <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🔴 Stuck in Revision — {stuckInRevision.length} project{stuckInRevision.length!==1?"s":""} waiting 5+ days for client feedback</span>
+                </div>
+                {stuckInRevision.map((d,i)=>{
+                  const p=projs[d.id];
+                  const hist=p?.design?.statusHistory||[];
+                  const revEntry=[...hist].reverse().find(h=>h.status==="Revision");
+                  const days=revEntry?Math.floor((now-new Date(revEntry.date))/(1000*60*60*24)):null;
+                  const jo=jos.find(j=>j.dealId===d.id);
+                  return(
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<stuckInRevision.length-1?"1px solid #fee2e2":"",background:"#fff"}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{d.client}</div>
+                        <div style={{fontSize:".72rem",color:"#94a3b8"}}>AE: {jo?.ae_assigned||d.contact||"—"} · {days!==null?days+"d in revision":"In revision"}</div>
+                      </div>
+                      <span style={{fontSize:".72rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>Chase AE</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Missing file handoff */}
+            {needsHandoff.length>0&&(
+              <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,overflow:"hidden"}}>
+                <div style={{background:"#d97706",padding:"10px 16px"}}>
+                  <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📤 Ready to Hand Off — Add file link before marking Done ({needsHandoff.length})</span>
+                </div>
+                {needsHandoff.map((d,i)=>{
+                  const p=projs[d.id];
+                  return(
+                    <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<needsHandoff.length-1?"1px solid #fef3c7":"",background:"#fff",cursor:"pointer"}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{d.client}</div>
+                        <div style={{fontSize:".72rem",color:"#94a3b8"}}>Status: {p?.design?.status} · No file link yet · Rev: {p?.design?.revisionNo||"not set"}</div>
+                      </div>
+                      <span style={{fontSize:".72rem",background:"#fffbeb",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>Add link →</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Full queue */}
+            {inQueue.length===0
+              ? <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"24px",textAlign:"center"}}>
+                  <div style={{fontSize:"2rem",marginBottom:8}}>🎉</div>
+                  <div style={{fontWeight:700,color:"#059669",fontSize:"1rem"}}>All caught up! No projects in your design queue.</div>
+                </div>
+              : <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  <div style={{background:"#be185d",padding:"12px 16px",display:"flex",justifyContent:"space-between"}}>
+                    <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📐 Full Design Queue — {inQueue.length} projects</span>
+                    <span style={{fontSize:".72rem",color:"rgba(255,255,255,.6)"}}>Oldest first</span>
+                  </div>
+                  {inQueue.slice(0,8).map((d,i)=>{
+                    const pc=pcards[d.id];
+                    const p=projs[d.id];
+                    const tasks=pc?.departments?.Design?.tasks||[];
+                    const doneTasks=tasks.filter(t=>t.done).length;
+                    const totalTasks=tasks.length||10;
+                    const pct=Math.round(doneTasks/totalTasks*100);
+                    const waitDays=pc?.awardDate?Math.floor((now-new Date(pc.awardDate))/(1000*60*60*24)):null;
+                    const ds=p?.design?.status||"Briefing";
+                    const isStuck=stuckInRevision.some(x=>x.id===d.id);
+                    const isHandoff=needsHandoff.some(x=>x.id===d.id);
+                    return(
+                      <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<inQueue.length-1?"1px solid #f8fafc":"",cursor:"pointer",background:isStuck?"#fef2f2":isHandoff?"#fffbeb":"#fff"}}
+                        onMouseEnter={e=>e.currentTarget.style.opacity="0.85"}
+                        onMouseLeave={e=>e.currentTarget.style.opacity="1"}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1,display:"flex",gap:8,alignItems:"center"}}>
+                            <span style={{background:DS_CLR[ds]+"18",color:DS_CLR[ds],fontWeight:700,padding:"1px 7px",borderRadius:20,fontSize:".68rem"}}>{ds}</span>
+                            <span>{doneTasks}/{totalTasks} tasks</span>
+                            {p?.design?.revisionNo&&<span style={{color:"#8b5cf6"}}>Rev: {p.design.revisionNo}</span>}
+                          </div>
+                          <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:5,width:120}}>
+                            <div style={{height:"100%",width:pct+"%",background:"#ec4899",borderRadius:2}}/>
+                          </div>
+                        </div>
+                        {waitDays!==null&&(
+                          <span style={{marginLeft:12,fontSize:".72rem",fontWeight:700,color:waitDays>14?"#dc2626":waitDays>7?"#f59e0b":"#64748b",background:waitDays>14?"#fef2f2":waitDays>7?"#fffbeb":"#f8fafc",border:"1px solid #e2e8f0",borderRadius:20,padding:"3px 9px",whiteSpace:"nowrap"}}>
+                            {waitDays===0?"Today":waitDays+"d waiting"}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+            }
           </div>
         );
       })()}
