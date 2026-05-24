@@ -421,3 +421,71 @@ CREATE TABLE IF NOT EXISTS public.app_settings (
   value      jsonb NOT NULL DEFAULT '{}',
   updated_at timestamptz DEFAULT now()
 );
+
+-- ── DESIGN REQUESTS (DRFs) ────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.design_requests (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id         uuid REFERENCES public.deals(id) ON DELETE SET NULL,
+  drf_no          text DEFAULT '',
+  client          text DEFAULT '',
+  location        text DEFAULT '',
+  designer        text DEFAULT '',
+  design_deadline date,
+  project_title   text DEFAULT '',
+  type            text DEFAULT '',
+  size            text DEFAULT '',
+  description     text DEFAULT '',
+  accessories     jsonb DEFAULT '[]',
+  ref_links       jsonb DEFAULT '[]',
+  notes           text DEFAULT '',
+  approved_link   text DEFAULT '',
+  status          text DEFAULT 'New',
+  created_by      text DEFAULT '',
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+-- ── INVENTORY ITEMS ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.inventory_items (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code                text UNIQUE,
+  name                text DEFAULT '',
+  category            text DEFAULT '',
+  sub_category        text DEFAULT '',
+  brand               text DEFAULT '',
+  supplier            text DEFAULT '',
+  unit                text DEFAULT '',
+  unit_size           text DEFAULT '',
+  location            text DEFAULT 'Main Warehouse',
+  qty_on_hand         numeric DEFAULT 0,
+  reorder_point       numeric DEFAULT 0,
+  last_purchase_price numeric DEFAULT 0,
+  avg_cost            numeric DEFAULT 0,
+  last_updated        date,
+  notes               text DEFAULT '',
+  status              text DEFAULT 'Active',
+  created_by          text DEFAULT '',
+  created_at          timestamptz DEFAULT now(),
+  updated_at          timestamptz DEFAULT now()
+);
+
+-- ── STOCK MOVEMENTS ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.stock_movements (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id     uuid REFERENCES public.inventory_items(id) ON DELETE SET NULL,
+  move_type   text DEFAULT '',
+  qty         numeric DEFAULT 0,
+  unit_cost   numeric DEFAULT 0,
+  deal_id     uuid REFERENCES public.deals(id) ON DELETE SET NULL,
+  notes       text DEFAULT '',
+  date        date DEFAULT CURRENT_DATE,
+  recorded_by text DEFAULT '',
+  created_at  timestamptz DEFAULT now()
+);
+
+-- ── PROJECTS (stage, progress, team, PM data) ─────────────
+CREATE TABLE IF NOT EXISTS public.projects (
+  deal_id    uuid PRIMARY KEY REFERENCES public.deals(id) ON DELETE CASCADE,
+  data       jsonb NOT NULL DEFAULT '{}',
+  updated_at timestamptz DEFAULT now()
+);

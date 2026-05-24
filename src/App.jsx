@@ -146,6 +146,14 @@ const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.ra
 
 const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings"};
 
+// ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
+const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
+const drfFromSb=(r)=>({...r,dealId:r.deal_id,drfNo:r.drf_no,designDeadline:r.design_deadline,projectTitle:r.project_title,refLinks:r.ref_links||[],approvedLink:r.approved_link,createdBy:r.created_by});
+const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.category||'',sub_category:r.subCategory||'',brand:r.brand||'',supplier:r.supplier||'',unit:r.unit||'',unit_size:r.unitSize||'',location:r.location||'Main Warehouse',qty_on_hand:Number(r.qtyOnHand)||0,reorder_point:Number(r.reorderPoint)||0,last_purchase_price:Number(r.lastPurchasePrice)||0,avg_cost:Number(r.avgCost)||0,last_updated:r.lastUpdated||null,notes:r.notes||'',status:r.status||'Active',created_by:r.createdBy||''});
+const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,lastUpdated:r.last_updated,createdBy:r.created_by});
+const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
+const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
+
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
 const ADDENDUM_STATUS_CLR = {
@@ -1638,6 +1646,11 @@ export default function App(){
             if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
             if(data.inflows?.length) setInfs(data.inflows);
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);localStorage.setItem(KEYS.botsettings,JSON.stringify(bs));}
+            if(data.drfs?.length){const d=data.drfs.map(drfFromSb);setDrfs(d);localStorage.setItem(KEYS.drfs,JSON.stringify(d));}
+            if(data.inventory?.length){const d=data.inventory.map(invFromSb);setInventory(d);localStorage.setItem(KEYS.inventory,JSON.stringify(d));}
+            if(data.stocklog?.length){const d=data.stocklog.map(moveFromSb);setStocklog(d);localStorage.setItem(KEYS.stocklog,JSON.stringify(d));}
+            if(data.settings?.vvip){const s=new Set(data.settings.vvip);setVvip(s);localStorage.setItem(KEYS.vvip,JSON.stringify([...s]));}
+            if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);localStorage.setItem(KEYS.projects,JSON.stringify(data.projs));}
             // Sync to localStorage as cache
             const ls=localStorage.setItem.bind(localStorage);
             if(data.deals?.length)   ls(KEYS.deals,   JSON.stringify(data.deals));
@@ -1952,14 +1965,24 @@ export default function App(){
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
 
-  const addInventoryItem  =(item)=>upInventory(iv=>[...iv,{...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role}]);
-  const updateInventoryItem=(id,ch)=>upInventory(iv=>iv.map(i=>i.id===id?{...i,...ch,lastUpdated:today}:i));
-  const deleteInventoryItem=(id)=>upInventory(iv=>iv.filter(i=>i.id!==id));
+  const addInventoryItem=(item)=>upInventory(iv=>{
+    const rec={...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
+    if(isSupabaseReady()) sbInsert('inventory_items',invToSb(rec)).catch(()=>{});
+    return[...iv,rec];
+  });
+  const updateInventoryItem=(id,ch)=>{
+    upInventory(iv=>iv.map(i=>i.id===id?{...i,...ch,lastUpdated:today}:i));
+    if(isSupabaseReady()) sbUpdate('inventory_items',id,invToSb({...ch,lastUpdated:today})).catch(()=>{});
+  };
+  const deleteInventoryItem=(id)=>{
+    upInventory(iv=>iv.filter(i=>i.id!==id));
+    if(isSupabaseReady()) sbDelete('inventory_items',id).catch(()=>{});
+  };
 
   const logStockMove=(move)=>{
     const entry={...move,id:uid(),date:move.date||today,recordedBy:session?.name||role};
     upStocklog(sl=>[entry,...sl]);
-    // Update qty on hand
+    if(isSupabaseReady()) sbInsert('stock_movements',moveToSb(entry)).catch(()=>{});
     const qty=Number(move.qty)||0;
     upInventory(iv=>iv.map(i=>{
       if(i.id!==move.itemId) return i;
@@ -1967,18 +1990,19 @@ export default function App(){
       let newQty=Number(i.qtyOnHand)||0;
       if(type.startsWith("IN"))    newQty+=qty;
       if(type.startsWith("OUT"))   newQty=Math.max(0,newQty-qty);
-      if(type.startsWith("ADJUST"))newQty=qty; // absolute count
+      if(type.startsWith("ADJUST"))newQty=qty;
       if(type.startsWith("RETURN"))newQty=Math.max(0,newQty-qty);
-      // Update avg cost on IN
       let avgCost=Number(i.avgCost)||0;
       if(type.startsWith("IN")&&move.unitCost){
         const prevTotal=(Number(i.qtyOnHand)||0)*avgCost;
         const newTotal=qty*Number(move.unitCost);
         avgCost=newQty>0?(prevTotal+newTotal)/newQty:Number(move.unitCost);
       }
-      return{...i,qtyOnHand:Math.round(newQty*100)/100,avgCost:Math.round(avgCost*100)/100,
+      const updated={...i,qtyOnHand:Math.round(newQty*100)/100,avgCost:Math.round(avgCost*100)/100,
         lastPurchasePrice:type.startsWith("IN")&&move.unitCost?Number(move.unitCost):i.lastPurchasePrice,
         lastUpdated:today};
+      if(isSupabaseReady()) sbUpdate('inventory_items',i.id,invToSb(updated)).catch(()=>{});
+      return updated;
     }));
   };
 
@@ -2111,6 +2135,7 @@ export default function App(){
       const next=new Set(prev);
       next.has(name)?next.delete(name):next.add(name);
       persist(KEYS.vvip,[...next]);
+      if(isSupabaseReady()) sbUpsert('app_settings',{key:'vvip',value:[...next],updated_at:new Date().toISOString()},'key').catch(()=>{});
       return next;
     });
   };
@@ -2211,8 +2236,6 @@ export default function App(){
 
   // ── DRF CRUD ─────────────────────────────────────────────────────────────
   const upDrfs   =useCallback(fn=>setDrfs(p=>{const n=fn(p);persist(KEYS.drfs,n);return n;}),[persist]);
-  const updateDRF=(id,data)=>upDrfs(ds=>ds.map(d=>d.id===id?{...d,...data}:d));
-  const deleteDRF=(id)=>upDrfs(ds=>ds.filter(d=>d.id!==id));
 
   // ── BOT SETTINGS CRUD ────────────────────────────────────────────────────
   const saveBotSettings=async(data)=>{
@@ -2245,8 +2268,17 @@ export default function App(){
     const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;
     const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New"};
     sendTelegramNotification("design",`📝 <b>New Design Request</b>\n${no} · ${drf.client||"?"}\nProject: ${drf.projectTitle||"—"}\nDeadline: ${drf.designDeadline||"TBD"}\nBy: ${drf.createdBy||"?"}`);
+    if(isSupabaseReady()) sbInsert('design_requests',drfToSb(rec)).catch(()=>{});
     return[...ds,rec];
   });
+  const updateDRF=(id,data)=>{
+    upDrfs(ds=>ds.map(d=>d.id===id?{...d,...data}:d));
+    if(isSupabaseReady()) sbUpdate('design_requests',id,drfToSb(data)).catch(()=>{});
+  };
+  const deleteDRF=(id)=>{
+    upDrfs(ds=>ds.filter(d=>d.id!==id));
+    if(isSupabaseReady()) sbDelete('design_requests',id).catch(()=>{});
+  };
 
   // ── PM Update + Addendum helpers ─────────────────────────────────────────
   // ── Proactive Checklist Template Auto-Load ──────────────────────────────────
@@ -2636,7 +2668,15 @@ export default function App(){
     upInfs(is=>[...is,{id:uid(),month:mo,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId}]);
   };
 
-  const upProj=(id,fn)=>upProjs(ps=>({...ps,[id]:fn(ps[id]||emptyProject())}));
+  const upProj=(id,fn)=>{
+    setProjs(ps=>{
+      const proj=fn(ps[id]||emptyProject());
+      const updated={...ps,[id]:proj};
+      persist(KEYS.projects,updated);
+      if(isSupabaseReady()) sbUpsert('projects',{deal_id:id,data:proj,updated_at:new Date().toISOString()},'deal_id').catch(()=>{});
+      return updated;
+    });
+  };
   const proj=selProj?{...emptyProject(),...(projs[selProj]||{})}:null;
   const projDeal=selProj?deals.find(d=>d.id===selProj):null;
 
