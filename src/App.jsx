@@ -8096,7 +8096,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
       {/* Main cash position table */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
         {/* Table header */}
-        <div style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",background:"#1e293b"}}>
+        <div style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",background:"#1e293b"}}>
           <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
           {BANKS.filter(b=>!b.capital).map(b=>(
             <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155"}}>
@@ -8113,7 +8113,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           ["BOOK BALANCE\n(per bank statement)", "book", "#fff"],
           ["BANK BALANCE ENDING","end", "#fafafa"],
         ].map(([label,key,bg])=>(
-          <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(6,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
+          <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
             <div style={labelCell}>{label}</div>
             {BANKS.filter(b=>!b.capital).map(b=>(
               <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #f1f5f9"}}>
