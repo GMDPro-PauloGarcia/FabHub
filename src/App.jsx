@@ -4677,7 +4677,7 @@ export default function App(){
                           Requested by {reqBy} · {reqDate} · ₱{Number(d.value||0).toLocaleString()}
                         </div>
                       </div>
-                      <button onClick={()=>{setPage("pipeline");}}
+                      <button onClick={()=>{openAward(d);setPage("pipeline");}}
                         style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
                         🏆 Review & Award
                       </button>
@@ -5322,6 +5322,7 @@ export default function App(){
                         notes:(x.notes||"")+`\n[AWARD REQUEST ${today}]: ${session?.name||"Sales"} flagged for award. Trigger: ${awardReqForm.awardTrigger}. AE: ${awardReqForm.aeAssigned||"—"}. Suggested PM: ${awardReqForm.pm1Suggestion||"—"}.`
                       }:x));
                       logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"} — ${awardReqForm.awardTrigger}`);
+                      sendTelegramNotification("management",`🏆 <b>Award Request — Action Needed</b>\nClient: <b>${d.client}</b>\n${d.ceNo?`CE: ${d.ceNo} · `:""}₱${Number(d.value||0).toLocaleString("en-PH")}\nTrigger: ${awardReqForm.awardTrigger}\nRequested by: ${session?.name||"Sales"}\nScope: ${awardReqForm.scopeNotes||"—"}\n\nOpen FabHub → Pipeline to Review & Award.`);
                       toastEmit("Award request submitted — Paulo will review and confirm.");
                       setAwardReqModal(null);
                     }}
@@ -5446,7 +5447,7 @@ export default function App(){
                   {/* Scope */}
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Scope of Work" required hint="Sales + PM align on this together — what exactly is being built?">
-                      <Inp rows={4} defaultValue={awardForm.scopeNotes} onBlur={e=>setAwardForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, electrical (8 downlights, 2 track lights)"/>
+                      <Inp rows={4} value={awardForm.scopeNotes} onChange={e=>setAwardForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, electrical (8 downlights, 2 track lights)"/>
                     </Fld>
                   </div>
 
@@ -5454,7 +5455,7 @@ export default function App(){
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Special Instructions / Venue Requirements"
                       hint="Delivery restrictions, permit requirements, mall rules, client preferences (Venue Memory coming soon)">
-                      <Inp rows={3} defaultValue={awardForm.specialInstructions} onBlur={e=>setAwardForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
+                      <Inp rows={3} value={awardForm.specialInstructions} onChange={e=>setAwardForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
                     </Fld>
                     <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>
                       💡 Venue Memory (SM, Ayala, Robinsons requirements) — coming in a future update
