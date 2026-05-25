@@ -1046,97 +1046,81 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   };
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
+
+      {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
-          <Fld label="Client Name" required hint="Start typing to search from your 207 GMD clients">
+          <Fld label="Client Name" required hint="Start typing to search from your GMD clients">
             <ClientAutocomplete value={form.client} onChange={v=>f("client",v)}/>
           </Fld>
         </div>
-        <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out, BGC Office Renovation"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized — can be updated anytime"><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)} placeholder="To be confirmed"/></Fld>
-        <Fld label="Project Sub-Type" hint="Kiosk, Fit-Out, Signage, Event — helps categorize within the CE Type">
-            <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
-              <option value="">— Select Sub-Type —</option>
-              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
-            </Sel>
-          {form.product==="Other"&&(
-            <Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)}
-              placeholder="Describe the project sub-type..." style={{marginTop:6}}/>
-          )}
-          </Fld>
-        <Fld label="Stage"><Sel value={form.stage} onChange={e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-        <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
-        <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
-        <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
-      </div>
-      {/* GMD Workflow Fields */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:4}}>
+        <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
+        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)} placeholder="To be confirmed"/></Fld>
+        <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
+        <Fld label="CE Type">
+          <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
+            {CE_TYPES.map(t=><option key={t}>{t}</option>)}
+          </Sel>
+          {form.ceType==="Other"&&<Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)} placeholder="Describe the project type..." style={{marginTop:6}}/>}
+        </Fld>
         <Fld label="Sales Owner / AE">
           <Sel value={form.salesOwner||""} onChange={e=>f("salesOwner",e.target.value)}>
             <option value="">— Assign AE —</option>
             {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
           </Sel>
         </Fld>
-        <Fld label="BizDev Source" hint="Who found this client?">
-          <Inp value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)} placeholder="e.g. Paulo referral, cold outreach"/>
-        </Fld>
         <Fld label="Date Acquired"><Inp type="date" value={form.dateAcquired||today} onChange={e=>f("dateAcquired",e.target.value)}/></Fld>
-        <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
-        <Fld label="CE Type">
-          <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
-            {CE_TYPES.map(t=><option key={t}>{t}</option>)}
-          </Sel>
-          {(form.ceType==="Other")&&(
-            <Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)}
-              placeholder="Describe the project type..." style={{marginTop:6}}/>
-          )}
-        </Fld>
-        <Fld label="Discount %" hint="Paulo sets this only">
-          <Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/>
-        </Fld>
       </div>
 
-      {/* Sales Repository + Proposal Folder */}
-      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #e2e8f0"}}>
-        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Sales Repository</div>
+      {/* ── SECTION 2: CONTEXT & FOLLOW-UP ─────────────────────────────── */}
+      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📋 Context & Follow-up</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="Sales Repository Link (Google Drive)" hint="Main folder for all project info, plans, and files">
-            <Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/>
+          <Fld label="BizDev Source" hint="Who found this client?"><Inp value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)} placeholder="e.g. Paulo referral, cold outreach"/></Fld>
+          <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
+          <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
+          <Fld label="Project Sub-Type">
+            <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
+              <option value="">— Select Sub-Type —</option>
+              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
+            </Sel>
+            {form.product==="Other"&&<Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)} placeholder="Describe the project sub-type..." style={{marginTop:6}}/>}
           </Fld>
-          <Fld label="Proposal Folder Link" hint="CE + budget live here — inside Sales Repository">
-            <Inp type="url" value={form.proposalFolderLink||""} onChange={e=>f("proposalFolderLink",e.target.value)} placeholder="https://drive.google.com/…"/>
-          </Fld>
-          <Fld label="Repository Notes" hint="e.g. folder name, what's inside">
-            <Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall ABC Retail — all plans uploaded"/>
-          </Fld>
-          <Fld label="Comms Group" hint="WhatsApp or Viber group with client + team">
+          <Fld label="Discount %" hint="Paulo sets this only"><Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
+        </div>
+      </div>
+
+      {/* ── SECTION 3: FILES & COMMS ────────────────────────────────────── */}
+      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Files & Comms</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Fld label="Sales Repository Link" hint="Main Google Drive folder for this deal"><Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld>
+          <Fld label="Proposal Folder Link" hint="CE + budget folder inside Sales Repository"><Inp type="url" value={form.proposalFolderLink||""} onChange={e=>f("proposalFolderLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld>
+          <Fld label="Comms Group">
             <Sel value={form.commsGroup||""} onChange={e=>f("commsGroup",e.target.value)}>
               <option value="">— Not yet created —</option>
               <option>WhatsApp</option><option>Viber</option><option>Both</option>
             </Sel>
           </Fld>
+          <Fld label="Repository Notes"><Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall — all plans uploaded"/></Fld>
         </div>
       </div>
 
-      {/* Design Request */}
-      {["03 · Design Request & Folder Setup","04 · Design & CE in Progress","05 · Client Approval / Revision"].includes(form.stage)&&(
-        <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #ddd6fe"}}>
-          <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:12}}>🎨 Design Request</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <Fld label="Design Request Date"><Inp type="date" value={form.designRequestDate||""} onChange={e=>f("designRequestDate",e.target.value)}/></Fld>
-            <Fld label="Design Approval Date"><Inp type="date" value={form.designApprovalDate||""} onChange={e=>f("designApprovalDate",e.target.value)}/></Fld>
-            <div style={{gridColumn:"1/-1"}}><Fld label="Design Request Notes"><Inp rows={2} value={form.designRequestNote||""} onChange={e=>f("designRequestNote",e.target.value)} placeholder="Scope, specs, client references, revision notes…"/></Fld></div>
-          </div>
+      {/* ── SECTION 4: DESIGN REQUEST ───────────────────────────────────── */}
+      <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #ddd6fe"}}>
+        <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:12}}>🎨 Design Request</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Fld label="Design Request Date"><Inp type="date" value={form.designRequestDate||""} onChange={e=>f("designRequestDate",e.target.value)}/></Fld>
+          <Fld label="Design Approval Date"><Inp type="date" value={form.designApprovalDate||""} onChange={e=>f("designApprovalDate",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Design Request Notes"><Inp rows={2} value={form.designRequestNote||""} onChange={e=>f("designRequestNote",e.target.value)} placeholder="Scope, specs, client references, revision notes…"/></Fld></div>
         </div>
-      )}
-      {PAULO_GATE.includes(form.stage)&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#92400e"}}>
-          ⚠️ <strong>Paulo Gate:</strong> Stage {form.stage} requires Paulo Garcia's review and sign-off before proceeding to the next stage.
-        </div>
-      )}
-      {(Number(form.value)>=3000000)&&(
+      </div>
+
+      {/* ── ALERTS ──────────────────────────────────────────────────────── */}
+      {Number(form.value)>=3000000&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#991b1b"}}>
-          🚨 <strong>₱3M Rule:</strong> This project exceeds ₱3,000,000. Paulo Garcia must be involved. Paolo can quote a range to the client but <strong>cannot commit pricing</strong> without Paulo.
+          🚨 <strong>₱3M Rule:</strong> This project exceeds ₱3,000,000. Paulo Garcia must be involved. Paolo can quote a range but <strong>cannot commit pricing</strong> without Paulo.
         </div>
       )}
       {form.ceType==="Construction"&&(
@@ -1144,8 +1128,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           🏗 <strong>Construction CE:</strong> Rodney (QS/CE) prepares the cost estimate using the Construction template. Jerome Mendoza is on-call backup. Paulo sets the final % adjustment.
         </div>
       )}
+
+      {/* ── SECTION 5: PAYMENT (awarded deals only) ─────────────────────── */}
       {isWon&&(
-        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginTop:8}}>
+        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginTop:10}}>
           <div style={{fontWeight:700,color:"#059669",marginBottom:12,fontSize:".88rem"}}>💰 Payment Details (Awarded)</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Fld label="Invoice Amount (₱)"><Inp type="number" value={form.invoiced} onChange={e=>f("invoiced",e.target.value)}/></Fld>
@@ -1155,9 +1141,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </div>
         </div>
       )}
-      {/* 🧾 Tax Settings */}
+
+      {/* ── SECTION 6: TAX SETTINGS ─────────────────────────────────────── */}
       {Number(form.value)>0&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:8}}>
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:10}}>
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
@@ -1216,6 +1203,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           })()}
         </div>
       )}
+
       <div style={{display:"flex",gap:10,marginTop:20}}>
         <Btn full onClick={handleSave}>{editId?"Save Changes":"Add Deal"}</Btn>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
@@ -5002,20 +4990,21 @@ export default function App(){
                 Active Pipeline ({activeDeals.length})
               </div>
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:24}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1.3fr 1fr 0.8fr 160px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
-                  <span>Client / Project</span><span>CE Info</span><span>Stage</span><span>AE</span><span>Value</span><span/>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
+                  <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
                 </div>
                 {activeDeals.length===0&&<div style={{padding:"28px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>{pipeSearch?"No deals match your search.":"No active deals in the pipeline yet."}</div>}
                 {activeDeals.map((d,i)=>{
                   const sc=STAGE_CLR[d.stage]||"#94a3b8";
                   return(
-                    <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1.3fr 1fr 0.8fr 160px",gap:12,padding:"12px 18px",borderBottom:i<activeDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
+                    <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"12px 18px",borderBottom:i<activeDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       <div>
                         <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                           <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.client}</span>
                           {vvipClients?.has(d.client)&&<span style={{fontSize:".62rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 6px",fontWeight:700}}>⭐ VVIP</span>}
+                          {Number(d.value)>=3000000&&<span style={{fontSize:".62rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 6px",fontWeight:700}}>🚨 ₱3M+</span>}
                         </div>
                         {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
                         {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:1}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
@@ -5025,12 +5014,8 @@ export default function App(){
                         <div style={{fontSize:".73rem",color:"#64748b"}}>{d.ceType||"—"}</div>
                       </div>
                       <div>
-                        <span style={{background:sc+"18",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"3px 10px",fontSize:".7rem",fontWeight:700,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")}</span>
-                        {PAULO_GATE.includes(d.stage)&&<div style={{fontSize:".65rem",color:"#d97706",marginTop:3,fontWeight:600}}>⚠ Paulo Gate</div>}
-                      </div>
-                      <div>
                         <div style={{fontSize:".78rem",color:"#475569"}}>👤 {d.salesOwner||"—"}</div>
-                        {Number(d.value)>=3000000&&<div style={{fontSize:".65rem",color:"#dc2626",fontWeight:600,marginTop:2}}>🚨 ₱3M+</div>}
+                        {d.priority&&d.priority!=="Normal"&&<div style={{fontSize:".65rem",color:PRI_CLR[d.priority]||"#f59e0b",fontWeight:600,marginTop:2}}>{d.priority}</div>}
                       </div>
                       <div style={{fontWeight:700,color:"#10b981",fontSize:".88rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
                       <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
