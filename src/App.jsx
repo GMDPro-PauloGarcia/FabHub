@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -250,6 +250,7 @@ const DEFAULT_DEPT_TASKS = {
 };
 
 const emptyProjectCard=(dealId,dealData)=>({
+  id:uid(),
   dealId,
   client:dealData?.client||"",
   ceNo:dealData?.ceNo||"",
@@ -265,7 +266,7 @@ const emptyProjectCard=(dealId,dealData)=>({
     done:false,
     doneAt:null,
     doneBy:null,
-    tasks:DEFAULT_DEPT_TASKS[dept].map((t,i)=>({id:`${dept}-${i}`,text:t,done:false,doneAt:null,doneBy:null})),
+    tasks:DEFAULT_DEPT_TASKS[dept].map((t)=>({id:uid(),text:t,done:false,doneAt:null,doneBy:null})),
   }]))),
 });
 
@@ -1824,7 +1825,7 @@ export default function App(){
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
   const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
-  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""}});
+  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""},hideValueInBots:false});
   const[customClients,setCustomClients]= useState([]);
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
@@ -1910,6 +1911,7 @@ export default function App(){
             if(data.suppliers?.length){const d=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(d);localStorage.setItem(KEYS.suppliers,JSON.stringify(d));}
             if(data.subcontractors?.length){const d=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(d);localStorage.setItem(KEYS.subcons,JSON.stringify(d));}
             if(data.settings?.vvip){const s=new Set(data.settings.vvip);setVvip(s);localStorage.setItem(KEYS.vvip,JSON.stringify([...s]));}
+            if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);localStorage.setItem(KEYS.customclients,JSON.stringify(cc));cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);localStorage.setItem(KEYS.projects,JSON.stringify(data.projs));}
             // Sync to localStorage as cache
             const ls=localStorage.setItem.bind(localStorage);
@@ -2153,6 +2155,13 @@ export default function App(){
       if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
       if(key===KEYS.checklist) sbSync("checklists",val,toSbChecklist);
       if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
+      if(key===KEYS.inflows)   sbSync("inflows",val,r=>({id:r.id,deal_id:r.dealId||r.projectId||null,date:r.date||r.month||null,amount:Number(r.amount)||0,source:r.source||"",ref_no:r.refNo||"",note:r.note||""}));
+      if(key===KEYS.projects){
+        Object.entries(val||{}).forEach(([dealId,proj])=>{
+          if(!isUUID(dealId)) return;
+          sbUpsert("projects",{deal_id:dealId,data:proj,updated_at:new Date().toISOString()},"deal_id").catch(e=>console.error("projs sync:",e.message));
+        });
+      }
       if(key===KEYS.billings){
         val.forEach(m=>{
           if(!isUUID(m.id)) return;
@@ -2402,15 +2411,24 @@ export default function App(){
   };
 
   const createProjectCard=(dealId,dealData)=>{
-    upPcards(ps=>({...ps,[dealId]:emptyProjectCard(dealId,dealData)}));
+    const card=emptyProjectCard(dealId,dealData);
+    upPcards(ps=>({...ps,[dealId]:card}));
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
+    if(isSupabaseReady()){
+      sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt},'deal_id').catch(()=>{});
+      DEPT_ORDER.forEach(dept=>{
+        (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
+          sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
+        });
+      });
+    }
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
     upPcards(ps=>{
       const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
       const deptData={...card.departments[dept]};
+      const prevDone=deptData.tasks.find(t=>t.id===taskId)?.done;
       deptData.tasks=deptData.tasks.map(t=>t.id===taskId?{...t,done:!t.done,doneAt:!t.done?new Date().toISOString():null,doneBy:!t.done?session?.name:null}:t);
-      // Auto-mark dept done if all tasks complete
       deptData.done=deptData.tasks.every(t=>t.done);
       if(deptData.done&&!card.departments[dept].done){
         deptData.doneAt=new Date().toISOString();
@@ -2418,6 +2436,13 @@ export default function App(){
         logActivity(dealId,"Department Done",`${dept} completed all tasks for ${card.client}`,session?.name);
       }
       card.departments={...card.departments,[dept]:deptData};
+      if(isSupabaseReady()&&isUUID(taskId)){
+        const nowDone=!prevDone;
+        sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
+        if(deptData.done&&card.id&&isUUID(card.id)){
+          sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id').catch(()=>{});
+        }
+      }
       return{...ps,[dealId]:card};
     });
   };
@@ -2436,6 +2461,9 @@ export default function App(){
       tatSetBy:session?.name,
       tatSetAt:new Date().toISOString(),
     }}));
+    if(isSupabaseReady()&&card.id&&isUUID(card.id)){
+      sbUpdate('project_cards',card.id,{target_days:Number(days),target_end_date:endStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()}).catch(()=>{});
+    }
     logActivity(dealId,"TAT Set",`Target: ${days} days → Due ${endStr}`,session?.name);
   };
 
@@ -2445,6 +2473,9 @@ export default function App(){
       const deptData={...card.departments[dept],done,doneAt:done?new Date().toISOString():null,doneBy:done?session?.name:null};
       card.departments={...card.departments,[dept]:deptData};
       if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${card.client}`,session?.name);
+      if(isSupabaseReady()&&card.id&&isUUID(card.id)){
+        sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id').catch(()=>{});
+      }
       return{...ps,[dealId]:card};
     });
   };
@@ -2581,7 +2612,7 @@ export default function App(){
   const addAddendum2=(adm)=>{
     upAddenda(as=>[{...adm,id:uid(),createdDate:today,status:"Discovered"},...as]);
     const deal=deals.find(d=>d.id===adm.dealId);
-    const msg=`⚠️ <b>Scope Change Discovered</b>\n${adm.title||"?"}\nProject: ${deal?.client||adm.dealId||"?"}\nValue: ₱${Number(adm.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nBy: ${adm.discoveredBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
+    const msg=`⚠️ <b>Scope Change Discovered</b>\n${adm.title||"?"}\nProject: ${deal?.client||adm.dealId||"?"}${botSettings.hideValueInBots?"":"\nValue: ₱"+Number(adm.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nBy: ${adm.discoveredBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
     sendTelegramNotification("sales",msg);
     sendTelegramNotification("management",msg);
   };
@@ -2604,7 +2635,7 @@ export default function App(){
   const addBR      =(br)=>{
     upBreqs(bs=>[{...br,id:uid(),createdDate:today},...bs]);
     const deal=deals.find(d=>d.id===br.dealId);
-    sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.dealId||"?"}\nAmount: ₱${Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.submittedBy||"?"}`);
+    sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.dealId||"?"}${botSettings.hideValueInBots?"":"\nAmount: ₱"+Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.submittedBy||"?"}`);
   };
   const updateBR   =(id,ch)=>upBreqs(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
   const upBudgets  =useCallback(fn=>setBudgets(p=>{const n=fn(p);persist(KEYS.budgets,n);return n;}),[persist]);
@@ -2925,7 +2956,7 @@ export default function App(){
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
       const newClient={name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
       GMD_CLIENTS.push(newClient);
-      setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));return n;});
+      setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
     }
     // Auto-create DRF if design brief was filled in the deal form
     if(!editDeal && (data.drfDescription||data.drfProjectTitle)){
@@ -2942,7 +2973,7 @@ export default function App(){
     }
     if(!editDeal){
       logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
-      sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo} · `:""}${rec.value?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Stage: ${rec.stage}\nAdded by: ${session?.name||"Sales"}`);
+      sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo} · `:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Stage: ${rec.stage}\nAdded by: ${session?.name||"Sales"}`);
     } else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
     setEditDeal(null);
     setDealModal(false);
@@ -3034,7 +3065,7 @@ export default function App(){
       `🏆 <b>PROJECT AWARDED!</b>\n\n` +
       `Client: <b>${awardModal.client}</b>\n` +
       `${awardModal.ceNo?`CE No: ${awardModal.ceNo} · `:``}${awardModal.ceType||""}\n` +
-      `Value: ₱${contractVal.toLocaleString("en-PH",{maximumFractionDigits:0})}\n` +
+      (botSettings.hideValueInBots?"":(`Value: ₱${contractVal.toLocaleString("en-PH",{maximumFractionDigits:0})}\n`)) +
       `PM: ${pmDisplay}\n` +
       `AE: ${jo.aeAssigned||"—"}\n` +
       `JO: ${jo.joNo}\n` +
@@ -5398,7 +5429,7 @@ export default function App(){
             notes:(x.notes||"")+`\n[AWARD REQUEST ${today}]: ${session?.name||"Sales"} flagged for award. Trigger: ${formData.awardTrigger}. AE: ${formData.aeAssigned||"—"}. Suggested PM: ${formData.pm1Suggestion||"—"}.`
           }:x));
           logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"} — ${formData.awardTrigger}`);
-          sendTelegramNotification("management",`🏆 <b>Award Request — Action Needed</b>\nClient: <b>${d.client}</b>\n${d.ceNo?`CE: ${d.ceNo} · `:""}₱${Number(d.value||0).toLocaleString("en-PH")}\nTrigger: ${formData.awardTrigger}\nRequested by: ${session?.name||"Sales"}\nScope: ${formData.scopeNotes||"—"}\n\nOpen FabHub → Pipeline to Review & Award.`);
+          sendTelegramNotification("management",`🏆 <b>Award Request — Action Needed</b>\nClient: <b>${d.client}</b>\n${d.ceNo?`CE: ${d.ceNo} · `:""}${botSettings.hideValueInBots?"":` ₱${Number(d.value||0).toLocaleString("en-PH")}`}\nTrigger: ${formData.awardTrigger}\nRequested by: ${session?.name||"Sales"}\nScope: ${formData.scopeNotes||"—"}\n\nOpen FabHub → Pipeline to Review & Award.`);
           toastEmit("Award request submitted — Paulo will review and confirm.");
           setAwardReqModal(null);
         }}/>}
@@ -11256,7 +11287,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
 
 // ─── BOT SETTINGS VIEW ────────────────────────────────────────────────────────
 function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,Wrap}){
-  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})}});
+  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false});
   const[testing,setTesting]=React.useState(null);
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
@@ -11355,6 +11386,20 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
           ))}
         </div>
 
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",marginBottom:16}}>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:10}}>🔒 Privacy Settings</div>
+          <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+            <div onClick={()=>setForm(f=>({...f,hideValueInBots:!f.hideValueInBots}))}
+              style={{width:42,height:24,borderRadius:12,background:form.hideValueInBots?"#1e293b":"#e2e8f0",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
+              <div style={{position:"absolute",top:3,left:form.hideValueInBots?19:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+            </div>
+            <div>
+              <div style={{fontWeight:600,fontSize:".82rem",color:"#0f172a"}}>Hide contract/project values in notifications</div>
+              <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>When on, ₱ amounts are omitted from all bot messages (deal added, award request, project awarded, addendum, budget request)</div>
+            </div>
+          </label>
+        </div>
+
         <button onClick={doSave}
           style={{background:saved?"#059669":"#1e293b",border:"none",borderRadius:10,padding:"12px 28px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer",width:"100%",transition:"background .3s"}}>
           {saved?"✅ Settings Saved!":"💾 Save Bot Settings"}
@@ -11412,6 +11457,12 @@ function DataManagement({
         upBillings(()=>[]);upPcards(()=>({}));upChecklist(()=>[]);
         upCashPos(()=>({}));upBudgets(()=>({}));
         setActLog([]);persist("gmdv5:actlog",[]);
+        if(isSupabaseReady()){
+          ["deals","expenses","inflows","job_orders","purchase_requests","material_requests","budget_requests","addenda","billing_payments","billing_milestones","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","activity_log"].forEach(t=>sbClear(t).catch(()=>{}));
+          supabase.from('cash_positions').delete().gte('date','1900-01-01').then(()=>{}).catch(()=>{});
+          supabase.from('project_budgets').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+          supabase.from('projects').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+        }
         return "Full purge complete. FabHub is clean and ready for real data.";
       }
     },
@@ -11426,6 +11477,10 @@ function DataManagement({
       action:()=>{
         upDeals(()=>[]);upJos(()=>[]);upPcards(()=>({}));
         upChecklist(()=>[]);upAddenda(()=>[]);
+        if(isSupabaseReady()){
+          ["deals","job_orders","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","addenda"].forEach(t=>sbClear(t).catch(()=>{}));
+          supabase.from('projects').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+        }
         return "Pipeline cleared. Expenses, billing, and cash position preserved.";
       }
     },
@@ -11439,6 +11494,10 @@ function DataManagement({
       items:["Expenses","Inflows","Billing Milestones","Cash Position Days"],
       action:()=>{
         upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));
+        if(isSupabaseReady()){
+          ["expenses","inflows","billing_payments","billing_milestones"].forEach(t=>sbClear(t).catch(()=>{}));
+          supabase.from('cash_positions').delete().gte('date','1900-01-01').then(()=>{}).catch(()=>{});
+        }
         return "Finance data cleared. Pipeline and projects untouched.";
       }
     },
@@ -11452,6 +11511,7 @@ function DataManagement({
       items:["Purchase Requests","Material Requests","Budget Requests"],
       action:()=>{
         upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);
+        if(isSupabaseReady()) ["purchase_requests","material_requests","budget_requests"].forEach(t=>sbClear(t).catch(()=>{}));
         return "Procurement data cleared.";
       }
     },
@@ -11465,6 +11525,7 @@ function DataManagement({
       items:["Activity Log"],
       action:()=>{
         setActLog([]);persist("gmdv5:actlog",[]);
+        if(isSupabaseReady()) sbClear("activity_log").catch(()=>{});
         return "Activity log cleared.";
       }
     },
