@@ -4956,59 +4956,81 @@ export default function App(){
           </div>
         )}
 
-        {/* Active Pipeline — flat list */}
+        {/* Active Pipeline — Hot / Cold split */}
         {(()=>{
-          const activeDeals=deals.filter(d=>
-            !WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&
+          const daysSince=dt=>dt?Math.floor((new Date(today)-new Date(dt))/(864e5)):0;
+          const allActive=deals.filter(d=>
+            !WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))
-          ).sort((a,b)=>DEAL_STAGES.indexOf(b.stage)-DEAL_STAGES.indexOf(a.stage));
+          ).sort((a,b)=>daysSince(a.dateAcquired)-daysSince(b.dateAcquired));
+          const hotDeals=allActive.filter(d=>daysSince(d.dateAcquired)<=15);
+          const coldDeals=allActive.filter(d=>daysSince(d.dateAcquired)>15);
+
+          const PipeRow=({d,list,i})=>(
+            <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"12px 18px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              <div>
+                <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.client}</span>
+                  {vvipClients?.has(d.client)&&<span style={{fontSize:".62rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 6px",fontWeight:700}}>⭐ VVIP</span>}
+                  {Number(d.value)>=3000000&&<span style={{fontSize:".62rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 6px",fontWeight:700}}>🚨 ₱3M+</span>}
+                  <span style={{fontSize:".62rem",color:"#94a3b8",marginLeft:2}}>{daysSince(d.dateAcquired)}d ago</span>
+                </div>
+                {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
+                {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:1}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
+              </div>
+              <div>
+                {d.ceNo&&<div style={{fontSize:".8rem",fontWeight:600,color:"#0f172a"}}>{d.ceNo}</div>}
+                <div style={{fontSize:".73rem",color:"#64748b"}}>{d.ceType||"—"}</div>
+              </div>
+              <div>
+                <div style={{fontSize:".78rem",color:"#475569"}}>👤 {d.salesOwner||"—"}</div>
+                {d.priority&&d.priority!=="Normal"&&<div style={{fontSize:".65rem",color:PRI_CLR[d.priority]||"#f59e0b",fontWeight:600,marginTop:2}}>{d.priority}</div>}
+              </div>
+              <div style={{fontWeight:700,color:"#10b981",fontSize:".88rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
+                {role==="Manager"
+                  ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
+                  :<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);toastEmit("Flagged for Manager review!");}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
+                }
+                <button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#94a3b8",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✗</button>
+              </div>
+            </div>
+          );
+
+          const ColHeader=()=>(
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
+              <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
+            </div>
+          );
+
           return(
             <div>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{width:10,height:10,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>
-                Active Pipeline ({activeDeals.length})
+              {/* 🔥 Hot Pipeline */}
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:"1rem"}}>🔥</span>
+                Hot Pipeline
+                <span style={{fontWeight:400,color:"#94a3b8",fontSize:".78rem"}}>({hotDeals.length} deal{hotDeals.length!==1?"s":""} · added within 15 days)</span>
               </div>
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:24}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
-                  <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
-                </div>
-                {activeDeals.length===0&&<div style={{padding:"28px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>{pipeSearch?"No deals match your search.":"No active deals in the pipeline yet."}</div>}
-                {activeDeals.map((d,i)=>{
-                  const sc=STAGE_CLR[d.stage]||"#94a3b8";
-                  return(
-                    <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"12px 18px",borderBottom:i<activeDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                      <div>
-                        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.client}</span>
-                          {vvipClients?.has(d.client)&&<span style={{fontSize:".62rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 6px",fontWeight:700}}>⭐ VVIP</span>}
-                          {Number(d.value)>=3000000&&<span style={{fontSize:".62rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 6px",fontWeight:700}}>🚨 ₱3M+</span>}
-                        </div>
-                        {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
-                        {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:1}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
-                      </div>
-                      <div>
-                        {d.ceNo&&<div style={{fontSize:".8rem",fontWeight:600,color:"#0f172a"}}>{d.ceNo}</div>}
-                        <div style={{fontSize:".73rem",color:"#64748b"}}>{d.ceType||"—"}</div>
-                      </div>
-                      <div>
-                        <div style={{fontSize:".78rem",color:"#475569"}}>👤 {d.salesOwner||"—"}</div>
-                        {d.priority&&d.priority!=="Normal"&&<div style={{fontSize:".65rem",color:PRI_CLR[d.priority]||"#f59e0b",fontWeight:600,marginTop:2}}>{d.priority}</div>}
-                      </div>
-                      <div style={{fontWeight:700,color:"#10b981",fontSize:".88rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
-                      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
-                        {role==="Manager"
-                          ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
-                          :<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);toastEmit("Flagged for Manager review!");}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
-                        }
-                        <button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#94a3b8",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✗</button>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:20}}>
+                <ColHeader/>
+                {hotDeals.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>{pipeSearch?"No hot deals match your search.":"No new deals this period."}</div>}
+                {hotDeals.map((d,i)=><PipeRow key={d.id} d={d} list={hotDeals} i={i}/>)}
+              </div>
+
+              {/* 🧊 Cold Pipeline */}
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:"1rem"}}>🧊</span>
+                Cold Pipeline
+                <span style={{fontWeight:400,color:"#94a3b8",fontSize:".78rem"}}>({coldDeals.length} deal{coldDeals.length!==1?"s":""} · over 15 days, needs follow-up)</span>
+              </div>
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:24,opacity:coldDeals.length?1:0.6}}>
+                <ColHeader/>
+                {coldDeals.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>{pipeSearch?"No cold deals match your search.":"All deals are active — great work!"}</div>}
+                {coldDeals.map((d,i)=><PipeRow key={d.id} d={d} list={coldDeals} i={i}/>)}
               </div>
 
               {/* Awarded Projects */}
