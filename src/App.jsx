@@ -144,7 +144,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -153,6 +153,8 @@ const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.catego
 const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,lastUpdated:r.last_updated,createdBy:r.created_by});
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
+const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
@@ -1570,6 +1572,8 @@ export default function App(){
   const[mreqs,       setMreqs]     = useState([]);   // Material Requests
   const[breqs,       setBreqs]     = useState([]);   // Budget Requests
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
+  const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
+  const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""}});
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
@@ -1615,6 +1619,8 @@ export default function App(){
         const mr=localStorage.getItem(KEYS.mreqs); if(mr) setMreqs(JSON.parse(mr));
         const br=localStorage.getItem(KEYS.breqs); if(br) setBreqs(JSON.parse(br));
         const drf=localStorage.getItem(KEYS.drfs); if(drf) setDrfs(JSON.parse(drf));
+        const sup=localStorage.getItem(KEYS.suppliers); if(sup) setSuppliers(JSON.parse(sup));
+        const sc=localStorage.getItem(KEYS.subcons); if(sc) setSubcons(JSON.parse(sc));
         const bs=localStorage.getItem(KEYS.botsettings); if(bs) setBotSettings(JSON.parse(bs));
         const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
         const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
@@ -1649,6 +1655,8 @@ export default function App(){
             if(data.drfs?.length){const d=data.drfs.map(drfFromSb);setDrfs(d);localStorage.setItem(KEYS.drfs,JSON.stringify(d));}
             if(data.inventory?.length){const d=data.inventory.map(invFromSb);setInventory(d);localStorage.setItem(KEYS.inventory,JSON.stringify(d));}
             if(data.stocklog?.length){const d=data.stocklog.map(moveFromSb);setStocklog(d);localStorage.setItem(KEYS.stocklog,JSON.stringify(d));}
+            if(data.suppliers?.length){const d=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(d);localStorage.setItem(KEYS.suppliers,JSON.stringify(d));}
+            if(data.subcontractors?.length){const d=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(d);localStorage.setItem(KEYS.subcons,JSON.stringify(d));}
             if(data.settings?.vvip){const s=new Set(data.settings.vvip);setVvip(s);localStorage.setItem(KEYS.vvip,JSON.stringify([...s]));}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);localStorage.setItem(KEYS.projects,JSON.stringify(data.projs));}
             // Sync to localStorage as cache
@@ -1964,6 +1972,8 @@ export default function App(){
   },[persist, deals, jos, exps, prs, mreqs, breqs, addenda, swatches, checklist, actLog, billings, budgets, cashPositions, infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
+  const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
+  const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
 
   const addInventoryItem=(item)=>upInventory(iv=>{
     const rec={...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
@@ -1978,6 +1988,139 @@ export default function App(){
     upInventory(iv=>iv.filter(i=>i.id!==id));
     if(isSupabaseReady()) sbDelete('inventory_items',id).catch(()=>{});
   };
+
+  // Supplier CRUD
+  const addSupplier=(item)=>upSuppliers(ss=>{
+    const rec={...item,id:uid(),createdAt:today,createdBy:session?.name||role};
+    if(isSupabaseReady()) sbInsert('suppliers',supToSb(rec)).catch(()=>{});
+    return[...ss,rec];
+  });
+  const updateSupplier=(id,ch)=>{
+    upSuppliers(ss=>ss.map(s=>s.id===id?{...s,...ch}:s));
+    if(isSupabaseReady()) sbUpdate('suppliers',id,supToSb(ch)).catch(()=>{});
+  };
+  const deleteSupplier=(id)=>{
+    upSuppliers(ss=>ss.filter(s=>s.id!==id));
+    if(isSupabaseReady()) sbDelete('suppliers',id).catch(()=>{});
+  };
+  // Subcontractor CRUD
+  const addSubcon=(item)=>upSubcons(ss=>{
+    const rec={...item,id:uid(),createdAt:today,createdBy:session?.name||role};
+    if(isSupabaseReady()) sbInsert('subcontractors',subconToSb(rec)).catch(()=>{});
+    return[...ss,rec];
+  });
+  const updateSubcon=(id,ch)=>{
+    upSubcons(ss=>ss.map(s=>s.id===id?{...s,...ch}:s));
+    if(isSupabaseReady()) sbUpdate('subcontractors',id,subconToSb(ch)).catch(()=>{});
+  };
+  const deleteSubcon=(id)=>{
+    upSubcons(ss=>ss.filter(s=>s.id!==id));
+    if(isSupabaseReady()) sbDelete('subcontractors',id).catch(()=>{});
+  };
+
+  // One-time seed from spreadsheet data
+  const SEED_SUPPLIERS = [
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Durawood Construction and Lumber Supply Inc.",email:"durawoodcons@yahoo.com.ph",materials:"Assorted Construction Supply",contactNos:"645-39-77 / 09228104751",contactPerson:"Mr. Wilson",paymentTerms:"60 Days",address:"#177 Sumulong High-way cor. B Soliven Ave. Mayamot, Antipolo City",tinNo:"000-096-499-000",notes:""},
+    {rating:"4 - GOOD",companyName:"Miles Merchandising",email:"",materials:"Assorted Construction Supply",contactNos:"941-38-36",contactPerson:"",paymentTerms:"Cash Basis",address:"41 Bayan-Bayanan Avenue, Concepcion, Marikina, 1807 Metro Manila",tinNo:"209-086-074-000",notes:""},
+    {rating:"4 - GOOD",companyName:"MLC Hardware",email:"mlchardware@yahoo.com",materials:"Assorted Construction Supply",contactNos:"941-06-92 / 941-4055",contactPerson:"Ms. Ayen/Mr. Johnson",paymentTerms:"30-45 Days",address:"No. 36 D, Bayanbayanan Avenue, Concepcion, Marikina, 1807 Metro Manila",tinNo:"235-528-886-000",notes:""},
+    {rating:"2 - MODERATE",companyName:"Peng-Yong Hardware & Construction Supply",email:"",materials:"Assorted Construction Supply",contactNos:"682-1201 / 0906-565-8607",contactPerson:"Ms. Marjorie/ Ms. Maria Lorraine",paymentTerms:"30 Days",address:"Sumulong Antipolo City",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Trima Industrial Sales",email:"",materials:"Paint and Screws",contactNos:"475-2125 / 475-2224",contactPerson:"",paymentTerms:"Cash Basis",address:"No. 21 Bayan Bayanan Ave., Concepcion, Marikina City",tinNo:"190-582-296-000",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"Auto-Ad Trading",email:"auto.ad_trading@yahoo.com",materials:"Acrylic",contactNos:"261-24-70/71",contactPerson:"Ms. Tina/Allen",paymentTerms:"90 Days",address:"Casa Corazon Bldg. Earnshaw St. Sampaloc Barangay 457",tinNo:"912-382-767-000",notes:""},
+    {rating:"4 - GOOD",companyName:"Signmate",email:"signmatemarketing01@gmail.com",materials:"MDF and Acrylic",contactNos:"439-3346",contactPerson:"Ms. Dianne / Paul Samonte",paymentTerms:"30 Days",address:"916 Aurora Blvd. Quezon City",tinNo:"",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"CWC Prime Industries Corporation",email:"sales_corian@primegroup.ph",materials:"Quartz Countertop",contactNos:"8010-986 / 843-9760 / 844-4320 / 0917-688-8646",contactPerson:"Mr. Miguel",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"Euro Asia (Veneer Laminate)",email:"angcedric@aim.com",materials:"Stone/Quartz Countertop",contactNos:"705-1408 Loc. 103/09228002470",contactPerson:"Mr. Cedric Ang",paymentTerms:"30 Days",address:"206-B M. Paterno St. San Juan City, Metro Manila",tinNo:"004-541-794-000",notes:""},
+    {rating:"4 - GOOD",companyName:"FOURTH DIMENSION",email:"lina_iligan@ymail.com",materials:"Vasari",contactNos:"570-3380 / 0977-802-8614",contactPerson:"Ms. Lina",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"World Class Laminate Inc.",email:"info@worldclasslaminate.com",materials:"Laminated Board/Quartz Countertop",contactNos:"374-8738 / 245-3767",contactPerson:"Ms. Alyana / Cherma / Ms. Ven",paymentTerms:"Cash Basis",address:"88 Jenny's Avenue, Maybunga Pasig City",tinNo:"230-792-490-001",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Al Metal Master Inc.",email:"",materials:"Assorted Metal",contactNos:"941-3336",contactPerson:"M. Jaja",paymentTerms:"Cash Basis",address:"532 J.P Rizal St. Marikina City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"Metalbase",email:"",materials:"Assorted Metal",contactNos:"",contactPerson:"",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:"Payment Method: No Bank/Terms (Cash Only)"},
+    {rating:"2 - MODERATE",companyName:"Takezo Industrial Supply",email:"takezo.industrialsupply@yahoo.com",materials:"Polycarbonate and Accessories",contactNos:"0925-897-6706 / 748-4311 / 370-9091 / 796-0980 / 642-0659",contactPerson:"Mr. Joey",paymentTerms:"Cash Basis",address:"1416 B. Velasquez St. Tondo Manila",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"JTCI Carpet Gallery Corporation",email:"jovetcarpets_05@yahoo.com",materials:"Carpet",contactNos:"401-85-37/401-86-77/ 0920-282-4187 / 655-1643",contactPerson:"Ms. Rosana Babes",paymentTerms:"7 Days",address:"Unit 304 - 3rd Floor Jeb Arcade Realty & Builders #101 Amang Rodriguez Ave. Rosario, Pasig City",tinNo:"008-605-986-000",notes:""},
+    {rating:"2 - MODERATE",companyName:"Fortress Glass Supply",email:"gcrystalglass@yahoo.com / fortressquency@gmail.com",materials:"Mirror/Tempered/Ordinary Glass",contactNos:"647-8888 / 470-0704",contactPerson:"Ms. Anna / Mae",paymentTerms:"Cash Basis",address:"71, Gertrudes Street, Antipolo, 1870 Rizal",tinNo:"151-555-637-003",notes:""},
+    {rating:"4 - GOOD",companyName:"MRDH Glass & Aluminum Enterprises",email:"",materials:"Mirror/Tempered/Ordinary Glass",contactNos:"948-9087",contactPerson:"Ms. Riza",paymentTerms:"Cash Basis",address:"128-A B. G. Molina Street, Marikina, Metro Manila",tinNo:"174-990-316-000",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Authentic Wood Products International Inc.",email:"authentic_wood@yahoo.com",materials:"Cut Out Materials/Laser Cutting",contactNos:"942-3735 / 940-4519",contactPerson:"Ms. Anabelle Calalo / Mr. Mark",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:"Wood Cutting & Engraving"},
+    {rating:"4 - GOOD",companyName:"FULL CREATIVE INNOVATION (FCI)",email:"sales.fcienterprises@gmail.com",materials:"Print/Signages",contactNos:"0915-410-5134 / 754-9259",contactPerson:"Sir Fritz",paymentTerms:"Cash Basis",address:"#179 Market Ave. Pasig City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"KENT FLOORS",email:"",materials:"Vinyl Tiles",contactNos:"0917-861-2316",contactPerson:"Ms. Jhoza",paymentTerms:"Cash Basis",address:"Evangelista Cor. Marcos Highway (Near SM Marikina, Green Gate)",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"Hilongos Industrial Supply",email:"",materials:"Assorted Tools",contactNos:"682-1255",contactPerson:"Mr. Jm",paymentTerms:"30 Days",address:"#2 Saenz Arcade, Sumulong Hi-way Mayamot, Antipolo City",tinNo:"",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"DMI Metal Industries",email:"dmimetalindustries@gmail.com",materials:"Accordion Door Installation/Metal",contactNos:"570-3114 / 710-3570",contactPerson:"Ms. Arra",paymentTerms:"Cash Basis",address:"#11 Cattleya St. Vista Hermosa Village San Mateo Rizal",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Mega Packaging Corporation",email:"",materials:"Stretch Film/Bubble Wrap/Office Supply",contactNos:"0923-953-8218",contactPerson:"Ms. Jane",paymentTerms:"Cash Basis",address:"Canlubang Calamba Laguna",tinNo:"003-057-431-000",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"Hafele Philippines, Inc.",email:"",materials:"Accessories",contactNos:"842-3353",contactPerson:"",paymentTerms:"Cash Basis",address:"Levi Mariano Ave., Brgy. Ususan Taguig city",tinNo:"001-707-726-000",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"Joaquin Shoe Supply",email:"",materials:"Rugby",contactNos:"646-1881",contactPerson:"",paymentTerms:"Cash Basis",address:"450 E. DELA PAZ STREET, MARIKINA METRO MANILA",tinNo:"100-145-045-000",notes:""},
+    {rating:"4 - GOOD",companyName:"Olympus Marketing Inc.",email:"mjebelia@olympus.com.ph",materials:"Lighting Fixtures",contactNos:"941-7978 / 0922-5310-757",contactPerson:"Ms. Mary Jane Belia",paymentTerms:"Cash Basis",address:"#17 A 1st Avenue., Sta. Maria Industrial Subd. Bagumbayan, Taguig City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"Pingping Shoe Supply Corporation",email:"",materials:"Rugby/Triple 8/Leather",contactNos:"997-5199",contactPerson:"Ms. Yolie/Ms. Pat",paymentTerms:"Cash Basis",address:"83 E. Manalo Sto. Niño Marikina City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"Shell Canvas",email:"",materials:"Fabric",contactNos:"921-8546 / 922-7797 / 922-8708",contactPerson:"Mr. Bobby / Ms. Lilibeth / Ms. Jenny",paymentTerms:"Cash Basis",address:"816 EDSA Cor. Kamias Road, Quezon City",tinNo:"",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"LEGOBUILDERS INC.",email:"www.legobuildersinc.com",materials:"Bricks",contactNos:"09278587110 /09062987574",contactPerson:"Mr. JC Delosreyes / Ms. Irene",paymentTerms:"Cash Basis",address:"U/1-2, Casa Royale Building, 558 Cabildo St. Intramuros, Manila.",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"FORMICA LAMINATES",email:"",materials:"Laminates",contactNos:"+639652371702",contactPerson:"Mr. Jeorge",paymentTerms:"Cash Basis",address:"8009, 1709 West Service Rd., Merville, Parañaque City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"GRAND JADE HARDWARE",email:"",materials:"Assorted Construction Supply",contactNos:"+639230856115",contactPerson:"Ms. Rhea",paymentTerms:"15 Days",address:"JP Rizal St. Malanday, Marikina City",tinNo:"009-324-876-000",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"LEXTON MARKETING CORPORATION",email:"",materials:"Plumbing Fixtures, Accessories, and Laminates",contactNos:"63 2 5318-5215",contactPerson:"Ms. Je-Anne/Ria",paymentTerms:"30 Days",address:"280 9th St. Cor. 8th Avenue, Grace Park, Caloocan City",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Modern Art / Artmart Signage Materials Trading",email:"",materials:"Acrylic/Sticker/MDF",contactNos:"+639175081777",contactPerson:"Ms. Addie",paymentTerms:"Cash Basis",address:"12 Broadway Avenue Brgy. Mariana New Manila, QC",tinNo:"235-579-712-0001",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Contractors Home",email:"chte_corp@yahoo.com",materials:"Assorted Tools",contactNos:"+639396065367",contactPerson:"Mr. Jai-Jai",paymentTerms:"7 Days",address:"116 Lilac St. Concepcion Dos Marikina City",tinNo:"010-551-650-000",notes:""},
+    {rating:"4 - GOOD",companyName:"RGB/VR CONCEPT",email:"rrlk@ymail.com",materials:"Print/Signages",contactNos:"+639568395213",contactPerson:"Ms. Alyssandra",paymentTerms:"30 Days",address:"90 West Riverside St. Brgy. San Antonio, Quezon City",tinNo:"010-119-786-000",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"CPRO Home Hardware",email:"",materials:"Drawer Guide/Accessories",contactNos:"8981-1598",contactPerson:"Mr. Gerald Shi",paymentTerms:"Cash Basis",address:"321-A Fernando Poe Jr Ave, San Antonio, QC",tinNo:"454-659-870-000",notes:""},
+    {rating:"4 - GOOD",companyName:"Seato Trading Company Inc.",email:"",materials:"MDF/Plywood/Plyboard",contactNos:"+639566088309",contactPerson:"Ms. Jasmin Sultan",paymentTerms:"Cash Basis",address:"110 20th Ave., Cor. P. Tuazon, Cubao, QC",tinNo:"000-389-723-000",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"Vertiflute",email:"info@vertiflute.com",materials:"Fluted/Tile Trim/Accessories",contactNos:"+639457821888",contactPerson:"Ms. Meg/Sir. Kyle",paymentTerms:"Terms",address:"G/F Midway Court Bldg. EDSA, Wack-wack, Mandaluyong",tinNo:"010-063-229",notes:""},
+    {rating:"4 - GOOD",companyName:"PHILUX",email:"south@philux.ph",materials:"Furnitures",contactNos:"+639773259506",contactPerson:"",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"Kuysen",email:"",materials:"Furnitures",contactNos:"",contactPerson:"Mr. Angelo Irabon",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"8GADS PRINTING SUPPLY",email:"",materials:"Lighting Fixtures/Power Supply",contactNos:"+639661424177",contactPerson:"Mr. Vladimir",paymentTerms:"Terms",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"PANDA CONSTRUCTION SUPPLY",email:"",materials:"Assorted Construction Supply",contactNos:"",contactPerson:"Ms. Mary Ann",paymentTerms:"Terms",address:"",tinNo:"000-326-384-000",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"STAR LIGHTING",email:"",materials:"Lighting Fixtures",contactNos:"+639288750509",contactPerson:"Ms. Kristina Casela",paymentTerms:"Cash Basis",address:"1322 CM RECTO AVENUE TONDO MANILA",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"NEW SQ LUMBER AND HARDWARE CORP",email:"",materials:"Plywood/Plyboard",contactNos:"",contactPerson:"Ms. Linda, Ms. Geraldine",paymentTerms:"Terms",address:"210 LOPEZ JAENA ST. COR. BARASOAIN LITTLE BAGUIO SAN JUAN",tinNo:"007-069-204-000",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"MAKATI FINEST LUMBER & HARDWARE",email:"",materials:"Plywood/Plyboard",contactNos:"",contactPerson:"Ms. Shaina Lim/Mr. Jaime Lim",paymentTerms:"Terms",address:"431 J. P. Rizal St, Makati City, Metro Manila",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"TEXTURIA ARCHITECTURAL FINISHES",email:"",materials:"Sticker",contactNos:"+639178153392",contactPerson:"Mr. Julian Ong, Mr. Billy Bautista",paymentTerms:"Cash Basis",address:"No. 8 A. De Leon St., Concepcion Uno, Marikina City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"ALUMINUM POWER MARKETING CORPORATION",email:"",materials:"Assorted Metal/ACP/Accessories",contactNos:"",contactPerson:"Ms. Arlyn",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"DIZON MEDIA ADVERTISING",email:"",materials:"Wires/Cyno Glue",contactNos:"+639061041657",contactPerson:"Ms. Ann Barcia",paymentTerms:"Terms",address:"Trading OPC East Los Angeles, Novaliches, Quezon City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"BMMC MULTI SALES CORPORATION",email:"",materials:"Electrical Materials",contactNos:"",contactPerson:"",paymentTerms:"Cash Basis",address:"F. Torres St, Binondo, Manila, 1008 Metro Manila",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"GERMIKE PACKAGING SUPPLIES",email:"",materials:"Stretch Film/Bubble Wrap/Office Supply",contactNos:"",contactPerson:"",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"SPECTRUM BY LARRY'S",email:"",materials:"Fabric",contactNos:"",contactPerson:"",paymentTerms:"Cash Basis",address:"5608 South Super Highway Palanan, Makati City",tinNo:"008-792-225-000",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"QUEENSWAY REBO BAMBOO OPC",email:"",materials:"Fluted/Laminate",contactNos:"+639177082159",contactPerson:"Ms. Jaja",paymentTerms:"Cash Basis",address:"Unit 49 CW Home Depot, Dona Julia Vargas Pasig City",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"PHILBOARDS",email:"",materials:"Laminated Board",contactNos:"",contactPerson:"Ms. Mj",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"HIGH-TOP MERCHANDISING INC",email:"",materials:"Stone/Metal Laser Cutting",contactNos:"+639190792827",contactPerson:"Ms. Jen",paymentTerms:"Cash Basis",address:"227 Biak na bato, Brgy. Manresa, Quezon City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"PRIMARK",email:"",materials:"Stone/Wood/Metal Laser Cutting",contactNos:"+639177053894",contactPerson:"Ms. Leady",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"BW GLASS VENTURES",email:"",materials:"Glass Supply/Installation",contactNos:"",contactPerson:"Ms. Lyra/ Mr. Jaime",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"AGC LED",email:"",materials:"Electrical Materials",contactNos:"+639068770391",contactPerson:"Mr. Sergio Labauanan",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"AMPERE LIGHTS TRADING",email:"",materials:"Lighting Fixtures",contactNos:"+639913349137",contactPerson:"Ms. Ghene",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"COB/ YANNY",email:"",materials:"Electrical Materials",contactNos:"+639563520972",contactPerson:"Ms. Yanny",paymentTerms:"Cash Basis",address:"",tinNo:""},
+    {rating:"4 - GOOD",companyName:"PACIFIC GLASS CORPORATION",email:"",materials:"Glass Supply/Installation",contactNos:"9544168035/ 9175660785",contactPerson:"Ms. NJ Calmerin/ Mr. Herminigildo",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"5 - EXCELLENT AND RELIABLE",companyName:"JUAN LUKAS ELECTRICAL SUPPLY",email:"",materials:"Panel Board/Electrical",contactNos:"+639176530430",contactPerson:"Mr. Michael",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"AC BOX ALL IN ONE CORP",email:"",materials:"Panel Board/Electrical",contactNos:"+6319029147",contactPerson:"Ms. Diana",paymentTerms:"Cash Basis",address:"38 2nd Street Brgy. Sto Nino, Marikina City",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"DELTATEK ELECTRICAL SUPPLIES TRADING",email:"",materials:"Panel Board/Electrical",contactNos:"+639985493623",contactPerson:"Ms. Aira",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"EUROBEL MARKETING",email:"www.eurobel.com.ph",materials:"Carpet",contactNos:"+639171528131",contactPerson:"Ms. Gillian",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"AIRJELLE ENTERPRISES CO INC",email:"airjelle.enterprises2024@gmail.com",materials:"Office Supplies",contactNos:"+639300801526",contactPerson:"Mr. Francis",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"3 - ACCEPTABLE",companyName:"STYO BOLT",email:"",materials:"Styro",contactNos:"+639353307270",contactPerson:"Mr. Macalanda",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"MKM MERCHANDISE",email:"",materials:"Electrical Materials",contactNos:"+639167312997",contactPerson:"Mr. Fernando",paymentTerms:"Cash Basis",address:"",tinNo:"331-383-897-000",notes:""},
+    {rating:"4 - GOOD",companyName:"ACE HARDWARE SM MASINAG",email:"",materials:"Tools",contactNos:"+639992210941",contactPerson:"Ms. Ronaliza Tarala",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+    {rating:"4 - GOOD",companyName:"LND SIGN CORP",email:"",materials:"Print/Signages",contactNos:"+639564996605",contactPerson:"Ms. Cha",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:""},
+  ];
+
+  const SEED_SUBCONS = [
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Material request details  S: Scope of Work",contactNo:"0915-017-0014",companyName:"Benedick Jamito",paymentTerms:"60 Days",address:"#177 Sumulong Hi-way cor. B Soliven Ave. Mayamot, Antipolo City",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Material request details/Scope of Work",contactNo:"0915-827-5419",companyName:"Benedicto Pantriore",paymentTerms:"Cash Basis",address:"41 Bayan-Bayanan Avenue, Concepcion, Marikina, 1807 Metro Manila",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"Stone Works (Supply & Install)",strengthsWeaknesses:"W: Communication  S: Product and Samples",contactNo:"0999-158-5829",companyName:"John Piang Ometer",paymentTerms:"30-45 Days",address:"No. 36 D, Bayanbayanan Avenue, Concepcion, Marikina, 1807 Metro Manila",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Material request details  S: Contract Amount",contactNo:"0995-147-0400",companyName:"Rising/Jovic Susim",paymentTerms:"30 Days",address:"Sumulong Antipolo City",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Material request details  S: Communication",contactNo:"0917-871-3284",companyName:"Racem/Jhun Alzona",paymentTerms:"Cash Basis",address:"No. 21 Bayan Bayanan Ave., Concepcion, Marikina City",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Material Request Details  S: Progress Report",contactNo:"0915-361-3286",companyName:"Imelda Orale",paymentTerms:"90 Days",address:"Casa Corazon Bldg. Earnshaw St. Sampaloc Barangay 457",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Hard to communicate/Request Details",contactNo:"0947-755-3557",companyName:"Jerome Mendoza",paymentTerms:"30 Days",address:"916 Aurora Blvd. Quezon City",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"Electrical (Install only)",strengthsWeaknesses:"W: Communication  S: Scope of Work",contactNo:"0945-311-1571",companyName:"Michael Labrador",paymentTerms:"Cash Basis",address:"",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Material request details/Communication  S: Scope of Work",contactNo:"0917-719-8415",companyName:"Ronald Quirong",paymentTerms:"30 Days",address:"206-B M. Paterno St. San Juan City, Metro Manila",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"Davao",remarks:"",notes:""},
+    {rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"W: Material request details/Communication  S: Scope of Work",contactNo:"0933-626-2399",companyName:"Miguel Kwan",paymentTerms:"Cash Basis",address:"",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"Cebu",remarks:"",notes:""},
+    {rating:"NO",specialty:"Metal Works (Supply & Install)",strengthsWeaknesses:"W: Work errors/Design concerns about metal works/Billing",contactNo:"0917-802-6014",companyName:"Alba Motors/Elijah Mojares",paymentTerms:"Cash Basis",address:"88 Jenny's Avenue, Maybunga Pasig City",rateStructure:"Material/Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
+  ];
+
+  // Seed initial data if tables are empty (runs once)
+  useEffect(()=>{
+    if(suppliers.length===0&&SEED_SUPPLIERS.length>0&&isSupabaseReady()){
+      SEED_SUPPLIERS.forEach(s=>{
+        addSupplier({...s,status:"Active"});
+      });
+    }
+  },[/* one-time seed */]);
+
+  useEffect(()=>{
+    if(subcons.length===0&&SEED_SUBCONS.length>0&&isSupabaseReady()){
+      SEED_SUBCONS.forEach(s=>{
+        addSubcon({...s,status:"Active"});
+      });
+    }
+  },[/* one-time seed */]);
 
   const logStockMove=(move)=>{
     const entry={...move,id:uid(),date:move.date||today,recordedBy:session?.name||role};
@@ -2756,7 +2899,7 @@ export default function App(){
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"collections",l:"Collections"},{id:"accounting",l:"Accounting"}]},
       {group:"Operations",  items:[{id:"ops",l:"Operations"},{id:"projects",l:"📋 Projects"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
       {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"}]},
     ],
@@ -2772,7 +2915,7 @@ export default function App(){
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
+      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
       {group:"Materials",  items:[{id:"swatchboard",l:"Swatchboard"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
@@ -2806,6 +2949,7 @@ export default function App(){
       procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
       collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
       drf:"📝",deliveries:"🚚",stockmove:"📦",
+      suppliers:"🏭",subcontractors:"👷",
       "Sales Pipeline":"📊","My Pipeline":"📊",
     };
     const groups=navMap[role]||[];
@@ -6190,6 +6334,9 @@ export default function App(){
         logStockMove={logStockMove} session={session} role={role}/>
     </Wrap>
   );
+
+  if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
+  if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
 
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
@@ -11332,4 +11479,289 @@ function DataManagement({
     win.document.close();
   };
 
+// ─── SUPPLIER MASTER VIEW ──────────────────────────────────────────────────────
+const SUPPLIER_RATINGS = ["5 - EXCELLENT AND RELIABLE","4 - GOOD","3 - ACCEPTABLE","2 - MODERATE","1 - POOR"];
+const PAYMENT_TERMS_OPTS = ["Cash Basis","7 Days","15 Days","30 Days","30-45 Days","45 Days","60 Days","90 Days","Terms"];
 
+function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier,session,role}){
+  const[showForm,setShowForm]=useState(false);
+  const[editId,setEditId]=useState(null);
+  const emptySupplier=()=>({rating:"4 - GOOD",companyName:"",email:"",materials:"",contactNos:"",contactPerson:"",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:"",status:"Active"});
+  const[form,setForm]=useState(emptySupplier());
+  const[search,setSearch]=useState("");
+  const[filterRating,setFilterRating]=useState("all");
+  const[filterMat,setFilterMat]=useState("all");
+
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const canEdit=role==="Manager"||role==="Procurement";
+
+  const filtered=useMemo(()=>{
+    let list=suppliers;
+    if(filterRating!=="all") list=list.filter(s=>s.rating===filterRating);
+    if(filterMat!=="all") list=list.filter(s=>(s.materials||"").toLowerCase().includes(filterMat.toLowerCase()));
+    if(search){const q=search.toLowerCase();list=list.filter(s=>(s.companyName||"").toLowerCase().includes(q)||(s.materials||"").toLowerCase().includes(q)||(s.contactPerson||"").toLowerCase().includes(q));}
+    return list.slice().sort((a,b)=>{const ra=a.rating?parseInt(a.rating):0,rb=b.rating?parseInt(b.rating):0;return rb-ra;});
+  },[suppliers,filterRating,filterMat,search]);
+
+  const ratingClr={
+    "5 - EXCELLENT AND RELIABLE":"#059669",
+    "4 - GOOD":"#3b82f6",
+    "3 - ACCEPTABLE":"#f59e0b",
+    "2 - MODERATE":"#f97316",
+    "1 - POOR":"#ef4444",
+  };
+
+  const openEdit=(s)=>{setForm({...s,companyName:s.companyName||s.company_name||""});setEditId(s.id);setShowForm(true);};
+  const openNew=()=>{setForm(emptySupplier());setEditId(null);setShowForm(true);};
+  const save=()=>{
+    if(!form.companyName) return;
+    if(editId) updateSupplier(editId,form);
+    else addSupplier(form);
+    setShowForm(false);setEditId(null);
+  };
+
+  const topMat=[...new Set(suppliers.map(s=>s.materials).filter(Boolean))].sort();
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🏭 Supplier Master List</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Approved vendors — rated, categorized, and ready to quote</div>
+        </div>
+        {canEdit&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Add Supplier</button>}
+      </div>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Total Suppliers",v:suppliers.length,c:"#3b82f6"},
+          {l:"Excellent & Reliable",v:suppliers.filter(s=>s.rating&&s.rating.startsWith("5")).length,c:"#059669"},
+          {l:"Good",v:suppliers.filter(s=>s.rating&&s.rating.startsWith("4")).length,c:"#3b82f6"},
+          {l:"Acceptable or Below",v:suppliers.filter(s=>s.rating&&!s.rating.startsWith("5")&&!s.rating.startsWith("4")).length,c:"#f59e0b"},
+        ].map(({l,v,c})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+        <FInp value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search supplier, material, contact…"
+          style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 13px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a"}}/>
+        <select value={filterRating} onChange={e=>setFilterRating(e.target.value)}
+          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+          <option value="all">All Ratings</option>
+          {SUPPLIER_RATINGS.map(r=><option key={r}>{r}</option>)}
+        </select>
+        <select value={filterMat} onChange={e=>setFilterMat(e.target.value)}
+          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+          <option value="all">All Materials</option>
+          {topMat.slice(0,20).map(m=><option key={m}>{m}</option>)}
+        </select>
+      </div>
+
+      {/* Add/Edit Form */}
+      {showForm&&canEdit&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
+          <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>{editId?"Edit Supplier":"Add Supplier"}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Company Name" required><Inp value={form.companyName} onChange={e=>f("companyName",e.target.value)} placeholder="Company name"/></Fld></div>
+            <Fld label="Rating"><Sel value={form.rating} onChange={e=>f("rating",e.target.value)}>{SUPPLIER_RATINGS.map(r=><option key={r}>{r}</option>)}</Sel></Fld>
+            <Fld label="Materials Supplied"><Inp value={form.materials} onChange={e=>f("materials",e.target.value)} placeholder="e.g. Assorted Construction Supply"/></Fld>
+            <Fld label="Email"><Inp type="email" value={form.email} onChange={e=>f("email",e.target.value)} placeholder="email@example.com"/></Fld>
+            <Fld label="Contact Nos."><Inp value={form.contactNos} onChange={e=>f("contactNos",e.target.value)} placeholder="e.g. 941-0000 / 09XX-XXX-XXXX"/></Fld>
+            <Fld label="Contact Person"><Inp value={form.contactPerson} onChange={e=>f("contactPerson",e.target.value)} placeholder="e.g. Ms. Maria"/></Fld>
+            <Fld label="Payment Terms"><Sel value={form.paymentTerms} onChange={e=>f("paymentTerms",e.target.value)}>{PAYMENT_TERMS_OPTS.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
+            <Fld label="TIN No."><Inp value={form.tinNo} onChange={e=>f("tinNo",e.target.value)} placeholder="XXX-XXX-XXX-000"/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Address"><Inp value={form.address} onChange={e=>f("address",e.target.value)} placeholder="Full address"/></Fld></div>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Payment method, special instructions…"/></Fld></div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:14}}>
+            <button onClick={save} disabled={!form.companyName} style={{background:form.companyName?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:form.companyName?"#fff":"#94a3b8",cursor:form.companyName?"pointer":"not-allowed"}}>{editId?"Save Changes":"Add Supplier"}</button>
+            <button onClick={()=>{setShowForm(false);setEditId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {suppliers.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No suppliers yet. Add your first supplier above.</div>}
+
+      {/* List */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {filtered.map(s=>{
+          const clr=ratingClr[s.rating]||"#94a3b8";
+          return(
+            <div key={s.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                    <span style={{fontSize:".68rem",fontWeight:700,color:clr,background:clr+"1a",padding:"2px 8px",borderRadius:20}}>{s.rating||"—"}</span>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".92rem"}}>{s.companyName||s.company_name}</span>
+                  </div>
+                  <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem",color:"#64748b",marginBottom:s.address?4:0}}>
+                    {(s.materials)&&<span>📦 {s.materials}</span>}
+                    {(s.contactPerson||s.contact_person)&&<span>👤 {s.contactPerson||s.contact_person}</span>}
+                    {(s.contactNos||s.contact_nos)&&<span>📞 {s.contactNos||s.contact_nos}</span>}
+                    {(s.email)&&<span>✉ {s.email}</span>}
+                    {(s.paymentTerms||s.payment_terms)&&<span style={{background:"#f0fdf4",color:"#166534",padding:"1px 8px",borderRadius:10,fontWeight:600}}>💳 {s.paymentTerms||s.payment_terms}</span>}
+                    {(s.tinNo||s.tin_no)&&<span>TIN: {s.tinNo||s.tin_no}</span>}
+                  </div>
+                  {(s.address)&&<div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>📍 {s.address}</div>}
+                  {(s.notes)&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"3px 8px",marginTop:4,display:"inline-block"}}>📝 {s.notes}</div>}
+                </div>
+                {canEdit&&(
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button onClick={()=>openEdit(s)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                    <button onClick={()=>{if(window.confirm("Remove this supplier?"))deleteSupplier(s.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── SUBCONTRACTOR MASTER VIEW ──────────────────────────────────────────────────
+const SUBCON_RATINGS=["YES - ACCEPTABLE","NO","PROBATIONARY"];
+const SUBCON_SPECIALTIES=["General Works","Electrical (Install only)","Stone Works (Supply & Install)","Metal Works (Supply & Install)","Tile Works","Glass Works","Painting","Plumbing","Carpentry","HVAC","Other"];
+
+function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,role}){
+  const[showForm,setShowForm]=useState(false);
+  const[editId,setEditId]=useState(null);
+  const emptySubcon=()=>({rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"",contactNo:"",companyName:"",paymentTerms:"Cash Basis",address:"",remarks:"",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",notes:"",status:"Active"});
+  const[form,setForm]=useState(emptySubcon());
+  const[search,setSearch]=useState("");
+  const[filterSpecialty,setFilterSpecialty]=useState("all");
+  const[filterRating,setFilterRating]=useState("all");
+
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const canEdit=role==="Manager"||role==="Procurement"||role==="Operations";
+
+  const filtered=useMemo(()=>{
+    let list=subcons;
+    if(filterRating!=="all") list=list.filter(s=>s.rating===filterRating);
+    if(filterSpecialty!=="all") list=list.filter(s=>s.specialty===filterSpecialty);
+    if(search){const q=search.toLowerCase();list=list.filter(s=>(s.companyName||"").toLowerCase().includes(q)||(s.specialty||"").toLowerCase().includes(q)||(s.contactNo||"").toLowerCase().includes(q));}
+    return list;
+  },[subcons,filterRating,filterSpecialty,search]);
+
+  const openEdit=(s)=>{setForm({...s,companyName:s.companyName||s.company_name||"",strengthsWeaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contactNo:s.contactNo||s.contact_no||"",paymentTerms:s.paymentTerms||s.payment_terms||"Cash Basis",rateStructure:s.rateStructure||s.rate_structure||"Project Rate",paymentStructure:s.paymentStructure||s.payment_structure||"50% Start/50% Completion",locationNote:s.locationNote||s.location_note||""});setEditId(s.id);setShowForm(true);};
+  const openNew=()=>{setForm(emptySubcon());setEditId(null);setShowForm(true);};
+  const save=()=>{
+    if(!form.companyName) return;
+    if(editId) updateSubcon(editId,form);
+    else addSubcon(form);
+    setShowForm(false);setEditId(null);
+  };
+
+  const specialties=[...new Set(subcons.map(s=>s.specialty).filter(Boolean)),...SUBCON_SPECIALTIES].filter((v,i,a)=>a.indexOf(v)===i);
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>👷 Subcontractor Master List</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Approved subcons — rated by specialty and performance</div>
+        </div>
+        {canEdit&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Add Subcon</button>}
+      </div>
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+        {[
+          {l:"Total Subcontractors",v:subcons.length,c:"#3b82f6"},
+          {l:"Acceptable",v:subcons.filter(s=>s.rating==="YES - ACCEPTABLE").length,c:"#059669"},
+          {l:"Not Approved",v:subcons.filter(s=>s.rating==="NO").length,c:"#ef4444"},
+        ].map(({l,v,c})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
+      <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
+        <FInp value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search subcon, specialty, contact…"
+          style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 13px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a"}}/>
+        <select value={filterRating} onChange={e=>setFilterRating(e.target.value)}
+          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+          <option value="all">All Ratings</option>
+          {SUBCON_RATINGS.map(r=><option key={r}>{r}</option>)}
+        </select>
+        <select value={filterSpecialty} onChange={e=>setFilterSpecialty(e.target.value)}
+          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+          <option value="all">All Specialties</option>
+          {specialties.map(s=><option key={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {/* Add/Edit Form */}
+      {showForm&&canEdit&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
+          <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>{editId?"Edit Subcontractor":"Add Subcontractor"}</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Company Name / Contact Person" required><Inp value={form.companyName} onChange={e=>f("companyName",e.target.value)} placeholder="e.g. Juan dela Cruz / ABC Construction"/></Fld></div>
+            <Fld label="Rating"><Sel value={form.rating} onChange={e=>f("rating",e.target.value)}>{SUBCON_RATINGS.map(r=><option key={r}>{r}</option>)}</Sel></Fld>
+            <Fld label="Specialty / Trade"><Inp value={form.specialty} onChange={e=>f("specialty",e.target.value)} placeholder="e.g. General Works"/></Fld>
+            <Fld label="Contact No."><Inp value={form.contactNo} onChange={e=>f("contactNo",e.target.value)} placeholder="e.g. 0917-XXX-XXXX"/></Fld>
+            <Fld label="Payment Terms"><Sel value={form.paymentTerms} onChange={e=>f("paymentTerms",e.target.value)}>{PAYMENT_TERMS_OPTS.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
+            <Fld label="Rate Structure"><Inp value={form.rateStructure} onChange={e=>f("rateStructure",e.target.value)} placeholder="e.g. Project Rate"/></Fld>
+            <Fld label="Payment Structure"><Inp value={form.paymentStructure} onChange={e=>f("paymentStructure",e.target.value)} placeholder="e.g. 50% Start / 50% Completion"/></Fld>
+            <Fld label="Location Note" hint="Leave blank for Metro Manila"><Inp value={form.locationNote} onChange={e=>f("locationNote",e.target.value)} placeholder="e.g. Davao, Cebu"/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Address"><Inp value={form.address} onChange={e=>f("address",e.target.value)} placeholder="Full address"/></Fld></div>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Strengths / Weaknesses"><Inp rows={2} value={form.strengthsWeaknesses} onChange={e=>f("strengthsWeaknesses",e.target.value)} placeholder="W: Communication   S: Scope of Work"/></Fld></div>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Remarks / Notes"><Inp rows={2} value={form.remarks} onChange={e=>f("remarks",e.target.value)} placeholder="Special notes, last job, issues…"/></Fld></div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:14}}>
+            <button onClick={save} disabled={!form.companyName} style={{background:form.companyName?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:form.companyName?"#fff":"#94a3b8",cursor:form.companyName?"pointer":"not-allowed"}}>{editId?"Save Changes":"Add Subcon"}</button>
+            <button onClick={()=>{setShowForm(false);setEditId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {subcons.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No subcontractors yet. Add your first subcon above.</div>}
+
+      {/* List */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {filtered.map(s=>{
+          const isNo=s.rating==="NO";
+          return(
+            <div key={s.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isNo?"#fecaca":"#e2e8f0"}`,padding:"14px 18px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                <div style={{flex:1}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                    <span style={{fontSize:".68rem",fontWeight:700,color:isNo?"#ef4444":"#059669",background:isNo?"#fef2f2":"#f0fdf4",padding:"2px 8px",borderRadius:20}}>{s.rating||"—"}</span>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".92rem"}}>{s.companyName||s.company_name}</span>
+                    {(s.specialty)&&<span style={{fontSize:".72rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{s.specialty}</span>}
+                    {(s.locationNote||s.location_note)&&<span style={{fontSize:".72rem",color:"#7c3aed",background:"#f5f3ff",padding:"1px 8px",borderRadius:20}}>📍 {s.locationNote||s.location_note}</span>}
+                  </div>
+                  <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem",color:"#64748b"}}>
+                    {(s.contactNo||s.contact_no)&&<span>📞 {s.contactNo||s.contact_no}</span>}
+                    {(s.paymentTerms||s.payment_terms)&&<span style={{background:"#f0fdf4",color:"#166534",padding:"1px 8px",borderRadius:10,fontWeight:600}}>💳 {s.paymentTerms||s.payment_terms}</span>}
+                    {(s.rateStructure||s.rate_structure)&&<span>💰 {s.rateStructure||s.rate_structure}</span>}
+                    {(s.paymentStructure||s.payment_structure)&&<span>📋 {s.paymentStructure||s.payment_structure}</span>}
+                  </div>
+                  {(s.strengthsWeaknesses||s.strengths_weaknesses)&&<div style={{fontSize:".75rem",color:"#475569",marginTop:4}}>{s.strengthsWeaknesses||s.strengths_weaknesses}</div>}
+                  {(s.address)&&<div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>📍 {s.address}</div>}
+                  {(s.remarks)&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"3px 8px",marginTop:4,display:"inline-block"}}>📝 {s.remarks}</div>}
+                </div>
+                {canEdit&&(
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button onClick={()=>openEdit(s)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                    <button onClick={()=>{if(window.confirm("Remove this subcontractor?"))deleteSubcon(s.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
