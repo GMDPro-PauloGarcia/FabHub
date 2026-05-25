@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -250,6 +250,7 @@ const DEFAULT_DEPT_TASKS = {
 };
 
 const emptyProjectCard=(dealId,dealData)=>({
+  id:uid(),
   dealId,
   client:dealData?.client||"",
   ceNo:dealData?.ceNo||"",
@@ -265,7 +266,7 @@ const emptyProjectCard=(dealId,dealData)=>({
     done:false,
     doneAt:null,
     doneBy:null,
-    tasks:DEFAULT_DEPT_TASKS[dept].map((t,i)=>({id:`${dept}-${i}`,text:t,done:false,doneAt:null,doneBy:null})),
+    tasks:DEFAULT_DEPT_TASKS[dept].map((t)=>({id:uid(),text:t,done:false,doneAt:null,doneBy:null})),
   }]))),
 });
 
@@ -808,6 +809,226 @@ const Modal=({open,onClose,title,children,wide})=>{
     </div>
   );
 };
+function AwardReqModal({deal,session,today,onClose,onSubmit}){
+  const[form,setForm]=React.useState({
+    awardTrigger:deal?.awardRequestData?.awardTrigger||"CE Signed by Client",
+    triggerDate:deal?.awardRequestData?.triggerDate||today,
+    triggerNote:deal?.awardRequestData?.triggerNote||"",
+    aeAssigned:deal?.awardRequestData?.aeAssigned||deal?.salesOwner||"",
+    pm1Suggestion:deal?.awardRequestData?.pm1Suggestion||"",
+    scopeNotes:deal?.awardRequestData?.scopeNotes||"",
+    specialInstructions:deal?.awardRequestData?.specialInstructions||"",
+  });
+  const[step,setStep]=React.useState(1);
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  if(!deal) return null;
+  return(
+    <Modal open title={`🏆 Request Award — ${deal.client}`} onClose={onClose} wide>
+      <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
+        {[["1","Award Details","#f59e0b"],["2","Scope & Team","#10b981"]].map(([num,label,clr],i)=>{
+          const active=step===i+1; const done=step>i+1;
+          return(<div key={num} onClick={()=>done&&setStep(i+1)} style={{flex:1,padding:"12px 8px",textAlign:"center",background:active?clr:done?"#f8fafc":"#fff",cursor:done?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
+            <div style={{fontSize:".82rem",fontWeight:700,color:active?"#fff":done?"#374151":"#cbd5e1"}}>{num}. {label}</div>
+            <div style={{fontSize:".68rem",color:active?"rgba(255,255,255,.75)":done?"#10b981":"#e2e8f0",marginTop:2}}>{done?"✓ Done":active?"In progress":"—"}</div>
+          </div>);
+        })}
+      </div>
+      <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:18,display:"flex",gap:20,flexWrap:"wrap",fontSize:".82rem"}}>
+        <span><span style={{color:"#92400e"}}>Client: </span><strong>{deal.client}</strong></span>
+        {deal.contact&&<span><span style={{color:"#92400e"}}>Project: </span><strong>{deal.contact}</strong></span>}
+        {deal.ceNo&&<span><span style={{color:"#92400e"}}>CE No: </span><strong>{deal.ceNo}</strong></span>}
+        {deal.value&&<span><span style={{color:"#92400e"}}>Value: </span><strong>₱{Number(deal.value).toLocaleString("en-PH")}</strong></span>}
+      </div>
+      {step===1&&(<div>
+        <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:18,fontSize:".8rem",color:"#1d4ed8"}}>
+          📋 Fill in what confirmed this award. Your information will be pre-loaded for Paulo when he approves.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <Fld label="Award Trigger" required hint="What officially confirmed this project?">
+            <Sel value={form.awardTrigger} onChange={e=>f("awardTrigger",e.target.value)}>
+              {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Date Confirmed"><Inp type="date" value={form.triggerDate} onChange={e=>f("triggerDate",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Reference / Notes" hint="PO number, email thread, verbal confirmation details, etc.">
+              <Inp rows={2} value={form.triggerNote} onChange={e=>f("triggerNote",e.target.value)} placeholder="e.g. PO No. 2026-0187 received via email from Karen Santos on May 25…"/>
+            </Fld>
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",marginTop:18}}>
+          <button onClick={()=>setStep(2)} style={{background:"#f59e0b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Next: Scope & Team →</button>
+        </div>
+      </div>)}
+      {step===2&&(<div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <Fld label="AE (Account Executive)" hint="Client relationship owner — usually you">
+            <Sel value={form.aeAssigned} onChange={e=>f("aeAssigned",e.target.value)}>
+              <option value="">— Select AE —</option>
+              {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Suggested PM" hint="Optional — Paulo will assign the PM but your input helps">
+            <Sel value={form.pm1Suggestion} onChange={e=>f("pm1Suggestion",e.target.value)}>
+              <option value="">— Optional suggestion —</option>
+              {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Scope of Work" required hint="What exactly is being built? Be as specific as possible.">
+              <Inp rows={4} value={form.scopeNotes} onChange={e=>f("scopeNotes",e.target.value)} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, 8 downlights…"/>
+            </Fld>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Special Instructions / Venue Requirements" hint="Delivery restrictions, permit requirements, client contacts on site">
+              <Inp rows={3} value={form.specialInstructions} onChange={e=>f("specialInstructions",e.target.value)} placeholder="e.g. SM Megamall: night delivery only 10PM–6AM, GS permit required. Client contact on site: Kat Santos +63917…"/>
+            </Fld>
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
+          <button onClick={()=>setStep(1)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
+          <button disabled={!form.scopeNotes} onClick={()=>onSubmit(form)}
+            style={{background:form.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:form.scopeNotes?"#fff":"#94a3b8",cursor:form.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
+            🏆 Submit for Manager Approval
+          </button>
+        </div>
+      </div>)}
+    </Modal>
+  );
+}
+function AwardModal({deal,session,today,onClose,onConfirm}){
+  const req=deal?.awardRequestData||{};
+  const[form,setForm]=React.useState({
+    awardTrigger:req.awardTrigger||"CE Signed",
+    triggerDate:req.triggerDate||today,
+    triggerNote:req.triggerNote||"",
+    pm1:req.pm1Suggestion||"",pm2:"",pm3:"",coordinator:"",
+    aeAssigned:req.aeAssigned||deal?.salesOwner||"",
+    startDate:today,commsLink:deal?.commsGroup||"",
+    scopeNotes:req.scopeNotes||"",
+    specialInstructions:req.specialInstructions||"",
+  });
+  const[step,setStep]=React.useState(1);
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  if(!deal) return null;
+  return(
+    <Modal open title={`🏆 Award — ${deal.client}`} onClose={onClose} wide>
+      <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
+        {[["1","Confirm Award","#10b981",step>=1],["2","Job Order","#3b82f6",step>=2]].map(([num,label,clr,active],i)=>(
+          <div key={num} onClick={()=>step>i+1&&setStep(i+1)} style={{flex:1,padding:"12px 8px",textAlign:"center",background:step===i+1?clr:active?"#f8fafc":"#fff",cursor:step>i+1?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
+            <div style={{fontSize:".82rem",fontWeight:700,color:step===i+1?"#fff":active?"#374151":"#cbd5e1"}}>{num}. {label}</div>
+            <div style={{fontSize:".68rem",color:step===i+1?"rgba(255,255,255,.75)":step>i+1?"#10b981":"#e2e8f0",marginTop:2}}>{step>i+1?"✓ Done":step===i+1?"In progress":"—"}</div>
+          </div>
+        ))}
+      </div>
+      {step===1&&(<div>
+        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"14px 18px",marginBottom:20}}>
+          <div style={{fontWeight:700,color:"#059669",marginBottom:8,fontSize:".9rem"}}>Confirming this award will:</div>
+          <div style={{fontSize:".82rem",color:"#065f46",lineHeight:2}}>
+            ✓ Move to <strong>Stage 06 · Project Kickoff</strong><br/>
+            ✓ Issue a <strong>Job Order</strong> to all departments<br/>
+            ✓ Create a <strong>Project Card</strong> — all depts start their task checklists<br/>
+            ✓ Notify <strong>Finance</strong> to set up billing milestones<br/>
+            ✓ Flag <strong>QS</strong> to set the budget target in Cost Analysis
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <Fld label="Award Trigger" required hint="What officially confirmed this project?">
+            <Sel value={form.awardTrigger} onChange={e=>f("awardTrigger",e.target.value)}>
+              {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Date Confirmed"><Inp type="date" value={form.triggerDate} onChange={e=>f("triggerDate",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Notes" hint="PO number, email confirmation details, etc. (optional)">
+              <Inp rows={2} value={form.triggerNote} onChange={e=>f("triggerNote",e.target.value)} placeholder="e.g. PO No. 2026-0187 received via email from client@email.com on May 18…"/>
+            </Fld>
+          </div>
+        </div>
+        <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",marginTop:14,fontSize:".8rem",color:"#1d4ed8"}}>
+          💳 <strong>Payment status will be set to Unpaid.</strong> Finance will receive a notification to set up billing milestones and track collections.
+        </div>
+        <div style={{display:"flex",justifyContent:"flex-end",marginTop:18}}>
+          <button onClick={()=>setStep(2)} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Next: Job Order →</button>
+        </div>
+      </div>)}
+      {step===2&&(<div>
+        <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"12px 16px",marginBottom:18,fontSize:".82rem",color:"#1d4ed8"}}>
+          📋 This Job Order is the official start signal. Once issued, every department sees a new project in their queue. <strong> QS (Rodney) will set the budget target separately in Cost Analysis.</strong>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <Fld label="Project Manager 1" required hint="Primary PM — owns day-to-day execution">
+            <Sel value={form.pm1} onChange={e=>f("pm1",e.target.value)}>
+              <option value="">— Assign PM —</option>
+              {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Project Manager 2" hint="For large scope — second PM">
+            <Sel value={form.pm2} onChange={e=>f("pm2",e.target.value)}>
+              <option value="">— Optional —</option>
+              {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Coordinator" hint="Handles logistics, permits, site coordination">
+            <Sel value={form.coordinator} onChange={e=>f("coordinator",e.target.value)}>
+              <option value="">— Optional —</option>
+              {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="PM 3 / Support" hint="Additional PM for complex multi-site projects">
+            <Sel value={form.pm3} onChange={e=>f("pm3",e.target.value)}>
+              <option value="">— Optional —</option>
+              {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Account Executive (AE)" hint="Client relationship owner — pre-filled from deal, change if needed">
+            <Sel value={form.aeAssigned} onChange={e=>f("aeAssigned",e.target.value)}>
+              <option value="">— Assign AE —</option>
+              {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <Fld label="Target Opening"><Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
+              <Inp value={form.commsLink} onChange={e=>f("commsLink",e.target.value)} placeholder="https://chat.whatsapp.com/…"/>
+            </Fld>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Scope of Work" required hint="Sales + PM align on this together — what exactly is being built?">
+              <Inp rows={4} value={form.scopeNotes} onChange={e=>f("scopeNotes",e.target.value)} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, electrical (8 downlights, 2 track lights)"/>
+            </Fld>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Special Instructions / Venue Requirements" hint="Delivery restrictions, permit requirements, mall rules, client preferences">
+              <Inp rows={3} value={form.specialInstructions} onChange={e=>f("specialInstructions",e.target.value)} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
+            </Fld>
+            <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>💡 Venue Memory (SM, Ayala, Robinsons requirements) — coming in a future update</div>
+          </div>
+        </div>
+        {form.pm1&&(
+          <div style={{background:"#f8fafc",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 16px",marginTop:14}}>
+            <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>JO Preview</div>
+            <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:".8rem"}}>
+              <div><span style={{color:"#94a3b8"}}>Client: </span><strong>{deal.client}</strong></div>
+              <div><span style={{color:"#94a3b8"}}>CE: </span><strong>{deal.ceNo||"TBA"}</strong></div>
+              <div><span style={{color:"#94a3b8"}}>PM: </span><strong>{[form.pm1,form.pm2,form.pm3].filter(Boolean).join(", ")}</strong></div>
+              {form.coordinator&&<div><span style={{color:"#94a3b8"}}>Coordinator: </span><strong>{form.coordinator}</strong></div>}
+              <div><span style={{color:"#94a3b8"}}>AE: </span><strong>{form.aeAssigned||"—"}</strong></div>
+              <div><span style={{color:"#f59e0b",fontWeight:700}}>⏳ QS Budget: Pending</span></div>
+            </div>
+          </div>
+        )}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
+          <button onClick={()=>setStep(1)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
+          <button onClick={()=>onConfirm(form)} disabled={!form.pm1||!form.scopeNotes}
+            style={{background:form.pm1&&form.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:form.pm1&&form.scopeNotes?"#fff":"#94a3b8",cursor:form.pm1&&form.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
+            🏆 Confirm Award & Issue Job Order
+          </button>
+        </div>
+      </div>)}
+    </Modal>
+  );
+}
 const KPI=({label,value,color,sub,small})=>(
   <div style={{background:"#fff",borderRadius:12,padding:small?"14px 16px":"18px 20px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
     <div style={{fontSize:small?"1.2rem":"1.55rem",fontWeight:800,color,fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1}}>{value}</div>
@@ -1604,7 +1825,7 @@ export default function App(){
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
   const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
-  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""}});
+  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""},hideValueInBots:false});
   const[customClients,setCustomClients]= useState([]);
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
@@ -1690,6 +1911,7 @@ export default function App(){
             if(data.suppliers?.length){const d=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(d);localStorage.setItem(KEYS.suppliers,JSON.stringify(d));}
             if(data.subcontractors?.length){const d=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(d);localStorage.setItem(KEYS.subcons,JSON.stringify(d));}
             if(data.settings?.vvip){const s=new Set(data.settings.vvip);setVvip(s);localStorage.setItem(KEYS.vvip,JSON.stringify([...s]));}
+            if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);localStorage.setItem(KEYS.customclients,JSON.stringify(cc));cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);localStorage.setItem(KEYS.projects,JSON.stringify(data.projs));}
             // Sync to localStorage as cache
             const ls=localStorage.setItem.bind(localStorage);
@@ -1933,6 +2155,13 @@ export default function App(){
       if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
       if(key===KEYS.checklist) sbSync("checklists",val,toSbChecklist);
       if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
+      if(key===KEYS.inflows)   sbSync("inflows",val,r=>({id:r.id,deal_id:r.dealId||r.projectId||null,date:r.date||r.month||null,amount:Number(r.amount)||0,source:r.source||"",ref_no:r.refNo||"",note:r.note||""}));
+      if(key===KEYS.projects){
+        Object.entries(val||{}).forEach(([dealId,proj])=>{
+          if(!isUUID(dealId)) return;
+          sbUpsert("projects",{deal_id:dealId,data:proj,updated_at:new Date().toISOString()},"deal_id").catch(e=>console.error("projs sync:",e.message));
+        });
+      }
       if(key===KEYS.billings){
         val.forEach(m=>{
           if(!isUUID(m.id)) return;
@@ -2182,15 +2411,24 @@ export default function App(){
   };
 
   const createProjectCard=(dealId,dealData)=>{
-    upPcards(ps=>({...ps,[dealId]:emptyProjectCard(dealId,dealData)}));
+    const card=emptyProjectCard(dealId,dealData);
+    upPcards(ps=>({...ps,[dealId]:card}));
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
+    if(isSupabaseReady()){
+      sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt},'deal_id').catch(()=>{});
+      DEPT_ORDER.forEach(dept=>{
+        (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
+          sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
+        });
+      });
+    }
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
     upPcards(ps=>{
       const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
       const deptData={...card.departments[dept]};
+      const prevDone=deptData.tasks.find(t=>t.id===taskId)?.done;
       deptData.tasks=deptData.tasks.map(t=>t.id===taskId?{...t,done:!t.done,doneAt:!t.done?new Date().toISOString():null,doneBy:!t.done?session?.name:null}:t);
-      // Auto-mark dept done if all tasks complete
       deptData.done=deptData.tasks.every(t=>t.done);
       if(deptData.done&&!card.departments[dept].done){
         deptData.doneAt=new Date().toISOString();
@@ -2198,6 +2436,13 @@ export default function App(){
         logActivity(dealId,"Department Done",`${dept} completed all tasks for ${card.client}`,session?.name);
       }
       card.departments={...card.departments,[dept]:deptData};
+      if(isSupabaseReady()&&isUUID(taskId)){
+        const nowDone=!prevDone;
+        sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
+        if(deptData.done&&card.id&&isUUID(card.id)){
+          sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id').catch(()=>{});
+        }
+      }
       return{...ps,[dealId]:card};
     });
   };
@@ -2216,6 +2461,9 @@ export default function App(){
       tatSetBy:session?.name,
       tatSetAt:new Date().toISOString(),
     }}));
+    if(isSupabaseReady()&&card.id&&isUUID(card.id)){
+      sbUpdate('project_cards',card.id,{target_days:Number(days),target_end_date:endStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()}).catch(()=>{});
+    }
     logActivity(dealId,"TAT Set",`Target: ${days} days → Due ${endStr}`,session?.name);
   };
 
@@ -2225,6 +2473,9 @@ export default function App(){
       const deptData={...card.departments[dept],done,doneAt:done?new Date().toISOString():null,doneBy:done?session?.name:null};
       card.departments={...card.departments,[dept]:deptData};
       if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${card.client}`,session?.name);
+      if(isSupabaseReady()&&card.id&&isUUID(card.id)){
+        sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id').catch(()=>{});
+      }
       return{...ps,[dealId]:card};
     });
   };
@@ -2361,7 +2612,7 @@ export default function App(){
   const addAddendum2=(adm)=>{
     upAddenda(as=>[{...adm,id:uid(),createdDate:today,status:"Discovered"},...as]);
     const deal=deals.find(d=>d.id===adm.dealId);
-    const msg=`⚠️ <b>Scope Change Discovered</b>\n${adm.title||"?"}\nProject: ${deal?.client||adm.dealId||"?"}\nValue: ₱${Number(adm.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nBy: ${adm.discoveredBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
+    const msg=`⚠️ <b>Scope Change Discovered</b>\n${adm.title||"?"}\nProject: ${deal?.client||adm.dealId||"?"}${botSettings.hideValueInBots?"":"\nValue: ₱"+Number(adm.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nBy: ${adm.discoveredBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
     sendTelegramNotification("sales",msg);
     sendTelegramNotification("management",msg);
   };
@@ -2384,7 +2635,7 @@ export default function App(){
   const addBR      =(br)=>{
     upBreqs(bs=>[{...br,id:uid(),createdDate:today},...bs]);
     const deal=deals.find(d=>d.id===br.dealId);
-    sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.dealId||"?"}\nAmount: ₱${Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.submittedBy||"?"}`);
+    sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.dealId||"?"}${botSettings.hideValueInBots?"":"\nAmount: ₱"+Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.submittedBy||"?"}`);
   };
   const updateBR   =(id,ch)=>upBreqs(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
   const upBudgets  =useCallback(fn=>setBudgets(p=>{const n=fn(p);persist(KEYS.budgets,n);return n;}),[persist]);
@@ -2611,32 +2862,7 @@ export default function App(){
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
   const[awardModal, setAwardModal]=useState(null);
-  const[awardStep,  setAwardStep] =useState(1);
-  const[awardForm,  setAwardForm] =useState({
-    // Step 1 — Sales fills
-    awardTrigger:"CE Signed",
-    triggerDate:today,
-    triggerNote:"",
-    // Step 2 — Ops/Manager/Sales fills
-    pm1:"", pm2:"", pm3:"",
-    coordinator:"",
-    aeAssigned:"",
-    startDate:today,
-    commsLink:"",
-    scopeNotes:"",
-    specialInstructions:"",
-  });
-  const[awardReqModal, setAwardReqModal]=useState(null); // Sales award request
-  const[awardReqStep,  setAwardReqStep] =useState(1);
-  const[awardReqForm,  setAwardReqForm] =useState({
-    awardTrigger:"CE Signed by Client",
-    triggerDate:today,
-    triggerNote:"",
-    aeAssigned:"",
-    pm1Suggestion:"",
-    scopeNotes:"",
-    specialInstructions:"",
-  });
+  const[awardReqModal, setAwardReqModal]=useState(null);
   const[clientSugg, setClientSugg]=useState([]); // autocomplete suggestions
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
@@ -2730,7 +2956,7 @@ export default function App(){
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
       const newClient={name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
       GMD_CLIENTS.push(newClient);
-      setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));return n;});
+      setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
     }
     // Auto-create DRF if design brief was filled in the deal form
     if(!editDeal && (data.drfDescription||data.drfProjectTitle)){
@@ -2745,8 +2971,10 @@ export default function App(){
         createdBy:session?.name||""
       });
     }
-    if(!editDeal) logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
-    else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+    if(!editDeal){
+      logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
+      sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo} · `:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Stage: ${rec.stage}\nAdded by: ${session?.name||"Sales"}`);
+    } else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
     setEditDeal(null);
     setDealModal(false);
   };
@@ -2766,22 +2994,8 @@ export default function App(){
   };
   const payQ=(id,ps)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
 
-  const openAward=(deal)=>{
-    setAwardStep(1);
-    const req=deal.awardRequestData||{};
-    setAwardForm({
-      awardTrigger:req.awardTrigger||"CE Signed",
-      triggerDate:req.triggerDate||today,
-      triggerNote:req.triggerNote||"",
-      pm1:req.pm1Suggestion||"", pm2:"", pm3:"", coordinator:"",
-      aeAssigned:req.aeAssigned||deal.salesOwner||"",
-      startDate:today, commsLink:deal.commsGroup||"",
-      scopeNotes:req.scopeNotes||"",
-      specialInstructions:req.specialInstructions||"",
-    });
-    setAwardModal(deal);
-  };
-  const confirmAward=()=>{
+  const openAward=(deal)=>setAwardModal(deal);
+  const confirmAward=(form)=>{
     if(!awardModal) return;
     const id=awardModal.id;
     // Update deal — payment is Unpaid (Finance will bill separately)
@@ -2789,12 +3003,12 @@ export default function App(){
       stage:"06 · Project Kickoff",
       probability:100,
       paymentStatus:"Unpaid",
-      notes:awardForm.scopeNotes||d.notes,
+      notes:form.scopeNotes||d.notes,
     }:d));
     // Create project record
     if(!projs[id]) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     // Build PM list
-    const pms=[awardForm.pm1,awardForm.pm2,awardForm.pm3].filter(Boolean);
+    const pms=[form.pm1,form.pm2,form.pm3].filter(Boolean);
     const pmDisplay=pms.join(", ")||"TBA";
     // Create Job Order
     const jo={
@@ -2806,16 +3020,16 @@ export default function App(){
       ceType:awardModal.ceType,
       product:awardModal.product,
       value:awardModal.value||0,
-      awardTrigger:awardForm.awardTrigger,
-      triggerDate:awardForm.triggerDate,
-      triggerNote:awardForm.triggerNote,
-      pm1:awardForm.pm1, pm2:awardForm.pm2, pm3:awardForm.pm3,
-      coordinator:awardForm.coordinator,
-      aeAssigned:awardForm.aeAssigned||awardModal.salesOwner,
-      startDate:awardForm.startDate,
-      commsLink:awardForm.commsLink,
-      scopeNotes:awardForm.scopeNotes,
-      specialInstructions:awardForm.specialInstructions,
+      awardTrigger:form.awardTrigger,
+      triggerDate:form.triggerDate,
+      triggerNote:form.triggerNote,
+      pm1:form.pm1, pm2:form.pm2, pm3:form.pm3,
+      coordinator:form.coordinator,
+      aeAssigned:form.aeAssigned||awardModal.salesOwner,
+      startDate:form.startDate,
+      commsLink:form.commsLink,
+      scopeNotes:form.scopeNotes,
+      specialInstructions:form.specialInstructions,
       budgetStatus:"QS Budget Pending",
       issuedBy:session?.name||"Manager",
       issuedDate:today,
@@ -2826,7 +3040,7 @@ export default function App(){
     createProjectCard(id,{...awardModal,
       pmAssigned:pmDisplay,
       aeAssigned:jo.aeAssigned,
-      awardDate:awardForm.triggerDate||today,
+      awardDate:form.triggerDate||today,
     });
     // Load checklist
     setTimeout(()=>loadChecklistTemplate(id,awardModal.client),200);
@@ -2851,12 +3065,12 @@ export default function App(){
       `🏆 <b>PROJECT AWARDED!</b>\n\n` +
       `Client: <b>${awardModal.client}</b>\n` +
       `${awardModal.ceNo?`CE No: ${awardModal.ceNo} · `:``}${awardModal.ceType||""}\n` +
-      `Value: ₱${contractVal.toLocaleString("en-PH",{maximumFractionDigits:0})}\n` +
+      (botSettings.hideValueInBots?"":(`Value: ₱${contractVal.toLocaleString("en-PH",{maximumFractionDigits:0})}\n`)) +
       `PM: ${pmDisplay}\n` +
       `AE: ${jo.aeAssigned||"—"}\n` +
       `JO: ${jo.joNo}\n` +
       `Awarded by: ${session?.name||"Manager"}\n` +
-      (awardForm.scopeNotes?`\nScope: ${awardForm.scopeNotes}\n`:"")+
+      (form.scopeNotes?`\nScope: ${form.scopeNotes}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
     setAwardModal(null);
@@ -5027,7 +5241,7 @@ export default function App(){
           const allActive=deals.filter(d=>
             !WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))
-          ).sort((a,b)=>daysSince(a.dateAcquired)-daysSince(b.dateAcquired));
+          ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
           const hotDeals=allActive.filter(d=>daysSince(d.dateAcquired)<=15);
           const coldDeals=allActive.filter(d=>daysSince(d.dateAcquired)>15);
 
@@ -5056,7 +5270,7 @@ export default function App(){
                 <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>
                 {role==="Manager"
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award">🏆</button>
-                  :<button onClick={()=>{setAwardReqStep(1);setAwardReqForm({awardTrigger:"CE Signed by Client",triggerDate:today,triggerNote:"",aeAssigned:d.salesOwner||"",pm1Suggestion:"",scopeNotes:"",specialInstructions:""});setAwardReqModal(d);}} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
+                  :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
                 }
                 {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Delete">✕</button>}
                 <button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"4px 5px",fontSize:".68rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}} title="Did Not Win">✗</button>
@@ -5106,73 +5320,48 @@ export default function App(){
                 </div>
               </div>
 
-              {/* Awarded Projects */}
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{width:10,height:10,borderRadius:"50%",background:"#059669",display:"inline-block"}}/>
-                Awarded Projects ({wonDeals.length})
+              {/* Awarded Projects — compact table */}
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                🏆 Awarded Projects
+                <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({wonDeals.length})</span>
               </div>
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-                {wonDeals.length===0&&(
-                  <div style={{padding:"24px 0",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet. Use the 🏆 Award button above to award a deal.</div>
-                )}
-                {wonDeals.map(d=>{
-                  const jo=jos.find(j=>j.dealId===d.id);
-                  const proj=projs[d.id];
-                  const inv=Number(d.invoiced)||0;
-                  const paid=Number(d.amountPaid)||0;
-                  const bal=inv-paid;
-                  const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
-                  const od=d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid";
-                  const teamAE=jo?.aeAssigned||d.salesOwner||"";
-                  const teamPM=[jo?.pm1,jo?.pm2,jo?.pm3].filter(Boolean).join(", ");
-                  const teamCoor=jo?.coordinator||"";
-                  const teamDesigner=proj?.design?.designer||"";
-                  return(
-                    <div key={d.id} style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9",transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                      {/* Row 1: client + value + payment */}
-                      <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-                        <div style={{flex:1,minWidth:160}}>
-                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                          <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.contact||d.product}</div>
-                          {(()=>{const da=addenda.filter(a=>a.projectId===d.id&&a.status!=="Rejected");return da.length>0?<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:2}}>⚠️ {da.length} addendum{da.length>1?"a":""} · +₱{da.reduce((s,a)=>s+Number(a.value||0),0).toLocaleString("en-PH")}</div>:null;})()}
-                        </div>
-                        <div style={{minWidth:100,textAlign:"right"}}>
-                          <div style={{fontWeight:700,color:"#10b981",fontSize:".9rem"}}>{fmtK(Number(d.value))}</div>
-                          <div style={{fontSize:".68rem",color:"#94a3b8"}}>Contract value</div>
-                        </div>
-                        <div style={{minWidth:160}}>
-                          <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:3}}>
-                            <span>{fmtK(paid)} collected</span>
-                            <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                {wonDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>No awarded projects yet. Use the 🏆 button above to award a deal.</div>}
+                <div style={{display:"flex",padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px"}}>
+                  <span style={{flex:1}}>Client / CE</span>
+                  <span style={{width:60,textAlign:"right"}}>Value</span>
+                  <span style={{width:72,textAlign:"right"}}>Payment</span>
+                  <span style={{width:60,textAlign:"right"}}>Actions</span>
+                </div>
+                <div style={{maxHeight:260,overflowY:"auto"}}>
+                  {wonDeals.map((d,i)=>{
+                    const jo=jos.find(j=>j.dealId===d.id);
+                    const paid=Number(d.amountPaid)||0;
+                    const inv=Number(d.invoiced)||0;
+                    const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                    return(
+                      <div key={d.id} style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<wonDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                          <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {d.ceNo&&<span>{d.ceNo}</span>}
+                            {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
+                            {d.stage&&<span style={{color:"#8b5cf6"}}>{d.stage.split("·")[0].trim()}</span>}
                           </div>
-                          <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                            <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:3,transition:"width .5s"}}/>
-                          </div>
-                          {od&&<div style={{fontSize:".67rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Overdue since {d.dueDate}</div>}
                         </div>
-                        <div style={{minWidth:100,textAlign:"right"}}>
-                          <Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>
-                          {bal>0&&<div style={{fontSize:".7rem",color:"#ef4444",marginTop:3,fontWeight:600}}>{fmtK(bal)} due</div>}
+                        <div style={{width:60,textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",flexShrink:0}}>{fmtK(Number(d.value))}</div>
+                        <div style={{width:72,flexShrink:0,textAlign:"right"}}>
+                          <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
+                          <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
                         </div>
-                        <div style={{display:"flex",gap:6}}>
-                          <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                          {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"? This removes the deal, project card, checklist, and JO."))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
+                        <div style={{width:60,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
+                          <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                          {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                         </div>
                       </div>
-                      {/* Row 2: assigned team */}
-                      {(teamAE||teamPM||teamCoor||teamDesigner)&&(
-                        <div style={{display:"flex",gap:16,marginTop:8,flexWrap:"wrap"}}>
-                          {teamAE&&<span style={{fontSize:".7rem",color:"#475569"}}>🧑‍💼 AE: <strong>{teamAE}</strong></span>}
-                          {teamPM&&<span style={{fontSize:".7rem",color:"#475569"}}>🔨 PM: <strong>{teamPM}</strong></span>}
-                          {teamCoor&&<span style={{fontSize:".7rem",color:"#475569"}}>📋 Coor: <strong>{teamCoor}</strong></span>}
-                          {teamDesigner&&<span style={{fontSize:".7rem",color:"#475569"}}>🎨 Designer: <strong>{teamDesigner}</strong></span>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Did Not Win */}
@@ -5233,272 +5422,20 @@ export default function App(){
         })()}
 
         {/* ── SALES: Award Request Modal ──────────────────────────────────── */}
-        {awardReqModal&&(
-          <Modal open title={`🏆 Request Award — ${awardReqModal.client}`} onClose={()=>setAwardReqModal(null)} wide>
-            {/* Step indicator */}
-            <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
-              {[["1","Award Details","#f59e0b"],["2","Scope & Team","#10b981"]].map(([num,label,clr],i)=>{
-                const active=awardReqStep===i+1;
-                const done=awardReqStep>i+1;
-                return(
-                  <div key={num} onClick={()=>done&&setAwardReqStep(i+1)}
-                    style={{flex:1,padding:"12px 8px",textAlign:"center",background:active?clr:done?"#f8fafc":"#fff",cursor:done?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
-                    <div style={{fontSize:".82rem",fontWeight:700,color:active?"#fff":done?"#374151":"#cbd5e1"}}>{num}. {label}</div>
-                    <div style={{fontSize:".68rem",color:active?"rgba(255,255,255,.75)":done?"#10b981":"#e2e8f0",marginTop:2}}>{done?"✓ Done":active?"In progress":"—"}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Deal summary banner */}
-            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:18,display:"flex",gap:20,flexWrap:"wrap",fontSize:".82rem"}}>
-              <span><span style={{color:"#92400e"}}>Client: </span><strong>{awardReqModal.client}</strong></span>
-              {awardReqModal.contact&&<span><span style={{color:"#92400e"}}>Project: </span><strong>{awardReqModal.contact}</strong></span>}
-              {awardReqModal.ceNo&&<span><span style={{color:"#92400e"}}>CE No: </span><strong>{awardReqModal.ceNo}</strong></span>}
-              {awardReqModal.value&&<span><span style={{color:"#92400e"}}>Value: </span><strong>₱{Number(awardReqModal.value).toLocaleString("en-PH")}</strong></span>}
-            </div>
-
-            {/* ── STEP 1: Award Details ── */}
-            {awardReqStep===1&&(
-              <div>
-                <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:18,fontSize:".8rem",color:"#1d4ed8"}}>
-                  📋 Fill in what confirmed this award. Your information will be pre-loaded for Paulo when he approves.
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                  <Fld label="Award Trigger" required hint="What officially confirmed this project?">
-                    <Sel value={awardReqForm.awardTrigger} onChange={e=>setAwardReqForm(p=>({...p,awardTrigger:e.target.value}))}>
-                      {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
-                    </Sel>
-                  </Fld>
-                  <Fld label="Date Confirmed">
-                    <Inp type="date" value={awardReqForm.triggerDate} onChange={e=>setAwardReqForm(p=>({...p,triggerDate:e.target.value}))}/>
-                  </Fld>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Reference / Notes" hint="PO number, email thread, verbal confirmation details, etc.">
-                      <Inp rows={2} value={awardReqForm.triggerNote} onChange={e=>setAwardReqForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from Karen Santos on May 25…"/>
-                    </Fld>
-                  </div>
-                </div>
-                <div style={{display:"flex",justifyContent:"flex-end",marginTop:18}}>
-                  <button onClick={()=>setAwardReqStep(2)}
-                    style={{background:"#f59e0b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>
-                    Next: Scope & Team →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 2: Scope & Team ── */}
-            {awardReqStep===2&&(
-              <div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                  <Fld label="AE (Account Executive)" hint="Client relationship owner — usually you">
-                    <Sel value={awardReqForm.aeAssigned} onChange={e=>setAwardReqForm(p=>({...p,aeAssigned:e.target.value}))}>
-                      <option value="">— Select AE —</option>
-                      {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
-                    </Sel>
-                  </Fld>
-                  <Fld label="Suggested PM" hint="Optional — Paulo will assign the PM but your input helps">
-                    <Sel value={awardReqForm.pm1Suggestion} onChange={e=>setAwardReqForm(p=>({...p,pm1Suggestion:e.target.value}))}>
-                      <option value="">— Optional suggestion —</option>
-                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
-                    </Sel>
-                  </Fld>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Scope of Work" required hint="What exactly is being built? Be as specific as possible.">
-                      <Inp rows={4} value={awardReqForm.scopeNotes} onChange={e=>setAwardReqForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, 8 downlights…"/>
-                    </Fld>
-                  </div>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Special Instructions / Venue Requirements" hint="Delivery restrictions, permit requirements, client contacts on site">
-                      <Inp rows={3} value={awardReqForm.specialInstructions} onChange={e=>setAwardReqForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM–6AM, GS permit required. Client contact on site: Kat Santos +63917…"/>
-                    </Fld>
-                  </div>
-                </div>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
-                  <button onClick={()=>setAwardReqStep(1)}
-                    style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>
-                    ← Back
-                  </button>
-                  <button
-                    disabled={!awardReqForm.scopeNotes}
-                    onClick={()=>{
-                      const d=awardReqModal;
-                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,
-                        awardRequestData:{...awardReqForm},
-                        notes:(x.notes||"")+`\n[AWARD REQUEST ${today}]: ${session?.name||"Sales"} flagged for award. Trigger: ${awardReqForm.awardTrigger}. AE: ${awardReqForm.aeAssigned||"—"}. Suggested PM: ${awardReqForm.pm1Suggestion||"—"}.`
-                      }:x));
-                      logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"} — ${awardReqForm.awardTrigger}`);
-                      sendTelegramNotification("management",`🏆 <b>Award Request — Action Needed</b>\nClient: <b>${d.client}</b>\n${d.ceNo?`CE: ${d.ceNo} · `:""}₱${Number(d.value||0).toLocaleString("en-PH")}\nTrigger: ${awardReqForm.awardTrigger}\nRequested by: ${session?.name||"Sales"}\nScope: ${awardReqForm.scopeNotes||"—"}\n\nOpen FabHub → Pipeline to Review & Award.`);
-                      toastEmit("Award request submitted — Paulo will review and confirm.");
-                      setAwardReqModal(null);
-                    }}
-                    style={{background:awardReqForm.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:awardReqForm.scopeNotes?"#fff":"#94a3b8",cursor:awardReqForm.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
-                    🏆 Submit for Manager Approval
-                  </button>
-                </div>
-              </div>
-            )}
-          </Modal>
-        )}
+        {awardReqModal&&<AwardReqModal deal={awardReqModal} session={session} today={today} onClose={()=>setAwardReqModal(null)} onSubmit={formData=>{
+          const d=awardReqModal;
+          upDeals(ds=>ds.map(x=>x.id===d.id?{...x,
+            awardRequestData:{...formData},
+            notes:(x.notes||"")+`\n[AWARD REQUEST ${today}]: ${session?.name||"Sales"} flagged for award. Trigger: ${formData.awardTrigger}. AE: ${formData.aeAssigned||"—"}. Suggested PM: ${formData.pm1Suggestion||"—"}.`
+          }:x));
+          logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"} — ${formData.awardTrigger}`);
+          sendTelegramNotification("management",`🏆 <b>Award Request — Action Needed</b>\nClient: <b>${d.client}</b>\n${d.ceNo?`CE: ${d.ceNo} · `:""}${botSettings.hideValueInBots?"":` ₱${Number(d.value||0).toLocaleString("en-PH")}`}\nTrigger: ${formData.awardTrigger}\nRequested by: ${session?.name||"Sales"}\nScope: ${formData.scopeNotes||"—"}\n\nOpen FabHub → Pipeline to Review & Award.`);
+          toastEmit("Award request submitted — Paulo will review and confirm.");
+          setAwardReqModal(null);
+        }}/>}
 
         {/* Award Confirmation Modal */}
-        {awardModal&&(
-          <Modal open title={`🏆 Award — ${awardModal.client}`} onClose={()=>setAwardModal(null)} wide>
-
-            {/* Step indicator — 2 steps only, QS budget is separate */}
-            <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
-              {[["1","Confirm Award","#10b981",awardStep>=1],["2","Job Order","#3b82f6",awardStep>=2]].map(([num,label,clr,active],i)=>(
-                <div key={num} onClick={()=>awardStep>i+1&&setAwardStep(i+1)}
-                  style={{flex:1,padding:"12px 8px",textAlign:"center",background:awardStep===i+1?clr:active?"#f8fafc":"#fff",cursor:awardStep>i+1?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
-                  <div style={{fontSize:".82rem",fontWeight:700,color:awardStep===i+1?"#fff":active?"#374151":"#cbd5e1"}}>{num}. {label}</div>
-                  <div style={{fontSize:".68rem",color:awardStep===i+1?"rgba(255,255,255,.75)":awardStep>i+1?"#10b981":"#e2e8f0",marginTop:2}}>{awardStep>i+1?"✓ Done":awardStep===i+1?"In progress":"—"}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* ── STEP 1: Confirm Award — Sales fills ─────────────────────── */}
-            {awardStep===1&&(
-              <div>
-                <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"14px 18px",marginBottom:20}}>
-                  <div style={{fontWeight:700,color:"#059669",marginBottom:8,fontSize:".9rem"}}>Confirming this award will:</div>
-                  <div style={{fontSize:".82rem",color:"#065f46",lineHeight:2}}>
-                    ✓ Move to <strong>Stage 06 · Project Kickoff</strong><br/>
-                    ✓ Issue a <strong>Job Order</strong> to all departments<br/>
-                    ✓ Create a <strong>Project Card</strong> — all depts start their task checklists<br/>
-                    ✓ Notify <strong>Finance</strong> to set up billing milestones<br/>
-                    ✓ Flag <strong>QS</strong> to set the budget target in Cost Analysis
-                  </div>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                  <Fld label="Award Trigger" required hint="What officially confirmed this project?">
-                    <Sel value={awardForm.awardTrigger} onChange={e=>setAwardForm(p=>({...p,awardTrigger:e.target.value}))}>
-                      {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
-                    </Sel>
-                  </Fld>
-                  <Fld label="Date Confirmed">
-                    <Inp type="date" value={awardForm.triggerDate} onChange={e=>setAwardForm(p=>({...p,triggerDate:e.target.value}))}/>
-                  </Fld>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Notes" hint="PO number, email confirmation details, etc. (optional)">
-                      <Inp rows={2} value={awardForm.triggerNote} onChange={e=>setAwardForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from client@email.com on May 18…"/>
-                    </Fld>
-                  </div>
-                </div>
-                {/* Payment notice */}
-                <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",marginTop:14,fontSize:".8rem",color:"#1d4ed8"}}>
-                  💳 <strong>Payment status will be set to Unpaid.</strong> Finance will receive a notification to set up billing milestones and track collections.
-                </div>
-                <div style={{display:"flex",justifyContent:"flex-end",marginTop:18}}>
-                  <button onClick={()=>setAwardStep(2)}
-                    style={{background:"#1e293b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>
-                    Next: Job Order →
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* ── STEP 2: Job Order — Ops/Manager/Sales fills ─────────────── */}
-            {awardStep===2&&(
-              <div>
-                <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"12px 16px",marginBottom:18,fontSize:".82rem",color:"#1d4ed8"}}>
-                  📋 This Job Order is the official start signal. Once issued, every department sees a new project in their queue.
-                  <strong> QS (Rodney) will set the budget target separately in Cost Analysis.</strong>
-                </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-
-                  {/* PM fields — up to 3 */}
-                  <Fld label="Project Manager 1" required hint="Primary PM — owns day-to-day execution">
-                    <Sel value={awardForm.pm1} onChange={e=>setAwardForm(p=>({...p,pm1:e.target.value}))}>
-                      <option value="">— Assign PM —</option>
-                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
-                    </Sel>
-                  </Fld>
-                  <Fld label="Project Manager 2" hint="For large scope — second PM">
-                    <Sel value={awardForm.pm2} onChange={e=>setAwardForm(p=>({...p,pm2:e.target.value}))}>
-                      <option value="">— Optional —</option>
-                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
-                    </Sel>
-                  </Fld>
-                  <Fld label="Coordinator" hint="Handles logistics, permits, site coordination">
-                    <Sel value={awardForm.coordinator} onChange={e=>setAwardForm(p=>({...p,coordinator:e.target.value}))}>
-                      <option value="">— Optional —</option>
-                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
-                    </Sel>
-                  </Fld>
-                  <Fld label="PM 3 / Support" hint="Additional PM for complex multi-site projects">
-                    <Sel value={awardForm.pm3} onChange={e=>setAwardForm(p=>({...p,pm3:e.target.value}))}>
-                      <option value="">— Optional —</option>
-                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
-                    </Sel>
-                  </Fld>
-
-                  {/* AE + dates */}
-                  <Fld label="Account Executive (AE)" hint="Client relationship owner — pre-filled from deal, change if needed">
-                    <Sel value={awardForm.aeAssigned} onChange={e=>setAwardForm(p=>({...p,aeAssigned:e.target.value}))}>
-                      <option value="">— Assign AE —</option>
-                      {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
-                    </Sel>
-                  </Fld>
-                  <Fld label="Target Opening">
-                    <Inp type="date" value={awardForm.startDate} onChange={e=>setAwardForm(p=>({...p,startDate:e.target.value}))}/>
-                  </Fld>
-
-                  {/* Comms */}
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
-                      <Inp value={awardForm.commsLink} onChange={e=>setAwardForm(p=>({...p,commsLink:e.target.value}))} placeholder="https://chat.whatsapp.com/…"/>
-                    </Fld>
-                  </div>
-
-                  {/* Scope */}
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Scope of Work" required hint="Sales + PM align on this together — what exactly is being built?">
-                      <Inp rows={4} value={awardForm.scopeNotes} onChange={e=>setAwardForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, electrical (8 downlights, 2 track lights)"/>
-                    </Fld>
-                  </div>
-
-                  {/* Special instructions */}
-                  <div style={{gridColumn:"1/-1"}}>
-                    <Fld label="Special Instructions / Venue Requirements"
-                      hint="Delivery restrictions, permit requirements, mall rules, client preferences (Venue Memory coming soon)">
-                      <Inp rows={3} value={awardForm.specialInstructions} onChange={e=>setAwardForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
-                    </Fld>
-                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>
-                      💡 Venue Memory (SM, Ayala, Robinsons requirements) — coming in a future update
-                    </div>
-                  </div>
-                </div>
-
-                {/* JO Preview */}
-                {awardForm.pm1&&(
-                  <div style={{background:"#f8fafc",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 16px",marginTop:14}}>
-                    <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>JO Preview</div>
-                    <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:".8rem"}}>
-                      <div><span style={{color:"#94a3b8"}}>Client: </span><strong>{awardModal.client}</strong></div>
-                      <div><span style={{color:"#94a3b8"}}>CE: </span><strong>{awardModal.ceNo||"TBA"}</strong></div>
-                      <div><span style={{color:"#94a3b8"}}>PM: </span><strong>{[awardForm.pm1,awardForm.pm2,awardForm.pm3].filter(Boolean).join(", ")}</strong></div>
-                      {awardForm.coordinator&&<div><span style={{color:"#94a3b8"}}>Coordinator: </span><strong>{awardForm.coordinator}</strong></div>}
-                      <div><span style={{color:"#94a3b8"}}>AE: </span><strong>{awardForm.aeAssigned||"—"}</strong></div>
-                      <div><span style={{color:"#f59e0b",fontWeight:700}}>⏳ QS Budget: Pending</span></div>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
-                  <button onClick={()=>setAwardStep(1)}
-                    style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>
-                    ← Back
-                  </button>
-                  <button onClick={confirmAward} disabled={!awardForm.pm1||!awardForm.scopeNotes}
-                    style={{background:awardForm.pm1&&awardForm.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:awardForm.pm1&&awardForm.scopeNotes?"#fff":"#94a3b8",cursor:awardForm.pm1&&awardForm.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
-                    🏆 Confirm Award & Issue Job Order
-                  </button>
-                </div>
-              </div>
-            )}
-          </Modal>
-        )}
+        {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward}/>}
 
         <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       </Wrap>
@@ -5548,7 +5485,7 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
         addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
         openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
@@ -6028,7 +5965,7 @@ export default function App(){
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -6663,7 +6600,7 @@ export default function App(){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards}){
   const uid2=()=>String(Date.now());
   if(!selProj) return(
     <Wrap>
@@ -8545,7 +8482,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
         {/* Balance rows */}
         {[
           ["BANK BALANCE BEG",  "beg",  "#fafafa"],
-          ["BOOK BALANCE\n(per bank statement)", "book", "#fff"],
+          ["BOOK BALANCE", "book", "#fff"],
           ["BANK BALANCE ENDING","end", "#fafafa"],
         ].map(([label,key,bg])=>(
           <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
@@ -8562,7 +8499,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
               color:key==="end"?"#059669":key==="book"?"#1d4ed8":"#0f172a",
               background:key==="end"?"#f0fdf4":key==="book"?"#eff6ff":"transparent",
               display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-              {fmt2(BANKS.reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
+              {fmt2(BANKS.filter(b=>!b.capital).reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
             </div>
           </div>
         ))}
@@ -11350,7 +11287,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
 
 // ─── BOT SETTINGS VIEW ────────────────────────────────────────────────────────
 function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,Wrap}){
-  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})}});
+  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false});
   const[testing,setTesting]=React.useState(null);
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
@@ -11449,6 +11386,20 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
           ))}
         </div>
 
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",marginBottom:16}}>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:10}}>🔒 Privacy Settings</div>
+          <label style={{display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
+            <div onClick={()=>setForm(f=>({...f,hideValueInBots:!f.hideValueInBots}))}
+              style={{width:42,height:24,borderRadius:12,background:form.hideValueInBots?"#1e293b":"#e2e8f0",position:"relative",transition:"background .2s",cursor:"pointer",flexShrink:0}}>
+              <div style={{position:"absolute",top:3,left:form.hideValueInBots?19:3,width:18,height:18,borderRadius:9,background:"#fff",transition:"left .2s",boxShadow:"0 1px 3px rgba(0,0,0,.2)"}}/>
+            </div>
+            <div>
+              <div style={{fontWeight:600,fontSize:".82rem",color:"#0f172a"}}>Hide contract/project values in notifications</div>
+              <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>When on, ₱ amounts are omitted from all bot messages (deal added, award request, project awarded, addendum, budget request)</div>
+            </div>
+          </label>
+        </div>
+
         <button onClick={doSave}
           style={{background:saved?"#059669":"#1e293b",border:"none",borderRadius:10,padding:"12px 28px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer",width:"100%",transition:"background .3s"}}>
           {saved?"✅ Settings Saved!":"💾 Save Bot Settings"}
@@ -11506,6 +11457,12 @@ function DataManagement({
         upBillings(()=>[]);upPcards(()=>({}));upChecklist(()=>[]);
         upCashPos(()=>({}));upBudgets(()=>({}));
         setActLog([]);persist("gmdv5:actlog",[]);
+        if(isSupabaseReady()){
+          ["deals","expenses","inflows","job_orders","purchase_requests","material_requests","budget_requests","addenda","billing_payments","billing_milestones","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","activity_log"].forEach(t=>sbClear(t).catch(()=>{}));
+          supabase.from('cash_positions').delete().gte('date','1900-01-01').then(()=>{}).catch(()=>{});
+          supabase.from('project_budgets').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+          supabase.from('projects').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+        }
         return "Full purge complete. FabHub is clean and ready for real data.";
       }
     },
@@ -11520,6 +11477,10 @@ function DataManagement({
       action:()=>{
         upDeals(()=>[]);upJos(()=>[]);upPcards(()=>({}));
         upChecklist(()=>[]);upAddenda(()=>[]);
+        if(isSupabaseReady()){
+          ["deals","job_orders","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","addenda"].forEach(t=>sbClear(t).catch(()=>{}));
+          supabase.from('projects').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+        }
         return "Pipeline cleared. Expenses, billing, and cash position preserved.";
       }
     },
@@ -11533,6 +11494,10 @@ function DataManagement({
       items:["Expenses","Inflows","Billing Milestones","Cash Position Days"],
       action:()=>{
         upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));
+        if(isSupabaseReady()){
+          ["expenses","inflows","billing_payments","billing_milestones"].forEach(t=>sbClear(t).catch(()=>{}));
+          supabase.from('cash_positions').delete().gte('date','1900-01-01').then(()=>{}).catch(()=>{});
+        }
         return "Finance data cleared. Pipeline and projects untouched.";
       }
     },
@@ -11546,6 +11511,7 @@ function DataManagement({
       items:["Purchase Requests","Material Requests","Budget Requests"],
       action:()=>{
         upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);
+        if(isSupabaseReady()) ["purchase_requests","material_requests","budget_requests"].forEach(t=>sbClear(t).catch(()=>{}));
         return "Procurement data cleared.";
       }
     },
@@ -11559,6 +11525,7 @@ function DataManagement({
       items:["Activity Log"],
       action:()=>{
         setActLog([]);persist("gmdv5:actlog",[]);
+        if(isSupabaseReady()) sbClear("activity_log").catch(()=>{});
         return "Activity log cleared.";
       }
     },
