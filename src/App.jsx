@@ -18,6 +18,7 @@ const DEAL_STAGES = [
   "12 · Project Close-Out",
   "13 · Client Feedback",
   "Cancelled",
+  "Did Not Win",
 ];
 
 // Normalize any stage string to canonical format
@@ -108,6 +109,7 @@ const STAGE_CLR = {
   "12 · Project Close-Out":            "#059669",
   "13 · Client Feedback":              "#4ade80",
   "Cancelled":                         "#ef4444",
+  "Did Not Win":                       "#94a3b8",
 };
 const PROD_CLR  = { Design:"#8b5cf6",Fabrication:"#f97316",QC:"#eab308",Delivery:"#10b981" };
 const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b","Partially Paid":"#f59e0b",Deposited:"#10b981","Fully Paid":"#059669",Paid:"#059669" };
@@ -2954,7 +2956,7 @@ export default function App(){
       const active=page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       return(
-        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
+        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -5002,6 +5004,7 @@ export default function App(){
                           ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
                           :<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);toastEmit("Flagged for Manager review!");}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
                         }
+                        <button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#94a3b8",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✗</button>
                       </div>
                     </div>
                   );
@@ -5077,18 +5080,57 @@ export default function App(){
                 })}
               </div>
 
+              {/* Did Not Win */}
+              {(()=>{
+                const dnw=deals.filter(d=>d.stage==="Did Not Win");
+                if(!dnw.length) return null;
+                return(
+                  <div style={{marginTop:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{width:10,height:10,borderRadius:"50%",background:"#94a3b8",display:"inline-block"}}/>
+                      Did Not Win ({dnw.length})
+                    </div>
+                    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                      <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
+                        <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
+                      </div>
+                      {dnw.map((d,i)=>(
+                        <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"11px 18px",borderBottom:i<dnw.length-1?"1px solid #f1f5f9":"none",alignItems:"center",opacity:.75}}>
+                          <div>
+                            <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
+                            {d.contact&&<div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.contact}</div>}
+                          </div>
+                          <div>
+                            {d.ceNo&&<div style={{fontSize:".78rem",color:"#64748b",fontWeight:600}}>{d.ceNo}</div>}
+                            <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceType||"—"}</div>
+                          </div>
+                          <div style={{fontSize:".78rem",color:"#64748b"}}>👤 {d.salesOwner||"—"}</div>
+                          <div style={{fontWeight:600,color:"#94a3b8",fontSize:".85rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
+                          <div style={{display:"flex",gap:5}}>
+                            <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                            <button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"01 · BizDev"}:x));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Cancelled */}
               {deals.filter(d=>d.stage==="Cancelled").length>0&&(
-                <details style={{marginTop:8}}>
-                  <summary style={{cursor:"pointer",fontSize:".78rem",color:"#94a3b8",fontWeight:600,marginBottom:8}}>
+                <details style={{marginTop:4}}>
+                  <summary style={{cursor:"pointer",fontSize:".75rem",color:"#94a3b8",fontWeight:600,padding:"6px 0"}}>
                     Cancelled ({deals.filter(d=>d.stage==="Cancelled").length})
                   </summary>
+                  <div style={{marginTop:6}}>
                   {deals.filter(d=>d.stage==="Cancelled").map(d=>(
-                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#f8fafc",borderRadius:8,marginBottom:6,opacity:.6}}>
-                      <span style={{fontSize:".82rem",color:"#64748b"}}>{d.client} · {d.product}</span>
-                      <span style={{fontSize:".82rem",color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#f8fafc",borderRadius:8,marginBottom:4,opacity:.55}}>
+                      <span style={{fontSize:".8rem",color:"#64748b"}}>{d.client}{d.contact?" · "+d.contact:""}</span>
+                      <span style={{fontSize:".8rem",color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
                     </div>
                   ))}
+                  </div>
                 </details>
               )}
             </div>
