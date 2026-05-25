@@ -146,7 +146,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -682,8 +682,9 @@ const emptyDeal={
   assignedAE:"",bizDevSource:"",
   // File links (Drive + FabHub)
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
-  // Design Request
+  // Design Request (inline DRF)
   designRequestDate:"",designRequestNote:"",designApprovalDate:"",
+  drfProjectTitle:"",drfType:DRF_TYPES[0],drfSize:"",drfDescription:"",drfAccessories:[],drfRefLinks:["","",""],drfDeadline:"",drfDesigner:"",drfNotes:"",
   // Comms
   commsGroup:"",commsGroupLink:"",
   // Addenda
@@ -1034,6 +1035,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const isWon=WON_STAGES.includes(form.stage);
+  const setDrfAcc=(i,v)=>f("drfAccessories",(form.drfAccessories||[]).map((a,ai)=>ai===i?v:a));
+  const addDrfAcc=()=>f("drfAccessories",[...(form.drfAccessories||[]),""])
+  const remDrfAcc=(i)=>f("drfAccessories",(form.drfAccessories||[]).filter((_,ai)=>ai!==i));
+  const setDrfRef=(i,v)=>f("drfRefLinks",(form.drfRefLinks||["","",""]).map((r,ri)=>ri===i?v:r));
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
@@ -1109,24 +1114,52 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <Fld label="Comms Group">
             <Sel value={form.commsGroup||""} onChange={e=>f("commsGroup",e.target.value)}>
               <option value="">— Not yet created —</option>
-              <option>WhatsApp</option><option>Viber</option><option>Both</option>
+              <option>WhatsApp</option><option>Viber</option><option>Telegram</option><option>WhatsApp + Viber</option><option>WhatsApp + Telegram</option><option>All Three</option>
             </Sel>
           </Fld>
           <Fld label="Repository Notes"><Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall — all plans uploaded"/></Fld>
         </div>
       </div>
 
-      {/* ── SECTION 4: DESIGN REQUEST ───────────────────────────────────── */}
-      <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #ddd6fe"}}>
-        <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:12}}>🎨 Design Request</div>
+      {/* Design Request Form (DRF) — always shown */}
+      <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #ddd6fe"}}>
+        <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:4}}>🎨 Design Request</div>
+        <div style={{fontSize:".72rem",color:"#a78bfa",marginBottom:12}}>Fill this out to auto-create a DRF when the deal is saved.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="Design Request Date"><Inp type="date" value={form.designRequestDate||""} onChange={e=>f("designRequestDate",e.target.value)}/></Fld>
-          <Fld label="Design Approval Date"><Inp type="date" value={form.designApprovalDate||""} onChange={e=>f("designApprovalDate",e.target.value)}/></Fld>
-          <div style={{gridColumn:"1/-1"}}><Fld label="Design Request Notes"><Inp rows={2} value={form.designRequestNote||""} onChange={e=>f("designRequestNote",e.target.value)} placeholder="Scope, specs, client references, revision notes…"/></Fld></div>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Project Title"><Inp value={form.drfProjectTitle||""} onChange={e=>f("drfProjectTitle",e.target.value)} placeholder="e.g. Golf Bag Organizer Rack / Shirts Display"/></Fld></div>
+          <Fld label="Type"><Sel value={form.drfType||DRF_TYPES[0]} onChange={e=>f("drfType",e.target.value)}>{DRF_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
+          <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
+          <Fld label="Assigned Designer"><Sel value={form.drfDesigner||""} onChange={e=>f("drfDesigner",e.target.value)}><option value="">— Assign later —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+          <Fld label="Design Deadline"><Inp type="date" value={form.drfDeadline||""} onChange={e=>f("drfDeadline",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={4} value={form.drfDescription||""} onChange={e=>f("drfDescription",e.target.value)} placeholder={"RE-CREATE: Golf bag organizer rack\nSIZE: Must fit two large golf bags\nFUNCTION: Store bags + shoe shelf"}/></Fld></div>
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{fontSize:".8rem",fontWeight:700,color:"#64748b",marginBottom:6}}>Accessories / Components</div>
+            {(form.drfAccessories||[]).map((a,i)=>(
+              <div key={i} style={{display:"flex",gap:8,marginBottom:6}}>
+                <Inp value={a} onChange={e=>setDrfAcc(i,e.target.value)} placeholder="e.g. Shelving for shoes (3-4 pairs)"/>
+                <button onClick={()=>remDrfAcc(i)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"6px 10px",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,flexShrink:0}}>✕</button>
+              </div>
+            ))}
+            <button onClick={addDrfAcc} style={{background:"#f8fafc",border:"1.5px dashed #e2e8f0",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>+ Add Component</button>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{fontSize:".8rem",fontWeight:700,color:"#64748b",marginBottom:6}}>Reference Images (links)</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+              {(form.drfRefLinks||["","",""]).map((r,i)=>(
+                <Fld key={i} label={`Ref ${i+1}`}><Inp type="url" value={r} onChange={e=>setDrfRef(i,e.target.value)} placeholder="https://…"/></Fld>
+              ))}
+            </div>
+          </div>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.drfNotes||""} onChange={e=>f("drfNotes",e.target.value)} placeholder="Brand guidelines, restrictions, additional references…"/></Fld></div>
         </div>
       </div>
 
       {/* ── ALERTS ──────────────────────────────────────────────────────── */}
+      {PAULO_GATE.includes(form.stage)&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#92400e"}}>
+          ⚠️ <strong>Paulo Gate:</strong> Stage {form.stage} requires Paulo Garcia's review and sign-off before proceeding to the next stage.
+        </div>
+      )}
       {Number(form.value)>=3000000&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#991b1b"}}>
           🚨 <strong>₱3M Rule:</strong> This project exceeds ₱3,000,000. Paulo Garcia must be involved. Paolo can quote a range but <strong>cannot commit pricing</strong> without Paulo.
@@ -1572,6 +1605,7 @@ export default function App(){
   const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""}});
+  const[customClients,setCustomClients]= useState([]);
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
   const[authView, setAuthView]= useState("login"); // login | register
@@ -1619,6 +1653,7 @@ export default function App(){
         const sup=localStorage.getItem(KEYS.suppliers); if(sup) setSuppliers(JSON.parse(sup));
         const sc=localStorage.getItem(KEYS.subcons); if(sc) setSubcons(JSON.parse(sc));
         const bs=localStorage.getItem(KEYS.botsettings); if(bs) setBotSettings(JSON.parse(bs));
+        const cc=localStorage.getItem(KEYS.customclients); if(cc) setCustomClients(JSON.parse(cc));
         const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
         const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
         const bl=localStorage.getItem(KEYS.billings); if(bl) setBillings(JSON.parse(bl));
@@ -2693,7 +2728,22 @@ export default function App(){
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     // Save new client to master list if not already present
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
-      GMD_CLIENTS.push({name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
+      const newClient={name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
+      GMD_CLIENTS.push(newClient);
+      setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));return n;});
+    }
+    // Auto-create DRF if design brief was filled in the deal form
+    if(!editDeal && (data.drfDescription||data.drfProjectTitle)){
+      addDRF({
+        dealId:rec.id, client:rec.client, location:"",
+        designer:data.drfDesigner||"", designDeadline:data.drfDeadline||"",
+        projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
+        type:data.drfType||DRF_TYPES[0], size:data.drfSize||"",
+        description:data.drfDescription||"",
+        accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
+        notes:data.drfNotes||"", approvedLink:"", status:"New",
+        createdBy:session?.name||""
+      });
     }
     if(!editDeal) logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
     else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
@@ -5507,7 +5557,7 @@ export default function App(){
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="clients") return(
       <Wrap>
-        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip}/>
+        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients}/>
       </Wrap>
     );
     const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse'];
@@ -8042,7 +8092,7 @@ function SalesCalendarView({deals, session, role}){
 }
 
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
-function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
+function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients}){
   const[selClient,  setSelClient]  = useState(null);
   const[search,     setSearch]     = useState("");
   const[filter,     setFilter]     = useState("all");
@@ -8059,8 +8109,9 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
     setEditClient(null); setEditName("");
   };
 
+  const allClients=[...GMD_CLIENTS,...(customClients||[])];
   const filtered = useMemo(()=>{
-    let list = GMD_CLIENTS;
+    let list = allClients;
     if(search) list = list.filter(c=>
       c.name.toLowerCase().includes(search.toLowerCase())||
       (c.city||"").toLowerCase().includes(search.toLowerCase())||
@@ -8076,9 +8127,9 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
       return av-bv||a.name.localeCompare(b.name);
     });
     return list;
-  },[search,filter,deals,vvipClients]);
+  },[search,filter,deals,vvipClients,customClients]);
 
-  const totalBalance = GMD_CLIENTS.reduce((s,c)=>s+(Number(c.balance)||0),0);
+  const totalBalance = allClients.reduce((s,c)=>s+(Number(c.balance)||0),0);
 
   return(
     <div>
@@ -8086,7 +8137,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
       <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Client Directory</h2>
-          <p style={{margin:"4px 0 0",color:"#64748b",fontSize:".78rem"}}>{GMD_CLIENTS.length} clients on record</p>
+          <p style={{margin:"4px 0 0",color:"#64748b",fontSize:".78rem"}}>{allClients.length} clients on record</p>
         </div>
         <button onClick={()=>setAddOpen(true)} style={{background:"#059669",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>+ Add Client</button>
       </div>
@@ -8108,9 +8159,9 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[
-          {l:"Total Clients",    v:GMD_CLIENTS.length,                                      c:"#3b82f6"},
-          {l:"With Active Deals",v:GMD_CLIENTS.filter(c=>deals.some(d=>d.client===c.name)).length, c:"#10b981"},
-          {l:"Open Balances",    v:GMD_CLIENTS.filter(c=>c.balance>0).length,               c:"#ef4444"},
+          {l:"Total Clients",    v:allClients.length,                                      c:"#3b82f6"},
+          {l:"With Active Deals",v:allClients.filter(c=>deals.some(d=>d.client===c.name)).length, c:"#10b981"},
+          {l:"Open Balances",    v:allClients.filter(c=>c.balance>0).length,               c:"#ef4444"},
           {l:"Total Outstanding",v:"₱"+totalBalance.toLocaleString(),                       c:"#f59e0b"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"15px 18px",border:"1.5px solid #e2e8f0"}}>
@@ -8121,13 +8172,13 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
       </div>
 
       {/* Open balances alert */}
-      {GMD_CLIENTS.filter(c=>c.balance>0).length>0&&(
+      {allClients.filter(c=>c.balance>0).length>0&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
           <span style={{fontSize:"1.2rem"}}>⚠️</span>
           <div style={{flex:1}}>
             <div style={{fontWeight:700,color:"#dc2626",fontSize:".88rem"}}>Clients with outstanding balances</div>
             <div style={{display:"flex",gap:16,marginTop:4,flexWrap:"wrap"}}>
-              {GMD_CLIENTS.filter(c=>c.balance>0).map(c=>(
+              {allClients.filter(c=>c.balance>0).map(c=>(
                 <span key={c.name} style={{fontSize:".78rem",color:"#ef4444"}}>
                   <strong>{c.name}</strong> — ₱{c.balance.toLocaleString()}
                 </span>
@@ -8145,9 +8196,9 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
           style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 13px",fontFamily:"inherit",fontSize:".86rem",color:"#1e293b",outline:"none"}}
         />
         {[
-          {id:"all",           l:`All (${GMD_CLIENTS.length})`},
-          {id:"with-balance",  l:`Open Balance (${GMD_CLIENTS.filter(c=>c.balance>0).length})`},
-          {id:"with-projects", l:`Has Deals (${GMD_CLIENTS.filter(c=>deals.some(d=>d.client===c.name)).length})`},
+          {id:"all",           l:`All (${allClients.length})`},
+          {id:"with-balance",  l:`Open Balance (${allClients.filter(c=>c.balance>0).length})`},
+          {id:"with-projects", l:`Has Deals (${allClients.filter(c=>deals.some(d=>d.client===c.name)).length})`},
           {id:"vvip",          l:`⭐ VVIP (${vvipClients?.size||0})`},
         ].map(({id,l})=>(
           <button key={id} onClick={()=>setFilter(id)}
@@ -8225,7 +8276,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
         )}
       </div>
       <div style={{marginTop:10,fontSize:".72rem",color:"#94a3b8",textAlign:"right"}}>
-        Showing {filtered.length} of {GMD_CLIENTS.length} clients
+        Showing {filtered.length} of {allClients.length} clients
       </div>
       {/* Client History Modal */}
       {selClient&&(()=>{
