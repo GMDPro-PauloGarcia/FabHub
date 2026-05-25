@@ -8116,16 +8116,17 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           <div key={key} style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",borderBottom:"1px solid #e2e8f0",background:bg}}>
             <div style={labelCell}>{label}</div>
             {BANKS.filter(b=>!b.capital).map(b=>(
-              <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #f1f5f9"}}>
+              <div key={b.id} style={{padding:"4px 6px",borderRight:"1px solid #f1f5f9",display:"flex",alignItems:"center"}}>
                 <CurrInp
                   value={pos.banks[b.id]?.[key]||""}
                   onChange={e=>f(`banks.${b.id}.${key}`,e.target.value)}
-                  style={{...inpStyle,borderColor:"transparent",background:"transparent"}}/>
+                  style={{...inpStyle,borderColor:"transparent",background:"transparent",textAlign:"right",padding:"5px 8px"}}/>
               </div>
             ))}
             <div style={{padding:"8px 12px",textAlign:"right",fontWeight:700,fontSize:".85rem",
               color:key==="end"?"#059669":key==="book"?"#1d4ed8":"#0f172a",
-              background:key==="end"?"#f0fdf4":key==="book"?"#eff6ff":"transparent"}}>
+              background:key==="end"?"#f0fdf4":key==="book"?"#eff6ff":"transparent",
+              display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
               {fmt2(BANKS.reduce((s,b)=>s+n(pos.banks[b.id]?.[key]),0))}
             </div>
           </div>
@@ -8133,27 +8134,23 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
 
         {/* Collections section */}
         <div style={{background:"#f0fdf4",borderBottom:"1px solid #d1fae5",borderTop:"2px solid #6ee7b7"}}>
-          <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",padding:"0"}}>
-            <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center"}}>COLLECTIONS</div>
-            <div style={{padding:"8px 12px"}}>
-              <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-                <div style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>
-                  🔗 FabHub Auto: ₱{fmt2(todayInflows)}
-                  <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
-                </div>
-                <div style={{display:"flex",gap:8,alignItems:"center",flex:1,flexWrap:"wrap"}}>
-                  <CurrInp
-                    value={pos.collections.manualAmt||""}
-                    onChange={e=>f("collections.manualAmt",e.target.value)}
-                    style={{...inpStyle,width:180,textAlign:"left",borderColor:"#6ee7b7"}}/>
-                  <input type="text"
-                    key={`coll-note-${selDate}`}
-                    value={pos.collections.manualNote||""}
-                    onChange={e=>f("collections.manualNote",e.target.value)}
-                    placeholder="Note (e.g. cash deposit, cheque)"
-                    style={{...inpStyle,flex:1,minWidth:150,textAlign:"left",borderColor:"#6ee7b7"}}/>
-                </div>
-              </div>
+          <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px"}}>
+            <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center",borderRight:"2px solid #6ee7b7"}}>COLLECTIONS</div>
+            <div style={{padding:"8px 12px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:".75rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>
+                🔗 FabHub Auto: ₱{fmt2(todayInflows)}
+                <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
+              </span>
+              <CurrInp
+                value={pos.collections.manualAmt||""}
+                onChange={e=>f("collections.manualAmt",e.target.value)}
+                style={{...inpStyle,width:150,borderColor:"#6ee7b7"}}/>
+              <input type="text"
+                key={`coll-note-${selDate}`}
+                value={pos.collections.manualNote||""}
+                onChange={e=>f("collections.manualNote",e.target.value)}
+                placeholder="Note (e.g. cash deposit, cheque)"
+                style={{...inpStyle,flex:1,minWidth:120,textAlign:"left",borderColor:"#6ee7b7"}}/>
             </div>
             <div style={{padding:"8px 12px",textAlign:"right",fontWeight:800,color:"#059669",fontSize:".88rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
               {fmt2(totalCollections)}
@@ -8163,18 +8160,18 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
 
         {/* Less section */}
         <div style={{background:"#fef2f2",borderBottom:"1px solid #fecaca",borderTop:"2px solid #fca5a5"}}>
-          <div style={{padding:"8px 14px",fontWeight:700,color:"#dc2626",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".5px"}}>LESS:</div>
+          <div style={{padding:"7px 14px",fontWeight:700,color:"#dc2626",fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",borderBottom:"1px solid #fee2e2"}}>LESS:</div>
           {[
             ["Online Transaction (Bizlink)","less.bizlink"],
             ["Check Float",                "less.checkFloat"],
           ].map(([label,path])=>(
-            <div key={path} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #fee2e2"}}>
-              <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem"}}>{label}</div>
-              <div style={{padding:"5px 12px"}}>
+            <div key={path} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderBottom:"1px solid #fee2e2"}}>
+              <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem",borderRight:"2px solid #fca5a5"}}>{label}</div>
+              <div style={{padding:"5px 10px",display:"flex",alignItems:"center"}}>
                 <CurrInp
                   value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
                   onChange={e=>f(path,e.target.value)}
-                  style={{...inpStyle,width:200,borderColor:"#fca5a5"}}/>
+                  style={{...inpStyle,borderColor:"#fca5a5"}}/>
               </div>
               <div style={{padding:"8px 12px",textAlign:"right",fontWeight:600,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
                 {fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}
@@ -8182,13 +8179,13 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             </div>
           ))}
           {/* Other less */}
-          <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #fee2e2"}}>
-            <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem"}}>Other</div>
-            <div style={{padding:"5px 12px",display:"flex",gap:8}}>
+          <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px"}}>
+            <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem",borderRight:"2px solid #fca5a5"}}>Other</div>
+            <div style={{padding:"5px 10px",display:"flex",gap:8,alignItems:"center"}}>
               <CurrInp
                 value={pos.less.otherAmt||""}
                 onChange={e=>f("less.otherAmt",e.target.value)}
-                style={{...inpStyle,width:150,borderColor:"#fca5a5"}}/>
+                style={{...inpStyle,width:150,flexShrink:0,borderColor:"#fca5a5"}}/>
               <input className="cash-inp" type="text"
                 key={`other-note-${selDate}`}
                 value={pos.less.otherNote||""}
