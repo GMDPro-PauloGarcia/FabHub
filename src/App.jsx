@@ -1076,7 +1076,14 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
         <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📋 Context & Follow-up</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="BizDev Source" hint="Who found this client?"><Inp value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)} placeholder="e.g. Paulo referral, cold outreach"/></Fld>
+          <Fld label="BizDev Source" hint="How did we get this client?">
+            <Sel value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)}>
+              <option value="">— Select source —</option>
+              <option>Old Client</option>
+              <option>GMD Referred</option>
+              <option>AE Referred</option>
+            </Sel>
+          </Fld>
           <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
           <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
           <Fld label="Project Sub-Type">
@@ -2892,7 +2899,7 @@ export default function App(){
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"}]},
     ],
     Sales:[
-      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"},{id:"checklist",l:"Checklist"}]},
     ],
@@ -4738,8 +4745,10 @@ export default function App(){
     );
   }
 
-  // ── CONSTRUCTION CALENDAR ─────────────────────────────────────────────────
-  if(page==="calendar") return(
+  // ── CALENDAR — Sales gets follow-up view; all other roles get ConstructionCalendar
+  if(page==="calendar") return role==="Sales"?(
+    <Wrap><SalesCalendarView deals={deals} session={session} role={role}/></Wrap>
+  ):(
     <ConstructionCalendar
       wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
       prs={prs} billings={billings} drfs={drfs}
@@ -4857,6 +4866,15 @@ export default function App(){
               📄 Template
             </button>
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
+            <button onClick={()=>{
+              const name=window.prompt("New client name:");
+              if(!name?.trim()) return;
+              if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())){toastEmit("Client already exists.","warning");return;}
+              GMD_CLIENTS.push({name:name.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
+              toastEmit("Client \""+name.trim()+"\" added to directory.","success");
+            }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer"}}>
+              + Add Client
+            </button>
           </div>
         </div>
         {/* Addenda requiring Sales action */}
@@ -4899,49 +4917,8 @@ export default function App(){
         </div>
 
         {/* Activity Feed + New Clients widget */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
-          {/* New Clients & Projects */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>🆕 New This Month</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.4)"}}>{new Date().toLocaleString("en-PH",{month:"long",year:"numeric"})}</span>
-            </div>
-            <div style={{padding:"12px 16px"}}>
-              {(()=>{
-                const thisMonth=today.slice(0,7);
-                const newDeals=deals.filter(d=>d.dateAcquired?.startsWith(thisMonth));
-                const newClients=[...new Set(newDeals.map(d=>d.client))];
-                return newDeals.length===0?(
-                  <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".78rem"}}>No new deals this month yet</div>
-                ):(
-                  <>
-                    <div style={{display:"flex",gap:16,marginBottom:12}}>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:"#10b981"}}>{newClients.length}</div>
-                        <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>New Clients</div>
-                      </div>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:"#3b82f6"}}>{newDeals.length}</div>
-                        <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>New Deals</div>
-                      </div>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#f59e0b"}}>₱{Math.round(newDeals.reduce((s,d)=>s+Number(d.value||0),0)/1000)}K</div>
-                        <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Pipeline Value</div>
-                      </div>
-                    </div>
-                    {newDeals.slice(0,4).map(d=>(
-                      <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:"1px solid #f1f5f9",fontSize:".78rem"}}>
-                        <span style={{fontWeight:600,color:"#0f172a"}}>{d.client}</span>
-                        <span style={{color:"#64748b"}}>{d.stage?.replace(/^\d+ · /,"")}</span>
-                      </div>
-                    ))}
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Activity Feed */}
+        {/* Activity Feed — full width */}
+        <div style={{marginBottom:24}}>
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
             <div style={{background:"#1e293b",padding:"12px 16px"}}>
               <span style={{fontWeight:700,color:"#4ade80",fontSize:".85rem"}}>📋 Recent Activity</span>
@@ -5041,40 +5018,60 @@ export default function App(){
                   <div style={{padding:"24px 0",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet. Use the 🏆 Award button above to award a deal.</div>
                 )}
                 {wonDeals.map(d=>{
-                  const bal=d.invoiced-d.amountPaid;
-                  const pct=d.invoiced>0?Math.round(d.amountPaid/d.invoiced*100):0;
+                  const jo=jos.find(j=>j.dealId===d.id);
+                  const proj=projs[d.id];
+                  const inv=Number(d.invoiced)||0;
+                  const paid=Number(d.amountPaid)||0;
+                  const bal=inv-paid;
+                  const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
                   const od=d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid";
+                  const teamAE=jo?.aeAssigned||d.salesOwner||"";
+                  const teamPM=[jo?.pm1,jo?.pm2,jo?.pm3].filter(Boolean).join(", ");
+                  const teamCoor=jo?.coordinator||"";
+                  const teamDesigner=proj?.design?.designer||"";
                   return(
-                    <div key={d.id} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 18px",borderBottom:"1px solid #f1f5f9",flexWrap:"wrap",transition:"background .1s"}}
+                    <div key={d.id} style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9",transition:"background .1s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                      <div style={{flex:1,minWidth:160}}>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                        <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.product} · <Badge label={d.stage?.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]||"#10b981"}/></div>
-                      {(()=>{const da=addenda.filter(a=>a.projectId===d.id&&a.status!=="Rejected");return da.length>0?<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:2}}>⚠️ {da.length} addendum{da.length>1?"a":""} · +₱{da.reduce((s,a)=>s+Number(a.value||0),0).toLocaleString("en-PH")}</div>:null;})()}
-                      </div>
-                      <div style={{minWidth:100,textAlign:"right"}}>
-                        <div style={{fontWeight:700,color:"#10b981",fontSize:".9rem"}}>{fmtK(Number(d.value))}</div>
-                        <div style={{fontSize:".68rem",color:"#94a3b8"}}>Contract value</div>
-                      </div>
-                      <div style={{minWidth:160}}>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:3}}>
-                          <span>{fmtK(d.amountPaid)} collected</span>
-                          <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
+                      {/* Row 1: client + value + payment */}
+                      <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:160}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
+                          <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.contact||d.product}</div>
+                          {(()=>{const da=addenda.filter(a=>a.projectId===d.id&&a.status!=="Rejected");return da.length>0?<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:2}}>⚠️ {da.length} addendum{da.length>1?"a":""} · +₱{da.reduce((s,a)=>s+Number(a.value||0),0).toLocaleString("en-PH")}</div>:null;})()}
                         </div>
-                        <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:3,transition:"width .5s"}}/>
+                        <div style={{minWidth:100,textAlign:"right"}}>
+                          <div style={{fontWeight:700,color:"#10b981",fontSize:".9rem"}}>{fmtK(Number(d.value))}</div>
+                          <div style={{fontSize:".68rem",color:"#94a3b8"}}>Contract value</div>
                         </div>
-                        {od&&<div style={{fontSize:".67rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Overdue since {d.dueDate}</div>}
+                        <div style={{minWidth:160}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:3}}>
+                            <span>{fmtK(paid)} collected</span>
+                            <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
+                          </div>
+                          <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:3,transition:"width .5s"}}/>
+                          </div>
+                          {od&&<div style={{fontSize:".67rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Overdue since {d.dueDate}</div>}
+                        </div>
+                        <div style={{minWidth:100,textAlign:"right"}}>
+                          <Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>
+                          {bal>0&&<div style={{fontSize:".7rem",color:"#ef4444",marginTop:3,fontWeight:600}}>{fmtK(bal)} due</div>}
+                        </div>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                          {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"? This removes the deal, project card, checklist, and JO."))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
+                        </div>
                       </div>
-                      <div style={{minWidth:100,textAlign:"right"}}>
-                        <Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>
-                        {bal>0&&<div style={{fontSize:".7rem",color:"#ef4444",marginTop:3,fontWeight:600}}>{fmtK(bal)} due</div>}
-                      </div>
-                      <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"? This removes the deal, project card, checklist, and JO."))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
-                      </div>
+                      {/* Row 2: assigned team */}
+                      {(teamAE||teamPM||teamCoor||teamDesigner)&&(
+                        <div style={{display:"flex",gap:16,marginTop:8,flexWrap:"wrap"}}>
+                          {teamAE&&<span style={{fontSize:".7rem",color:"#475569"}}>🧑‍💼 AE: <strong>{teamAE}</strong></span>}
+                          {teamPM&&<span style={{fontSize:".7rem",color:"#475569"}}>🔨 PM: <strong>{teamPM}</strong></span>}
+                          {teamCoor&&<span style={{fontSize:".7rem",color:"#475569"}}>📋 Coor: <strong>{teamCoor}</strong></span>}
+                          {teamDesigner&&<span style={{fontSize:".7rem",color:"#475569"}}>🎨 Designer: <strong>{teamDesigner}</strong></span>}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -7742,13 +7739,129 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   );
 }
 
+// ─── SALES CALENDAR VIEW ─────────────────────────────────────────────────────
+function SalesCalendarView({deals, session, role}){
+  const todayStr=new Date().toISOString().slice(0,10);
+  const[calDate,setCalDate]=useState(()=>{const n=new Date();return{y:n.getFullYear(),m:n.getMonth()};});
+  const AE_COLORS={"Paulo Garcia":"#3b82f6","Paolo Gomez":"#8b5cf6","April Gail De Ello":"#ec4899","Jena De Asis":"#f59e0b","Don Wyn Celmar":"#10b981"};
+  const aeColor=ae=>AE_COLORS[ae]||"#94a3b8";
+
+  const prevMonth=()=>setCalDate(({y,m})=>m===0?{y:y-1,m:11}:{y,m:m-1});
+  const nextMonth=()=>setCalDate(({y,m})=>m===11?{y:y+1,m:0}:{y,m:m+1});
+
+  const{y,m}=calDate;
+  const firstDay=new Date(y,m,1).getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const monthStr=`${y}-${String(m+1).padStart(2,"0")}`;
+  const MONTHS_PH=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  // Build event map: date → [{client, type, ae}]
+  const events={};
+  deals.forEach(d=>{
+    if(d.followUp?.startsWith(monthStr)){
+      const day=d.followUp.slice(8,10);
+      if(!events[day]) events[day]=[];
+      events[day].push({label:d.client,type:"followup",ae:d.salesOwner,ceNo:d.ceNo});
+    }
+    if(d.dateAcquired?.startsWith(monthStr)){
+      const day=d.dateAcquired.slice(8,10);
+      if(!events[day]) events[day]=[];
+      events[day].push({label:d.client,type:"acquired",ae:d.salesOwner});
+    }
+  });
+
+  const cells=[];
+  for(let i=0;i<firstDay;i++) cells.push(null);
+  for(let d=1;d<=daysInMonth;d++) cells.push(d);
+
+  // Summary: follow-ups this month by AE
+  const followUps=deals.filter(d=>d.followUp?.startsWith(monthStr));
+  const byAE=[...new Set(followUps.map(d=>d.salesOwner||"Unassigned"))].map(ae=>({ae,count:followUps.filter(d=>(d.salesOwner||"Unassigned")===ae).length})).sort((a,b)=>b.count-a.count);
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📅 Sales Calendar</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Follow-up dates and deal activity for the team</div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={prevMonth} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".85rem",color:"#475569"}}>←</button>
+          <span style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",minWidth:160,textAlign:"center"}}>{MONTHS_PH[m]} {y}</span>
+          <button onClick={nextMonth} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".85rem",color:"#475569"}}>→</button>
+          <button onClick={()=>{const n=new Date();setCalDate({y:n.getFullYear(),m:n.getMonth()});}} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".82rem",color:"#fff"}}>Today</button>
+        </div>
+      </div>
+
+      {/* AE summary strip */}
+      {byAE.length>0&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Follow-ups this month:</span>
+          {byAE.map(({ae,count})=>(
+            <span key={ae} style={{display:"flex",alignItems:"center",gap:5,fontSize:".78rem",fontWeight:600,color:"#0f172a"}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:aeColor(ae),display:"inline-block"}}/>
+              {ae} <span style={{color:aeColor(ae)}}>{count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Calendar grid */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        {/* Day headers */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1.5px solid #e2e8f0"}}>
+          {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>(
+            <div key={d} style={{padding:"10px 0",textAlign:"center",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>
+          ))}
+        </div>
+        {/* Cells */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+          {cells.map((day,idx)=>{
+            if(!day) return <div key={"e"+idx} style={{minHeight:90,borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",background:"#fafafa"}}/>;
+            const dayStr=String(day).padStart(2,"0");
+            const dateStr=`${monthStr}-${dayStr}`;
+            const isToday=dateStr===todayStr;
+            const evts=events[dayStr]||[];
+            const isPast=dateStr<todayStr;
+            return(
+              <div key={day} style={{minHeight:90,padding:"6px 8px",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",background:isToday?"#eff6ff":isPast?"#fafafa":"#fff",position:"relative"}}>
+                <div style={{fontWeight:isToday?800:500,fontSize:".8rem",color:isToday?"#1d4ed8":"#475569",marginBottom:4,width:24,height:24,borderRadius:"50%",background:isToday?"#1d4ed8":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:isToday?"#fff":"#475569"}}>{day}</div>
+                {evts.slice(0,3).map((ev,i)=>(
+                  <div key={i} title={ev.label+(ev.ceNo?" · "+ev.ceNo:"")} style={{background:aeColor(ev.ae)+"22",borderLeft:`3px solid ${aeColor(ev.ae)}`,borderRadius:"0 4px 4px 0",padding:"2px 5px",marginBottom:2,fontSize:".62rem",fontWeight:600,color:"#0f172a",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"default"}}>
+                    {ev.type==="followup"?"📅 ":"🆕 "}{ev.label}
+                  </div>
+                ))}
+                {evts.length>3&&<div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>+{evts.length-3} more</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{marginTop:12,display:"flex",gap:16,flexWrap:"wrap"}}>
+        <span style={{fontSize:".72rem",color:"#64748b"}}>📅 Follow-up date &nbsp; 🆕 Date acquired</span>
+        {Object.entries(AE_COLORS).map(([ae,clr])=>(
+          <span key={ae} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#64748b"}}>
+            <span style={{width:10,height:10,borderRadius:2,background:clr,display:"inline-block"}}/>
+            {ae.split(" ")[0]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
   const[selClient,  setSelClient]  = useState(null);
   const[search,     setSearch]     = useState("");
   const[filter,     setFilter]     = useState("all");
-  const[editClient, setEditClient] = useState(null); // {name, idx} being edited
+  const[editClient, setEditClient] = useState(null);
   const[editName,   setEditName]   = useState("");
+  const[addName,    setAddName]    = useState("");
+  const[addOpen,    setAddOpen]    = useState(false);
+  const[,forceUpdate]              = useState(0);
 
   const saveClientEdit=()=>{
     if(!editName.trim()) return;
@@ -7781,10 +7894,27 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
   return(
     <div>
       {/* Header */}
-      <div style={{marginBottom:20}}>
-        <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Client Directory</h2>
-        <p style={{margin:"4px 0 0",color:"#64748b",fontSize:".78rem"}}>{GMD_CLIENTS.length} clients on record · From QuickBooks import</p>
+      <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Client Directory</h2>
+          <p style={{margin:"4px 0 0",color:"#64748b",fontSize:".78rem"}}>{GMD_CLIENTS.length} clients on record</p>
+        </div>
+        <button onClick={()=>setAddOpen(true)} style={{background:"#059669",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>+ Add Client</button>
       </div>
+      {addOpen&&(
+        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginBottom:16}}>
+          <div style={{fontWeight:700,color:"#059669",fontSize:".88rem",marginBottom:10}}>Add New Client</div>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+            <input value={addName} onChange={e=>setAddName(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&addName.trim()){if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===addName.trim().toLowerCase())){alert("Client already exists.");return;}GMD_CLIENTS.push({name:addName.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});setAddName("");setAddOpen(false);forceUpdate(n=>n+1);}}}
+              placeholder="Full client / company name…" autoFocus
+              style={{flex:1,border:"1.5px solid #6ee7b7",borderRadius:8,padding:"9px 13px",fontFamily:"inherit",fontSize:".86rem",outline:"none"}}/>
+            <button onClick={()=>{if(!addName.trim())return;if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===addName.trim().toLowerCase())){alert("Client already exists.");return;}GMD_CLIENTS.push({name:addName.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});setAddName("");setAddOpen(false);forceUpdate(n=>n+1);}}
+              style={{background:"#059669",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Add</button>
+            <button onClick={()=>{setAddOpen(false);setAddName("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 14px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
