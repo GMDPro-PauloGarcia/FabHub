@@ -375,6 +375,48 @@ alter table public.swatches                 disable row level security;
 alter table public.activity_log             disable row level security;
 alter table public.user_profiles            disable row level security;
 
+-- ── SUPPLIERS ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.suppliers (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  rating          text DEFAULT '',
+  company_name    text DEFAULT '',
+  email           text DEFAULT '',
+  materials       text DEFAULT '',
+  contact_nos     text DEFAULT '',
+  contact_person  text DEFAULT '',
+  payment_terms   text DEFAULT '',
+  address         text DEFAULT '',
+  tin_no          text DEFAULT '',
+  notes           text DEFAULT '',
+  status          text DEFAULT 'Active',
+  created_by      text DEFAULT '',
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+alter table public.suppliers disable row level security;
+
+-- ── SUBCONTRACTORS ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.subcontractors (
+  id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  rating               text DEFAULT '',
+  specialty            text DEFAULT '',
+  strengths_weaknesses text DEFAULT '',
+  contact_no           text DEFAULT '',
+  company_name         text DEFAULT '',
+  payment_terms        text DEFAULT '',
+  address              text DEFAULT '',
+  remarks              text DEFAULT '',
+  rate_structure       text DEFAULT '',
+  payment_structure    text DEFAULT '',
+  location_note        text DEFAULT '',
+  notes                text DEFAULT '',
+  status               text DEFAULT 'Active',
+  created_by           text DEFAULT '',
+  created_at           timestamptz DEFAULT now(),
+  updated_at           timestamptz DEFAULT now()
+);
+alter table public.subcontractors disable row level security;
+
 -- ============================================================
 -- ENABLE REALTIME ON ALL TABLES (skips tables already added)
 -- ============================================================
@@ -386,7 +428,8 @@ BEGIN
     'project_card_dept_status','billing_milestones','billing_payments',
     'expenses','inflows','purchase_requests','material_requests',
     'budget_requests','addenda','cash_positions','project_budgets',
-    'checklists','swatches','activity_log','user_profiles'
+    'checklists','swatches','activity_log','user_profiles',
+    'suppliers','subcontractors'
   ] LOOP
     BEGIN
       EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);

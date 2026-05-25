@@ -55,7 +55,8 @@ export const sbLoadAll = async () => {
       milestones, payments, expenses, inflows,
       prs, mreqs, breqs, addenda,
       cashPos, budgets, checklists, swatches, actLog, users, appSettings,
-      drfs, inventory, stocklog, projRows
+      drfs, inventory, stocklog, projRows,
+      suppliers, subcontractors
     ] = await Promise.all([
       sbList('deals',                    { order: 'created_at' }),
       sbList('job_orders',               { order: 'created_at' }),
@@ -81,6 +82,8 @@ export const sbLoadAll = async () => {
       sbList('inventory_items',          { order: 'created_at' }),
       sbList('stock_movements',          { order: 'created_at' }),
       sbList('projects',                 {}),
+      sbList('suppliers',       { order: 'company_name', asc: true }),
+      sbList('subcontractors',  { order: 'company_name', asc: true }),
     ])
 
     // Build pcards object with departments embedded
@@ -121,7 +124,7 @@ export const sbLoadAll = async () => {
     return { deals, jos, pcards: pcardsObj, billings: billingsArr, exps: expenses, inflows,
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
              checklist: checklists, swatches, actLog, users, settings: settingsObj,
-             drfs, inventory, stocklog, projs: projsObj }
+             drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors }
   } catch (err) {
     console.error('sbLoadAll failed:', err)
     return null

@@ -144,7 +144,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -153,6 +153,8 @@ const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.catego
 const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,lastUpdated:r.last_updated,createdBy:r.created_by});
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
+const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
@@ -1570,6 +1572,8 @@ export default function App(){
   const[mreqs,       setMreqs]     = useState([]);   // Material Requests
   const[breqs,       setBreqs]     = useState([]);   // Budget Requests
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
+  const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
+  const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""}});
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
@@ -1615,6 +1619,8 @@ export default function App(){
         const mr=localStorage.getItem(KEYS.mreqs); if(mr) setMreqs(JSON.parse(mr));
         const br=localStorage.getItem(KEYS.breqs); if(br) setBreqs(JSON.parse(br));
         const drf=localStorage.getItem(KEYS.drfs); if(drf) setDrfs(JSON.parse(drf));
+        const sup=localStorage.getItem(KEYS.suppliers); if(sup) setSuppliers(JSON.parse(sup));
+        const sc=localStorage.getItem(KEYS.subcons); if(sc) setSubcons(JSON.parse(sc));
         const bs=localStorage.getItem(KEYS.botsettings); if(bs) setBotSettings(JSON.parse(bs));
         const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
         const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
@@ -1649,6 +1655,8 @@ export default function App(){
             if(data.drfs?.length){const d=data.drfs.map(drfFromSb);setDrfs(d);localStorage.setItem(KEYS.drfs,JSON.stringify(d));}
             if(data.inventory?.length){const d=data.inventory.map(invFromSb);setInventory(d);localStorage.setItem(KEYS.inventory,JSON.stringify(d));}
             if(data.stocklog?.length){const d=data.stocklog.map(moveFromSb);setStocklog(d);localStorage.setItem(KEYS.stocklog,JSON.stringify(d));}
+            if(data.suppliers?.length){const d=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(d);localStorage.setItem(KEYS.suppliers,JSON.stringify(d));}
+            if(data.subcontractors?.length){const d=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(d);localStorage.setItem(KEYS.subcons,JSON.stringify(d));}
             if(data.settings?.vvip){const s=new Set(data.settings.vvip);setVvip(s);localStorage.setItem(KEYS.vvip,JSON.stringify([...s]));}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);localStorage.setItem(KEYS.projects,JSON.stringify(data.projs));}
             // Sync to localStorage as cache
