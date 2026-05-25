@@ -5045,6 +5045,7 @@ export default function App(){
   );
 
   if(page==="pipeline") return(
+    <>
       <Wrap>
         {/* KPIs */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
@@ -5423,8 +5424,9 @@ export default function App(){
           );
         })()}
 
-        {/* ── SALES: Award Request Modal ──────────────────────────────────── */}
-        {awardReqModal&&<AwardReqModal deal={awardReqModal} session={session} today={today} onClose={()=>setAwardReqModal(null)} onSubmit={formData=>{
+        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
+      </Wrap>
+      {awardReqModal&&<AwardReqModal deal={awardReqModal} session={session} today={today} onClose={()=>setAwardReqModal(null)} onSubmit={formData=>{
           const d=awardReqModal;
           upDeals(ds=>ds.map(x=>x.id===d.id?{...x,
             awardRequestData:{...formData},
@@ -5435,12 +5437,8 @@ export default function App(){
           toastEmit("Award request submitted — Paulo will review and confirm.");
           setAwardReqModal(null);
         }}/>}
-
-        {/* Award Confirmation Modal */}
-        {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward}/>}
-
-        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
-      </Wrap>
+      {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward}/>}
+    </>
     );
 
     if(page==="finance") return(
