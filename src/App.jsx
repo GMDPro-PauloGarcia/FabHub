@@ -18,6 +18,7 @@ const DEAL_STAGES = [
   "12 · Project Close-Out",
   "13 · Client Feedback",
   "Cancelled",
+  "Did Not Win",
 ];
 
 // Normalize any stage string to canonical format
@@ -108,6 +109,7 @@ const STAGE_CLR = {
   "12 · Project Close-Out":            "#059669",
   "13 · Client Feedback":              "#4ade80",
   "Cancelled":                         "#ef4444",
+  "Did Not Win":                       "#94a3b8",
 };
 const PROD_CLR  = { Design:"#8b5cf6",Fabrication:"#f97316",QC:"#eab308",Delivery:"#10b981" };
 const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b","Partially Paid":"#f59e0b",Deposited:"#10b981","Fully Paid":"#059669",Paid:"#059669" };
@@ -1046,97 +1048,88 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   };
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
+
+      {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
-          <Fld label="Client Name" required hint="Start typing to search from your 207 GMD clients">
+          <Fld label="Client Name" required hint="Start typing to search from your GMD clients">
             <ClientAutocomplete value={form.client} onChange={v=>f("client",v)}/>
           </Fld>
         </div>
-        <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out, BGC Office Renovation"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized — can be updated anytime"><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)} placeholder="To be confirmed"/></Fld>
-        <Fld label="Project Sub-Type" hint="Kiosk, Fit-Out, Signage, Event — helps categorize within the CE Type">
-            <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
-              <option value="">— Select Sub-Type —</option>
-              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
-            </Sel>
-          {form.product==="Other"&&(
-            <Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)}
-              placeholder="Describe the project sub-type..." style={{marginTop:6}}/>
-          )}
-          </Fld>
-        <Fld label="Stage"><Sel value={form.stage} onChange={e=>{f("stage",e.target.value);f("probability",e.target.value==="Won"?100:e.target.value==="Lost"?0:form.probability);}}>{DEAL_STAGES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-        <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
-        <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
-        <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
-      </div>
-      {/* GMD Workflow Fields */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginTop:4}}>
+        <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
+        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)} placeholder="To be confirmed"/></Fld>
+        <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
+        <Fld label="CE Type">
+          <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
+            {CE_TYPES.map(t=><option key={t}>{t}</option>)}
+          </Sel>
+          {form.ceType==="Other"&&<Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)} placeholder="Describe the project type..." style={{marginTop:6}}/>}
+        </Fld>
         <Fld label="Sales Owner / AE">
           <Sel value={form.salesOwner||""} onChange={e=>f("salesOwner",e.target.value)}>
             <option value="">— Assign AE —</option>
             {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
           </Sel>
         </Fld>
-        <Fld label="BizDev Source" hint="Who found this client?">
-          <Inp value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)} placeholder="e.g. Paulo referral, cold outreach"/>
-        </Fld>
         <Fld label="Date Acquired"><Inp type="date" value={form.dateAcquired||today} onChange={e=>f("dateAcquired",e.target.value)}/></Fld>
-        <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
-        <Fld label="CE Type">
-          <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
-            {CE_TYPES.map(t=><option key={t}>{t}</option>)}
-          </Sel>
-          {(form.ceType==="Other")&&(
-            <Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)}
-              placeholder="Describe the project type..." style={{marginTop:6}}/>
-          )}
-        </Fld>
-        <Fld label="Discount %" hint="Paulo sets this only">
-          <Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/>
-        </Fld>
       </div>
 
-      {/* Sales Repository + Proposal Folder */}
-      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #e2e8f0"}}>
-        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Sales Repository</div>
+      {/* ── SECTION 2: CONTEXT & FOLLOW-UP ─────────────────────────────── */}
+      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📋 Context & Follow-up</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="Sales Repository Link (Google Drive)" hint="Main folder for all project info, plans, and files">
-            <Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/>
+          <Fld label="BizDev Source" hint="How did we get this client?">
+            <Sel value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)}>
+              <option value="">— Select source —</option>
+              <option>Old Client</option>
+              <option>GMD Referred</option>
+              <option>AE Referred</option>
+            </Sel>
           </Fld>
-          <Fld label="Proposal Folder Link" hint="CE + budget live here — inside Sales Repository">
-            <Inp type="url" value={form.proposalFolderLink||""} onChange={e=>f("proposalFolderLink",e.target.value)} placeholder="https://drive.google.com/…"/>
+          <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
+          <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
+          <Fld label="Project Sub-Type">
+            <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
+              <option value="">— Select Sub-Type —</option>
+              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
+            </Sel>
+            {form.product==="Other"&&<Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)} placeholder="Describe the project sub-type..." style={{marginTop:6}}/>}
           </Fld>
-          <Fld label="Repository Notes" hint="e.g. folder name, what's inside">
-            <Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall ABC Retail — all plans uploaded"/>
-          </Fld>
-          <Fld label="Comms Group" hint="WhatsApp or Viber group with client + team">
+          <Fld label="Discount %" hint="Paulo sets this only"><Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
+        </div>
+      </div>
+
+      {/* ── SECTION 3: FILES & COMMS ────────────────────────────────────── */}
+      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Files & Comms</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Fld label="Sales Repository Link" hint="Main Google Drive folder for this deal"><Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld>
+          <Fld label="Proposal Folder Link" hint="CE + budget folder inside Sales Repository"><Inp type="url" value={form.proposalFolderLink||""} onChange={e=>f("proposalFolderLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld>
+          <Fld label="Comms Group">
             <Sel value={form.commsGroup||""} onChange={e=>f("commsGroup",e.target.value)}>
               <option value="">— Not yet created —</option>
               <option>WhatsApp</option><option>Viber</option><option>Both</option>
             </Sel>
           </Fld>
+          <Fld label="Repository Notes"><Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall — all plans uploaded"/></Fld>
         </div>
       </div>
 
-      {/* Design Request */}
-      {["03 · Design Request & Folder Setup","04 · Design & CE in Progress","05 · Client Approval / Revision"].includes(form.stage)&&(
-        <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #ddd6fe"}}>
-          <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:12}}>🎨 Design Request</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-            <Fld label="Design Request Date"><Inp type="date" value={form.designRequestDate||""} onChange={e=>f("designRequestDate",e.target.value)}/></Fld>
-            <Fld label="Design Approval Date"><Inp type="date" value={form.designApprovalDate||""} onChange={e=>f("designApprovalDate",e.target.value)}/></Fld>
-            <div style={{gridColumn:"1/-1"}}><Fld label="Design Request Notes"><Inp rows={2} value={form.designRequestNote||""} onChange={e=>f("designRequestNote",e.target.value)} placeholder="Scope, specs, client references, revision notes…"/></Fld></div>
-          </div>
+      {/* ── SECTION 4: DESIGN REQUEST ───────────────────────────────────── */}
+      <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #ddd6fe"}}>
+        <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:12}}>🎨 Design Request</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Fld label="Design Request Date"><Inp type="date" value={form.designRequestDate||""} onChange={e=>f("designRequestDate",e.target.value)}/></Fld>
+          <Fld label="Design Approval Date"><Inp type="date" value={form.designApprovalDate||""} onChange={e=>f("designApprovalDate",e.target.value)}/></Fld>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Design Request Notes"><Inp rows={2} value={form.designRequestNote||""} onChange={e=>f("designRequestNote",e.target.value)} placeholder="Scope, specs, client references, revision notes…"/></Fld></div>
         </div>
-      )}
-      {PAULO_GATE.includes(form.stage)&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#92400e"}}>
-          ⚠️ <strong>Paulo Gate:</strong> Stage {form.stage} requires Paulo Garcia's review and sign-off before proceeding to the next stage.
-        </div>
-      )}
-      {(Number(form.value)>=3000000)&&(
+      </div>
+
+      {/* ── ALERTS ──────────────────────────────────────────────────────── */}
+      {Number(form.value)>=3000000&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#991b1b"}}>
-          🚨 <strong>₱3M Rule:</strong> This project exceeds ₱3,000,000. Paulo Garcia must be involved. Paolo can quote a range to the client but <strong>cannot commit pricing</strong> without Paulo.
+          🚨 <strong>₱3M Rule:</strong> This project exceeds ₱3,000,000. Paulo Garcia must be involved. Paolo can quote a range but <strong>cannot commit pricing</strong> without Paulo.
         </div>
       )}
       {form.ceType==="Construction"&&(
@@ -1144,8 +1137,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           🏗 <strong>Construction CE:</strong> Rodney (QS/CE) prepares the cost estimate using the Construction template. Jerome Mendoza is on-call backup. Paulo sets the final % adjustment.
         </div>
       )}
+
+      {/* ── SECTION 5: PAYMENT (awarded deals only) ─────────────────────── */}
       {isWon&&(
-        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginTop:8}}>
+        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginTop:10}}>
           <div style={{fontWeight:700,color:"#059669",marginBottom:12,fontSize:".88rem"}}>💰 Payment Details (Awarded)</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
             <Fld label="Invoice Amount (₱)"><Inp type="number" value={form.invoiced} onChange={e=>f("invoiced",e.target.value)}/></Fld>
@@ -1155,9 +1150,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </div>
         </div>
       )}
-      {/* 🧾 Tax Settings */}
+
+      {/* ── SECTION 6: TAX SETTINGS ─────────────────────────────────────── */}
       {Number(form.value)>0&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:8}}>
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:10}}>
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
@@ -1216,6 +1212,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           })()}
         </div>
       )}
+
       <div style={{display:"flex",gap:10,marginTop:20}}>
         <Btn full onClick={handleSave}>{editId?"Save Changes":"Add Deal"}</Btn>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
@@ -2904,7 +2901,7 @@ export default function App(){
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"}]},
     ],
     Sales:[
-      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"},{id:"checklist",l:"Checklist"}]},
     ],
@@ -2959,7 +2956,7 @@ export default function App(){
       const active=page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       return(
-        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");}}
+        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -4750,8 +4747,10 @@ export default function App(){
     );
   }
 
-  // ── CONSTRUCTION CALENDAR ─────────────────────────────────────────────────
-  if(page==="calendar") return(
+  // ── CALENDAR — Sales gets follow-up view; all other roles get ConstructionCalendar
+  if(page==="calendar") return role==="Sales"?(
+    <Wrap><SalesCalendarView deals={deals} session={session} role={role}/></Wrap>
+  ):(
     <ConstructionCalendar
       wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
       prs={prs} billings={billings} drfs={drfs}
@@ -4770,7 +4769,7 @@ export default function App(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
-            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>d.stage!=="Cancelled").length} active deals · {todayL} · <span style={{color:"#3b82f6"}}>drag cards between stages</span></div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length} active deals · {todayL}</div>
             {/* Search bar */}
             <div style={{position:"relative",marginTop:8}}>
               <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
@@ -4799,9 +4798,10 @@ export default function App(){
                   if(fileType==="csv"){
                     rawText=await file.text();
                     const lines=rawText.split("\n").filter(Boolean);
-                    const headers=lines[0].split(",").map(h=>h.trim().replace(/"/g,""));
+                    const parseCSVLine=l=>{const f=[];let c="",q=false;for(const ch of l){if(ch==='"')q=!q;else if(ch===','&&!q){f.push(c.trim());c="";}else c+=ch;}f.push(c.trim());return f;};
+                    const headers=parseCSVLine(lines[0]).map(h=>h.replace(/^"|"$/g,""));
                     rawRows=lines.slice(1).map(line=>{
-                      const vals=line.split(",").map(v=>v.trim().replace(/"/g,""));
+                      const vals=parseCSVLine(line).map(v=>v.replace(/^"|"$/g,""));
                       return Object.fromEntries(headers.map((h,i)=>[h,vals[i]||""]));
                     }).filter(r=>Object.values(r).some(v=>v));
                     rawText=lines.slice(0,6).join("\n");
@@ -4854,7 +4854,29 @@ export default function App(){
               }}/>
               {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>📂 Reading…</span>}
             </label>
+            <button onClick={()=>{
+              const hdrs=["Client","Project Name","CE No","CE Type","Stage","Contract Value","Invoiced","Amount Paid","Payment Status","Receipt Type","Sales Owner","Date Acquired","Notes"];
+              const rows=[
+                ["Metro Retail Co.","SM Megamall Renovation","CE-2025-001","Fabrication / General","01 · BizDev","500000","0","0","Unpaid","OR","Paulo Garcia","2025-05-23","Sample entry — delete before importing"],
+                ["ABC Corporation","Office Fit-Out Phase 2","CE-2025-002","Retail Fit-Out","04 · Design & CE in Progress","750000","0","0","Unpaid","OR","Paolo Gomez","2025-05-20",""],
+                ["XYZ Holdings","Lobby Display Walls","CE-2025-003","Fabrication / General","06 · Project Kickoff","1200000","600000","300000","Partial","OR","April Gail De Ello","2025-04-15","50% down collected"],
+              ];
+              const csv=[hdrs,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
+              const a=Object.assign(document.createElement("a"),{href:URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})),download:"GMD_Sales_Import_Template.csv"});
+              document.body.appendChild(a);a.click();document.body.removeChild(a);
+            }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#1d4ed8",cursor:"pointer"}}>
+              📄 Template
+            </button>
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
+            <button onClick={()=>{
+              const name=window.prompt("New client name:");
+              if(!name?.trim()) return;
+              if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())){toastEmit("Client already exists.","warning");return;}
+              GMD_CLIENTS.push({name:name.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
+              toastEmit("Client \""+name.trim()+"\" added to directory.","success");
+            }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer"}}>
+              + Add Client
+            </button>
           </div>
         </div>
         {/* Addenda requiring Sales action */}
@@ -4881,11 +4903,10 @@ export default function App(){
             </div>
           ):null;
         })()}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
             {l:"Total Pipeline",    v:fmtK(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
             {l:"Awarded Value",     v:fmtK(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
-            {l:"Collected",         v:fmtK(totColl),  c:"#10b981", sub:fmtK(totOut)+" outstanding"},
             {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
@@ -4898,49 +4919,8 @@ export default function App(){
         </div>
 
         {/* Activity Feed + New Clients widget */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}}>
-          {/* New Clients & Projects */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>🆕 New This Month</span>
-              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.4)"}}>{new Date().toLocaleString("en-PH",{month:"long",year:"numeric"})}</span>
-            </div>
-            <div style={{padding:"12px 16px"}}>
-              {(()=>{
-                const thisMonth=today.slice(0,7);
-                const newDeals=deals.filter(d=>d.dateAcquired?.startsWith(thisMonth));
-                const newClients=[...new Set(newDeals.map(d=>d.client))];
-                return newDeals.length===0?(
-                  <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".78rem"}}>No new deals this month yet</div>
-                ):(
-                  <>
-                    <div style={{display:"flex",gap:16,marginBottom:12}}>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:"#10b981"}}>{newClients.length}</div>
-                        <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>New Clients</div>
-                      </div>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:"#3b82f6"}}>{newDeals.length}</div>
-                        <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>New Deals</div>
-                      </div>
-                      <div style={{textAlign:"center"}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#f59e0b"}}>₱{Math.round(newDeals.reduce((s,d)=>s+Number(d.value||0),0)/1000)}K</div>
-                        <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Pipeline Value</div>
-                      </div>
-                    </div>
-                    {newDeals.slice(0,4).map(d=>(
-                      <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"6px 0",borderTop:"1px solid #f1f5f9",fontSize:".78rem"}}>
-                        <span style={{fontWeight:600,color:"#0f172a"}}>{d.client}</span>
-                        <span style={{color:"#64748b"}}>{d.stage?.replace(/^\d+ · /,"")}</span>
-                      </div>
-                    ))}
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-
-          {/* Activity Feed */}
+        {/* Activity Feed — full width */}
+        <div style={{marginBottom:24}}>
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
             <div style={{background:"#1e293b",padding:"12px 16px"}}>
               <span style={{fontWeight:700,color:"#4ade80",fontSize:".85rem"}}>📋 Recent Activity</span>
@@ -4976,148 +4956,55 @@ export default function App(){
           </div>
         )}
 
-        {stageFilter&&(()=>{
-          const filtered=deals.filter(d=>d.stage===stageFilter&&d.stage!=="Cancelled");
-          return(
-            <div style={{background:"#fff",borderRadius:14,border:`2px solid ${STAGE_CLR[stageFilter]||"#e2e8f0"}`,padding:"16px 18px",marginBottom:20}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                <div>
-                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>{stageFilter.replace(/^\d+ · /,"")}</div>
-                  <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{filtered.length} deal{filtered.length!==1?"s":""} in this stage</div>
-                </div>
-                <button onClick={()=>setStageFilter(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✕ Close</button>
-              </div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {filtered.map(d=>{
-                  const{pct,missing}=dealCompleteness(d);
-                  return(
-                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f8fafc",borderRadius:10,border:"1px solid #e2e8f0",flexWrap:"wrap",gap:10}}>
-                      <div style={{flex:1}}>
-                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontWeight:700,color:"#0f172a"}}>{d.client}</span>
-                          {d.contact&&<span style={{fontSize:".75rem",color:"#64748b"}}>{d.contact}</span>}
-                          {d.ceNo&&<span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:4}}>{d.ceNo}</span>}
-                          {vvipClients?.has(d.client)&&<span style={{fontSize:".65rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>⭐ VVIP</span>}
-                        </div>
-                        <div style={{fontSize:".73rem",color:"#64748b",marginTop:3,display:"flex",gap:12,flexWrap:"wrap"}}>
-                          {d.salesOwner&&<span>👤 {d.salesOwner}</span>}
-                          {d.value>0&&<span style={{color:"#10b981",fontWeight:600}}>₱{Number(d.value).toLocaleString("en-PH")}</span>}
-                          {pct<100&&<span style={{color:"#f59e0b"}}>⚠ Profile {pct}%</span>}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>{openEditDeal(d);setStageFilter(null);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>✏ Edit</button>
-                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>✕</button>}
-                        {!WON_STAGES.includes(d.stage)&&(
-                          role==="Manager"
-                          ? <button onClick={()=>{openAward(d);setStageFilter(null);}} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Award</button>
-                          : <button onClick={()=>{if(true){upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);setStageFilter(null);toastEmit("✅ Flagged! Paulo sees this on his Dashboard.");}}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 13px",fontFamily:"inherit",fontSize:".78rem",color:"#fff",cursor:"pointer",fontWeight:700}}>🏆 Request Award</button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* Stage groups — pre-award stages */}
+        {/* Active Pipeline — flat list */}
         {(()=>{
-          const preAward  = DEAL_STAGES.filter(s=>!WON_STAGES.includes(s)&&s!=="Cancelled");
-          const stageDeals= s=>deals.filter(d=>d.stage===s&&(!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase())));
+          const activeDeals=deals.filter(d=>
+            !WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&
+            (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))
+          ).sort((a,b)=>DEAL_STAGES.indexOf(b.stage)-DEAL_STAGES.indexOf(a.stage));
           return(
             <div>
               <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
                 <span style={{width:10,height:10,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>
-                Active Pipeline
+                Active Pipeline ({activeDeals.length})
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:24}}>
-                {preAward.map(stage=>{
-                  const sDeals=stageDeals(stage);
-                  const stageColor=STAGE_CLR[stage]||"#94a3b8";
-                  const totalVal=sDeals.reduce((s,d)=>s+Number(d.value||0),0);
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:24}}>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
+                  <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
+                </div>
+                {activeDeals.length===0&&<div style={{padding:"28px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>{pipeSearch?"No deals match your search.":"No active deals in the pipeline yet."}</div>}
+                {activeDeals.map((d,i)=>{
+                  const sc=STAGE_CLR[d.stage]||"#94a3b8";
                   return(
-                    <div key={stage}
-                      onDragOver={e=>{e.preventDefault();setDragOver(stage);}}
-                      onDragLeave={e=>{if(!e.currentTarget.contains(e.relatedTarget))setDragOver(null);}}
-                      onDrop={e=>{
-                        e.preventDefault(); setDragOver(null);
-                        if(!dragDeal) return;
-                        const deal=deals.find(d=>d.id===dragDeal);
-                        if(!deal||deal.stage===stage) return;
-                        if(WON_STAGES.includes(stage)){if(role==="Sales"){toastEmit("Sales cannot directly award. Move to Stage 05 and click Request Award to notify a Manager.","warning");setDragDeal(null);return;}openAward(deal);setDragDeal(null);return;}
-                        if(PAULO_GATE.includes(stage)&&role==="Sales"){
-                          toastEmit("This stage requires Manager approval. Your move has been logged — notify Paulo or Paolo.","warning");
-                        }
-                        stageQ(dragDeal,stage);
-                        setDragDeal(null);
-                      }}
-                      style={{background:dragOver===stage?"#eff6ff":"#fff",borderRadius:12,border:`1.5px solid ${dragOver===stage?"#93c5fd":stageColor+"44"}`,transition:"all .15s",minHeight:100}}>
-                      {/* Stage header */}
-                      <div style={{background:stageColor+"18",borderBottom:`1.5px solid ${stageColor}22`,padding:"10px 12px"}}>
-                        <div style={{fontWeight:700,color:stageColor,fontSize:".75rem",lineHeight:1.3}}>{stage.replace(/^\d+ · /,"")}</div>
-                        <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
-                          <span style={{fontSize:".68rem",color:"#64748b"}}>{sDeals.length} deal{sDeals.length!==1?"s":""}</span>
-                          <span style={{fontSize:".68rem",fontWeight:700,color:stageColor}}>{totalVal>0?fmtK(totalVal):"—"}</span>
+                    <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 160px",gap:12,padding:"12px 18px",borderBottom:i<activeDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                      <div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.client}</span>
+                          {vvipClients?.has(d.client)&&<span style={{fontSize:".62rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 6px",fontWeight:700}}>⭐ VVIP</span>}
+                          {Number(d.value)>=3000000&&<span style={{fontSize:".62rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 6px",fontWeight:700}}>🚨 ₱3M+</span>}
                         </div>
+                        {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
+                        {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:1}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
                       </div>
-                      {/* Deal cards */}
-                      <div style={{padding:"8px",maxHeight:320,overflowY:"auto"}}>
-                        {sDeals.length===0&&(
-                          <div style={{padding:"12px 8px",textAlign:"center",color:"#cbd5e1",fontSize:".73rem"}}>No deals</div>
-                        )}
-                        {sDeals.map(d=>(
-                          <div key={d.id}
-                            draggable
-                            onDragStart={e=>{setDragDeal(d.id);e.currentTarget.style.opacity=".45";}}
-                            onDragEnd={e=>{setDragDeal(null);setDragOver(null);e.currentTarget.style.opacity="1";}}
-                            style={{background:dragDeal===d.id?"#f0f9ff":"#f8fafc",borderRadius:8,padding:"10px 10px",marginBottom:6,border:"1.5px solid #e2e8f0",cursor:"grab",transition:"all .15s"}}
-                            onMouseEnter={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor=stageColor;e.currentTarget.style.background="#fff";}}}
-                            onMouseLeave={e=>{if(dragDeal!==d.id){e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}}
-                            onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.background="#f8fafc";}}>
-                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:3}}>{d.client}</div>
-                            <div style={{fontSize:".7rem",color:"#64748b",marginBottom:5}}>
-                      {d.product==="Other"&&d.customProductType?d.customProductType:d.product}
-                    </div>
-                    {d.contact&&<div style={{fontSize:".69rem",color:"#94a3b8",marginBottom:3,fontStyle:"italic"}}>{d.contact}</div>}
-                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:4}}>
-                              <span style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
-                              {d.priority!=="Normal"&&<Badge label={d.priority} color={PRI_CLR[d.priority]}/>}
-                            </div>
-                            {Number(d.value)>0&&(()=>{const tx=calcTax(d.value,d.receiptType||"OR",d.withholding||false);return <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2}}>{d.receiptType==="AR"?"📄 AR":"🧾 OR"} · Net ₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}{d.withholding?" · EWT":""}</div>;})()}
-                            {d.salesOwner&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>👤 {d.salesOwner}</div>}
-                            {d.followUp&&<div style={{fontSize:".68rem",color:d.followUp<today?"#ef4444":"#94a3b8",marginTop:2}}>📅 {d.followUp}{d.followUp<today?" ⚠":""}</div>}
-                            {PAULO_GATE.includes(d.stage)&&<div style={{fontSize:".67rem",color:"#d97706",background:"#fffbeb",borderRadius:4,padding:"2px 6px",marginTop:4,fontWeight:600}}>⚠ Paulo Gate</div>}
-                            {Number(d.value)>=3000000&&<div style={{fontSize:".67rem",color:"#dc2626",background:"#fef2f2",borderRadius:4,padding:"2px 6px",marginTop:3,fontWeight:600}}>🚨 ₱3M+</div>}
-                            {/* Completeness indicator */}
-                            {(()=>{const{pct,missing}=dealCompleteness(d);return pct<100?(
-                              <div style={{marginTop:6}} title={`Missing: ${missing.join(", ")}`}>
-                                <div style={{display:"flex",justifyContent:"space-between",fontSize:".62rem",color:"#94a3b8",marginBottom:2}}>
-                                  <span>Profile {pct}%</span>
-                                  <span style={{color:"#f59e0b"}}>⚠ {missing.length} missing</span>
-                                </div>
-                                <div style={{height:3,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}>
-                                  <div style={{height:"100%",width:pct+"%",background:pct>=80?"#10b981":"#f59e0b",borderRadius:2}}/>
-                                </div>
-                              </div>
-                            ):null;})()}
-                            {/* Action buttons */}
-                            <div style={{display:"flex",gap:5,marginTop:8,flexWrap:"wrap"}}>
-                              <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                              {!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&(
-                                role==="Manager"
-                                ? <button onClick={e=>{e.stopPropagation();openAward(d);}} style={{flex:1,background:"#059669",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
-                                : <button onClick={e=>{e.stopPropagation();
-                                    if(true){
-                                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+session?.name+" flagged for award."}:x));
-                                      logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);
-                                      toastEmit("Flagged for Manager review!");
-                                    }}} style={{flex:1,background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                      <div>
+                        {d.ceNo&&<div style={{fontSize:".8rem",fontWeight:600,color:"#0f172a"}}>{d.ceNo}</div>}
+                        <div style={{fontSize:".73rem",color:"#64748b"}}>{d.ceType||"—"}</div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:".78rem",color:"#475569"}}>👤 {d.salesOwner||"—"}</div>
+                        {d.priority&&d.priority!=="Normal"&&<div style={{fontSize:".65rem",color:PRI_CLR[d.priority]||"#f59e0b",fontWeight:600,marginTop:2}}>{d.priority}</div>}
+                      </div>
+                      <div style={{fontWeight:700,color:"#10b981",fontSize:".88rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
+                      <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
+                        {role==="Manager"
+                          ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
+                          :<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);toastEmit("Flagged for Manager review!");}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
+                        }
+                        <button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#94a3b8",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✗</button>
                       </div>
                     </div>
                   );
@@ -5134,57 +5021,116 @@ export default function App(){
                   <div style={{padding:"24px 0",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No awarded projects yet. Use the 🏆 Award button above to award a deal.</div>
                 )}
                 {wonDeals.map(d=>{
-                  const bal=d.invoiced-d.amountPaid;
-                  const pct=d.invoiced>0?Math.round(d.amountPaid/d.invoiced*100):0;
+                  const jo=jos.find(j=>j.dealId===d.id);
+                  const proj=projs[d.id];
+                  const inv=Number(d.invoiced)||0;
+                  const paid=Number(d.amountPaid)||0;
+                  const bal=inv-paid;
+                  const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
                   const od=d.dueDate&&d.dueDate<today&&d.paymentStatus!=="Paid";
+                  const teamAE=jo?.aeAssigned||d.salesOwner||"";
+                  const teamPM=[jo?.pm1,jo?.pm2,jo?.pm3].filter(Boolean).join(", ");
+                  const teamCoor=jo?.coordinator||"";
+                  const teamDesigner=proj?.design?.designer||"";
                   return(
-                    <div key={d.id} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 18px",borderBottom:"1px solid #f1f5f9",flexWrap:"wrap",transition:"background .1s"}}
+                    <div key={d.id} style={{padding:"14px 18px",borderBottom:"1px solid #f1f5f9",transition:"background .1s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                      <div style={{flex:1,minWidth:160}}>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                        <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.product} · <Badge label={d.stage?.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]||"#10b981"}/></div>
-                      {(()=>{const da=addenda.filter(a=>a.projectId===d.id&&a.status!=="Rejected");return da.length>0?<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:2}}>⚠️ {da.length} addendum{da.length>1?"a":""} · +₱{da.reduce((s,a)=>s+Number(a.value||0),0).toLocaleString("en-PH")}</div>:null;})()}
-                      </div>
-                      <div style={{minWidth:100,textAlign:"right"}}>
-                        <div style={{fontWeight:700,color:"#10b981",fontSize:".9rem"}}>{fmtK(Number(d.value))}</div>
-                        <div style={{fontSize:".68rem",color:"#94a3b8"}}>Contract value</div>
-                      </div>
-                      <div style={{minWidth:160}}>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:3}}>
-                          <span>{fmtK(d.amountPaid)} collected</span>
-                          <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
+                      {/* Row 1: client + value + payment */}
+                      <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:160}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
+                          <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>{d.contact||d.product}</div>
+                          {(()=>{const da=addenda.filter(a=>a.projectId===d.id&&a.status!=="Rejected");return da.length>0?<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:2}}>⚠️ {da.length} addendum{da.length>1?"a":""} · +₱{da.reduce((s,a)=>s+Number(a.value||0),0).toLocaleString("en-PH")}</div>:null;})()}
                         </div>
-                        <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:3,transition:"width .5s"}}/>
+                        <div style={{minWidth:100,textAlign:"right"}}>
+                          <div style={{fontWeight:700,color:"#10b981",fontSize:".9rem"}}>{fmtK(Number(d.value))}</div>
+                          <div style={{fontSize:".68rem",color:"#94a3b8"}}>Contract value</div>
                         </div>
-                        {od&&<div style={{fontSize:".67rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Overdue since {d.dueDate}</div>}
+                        <div style={{minWidth:160}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:3}}>
+                            <span>{fmtK(paid)} collected</span>
+                            <span style={{fontWeight:700,color:pct===100?"#059669":"#64748b"}}>{pct}%</span>
+                          </div>
+                          <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:3,transition:"width .5s"}}/>
+                          </div>
+                          {od&&<div style={{fontSize:".67rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Overdue since {d.dueDate}</div>}
+                        </div>
+                        <div style={{minWidth:100,textAlign:"right"}}>
+                          <Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>
+                          {bal>0&&<div style={{fontSize:".7rem",color:"#ef4444",marginTop:3,fontWeight:600}}>{fmtK(bal)} due</div>}
+                        </div>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                          {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"? This removes the deal, project card, checklist, and JO."))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
+                        </div>
                       </div>
-                      <div style={{minWidth:100,textAlign:"right"}}>
-                        <Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>
-                        {bal>0&&<div style={{fontSize:".7rem",color:"#ef4444",marginTop:3,fontWeight:600}}>{fmtK(bal)} due</div>}
-                      </div>
-                      <div style={{display:"flex",gap:6}}>
-                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"? This removes the deal, project card, checklist, and JO."))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
-                      </div>
+                      {/* Row 2: assigned team */}
+                      {(teamAE||teamPM||teamCoor||teamDesigner)&&(
+                        <div style={{display:"flex",gap:16,marginTop:8,flexWrap:"wrap"}}>
+                          {teamAE&&<span style={{fontSize:".7rem",color:"#475569"}}>🧑‍💼 AE: <strong>{teamAE}</strong></span>}
+                          {teamPM&&<span style={{fontSize:".7rem",color:"#475569"}}>🔨 PM: <strong>{teamPM}</strong></span>}
+                          {teamCoor&&<span style={{fontSize:".7rem",color:"#475569"}}>📋 Coor: <strong>{teamCoor}</strong></span>}
+                          {teamDesigner&&<span style={{fontSize:".7rem",color:"#475569"}}>🎨 Designer: <strong>{teamDesigner}</strong></span>}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
 
+              {/* Did Not Win */}
+              {(()=>{
+                const dnw=deals.filter(d=>d.stage==="Did Not Win");
+                if(!dnw.length) return null;
+                return(
+                  <div style={{marginTop:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{width:10,height:10,borderRadius:"50%",background:"#94a3b8",display:"inline-block"}}/>
+                      Did Not Win ({dnw.length})
+                    </div>
+                    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                      <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
+                        <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
+                      </div>
+                      {dnw.map((d,i)=>(
+                        <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"11px 18px",borderBottom:i<dnw.length-1?"1px solid #f1f5f9":"none",alignItems:"center",opacity:.75}}>
+                          <div>
+                            <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
+                            {d.contact&&<div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.contact}</div>}
+                          </div>
+                          <div>
+                            {d.ceNo&&<div style={{fontSize:".78rem",color:"#64748b",fontWeight:600}}>{d.ceNo}</div>}
+                            <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceType||"—"}</div>
+                          </div>
+                          <div style={{fontSize:".78rem",color:"#64748b"}}>👤 {d.salesOwner||"—"}</div>
+                          <div style={{fontWeight:600,color:"#94a3b8",fontSize:".85rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
+                          <div style={{display:"flex",gap:5}}>
+                            <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                            <button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"01 · BizDev"}:x));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Cancelled */}
               {deals.filter(d=>d.stage==="Cancelled").length>0&&(
-                <details style={{marginTop:8}}>
-                  <summary style={{cursor:"pointer",fontSize:".78rem",color:"#94a3b8",fontWeight:600,marginBottom:8}}>
+                <details style={{marginTop:4}}>
+                  <summary style={{cursor:"pointer",fontSize:".75rem",color:"#94a3b8",fontWeight:600,padding:"6px 0"}}>
                     Cancelled ({deals.filter(d=>d.stage==="Cancelled").length})
                   </summary>
+                  <div style={{marginTop:6}}>
                   {deals.filter(d=>d.stage==="Cancelled").map(d=>(
-                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#f8fafc",borderRadius:8,marginBottom:6,opacity:.6}}>
-                      <span style={{fontSize:".82rem",color:"#64748b"}}>{d.client} · {d.product}</span>
-                      <span style={{fontSize:".82rem",color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#f8fafc",borderRadius:8,marginBottom:4,opacity:.55}}>
+                      <span style={{fontSize:".8rem",color:"#64748b"}}>{d.client}{d.contact?" · "+d.contact:""}</span>
+                      <span style={{fontSize:".8rem",color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
                     </div>
                   ))}
+                  </div>
                 </details>
               )}
             </div>
@@ -6266,7 +6212,10 @@ export default function App(){
                         salesOwner:String(r.salesOwner||r["Sales Owner"]||r.ae||r.AE||"").trim(),
                         dateAcquired:String(r.dateAcquired||r["Date Acquired"]||r.date||today).trim(),
                         notes:String(r.notes||r.Notes||"").trim(),
-                        product:"Custom Shelving",probability:50,priority:"Normal",
+                        product:String(r.product||r.Product||r["Product Type"]||"Custom Shelving").trim(),
+                        priority:String(r.priority||r.Priority||"Normal").trim(),
+                        bizDevSource:String(r.bizDevSource||r["Biz Dev Source"]||r.source||r.Source||"").trim(),
+                        probability:50,
                       };
                       if(exists){
                         upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));
@@ -7832,13 +7781,129 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   );
 }
 
+// ─── SALES CALENDAR VIEW ─────────────────────────────────────────────────────
+function SalesCalendarView({deals, session, role}){
+  const todayStr=new Date().toISOString().slice(0,10);
+  const[calDate,setCalDate]=useState(()=>{const n=new Date();return{y:n.getFullYear(),m:n.getMonth()};});
+  const AE_COLORS={"Paulo Garcia":"#3b82f6","Paolo Gomez":"#8b5cf6","April Gail De Ello":"#ec4899","Jena De Asis":"#f59e0b","Don Wyn Celmar":"#10b981"};
+  const aeColor=ae=>AE_COLORS[ae]||"#94a3b8";
+
+  const prevMonth=()=>setCalDate(({y,m})=>m===0?{y:y-1,m:11}:{y,m:m-1});
+  const nextMonth=()=>setCalDate(({y,m})=>m===11?{y:y+1,m:0}:{y,m:m+1});
+
+  const{y,m}=calDate;
+  const firstDay=new Date(y,m,1).getDay();
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const monthStr=`${y}-${String(m+1).padStart(2,"0")}`;
+  const MONTHS_PH=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  // Build event map: date → [{client, type, ae}]
+  const events={};
+  deals.forEach(d=>{
+    if(d.followUp?.startsWith(monthStr)){
+      const day=d.followUp.slice(8,10);
+      if(!events[day]) events[day]=[];
+      events[day].push({label:d.client,type:"followup",ae:d.salesOwner,ceNo:d.ceNo});
+    }
+    if(d.dateAcquired?.startsWith(monthStr)){
+      const day=d.dateAcquired.slice(8,10);
+      if(!events[day]) events[day]=[];
+      events[day].push({label:d.client,type:"acquired",ae:d.salesOwner});
+    }
+  });
+
+  const cells=[];
+  for(let i=0;i<firstDay;i++) cells.push(null);
+  for(let d=1;d<=daysInMonth;d++) cells.push(d);
+
+  // Summary: follow-ups this month by AE
+  const followUps=deals.filter(d=>d.followUp?.startsWith(monthStr));
+  const byAE=[...new Set(followUps.map(d=>d.salesOwner||"Unassigned"))].map(ae=>({ae,count:followUps.filter(d=>(d.salesOwner||"Unassigned")===ae).length})).sort((a,b)=>b.count-a.count);
+
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📅 Sales Calendar</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Follow-up dates and deal activity for the team</div>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={prevMonth} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".85rem",color:"#475569"}}>←</button>
+          <span style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",minWidth:160,textAlign:"center"}}>{MONTHS_PH[m]} {y}</span>
+          <button onClick={nextMonth} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".85rem",color:"#475569"}}>→</button>
+          <button onClick={()=>{const n=new Date();setCalDate({y:n.getFullYear(),m:n.getMonth()});}} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".82rem",color:"#fff"}}>Today</button>
+        </div>
+      </div>
+
+      {/* AE summary strip */}
+      {byAE.length>0&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Follow-ups this month:</span>
+          {byAE.map(({ae,count})=>(
+            <span key={ae} style={{display:"flex",alignItems:"center",gap:5,fontSize:".78rem",fontWeight:600,color:"#0f172a"}}>
+              <span style={{width:8,height:8,borderRadius:"50%",background:aeColor(ae),display:"inline-block"}}/>
+              {ae} <span style={{color:aeColor(ae)}}>{count}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Calendar grid */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        {/* Day headers */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1.5px solid #e2e8f0"}}>
+          {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>(
+            <div key={d} style={{padding:"10px 0",textAlign:"center",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>
+          ))}
+        </div>
+        {/* Cells */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
+          {cells.map((day,idx)=>{
+            if(!day) return <div key={"e"+idx} style={{minHeight:90,borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",background:"#fafafa"}}/>;
+            const dayStr=String(day).padStart(2,"0");
+            const dateStr=`${monthStr}-${dayStr}`;
+            const isToday=dateStr===todayStr;
+            const evts=events[dayStr]||[];
+            const isPast=dateStr<todayStr;
+            return(
+              <div key={day} style={{minHeight:90,padding:"6px 8px",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",background:isToday?"#eff6ff":isPast?"#fafafa":"#fff",position:"relative"}}>
+                <div style={{fontWeight:isToday?800:500,fontSize:".8rem",color:isToday?"#1d4ed8":"#475569",marginBottom:4,width:24,height:24,borderRadius:"50%",background:isToday?"#1d4ed8":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:isToday?"#fff":"#475569"}}>{day}</div>
+                {evts.slice(0,3).map((ev,i)=>(
+                  <div key={i} title={ev.label+(ev.ceNo?" · "+ev.ceNo:"")} style={{background:aeColor(ev.ae)+"22",borderLeft:`3px solid ${aeColor(ev.ae)}`,borderRadius:"0 4px 4px 0",padding:"2px 5px",marginBottom:2,fontSize:".62rem",fontWeight:600,color:"#0f172a",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"default"}}>
+                    {ev.type==="followup"?"📅 ":"🆕 "}{ev.label}
+                  </div>
+                ))}
+                {evts.length>3&&<div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>+{evts.length-3} more</div>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{marginTop:12,display:"flex",gap:16,flexWrap:"wrap"}}>
+        <span style={{fontSize:".72rem",color:"#64748b"}}>📅 Follow-up date &nbsp; 🆕 Date acquired</span>
+        {Object.entries(AE_COLORS).map(([ae,clr])=>(
+          <span key={ae} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#64748b"}}>
+            <span style={{width:10,height:10,borderRadius:2,background:clr,display:"inline-block"}}/>
+            {ae.split(" ")[0]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
 function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
   const[selClient,  setSelClient]  = useState(null);
   const[search,     setSearch]     = useState("");
   const[filter,     setFilter]     = useState("all");
-  const[editClient, setEditClient] = useState(null); // {name, idx} being edited
+  const[editClient, setEditClient] = useState(null);
   const[editName,   setEditName]   = useState("");
+  const[addName,    setAddName]    = useState("");
+  const[addOpen,    setAddOpen]    = useState(false);
+  const[,forceUpdate]              = useState(0);
 
   const saveClientEdit=()=>{
     if(!editName.trim()) return;
@@ -7871,10 +7936,27 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip}){
   return(
     <div>
       {/* Header */}
-      <div style={{marginBottom:20}}>
-        <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Client Directory</h2>
-        <p style={{margin:"4px 0 0",color:"#64748b",fontSize:".78rem"}}>{GMD_CLIENTS.length} clients on record · From QuickBooks import</p>
+      <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Client Directory</h2>
+          <p style={{margin:"4px 0 0",color:"#64748b",fontSize:".78rem"}}>{GMD_CLIENTS.length} clients on record</p>
+        </div>
+        <button onClick={()=>setAddOpen(true)} style={{background:"#059669",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>+ Add Client</button>
       </div>
+      {addOpen&&(
+        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginBottom:16}}>
+          <div style={{fontWeight:700,color:"#059669",fontSize:".88rem",marginBottom:10}}>Add New Client</div>
+          <div style={{display:"flex",gap:10,alignItems:"center"}}>
+            <input value={addName} onChange={e=>setAddName(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&addName.trim()){if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===addName.trim().toLowerCase())){alert("Client already exists.");return;}GMD_CLIENTS.push({name:addName.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});setAddName("");setAddOpen(false);forceUpdate(n=>n+1);}}}
+              placeholder="Full client / company name…" autoFocus
+              style={{flex:1,border:"1.5px solid #6ee7b7",borderRadius:8,padding:"9px 13px",fontFamily:"inherit",fontSize:".86rem",outline:"none"}}/>
+            <button onClick={()=>{if(!addName.trim())return;if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===addName.trim().toLowerCase())){alert("Client already exists.");return;}GMD_CLIENTS.push({name:addName.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});setAddName("");setAddOpen(false);forceUpdate(n=>n+1);}}
+              style={{background:"#059669",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Add</button>
+            <button onClick={()=>{setAddOpen(false);setAddName("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 14px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
