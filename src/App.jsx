@@ -2575,8 +2575,8 @@ export default function App(){
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
-  const[awardModal, setAwardModal]=useState(null); // deal being awarded
-  const[awardStep,  setAwardStep] =useState(1);   // 1=trigger, 2=job order, 3=budget
+  const[awardModal, setAwardModal]=useState(null);
+  const[awardStep,  setAwardStep] =useState(1);
   const[awardForm,  setAwardForm] =useState({
     // Step 1 — Sales fills
     awardTrigger:"CE Signed",
@@ -2588,6 +2588,17 @@ export default function App(){
     aeAssigned:"",
     startDate:today,
     commsLink:"",
+    scopeNotes:"",
+    specialInstructions:"",
+  });
+  const[awardReqModal, setAwardReqModal]=useState(null); // Sales award request
+  const[awardReqStep,  setAwardReqStep] =useState(1);
+  const[awardReqForm,  setAwardReqForm] =useState({
+    awardTrigger:"CE Signed by Client",
+    triggerDate:today,
+    triggerNote:"",
+    aeAssigned:"",
+    pm1Suggestion:"",
     scopeNotes:"",
     specialInstructions:"",
   });
@@ -2705,14 +2716,18 @@ export default function App(){
   };
   const payQ=(id,ps)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
 
-   const openAward=(deal)=>{
+  const openAward=(deal)=>{
     setAwardStep(1);
+    const req=deal.awardRequestData||{};
     setAwardForm({
-      awardTrigger:"CE Signed", triggerDate:today, triggerNote:"",
-      pm1:"", pm2:"", pm3:"", coordinator:"",
-      aeAssigned:deal.salesOwner||"",
+      awardTrigger:req.awardTrigger||"CE Signed",
+      triggerDate:req.triggerDate||today,
+      triggerNote:req.triggerNote||"",
+      pm1:req.pm1Suggestion||"", pm2:"", pm3:"", coordinator:"",
+      aeAssigned:req.aeAssigned||deal.salesOwner||"",
       startDate:today, commsLink:deal.commsGroup||"",
-      scopeNotes:"", specialInstructions:"",
+      scopeNotes:req.scopeNotes||"",
+      specialInstructions:req.specialInstructions||"",
     });
     setAwardModal(deal);
   };
@@ -4975,6 +4990,7 @@ export default function App(){
                   <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.client}</span>
                   {vvipClients?.has(d.client)&&<span style={{fontSize:".62rem",color:"#d97706",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:20,padding:"1px 6px",fontWeight:700}}>⭐ VVIP</span>}
                   {Number(d.value)>=3000000&&<span style={{fontSize:".62rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 6px",fontWeight:700}}>🚨 ₱3M+</span>}
+                  {d.awardRequestData&&<span style={{fontSize:".62rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 6px",fontWeight:700}}>🏆 Pending Award</span>}
                   <span style={{fontSize:".62rem",color:"#94a3b8",marginLeft:2}}>{daysSince(d.dateAcquired)}d ago</span>
                 </div>
                 {d.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{d.contact}</div>}
@@ -4994,7 +5010,7 @@ export default function App(){
                 {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
                 {role==="Manager"
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Award</button>
-                  :<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,notes:(x.notes||"")+"\n[AWARD REQUEST "+today+"]: "+(session?.name||"Sales")+" flagged for award."}:x));logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"}`);toastEmit("Flagged for Manager review!");}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
+                  :<button onClick={()=>{setAwardReqStep(1);setAwardReqForm({awardTrigger:"CE Signed by Client",triggerDate:today,triggerNote:"",aeAssigned:d.salesOwner||"",pm1Suggestion:"",scopeNotes:"",specialInstructions:""});setAwardReqModal(d);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🏆 Request Award</button>
                 }
                 <button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontSize:".72rem",color:"#94a3b8",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✗</button>
               </div>
@@ -5158,6 +5174,115 @@ export default function App(){
             </div>
           );
         })()}
+
+        {/* ── SALES: Award Request Modal ──────────────────────────────────── */}
+        {awardReqModal&&(
+          <Modal open title={`🏆 Request Award — ${awardReqModal.client}`} onClose={()=>setAwardReqModal(null)} wide>
+            {/* Step indicator */}
+            <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
+              {[["1","Award Details","#f59e0b"],["2","Scope & Team","#10b981"]].map(([num,label,clr],i)=>{
+                const active=awardReqStep===i+1;
+                const done=awardReqStep>i+1;
+                return(
+                  <div key={num} onClick={()=>done&&setAwardReqStep(i+1)}
+                    style={{flex:1,padding:"12px 8px",textAlign:"center",background:active?clr:done?"#f8fafc":"#fff",cursor:done?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
+                    <div style={{fontSize:".82rem",fontWeight:700,color:active?"#fff":done?"#374151":"#cbd5e1"}}>{num}. {label}</div>
+                    <div style={{fontSize:".68rem",color:active?"rgba(255,255,255,.75)":done?"#10b981":"#e2e8f0",marginTop:2}}>{done?"✓ Done":active?"In progress":"—"}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Deal summary banner */}
+            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:18,display:"flex",gap:20,flexWrap:"wrap",fontSize:".82rem"}}>
+              <span><span style={{color:"#92400e"}}>Client: </span><strong>{awardReqModal.client}</strong></span>
+              {awardReqModal.contact&&<span><span style={{color:"#92400e"}}>Project: </span><strong>{awardReqModal.contact}</strong></span>}
+              {awardReqModal.ceNo&&<span><span style={{color:"#92400e"}}>CE No: </span><strong>{awardReqModal.ceNo}</strong></span>}
+              {awardReqModal.value&&<span><span style={{color:"#92400e"}}>Value: </span><strong>₱{Number(awardReqModal.value).toLocaleString("en-PH")}</strong></span>}
+            </div>
+
+            {/* ── STEP 1: Award Details ── */}
+            {awardReqStep===1&&(
+              <div>
+                <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:18,fontSize:".8rem",color:"#1d4ed8"}}>
+                  📋 Fill in what confirmed this award. Your information will be pre-loaded for Paulo when he approves.
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                  <Fld label="Award Trigger" required hint="What officially confirmed this project?">
+                    <Sel value={awardReqForm.awardTrigger} onChange={e=>setAwardReqForm(p=>({...p,awardTrigger:e.target.value}))}>
+                      {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="Date Confirmed">
+                    <Inp type="date" value={awardReqForm.triggerDate} onChange={e=>setAwardReqForm(p=>({...p,triggerDate:e.target.value}))}/>
+                  </Fld>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Reference / Notes" hint="PO number, email thread, verbal confirmation details, etc.">
+                      <Inp rows={2} value={awardReqForm.triggerNote} onChange={e=>setAwardReqForm(p=>({...p,triggerNote:e.target.value}))} placeholder="e.g. PO No. 2026-0187 received via email from Karen Santos on May 25…"/>
+                    </Fld>
+                  </div>
+                </div>
+                <div style={{display:"flex",justifyContent:"flex-end",marginTop:18}}>
+                  <button onClick={()=>setAwardReqStep(2)}
+                    style={{background:"#f59e0b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>
+                    Next: Scope & Team →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* ── STEP 2: Scope & Team ── */}
+            {awardReqStep===2&&(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                  <Fld label="AE (Account Executive)" hint="Client relationship owner — usually you">
+                    <Sel value={awardReqForm.aeAssigned} onChange={e=>setAwardReqForm(p=>({...p,aeAssigned:e.target.value}))}>
+                      <option value="">— Select AE —</option>
+                      {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
+                    </Sel>
+                  </Fld>
+                  <Fld label="Suggested PM" hint="Optional — Paulo will assign the PM but your input helps">
+                    <Sel value={awardReqForm.pm1Suggestion} onChange={e=>setAwardReqForm(p=>({...p,pm1Suggestion:e.target.value}))}>
+                      <option value="">— Optional suggestion —</option>
+                      {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
+                    </Sel>
+                  </Fld>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Scope of Work" required hint="What exactly is being built? Be as specific as possible.">
+                      <Inp rows={4} value={awardReqForm.scopeNotes} onChange={e=>setAwardReqForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="e.g. Full retail fit-out Unit 3B SM Megamall — custom shelving, signage (2 lightboxes + letters), 4 display gondolas, 8 downlights…"/>
+                    </Fld>
+                  </div>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <Fld label="Special Instructions / Venue Requirements" hint="Delivery restrictions, permit requirements, client contacts on site">
+                      <Inp rows={3} value={awardReqForm.specialInstructions} onChange={e=>setAwardReqForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="e.g. SM Megamall: night delivery only 10PM–6AM, GS permit required. Client contact on site: Kat Santos +63917…"/>
+                    </Fld>
+                  </div>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
+                  <button onClick={()=>setAwardReqStep(1)}
+                    style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>
+                    ← Back
+                  </button>
+                  <button
+                    disabled={!awardReqForm.scopeNotes}
+                    onClick={()=>{
+                      const d=awardReqModal;
+                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,
+                        awardRequestData:{...awardReqForm},
+                        notes:(x.notes||"")+`\n[AWARD REQUEST ${today}]: ${session?.name||"Sales"} flagged for award. Trigger: ${awardReqForm.awardTrigger}. AE: ${awardReqForm.aeAssigned||"—"}. Suggested PM: ${awardReqForm.pm1Suggestion||"—"}.`
+                      }:x));
+                      logActivity(d.id,"Award Requested",`${d.client} flagged by ${session?.name||"Sales"} — ${awardReqForm.awardTrigger}`);
+                      toastEmit("Award request submitted — Paulo will review and confirm.");
+                      setAwardReqModal(null);
+                    }}
+                    style={{background:awardReqForm.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:awardReqForm.scopeNotes?"#fff":"#94a3b8",cursor:awardReqForm.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
+                    🏆 Submit for Manager Approval
+                  </button>
+                </div>
+              </div>
+            )}
+          </Modal>
+        )}
 
         {/* Award Confirmation Modal */}
         {awardModal&&(
