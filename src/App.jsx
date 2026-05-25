@@ -1889,7 +1889,7 @@ export default function App(){
         try{
           const data = await sbLoadAll();
           if(data){
-            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,stage:normalizeStage(d.stage)})));
+            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
             if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
             if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
             if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
@@ -1976,7 +1976,7 @@ export default function App(){
     if(!isSupabaseReady()) return;
     const data = await sbLoadAll();
     if(!data) return;
-    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link})));
+    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,awardRequestData:d.award_request_data||null})));
     if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
@@ -2028,6 +2028,7 @@ export default function App(){
     withholding:r.withholding||false, comms_group:r.commsGroup||"",
     sales_repo_link:r.salesRepoLink||"", proposal_folder_link:r.proposalFolderLink||"",
     notes:r.notes||"", probability:Number(r.probability)||0,
+    award_request_data:r.awardRequestData||null,
     updated_at:new Date().toISOString(),
   });
   const toSbJO = r=>({
@@ -2440,7 +2441,7 @@ export default function App(){
         const nowDone=!prevDone;
         sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
         if(deptData.done&&card.id&&isUUID(card.id)){
-          sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id').catch(()=>{});
+          sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
         }
       }
       return{...ps,[dealId]:card};
@@ -2474,7 +2475,7 @@ export default function App(){
       card.departments={...card.departments,[dept]:deptData};
       if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${card.client}`,session?.name);
       if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-        sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id').catch(()=>{});
+        sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
       }
       return{...ps,[dealId]:card};
     });
@@ -2494,7 +2495,8 @@ export default function App(){
           dueDate:rec.due_date,amountPaid:Number(rec.amount_paid)||0,
           paymentStatus:rec.payment_status,receiptType:rec.receipt_type,
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
-          proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage)};
+          proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
+          awardRequestData:rec.award_request_data||null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
       }
