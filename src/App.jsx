@@ -467,7 +467,7 @@ const GMD_CLIENTS = [
   {name:"FCOY 15 Trading Corp.", email:"mktgpina.meah@gmail.com"},
   {name:"Finden Technologies Inc.", email:"msanpedro@finden.com.ph"},
   {name:"Firefly Electric & Lighting Corporation", email:"nyl.mendoza@fireflyelectric.com"},
-  {name:"Five Sips and Swallows Inc", email:"fivesipsandswallowsinc@gmail.com", balance:40000.0},
+  {name:"Five Sips and Swallows Inc", email:"fivesipsandswallowsinc@gmail.com"},
   {name:"Flipbox Events"},
   {name:"Floret - Pam Lopez"},
   {name:"Foptics Philippines, Inc", email:"ray@foptics.club"},
@@ -497,7 +497,7 @@ const GMD_CLIENTS = [
   {name:"iMaz Corp", email:"kim@imazcorp.com"},
   {name:"Innovator"},
   {name:"Innovention Food Resources Inc."},
-  {name:"Ivory Tree Inc.", email:"nicolenocom@gmail.com", city:"Quezon City", balance:2611200.0},
+  {name:"Ivory Tree Inc.", email:"nicolenocom@gmail.com", city:"Quezon City"},
   {name:"Jameson Ong"},
   {name:"JBsy Food and Beverage", email:"boldstar72@yahoo.com"},
   {name:"JC Mahusay", email:"jcmahusay16@gmail.com"},
@@ -539,7 +539,7 @@ const GMD_CLIENTS = [
   {name:"Mr. Jose Alexander Subido"},
   {name:"Mr. Stewart Lee Ong"},
   {name:"Mrs. Regine Laguyo", email:"regine@vtlaguyo.com"},
-  {name:"Newtrends International Corporation", email:"daniella.camias@newtrends.ph", city:"Bacoor", balance:240000.0},
+  {name:"Newtrends International Corporation", email:"daniella.camias@newtrends.ph", city:"Bacoor"},
   {name:"Nicolo Villasenor", email:"fivesipsandswallowsinc@gmail.com", city:"Pasig City"},
   {name:"Nito's International Ventures, Inc", email:"ltan@highleap.com.ph"},
   {name:"Nu Star Mall"},
@@ -1374,8 +1374,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.drfNotes||""} onChange={e=>f("drfNotes",e.target.value)} placeholder="Brand guidelines, restrictions, additional references…"/></Fld></div>
         </div>
       </div>
-
-      {/* ── ALERTS ──────────────────────────────────────────────────────── */}
       {PAULO_GATE.includes(form.stage)&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#92400e"}}>
           ⚠️ <strong>Paulo Gate:</strong> Stage {form.stage} requires Paulo Garcia's review and sign-off before proceeding to the next stage.
@@ -1957,11 +1955,15 @@ export default function App(){
 
   // Auto-refresh when user switches back to FabHub tab
   useEffect(()=>{
+    let lastRefresh=0;
     const refresh=async()=>{
       if(!isSupabaseReady()||!session) return;
+      const now=Date.now();
+      if(now-lastRefresh<30000) return; // max once per 30s
+      lastRefresh=now;
       try{
         const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage)})));
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
@@ -2076,9 +2078,11 @@ export default function App(){
   });
   const toSbBR = r=>({
     id:r.id, deal_id:r.dealId||null, purpose:r.purpose||"",
+    title:r.title||r.purpose||"",
     amount:Number(r.amount)||0, urgency:r.urgency||"Normal",
     date_needed:r.dateNeeded||null, status:r.status||"Pending",
     approved_by:r.approvedBy||"", submitted_by:r.submittedBy||"",
+    category:r.category||"",
   });
   const toSbAddendum = r=>({
     id:r.id, deal_id:r.dealId, title:r.title||"", description:r.description||"",
@@ -2088,9 +2092,11 @@ export default function App(){
     discovered_by:r.discoveredBy||"",
   });
   const toSbSwatch = r=>({
-    id:r.id, deal_id:r.dealId||null, name:r.name||"", category:r.category||"",
+    id:r.id, deal_id:r.dealId||r.projectId||null, name:r.name||"", category:r.category||"",
     qty:Number(r.qty)||0, unit:r.unit||"", supplier:r.supplier||"",
-    ref_link:r.refLink||"", status:r.status||"To Buy", notes:r.notes||"",
+    ref_link:r.refLink||r.swatchLink||"", status:r.status||"To Buy", notes:r.notes||"",
+    est_cost:Number(r.estCost)||0, swatch_link:r.swatchLink||r.refLink||"",
+    added_by:r.addedBy||"",
   });
   const toSbChecklist = r=>({
     id:r.id, deal_id:r.dealId||null, type:r.type||"Task", title:r.title||"",
@@ -2134,66 +2140,13 @@ export default function App(){
     sbDelete(table,id).catch(e=>console.error("FabHub sbDelete "+table+":",e.message));
   };
 
-  // ── PERSIST (localStorage + Supabase dual-write) ─────────────────────────
+  // ── PERSIST (localStorage-only — Supabase writes are done per-mutation) ──
   const persist=useCallback((key,val)=>{
     setSync("saving");
-    // Write ONLY to Supabase — localStorage removed as primary storage
-    // Keep a lightweight cache for offline resilience
     try{
       localStorage.setItem(key,JSON.stringify(val));
       setTimeout(()=>setSync("saved"),300);
     }catch{setSync("error");}
-    // Supabase is the source of truth — sync immediately
-    if(!isSupabaseReady()) return;
-    try{
-      if(key===KEYS.deals)     sbSync("deals",     val, toSbDeal);
-      if(key===KEYS.jos)       sbSync("job_orders", val, toSbJO);
-      if(key===KEYS.expenses)  sbSync("expenses",   val, toSbExpense);
-      if(key===KEYS.prs)       sbSync("purchase_requests", val, toSbPR);
-      if(key===KEYS.mreqs)     sbSync("material_requests", val, toSbMR);
-      if(key===KEYS.breqs)     sbSync("budget_requests",   val, toSbBR);
-      if(key===KEYS.addenda)   sbSync("addenda",    val, toSbAddendum);
-      if(key===KEYS.swatches)  sbSync("swatches",   val, toSbSwatch);
-      if(key===KEYS.checklist) sbSync("checklists",val,toSbChecklist);
-      if(key===KEYS.actlog)    sbSync("activity_log",val,toSbActivity);
-      if(key===KEYS.inflows)   sbSync("inflows",val,r=>({id:r.id,deal_id:r.dealId||r.projectId||null,date:r.date||r.month||null,amount:Number(r.amount)||0,source:r.source||"",ref_no:r.refNo||"",note:r.note||""}));
-      if(key===KEYS.projects){
-        Object.entries(val||{}).forEach(([dealId,proj])=>{
-          if(!isUUID(dealId)) return;
-          sbUpsert("projects",{deal_id:dealId,data:proj,updated_at:new Date().toISOString()},"deal_id").catch(e=>console.error("projs sync:",e.message));
-        });
-      }
-      if(key===KEYS.billings){
-        val.forEach(m=>{
-          if(!isUUID(m.id)) return;
-          sbSyncOne("billing_milestones",m,toSbBilling);
-          (m.payments||[]).forEach(p=>{ if(isUUID(p.id)) sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment); });
-        });
-      }
-      if(key===KEYS.budgets){
-        Object.entries(val||{}).forEach(([dealId,b])=>{
-          if(!isUUID(dealId)) return;
-          sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id")
-            .catch(e=>console.error("budget sync:",e.message));
-        });
-      }
-      if(key===KEYS.cashPos){
-        Object.entries(val||{}).forEach(([date,c])=>{
-          const payload={
-            date,
-            bpi_end:      Number(c.banks?.bpi?.end)     ||0,
-            metrobank_end:Number(c.banks?.metro?.end)   ||0,
-            chinabank_end:Number(c.banks?.china?.end)   ||0,
-            bdo_end:      Number(c.banks?.bdo?.end)     ||0,
-            secbank_end:  Number(c.banks?.security?.end)||0,
-            unionbank_end:Number(c.banks?.union?.end)   ||0,
-            notes:c.notes||"",
-          };
-          sbUpsert("cash_positions",payload,"date")
-            .catch(e=>console.error("cash sync:",e.message));
-        });
-      }
-    }catch(e){console.error("FabHub persist sync error:",e.message);}
   },[]);
 
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
@@ -2201,7 +2154,8 @@ export default function App(){
   // Activity log helper — called whenever something meaningful happens
   const logActivity=(dealId,action,detail,by)=>{
     const entry={id:uid(),dealId,action,detail,by:by||session?.name||"System",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
-    setActLog(prev=>{const next=[entry,...prev].slice(0,500);persist(KEYS.actlog,next);return next;});
+    setActLog(prev=>{const next=[entry,...prev].slice(0,500);localStorage.setItem(KEYS.actlog,JSON.stringify(next));return next;});
+    if(isSupabaseReady()) sbInsert('activity_log',toSbActivity(entry)).catch(()=>{});
     if(action==="PM Update"){
       const deal=deals.find(d=>d.id===dealId);
       sendTelegramNotification("ops",`📝 <b>PM Update</b>\n${deal?.client||dealId}\nBy: ${entry.by} · ${today}\n${detail||""}`);
@@ -2210,28 +2164,28 @@ export default function App(){
   const upPcards    =useCallback(fn=>setPcards(p=>{const n=fn(p);persist(KEYS.pcards,n);return n;}),[persist]);
 
   // One-time migration: push all localStorage data to Supabase
-  const migrateToCloud = useCallback(async () => {
-    if (!isSupabaseReady()) { toastEmit("Supabase is not connected — check environment variables","error",5000); return; }
+  const migrateToCloud=useCallback(async()=>{
+    if(!isSupabaseReady()){toastEmit("Supabase is not connected — check environment variables","error",5000);return;}
     toastEmit("Pushing all data to cloud…","info",2500);
-    const pairs = [
-      [KEYS.deals,    deals],   [KEYS.jos,      jos],
-      [KEYS.expenses, exps],    [KEYS.prs,      prs],
-      [KEYS.mreqs,    mreqs],   [KEYS.breqs,    breqs],
-      [KEYS.addenda,  addenda], [KEYS.swatches, swatches],
-      [KEYS.checklist,checklist],[KEYS.actlog,   actLog],
-      [KEYS.billings, billings],[KEYS.budgets,  budgets],
-      [KEYS.cashPos,  cashPositions],
-    ];
-    pairs.forEach(([key,val]) => { if(val && (Array.isArray(val)?val.length:Object.keys(val).length)) persist(key,val); });
-    // Inflows (not in persist mapping)
-    if (infs?.length) {
-      Promise.all(infs.map(r => sbUpsert("inflows", {
-        id:r.id, deal_id:r.dealId||r.projectId||null, date:r.date||r.month||null,
-        amount:Number(r.amount)||0, source:r.source||"", ref_no:r.refNo||"", note:r.note||""
-      }, 'id'))).catch(e=>console.error("inflows migrate:",e.message));
+    const syncAll=(table,arr,mapper)=>arr?.length?Promise.all(arr.map(r=>{const p=mapper?mapper(r):r;return hasValidUUIDs(p)?sbUpsert(table,p,'id'):Promise.resolve();})).catch(e=>console.error("migrate "+table+":",e.message)):Promise.resolve();
+    await syncAll("deals",deals,toSbDeal);
+    await syncAll("job_orders",jos,toSbJO);
+    await syncAll("expenses",exps,toSbExpense);
+    await syncAll("purchase_requests",prs,toSbPR);
+    await syncAll("material_requests",mreqs,toSbMR);
+    await syncAll("budget_requests",breqs,toSbBR);
+    await syncAll("addenda",addenda,toSbAddendum);
+    await syncAll("swatches",swatches,toSbSwatch);
+    await syncAll("checklists",checklist,toSbChecklist);
+    await syncAll("activity_log",actLog,toSbActivity);
+    if(billings?.length){
+      await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
     }
+    if(budgets){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
+    if(cashPositions){Object.entries(cashPositions).forEach(([date,c])=>{const payload={date,bpi_end:Number(c.banks?.bpi?.end)||0,metrobank_end:Number(c.banks?.metro?.end)||0,chinabank_end:Number(c.banks?.china?.end)||0,bdo_end:Number(c.banks?.bdo?.end)||0,secbank_end:Number(c.banks?.security?.end)||0,unionbank_end:Number(c.banks?.union?.end)||0,notes:c.notes||""};sbUpsert("cash_positions",payload,"date").catch(()=>{});});}
+    if(infs?.length){Promise.all(infs.map(r=>sbUpsert("inflows",{id:r.id,deal_id:r.dealId||r.projectId||null,date:r.date||r.month||null,amount:Number(r.amount)||0,source:r.source||"",ref_no:r.refNo||"",note:r.note||""},'id'))).catch(e=>console.error("inflows migrate:",e.message));}
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
-  },[persist, deals, jos, exps, prs, mreqs, breqs, addenda, swatches, checklist, actLog, billings, budgets, cashPositions, infs]);
+  },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
@@ -2425,16 +2379,20 @@ export default function App(){
     }
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
+    const existingCard=pcards[dealId];
+    const existingTask=existingCard?.departments?.[dept]?.tasks?.find(t=>t.id===taskId);
+    const nowDone=!(existingTask?.done||false);
+    const wasAlreadyDeptDone=existingCard?.departments?.[dept]?.done||false;
+    let deptJustCompleted=false;
     upPcards(ps=>{
       const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
       const deptData={...card.departments[dept]};
-      const prevDone=deptData.tasks.find(t=>t.id===taskId)?.done;
-      deptData.tasks=deptData.tasks.map(t=>t.id===taskId?{...t,done:!t.done,doneAt:!t.done?new Date().toISOString():null,doneBy:!t.done?session?.name:null}:t);
+      deptData.tasks=deptData.tasks.map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?new Date().toISOString():null,doneBy:nowDone?session?.name:null}:t);
       deptData.done=deptData.tasks.every(t=>t.done);
-      if(deptData.done&&!card.departments[dept].done){
+      if(deptData.done&&!wasAlreadyDeptDone){
         deptData.doneAt=new Date().toISOString();
         deptData.doneBy=session?.name;
-        logActivity(dealId,"Department Done",`${dept} completed all tasks for ${card.client}`,session?.name);
+        deptJustCompleted=true;
       }
       card.departments={...card.departments,[dept]:deptData};
       if(isSupabaseReady()&&isUUID(taskId)){
@@ -2446,6 +2404,12 @@ export default function App(){
       }
       return{...ps,[dealId]:card};
     });
+    // Persist individual task to Supabase
+    if(isSupabaseReady()&&isUUID(taskId)){
+      sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
+    }
+    // logActivity called AFTER setState, not inside it
+    if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${existingCard?.client}`,session?.name);
   };
   const setProjectTAT=(dealId,days,category)=>{
     if(!days||isNaN(days)) return;
@@ -2570,19 +2534,34 @@ export default function App(){
   const upPrs      =useCallback(fn=>setPrs(p=>{const n=fn(p);persist(KEYS.prs,n);return n;}),[persist]);
   const upAddenda  =useCallback(fn=>setAddenda(p=>{const n=fn(p);persist(KEYS.addenda,n);return n;}),[persist]);
   const upBillings =useCallback(fn=>setBillings(p=>{const n=fn(p);persist(KEYS.billings,n);return n;}),[persist]);
-  const addMilestone  =(ms)=>upBillings(bs=>[...bs,{...ms,id:uid(),createdDate:today}]);
-  const updateMilestone=(id,ch)=>upBillings(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
-  const deleteMilestone=(id)=>upBillings(bs=>bs.filter(b=>b.id!==id));
+  const addMilestone=(ms)=>{
+    const rec={...ms,id:uid(),createdDate:today};
+    upBillings(bs=>[...bs,rec]);
+    if(isSupabaseReady()) sbSyncOne("billing_milestones",rec,toSbBilling);
+  };
+  const updateMilestone=(id,ch)=>{
+    upBillings(bs=>bs.map(b=>{
+      if(b.id!==id) return b;
+      const n={...b,...ch};
+      if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
+      return n;
+    }));
+  };
+  const deleteMilestone=(id)=>{upBillings(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});};
   const logBillingPayment=(msId,payment)=>{
+    const payId=uid();
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
-      const payments=[...( b.payments||[]),{...payment,id:uid(),date:payment.date||today}];
+      const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
       const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':b.status;
+      if(isSupabaseReady()){
+        sbSyncOne("billing_payments",{...payment,id:payId,milestoneId:msId},toSbPayment);
+        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(()=>{});
+      }
       return{...b,payments,status};
     }));
-    // FIX 14: Auto-record payment to daily cash position under the correct bank
-    if(payment.bank && payment.amount){
+    if(payment.bank&&payment.amount){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
       setCashPos(cp=>{
@@ -2612,47 +2591,102 @@ export default function App(){
     return'INV-'+String(next).padStart(4,'0');
   };
   const addAddendum2=(adm)=>{
-    upAddenda(as=>[{...adm,id:uid(),createdDate:today,status:"Discovered"},...as]);
+    const rec={...adm,id:uid(),createdDate:today,status:"Discovered"};
+    upAddenda(as=>[rec,...as]);
+    if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
     const deal=deals.find(d=>d.id===adm.dealId);
     const msg=`⚠️ <b>Scope Change Discovered</b>\n${adm.title||"?"}\nProject: ${deal?.client||adm.dealId||"?"}${botSettings.hideValueInBots?"":"\nValue: ₱"+Number(adm.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nBy: ${adm.discoveredBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
     sendTelegramNotification("sales",msg);
     sendTelegramNotification("management",msg);
   };
-  const updateAddendum=(id,ch)=>upAddenda(as=>as.map(a=>a.id===id?{...a,...ch}:a));
-  const deleteAddendum=(id)=>upAddenda(as=>as.filter(a=>a.id!==id));
-  const delJo        =(id)=>upJos(js=>js.filter(j=>j.id!==id));
-  const delMR        =(id)=>upMreqs(ms=>ms.filter(m=>m.id!==id));
-  const delBR        =(id)=>upBreqs(bs=>bs.filter(b=>b.id!==id));
-  const delPcard     =(id)=>upPcards(ps=>{const n={...ps};delete n[id];return n;});
-  const delBudget    =(id)=>upBudgets(bs=>{const n={...bs};delete n[id];return n;});
-  const delChecklist =(id)=>upChecklist(cs=>cs.filter(c=>c.id!==id));
+  const updateAddendum=(id,ch)=>{
+    upAddenda(as=>as.map(a=>{
+      if(a.id!==id) return a;
+      const n={...a,...ch};
+      if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
+      return n;
+    }));
+  };
+  const deleteAddendum=(id)=>{upAddenda(as=>as.filter(a=>a.id!==id));if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});};
+  const delJo        =(id)=>{const jo=jos.find(j=>j.id===id);upJos(js=>js.filter(j=>j.id!==id));if(isSupabaseReady()) sbDelete('job_orders',id).catch(()=>{});logActivity(id,"JO Deleted",`JO ${jo?.joNo||id} deleted`,session?.name||role);};
+  const delMR        =(id)=>{upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});};
+  const delBR        =(id)=>{upBreqs(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('budget_requests',id).catch(()=>{});};
+  const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_cards').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
+  const delBudget    =(id)=>{upBudgets(bs=>{const n={...bs};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_budgets').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
+  const delChecklist =(id)=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady()) sbDelete('checklists',id).catch(()=>{});};
   const upMreqs    =useCallback(fn=>setMreqs(p=>{const n=fn(p);persist(KEYS.mreqs,n);return n;}),[persist]);
   const upBreqs    =useCallback(fn=>setBreqs(p=>{const n=fn(p);persist(KEYS.breqs,n);return n;}),[persist]);
-  const addMR      =(mr)=>{
-    upMreqs(ms=>[{...mr,id:uid(),createdDate:today},...ms]);
+  const addMR=(mr)=>{
+    const rec={...mr,id:uid(),createdDate:today};
+    upMreqs(ms=>[rec,...ms]);
+    if(isSupabaseReady()) sbSyncOne("material_requests",rec,toSbMR);
     const deal=deals.find(d=>d.id===mr.dealId);
     sendTelegramNotification("procurement",`🔧 <b>New Material Request</b>\n${mr.item||"?"}\nProject: ${deal?.client||mr.dealId||"?"}\nQty: ${mr.qty||"?"} ${mr.unit||""}\nUrgency: ${mr.urgency||"Normal"}\nBy: ${mr.submittedBy||"?"}`);
   };
-  const updateMR   =(id,ch)=>upMreqs(ms=>ms.map(m=>m.id===id?{...m,...ch}:m));
-  const addBR      =(br)=>{
-    upBreqs(bs=>[{...br,id:uid(),createdDate:today},...bs]);
+  const updateMR=(id,ch)=>{
+    upMreqs(ms=>ms.map(m=>{
+      if(m.id!==id) return m;
+      const n={...m,...ch};
+      if(isSupabaseReady()) sbSyncOne("material_requests",n,toSbMR);
+      return n;
+    }));
+  };
+  const addBR=(br)=>{
+    const rec={...br,id:uid(),createdDate:today};
+    upBreqs(bs=>[rec,...bs]);
+    if(isSupabaseReady()) sbSyncOne("budget_requests",rec,toSbBR);
     const deal=deals.find(d=>d.id===br.dealId);
     sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.dealId||"?"}${botSettings.hideValueInBots?"":"\nAmount: ₱"+Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.submittedBy||"?"}`);
   };
-  const updateBR   =(id,ch)=>upBreqs(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
+  const updateBR=(id,ch)=>{
+    upBreqs(bs=>bs.map(b=>{
+      if(b.id!==id) return b;
+      const n={...b,...ch};
+      if(isSupabaseReady()) sbSyncOne("budget_requests",n,toSbBR);
+      return n;
+    }));
+  };
   const upBudgets  =useCallback(fn=>setBudgets(p=>{const n=fn(p);persist(KEYS.budgets,n);return n;}),[persist]);
-  const saveBudget =(dealId,budget)=>upBudgets(bs=>({...bs,[dealId]:{...budget,savedAt:new Date().toISOString()}}));
-  const addPR      =(pr)=>upPrs(ps=>[{...pr,id:uid(),createdDate:today},  ...ps]);
-  const updatePR   =(id,changes)=>{
+  const saveBudget=(dealId,budget)=>{
+    const saved={...budget,savedAt:new Date().toISOString()};
+    upBudgets(bs=>({...bs,[dealId]:saved}));
+    if(isSupabaseReady()) sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id").catch(e=>console.error("budget sync:",e.message));
+  };
+  const addPR=(pr)=>{
+    const rec={...pr,id:uid(),createdDate:today};
+    upPrs(ps=>[rec,...ps]);
+    if(isSupabaseReady()) sbSyncOne("purchase_requests",rec,toSbPR);
+  };
+  const updatePR=(id,changes)=>{
     if(changes.status==="PO Issued"&&changes.approvedBy){
       const pr=prs.find(p=>p.id===id);
       const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
       sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"?"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
     }
-    upPrs(ps=>ps.map(p=>p.id===id?{...p,...changes}:p));
+    upPrs(ps=>ps.map(p=>{
+      if(p.id!==id) return p;
+      const n={...p,...changes};
+      if(isSupabaseReady()) sbSyncOne("purchase_requests",n,toSbPR);
+      return n;
+    }));
   };
-  const deletePR   =(id)=>upPrs(ps=>ps.filter(p=>p.id!==id));
-  const saveDayPos =(date,pos)=>upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
+  const deletePR   =(id)=>{upPrs(ps=>ps.filter(p=>p.id!==id));if(isSupabaseReady()) sbDelete('purchase_requests',id).catch(()=>{});};
+  const saveDayPos=(date,pos)=>{
+    upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
+    if(isSupabaseReady()){
+      const payload={
+        date,
+        bpi_end:      Number(pos.banks?.bpi?.end)     ||0,
+        metrobank_end:Number(pos.banks?.metro?.end)   ||0,
+        chinabank_end:Number(pos.banks?.china?.end)   ||0,
+        bdo_end:      Number(pos.banks?.bdo?.end)     ||0,
+        secbank_end:  Number(pos.banks?.security?.end)||0,
+        unionbank_end:Number(pos.banks?.union?.end)   ||0,
+        notes:pos.notes||"",
+      };
+      sbUpsert("cash_positions",payload,"date").catch(e=>console.error("cash sync:",e.message));
+    }
+  };
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
   const upProjs    =useCallback(fn=>setProjs(p=>{const n=fn(p);persist(KEYS.projects,n);return n;}),[persist]);
   const upExps     =useCallback(fn=>setExps(p=>{const n=fn(p);persist(KEYS.expenses,n);return n;}),[persist]);
@@ -2660,6 +2694,7 @@ export default function App(){
   const upInflows  =upInfs; // alias for DataManagement
   const upJos      =useCallback(fn=>setJos(p=>{const n=fn(p);persist(KEYS.jos,n);return n;}),[persist]);
   const upSwatches =useCallback(fn=>setSwatches(p=>{const n=fn(p);persist(KEYS.swatches,n);return n;}),[persist]);
+  const delSwatch  =(id)=>{upSwatches(ss=>ss.filter(s=>s.id!==id));if(isSupabaseReady()) sbDelete('swatches',id).catch(()=>{});};
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
 
   // ── DRF CRUD ─────────────────────────────────────────────────────────────
@@ -2768,10 +2803,14 @@ export default function App(){
     const finalType=clForm.type==="Custom"&&clForm.customType?clForm.customType:clForm.type;
     const rec={...clForm,type:finalType,id:editCl||uid(),createdDate:today,createdBy:role};
     upChecklist(cs=>editCl?cs.map(c=>c.id===editCl?rec:c):[...cs,rec]);
+    if(isSupabaseReady()) sbSyncOne("checklists",rec,toSbChecklist);
     setClModal(false);setEditCl(null);
   };
-  const delCl=id=>upChecklist(cs=>cs.filter(c=>c.id!==id));
-  const clStatusQ=(id,st)=>upChecklist(cs=>cs.map(c=>c.id===id?{...c,status:st}:c));
+  const delCl=delChecklist;
+  const clStatusQ=(id,st)=>{
+    upChecklist(cs=>cs.map(c=>c.id===id?{...c,status:st}:c));
+    if(isSupabaseReady()) sbUpdate('checklists',id,{status:st}).catch(()=>{});
+  };
 
   const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
 
@@ -2908,6 +2947,8 @@ export default function App(){
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[showExport, setShowExport] =useState(false);
+  const showExportRef=useRef(false);
+  showExportRef.current=showExport;
   const[joStep,     setJoStep]     =useState("select");
   const[joSel,      setJoSel]      =useState(null);
   const[joExtra,    setJoExtra]    =useState({address:"",phone:"",priority:"Normal",extraNotes:""});
@@ -2954,6 +2995,7 @@ export default function App(){
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     if(data.stage==="06 · Project Kickoff" && !editDeal && !wasAlreadyAwarded) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
+    if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
     // Save new client to master list if not already present
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
       const newClient={name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
@@ -2980,21 +3022,35 @@ export default function App(){
     setEditDeal(null);
     setDealModal(false);
   };
-  const delDeal=id=>{upDeals(ds=>ds.filter(d=>d.id!==id));upProjs(ps=>{const n={...ps};delete n[id];return n;});setConfirmDel(null);};
+  const delDeal=id=>{
+    const deal=deals.find(d=>d.id===id);
+    upDeals(ds=>ds.filter(d=>d.id!==id));
+    upProjs(ps=>{const n={...ps};delete n[id];return n;});
+    setConfirmDel(null);
+    logActivity(id,"Deal Deleted",`${deal?.client||id} permanently deleted`,session?.name||role);
+    if(isSupabaseReady()){
+      sbDelete('deals',id).catch(()=>{});
+      supabase.from('projects').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});
+    }
+  };
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
   const stageQ=(id,st)=>{
-    // Always create project when entering any won stage
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="06 · Project Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
     upDeals(ds=>ds.map(d=>{
       if(d.id!==id) return d;
+      const prob=WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability;
       logActivity(id,"Stage Change",`${d.client}: ${d.stage} → ${st}`,session?.name);
-      return{...d,stage:st,probability:WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability};
+      if(isSupabaseReady()) sbUpdate('deals',id,{stage:st,probability:prob,updated_at:new Date().toISOString()}).catch(()=>{});
+      return{...d,stage:st,probability:prob};
     }));
   };
-  const payQ=(id,ps)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
+  const payQ=(id,ps)=>{
+    upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
+    if(isSupabaseReady()) sbUpdate('deals',id,{payment_status:ps,updated_at:new Date().toISOString()}).catch(()=>{});
+  };
 
   const openAward=(deal)=>setAwardModal(deal);
   const confirmAward=(form)=>{
@@ -3038,6 +3094,7 @@ export default function App(){
       status:"Active",
     };
     upJos(js=>[jo,...js]);
+    if(isSupabaseReady()) sbSyncOne("job_orders",jo,toSbJO);
     // Create project card with PM/AE pre-populated
     createProjectCard(id,{...awardModal,
       pmAssigned:pmDisplay,
@@ -3108,22 +3165,26 @@ export default function App(){
     if(!data.amount||!data.note) return;
     const rec={...data,amount:Number(data.amount),id:editExpId||uid()};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
+    if(isSupabaseReady()) sbSyncOne("expenses",rec,toSbExpense);
     setEditExpId(null);
     setExpModal(false);
   };
-  const delExp=id=>upExps(es=>es.filter(e=>e.id!==id));
+  const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
   const saveInf=()=>{
     if(!infForm.source||!infForm.amount) return;
-    upInfs(is=>[...is,{...infForm,amount:Number(infForm.amount),id:uid()}]);
+    const rec={...infForm,amount:Number(infForm.amount),id:uid()};
+    upInfs(is=>[...is,rec]);
+    if(isSupabaseReady()) sbUpsert("inflows",{id:rec.id,deal_id:rec.dealId||rec.projectId||null,date:rec.date||rec.month||null,amount:Number(rec.amount)||0,source:rec.source||"",ref_no:rec.refNo||"",note:rec.note||""},"id").catch(()=>{});
     setInfModal(false);
     setInfForm({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
   };
-  const delInf=id=>upInfs(is=>is.filter(i=>i.id!==id));
+  const delInf=id=>{upInfs(is=>is.filter(i=>i.id!==id));if(isSupabaseReady()) sbDelete('inflows',id).catch(()=>{});};
 
   const saveSwatch=()=>{
     if(!swForm.name) return;
     const rec={...swForm,estCost:Number(swForm.estCost||0),id:editSw||uid(),date:today};
     upSwatches(ss=>editSw?ss.map(s=>s.id===editSw?rec:s):[...ss,rec]);
+    if(isSupabaseReady()) sbSyncOne("swatches",rec,toSbSwatch);
     setSwModal(false);setEditSw(null);
   };
   const swQ=(id,st)=>upSwatches(ss=>ss.map(s=>{
@@ -3321,7 +3382,7 @@ export default function App(){
       </aside>
     );
   };
-  const Wrap=({children})=>{
+  const Wrap=React.useCallback(({children})=>{
     const W=navCollapsed?64:220;
     return(
       <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:W,transition:"margin-left .2s"}}>
@@ -3329,8 +3390,7 @@ export default function App(){
         <Nav/>
         <Toaster/>
         <div style={{maxWidth:1140,margin:"0 auto",padding:"22px 24px"}} className="fi">{children}</div>
-      {/* ── Export / Backup Panel ── */}
-      {showExport&&(
+      {showExportRef.current&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>💾 Data Backup</div>
@@ -3347,8 +3407,6 @@ export default function App(){
           <ExportImportPanel KEYS={KEYS} onClose={()=>setShowExport(false)}/>
         </div>
       )}
-
-
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
@@ -3424,7 +3482,7 @@ export default function App(){
       </Modal>
     </div>
   );
-  };
+  },[navCollapsed]);
 
   if(page==="home"){
 
@@ -4825,8 +4883,8 @@ export default function App(){
           // Projects past TAT
           const overdueTAT=Object.values(pcards).filter(p=>p.targetEndDate&&p.targetEndDate<today&&!DEPT_ORDER.every(d=>p.departments?.[d]?.done));
           if(overdueTAT.length) alerts.push({icon:"⏰",msg:`${overdueTAT.length} project${overdueTAT.length>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>setPage("projects")});
-          // QS budget pending
-          const qsPending=jos.filter(j=>j.budgetStatus==="QS Budget Pending");
+          // QS budget pending — only show if no budget has actually been saved yet
+          const qsPending=jos.filter(j=>j.budgetStatus==="QS Budget Pending"&&!Object.values(budgets[j.dealId]||{}).some(v=>Number(v)>0));
           if(qsPending.length) alerts.push({icon:"⚠️",msg:`${qsPending.length} project${qsPending.length>1?"s":""} need QS budget`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("costanalysis")});
           // MRs pending
           const mrPending=mreqs.filter(m=>m.status==="Submitted");
