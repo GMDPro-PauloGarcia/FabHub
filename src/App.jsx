@@ -3214,19 +3214,6 @@ export default function App(){
     upJos(j=>[jo,...j]);setViewJO(jo);setJoStep("preview");
   };
 
-  // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
-  if(!ready) return(
-    <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
-      <div style={{textAlign:"center"}}>
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2rem",color:"#0f172a",letterSpacing:-1}}>GMD <span style={{color:"#f59e0b"}}>PRODUCTIONS</span></div>
-        <div style={{color:"#94a3b8",marginTop:8,fontSize:".88rem"}}>Loading your workspace…</div>
-      </div>
-    </div>
-  );
-
-  // ── AUTH GATE ─────────────────────────────────────────────────────────────
-  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/><Toaster/></>;
-
   // ── SHARED NAV ────────────────────────────────────────────────────────────
   const roleColor=ROLE_CLR[role]||"#64748b";
   const hr=new Date().getHours();
@@ -3483,6 +3470,19 @@ export default function App(){
     </div>
   );
   },[navCollapsed]);
+  // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
+  if(!ready) return(
+    <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2rem",color:"#0f172a",letterSpacing:-1}}>GMD <span style={{color:"#f59e0b"}}>PRODUCTIONS</span></div>
+        <div style={{color:"#94a3b8",marginTop:8,fontSize:".88rem"}}>Loading your workspace…</div>
+      </div>
+    </div>
+  );
+
+  // ── AUTH GATE ─────────────────────────────────────────────────────────────
+  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/><Toaster/></>;
+
 
   if(page==="home"){
 
