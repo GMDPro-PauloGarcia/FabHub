@@ -462,7 +462,7 @@ const GMD_CLIENTS = [
   {name:"FCOY 15 Trading Corp.", email:"mktgpina.meah@gmail.com"},
   {name:"Finden Technologies Inc.", email:"msanpedro@finden.com.ph"},
   {name:"Firefly Electric & Lighting Corporation", email:"nyl.mendoza@fireflyelectric.com"},
-  {name:"Five Sips and Swallows Inc", email:"fivesipsandswallowsinc@gmail.com", balance:40000.0},
+  {name:"Five Sips and Swallows Inc", email:"fivesipsandswallowsinc@gmail.com"},
   {name:"Flipbox Events"},
   {name:"Floret - Pam Lopez"},
   {name:"Foptics Philippines, Inc", email:"ray@foptics.club"},
@@ -492,7 +492,7 @@ const GMD_CLIENTS = [
   {name:"iMaz Corp", email:"kim@imazcorp.com"},
   {name:"Innovator"},
   {name:"Innovention Food Resources Inc."},
-  {name:"Ivory Tree Inc.", email:"nicolenocom@gmail.com", city:"Quezon City", balance:2611200.0},
+  {name:"Ivory Tree Inc.", email:"nicolenocom@gmail.com", city:"Quezon City"},
   {name:"Jameson Ong"},
   {name:"JBsy Food and Beverage", email:"boldstar72@yahoo.com"},
   {name:"JC Mahusay", email:"jcmahusay16@gmail.com"},
@@ -534,7 +534,7 @@ const GMD_CLIENTS = [
   {name:"Mr. Jose Alexander Subido"},
   {name:"Mr. Stewart Lee Ong"},
   {name:"Mrs. Regine Laguyo", email:"regine@vtlaguyo.com"},
-  {name:"Newtrends International Corporation", email:"daniella.camias@newtrends.ph", city:"Bacoor", balance:240000.0},
+  {name:"Newtrends International Corporation", email:"daniella.camias@newtrends.ph", city:"Bacoor"},
   {name:"Nicolo Villasenor", email:"fivesipsandswallowsinc@gmail.com", city:"Pasig City"},
   {name:"Nito's International Ventures, Inc", email:"ltan@highleap.com.ph"},
   {name:"Nu Star Mall"},
@@ -2002,20 +2002,30 @@ export default function App(){
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
+    const existingCard=pcards[dealId];
+    const existingTask=existingCard?.departments?.[dept]?.tasks?.find(t=>t.id===taskId);
+    const nowDone=!(existingTask?.done||false);
+    const wasAlreadyDeptDone=existingCard?.departments?.[dept]?.done||false;
+    let deptJustCompleted=false;
     upPcards(ps=>{
       const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
       const deptData={...card.departments[dept]};
-      deptData.tasks=deptData.tasks.map(t=>t.id===taskId?{...t,done:!t.done,doneAt:!t.done?new Date().toISOString():null,doneBy:!t.done?session?.name:null}:t);
-      // Auto-mark dept done if all tasks complete
+      deptData.tasks=deptData.tasks.map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?new Date().toISOString():null,doneBy:nowDone?session?.name:null}:t);
       deptData.done=deptData.tasks.every(t=>t.done);
-      if(deptData.done&&!card.departments[dept].done){
+      if(deptData.done&&!wasAlreadyDeptDone){
         deptData.doneAt=new Date().toISOString();
         deptData.doneBy=session?.name;
-        logActivity(dealId,"Department Done",`${dept} completed all tasks for ${card.client}`,session?.name);
+        deptJustCompleted=true;
       }
       card.departments={...card.departments,[dept]:deptData};
       return{...ps,[dealId]:card};
     });
+    // Persist individual task to Supabase
+    if(isSupabaseReady()&&isUUID(taskId)){
+      sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
+    }
+    // logActivity called AFTER setState, not inside it
+    if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${existingCard?.client}`,session?.name);
   };
   const setProjectTAT=(dealId,days,category)=>{
     if(!days||isNaN(days)) return;
@@ -2560,6 +2570,8 @@ export default function App(){
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[showExport, setShowExport] =useState(false);
+  const showExportRef=useRef(false);
+  showExportRef.current=showExport;
   const[joStep,     setJoStep]     =useState("select");
   const[joSel,      setJoSel]      =useState(null);
   const[joExtra,    setJoExtra]    =useState({address:"",phone:"",priority:"Normal",extraNotes:""});
@@ -3008,8 +3020,7 @@ export default function App(){
         <Nav/>
         <Toaster/>
         <div style={{maxWidth:1140,margin:"0 auto",padding:"22px 24px"}} className="fi">{children}</div>
-      {/* ── Export / Backup Panel ── */}
-      {showExport&&(
+      {showExportRef.current&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
             <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>💾 Data Backup</div>
@@ -3026,8 +3037,6 @@ export default function App(){
           <ExportImportPanel KEYS={KEYS} onClose={()=>setShowExport(false)}/>
         </div>
       )}
-
-
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
@@ -3103,7 +3112,7 @@ export default function App(){
       </Modal>
     </div>
   );
-  },[navCollapsed,showExport]);
+  },[navCollapsed]);
 
   if(page==="home"){
 
@@ -4504,8 +4513,8 @@ export default function App(){
           // Projects past TAT
           const overdueTAT=Object.values(pcards).filter(p=>p.targetEndDate&&p.targetEndDate<today&&!DEPT_ORDER.every(d=>p.departments?.[d]?.done));
           if(overdueTAT.length) alerts.push({icon:"⏰",msg:`${overdueTAT.length} project${overdueTAT.length>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>setPage("projects")});
-          // QS budget pending
-          const qsPending=jos.filter(j=>j.budgetStatus==="QS Budget Pending");
+          // QS budget pending — only show if no budget has actually been saved yet
+          const qsPending=jos.filter(j=>j.budgetStatus==="QS Budget Pending"&&!Object.values(budgets[j.dealId]||{}).some(v=>Number(v)>0));
           if(qsPending.length) alerts.push({icon:"⚠️",msg:`${qsPending.length} project${qsPending.length>1?"s":""} need QS budget`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("costanalysis")});
           // MRs pending
           const mrPending=mreqs.filter(m=>m.status==="Submitted");
