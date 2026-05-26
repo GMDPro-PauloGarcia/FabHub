@@ -1723,11 +1723,15 @@ export default function App(){
 
   // Auto-refresh when user switches back to FabHub tab
   useEffect(()=>{
+    let lastRefresh=0;
     const refresh=async()=>{
       if(!isSupabaseReady()||!session) return;
+      const now=Date.now();
+      if(now-lastRefresh<30000) return; // max once per 30s
+      lastRefresh=now;
       try{
         const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage)})));
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
@@ -1841,9 +1845,11 @@ export default function App(){
   });
   const toSbBR = r=>({
     id:r.id, deal_id:r.dealId||null, purpose:r.purpose||"",
+    title:r.title||r.purpose||"",
     amount:Number(r.amount)||0, urgency:r.urgency||"Normal",
     date_needed:r.dateNeeded||null, status:r.status||"Pending",
     approved_by:r.approvedBy||"", submitted_by:r.submittedBy||"",
+    category:r.category||"",
   });
   const toSbAddendum = r=>({
     id:r.id, deal_id:r.dealId, title:r.title||"", description:r.description||"",
@@ -1853,9 +1859,11 @@ export default function App(){
     discovered_by:r.discoveredBy||"",
   });
   const toSbSwatch = r=>({
-    id:r.id, deal_id:r.dealId||null, name:r.name||"", category:r.category||"",
+    id:r.id, deal_id:r.dealId||r.projectId||null, name:r.name||"", category:r.category||"",
     qty:Number(r.qty)||0, unit:r.unit||"", supplier:r.supplier||"",
-    ref_link:r.refLink||"", status:r.status||"To Buy", notes:r.notes||"",
+    ref_link:r.refLink||r.swatchLink||"", status:r.status||"To Buy", notes:r.notes||"",
+    est_cost:Number(r.estCost)||0, swatch_link:r.swatchLink||r.refLink||"",
+    added_by:r.addedBy||"",
   });
   const toSbChecklist = r=>({
     id:r.id, deal_id:r.dealId||null, type:r.type||"Task", title:r.title||"",
@@ -2172,7 +2180,7 @@ export default function App(){
   const upBillings =useCallback(fn=>setBillings(p=>{const n=fn(p);persist(KEYS.billings,n);return n;}),[persist]);
   const addMilestone  =(ms)=>upBillings(bs=>[...bs,{...ms,id:uid(),createdDate:today}]);
   const updateMilestone=(id,ch)=>upBillings(bs=>bs.map(b=>b.id===id?{...b,...ch}:b));
-  const deleteMilestone=(id)=>upBillings(bs=>bs.filter(b=>b.id!==id));
+  const deleteMilestone=(id)=>{upBillings(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});};
   const logBillingPayment=(msId,payment)=>{
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
@@ -2219,13 +2227,13 @@ export default function App(){
     sendTelegramNotification("management",msg);
   };
   const updateAddendum=(id,ch)=>upAddenda(as=>as.map(a=>a.id===id?{...a,...ch}:a));
-  const deleteAddendum=(id)=>upAddenda(as=>as.filter(a=>a.id!==id));
-  const delJo        =(id)=>upJos(js=>js.filter(j=>j.id!==id));
-  const delMR        =(id)=>upMreqs(ms=>ms.filter(m=>m.id!==id));
-  const delBR        =(id)=>upBreqs(bs=>bs.filter(b=>b.id!==id));
-  const delPcard     =(id)=>upPcards(ps=>{const n={...ps};delete n[id];return n;});
-  const delBudget    =(id)=>upBudgets(bs=>{const n={...bs};delete n[id];return n;});
-  const delChecklist =(id)=>upChecklist(cs=>cs.filter(c=>c.id!==id));
+  const deleteAddendum=(id)=>{upAddenda(as=>as.filter(a=>a.id!==id));if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});};
+  const delJo        =(id)=>{const jo=jos.find(j=>j.id===id);upJos(js=>js.filter(j=>j.id!==id));if(isSupabaseReady()) sbDelete('job_orders',id).catch(()=>{});logActivity(id,"JO Deleted",`JO ${jo?.joNo||id} deleted`,session?.name||role);};
+  const delMR        =(id)=>{upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});};
+  const delBR        =(id)=>{upBreqs(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('budget_requests',id).catch(()=>{});};
+  const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_cards').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
+  const delBudget    =(id)=>{upBudgets(bs=>{const n={...bs};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_budgets').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
+  const delChecklist =(id)=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady()) sbDelete('checklists',id).catch(()=>{});};
   const upMreqs    =useCallback(fn=>setMreqs(p=>{const n=fn(p);persist(KEYS.mreqs,n);return n;}),[persist]);
   const upBreqs    =useCallback(fn=>setBreqs(p=>{const n=fn(p);persist(KEYS.breqs,n);return n;}),[persist]);
   const addMR      =(mr)=>{
@@ -2251,7 +2259,7 @@ export default function App(){
     }
     upPrs(ps=>ps.map(p=>p.id===id?{...p,...changes}:p));
   };
-  const deletePR   =(id)=>upPrs(ps=>ps.filter(p=>p.id!==id));
+  const deletePR   =(id)=>{upPrs(ps=>ps.filter(p=>p.id!==id));if(isSupabaseReady()) sbDelete('purchase_requests',id).catch(()=>{});};
   const saveDayPos =(date,pos)=>upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
   const upDeals    =useCallback(fn=>setDeals(p=>{const n=fn(p);persist(KEYS.deals,n);return n;}),[persist]);
   const upProjs    =useCallback(fn=>setProjs(p=>{const n=fn(p);persist(KEYS.projects,n);return n;}),[persist]);
@@ -2260,6 +2268,7 @@ export default function App(){
   const upInflows  =upInfs; // alias for DataManagement
   const upJos      =useCallback(fn=>setJos(p=>{const n=fn(p);persist(KEYS.jos,n);return n;}),[persist]);
   const upSwatches =useCallback(fn=>setSwatches(p=>{const n=fn(p);persist(KEYS.swatches,n);return n;}),[persist]);
+  const delSwatch  =(id)=>{upSwatches(ss=>ss.filter(s=>s.id!==id));if(isSupabaseReady()) sbDelete('swatches',id).catch(()=>{});};
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
 
   // ── DRF CRUD ─────────────────────────────────────────────────────────────
@@ -2370,7 +2379,7 @@ export default function App(){
     upChecklist(cs=>editCl?cs.map(c=>c.id===editCl?rec:c):[...cs,rec]);
     setClModal(false);setEditCl(null);
   };
-  const delCl=id=>upChecklist(cs=>cs.filter(c=>c.id!==id));
+  const delCl=delChecklist;
   const clStatusQ=(id,st)=>upChecklist(cs=>cs.map(c=>c.id===id?{...c,status:st}:c));
 
   const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
@@ -2592,7 +2601,17 @@ export default function App(){
     setEditDeal(null);
     setDealModal(false);
   };
-  const delDeal=id=>{upDeals(ds=>ds.filter(d=>d.id!==id));upProjs(ps=>{const n={...ps};delete n[id];return n;});setConfirmDel(null);};
+  const delDeal=id=>{
+    const deal=deals.find(d=>d.id===id);
+    upDeals(ds=>ds.filter(d=>d.id!==id));
+    upProjs(ps=>{const n={...ps};delete n[id];return n;});
+    setConfirmDel(null);
+    logActivity(id,"Deal Deleted",`${deal?.client||id} permanently deleted`,session?.name||role);
+    if(isSupabaseReady()){
+      sbDelete('deals',id).catch(()=>{});
+      supabase.from('projects').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});
+    }
+  };
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
@@ -2733,14 +2752,14 @@ export default function App(){
     setEditExpId(null);
     setExpModal(false);
   };
-  const delExp=id=>upExps(es=>es.filter(e=>e.id!==id));
+  const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
   const saveInf=()=>{
     if(!infForm.source||!infForm.amount) return;
     upInfs(is=>[...is,{...infForm,amount:Number(infForm.amount),id:uid()}]);
     setInfModal(false);
     setInfForm({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
   };
-  const delInf=id=>upInfs(is=>is.filter(i=>i.id!==id));
+  const delInf=id=>{upInfs(is=>is.filter(i=>i.id!==id));if(isSupabaseReady()) sbDelete('inflows',id).catch(()=>{});};
 
   const saveSwatch=()=>{
     if(!swForm.name) return;
@@ -2942,7 +2961,7 @@ export default function App(){
       </aside>
     );
   };
-  const Wrap=({children})=>{
+  const Wrap=React.useCallback(({children})=>{
     const W=navCollapsed?64:220;
     return(
       <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:W,transition:"margin-left .2s"}}>
@@ -3045,7 +3064,7 @@ export default function App(){
       </Modal>
     </div>
   );
-  };
+  },[navCollapsed,showExport]);
 
   if(page==="home"){
 
