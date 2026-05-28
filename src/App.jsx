@@ -3054,6 +3054,14 @@ export default function App(){
       paymentStatus:"Unpaid",
       notes:form.scopeNotes||d.notes,
     }:d));
+    // Persist stage change to Supabase immediately so refresh doesn't lose the award
+    if(isSupabaseReady()) sbUpdate('deals',id,{
+      stage:"06 · Project Kickoff",
+      probability:100,
+      payment_status:"Unpaid",
+      notes:form.scopeNotes||awardModal.notes||"",
+      updated_at:new Date().toISOString(),
+    }).catch(()=>{});
     // Create project record
     if(!projs[id]) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     // Build PM list
