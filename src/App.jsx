@@ -3023,6 +3023,7 @@ export default function App(){
   const[page,       setPage]       =useState("home");
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
+  const smartImportInputRef=useRef(null);
   showExportRef.current=showExport;
   const[joStep,     setJoStep]     =useState("select");
   const[joSel,      setJoSel]      =useState(null);
@@ -5251,9 +5252,9 @@ export default function App(){
             </div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <label style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            <button onClick={()=>{if(!window.XLSX){toastEmit("Excel library not loaded — please refresh the page and try again.","error");return;}smartImportInputRef.current?.click();}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
               📥 Smart Import
-              <input type="file" accept=".xlsx,.xls,.csv,.pdf" style={{display:"none"}} onChange={async e=>{
+              <input ref={smartImportInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" style={{position:"absolute",opacity:0,width:0,height:0,overflow:"hidden",pointerEvents:"none"}} onChange={async e=>{
                 const file=e.target.files[0]; if(!file) return;
                 e.target.value="";
                 setImportLoading(true);
@@ -5348,7 +5349,7 @@ export default function App(){
                 setImportLoading(false);
               }}/>
               {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>📂 Reading…</span>}
-            </label>
+            </button>
             <button onClick={()=>{
               const hdrs=["Client","Project Name","CE No","CE Type","Stage","Contract Value","Invoiced","Amount Paid","Payment Status","Receipt Type","Sales Owner","Date Acquired","Notes"];
               const rows=[
