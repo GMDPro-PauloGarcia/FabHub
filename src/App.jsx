@@ -4464,7 +4464,7 @@ export default function App(){
         const totalCash     = latestCash?["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latestCash[b+"_end"]||latestCash[b+"End"]||0),0):0;
         const noBilling     = wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
         const collRate      = totalBilled>0?Math.round(totalPaid/totalBilled*100):0;
-        const totalPipeVal  = deals.filter(d=>d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0);
+        const totalPipeVal  = deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* KPI Row 1 — Financial health */}
@@ -4739,7 +4739,7 @@ export default function App(){
 
       {(()=>{
         const today2=new Date();
-        const activePipe=deals.filter(d=>d.stage!=="Cancelled");
+        const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
         const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
         const thisMonth=new Date().toISOString().slice(0,7);
@@ -4909,7 +4909,7 @@ export default function App(){
         {/* ── KPI STRIP ───────────────────────────────────────────────── */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
           {[
-            {l:"Pipeline",      v:fmtK(deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)).length+" deals"},
+            {l:"Pipeline",      v:fmtK(deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)&&!WON_STAGES.includes(d.stage)).length+" deals"},
             {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects"},
             {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`},
             {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
