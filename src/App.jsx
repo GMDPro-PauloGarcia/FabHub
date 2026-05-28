@@ -2600,6 +2600,7 @@ export default function App(){
   };
   const deleteAddendum=(id)=>{upAddenda(as=>as.filter(a=>a.id!==id));if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});};
   const delJo        =(id)=>{const jo=jos.find(j=>j.id===id);upJos(js=>js.filter(j=>j.id!==id));if(isSupabaseReady()) sbDelete('job_orders',id).catch(()=>{});logActivity(id,"JO Deleted",`JO ${jo?.joNo||id} deleted`,session?.name||role);};
+  const updateJO     =(id,changes)=>{upJos(js=>js.map(j=>{if(j.id!==id)return j;const u={...j,...changes};if(isSupabaseReady())sbSyncOne("job_orders",u,toSbJO);return u;}));}
   const delMR        =(id)=>{upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});};
   const delBR        =(id)=>{upBreqs(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('budget_requests',id).catch(()=>{});};
   const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_cards').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
@@ -5553,7 +5554,7 @@ export default function App(){
         editMat={editMat} setEditMat={setEditMat} saveMat={saveMat}
         addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
-    if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
+    if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} updateJO={updateJO} delJo={delJo} role={role} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
@@ -5625,7 +5626,7 @@ export default function App(){
         ))}
       </Wrap>
     );
-        if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
+        if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} updateJO={updateJO} delJo={delJo} role={role} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
   }
 
@@ -7282,7 +7283,50 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
 }
 
 // ─── JOB ORDERS VIEW ─────────────────────────────────────────────────────────
-function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtra,setJoExtra,viewJO,setViewJO,issueJO,overallProg,Wrap}){
+function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtra,setJoExtra,viewJO,setViewJO,issueJO,overallProg,updateJO,delJo,role,Wrap}){
+  const canEdit=role==="Manager"||role==="Finance"||role==="Operations";
+  const[editJOForm,setEditJOForm]=React.useState({});
+
+  if(joStep==="editjo"&&viewJO) return(
+    <Wrap>
+      <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:18}}>
+        <Btn variant="ghost" small onClick={()=>setJoStep("select")}>← Back</Btn>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:800,color:"#0f172a"}}>Edit {viewJO.joNo||viewJO.joNum}</div>
+          <div style={{fontSize:".75rem",color:"#64748b"}}>{viewJO.client}</div>
+        </div>
+        <Btn variant="green" onClick={()=>{updateJO(viewJO.id,editJOForm);setJoStep("select");}}>✓ Save Changes</Btn>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <Card>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Team Assignment</div>
+          <Fld label="PM 1"><Inp value={editJOForm.pm1??viewJO.pm1??""} onChange={e=>setEditJOForm(p=>({...p,pm1:e.target.value}))} placeholder="Project Manager"/></Fld>
+          <Fld label="PM 2 (optional)"><Inp value={editJOForm.pm2??viewJO.pm2??""} onChange={e=>setEditJOForm(p=>({...p,pm2:e.target.value}))} placeholder="Second PM"/></Fld>
+          <Fld label="PM 3 (optional)"><Inp value={editJOForm.pm3??viewJO.pm3??""} onChange={e=>setEditJOForm(p=>({...p,pm3:e.target.value}))} placeholder="Third PM"/></Fld>
+          <Fld label="Coordinator"><Inp value={editJOForm.coordinator??viewJO.coordinator??""} onChange={e=>setEditJOForm(p=>({...p,coordinator:e.target.value}))} placeholder="Project Coordinator"/></Fld>
+          <Fld label="AE Assigned"><Inp value={editJOForm.aeAssigned??viewJO.aeAssigned??""} onChange={e=>setEditJOForm(p=>({...p,aeAssigned:e.target.value}))} placeholder="Account Executive"/></Fld>
+        </Card>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <Card>
+            <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Schedule & Links</div>
+            <Fld label="Start Date"><Inp type="date" value={editJOForm.startDate??viewJO.startDate??""} onChange={e=>setEditJOForm(p=>({...p,startDate:e.target.value}))}/></Fld>
+            <Fld label="Comms Group Link"><Inp type="url" value={editJOForm.commsLink??viewJO.commsLink??""} onChange={e=>setEditJOForm(p=>({...p,commsLink:e.target.value}))} placeholder="WhatsApp/Viber group link"/></Fld>
+            <Fld label="Status">
+              <Sel value={editJOForm.status??viewJO.status??"Active"} onChange={e=>setEditJOForm(p=>({...p,status:e.target.value}))}>
+                <option>Active</option><option>On Hold</option><option>Completed</option><option>Cancelled</option>
+              </Sel>
+            </Fld>
+          </Card>
+          <Card>
+            <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Notes</div>
+            <Fld label="Scope Notes"><Inp rows={3} value={editJOForm.scopeNotes??viewJO.scopeNotes??""} onChange={e=>setEditJOForm(p=>({...p,scopeNotes:e.target.value}))} placeholder="Scope of work…"/></Fld>
+            <Fld label="Special Instructions"><Inp rows={2} value={editJOForm.specialInstructions??viewJO.specialInstructions??""} onChange={e=>setEditJOForm(p=>({...p,specialInstructions:e.target.value}))} placeholder="Special instructions…"/></Fld>
+          </Card>
+        </div>
+      </div>
+    </Wrap>
+  );
+
   if(joStep==="select") return(
     <Wrap>
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
@@ -7302,18 +7346,28 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
         <div>
           <SecHead title="Issued JOs"/>
           {jos.map((jo,i)=>(
-            <Card key={i} onClick={()=>{setViewJO(jo);setJoStep("preview");}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                <div>
+            <Card key={i}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{flex:1,cursor:"pointer"}} onClick={()=>{setViewJO(jo);setJoStep("preview");}}>
                   <div style={{fontWeight:700,color:"#0f172a"}}>{jo.joNo||jo.joNum}</div>
                   <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{jo.client||jo.deal?.client}</div>
                   <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{jo.issuedDate||jo.dateIssued}</div>
                   {jo.pm1&&<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>PM: {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")}</div>}
                 </div>
-                <button onClick={e=>{e.stopPropagation();printJO(jo);}}
-                  style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:600,flexShrink:0}}>
-                  🖨 Print
-                </button>
+                <div style={{display:"flex",gap:5,flexShrink:0}}>
+                  <button onClick={e=>{e.stopPropagation();printJO(jo);}}
+                    style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
+                    🖨 Print
+                  </button>
+                  {canEdit&&<button onClick={e=>{e.stopPropagation();setViewJO(jo);setEditJOForm({});setJoStep("editjo");}}
+                    style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:600}}>
+                    ✏ Edit
+                  </button>}
+                  {canEdit&&<button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete ${jo.joNo||jo.joNum}? This cannot be undone.`))delJo(jo.id);}}
+                    style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>
+                    🗑
+                  </button>}
+                </div>
               </div>
             </Card>
           ))}
