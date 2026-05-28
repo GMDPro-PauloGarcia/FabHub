@@ -5254,7 +5254,9 @@ export default function App(){
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             <button onClick={()=>{if(!window.XLSX){toastEmit("Excel library not loaded — please refresh the page and try again.","error");return;}smartImportInputRef.current?.click();}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
               📥 Smart Import
-              <input ref={smartImportInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" style={{position:"absolute",opacity:0,width:0,height:0,overflow:"hidden",pointerEvents:"none"}} onChange={async e=>{
+              {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>📂 Reading…</span>}
+            </button>
+            <input ref={smartImportInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" style={{display:"none"}} onChange={async e=>{
                 const file=e.target.files[0]; if(!file) return;
                 e.target.value="";
                 setImportLoading(true);
@@ -5348,8 +5350,6 @@ export default function App(){
                 }
                 setImportLoading(false);
               }}/>
-              {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>📂 Reading…</span>}
-            </button>
             <button onClick={()=>{
               const hdrs=["Client","Project Name","CE No","CE Type","Stage","Contract Value","Invoiced","Amount Paid","Payment Status","Receipt Type","Sales Owner","Date Acquired","Notes"];
               const rows=[
@@ -6888,7 +6888,7 @@ function PLStatement({billings,exps,wonDeals}){
       {/* Controls row */}
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:20,flexWrap:"wrap"}}>
         <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:8,padding:2}}>
-          {[["monthly","📅 Monthly"],["dept","🏷 By Department"]].map(([v,l])=>(
+          {[["monthly","📅 Monthly"],["dept","🏷 By Project Type"]].map(([v,l])=>(
             <button key={v} onClick={()=>setView(v)} style={{padding:"6px 14px",borderRadius:6,border:"none",cursor:"pointer",fontSize:".8rem",fontWeight:600,background:view===v?"#fff":"transparent",color:view===v?"#0f172a":"#64748b",boxShadow:view===v?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .15s"}}>{l}</button>
           ))}
         </div>
@@ -6952,7 +6952,7 @@ function PLStatement({billings,exps,wonDeals}){
             <table style={{width:"100%",borderCollapse:"collapse"}}>
               <thead>
                 <tr>
-                  {["Department","Revenue","Collected","Expenses","Gross Profit","GP %"].map((h,i)=>(
+                  {["Project Type","Revenue","Collected","Expenses","Gross Profit","GP %"].map((h,i)=>(
                     <th key={h} style={{...th,textAlign:i===0?"left":"right"}}>{h}</th>
                   ))}
                 </tr>
@@ -11645,23 +11645,25 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
+  const[eventModal,setEventModal]=React.useState(null); // {event}
 
   const events=React.useMemo(()=>{
     const list=[];
     wonDeals.forEach(d=>{
       const pc=pcards[d.id];const jo=jos.find(j=>j.dealId===d.id);
-      if(pc?.targetEndDate) list.push({date:pc.targetEndDate,type:"end",label:d.client,sub:"PM: "+(jo?.pm1||"—"),color:"#3b82f6",icon:"🏗"});
+      if(pc?.targetEndDate) list.push({date:pc.targetEndDate,type:"end",label:d.client,sub:d.ceNo||"",detail:"PM: "+(jo?.pm1||"—"),color:"#3b82f6",icon:"🏗",dealId:d.id});
     });
     prs.filter(p=>p.deliveryDate&&!["Delivered","Cancelled"].includes(p.status)).forEach(p=>{
       const d=wonDeals.find(x=>x.id===(p.projectId||p.dealId));
-      list.push({date:p.deliveryDate,type:"delivery",label:p.itemName||"Delivery",sub:d?.client||"?",color:"#f97316",icon:"📦"});
+      list.push({date:p.deliveryDate,type:"delivery",label:d?.client||"?",sub:p.itemName||"Delivery",detail:d?.ceNo||"",color:"#f97316",icon:"📦",dealId:d?.id});
     });
     billings.filter(b=>b.dueDate&&b.status!=="Fully Paid").forEach(b=>{
       const d=wonDeals.find(x=>x.id===b.dealId);
-      list.push({date:b.dueDate,type:"billing",label:b.name||"Billing",sub:(d?.client||"?")+" · ₱"+Number(b.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0}),color:"#10b981",icon:"💵"});
+      list.push({date:b.dueDate,type:"billing",label:d?.client||"?",sub:b.name||"Billing",detail:"₱"+Number(b.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0}),color:"#10b981",icon:"💵",dealId:d?.id});
     });
     drfs.filter(d=>d.designDeadline&&d.status!=="Done").forEach(d=>{
-      list.push({date:d.designDeadline,type:"drf",label:d.drfNo||"DRF",sub:d.client||"?",color:"#ec4899",icon:"📝"});
+      const deal=wonDeals.find(x=>x.id===d.dealId);
+      list.push({date:d.designDeadline,type:"drf",label:deal?.client||d.client||"?",sub:d.drfNo||"DRF",detail:d.projectTitle||"",color:"#ec4899",icon:"📝",dealId:d.dealId});
     });
     return list;
   },[wonDeals,pcards,jos,prs,billings,drfs]);
@@ -11781,8 +11783,10 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
                     style={{minHeight:70,padding:"4px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":"#fff",cursor:"pointer"}}>
                     <div style={{fontWeight:isToday?800:500,fontSize:".75rem",color:isToday?"#f59e0b":"#0f172a",marginBottom:2,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined}}>{day}</div>
                     {dayEvents.slice(0,3).map((e,ei)=>(
-                      <div key={ei} style={{background:e.color+"22",border:`1px solid ${e.color}44`,borderRadius:4,padding:"1px 4px",marginBottom:1,fontSize:".6rem",color:e.color,fontWeight:600,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
+                      <div key={ei} onClick={ev=>{ev.stopPropagation();setEventModal(e);}}
+                        style={{background:e.color+"22",border:`1px solid ${e.color}44`,borderRadius:4,padding:"2px 4px",marginBottom:1,fontSize:".6rem",color:e.color,fontWeight:600,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer"}}>
                         {e.icon} {e.label}
+                        {e.sub&&<span style={{opacity:.75,fontWeight:400}}> · {e.sub}</span>}
                       </div>
                     ))}
                     {dayEvents.length>3&&<div style={{fontSize:".58rem",color:"#94a3b8",paddingLeft:2}}>+{dayEvents.length-3}</div>}
@@ -11800,20 +11804,58 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
               </span>
             </div>
             {(eventsByDate[selectedDay]||[]).map((e,i)=>(
-              <div key={i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 16px",borderBottom:i<(eventsByDate[selectedDay]||[]).length-1?"1px solid #f8fafc":""}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:e.color,flexShrink:0,marginTop:5}}/>
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<(eventsByDate[selectedDay]||[]).length-1?"1px solid #f8fafc":""}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:e.color,flexShrink:0}}/>
                 <div style={{flex:1}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{e.label}</div>
-                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{e.sub}</div>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{e.icon} {e.label}</div>
+                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{e.sub}{e.detail?" · "+e.detail:""}</div>
                 </div>
-                <div style={{fontSize:".68rem",fontWeight:700,color:e.color,background:e.color+"18",border:`1px solid ${e.color}44`,borderRadius:20,padding:"2px 8px",flexShrink:0}}>
-                  {e.type==="end"?"End":e.type==="delivery"?"Delivery":e.type==="billing"?"Billing":"DRF"}
+                <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                  <span style={{fontSize:".68rem",fontWeight:700,color:e.color,background:e.color+"18",border:`1px solid ${e.color}44`,borderRadius:20,padding:"2px 8px"}}>
+                    {e.type==="end"?"Project End":e.type==="delivery"?"PO Delivery":e.type==="billing"?"Billing Due":"DRF Deadline"}
+                  </span>
+                  {e.dealId&&<button onClick={()=>{setPage("billing");}} style={{fontSize:".7rem",fontWeight:700,background:"#eff6ff",color:"#3b82f6",border:"1px solid #bfdbfe",borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit"}}>→ View</button>}
                 </div>
               </div>
             ))}
           </div>
         )}
       </>)}
+
+      {/* Event detail modal */}
+      {eventModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setEventModal(null)}>
+          <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:420,padding:0,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,.25)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{background:eventModal.color,padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div>
+                <div style={{fontWeight:800,color:"#fff",fontSize:"1.1rem"}}>{eventModal.icon} {eventModal.label}</div>
+                <div style={{fontSize:".78rem",color:"rgba(255,255,255,.85)",marginTop:2}}>{eventModal.sub}</div>
+              </div>
+              <button onClick={()=>setEventModal(null)} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:8,padding:"4px 10px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:".85rem"}}>✕</button>
+            </div>
+            <div style={{padding:"16px 20px"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+                <div style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
+                  <div style={{fontSize:".7rem",color:"#64748b",fontWeight:600}}>TYPE</div>
+                  <div style={{fontWeight:700,color:"#0f172a",marginTop:2}}>{eventModal.type==="end"?"Project End":eventModal.type==="delivery"?"PO Delivery":eventModal.type==="billing"?"Billing Due":"DRF Deadline"}</div>
+                </div>
+                <div style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
+                  <div style={{fontSize:".7rem",color:"#64748b",fontWeight:600}}>DATE</div>
+                  <div style={{fontWeight:700,color:"#0f172a",marginTop:2}}>{new Date(eventModal.date+"T00:00:00").toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"})}</div>
+                </div>
+              </div>
+              {eventModal.detail&&<div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:".82rem",color:"#065f46"}}>{eventModal.detail}</div>}
+              <div style={{display:"flex",gap:8}}>
+                {eventModal.dealId&&eventModal.type==="billing"&&<button onClick={()=>{setEventModal(null);setPage("billing");}} style={{flex:1,padding:"9px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>💵 View Billing</button>}
+                {eventModal.dealId&&eventModal.type==="end"&&<button onClick={()=>{setEventModal(null);setPage("calendar");}} style={{flex:1,padding:"9px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🏗 View Project</button>}
+                {eventModal.dealId&&eventModal.type==="drf"&&<button onClick={()=>{setEventModal(null);setPage("drfs");}} style={{flex:1,padding:"9px",background:"#ec4899",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>📝 View DRF</button>}
+                {eventModal.dealId&&eventModal.type==="delivery"&&<button onClick={()=>{setEventModal(null);setPage("budget");}} style={{flex:1,padding:"9px",background:"#f97316",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>📦 View PO</button>}
+                <button onClick={()=>setEventModal(null)} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".82rem",cursor:"pointer"}}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {calTab==="thisweek"&&(
         <div>
@@ -11823,11 +11865,12 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
             :thisWeekEvents.map((e,i)=>{
               const daysUntil=Math.ceil((new Date(e.date)-todayD)/(1000*60*60*24));
               return(
-                <div key={i} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${e.color}33`,padding:"12px 16px",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+                <div key={i} onClick={()=>setEventModal(e)} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${e.color}33`,padding:"12px 16px",marginBottom:8,display:"flex",alignItems:"center",gap:12,cursor:"pointer"}}>
                   <div style={{width:36,height:36,borderRadius:8,background:e.color+"20",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1.1rem",flexShrink:0}}>{e.icon}</div>
                   <div style={{flex:1}}>
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{e.label}</div>
-                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{e.sub}</div>
+                    <div style={{fontSize:".72rem",color:e.color,fontWeight:600,marginTop:1}}>{e.sub}</div>
+                    {e.detail&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{e.detail}</div>}
                     <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>{new Date(e.date+"T00:00:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</div>
                   </div>
                   <div style={{fontSize:".72rem",fontWeight:700,color:daysUntil<=1?"#dc2626":daysUntil<=3?"#f59e0b":"#059669",background:daysUntil<=1?"#fef2f2":daysUntil<=3?"#fffbeb":"#f0fdf4",border:`1px solid ${daysUntil<=1?"#fecaca":daysUntil<=3?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 10px",flexShrink:0}}>
