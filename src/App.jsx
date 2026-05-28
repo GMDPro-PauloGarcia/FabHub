@@ -5675,8 +5675,6 @@ export default function App(){
           <KPI label="Gross Profit" value={fmtK(totRev-totExp)}  color={totRev-totExp>=0?"#059669":"#ef4444"}/>
           <KPI label="Collected"    value={fmtK(totColl)}        color="#10b981" sub={`${fmtK(totOut)} out`}/>
         </div>
-        <SecHead title="Collections" sub="Payment tracking for all awarded projects"/>
-        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"||role==="QS"||role==="Procurement"||role==="Operations"||role==="Design"}/>
         <div style={{marginTop:24}}>
           <SecHead title="Recent Expenses" sub="Recorded by Accounting — view only"/>
           {exps.slice(-10).reverse().map(e=>(
