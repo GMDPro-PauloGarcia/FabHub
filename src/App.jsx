@@ -5320,6 +5320,7 @@ export default function App(){
                 </div>
                 <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {d.ceNo&&<span style={{color:"#475569",fontWeight:600}}>{d.ceNo}</span>}
+                  {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
                   {d.salesOwner&&<span>👤 {d.salesOwner.split(" ")[0]}</span>}
                   <span style={{color:d.followUp&&d.followUp<today?"#ef4444":daysSince(d.dateAcquired)>15?"#f59e0b":"#94a3b8"}}>
                     {d.followUp&&d.followUp<today?"⚠ "+d.followUp:daysSince(d.dateAcquired)+"d ago"}
@@ -5406,6 +5407,7 @@ export default function App(){
                           <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
                           <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
                             {d.ceNo&&<span>{d.ceNo}</span>}
+                            {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
                             {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
                             {d.stage&&<span style={{color:"#8b5cf6"}}>{d.stage.split("·")[0].trim()}</span>}
                           </div>
