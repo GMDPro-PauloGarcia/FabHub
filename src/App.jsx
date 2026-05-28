@@ -8389,8 +8389,10 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
   // Billing-derived metrics
   const billingMetrics=useMemo(()=>{
     const bl=billings||[];
-    const thisYear=new Date().getFullYear();
-    let outstanding=0,collectedYTD=0;
+    const now=new Date();
+    const thisYear=now.getFullYear();
+    const thisMonth=now.getMonth();
+    let outstanding=0,collectedYTD=0,dueThisMonth=0;
     bl.forEach(b=>{
       if(b.status==='Cancelled') return;
       const amt=Number(b.amount||0);
@@ -8399,8 +8401,14 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
       (b.payments||[]).forEach(p=>{
         if(p.date&&new Date(p.date).getFullYear()===thisYear) collectedYTD+=Number(p.amount||0);
       });
+      if(b.dueDate&&b.status!=='Fully Paid'){
+        const due=new Date(b.dueDate);
+        if(due.getFullYear()===thisYear&&due.getMonth()===thisMonth){
+          dueThisMonth+=Math.max(0,amt-paid);
+        }
+      }
     });
-    return{outstanding,collectedYTD};
+    return{outstanding,collectedYTD,dueThisMonth};
   },[billings]);
 
   // Outstanding balance per deal (for FabHub Collections breakdown)
@@ -8761,13 +8769,13 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
               </div>
             </div>
           ))}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",background:"#f8fafc"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",background:"#f0fdf4"}}>
             <div>
-              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>YTD Accounts Receivable</div>
-              <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>Auto-calculated from Billing milestones</div>
+              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>Due This Month</div>
+              <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>Billing milestones due this calendar month</div>
             </div>
-            <span style={{fontWeight:800,color:"#10b981",fontSize:".88rem"}}>
-              ₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}
+            <span style={{fontWeight:800,color:billingMetrics.dueThisMonth>0?"#f59e0b":"#10b981",fontSize:".88rem"}}>
+              ₱{billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
             </span>
           </div>
         </div>
