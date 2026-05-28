@@ -2567,6 +2567,44 @@ export default function App(){
       });
     }
   };
+  const deleteBillingPayment=(msId,payId)=>{
+    const milestone=billings.find(b=>b.id===msId);
+    const payment=milestone?.payments?.find(p=>p.id===payId);
+    if(!payment) return;
+    const dealId=milestone.dealId;
+    upBillings(bs=>bs.map(b=>{
+      if(b.id!==msId) return b;
+      const payments=(b.payments||[]).filter(p=>p.id!==payId);
+      const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
+      const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':'Unpaid';
+      if(isSupabaseReady()){
+        sbDelete('billing_payments',payId).catch(()=>{});
+        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(()=>{});
+      }
+      return{...b,payments,status};
+    }));
+    // Reverse the deal.amountPaid so Finance KPIs stay accurate
+    if(dealId){
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==dealId) return d;
+        const newPaid=Math.max(0,Number(d.amountPaid||0)-Number(payment.amount||0));
+        const refVal=Number(d.invoiced||d.value||0);
+        const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
+        return{...d,amountPaid:newPaid,paymentStatus:newStatus};
+      }));
+    }
+    // Reverse the cashPositions update
+    if(payment.bank&&payment.amount){
+      const pDate=payment.date||today;
+      const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
+      setCashPos(cp=>{
+        const existing=cp[pDate];if(!existing)return cp;
+        const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
+        const field=fieldMap[bankKey]||null;if(!field)return cp;
+        return{...cp,[pDate]:{...existing,[field]:Math.max(0,Number(existing[field]||0)-Number(payment.amount))}};
+      });
+    }
+  };
   // Auto invoice number generator
   const nextCENo=()=>{
     const nums=deals.map(d=>d.ceNo).filter(Boolean)
@@ -6447,6 +6485,7 @@ export default function App(){
         billings={billings} wonDeals={wonDeals} deals={deals}
         addMilestone={addMilestone} updateMilestone={updateMilestone}
         deleteMilestone={deleteMilestone} logBillingPayment={logBillingPayment}
+        deleteBillingPayment={deleteBillingPayment}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}/>
     </Wrap>
   );
@@ -9815,12 +9854,14 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,nextInvoiceNo,session,role}){
-  const[selDeal,  setSelDeal]  =useState(null);     // selected deal for popup
-  const[showForm, setShowForm] =useState(false);    // add milestone form
-  const[showPay,  setShowPay]  =useState(null);     // milestone id for payment log
+function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role}){
+  const[selDeal,  setSelDeal]  =useState(null);
+  const[showForm, setShowForm] =useState(false);
+  const[showPay,  setShowPay]  =useState(null);
+  const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
   const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft"});
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:""});
+  const[editPayForm,setEditPayForm]=useState({});
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -10147,11 +10188,44 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
                         <div style={{background:"#f0fdf4",borderRadius:7,padding:"7px 10px",marginTop:4}}>
                           <div style={{fontSize:".67rem",fontWeight:700,color:"#059669",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Payments</div>
                           {(ms.payments||[]).map(p=>(
-                            <div key={p.id} style={{display:"flex",gap:10,fontSize:".73rem",color:"#475569",marginBottom:2,flexWrap:"wrap"}}>
-                              <span>{p.date}</span>
-                              <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
-                              {p.refNo&&<span style={{color:"#64748b"}}>Ref: {p.refNo}</span>}
-                              {p.note&&<span style={{color:"#94a3b8",fontStyle:"italic"}}>{p.note}</span>}
+                            <div key={p.id}>
+                              {editPay?.msId===ms.id&&editPay?.payId===p.id&&canEdit?(
+                                <div style={{background:"#fff",borderRadius:7,padding:"8px",border:"1.5px solid #93c5fd",marginBottom:4}}>
+                                  <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:6,fontSize:".78rem"}}>Edit Payment</div>
+                                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                                    <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
+                                    <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
+                                    <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
+                                    <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
+                                  </div>
+                                  <div style={{display:"flex",gap:6,marginTop:6}}>
+                                    <button onClick={()=>{
+                                      const updated={...p,...editPayForm,amount:Number(editPayForm.amount??p.amount)};
+                                      updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?updated:px)});
+                                      setEditPay(null);setEditPayForm({});
+                                    }} style={{background:"#1d4ed8",border:"none",borderRadius:6,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>Save</button>
+                                    <button onClick={()=>{setEditPay(null);setEditPayForm({});}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                                  </div>
+                                </div>
+                              ):(
+                                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2,gap:4}}>
+                                  <div style={{display:"flex",gap:8,fontSize:".73rem",color:"#475569",flexWrap:"wrap",flex:1}}>
+                                    <span>{p.date}</span>
+                                    <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
+                                    {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank}</span>}
+                                    {p.refNo&&<span style={{color:"#64748b"}}>Ref: {p.refNo}</span>}
+                                    {p.note&&<span style={{color:"#94a3b8",fontStyle:"italic"}}>{p.note}</span>}
+                                  </div>
+                                  {canEdit&&(
+                                    <div style={{display:"flex",gap:4,flexShrink:0}}>
+                                      <button onClick={()=>{setEditPay({msId:ms.id,payId:p.id});setEditPayForm({});}}
+                                        style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#1d4ed8",cursor:"pointer",fontWeight:600}}>✏</button>
+                                      <button onClick={()=>{if(window.confirm("Remove this payment? This will reverse the collected amount."))deleteBillingPayment(ms.id,p.id);}}
+                                        style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>×</button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
