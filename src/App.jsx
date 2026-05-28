@@ -5007,7 +5007,7 @@ export default function App(){
         })()}
 
         {/* ── KPI STRIP ───────────────────────────────────────────────── */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(6,1fr)",gap:10,marginBottom:20}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:10,marginBottom:20}}>
           {[
             {l:"Pipeline",      v:fmtK(deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)&&!WON_STAGES.includes(d.stage)).length+" deals"},
             {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects"},
@@ -5015,8 +5015,9 @@ export default function App(){
             {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
             {l:"Active JOs",    v:jos.filter(j=>j.status==="Active").length, c:"#f97316", sub:"job orders issued"},
             {l:"Pending PRs",   v:prs.filter(p=>p.status==="Pending Approval").length, c:"#8b5cf6", sub:"awaiting approval"},
+            {l:"Escalations",   v:escalations.length>0?"⚠️ "+escalations.length:escalations.length, c:escalations.length>0?"#ef4444":"#94a3b8", sub:escalations.length>0?escalations.filter(e=>e.severity==="high").length+" high severity":"all clear"},
           ].map(({l,v,c,sub})=>(
-            <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+            <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${l==="Escalations"&&escalations.length>0?"#fecaca":"#e2e8f0"}`}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.35rem",color:c}}>{v}</div>
               <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
               {sub&&<div style={{fontSize:".67rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>}
@@ -5561,6 +5562,9 @@ export default function App(){
                             {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
                             {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
                             {d.stage&&<span style={{color:"#8b5cf6"}}>{d.stage.split("·")[0].trim()}</span>}
+                            {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
+                              <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 5px",fontWeight:700,fontSize:".62rem"}}>{e.type}</span>
+                            ))}
                           </div>
                         </div>
                         <div style={{width:60,textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",flexShrink:0}}>{fmtK(Number(d.value))}</div>
@@ -6626,7 +6630,8 @@ export default function App(){
         addMilestone={addMilestone} updateMilestone={updateMilestone}
         deleteMilestone={deleteMilestone} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
-        nextInvoiceNo={nextInvoiceNo} session={session} role={role}/>
+        nextInvoiceNo={nextInvoiceNo} session={session} role={role}
+        cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}/>
     </Wrap>
   );
 
@@ -10159,7 +10164,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role}){
+function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals}){
   const[selDeal,  setSelDeal]  =useState(null);
   const[showForm, setShowForm] =useState(false);
   const[showPay,  setShowPay]  =useState(null);
@@ -10417,6 +10422,24 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
                 ))}
               </div>
             );
+          })()}
+
+          {/* COC-to-Finance notification banner */}
+          {(()=>{
+            const ms=billings.filter(b=>b.dealId===selDeal);
+            const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+            const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+            const outstanding=Math.max(0,billed-collected);
+            if(cocDeals&&cocDeals.includes(selDeal)&&outstanding>0){
+              return(
+                <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1rem"}}>📋</span>
+                  <span style={{fontSize:".82rem",fontWeight:700,color:"#059669"}}>COC Issued — Final billing ready to collect</span>
+                  <span style={{fontSize:".75rem",color:"#065f46",marginLeft:4}}>Outstanding: {fmt(outstanding)}</span>
+                </div>
+              );
+            }
+            return null;
           })()}
 
           {/* Add milestone form */}
