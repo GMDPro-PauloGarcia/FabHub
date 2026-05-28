@@ -3462,7 +3462,7 @@ export default function App(){
       </Modal>
     </div>
   );
-  },[navCollapsed]);
+  },[navCollapsed, role]);
   // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
   if(!ready) return(
     <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
