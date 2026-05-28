@@ -5023,6 +5023,27 @@ export default function App(){
             </div>
           ))}
         </div>
+        {escalations.length>0&&(
+          <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{fontWeight:800,color:"#dc2626",fontSize:".88rem"}}>⚠️ {escalations.length} Active Escalation{escalations.length!==1?"s":""}</span>
+              <div style={{display:"flex",gap:6}}>
+                {["E-1","E-2","E-3"].map(t=>{const n=escalations.filter(e=>e.type===t).length;return n>0?(
+                  <span key={t} style={{background:t==="E-2"?"#f59e0b":"#dc2626",color:"#fff",borderRadius:20,padding:"2px 8px",fontSize:".7rem",fontWeight:700}}>{t}: {n}</span>
+                ):null;})}
+              </div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              {escalations.slice(0,5).map((e,i)=>(
+                <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".78rem"}}>
+                  <span style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,color:e.severity==="high"?"#dc2626":"#92400e",borderRadius:6,padding:"1px 6px",fontWeight:700,flexShrink:0,fontSize:".68rem"}}>{e.type}</span>
+                  <span style={{color:"#64748b"}}><strong style={{color:"#0f172a"}}>{e.client}</strong> — {e.label}</span>
+                </div>
+              ))}
+              {escalations.length>5&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>+{escalations.length-5} more escalations</div>}
+            </div>
+          </div>
+        )}
 
         {/* ── MAIN CONTENT GRID ───────────────────────────────────────── */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
@@ -5676,7 +5697,7 @@ export default function App(){
         </div>
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
         addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
         openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
@@ -6016,7 +6037,7 @@ export default function App(){
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -6751,7 +6772,7 @@ export default function App(){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity}){
   const uid2=()=>String(Date.now());
   const ViewTabs=setPage?(
     <div style={{display:"flex",gap:6,marginBottom:16,background:"#f8fafc",borderRadius:10,padding:4,width:"fit-content"}}>
@@ -7181,8 +7202,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {projAddenda.map(a=>{
                 const tx=calcTax(a.value||0,a.receiptType||"OR",a.withholding||false);
-                const statusClr=ADDENDUM_STATUS_CLR[a.status]||"#94a3b8";
-                return(
+                const statusClr=ADDENDUM_STATUS_CLR[a.status]||"#94a3b8";return(
                   <div key={a.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${statusClr}44`,padding:"14px 18px"}}>
                     <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
                       <div style={{flex:1}}>
@@ -7243,6 +7263,81 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 );
               })}
             </div>
+          </div>
+        );
+      })()}
+      {opsTab==="closeout"&&(()=>{
+        const warranty=proj?.warranty||{active:false,type:"30",startDate:"",endDate:"",notes:""};
+        const wEnd=warranty.startDate?(()=>{const d=new Date(warranty.startDate);d.setDate(d.getDate()+Number(warranty.type||30));return d.toISOString().slice(0,10);})():"";
+        const wExpired=wEnd&&wEnd<today;
+        const wActive=warranty.active&&wEnd&&wEnd>=today;
+        return(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            <Card accent={proj?.cocCreated?"#059669":"#f59e0b"}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>📋 Certificate of Completion (COC)</span>
+                {proj?.cocCreated&&<span style={{background:"#dcfce7",color:"#059669",borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700}}>✓ ISSUED</span>}
+              </div>
+              {proj?.cocCreated?(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:".82rem"}}>
+                  <div><span style={{color:"#94a3b8"}}>Date Issued: </span><strong>{proj.cocDate||"—"}</strong></div>
+                  <div><span style={{color:"#94a3b8"}}>Link: </span>{proj.cocLink?<a href={proj.cocLink} target="_blank" rel="noopener noreferrer" style={{color:"#3b82f6"}}>Open COC ↗</a>:<span style={{color:"#94a3b8"}}>—</span>}</div>
+                </div>
+              ):(
+                <div>
+                  <div style={{fontSize:".78rem",color:"#f59e0b",fontWeight:600,marginBottom:10}}>⚠️ COC not yet issued. Finance cannot finalize billing until COC is confirmed.</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                    <Fld label="COC Date"><Inp type="date" value={proj?.cocDate||""} onChange={e=>upProj(selProj,p=>({...p,cocDate:e.target.value}))}/></Fld>
+                    <Fld label="COC Link (optional)"><Inp type="url" value={proj?.cocLink||""} onChange={e=>upProj(selProj,p=>({...p,cocLink:e.target.value}))} placeholder="Google Drive link"/></Fld>
+                  </div>
+                  <Btn onClick={()=>{
+                    if(!proj?.cocDate){toastEmit("Set a COC date first","warning");return;}
+                    upProj(selProj,p=>({...p,cocCreated:true}));
+                    logActivity&&logActivity(selProj,"COC Issued",`COC issued for ${projDeal?.client}. Finance notified for final billing.`,session?.name);
+                    toastEmit("COC issued — Finance notified to finalize billing","success");
+                  }}>✅ Mark COC as Issued → Notify Finance</Btn>
+                </div>
+              )}
+            </Card>
+            <Card accent={wActive?"#059669":wExpired?"#ef4444":"#94a3b8"}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>🛡 Warranty Period</span>
+                {wActive&&<span style={{background:"#dcfce7",color:"#059669",borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700}}>ACTIVE · Expires {wEnd}</span>}
+                {wExpired&&<span style={{background:"#fef2f2",color:"#ef4444",borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700}}>EXPIRED {wEnd}</span>}
+                {!warranty.active&&<span style={{background:"#f1f5f9",color:"#94a3b8",borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700}}>Not activated</span>}
+              </div>
+              {!warranty.active?(
+                <div>
+                  <div style={{fontSize:".78rem",color:"#64748b",marginBottom:10}}>Activate after COC is issued. Period starts from COC date.</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:10}}>
+                    <Fld label="Type">
+                      <Sel value={warranty.type||"30"} onChange={e=>upProj(selProj,p=>({...p,warranty:{...p.warranty||{},type:e.target.value}}))}>
+                        <option value="30">30 days</option><option value="60">60 days</option><option value="90">90 days</option>
+                      </Sel>
+                    </Fld>
+                    <Fld label="Start Date"><Inp type="date" value={warranty.startDate||proj?.cocDate||""} onChange={e=>upProj(selProj,p=>({...p,warranty:{...p.warranty||{},startDate:e.target.value}}))}/></Fld>
+                    <Fld label="Notes"><Inp value={warranty.notes||""} onChange={e=>upProj(selProj,p=>({...p,warranty:{...p.warranty||{},notes:e.target.value}}))}/></Fld>
+                  </div>
+                  <Btn onClick={()=>{
+                    const wStart=warranty.startDate||proj?.cocDate||today;
+                    const newEnd=(()=>{const d=new Date(wStart);d.setDate(d.getDate()+Number(warranty.type||30));return d.toISOString().slice(0,10);})();
+                    upProj(selProj,p=>({...p,warranty:{...p.warranty||{},active:true,startDate:wStart,endDate:newEnd}}));
+                    logActivity&&logActivity(selProj,"Warranty Activated",`${warranty.type||"30"}-day warranty for ${projDeal?.client}. Expires ${newEnd}.`,session?.name);
+                    toastEmit(`Warranty activated — expires ${newEnd}`,"success");
+                  }}>🛡 Activate Warranty</Btn>
+                </div>
+              ):(
+                <div style={{fontSize:".82rem",color:"#475569"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    <div><span style={{color:"#94a3b8"}}>Period: </span><strong>{warranty.type||"30"} days</strong></div>
+                    <div><span style={{color:"#94a3b8"}}>Started: </span><strong>{warranty.startDate}</strong></div>
+                    <div><span style={{color:"#94a3b8"}}>Expires: </span><strong>{wEnd}</strong></div>
+                    {warranty.notes&&<div style={{gridColumn:"1/-1"}}><span style={{color:"#94a3b8"}}>Notes: </span>{warranty.notes}</div>}
+                  </div>
+                  {wExpired&&<div style={{marginTop:10,fontSize:".78rem",color:"#ef4444",fontWeight:600}}>⚠️ Warranty expired. Ensure all defect claims are resolved.</div>}
+                </div>
+              )}
+            </Card>
           </div>
         );
       })()}
