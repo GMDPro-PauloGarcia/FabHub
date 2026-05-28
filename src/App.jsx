@@ -1323,8 +1323,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
         <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Files & Comms</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="Sales Repository Link" hint="Main Google Drive folder for this deal"><Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld>
-          <Fld label="Proposal Folder Link" hint="CE + budget folder inside Sales Repository"><Inp type="url" value={form.proposalFolderLink||""} onChange={e=>f("proposalFolderLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Sales Repository Link" hint="Main Google Drive folder for this deal"><Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld></div>
           <Fld label="Comms Group">
             <Sel value={form.commsGroup||""} onChange={e=>f("commsGroup",e.target.value)}>
               <option value="">— Not yet created —</option>
@@ -1381,18 +1380,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         </div>
       )}
 
-      {/* ── SECTION 5: PAYMENT (awarded deals only) ─────────────────────── */}
-      {isWon&&(
-        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginTop:10}}>
-          <div style={{fontWeight:700,color:"#059669",marginBottom:12,fontSize:".88rem"}}>💰 Payment Details (Awarded)</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-            <Fld label="Invoice Amount (₱)"><Inp type="number" value={form.invoiced} onChange={e=>f("invoiced",e.target.value)}/></Fld>
-            <Fld label="Amount Paid (₱)"><Inp type="number" value={form.amountPaid} onChange={e=>f("amountPaid",e.target.value)}/></Fld>
-            <Fld label="Payment Status"><Sel value={form.paymentStatus} onChange={e=>f("paymentStatus",e.target.value)}>{PAY_STATUS.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-            <Fld label="Payment Due Date"><Inp type="date" value={form.dueDate} onChange={e=>f("dueDate",e.target.value)}/></Fld>
-          </div>
-        </div>
-      )}
 
       {/* ── SECTION 6: TAX SETTINGS ─────────────────────────────────────── */}
       {Number(form.value)>0&&(
@@ -2542,6 +2529,8 @@ export default function App(){
   const deleteMilestone=(id)=>{upBillings(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});};
   const logBillingPayment=(msId,payment)=>{
     const payId=uid();
+    const milestone=billings.find(b=>b.id===msId);
+    const dealId=milestone?.dealId;
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
@@ -2553,6 +2542,16 @@ export default function App(){
       }
       return{...b,payments,status};
     }));
+    // Sync deal.amountPaid so Finance KPIs reflect billing collections
+    if(dealId){
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==dealId) return d;
+        const newPaid=Number(d.amountPaid||0)+Number(payment.amount||0);
+        const refVal=Number(d.invoiced||d.value||0);
+        const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
+        return{...d,amountPaid:newPaid,paymentStatus:newStatus};
+      }));
+    }
     if(payment.bank&&payment.amount){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
@@ -3214,7 +3213,7 @@ export default function App(){
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"collections",l:"Collections"},{id:"accounting",l:"Accounting"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"}]},
       {group:"Operations",  items:[{id:"ops",l:"Operations"},{id:"projects",l:"📋 Projects"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
@@ -3223,12 +3222,12 @@ export default function App(){
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Projects",     items:[{id:"projects",l:"📋 Projects"},{id:"collections",l:"Collections"}]},
+      {group:"Projects",     items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"},{id:"checklist",l:"Checklist"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
-      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"collections",l:"Collections"}]},
+      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     Procurement:[
@@ -4698,7 +4697,7 @@ export default function App(){
         </div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={()=>setPage("pipeline")} style={{background:"#10b981",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>📊 Pipeline</button>
-          <button onClick={()=>setPage("collections")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>💵 Collections</button>
+          <button onClick={()=>setPage("billing")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>💵 Billing</button>
         </div>
       </div>
 
@@ -4758,7 +4757,7 @@ export default function App(){
               {l:"Total Pipeline",     v:"₱"+Math.round(totalPipeVal/1000000)+"M",  c:"#10b981", icon:"📊", click:()=>setPage("pipeline")},
               {l:"Awarded Value",      v:"₱"+Math.round(awardedVal/1000000)+"M",    c:"#3b82f6", icon:"🏆"},
               {l:"New This Month",     v:newThisMonth.length+" deals",               c:"#8b5cf6", icon:"✨"},
-              {l:"Outstanding AR",     v:"₱"+Math.round(outstanding/1000)+"K",      c:"#f59e0b", icon:"💵", click:()=>setPage("collections")},
+              {l:"Outstanding AR",     v:"₱"+Math.round(outstanding/1000)+"K",      c:"#f59e0b", icon:"💵", click:()=>setPage("billing")},
             ].map(({l,v,c,icon,click})=>(
               <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,cursor:click?"pointer":"default",textAlign:"center"}}>
                 <div style={{fontSize:"1.3rem",marginBottom:4}}>{icon}</div>
@@ -4791,7 +4790,7 @@ export default function App(){
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Collections ({overdue.length})</span>
-                <button onClick={()=>setPage("collections")} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Full list →</button>
+                <button onClick={()=>setPage("billing")} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>Full list →</button>
               </div>
               {overdue.length===0
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No overdue collections</div>
@@ -5618,104 +5617,7 @@ export default function App(){
         ))}
       </Wrap>
     );
-    if(page==="collections") return(
-      <Wrap>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-        <SecHead title="Collections" sub="Track client payments for all awarded projects"/>
-        <button onClick={()=>{
-          const rows=[["Client","CE No","Milestone","Amount","Total Paid","Outstanding","Status","Due Date","Days Overdue","Bank"]];
-          billings.forEach(b=>{
-            const d=wonDeals.find(x=>x.id===b.dealId)||deals.find(x=>x.id===b.dealId);
-            const totalPaid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-            const outstanding=Math.max(0,Number(b.amount||0)-totalPaid);
-            const daysOD=b.dueDate?Math.max(0,Math.floor((new Date()-new Date(b.dueDate))/(1000*60*60*24))):0;
-            const banks=[...new Set((b.payments||[]).map(p=>p.bank).filter(Boolean))].join("/");
-            rows.push([d?.client||"",d?.ceNo||"",b.name||"",
-              Number(b.amount||0).toFixed(2),totalPaid.toFixed(2),outstanding.toFixed(2),
-              b.status||"Unpaid",b.dueDate||"",daysOD,banks]);
-          });
-          const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-          const a=document.createElement("a");
-          a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
-          a.download=`GMD_Collections_${today}.csv`;a.click();
-        }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",flexShrink:0}}>
-          ⬇ Export CSV
-        </button>
-      </div>
-      {/* Aging Summary */}
-      {(()=>{
-        const now=new Date();
-        const aging={current:0,d30:0,d60:0,d90:0,over90:0};
-        billings.forEach(b=>{
-          const outstanding=Math.max(0,Number(b.amount||0)-(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0));
-          if(outstanding<=0||b.status==="Paid"||b.status==="Fully Paid") return;
-          const days=b.dueDate?Math.floor((now-new Date(b.dueDate))/(1000*60*60*24)):0;
-          if(days<=0)       aging.current+=outstanding;
-          else if(days<=30) aging.d30+=outstanding;
-          else if(days<=60) aging.d60+=outstanding;
-          else if(days<=90) aging.d90+=outstanding;
-          else              aging.over90+=outstanding;
-        });
-        const total=Object.values(aging).reduce((s,v)=>s+v,0);
-        if(total===0) return null;
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8,marginBottom:16}}>
-            {[["Current",aging.current,"#10b981"],["1–30 days",aging.d30,"#f59e0b"],
-              ["31–60 days",aging.d60,"#f97316"],["61–90 days",aging.d90,"#ef4444"],["90+ days",aging.over90,"#dc2626"]
-            ].map(([l,v,c])=>(
-              <div key={l} style={{background:"#fff",border:`1.5px solid ${c}33`,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>
-                  ₱{v.toLocaleString("en-PH",{minimumFractionDigits:0})}
-                </div>
-                <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".8px"}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-        {/* Priority call list */}
-        {(()=>{
-          const today2=new Date();
-          const callList=wonDeals.map(d=>{
-            const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled"&&b.status!=="Fully Paid");
-            const totalDue=ms.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,pay)=>ps+Number(pay.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
-            const mostOverdue=ms.filter(m=>m.dueDate&&m.dueDate<today).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate))[0];
-            const daysOverdue=mostOverdue?Math.floor((today2-new Date(mostOverdue.dueDate))/(1000*60*60*24)):null;
-            return{d,totalDue,daysOverdue,msCount:ms.length};
-          }).filter(x=>x.totalDue>0).sort((a,b)=>((b.daysOverdue||0)-(a.daysOverdue||0))||(b.totalDue-a.totalDue));
-          if(!callList.length) return null;
-          return(
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
-              <div style={{background:"#1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Call List — ₱{callList.reduce((s,x)=>s+x.totalDue,0).toLocaleString("en-PH",{minimumFractionDigits:0})} outstanding</span>
-                <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{callList.length} clients to follow up</span>
-              </div>
-              {callList.slice(0,8).map(({d,totalDue,daysOverdue,msCount})=>(
-                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 18px",borderBottom:"1px solid #f8fafc",flexWrap:"wrap",gap:8}}>
-                  <div>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {msCount} milestone{msCount!==1?"s":""}</div>
-                  </div>
-                  <div style={{display:"flex",gap:12,alignItems:"center"}}>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{totalDue.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>outstanding</div>
-                    </div>
-                    {daysOverdue!==null&&(
-                      <span style={{background:daysOverdue>60?"#fef2f2":daysOverdue>30?"#fff7ed":"#fffbeb",color:daysOverdue>60?"#dc2626":daysOverdue>30?"#c2410c":"#d97706",border:`1px solid ${daysOverdue>60?"#fecaca":daysOverdue>30?"#fed7aa":"#fde68a"}`,borderRadius:20,padding:"2px 9px",fontSize:".72rem",fontWeight:700}}>
-                        {daysOverdue}d overdue
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"||role==="QS"||role==="Procurement"||role==="Operations"||role==="Design"}/>
-      </Wrap>
-    );
-    if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
+        if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
   }
 
@@ -5806,50 +5708,6 @@ export default function App(){
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
-    if(page==="collections") return(
-      <Wrap>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-          <KPI label="Total Revenue"  value={fmtK(totRev)}        color="#3b82f6"/>
-          <KPI label="Total Expenses" value={fmtK(totExp)}        color="#ef4444"/>
-          <KPI label="Gross Profit"   value={fmtK(grossPro)}      color={grossPro>=0?"#059669":"#ef4444"}/>
-          <KPI label="Gross Margin"   value={grossMar+"%"}        color={grossMar>=20?"#059669":"#f59e0b"}/>
-        </div>
-        <SecHead title="Collections" sub="Log and track all client payments"/>
-        <CollectionsPanel wonDeals={wonDeals} infs={infs} onUpdatePayment={updatePayment} onLogPayment={logPayment} readonly={role==="Sales"||role==="QS"||role==="Procurement"||role==="Operations"||role==="Design"}/>
-        <div style={{marginTop:20}}>
-          <SecHead title="Per Project Profit" sub="Real-time margin based on logged expenses"/>
-          {projList.map(d=>{
-            const p=projs[d.id]; if(!p) return null;
-            const projExpTotal=exps.filter(e=>e.projectId===d.id).reduce((s,e)=>s+e.amount,0);
-            const opsCost=costOf(p);
-            const profit=d.value-opsCost;
-            const margin=d.value>0?Math.round(profit/d.value*100):0;
-            return(
-              <Card key={d.id}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                  <div style={{flex:1}}>
-                    <div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div>
-                    <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{d.product} · <Badge label={p.currentStage} color={PROD_CLR[p.currentStage]}/></div>
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,minWidth:320}}>
-                    {[["Contract",d.value,"#3b82f6"],["Total Cost",opsCost,"#ef4444"],["Profit",profit,profit>=0?"#059669":"#ef4444"]].map(([l,v,c])=>(
-                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px",textAlign:"center"}}>
-                        <div style={{fontWeight:800,color:c,fontSize:".95rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{fmt(v)}</div>
-                        <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{textAlign:"right",minWidth:80}}>
-                    <div style={{fontWeight:800,fontSize:"1.3rem",color:margin>=20?"#059669":"#f59e0b",fontFamily:"'Barlow Condensed',sans-serif"}}>{margin}%</div>
-                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>margin</div>
-                  </div>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </Wrap>
-    );
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="expenses") return(
       <Wrap>
@@ -6503,6 +6361,79 @@ export default function App(){
   // ── BILLING ─────────────────────────────────────────────────────────────────
   if(page==="billing") return(
     <Wrap>
+      {/* Aging Summary */}
+      {(()=>{
+        const now=new Date();
+        const aging={current:0,d30:0,d60:0,d90:0,over90:0};
+        billings.forEach(b=>{
+          const outstanding=Math.max(0,Number(b.amount||0)-(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0));
+          if(outstanding<=0||b.status==="Paid"||b.status==="Fully Paid") return;
+          const days=b.dueDate?Math.floor((now-new Date(b.dueDate))/(1000*60*60*24)):0;
+          if(days<=0)       aging.current+=outstanding;
+          else if(days<=30) aging.d30+=outstanding;
+          else if(days<=60) aging.d60+=outstanding;
+          else if(days<=90) aging.d90+=outstanding;
+          else              aging.over90+=outstanding;
+        });
+        const total=Object.values(aging).reduce((s,v)=>s+v,0);
+        if(total===0) return null;
+        return(
+          <div style={{marginBottom:16}}>
+            <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:10}}>📊 AR Aging</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+              {[["Current",aging.current,"#10b981"],["1–30 days",aging.d30,"#f59e0b"],
+                ["31–60 days",aging.d60,"#f97316"],["61–90 days",aging.d90,"#ef4444"],["90+ days",aging.over90,"#dc2626"]
+              ].map(([l,v,c])=>(
+                <div key={l} style={{background:"#fff",border:`1.5px solid ${c}33`,borderRadius:10,padding:"12px 14px",textAlign:"center"}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>
+                    ₱{v.toLocaleString("en-PH",{minimumFractionDigits:0})}
+                  </div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".8px"}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+      {/* Priority call list */}
+      {(()=>{
+        const today2=new Date();
+        const callList=wonDeals.map(d=>{
+          const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled"&&b.status!=="Fully Paid");
+          const totalDue=ms.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,pay)=>ps+Number(pay.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+          const mostOverdue=ms.filter(m=>m.dueDate&&m.dueDate<today).sort((a,b)=>new Date(a.dueDate)-new Date(b.dueDate))[0];
+          const daysOverdue=mostOverdue?Math.floor((today2-new Date(mostOverdue.dueDate))/(1000*60*60*24)):null;
+          return{d,totalDue,daysOverdue,msCount:ms.length};
+        }).filter(x=>x.totalDue>0).sort((a,b)=>((b.daysOverdue||0)-(a.daysOverdue||0))||(b.totalDue-a.totalDue));
+        if(!callList.length) return null;
+        return(
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 18px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📞 Priority Call List — ₱{callList.reduce((s,x)=>s+x.totalDue,0).toLocaleString("en-PH",{minimumFractionDigits:0})} outstanding</span>
+              <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>{callList.length} clients to follow up</span>
+            </div>
+            {callList.slice(0,8).map(({d,totalDue,daysOverdue,msCount})=>(
+              <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 18px",borderBottom:"1px solid #f8fafc",flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
+                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {msCount} milestone{msCount!==1?"s":""}</div>
+                </div>
+                <div style={{display:"flex",gap:12,alignItems:"center"}}>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{totalDue.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>outstanding</div>
+                  </div>
+                  {daysOverdue!==null&&(
+                    <span style={{background:daysOverdue>60?"#fef2f2":daysOverdue>30?"#fff7ed":"#fffbeb",color:daysOverdue>60?"#dc2626":daysOverdue>30?"#c2410c":"#d97706",border:`1px solid ${daysOverdue>60?"#fecaca":daysOverdue>30?"#fed7aa":"#fde68a"}`,borderRadius:20,padding:"2px 9px",fontSize:".72rem",fontWeight:700}}>
+                      {daysOverdue}d overdue
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <BillingView
         billings={billings} wonDeals={wonDeals} deals={deals}
         addMilestone={addMilestone} updateMilestone={updateMilestone}
