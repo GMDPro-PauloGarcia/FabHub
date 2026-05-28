@@ -1347,7 +1347,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:4}}>🎨 Design Request</div>
         <div style={{fontSize:".72rem",color:"#a78bfa",marginBottom:12}}>Fill this out to auto-create a DRF when the deal is saved.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <div style={{gridColumn:"1/-1"}}><Fld label="Project Title"><Inp value={form.drfProjectTitle||""} onChange={e=>f("drfProjectTitle",e.target.value)} placeholder="e.g. Golf Bag Organizer Rack / Shirts Display"/></Fld></div>
           <Fld label="Type"><Sel value={form.drfType||DRF_TYPES[0]} onChange={e=>f("drfType",e.target.value)}>{DRF_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
           <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
           <Fld label="Assigned Designer"><Sel value={form.drfDesigner||""} onChange={e=>f("drfDesigner",e.target.value)}><option value="">— Assign later —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
