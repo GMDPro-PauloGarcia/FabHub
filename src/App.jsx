@@ -5547,6 +5547,7 @@ export default function App(){
           saveDayPos={saveDayPos}
           infs={infs}
           wonDeals={wonDeals}
+          billings={billings}
           totRev={totRev}
           totExp={totExp}
           totColl={totColl}
@@ -5744,6 +5745,7 @@ export default function App(){
           saveDayPos={saveDayPos}
           infs={infs}
           wonDeals={wonDeals}
+          billings={billings}
           totRev={totRev}
           totExp={totExp}
           totColl={totColl}
@@ -8378,11 +8380,50 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
 
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
-function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp,totColl,totOut}){
+function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totRev,totExp,totColl,totOut}){
   const[selDate,setSelDate]=useState(today);
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
   const[histOpen,setHistOpen]=useState(false);
+
+  // Billing-derived metrics
+  const billingMetrics=useMemo(()=>{
+    const bl=billings||[];
+    const thisYear=new Date().getFullYear();
+    let outstanding=0,collectedYTD=0;
+    bl.forEach(b=>{
+      if(b.status==='Cancelled') return;
+      const amt=Number(b.amount||0);
+      const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+      outstanding+=Math.max(0,amt-paid);
+      (b.payments||[]).forEach(p=>{
+        if(p.date&&new Date(p.date).getFullYear()===thisYear) collectedYTD+=Number(p.amount||0);
+      });
+    });
+    return{outstanding,collectedYTD};
+  },[billings]);
+
+  // Outstanding balance per deal (for FabHub Collections breakdown)
+  const billingByDeal=useMemo(()=>{
+    const bl=billings||[];
+    const map={};
+    bl.forEach(b=>{
+      if(b.status==='Cancelled') return;
+      const key=b.dealId||'unknown';
+      if(!map[key]) map[key]={dealId:key,totalAmount:0,totalPaid:0};
+      map[key].totalAmount+=Number(b.amount||0);
+      map[key].totalPaid+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    });
+    return Object.values(map)
+      .map(row=>{
+        const deal=wonDeals.find(d=>d.id===row.dealId);
+        const balance=Math.max(0,row.totalAmount-row.totalPaid);
+        const pct=row.totalAmount>0?Math.round(row.totalPaid/row.totalAmount*100):0;
+        return{...row,client:deal?.client||'Unknown Project',balance,pct};
+      })
+      .filter(r=>r.balance>0)
+      .sort((a,b)=>b.balance-a.balance);
+  },[billings,wonDeals]);
 
   // When date changes, load that day's position or start fresh
   const switchDate=(d)=>{
@@ -8565,8 +8606,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
           ["Working Capital (5 Banks)", "₱"+fmt2(workingBook), "#1d4ed8"],
           ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook), "#0e7490"],
           ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
-          ["Outstanding Invoices", "₱"+Math.max(0,totOut).toLocaleString("en-PH",{minimumFractionDigits:2}), "#f59e0b"],
-          ["YTD Receivable",       pos.ytd.accountsReceivable?"₱"+fmt2(pos.ytd.accountsReceivable):"—", "#8b5cf6"],
+          ["Outstanding Invoices", "₱"+billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2}), billingMetrics.outstanding>0?"#f59e0b":"#059669"],
+          ["YTD Collected",        "₱"+billingMetrics.collectedYTD.toLocaleString("en-PH",{minimumFractionDigits:2}), "#8b5cf6"],
         ].map(([l,v,c])=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c,lineHeight:1}}>{v}</div>
@@ -8706,7 +8747,6 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             ["Expected Collection",   "ytd.expectedCollection",  "#f59e0b"],
             ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444"],
             ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316"],
-            ["YTD Accounts Receivable","ytd.accountsReceivable", "#10b981"],
           ].map(([label,path,color])=>(
             <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
               <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
@@ -8721,6 +8761,15 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
               </div>
             </div>
           ))}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",background:"#f8fafc"}}>
+            <div>
+              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>YTD Accounts Receivable</div>
+              <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>Auto-calculated from Billing milestones</div>
+            </div>
+            <span style={{fontWeight:800,color:"#10b981",fontSize:".88rem"}}>
+              ₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}
+            </span>
+          </div>
         </div>
 
         {/* FabHub Collections breakdown */}
@@ -8729,29 +8778,25 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,totRev,totExp
             <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>🔗 FabHub Collections</span>
           </div>
           <div style={{padding:"12px 16px"}}>
-            <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10}}>Outstanding invoices from active projects — auto-pulled from FabHub</div>
-            {wonDeals.filter(d=>d.invoiced>0&&d.amountPaid<d.invoiced).slice(0,6).map(d=>{
-              const bal=d.invoiced-d.amountPaid;
-              const pct=Math.round(d.amountPaid/d.invoiced*100);
-              return(
-                <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f1f5f9",gap:10}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{d.paymentStatus} · {pct}% collected</div>
-                  </div>
-                  <div style={{textAlign:"right",flexShrink:0}}>
-                    <div style={{fontWeight:700,color:"#ef4444",fontSize:".82rem"}}>₱{bal.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>of ₱{d.invoiced.toLocaleString("en-PH")}</div>
-                  </div>
+            <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10}}>Outstanding balances by project — auto-pulled from Billing milestones</div>
+            {billingByDeal.slice(0,8).map(row=>(
+              <div key={row.dealId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f1f5f9",gap:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.client}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{row.pct}% collected · ₱{row.totalPaid.toLocaleString("en-PH",{minimumFractionDigits:0})} received</div>
                 </div>
-              );
-            })}
-            {wonDeals.filter(d=>d.invoiced>0&&d.amountPaid<d.invoiced).length===0&&(
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontWeight:700,color:"#ef4444",fontSize:".82rem"}}>₱{row.balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8"}}>of ₱{row.totalAmount.toLocaleString("en-PH")}</div>
+                </div>
+              </div>
+            ))}
+            {billingByDeal.length===0&&(
               <div style={{textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:".82rem"}}>No outstanding balances 🎉</div>
             )}
             <div style={{marginTop:10,display:"flex",justifyContent:"space-between",padding:"8px 0",borderTop:"1.5px solid #e2e8f0"}}>
               <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Total Outstanding</span>
-              <span style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{totOut.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+              <span style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
             </div>
           </div>
         </div>
