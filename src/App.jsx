@@ -2945,11 +2945,13 @@ export default function App(){
   const escalations = useMemo(()=>{
     const list = [];
     const todayD = today;
+    const in7days = new Date(); in7days.setDate(in7days.getDate()+7);
+    const in7str = in7days.toISOString().slice(0,10);
     // E-1: billing milestones overdue (past due date, not fully paid)
     billings.forEach(b=>{
       if(b.dueDate && b.dueDate < todayD && b.status !== 'Fully Paid' && b.status !== 'Cancelled'){
         const deal = wonDeals.find(d=>d.id===b.dealId);
-        if(deal) list.push({type:'E-1',dealId:b.dealId,client:deal.client,label:`Overdue: ${b.label||'Invoice'} (due ${b.dueDate})`,severity:'high'});
+        if(deal) list.push({type:'E-1',dealId:b.dealId,client:deal.client,label:`Overdue: ${b.name||b.label||'Invoice'} (due ${b.dueDate})`,severity:'high'});
       }
     });
     // E-2: addenda in Discovered status on active fabrication projects
@@ -2969,8 +2971,38 @@ export default function App(){
         }
       }
     });
+    // E-4: DRF deadline within 7 days
+    drfs.forEach(drf=>{
+      if(drf.designDeadline && drf.status!=='Done' && drf.status!=='Cancelled' && drf.designDeadline>=todayD && drf.designDeadline<=in7str){
+        const deal = wonDeals.find(d=>d.id===drf.dealId)||deals.find(d=>d.id===drf.dealId);
+        const daysLeft = Math.ceil((new Date(drf.designDeadline)-new Date(todayD))/(1000*60*60*24));
+        list.push({type:'E-4',dealId:drf.dealId,client:deal?.client||drf.client||'?',label:`DRF ${drf.drfNo||''} deadline in ${daysLeft}d (${drf.designDeadline})`,severity:'medium'});
+      }
+    });
+    // E-5: PO delivery overdue (delivery date passed, not yet delivered)
+    prs.forEach(pr=>{
+      if(pr.deliveryDate && pr.deliveryDate < todayD && !['Delivered','Cancelled'].includes(pr.status)){
+        const deal = wonDeals.find(d=>d.id===(pr.dealId||pr.projectId));
+        list.push({type:'E-5',dealId:pr.dealId||pr.projectId,client:deal?.client||'?',label:`PO overdue: ${pr.item||'Item'} (due ${pr.deliveryDate})`,severity:'high'});
+      }
+    });
+    // E-6: Budget requests pending >3 days
+    breqs.forEach(br=>{
+      if(br.status==='Pending' && br.createdAt){
+        const created = new Date(br.createdAt); const diff = Math.floor((new Date()-created)/(1000*60*60*24));
+        if(diff>3){
+          const deal = wonDeals.find(d=>d.id===br.dealId);
+          list.push({type:'E-6',dealId:br.dealId,client:deal?.client||br.title||'?',label:`Budget request pending ${diff}d: ${br.title||'Request'}`,severity:'low'});
+        }
+      }
+    });
+    // E-7: Won projects (stage 6+) with no billing milestones set
+    wonDeals.filter(d=>WON_STAGES.indexOf(d.stage)>=0).forEach(d=>{
+      const hasBilling = billings.some(b=>b.dealId===d.id && b.status!=='Cancelled');
+      if(!hasBilling) list.push({type:'E-7',dealId:d.id,client:d.client,label:`No billing milestone set for active project`,severity:'high'});
+    });
     return list;
-  },[billings,addenda,wonDeals,projs,today]);
+  },[billings,addenda,wonDeals,projs,drfs,prs,breqs,deals,today]);
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
 
@@ -3016,6 +3048,7 @@ export default function App(){
   const[pmUpdateModal,setPmUpdateModal]= useState(null);   // {dealId, dealName} — PM update entry
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
+  const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
   const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
@@ -5033,7 +5066,7 @@ export default function App(){
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <span style={{fontWeight:800,color:"#dc2626",fontSize:".88rem"}}>⚠️ {escalations.length} Active Escalation{escalations.length!==1?"s":""}</span>
               <div style={{display:"flex",gap:6}}>
-                {["E-1","E-2","E-3"].map(t=>{const n=escalations.filter(e=>e.type===t).length;return n>0?(
+                {["E-1","E-2","E-3","E-4","E-5","E-6","E-7"].map(t=>{const n=escalations.filter(e=>e.type===t).length;return n>0?(
                   <span key={t} style={{background:t==="E-2"?"#f59e0b":"#dc2626",color:"#fff",borderRadius:20,padding:"2px 8px",fontSize:".7rem",fontWeight:700}}>{t}: {n}</span>
                 ):null;})}
               </div>
@@ -6413,23 +6446,37 @@ export default function App(){
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
                     <thead>
                       <tr style={{background:"#1e293b"}}>
-                        {Object.keys(smartImport.rows[0]||{}).slice(0,8).map(k=>(
+                        {["#","Client","CE No","Stage","CE Type","Value"].map(k=>(
                           <th key={k} style={{padding:"8px 10px",textAlign:"left",color:"#fff",fontWeight:700,whiteSpace:"nowrap"}}>{k}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {smartImport.rows.slice(0,5).map((row,i)=>(
-                        <tr key={i} style={{background:i%2?"#f8fafc":"#fff"}}>
-                          {Object.values(row).slice(0,8).map((v,j)=>(
-                            <td key={j} style={{padding:"7px 10px",color:"#475569",borderBottom:"1px solid #f1f5f9",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{String(v||"")}</td>
-                          ))}
-                        </tr>
-                      ))}
+                      {(()=>{
+                        const normType=(t)=>{const u=String(t||"").toUpperCase().trim();if(u.includes("INTERIOR"))return"Interior Design";if(u.includes("SIGNAGE"))return"Signage";if(u.includes("FIT"))return"Fit-Out";if(u.includes("RENOVATI"))return"Renovation";return"Fabrication / General";};
+                        const parseVal=(v)=>Number(String(v||"").replace(/[₱,\s]/g,""))||0;
+                        return smartImport.rows.slice(0,5).map((r,i)=>{
+                          const client=String(r["Client Name"]||r.client||r.Client||"").trim();
+                          const ceNo=String(r["CE No"]||r["CE No."]||"").trim();
+                          const rawStage=r.Stage||r.stage||r._defaultStage||"";
+                          const ceType=normType(r["CE Type"]||r.ceType||"");
+                          const value=parseVal(r["Contract Value (VAT EX)"]||r["Contract Value"]||r.value||0);
+                          return(
+                            <tr key={i} style={{background:i%2?"#f8fafc":"#fff"}}>
+                              <td style={{padding:"7px 10px",color:"#94a3b8",fontSize:".72rem"}}>{i+1}</td>
+                              <td style={{padding:"7px 10px",color:"#0f172a",fontWeight:600}}>{client||"—"}</td>
+                              <td style={{padding:"7px 10px",color:"#475569"}}>{ceNo||"—"}</td>
+                              <td style={{padding:"7px 10px",color:"#475569",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{normalizeStage(rawStage||"01 · BizDev")}</td>
+                              <td style={{padding:"7px 10px",color:"#8b5cf6"}}>{ceType}</td>
+                              <td style={{padding:"7px 10px",color:"#059669",fontWeight:600}}>{value>0?"₱"+value.toLocaleString("en-PH"):"—"}</td>
+                            </tr>
+                          );
+                        });
+                      })()}
                     </tbody>
                   </table>
                 </div>
-                <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:5}}>Showing 5 of {smartImport.rows.length} rows · {Object.keys(smartImport.rows[0]||{}).length} total columns</div>
+                <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:5}}>Showing 5 of {smartImport.rows.length} rows · Step 1 of 2: Analysis</div>
               </div>
 
               {/* Action buttons */}
@@ -6440,30 +6487,19 @@ export default function App(){
                 </button>
                 {smartImport.analysis.canImport&&smartImport.analysis.dataType==="deals"&&(
                   <button onClick={()=>{
-                    const rows=smartImport.rows;
-                    // Normalize old-style CE Types from the FabHub template to FabHub values
-                    const normType=(t)=>{
-                      const u=String(t||"").toUpperCase().trim();
-                      if(u.includes("INTERIOR")) return "Interior Design";
-                      if(u.includes("SIGNAGE")) return "Signage";
-                      if(u.includes("FIT")) return "Fit-Out";
-                      if(u.includes("RENOVATI")) return "Renovation";
-                      return "Fabrication / General";
-                    };
+                    const normType=(t)=>{const u=String(t||"").toUpperCase().trim();if(u.includes("INTERIOR"))return"Interior Design";if(u.includes("SIGNAGE"))return"Signage";if(u.includes("FIT"))return"Fit-Out";if(u.includes("RENOVATI"))return"Renovation";return"Fabrication / General";};
                     const parseVal=(v)=>Number(String(v||"").replace(/[₱,\s]/g,""))||0;
-                    let imported=0,skipped=0;
-                    rows.forEach(r=>{
+                    const mapped=smartImport.rows.map((r,idx)=>{
                       const client=String(r["Client Name"]||r.client||r.Client||r["client_name"]||r.company||"").trim();
-                      if(!client) return;
                       const ceNo=String(r["CE No"]||r.ceNo||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
-                      const exists=deals.find(d=>ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,"")));
                       const rawStage=r.Stage||r.stage||r.status||r._defaultStage||"";
-                      const rec={
-                        id:exists?.id||uid(),
-                        client,
+                      const exists=deals.find(d=>ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,"")));
+                      return{
+                        _idx:idx,_exists:!!exists,_existingId:exists?.id,
+                        id:exists?.id||uid(),client,
                         product:String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim(),
                         contact:String(r["Contact Person"]||r.contact||r.Contact||"").trim(),
-                        ceNo:ceNo||("CE-IMPORT-"+Date.now()),
+                        ceNo:ceNo||("CE-IMPORT-"+Date.now()+"-"+idx),
                         ceType:normType(r["CE Type"]||r.ceType||r.type||""),
                         stage:normalizeStage(rawStage||"01 · BizDev"),
                         value:parseVal(r["Contract Value (VAT EX)"]||r["Contract Value"]||r.value||r.Value||r.amount||0),
@@ -6481,39 +6517,11 @@ export default function App(){
                         priority:"Normal",
                         probability:WON_STAGES.includes(normalizeStage(rawStage||"01 · BizDev"))?100:50,
                       };
-                      if(exists){
-                        upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));
-                        if(WON_STAGES.includes(rec.stage)){
-                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
-                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
-                        }
-                        skipped++;
-                      } else {
-                        upDeals(ds=>[...ds,rec]);
-                        if(WON_STAGES.includes(rec.stage)){
-                          upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
-                          upPcards(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProjectCard(rec.id,rec)});
-                          // Auto-create a stub JO so the project is trackable without going through award modal
-                          upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,{
-                            id:"jo"+rec.id,dealId:rec.id,
-                            joNo:`JO-${new Date().getFullYear()}-${String(jos.length+imported+1).padStart(3,"0")}`,
-                            client:rec.client,ceNo:rec.ceNo,projectName:rec.product||rec.client,
-                            value:rec.value,awardTrigger:"Imported",triggerDate:rec.dateAcquired||today,
-                            pm1:"",pm2:"",pm3:"",coordinator:"",aeAssigned:rec.salesOwner||"",
-                            startDate:rec.dateAcquired||today,commsLink:"",
-                            scopeNotes:rec.notes||"",specialInstructions:"",
-                            budgetStatus:"QS Budget Pending",status:"Active",issuedDate:today,
-                          }]);
-                        }
-                        imported++;
-                      }
-                    });
-                    logActivity(null,"Excel Import",`${imported} new + ${skipped} updated via Smart Import`);
-                    setSmartImport(null);
-                    toastEmit(`Import complete! ${imported} new deals added, ${skipped} existing updated.`,"success");
+                    }).filter(r=>r.client);
+                    setImportReview(mapped);
                   }}
-                  style={{background:"#059669",border:"none",borderRadius:8,padding:"10px 20px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                    ✅ Confirm Import ({smartImport.rows.length} rows)
+                  style={{background:"#3b82f6",border:"none",borderRadius:8,padding:"10px 22px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
+                    👁 Review {smartImport.rows.length} Deals →
                   </button>
                 )}
                 {smartImport.analysis.canImport&&smartImport.analysis.dataType!=="deals"&&(
@@ -6521,6 +6529,106 @@ export default function App(){
                     ℹ️ {smartImport.analysis.dataType} data detected — use the matching module to import this data type.
                   </div>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── SMART IMPORT REVIEW MODAL (Step 2) ───────────────────────────── */}
+      {importReview&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.75)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:900,maxHeight:"92vh",overflow:"hidden",display:"flex",flexDirection:"column",boxShadow:"0 24px 80px rgba(0,0,0,.35)"}}>
+            {/* Header */}
+            <div style={{background:"#1e293b",padding:"16px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0}}>
+              <div>
+                <div style={{fontWeight:800,color:"#fff",fontSize:"1rem"}}>✅ Step 2 of 2 — Review & Confirm Import</div>
+                <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>{importReview.length} deals · edit Stage or CE Type before confirming</div>
+              </div>
+              <button onClick={()=>setImportReview(null)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"6px 12px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem"}}>✕ Back</button>
+            </div>
+            {/* Review table */}
+            <div style={{overflowY:"auto",flex:1}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem"}}>
+                <thead style={{position:"sticky",top:0,zIndex:1}}>
+                  <tr style={{background:"#f8fafc"}}>
+                    {["#","Status","Client","CE No","Project","Stage","CE Type","Value"].map(h=>(
+                      <th key={h} style={{padding:"10px 10px",textAlign:"left",fontWeight:700,color:"#475569",fontSize:".72rem",borderBottom:"2px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {importReview.map((row,i)=>(
+                    <tr key={i} style={{borderBottom:"1px solid #f1f5f9",background:row._exists?"#fffbeb":"#fff"}}>
+                      <td style={{padding:"8px 10px",color:"#94a3b8",fontSize:".72rem"}}>{i+1}</td>
+                      <td style={{padding:"8px 10px"}}>
+                        <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:row._exists?"#fef3c7":"#dcfce7",color:row._exists?"#92400e":"#15803d"}}>
+                          {row._exists?"UPDATE":"NEW"}
+                        </span>
+                      </td>
+                      <td style={{padding:"8px 10px",fontWeight:600,color:"#0f172a",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.client}</td>
+                      <td style={{padding:"8px 10px",color:"#64748b",fontSize:".75rem"}}>{row.ceNo}</td>
+                      <td style={{padding:"8px 10px",color:"#64748b",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:".75rem"}}>{row.product||"—"}</td>
+                      <td style={{padding:"4px 6px"}}>
+                        <select value={row.stage} onChange={e=>setImportReview(rv=>rv.map((r,j)=>j===i?{...r,stage:e.target.value}:r))}
+                          style={{fontSize:".72rem",padding:"4px 6px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#0f172a",width:"100%",fontFamily:"inherit"}}>
+                          {[...DEAL_STAGES,...WON_STAGES].map(s=><option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
+                      <td style={{padding:"4px 6px"}}>
+                        <select value={row.ceType} onChange={e=>setImportReview(rv=>rv.map((r,j)=>j===i?{...r,ceType:e.target.value}:r))}
+                          style={{fontSize:".72rem",padding:"4px 6px",borderRadius:6,border:"1px solid #e2e8f0",background:"#fff",color:"#0f172a",width:"100%",fontFamily:"inherit"}}>
+                          {CE_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </td>
+                      <td style={{padding:"8px 10px",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>{row.value>0?"₱"+row.value.toLocaleString("en-PH"):"—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Footer */}
+            <div style={{padding:"14px 20px",borderTop:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"center",flexShrink:0,background:"#f8fafc"}}>
+              <div style={{fontSize:".78rem",color:"#64748b"}}>
+                <strong style={{color:"#0f172a"}}>{importReview.filter(r=>!r._exists).length}</strong> new · <strong style={{color:"#f59e0b"}}>{importReview.filter(r=>r._exists).length}</strong> updates · {importReview.length} total
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <button onClick={()=>setImportReview(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".84rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>← Back</button>
+                <button onClick={()=>{
+                  let imported=0,skipped=0;
+                  importReview.forEach(rec=>{
+                    if(rec._exists){
+                      upDeals(ds=>ds.map(d=>d.id===rec._existingId?rec:d));
+                      if(WON_STAGES.includes(rec.stage)){
+                        upProjs(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProject()}));
+                        upPcards(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProjectCard(rec.id,rec)}));
+                      }
+                      skipped++;
+                    } else {
+                      upDeals(ds=>[...ds,rec]);
+                      if(WON_STAGES.includes(rec.stage)){
+                        upProjs(ps=>({...ps,[rec.id]:emptyProject()}));
+                        upPcards(ps=>({...ps,[rec.id]:emptyProjectCard(rec.id,rec)}));
+                        upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,{
+                          id:"jo"+rec.id,dealId:rec.id,
+                          joNo:`JO-${new Date().getFullYear()}-${String(jos.length+imported+1).padStart(3,"0")}`,
+                          client:rec.client,ceNo:rec.ceNo,projectName:rec.product||rec.client,
+                          value:rec.value,awardTrigger:"Imported",triggerDate:rec.dateAcquired||today,
+                          pm1:"",pm2:"",pm3:"",coordinator:"",aeAssigned:rec.salesOwner||"",
+                          startDate:rec.dateAcquired||today,commsLink:"",
+                          scopeNotes:rec.notes||"",specialInstructions:"",
+                          budgetStatus:"QS Budget Pending",status:"Active",issuedDate:today,
+                        }]);
+                      }
+                      imported++;
+                    }
+                  });
+                  logActivity(null,"Excel Import",`${imported} new + ${skipped} updated via Smart Import`);
+                  setImportReview(null);setSmartImport(null);
+                  toastEmit(`Import complete! ${imported} new deals · ${skipped} updated.`,"success");
+                }} style={{background:"#059669",border:"none",borderRadius:8,padding:"9px 22px",fontFamily:"inherit",fontSize:".84rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
+                  ✅ Confirm Import ({importReview.length})
+                </button>
               </div>
             </div>
           </div>
