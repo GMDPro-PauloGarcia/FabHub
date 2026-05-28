@@ -3247,6 +3247,7 @@ export default function App(){
     ],
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
+      {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"Projects", items:[{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Operations:[
