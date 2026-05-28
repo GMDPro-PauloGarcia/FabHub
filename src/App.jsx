@@ -673,7 +673,7 @@ const SEED_CHECKLIST=[];
 
 const emptyDeal={
   // Core
-  client:"",product:"Custom Shelving",value:"",stage:"01 · BizDev",
+  client:"",product:"",value:"",stage:"01 · BizDev",
   probability:10,contact:"",followUp:"",notes:"",priority:"Normal",
   // Payment
   invoiced:"",amountPaid:"",paymentStatus:"Unpaid",dueDate:"",discount:0,
@@ -685,7 +685,7 @@ const emptyDeal={
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
   // Design Request (inline DRF)
   designRequestDate:"",designRequestNote:"",designApprovalDate:"",
-  drfProjectTitle:"",drfType:DRF_TYPES[0],drfSize:"",drfDescription:"",drfAccessories:[],drfRefLinks:["","",""],drfDeadline:"",drfDesigner:"",drfNotes:"",
+  drfProjectTitle:"",drfSize:"",drfDescription:"",drfAccessories:[],drfRefLinks:["","",""],drfDeadline:"",drfDesigner:"",drfNotes:"",
   // Comms
   commsGroup:"",commsGroupLink:"",
   // Addenda
@@ -1314,13 +1314,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
           <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
           <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
-          <Fld label="Project Sub-Type">
-            <Sel value={form.product} onChange={e=>f("product",e.target.value)}>
-              <option value="">— Select Sub-Type —</option>
-              {["Retail Fit-Out","Kiosk","Modules","Signage","POP Display","Cart","Event / Activation","Repair / Refurbishment","Pull-Out / Relocation","Warehousing","Design Only","Print / Dress-Up","Renovation","Non-Retail Construction","Retail Construction","Other"].map(t=><option key={t}>{t}</option>)}
-            </Sel>
-            {form.product==="Other"&&<Inp value={form.customProductType||""} onChange={e=>f("customProductType",e.target.value)} placeholder="Describe the project sub-type..." style={{marginTop:6}}/>}
-          </Fld>
           <Fld label="Discount %" hint="Paulo sets this only"><Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/></Fld>
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
         </div>
@@ -1347,7 +1340,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:4}}>🎨 Design Request</div>
         <div style={{fontSize:".72rem",color:"#a78bfa",marginBottom:12}}>Fill this out to auto-create a DRF when the deal is saved.</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-          <Fld label="Type"><Sel value={form.drfType||DRF_TYPES[0]} onChange={e=>f("drfType",e.target.value)}>{DRF_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
           <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
           <Fld label="Assigned Designer"><Sel value={form.drfDesigner||""} onChange={e=>f("drfDesigner",e.target.value)}><option value="">— Assign later —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
           <Fld label="Design Deadline"><Inp type="date" value={form.drfDeadline||""} onChange={e=>f("drfDeadline",e.target.value)}/></Fld>
@@ -2961,7 +2953,7 @@ export default function App(){
     try {
       const payload={
         ce_no:rec.ceNo, client:rec.client, contact:rec.contact,
-        ce_type:rec.ceType, product:rec.product, stage:rec.stage,
+        ce_type:rec.ceType, product:rec.product||rec.ceType||"", stage:rec.stage,
         priority:rec.priority, sales_owner:rec.salesOwner,
         biz_dev_source:rec.bizDevSource, date_acquired:rec.dateAcquired||null,
         due_date:rec.dueDate||null, value:Number(rec.value)||0,
@@ -2988,7 +2980,7 @@ export default function App(){
     const data = overrideData||dealForm;
     if(!data.client) return;
     const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
-    const rec={...data,id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob};
+    const rec={...data,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob};
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
@@ -3007,7 +2999,7 @@ export default function App(){
         dealId:rec.id, client:rec.client, location:"",
         designer:data.drfDesigner||"", designDeadline:data.drfDeadline||"",
         projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
-        type:data.drfType||DRF_TYPES[0], size:data.drfSize||"",
+        type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
         description:data.drfDescription||"",
         accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
         notes:data.drfNotes||"", approvedLink:"", status:"New",
