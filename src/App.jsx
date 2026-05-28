@@ -5186,22 +5186,47 @@ export default function App(){
                     rawText=lines.slice(0,6).join("\n");
                   } else if(["xlsx","xls"].includes(fileType)){
                     const {read,utils}=window.XLSX||{};
-                    if(!read) throw new Error("Excel library not loaded. Wait 5 seconds and retry.");
+                    if(!read) throw new Error("Excel library not loaded. Please refresh the page and try again.");
                     const buf=await file.arrayBuffer();
                     const wb=read(buf,{type:"array"});
-                    const ws=wb.Sheets[wb.SheetNames[0]];
-                    const allRows=utils.sheet_to_json(ws,{defval:""});
-                    rawRows=allRows;
-                    // Get first 5 rows as text preview
-                    rawText=utils.sheet_to_json(ws,{header:1}).slice(0,6).map(r=>r.join(" | ")).join("\n");
+                    // Detect FabHub SmartImport Template by sheet names
+                    const isFabHub=wb.SheetNames.some(s=>s.includes("Sales Import"));
+                    if(isFabHub){
+                      const parseSheet=(sheetName,defaultStage)=>{
+                        if(!sheetName) return [];
+                        const ws=wb.Sheets[sheetName];
+                        const all2d=utils.sheet_to_json(ws,{header:1,defval:""});
+                        const headerRow=(all2d[3]||[]).map(h=>String(h).replace(/\s*\*\s*/g,"").trim());
+                        return all2d.slice(4)
+                          .filter(row=>row[2]||row[3])
+                          .map(row=>{
+                            const obj={};
+                            headerRow.forEach((h,i)=>{if(h) obj[h]=row[i]??""});
+                            if(defaultStage) obj._defaultStage=defaultStage;
+                            return obj;
+                          });
+                      };
+                      const awardedSheet=wb.SheetNames.find(s=>s.includes("awarded"));
+                      const regularSheet=wb.SheetNames.find(s=>s.includes("Sales Import")&&!s.includes("awarded"));
+                      const awardedRows=parseSheet(awardedSheet,"09 · For Archiving");
+                      const regularRows=parseSheet(regularSheet,null);
+                      rawRows=[...awardedRows,...regularRows];
+                      rawText=rawRows.slice(0,5).map(r=>Object.values(r).slice(0,6).join(" | ")).join("\n");
+                    } else {
+                      const ws=wb.Sheets[wb.SheetNames[0]];
+                      rawRows=utils.sheet_to_json(ws,{defval:""});
+                      rawText=utils.sheet_to_json(ws,{header:1}).slice(0,6).map(r=>r.join(" | ")).join("\n");
+                    }
                   }
 
                   // Step 2: Analyze file structure locally
-                  const allColumns=[...new Set(rawRows.flatMap(r=>Object.keys(r)))];
+                  const allColumns=[...new Set(rawRows.flatMap(r=>Object.keys(r).filter(k=>k!=='_defaultStage')))];
                   const colsNorm=allColumns.map(c=>c.toLowerCase().replace(/[^a-z0-9]/g,""));
+                  const isFabHubTemplate=colsNorm.some(c=>c.includes("ceno")||c.includes("clientname"))||
+                    rawRows.some(r=>r._defaultStage);
                   const score=(terms)=>terms.filter(t=>colsNorm.some(c=>c.includes(t))).length;
                   const scores={
-                    deals:   score(["client","stage","value","ceno","cenum","deal","pipeline","acquired","sales"]),
+                    deals:   isFabHubTemplate?10:score(["client","stage","value","ceno","cenum","deal","pipeline","acquired","sales"]),
                     expenses:score(["expense","category","amount","vendor","cost","description","receipt"]),
                     inflows: score(["inflow","payment","received","collection","income","deposited"]),
                     clients: score(["company","contact","email","phone","address","industry"]),
@@ -5209,18 +5234,23 @@ export default function App(){
                   };
                   const best=Object.entries(scores).sort((a,b)=>b[1]-a[1])[0];
                   const dataType=best[1]>0?best[0]:"unknown";
-                  const confidence=Math.min(95,best[1]*20+5);
+                  const confidence=isFabHubTemplate?98:Math.min(95,best[1]*20+5);
                   const issues=[];
                   if(rawRows.length===0) issues.push("File appears to be empty — no data rows found");
                   if(allColumns.length>30) issues.push("Wide file — showing first 20 columns");
-                  const emptyCount=rawRows.filter(r=>Object.values(r).every(v=>!v)).length;
-                  if(emptyCount>0) issues.push(`${emptyCount} completely empty row${emptyCount>1?"s":""} detected`);
+                  const emptyCount=rawRows.filter(r=>Object.values(r).every(v=>!v||v==="")).length;
+                  if(emptyCount>0) issues.push(`${emptyCount} rows with minimal data will be imported as bare leads`);
+                  const awardedCount=rawRows.filter(r=>r._defaultStage==="09 · For Archiving").length;
+                  if(awardedCount>0) issues.push(`${awardedCount} awarded/historical projects detected — will import as "Done / Collected"`);
                   const canImport=dataType==="deals"&&rawRows.length>0;
                   const analysis={
                     dataType,confidence,rowCount:rawRows.length,
                     fieldsFound:allColumns.slice(0,20),
+                    isFabHubTemplate,
                     issues,
-                    summary:`File contains ${rawRows.length} row${rawRows.length!==1?"s":""} and ${allColumns.length} column${allColumns.length!==1?"s":""}. ${dataType!=="unknown"?`Detected as ${dataType} data based on column names.`:"Column names did not match a known data type — manual review needed."}`,
+                    summary:isFabHubTemplate
+                      ?`FabHub SmartImport Template detected. ${rawRows.length} deals ready to import (${awardedCount} historical awarded + ${rawRows.length-awardedCount} pipeline). Rows with missing stages will default to "01 · BizDev".`
+                      :`File contains ${rawRows.length} row${rawRows.length!==1?"s":""} and ${allColumns.length} column${allColumns.length!==1?"s":""}. ${dataType!=="unknown"?`Detected as ${dataType} data based on column names.`:"Column names did not match a known data type — manual review needed."}`,
                     importAction:canImport?"Import as deals into the Sales Pipeline":`${dataType!=="unknown"?dataType.charAt(0).toUpperCase()+dataType.slice(1)+" data detected":"Unknown data type"} — use the matching module to import`,
                     canImport,
                     cantImportReason:canImport?"":dataType!=="deals"&&dataType!=="unknown"?`${dataType} data — import this using the ${dataType} module instead`:"Could not map columns to a known FabHub data type",
@@ -6305,31 +6335,45 @@ export default function App(){
                 {smartImport.analysis.canImport&&smartImport.analysis.dataType==="deals"&&(
                   <button onClick={()=>{
                     const rows=smartImport.rows;
+                    // Normalize old-style CE Types from the FabHub template to FabHub values
+                    const normType=(t)=>{
+                      const u=String(t||"").toUpperCase().trim();
+                      if(u.includes("INTERIOR")) return "Interior Design";
+                      if(u.includes("SIGNAGE")) return "Signage";
+                      if(u.includes("FIT")) return "Fit-Out";
+                      if(u.includes("RENOVATI")) return "Renovation";
+                      return "Fabrication / General";
+                    };
+                    const parseVal=(v)=>Number(String(v||"").replace(/[₱,\s]/g,""))||0;
                     let imported=0,skipped=0;
                     rows.forEach(r=>{
-                      const client=String(r.client||r.Client||r["Client Name"]||r["client_name"]||r.company||"").trim();
+                      const client=String(r["Client Name"]||r.client||r.Client||r["client_name"]||r.company||"").trim();
                       if(!client) return;
-                      const ceNo=String(r.ceNo||r["CE No"]||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
-                      const exists=deals.find(d=>ceNo&&d.ceNo&&d.ceNo===ceNo);
+                      const ceNo=String(r["CE No"]||r.ceNo||r["CE Number"]||r.ce_no||r["CE No."]||"").trim();
+                      const exists=deals.find(d=>ceNo&&d.ceNo&&(d.ceNo===ceNo||d.ceNo==="#"+ceNo.replace(/^#/,"")));
+                      const rawStage=r.Stage||r.stage||r.status||r._defaultStage||"";
                       const rec={
                         id:exists?.id||uid(),
                         client,
-                        contact:String(r.contact||r.Contact||r["Project Name"]||r.project||"").trim(),
-                        ceNo:ceNo||("CE-"+Date.now()),
-                        ceType:String(r.ceType||r["CE Type"]||r.type||"Fabrication / General").trim(),
-                        stage:normalizeStage(r.stage||r.Stage||r.status||"01 · BizDev"),
-                        value:Number(r.value||r.Value||r["Contract Value"]||r.amount||0),
-                        invoiced:Number(r.invoiced||r.Invoiced||0),
-                        amountPaid:Number(r.amountPaid||r["Amount Paid"]||r.paid||0),
-                        paymentStatus:String(r.paymentStatus||r["Payment Status"]||"Unpaid").trim(),
+                        product:String(r["Project / Product"]||r.product||r.Product||r["Project Name"]||r.project||"").trim(),
+                        contact:String(r["Contact Person"]||r.contact||r.Contact||"").trim(),
+                        ceNo:ceNo||("CE-IMPORT-"+Date.now()),
+                        ceType:normType(r["CE Type"]||r.ceType||r.type||""),
+                        stage:normalizeStage(rawStage||"01 · BizDev"),
+                        value:parseVal(r["Contract Value (VAT EX)"]||r["Contract Value"]||r.value||r.Value||r.amount||0),
+                        invoiced:parseVal(r.invoiced||r.Invoiced||0),
+                        amountPaid:parseVal(r.amountPaid||r["Amount Paid"]||r.paid||0),
+                        paymentStatus:String(r["Payment Status"]||r.paymentStatus||"Unpaid").trim()||"Unpaid",
                         receiptType:String(r.receiptType||r["Receipt Type"]||"OR").trim(),
-                        salesOwner:String(r.salesOwner||r["Sales Owner"]||r.ae||r.AE||"").trim(),
-                        dateAcquired:String(r.dateAcquired||r["Date Acquired"]||r.date||today).trim(),
-                        notes:String(r.notes||r.Notes||"").trim(),
-                        product:String(r.product||r.Product||r["Product Type"]||"Custom Shelving").trim(),
-                        priority:String(r.priority||r.Priority||"Normal").trim(),
-                        bizDevSource:String(r.bizDevSource||r["Biz Dev Source"]||r.source||r.Source||"").trim(),
-                        probability:50,
+                        salesOwner:String(r["Sales Owner"]||r.salesOwner||r.ae||r.AE||r.Owner||"").trim(),
+                        assignedAE:String(r["Assigned AE"]||r["AE Assigned (JO)"]||r.assignedAE||"").trim(),
+                        dateAcquired:String(r["Date Acquired"]||r.dateAcquired||r.date||today).trim()||today,
+                        dueDate:String(r["Due Date"]||r.dueDate||"").trim()||"",
+                        notes:String(r.Notes||r.notes||"").trim(),
+                        commsGroup:String(r["Comms Group"]||r.commsGroup||"").trim(),
+                        bizDevSource:String(r["BizDev Source"]||r.bizDevSource||r["Biz Dev Source"]||r.source||"").trim(),
+                        priority:"Normal",
+                        probability:WON_STAGES.includes(normalizeStage(rawStage||"01 · BizDev"))?100:50,
                       };
                       if(exists){
                         upDeals(ds=>ds.map(d=>d.id===exists.id?rec:d));
@@ -6347,7 +6391,7 @@ export default function App(){
                           upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,{
                             id:"jo"+rec.id,dealId:rec.id,
                             joNo:`JO-${new Date().getFullYear()}-${String(jos.length+imported+1).padStart(3,"0")}`,
-                            client:rec.client,ceNo:rec.ceNo,projectName:rec.contact||rec.client,
+                            client:rec.client,ceNo:rec.ceNo,projectName:rec.product||rec.client,
                             value:rec.value,awardTrigger:"Imported",triggerDate:rec.dateAcquired||today,
                             pm1:"",pm2:"",pm3:"",coordinator:"",aeAssigned:rec.salesOwner||"",
                             startDate:rec.dateAcquired||today,commsLink:"",
