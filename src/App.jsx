@@ -132,6 +132,17 @@ const CS_CLR    = { "To Do":"#94a3b8","In Progress":"#f59e0b",Done:"#10b981" };
 const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
 const fmtK  = n => n>=1000000?"₱"+(n/1000000).toFixed(1)+"M":n>=1000?"₱"+(n/1000).toFixed(0)+"k":"₱"+(n||0);
 const today = new Date().toISOString().split("T")[0];
+const BUSINESS_DAYS_SLA = 5;
+function bizDaysElapsed(startDateStr){
+  if(!startDateStr) return 0;
+  const start = new Date(startDateStr); const now = new Date();
+  let count = 0; const d = new Date(start);
+  while(d <= now){ const dow = d.getDay(); if(dow!==0&&dow!==6) count++; d.setDate(d.getDate()+1); }
+  return Math.max(0, count - 1);
+}
+function bizDaysRemaining(startDateStr, sla=BUSINESS_DAYS_SLA){
+  return sla - bizDaysElapsed(startDateStr);
+}
 
 // ─── TAX CALCULATIONS ─────────────────────────────────────────────────────────
 // VAT-exclusive: contract value is the base, VAT added on top
@@ -704,6 +715,8 @@ const emptyProject=()=>({
   budgetCreated:false,budgetLink:"",budgetNotes:"",
   // COC
   cocCreated:false,cocDate:"",cocLink:"",
+  // Warranty
+  warranty:{active:false,type:"30",startDate:"",endDate:"",notes:""},
   // PM Updates
   pmUpdates:[],
   // Addenda
@@ -2927,6 +2940,35 @@ export default function App(){
   const marginOf  =(p,d)=>d&&costOf(p)<d.value?Math.round((d.value-costOf(p))/d.value*100):0;
   const totRev    =useMemo(()=>wonDeals.reduce((s,d)=>s+d.value,0),[wonDeals]);
   const totExp    =useMemo(()=>exps.reduce((s,e)=>s+e.amount,0),[exps]);
+  const escalations = useMemo(()=>{
+    const list = [];
+    const todayD = today;
+    // E-1: billing milestones overdue (past due date, not fully paid)
+    billings.forEach(b=>{
+      if(b.dueDate && b.dueDate < todayD && b.status !== 'Fully Paid' && b.status !== 'Cancelled'){
+        const deal = wonDeals.find(d=>d.id===b.dealId);
+        if(deal) list.push({type:'E-1',dealId:b.dealId,client:deal.client,label:`Overdue: ${b.label||'Invoice'} (due ${b.dueDate})`,severity:'high'});
+      }
+    });
+    // E-2: addenda in Discovered status on active fabrication projects
+    addenda.forEach(a=>{
+      if(a.status==='Discovered'){
+        const deal = wonDeals.find(d=>d.id===a.dealId);
+        if(deal) list.push({type:'E-2',dealId:a.dealId,client:deal.client,label:`Unresolved scope change: ${a.title||'Addendum'}`,severity:'medium'});
+      }
+    });
+    // E-3: punchlist SLA breach (>5 business days since punchlist started)
+    wonDeals.forEach(d=>{
+      if(d.stage==='11 · Punchlist'){
+        const proj = projs[d.id];
+        const startDate = proj?.stageDates?.Punchlist?.s;
+        if(startDate && bizDaysElapsed(startDate) > BUSINESS_DAYS_SLA){
+          list.push({type:'E-3',dealId:d.id,client:d.client,label:`Punchlist SLA breached (${bizDaysElapsed(startDate)} biz days)`,severity:'high'});
+        }
+      }
+    });
+    return list;
+  },[billings,addenda,wonDeals,projs,today]);
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
 
@@ -3133,6 +3175,25 @@ export default function App(){
     };
     upJos(js=>[jo,...js]);
     if(isSupabaseReady()) sbSyncOne("job_orders",jo,toSbJO);
+    // Auto-create 50% DP billing milestone so Finance can log it
+    const dpAmount = Math.round(Number(awardModal.value||0) * 0.5);
+    if(dpAmount > 0){
+      const dpMs = {
+        id: uid(),
+        dealId: id,
+        label: "50% Down Payment",
+        amount: dpAmount,
+        status: "Unpaid",
+        dueDate: "",
+        invoiceNo: "",
+        invoiceDate: "",
+        payments: [],
+        createdBy: session?.name || "System",
+        createdAt: today,
+      };
+      upBillings(bs => [...bs, dpMs]);
+      if(isSupabaseReady()) sbSyncOne("billing_milestones", dpMs, toSbBilling);
+    }
     // Create project card with PM/AE pre-populated
     createProjectCard(id,{...awardModal,
       pmAssigned:pmDisplay,
@@ -6767,7 +6828,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
     </Wrap>
   );
 
-  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠️ Addenda"]];
+  const tabs=[["progress","📊 Progress"],["team","👥 Team"],["materials","📦 Materials"],["swatches","🛒 Swatchboard"],["costs","💰 Costs"],["updates","📝 PM Updates"],["addenda","⚠️ Addenda"],["closeout","✅ Close-Out"]];
   return(
     <Wrap>
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
@@ -6813,6 +6874,33 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
               <Inp rows={3} value={proj.notes||""} onChange={e=>upProj(selProj,p=>({...p,notes:e.target.value}))} placeholder="Add notes for the team…"/>
             </Fld>
           </div>
+          {projDeal?.stage==='11 · Punchlist'&&(()=>{
+            const punchStart = proj?.stageDates?.Punchlist?.s;
+            const elapsed = bizDaysElapsed(punchStart);
+            const remaining = bizDaysRemaining(punchStart);
+            const breached = remaining < 0;
+            const urgent = remaining <= 1 && remaining >= 0;
+            return(
+              <div style={{gridColumn:"1/-1"}}>
+                <Card accent={breached?"#ef4444":urgent?"#f59e0b":"#f97316"}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{fontWeight:800,color:breached?"#ef4444":urgent?"#f59e0b":"#f97316",fontSize:".9rem"}}>
+                      {breached?"⚠️ PUNCHLIST SLA BREACHED":"🔔 Punchlist SLA Timer"}
+                    </span>
+                    <span style={{fontSize:".75rem",background:breached?"#fef2f2":urgent?"#fffbeb":"#fff7ed",color:breached?"#ef4444":urgent?"#f59e0b":"#f97316",padding:"3px 8px",borderRadius:20,fontWeight:700}}>
+                      {breached?`${Math.abs(remaining)} day${Math.abs(remaining)!==1?"s":""} OVERDUE`:remaining===0?"Due today":`${remaining} day${remaining!==1?"s":""} left`}
+                    </span>
+                  </div>
+                  <div style={{fontSize:".78rem",color:"#475569",marginBottom:8}}>5 business-day resolution SLA · PM owns sign-off</div>
+                  {punchStart?(
+                    <div style={{fontSize:".75rem",color:"#64748b"}}>Started: {punchStart} · Elapsed: {elapsed} business day{elapsed!==1?"s":""}</div>
+                  ):(
+                    <div style={{fontSize:".78rem",color:"#f59e0b",fontWeight:600}}>⚠️ Set punchlist start date in stage dates to activate SLA timer</div>
+                  )}
+                </Card>
+              </div>
+            );
+          })()}
         </div>
       )}
 
