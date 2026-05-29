@@ -5998,6 +5998,7 @@ export default function App(){
                                   <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
                                     {d.ceNo&&<span>{d.ceNo}</span>}
                                     {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
+                                    {grp==="Other"&&d.ceType&&<span style={{background:"#f1f5f9",color:"#64748b",borderRadius:4,padding:"0 5px",fontSize:".6rem",fontWeight:600,border:"1px solid #e2e8f0"}}>{d.ceType}</span>}
                                     {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
                                     {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".6rem"}}>{ae}</span>}
                                     <span style={{color:pc?.targetEndDate?"#8b5cf6":"#cbd5e1",fontSize:".63rem"}}>📅 {tatLabel}</span>
