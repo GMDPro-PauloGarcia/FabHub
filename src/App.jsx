@@ -3061,6 +3061,9 @@ export default function App(){
   const[selProj,   setSelProj]  =useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("cash");
+  const[repPeriod, setRepPeriod]=useState("monthly");
+  const[repYear,   setRepYear]  =useState(new Date().getFullYear());
+  const[repTab,    setRepTab]   =useState("sales");
   const[matModal,  setMatModal] =useState(false);
   const[matForm,   setMatForm]  =useState({projectId:"",name:"",category:"Materials",qty:1,unit:"pcs",cost:0,supplier:"",note:""});
   const[editMat,   setEditMat]  =useState(null);
@@ -3405,7 +3408,7 @@ export default function App(){
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
@@ -3413,13 +3416,13 @@ export default function App(){
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"}]},
     ],
     Sales:[
-      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"},{id:"checklist",l:"Checklist"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
-      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"}]},
+      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     Procurement:[
@@ -3458,7 +3461,7 @@ export default function App(){
       checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
       procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
       collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
-      drf:"📝",deliveries:"🚚",stockmove:"📦",
+      drf:"📝",deliveries:"🚚",stockmove:"📦",reports:"📊",
       suppliers:"🏭",subcontractors:"👷",
       "Sales Pipeline":"📊","My Pipeline":"📊",
     };
@@ -5307,6 +5310,232 @@ export default function App(){
   if(page==="botsettings"&&role==="Manager") return(
     <BotSettingsView botSettings={botSettings} saveBotSettings={saveBotSettings} sendTelegramNotification={sendTelegramNotification} Wrap={Wrap}/>
   );
+
+  // ── REPORTS CENTER (Manager / Sales / Finance) ───────────────────────────
+  if(page==="reports"){
+    const CY=repYear;
+    const REPORT_YEARS=Array.from({length:5},(_,i)=>new Date().getFullYear()-i);
+    const getPCount=()=>repPeriod==="monthly"?12:repPeriod==="quarterly"?4:1;
+    const getPLabel=(i)=>repPeriod==="monthly"?MONTHS[i]:repPeriod==="quarterly"?`Q${i+1}`:`${CY}`;
+    const getDealPeriod=(d)=>{if(!d.dateAcquired)return -1;const dt=new Date(d.dateAcquired);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
+    const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
+    const n=getPCount();
+    // Sales data
+    const yearDeals=deals.filter(d=>getDealPeriod(d)>=0||(d.dateAcquired&&new Date(d.dateAcquired).getFullYear()===CY));
+    const yearWon=yearDeals.filter(d=>WON_STAGES.includes(d.stage));
+    const salesPeriods=Array.from({length:n},(_,i)=>{
+      const pd=yearDeals.filter(d=>getDealPeriod(d)===i);
+      const pw=pd.filter(d=>WON_STAGES.includes(d.stage));
+      return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+Number(d.value||0),0)};
+    });
+    const ownerMap={};
+    yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=Number(d.value||0);}});
+    const ownerRows=Object.values(ownerMap).sort((a,b)=>b.value-a.value);
+    const ceMap={};
+    yearDeals.forEach(d=>{const t=d.ceType||"Other";if(!ceMap[t])ceMap[t]={type:t,acquired:0,won:0,value:0};ceMap[t].acquired++;if(WON_STAGES.includes(d.stage)){ceMap[t].won++;ceMap[t].value+=Number(d.value||0);}});
+    const ceRows=Object.values(ceMap).sort((a,b)=>b.value-a.value);
+    // Finance data
+    const revArr=Array(n).fill(0);
+    billings.forEach(b=>{if(b.status==="Cancelled")return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
+    const collArr=Array(n).fill(0);
+    billings.forEach(b=>{(b.payments||[]).forEach(pay=>{const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0);});});
+    const expArr=Array(n).fill(0);
+    exps.forEach(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);const p=getFinPeriod(ds);if(p>=0)expArr[p]+=Number(e.amount||0);});
+    const finPeriods=Array.from({length:n},(_,i)=>({label:getPLabel(i),revenue:revArr[i],collections:collArr[i],outstanding:Math.max(0,revArr[i]-collArr[i]),expenses:expArr[i],net:revArr[i]-expArr[i]}));
+    const finTot={revenue:revArr.reduce((s,v)=>s+v,0),collections:collArr.reduce((s,v)=>s+v,0),expenses:expArr.reduce((s,v)=>s+v,0)};
+    finTot.outstanding=Math.max(0,finTot.revenue-finTot.collections);finTot.net=finTot.revenue-finTot.expenses;
+    // Expense by category
+    const expCatMap={};
+    exps.forEach(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds||new Date(ds).getFullYear()!==CY)return;const cat=e.category||"Other";expCatMap[cat]=(expCatMap[cat]||0)+Number(e.amount||0);});
+    const expCatRows=Object.entries(expCatMap).sort((a,b)=>b[1]-a[1]);
+    const totalExpCat=expCatRows.reduce((s,[,v])=>s+v,0);
+    // Aging milestones
+    const agingMs=billings.filter(b=>b.status!=="Paid"&&b.status!=="Cancelled"&&Number(b.amount||0)>0).map(b=>{const deal=deals.find(d=>d.id===b.dealId);const daysOver=b.dueDate?Math.max(0,Math.floor((new Date()-new Date(b.dueDate))/(864e5))):null;return{...b,clientName:deal?.client||"Unknown",daysOver};}).sort((a,b)=>(b.daysOver||0)-(a.daysOver||0)).slice(0,15);
+    // Excel export
+    const exportReports=()=>{
+      if(!window.XLSX){toastEmit("Excel library not loaded — please refresh","error");return;}
+      const wb=window.XLSX.utils.book_new();
+      const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+Number(d.value||0),0)]];
+      window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh1),"Sales");
+      const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
+      window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh2),"Finance");
+      const sh3=[["Category","Amount ₱","% of Total"],...expCatRows.map(([cat,amt])=>[cat,amt,totalExpCat>0?Math.round(amt/totalExpCat*100):0])];
+      window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh3),"Expenses by Category");
+      window.XLSX.writeFile(wb,`FabHub-Report-${CY}-${repPeriod}.xlsx`);
+    };
+    const TH=(l,right)=><th style={{padding:"9px 12px",fontWeight:700,fontSize:".72rem",color:"#64748b",textTransform:"uppercase",letterSpacing:".04em",textAlign:right?"right":"left",background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>{l}</th>;
+    const TD=(v,opts={})=><td style={{padding:"8px 12px",fontSize:".82rem",textAlign:opts.right?"right":"left",borderBottom:"1px solid #f1f5f9",fontWeight:opts.bold?700:400,color:opts.color||"#374151"}}>{v}</td>;
+    return(
+      <Wrap>
+        <SecHead title="📊 Reports Center" sub={`Sales & Finance summaries — ${CY}`}/>
+        {/* Controls */}
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:20}}>
+          <select value={repPeriod} onChange={e=>setRepPeriod(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Full Year</option>
+          </select>
+          <select value={repYear} onChange={e=>setRepYear(Number(e.target.value))} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
+            {REPORT_YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+          <div style={{flex:1}}/>
+          <button onClick={exportReports} style={{background:"#10b981",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>📥 Export Excel</button>
+          <button onClick={()=>window.print()} style={{background:"#64748b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
+        </div>
+        {/* Tabs */}
+        <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24}}>
+          {[["sales","📊 Sales Report"],["finance","💰 Finance Report"]].map(([t,l])=>(
+            <button key={t} onClick={()=>setRepTab(t)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:repTab===t?700:500,color:repTab===t?"#3b82f6":"#64748b",borderBottom:repTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
+          ))}
+        </div>
+
+        {/* === SALES REPORT === */}
+        {repTab==="sales"&&(
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:24}}>
+              <KPI label="Deals Acquired"  value={yearDeals.length}                                                                            color="#3b82f6"/>
+              <KPI label="Deals Won"       value={yearWon.length}                                                                              color="#10b981"/>
+              <KPI label="Win Rate"        value={(yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%"}                  color="#f59e0b"/>
+              <KPI label="Pipeline Value"  value={fmtK(yearDeals.reduce((s,d)=>s+Number(d.value||0),0))}                                      color="#6366f1"/>
+              <KPI label="Won Value"       value={fmtK(yearWon.reduce((s,d)=>s+Number(d.value||0),0))}                                        color="#059669"/>
+            </div>
+            <Card>
+              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>{repPeriod==="yearly"?"Yearly":"repPeriod"==="monthly"?"Monthly":"Quarterly"} Breakdown — {CY}</div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{[repPeriod!=="monthly"?repPeriod==="quarterly"?"Quarter":"Year":"Month","Acquired","Won","Win Rate","Pipeline","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                  <tbody>
+                    {salesPeriods.map((p,i)=>(
+                      <tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>
+                        {TD(<strong>{p.label}</strong>)}
+                        {TD(p.acquired,{right:true})}
+                        {TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}
+                        {TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}
+                        {TD(p.pipelineValue>0?fmt(p.pipelineValue):"—",{right:true})}
+                        {TD(p.wonValue>0?fmt(p.wonValue):"—",{right:true,bold:true,color:"#059669"})}
+                      </tr>
+                    ))}
+                    <tr style={{background:"#eff6ff"}}>
+                      {TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}
+                      {TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}
+                      {TD(yearWon.length,{right:true,bold:true,color:"#059669"})}
+                      {TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}
+                      {TD(fmt(yearDeals.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#1e40af"})}
+                      {TD(fmt(yearWon.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#059669"})}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>By Sales Owner</div>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["Sales Owner","Acq.","Won","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                  <tbody>
+                    {ownerRows.map((o,i)=>(
+                      <tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>
+                        {TD(o.owner)}{TD(o.acquired,{right:true})}{TD(o.won,{right:true,color:o.won>0?"#059669":"#94a3b8"})}{TD(fmtK(o.value),{right:true,bold:true,color:"#059669"})}
+                      </tr>
+                    ))}
+                    {ownerRows.length===0&&<tr><td colSpan={4} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No data for {CY}</td></tr>}
+                  </tbody>
+                </table>
+              </Card>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>By Project Type</div>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["CE Type","Acq.","Won","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                  <tbody>
+                    {ceRows.map((r,i)=>(
+                      <tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>
+                        {TD(r.type)}{TD(r.acquired,{right:true})}{TD(r.won,{right:true,color:r.won>0?"#059669":"#94a3b8"})}{TD(fmtK(r.value),{right:true,bold:true,color:"#059669"})}
+                      </tr>
+                    ))}
+                    {ceRows.length===0&&<tr><td colSpan={4} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No data for {CY}</td></tr>}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* === FINANCE REPORT === */}
+        {repTab==="finance"&&(
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:24}}>
+              <KPI label="Revenue"     value={fmtK(finTot.revenue)}                color="#3b82f6"/>
+              <KPI label="Collections" value={fmtK(finTot.collections)}            color="#10b981"/>
+              <KPI label="Outstanding" value={fmtK(finTot.outstanding)}            color="#f59e0b"/>
+              <KPI label="Expenses"    value={fmtK(finTot.expenses)}               color="#ef4444"/>
+              <KPI label="Net Profit"  value={fmtK(finTot.net)}                    color={finTot.net>=0?"#059669":"#ef4444"}/>
+            </div>
+            <Card>
+              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>Income Statement — {CY}</div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{[repPeriod==="monthly"?"Month":repPeriod==="quarterly"?"Quarter":"Year","Revenue","Collections","Outstanding","Expenses","Net Profit"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                  <tbody>
+                    {finPeriods.map((p,i)=>(
+                      <tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>
+                        {TD(<strong>{p.label}</strong>)}
+                        {TD(p.revenue>0?fmt(p.revenue):"—",{right:true,color:"#3b82f6"})}
+                        {TD(p.collections>0?fmt(p.collections):"—",{right:true,color:"#10b981"})}
+                        {TD(p.outstanding>0?fmt(p.outstanding):"—",{right:true,color:"#f59e0b"})}
+                        {TD(p.expenses>0?fmt(p.expenses):"—",{right:true,color:"#ef4444"})}
+                        {TD(p.revenue>0||p.expenses>0?fmt(p.net):"—",{right:true,bold:true,color:p.net>=0?"#059669":"#ef4444"})}
+                      </tr>
+                    ))}
+                    <tr style={{background:"#eff6ff"}}>
+                      {TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}
+                      {TD(fmt(finTot.revenue),{right:true,bold:true,color:"#3b82f6"})}
+                      {TD(fmt(finTot.collections),{right:true,bold:true,color:"#10b981"})}
+                      {TD(fmt(finTot.outstanding),{right:true,bold:true,color:"#f59e0b"})}
+                      {TD(fmt(finTot.expenses),{right:true,bold:true,color:"#ef4444"})}
+                      {TD(fmt(finTot.net),{right:true,bold:true,color:finTot.net>=0?"#059669":"#ef4444"})}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>Expenses by Category — {CY}</div>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["Category","Amount","% of Total"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                  <tbody>
+                    {expCatRows.map(([cat,amt],i)=>(
+                      <tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>
+                        {TD(cat)}{TD(fmt(amt),{right:true,color:"#ef4444"})}{TD((totalExpCat>0?Math.round(amt/totalExpCat*100):0)+"%",{right:true,color:"#94a3b8"})}
+                      </tr>
+                    ))}
+                    {expCatRows.length===0&&<tr><td colSpan={3} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No expenses for {CY}</td></tr>}
+                  </tbody>
+                </table>
+              </Card>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>Outstanding Invoices Aging</div>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["Client","Milestone","Amount","Days"].map((h,i)=>TH(h,i>1))}</tr></thead>
+                  <tbody>
+                    {agingMs.map((b,i)=>(
+                      <tr key={b.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>
+                        {TD(<span style={{maxWidth:90,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.clientName}</span>)}
+                        {TD(b.name||b.label||"Milestone")}
+                        {TD(fmt(b.amount),{right:true,bold:true,color:"#f59e0b"})}
+                        {TD(b.daysOver!=null?b.daysOver+"d":"—",{right:true,color:b.daysOver>30?"#ef4444":b.daysOver>0?"#f59e0b":"#94a3b8"})}
+                      </tr>
+                    ))}
+                    {agingMs.length===0&&<tr><td colSpan={4} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No outstanding invoices</td></tr>}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+          </div>
+        )}
+      </Wrap>
+    );
+  }
 
   if(page==="pipeline") return(
     <>
