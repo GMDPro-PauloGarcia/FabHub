@@ -2532,14 +2532,40 @@ export default function App(){
     const rec={...ms,id:uid(),createdDate:today};
     upBillings(bs=>[...bs,rec]);
     if(isSupabaseReady()) sbSyncOne("billing_milestones",rec,toSbBilling);
+    // Fix 4: sync deal.invoiced = sum of all non-cancelled milestones
+    if(rec.dealId){
+      const allMs=[...billings,rec].filter(b=>b.dealId===rec.dealId&&b.status!=='Cancelled');
+      const totalInvoiced=allMs.reduce((s,b)=>s+Number(b.amount||0),0);
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==rec.dealId) return d;
+        const nd={...d,invoiced:totalInvoiced};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
+    }
   };
   const updateMilestone=(id,ch)=>{
     upBillings(bs=>bs.map(b=>{
       if(b.id!==id) return b;
       const n={...b,...ch};
+      // Fix 3: auto-set invoiceDate when status changes to "Sent to Client"
+      if(ch.status==='Sent to Client'&&!n.invoiceDate) n.invoiceDate=today;
       if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
       return n;
     }));
+    // Fix 4: sync deal.invoiced = sum of all non-cancelled milestones
+    const ms=billings.find(b=>b.id===id);
+    const dealId=ms?.dealId;
+    if(dealId){
+      const updatedBillings=billings.map(b=>b.id===id?{...b,...ch}:b);
+      const total=updatedBillings.filter(b=>b.dealId===dealId&&b.status!=='Cancelled').reduce((s,b)=>s+Number(b.amount||0),0);
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==dealId) return d;
+        const nd={...d,invoiced:total};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
+    }
   };
   const deleteMilestone=(id)=>{upBillings(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});};
   const logBillingPayment=(msId,payment)=>{
@@ -3223,13 +3249,20 @@ export default function App(){
         status: "Unpaid",
         dueDate: "",
         invoiceNo: "",
-        invoiceDate: "",
+        invoiceDate: today,  // Fix 1: set today so P&L can recognize this revenue
         payments: [],
         createdBy: session?.name || "System",
         createdAt: today,
       };
       upBillings(bs => [...bs, dpMs]);
       if(isSupabaseReady()) sbSyncOne("billing_milestones", dpMs, toSbBilling);
+      // Fix 2: set deal.invoiced = dpAmount so Finance totOut KPI reflects it
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==id) return d;
+        const nd={...d,invoiced:Number(d.invoiced||0)+dpAmount};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
     }
     // Create project card with PM/AE pre-populated
     createProjectCard(id,{...awardModal,
