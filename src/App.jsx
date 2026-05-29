@@ -3064,6 +3064,8 @@ export default function App(){
   const[repPeriod, setRepPeriod]=useState("monthly");
   const[repYear,   setRepYear]  =useState(new Date().getFullYear());
   const[repMonth,  setRepMonth] =useState(new Date().getMonth());
+  const[repAESort,  setRepAESort]  =useState("gross");   // "gross"|"won"|"clients"
+  const[repAEFilter,setRepAEFilter]=useState("");
   const[repTab,    setRepTab]   =useState("sales");
   const[matModal,  setMatModal] =useState(false);
   const[matForm,   setMatForm]  =useState({projectId:"",name:"",category:"Materials",qty:1,unit:"pcs",cost:0,supplier:"",note:""});
@@ -5332,9 +5334,14 @@ export default function App(){
     const totalWonBase=monthWon.reduce((s,d)=>s+dealTax(d).base,0);
     const totalWonVat=monthWon.reduce((s,d)=>s+dealTax(d).vat,0);
     const aeMap={};
-    monthWon.forEach(d=>{const ae=d.salesOwner||"Unassigned";if(!aeMap[ae])aeMap[ae]={name:ae,code:aeCode(ae),won:0,gross:0};aeMap[ae].won++;aeMap[ae].gross+=dealTax(d).gross;});
-    const aeRows=Object.values(aeMap).sort((a,b)=>b.gross-a.gross);
+    monthWon.forEach(d=>{const ae=d.salesOwner||"Unassigned";if(!aeMap[ae])aeMap[ae]={name:ae,code:aeCode(ae),won:0,gross:0,clients:new Set()};aeMap[ae].won++;aeMap[ae].gross+=dealTax(d).gross;if(d.client)aeMap[ae].clients.add(d.client);});
+    const aeRowsRaw=Object.values(aeMap).map(r=>({...r,clients:r.clients.size}));
+    const aeRows=[...aeRowsRaw].sort((a,b)=>repAESort==="won"?b.won-a.won:repAESort==="clients"?b.clients-a.clients:b.gross-a.gross);
     const aeTotal=aeRows.reduce((s,r)=>s+r.gross,0);
+    // AE-filtered deal lists
+    const filteredWon=repAEFilter?monthWon.filter(d=>(d.salesOwner||"Unassigned")===repAEFilter):monthWon;
+    const filteredPipeline=repAEFilter?openPipeline.filter(d=>(d.salesOwner||"Unassigned")===repAEFilter):openPipeline;
+    const allAEs=[...new Set([...monthWon,...openPipeline].map(d=>d.salesOwner||"Unassigned"))].sort();
     const dataFlags=[];
     const zeroWon=monthWon.filter(d=>!Number(d.value));
     if(zeroWon.length)dataFlags.push({n:dataFlags.length+1,issue:"Won deal with no value",detail:zeroWon.map(d=>`${d.client} — ${d.product||"(no project)"}`).join("; "),stake:"unknown"});
@@ -5445,23 +5452,49 @@ export default function App(){
                 </div>
               </Card>
               <Card style={{marginTop:16}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem",marginBottom:12}}>CLOSED REVENUE BY SALES OWNER</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:12}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>CLOSED REVENUE BY SALES OWNER</div>
+                  <div style={{display:"flex",gap:4}}>
+                    {[["gross","By Revenue"],["won","By Deals"],["clients","By Clients"]].map(([k,l])=>(
+                      <button key={k} onClick={()=>setRepAESort(k)} style={{padding:"4px 10px",border:"1.5px solid",borderColor:repAESort===k?"#3b82f6":"#e2e8f0",borderRadius:6,background:repAESort===k?"#eff6ff":"#fff",color:repAESort===k?"#1d4ed8":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:repAESort===k?700:400,cursor:"pointer"}}>{l}</button>
+                    ))}
+                  </div>
+                </div>
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
-                  <thead><tr>{["Sales Owner","AE Code","Deals Won","Closed (incl. VAT)","% of Total"].map((h,i)=>TH(h,i>1))}</tr></thead>
+                  <thead><tr>{["Sales Owner","AE Code","Deals Won","Unique Clients","Closed (incl. VAT)","% of Total"].map((h,i)=>TH(h,i>1))}</tr></thead>
                   <tbody>
-                    {aeRows.map((r,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(r.name)}{TD(<span style={{fontFamily:"monospace",fontWeight:700,color:"#6366f1"}}>{r.code}</span>)}{TD(r.won,{right:true})}{TD(fmt(r.gross),{right:true,bold:true,color:"#059669"})}{TD((aeTotal>0?Math.round(r.gross/aeTotal*100):0)+"%",{right:true,color:"#64748b"})}</tr>))}
-                    {aeRows.length===0&&<tr><td colSpan={5} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No won deals for {monthLabel}</td></tr>}
-                    <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD("")}{TD(aeRows.reduce((s,r)=>s+r.won,0),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(aeTotal),{right:true,bold:true,color:"#059669"})}{TD("100%",{right:true,color:"#64748b"})}</tr>
+                    {aeRows.map((r,i)=>(
+                      <tr key={i} style={{background:repAEFilter===r.name?"#eff6ff":i%2===0?"#fff":"#f9fafb",cursor:"pointer"}} onClick={()=>setRepAEFilter(repAEFilter===r.name?"":r.name)} title={repAEFilter===r.name?"Click to clear filter":"Click to filter deals by this AE"}>
+                        {TD(<span style={{display:"flex",alignItems:"center",gap:6}}>{repAEFilter===r.name&&<span style={{fontSize:".65rem",background:"#3b82f6",color:"#fff",borderRadius:4,padding:"1px 5px"}}>filtered</span>}<strong>{r.name}</strong></span>)}
+                        {TD(<span style={{fontFamily:"monospace",fontWeight:700,color:"#6366f1"}}>{r.code}</span>)}
+                        {TD(r.won,{right:true,bold:repAESort==="won",color:repAESort==="won"?"#059669":"#374151"})}
+                        {TD(r.clients,{right:true,bold:repAESort==="clients",color:repAESort==="clients"?"#6366f1":"#374151"})}
+                        {TD(fmt(r.gross),{right:true,bold:repAESort==="gross",color:"#059669"})}
+                        {TD((aeTotal>0?Math.round(r.gross/aeTotal*100):0)+"%",{right:true,color:"#64748b"})}
+                      </tr>
+                    ))}
+                    {aeRows.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No won deals for {monthLabel}</td></tr>}
+                    <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD("")}{TD(aeRows.reduce((s,r)=>s+r.won,0),{right:true,bold:true,color:"#1e40af"})}{TD([...new Set(monthWon.map(d=>d.client).filter(Boolean))].length,{right:true,bold:true,color:"#6366f1"})}{TD(fmt(aeTotal),{right:true,bold:true,color:"#059669"})}{TD("100%",{right:true,color:"#64748b"})}</tr>
                   </tbody>
                 </table>
+                {aeRows.length>0&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:8}}>💡 Click an AE row to filter the Closed Deals and Open Pipeline tables below</div>}
               </Card>
               <Card style={{marginTop:16}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem",marginBottom:12}}>CLOSED DEALS — {monthLabel.toUpperCase()}</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:12}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>CLOSED DEALS — {monthLabel.toUpperCase()}</div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    {repAEFilter&&<span style={{fontSize:".78rem",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 10px",color:"#1d4ed8",fontWeight:600}}>AE: {repAEFilter} <button onClick={()=>setRepAEFilter("")} style={{marginLeft:4,background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".8rem",padding:0}}>✕</button></span>}
+                    <select value={repAEFilter} onChange={e=>setRepAEFilter(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
+                      <option value="">All AEs</option>
+                      {allAEs.map(ae=><option key={ae} value={ae}>{ae}</option>)}
+                    </select>
+                  </div>
+                </div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
                     <thead><tr>{["Service","Project Type","AE","Client","Project Name","Ex-VAT","VAT","Total (incl VAT)","Flags"].map((h,i)=>TH(h,i>=5))}</tr></thead>
                     <tbody>
-                      {monthWon.map((d,i)=>{
+                      {filteredWon.map((d,i)=>{
                         const t=dealTax(d);const flags=[];
                         if(!Number(d.value))flags.push("No value");
                         if(!d.ceNo)flags.push("Missing CE#");
@@ -5476,31 +5509,31 @@ export default function App(){
                           </tr>
                         );
                       })}
-                      {monthWon.length===0&&<tr><td colSpan={9} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No won deals for {monthLabel}</td></tr>}
+                      {filteredWon.length===0&&<tr><td colSpan={9} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>{repAEFilter?`No won deals for ${repAEFilter} in ${monthLabel}`:`No won deals for ${monthLabel}`}</td></tr>}
                       <tr style={{background:"#f0fdf4",borderTop:"2px solid #6ee7b7"}}>
-                        <td colSpan={5} style={{padding:"8px 12px",fontWeight:700,color:"#065f46",fontSize:".82rem"}}>TOTAL — WON only ({monthWon.length} deals)</td>
-                        {TD(fmt(totalWonBase),{right:true,bold:true,color:"#065f46"})}{TD(fmt(totalWonVat),{right:true,color:"#94a3b8"})}{TD(fmt(totalWonGross),{right:true,bold:true,color:"#059669"})}{TD("")}
+                        <td colSpan={5} style={{padding:"8px 12px",fontWeight:700,color:"#065f46",fontSize:".82rem"}}>TOTAL — {repAEFilter?`${repAEFilter} · `:""}WON only ({filteredWon.length} deals)</td>
+                        {TD(fmt(filteredWon.reduce((s,d)=>s+dealTax(d).base,0)),{right:true,bold:true,color:"#065f46"})}{TD(fmt(filteredWon.reduce((s,d)=>s+dealTax(d).vat,0)),{right:true,color:"#94a3b8"})}{TD(fmt(filteredWon.reduce((s,d)=>s+dealTax(d).gross,0)),{right:true,bold:true,color:"#059669"})}{TD("")}
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </Card>
               <Card style={{marginTop:16}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>OPEN PIPELINE</div>
-                  <div style={{fontSize:".78rem",color:"#64748b"}}>{openPipeline.length} active opportunities</div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>OPEN PIPELINE{repAEFilter?` — ${repAEFilter}`:""}</div>
+                  <div style={{fontSize:".78rem",color:"#64748b"}}>{filteredPipeline.length} active opportunities</div>
                 </div>
                 <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",minWidth:600}}>
                     <thead><tr>{["Client","Project Name","Service","Stage","CE#","Note"].map(h=>TH(h,false))}</tr></thead>
                     <tbody>
-                      {openPipeline.slice(0,30).map((d,i)=>{
+                      {filteredPipeline.slice(0,30).map((d,i)=>{
                         const flags=[];
                         if(!d.client)flags.push("Client missing");if(!Number(d.value))flags.push("No value");if(!d.ceNo)flags.push("No CE#");
                         return(<tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(d.client||<span style={{color:"#ef4444",fontStyle:"italic"}}>(blank)</span>)}{TD(d.product||"—")}{TD(<span style={{fontSize:".74rem",background:"#f1f5f9",color:"#475569",padding:"2px 6px",borderRadius:4}}>{svcType(d.ceType)}</span>)}{TD(<span style={{fontSize:".74rem",color:"#6366f1",fontWeight:600}}>{d.stage}</span>)}{TD(d.ceNo||"—")}{TD(flags.length>0?<span style={{fontSize:".72rem",color:"#f59e0b"}}>⚠ {flags.join("; ")}</span>:"")}</tr>);
                       })}
-                      {openPipeline.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No open pipeline deals</td></tr>}
-                      {openPipeline.length>30&&<tr><td colSpan={6} style={{textAlign:"center",padding:10,color:"#94a3b8",fontSize:".78rem"}}>...and {openPipeline.length-30} more — export to Excel for full list</td></tr>}
+                      {filteredPipeline.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>{repAEFilter?`No pipeline deals for ${repAEFilter}`:"No open pipeline deals"}</td></tr>}
+                      {filteredPipeline.length>30&&<tr><td colSpan={6} style={{textAlign:"center",padding:10,color:"#94a3b8",fontSize:".78rem"}}>...and {filteredPipeline.length-30} more — export to Excel for full list</td></tr>}
                     </tbody>
                   </table>
                 </div>
