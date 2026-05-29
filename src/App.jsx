@@ -2567,7 +2567,21 @@ export default function App(){
       }));
     }
   };
-  const deleteMilestone=(id)=>{upBillings(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});};
+  const deleteMilestone=(id)=>{
+    const ms=billings.find(b=>b.id===id);
+    upBillings(bs=>bs.filter(b=>b.id!==id));
+    if(ms?.dealId){
+      const remaining=billings.filter(b=>b.dealId===ms.dealId&&b.id!==id&&b.status!=='Cancelled');
+      const total=remaining.reduce((s,b)=>s+Number(b.amount||0),0);
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==ms.dealId) return d;
+        const nd={...d,invoiced:total};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
+    }
+    if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});
+  };
   const logBillingPayment=(msId,payment)=>{
     const payId=uid();
     const milestone=billings.find(b=>b.id===msId);
@@ -3664,7 +3678,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Aerwin 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Finance Dashboard · {todayL}</div>
         </div>
         <button onClick={()=>setPage("billing")} style={{background:"#3b82f6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Open Billing</button>
@@ -4613,7 +4627,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Mar 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>COO Dashboard · {todayL}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -4736,7 +4750,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Arrius 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>Operations Director · {todayL}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -4870,7 +4884,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Paolo 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>Sales Manager · {todayL}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -6632,6 +6646,7 @@ export default function App(){
                   importReview.forEach(rec=>{
                     if(rec._exists){
                       upDeals(ds=>ds.map(d=>d.id===rec._existingId?rec:d));
+                      if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
                       if(WON_STAGES.includes(rec.stage)){
                         upProjs(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProjectCard(rec.id,rec)}));
@@ -6639,10 +6654,11 @@ export default function App(){
                       skipped++;
                     } else {
                       upDeals(ds=>[...ds,rec]);
+                      if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
                       if(WON_STAGES.includes(rec.stage)){
                         upProjs(ps=>({...ps,[rec.id]:emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:emptyProjectCard(rec.id,rec)}));
-                        upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,{
+                        const newJo={
                           id:"jo"+rec.id,dealId:rec.id,
                           joNo:`JO-${new Date().getFullYear()}-${String(jos.length+imported+1).padStart(3,"0")}`,
                           client:rec.client,ceNo:rec.ceNo,projectName:rec.product||rec.client,
@@ -6651,7 +6667,9 @@ export default function App(){
                           startDate:rec.dateAcquired||today,commsLink:"",
                           scopeNotes:rec.notes||"",specialInstructions:"",
                           budgetStatus:"QS Budget Pending",status:"Active",issuedDate:today,
-                        }]);
+                        };
+                        upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,newJo]);
+                        if(isSupabaseReady()) sbSyncOne("job_orders",newJo,toSbJO);
                       }
                       imported++;
                     }
