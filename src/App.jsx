@@ -2532,16 +2532,56 @@ export default function App(){
     const rec={...ms,id:uid(),createdDate:today};
     upBillings(bs=>[...bs,rec]);
     if(isSupabaseReady()) sbSyncOne("billing_milestones",rec,toSbBilling);
+    // Fix 4: sync deal.invoiced = sum of all non-cancelled milestones
+    if(rec.dealId){
+      const allMs=[...billings,rec].filter(b=>b.dealId===rec.dealId&&b.status!=='Cancelled');
+      const totalInvoiced=allMs.reduce((s,b)=>s+Number(b.amount||0),0);
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==rec.dealId) return d;
+        const nd={...d,invoiced:totalInvoiced};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
+    }
   };
   const updateMilestone=(id,ch)=>{
     upBillings(bs=>bs.map(b=>{
       if(b.id!==id) return b;
       const n={...b,...ch};
+      // Fix 3: auto-set invoiceDate when status changes to "Sent to Client"
+      if(ch.status==='Sent to Client'&&!n.invoiceDate) n.invoiceDate=today;
       if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
       return n;
     }));
+    // Fix 4: sync deal.invoiced = sum of all non-cancelled milestones
+    const ms=billings.find(b=>b.id===id);
+    const dealId=ms?.dealId;
+    if(dealId){
+      const updatedBillings=billings.map(b=>b.id===id?{...b,...ch}:b);
+      const total=updatedBillings.filter(b=>b.dealId===dealId&&b.status!=='Cancelled').reduce((s,b)=>s+Number(b.amount||0),0);
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==dealId) return d;
+        const nd={...d,invoiced:total};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
+    }
   };
-  const deleteMilestone=(id)=>{upBillings(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});};
+  const deleteMilestone=(id)=>{
+    const ms=billings.find(b=>b.id===id);
+    upBillings(bs=>bs.filter(b=>b.id!==id));
+    if(ms?.dealId){
+      const remaining=billings.filter(b=>b.dealId===ms.dealId&&b.id!==id&&b.status!=='Cancelled');
+      const total=remaining.reduce((s,b)=>s+Number(b.amount||0),0);
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==ms.dealId) return d;
+        const nd={...d,invoiced:total};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
+    }
+    if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});
+  };
   const logBillingPayment=(msId,payment)=>{
     const payId=uid();
     const milestone=billings.find(b=>b.id===msId);
@@ -3021,6 +3061,12 @@ export default function App(){
   const[selProj,   setSelProj]  =useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("cash");
+  const[repPeriod, setRepPeriod]=useState("monthly");
+  const[repYear,   setRepYear]  =useState(new Date().getFullYear());
+  const[repMonth,  setRepMonth] =useState(new Date().getMonth());
+  const[repAESort,  setRepAESort]  =useState("gross");   // "gross"|"won"|"clients"
+  const[repAEFilter,setRepAEFilter]=useState("");
+  const[repTab,    setRepTab]   =useState("sales");
   const[matModal,  setMatModal] =useState(false);
   const[matForm,   setMatForm]  =useState({projectId:"",name:"",category:"Materials",qty:1,unit:"pcs",cost:0,supplier:"",note:""});
   const[editMat,   setEditMat]  =useState(null);
@@ -3166,11 +3212,13 @@ export default function App(){
     if(!awardModal) return;
     const id=awardModal.id;
     // Update deal — payment is Unpaid (Finance will bill separately)
+    const awardedDate=form.triggerDate||today;
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
       stage:"06 · Project Kickoff",
       probability:100,
       paymentStatus:"Unpaid",
       notes:form.scopeNotes||d.notes,
+      dateAcquired:d.dateAcquired||awardedDate,
     }:d));
     // Persist stage change to Supabase immediately so refresh doesn't lose the award
     if(isSupabaseReady()) sbUpdate('deals',id,{
@@ -3178,6 +3226,7 @@ export default function App(){
       probability:100,
       payment_status:"Unpaid",
       notes:form.scopeNotes||awardModal.notes||"",
+      date_acquired:awardModal.dateAcquired||awardedDate,
       updated_at:new Date().toISOString(),
     }).catch(()=>{});
     // Create project record
@@ -3223,13 +3272,20 @@ export default function App(){
         status: "Unpaid",
         dueDate: "",
         invoiceNo: "",
-        invoiceDate: "",
+        invoiceDate: today,  // Fix 1: set today so P&L can recognize this revenue
         payments: [],
         createdBy: session?.name || "System",
         createdAt: today,
       };
       upBillings(bs => [...bs, dpMs]);
       if(isSupabaseReady()) sbSyncOne("billing_milestones", dpMs, toSbBilling);
+      // Fix 2: set deal.invoiced = dpAmount so Finance totOut KPI reflects it
+      upDeals(ds=>ds.map(d=>{
+        if(d.id!==id) return d;
+        const nd={...d,invoiced:Number(d.invoiced||0)+dpAmount};
+        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+        return nd;
+      }));
     }
     // Create project card with PM/AE pre-populated
     createProjectCard(id,{...awardModal,
@@ -3358,7 +3414,7 @@ export default function App(){
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
@@ -3366,13 +3422,13 @@ export default function App(){
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"}]},
     ],
     Sales:[
-      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"},{id:"checklist",l:"Checklist"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
-      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"}]},
+      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     Procurement:[
@@ -3411,7 +3467,7 @@ export default function App(){
       checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
       procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
       collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
-      drf:"📝",deliveries:"🚚",stockmove:"📦",
+      drf:"📝",deliveries:"🚚",stockmove:"📦",reports:"📊",
       suppliers:"🏭",subcontractors:"👷",
       "Sales Pipeline":"📊","My Pipeline":"📊",
     };
@@ -3631,7 +3687,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Aerwin 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Finance Dashboard · {todayL}</div>
         </div>
         <button onClick={()=>setPage("billing")} style={{background:"#3b82f6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Open Billing</button>
@@ -4580,7 +4636,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Mar 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>COO Dashboard · {todayL}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -4703,7 +4759,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Arrius 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>Operations Director · {todayL}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -4837,7 +4893,7 @@ export default function App(){
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, Paolo 👋</div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
           <div style={{fontSize:".82rem",color:"#64748b",marginTop:2}}>Sales Manager · {todayL}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
@@ -5261,6 +5317,340 @@ export default function App(){
     <BotSettingsView botSettings={botSettings} saveBotSettings={saveBotSettings} sendTelegramNotification={sendTelegramNotification} Wrap={Wrap}/>
   );
 
+  // ── REPORTS CENTER (Manager / Sales / Finance) ───────────────────────────
+  if(page==="reports"){
+    const CY=repYear;
+    const CM=repMonth;
+    const REPORT_YEARS=Array.from({length:5},(_,i)=>new Date().getFullYear()-i);
+    const svcType=(ct)=>{if(!ct)return"Other";if(ct==="Construction")return"Construction";if(["Fabrication / General","Kiosk","Retail Fit-Out"].includes(ct))return"Fabrication";return"Special Services";};
+    const aeCode=(name)=>{if(!name)return"—";const skip=new Set(["de","del","ng","la","the"]);return name.split(" ").filter(w=>w&&!skip.has(w.toLowerCase())).map(w=>w[0].toUpperCase()).join("");};
+    const getPCount=()=>repPeriod==="monthly"?12:repPeriod==="quarterly"?4:1;
+    const getPLabel=(i)=>repPeriod==="monthly"?MONTHS[i]:repPeriod==="quarterly"?`Q${i+1}`:`${CY}`;
+    const getDealPeriod=(d)=>{if(!d.dateAcquired)return -1;const dt=new Date(d.dateAcquired);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
+    const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
+    const n=getPCount();
+    const dealTax=(d)=>calcTax(Number(d.value||0),d.receiptType||"OR",d.withholding||false);
+    const monthWon=deals.filter(d=>WON_STAGES.includes(d.stage)&&d.dateAcquired&&new Date(d.dateAcquired).getFullYear()===CY&&new Date(d.dateAcquired).getMonth()===CM);
+    const monthCancelled=deals.filter(d=>d.stage==="Cancelled"&&d.dateAcquired&&new Date(d.dateAcquired).getFullYear()===CY&&new Date(d.dateAcquired).getMonth()===CM);
+    const openPipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled");
+    const totalWonGross=monthWon.reduce((s,d)=>s+dealTax(d).gross,0);
+    const totalWonBase=monthWon.reduce((s,d)=>s+dealTax(d).base,0);
+    const totalWonVat=monthWon.reduce((s,d)=>s+dealTax(d).vat,0);
+    const aeMap={};
+    monthWon.forEach(d=>{const ae=d.salesOwner||"Unassigned";if(!aeMap[ae])aeMap[ae]={name:ae,code:aeCode(ae),won:0,gross:0,clients:new Set()};aeMap[ae].won++;aeMap[ae].gross+=dealTax(d).gross;if(d.client)aeMap[ae].clients.add(d.client);});
+    const aeRowsRaw=Object.values(aeMap).map(r=>({...r,clients:r.clients.size}));
+    const aeRows=[...aeRowsRaw].sort((a,b)=>repAESort==="won"?b.won-a.won:repAESort==="clients"?b.clients-a.clients:b.gross-a.gross);
+    const aeTotal=aeRows.reduce((s,r)=>s+r.gross,0);
+    // AE-filtered deal lists
+    const filteredWon=repAEFilter?monthWon.filter(d=>(d.salesOwner||"Unassigned")===repAEFilter):monthWon;
+    const filteredPipeline=repAEFilter?openPipeline.filter(d=>(d.salesOwner||"Unassigned")===repAEFilter):openPipeline;
+    const allAEs=[...new Set([...monthWon,...openPipeline].map(d=>d.salesOwner||"Unassigned"))].sort();
+    const dataFlags=[];
+    const zeroWon=monthWon.filter(d=>!Number(d.value));
+    if(zeroWon.length)dataFlags.push({n:dataFlags.length+1,issue:"Won deal with no value",detail:zeroWon.map(d=>`${d.client} — ${d.product||"(no project)"}`).join("; "),stake:"unknown"});
+    const noCE=monthWon.filter(d=>!d.ceNo);
+    if(noCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Missing CE# on won deal",detail:noCE.map(d=>d.client).join(", "),stake:"—"});
+    const ceCounts={};deals.filter(d=>d.ceNo).forEach(d=>{ceCounts[d.ceNo]=(ceCounts[d.ceNo]||0)+1;});
+    const dupCE=Object.entries(ceCounts).filter(([,c])=>c>1);
+    if(dupCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Duplicate CE numbers",detail:dupCE.map(([ce,c])=>`${ce} (${c}x)`).join(", "),stake:"—"});
+    const noBilling=monthWon.filter(d=>!billings.some(b=>b.dealId===d.id));
+    if(noBilling.length)dataFlags.push({n:dataFlags.length+1,issue:"Won project — no billing milestones",detail:noBilling.map(d=>d.client).join(", "),stake:fmt(noBilling.reduce((s,d)=>s+Number(d.value||0),0))});
+    const noClient=openPipeline.filter(d=>!d.client);
+    if(noClient.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals missing client name",detail:`${noClient.length} deal(s) with no client`,stake:"—"});
+    const noVal=openPipeline.filter(d=>!Number(d.value));
+    if(noVal.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals with no value",detail:`${noVal.length} deal(s) have ₱0 value — pipeline understated`,stake:"unknown"});
+    const yearDeals=deals.filter(d=>d.dateAcquired&&new Date(d.dateAcquired).getFullYear()===CY);
+    const yearWon=yearDeals.filter(d=>WON_STAGES.includes(d.stage));
+    const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>WON_STAGES.includes(d.stage));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+Number(d.value||0),0)};});
+    const ownerMap={};yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=Number(d.value||0);}});
+    const ownerRows=Object.values(ownerMap).sort((a,b)=>b.value-a.value);
+    const ceMap={};yearDeals.forEach(d=>{const t=d.ceType||"Other";if(!ceMap[t])ceMap[t]={type:t,acquired:0,won:0,value:0};ceMap[t].acquired++;if(WON_STAGES.includes(d.stage)){ceMap[t].won++;ceMap[t].value+=Number(d.value||0);}});
+    const ceRows=Object.values(ceMap).sort((a,b)=>b.value-a.value);
+    const revArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
+    const collArr=Array(n).fill(0);billings.forEach(b=>{(b.payments||[]).forEach(pay=>{const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0);});});
+    const expArr=Array(n).fill(0);exps.forEach(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);const p=getFinPeriod(ds);if(p>=0)expArr[p]+=Number(e.amount||0);});
+    const finPeriods=Array.from({length:n},(_,i)=>({label:getPLabel(i),revenue:revArr[i],collections:collArr[i],outstanding:Math.max(0,revArr[i]-collArr[i]),expenses:expArr[i],net:revArr[i]-expArr[i]}));
+    const finTot={revenue:revArr.reduce((s,v)=>s+v,0),collections:collArr.reduce((s,v)=>s+v,0),expenses:expArr.reduce((s,v)=>s+v,0)};
+    finTot.outstanding=Math.max(0,finTot.revenue-finTot.collections);finTot.net=finTot.revenue-finTot.expenses;
+    const expCatMap={};exps.forEach(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds||new Date(ds).getFullYear()!==CY)return;const cat=e.category||"Other";expCatMap[cat]=(expCatMap[cat]||0)+Number(e.amount||0);});
+    const expCatRows=Object.entries(expCatMap).sort((a,b)=>b[1]-a[1]);
+    const totalExpCat=expCatRows.reduce((s,[,v])=>s+v,0);
+    const agingMs=billings.filter(b=>b.status!=="Paid"&&b.status!=="Cancelled"&&Number(b.amount||0)>0).map(b=>{const deal=deals.find(d=>d.id===b.dealId);const daysOver=b.dueDate?Math.max(0,Math.floor((new Date()-new Date(b.dueDate))/(864e5))):null;return{...b,clientName:deal?.client||"Unknown",daysOver};}).sort((a,b)=>(b.daysOver||0)-(a.daysOver||0)).slice(0,15);
+    const exportReports=()=>{
+      if(!window.XLSX){toastEmit("Excel library not loaded — please refresh","error");return;}
+      const wb=window.XLSX.utils.book_new();
+      if(repPeriod==="monthly"){
+        const ml=`${MONTHS[CM]} ${CY}`;
+        const summData=[["GMD PRODUCTIONS INC."],[`Sales Month-End Report — ${ml}`],[`Prepared by FabHub • Values are ex-VAT base + 12% VAT (OR) • Review Data Flags before circulating`],[],["DEALS WON","DEALS CANCELLED","OPEN PIPELINE (count)"],[monthWon.length,monthCancelled.length,openPipeline.length],[],[`CLOSED REVENUE — ${ml.toUpperCase()} (incl. VAT)`],["Total closed (all WON rows, as recorded)",totalWonGross],["  Memo: ex-VAT base",totalWonBase],["  Memo: total VAT collected",totalWonVat],[],["CLOSED REVENUE BY SALES OWNER"],["AE","AE Code","Deals Won","Closed (incl. VAT)","% of total"],...aeRows.map(r=>[r.name,r.code,r.won,r.gross,aeTotal>0?(r.gross/aeTotal).toFixed(4):0]),["TOTAL","",aeRows.reduce((s,r)=>s+r.won,0),aeTotal,1]];
+        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(summData),"Summary");
+        const closedData=[["Service Type","Project Type","AE","Client","Project Name","Status","Estimate (ex-VAT)","VAT","Total (incl. VAT)","Flag / Note"],...monthWon.map(d=>{const t=dealTax(d);const f=[];if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("Missing CE#");if(t.vat===0&&Number(d.value)>50000)f.push("VAT=0 — confirm exempt");return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.product||"—","WON",t.base,t.vat,t.gross,f.join("; ")||null];}),[],...monthCancelled.map(d=>{const t=dealTax(d);return[svcType(d.ceType),d.ceType||"—",aeCode(d.salesOwner||""),d.client||"—",d.product||"—","CANCELLED",t.base,t.vat,t.gross,"Cancelled"];}),["","","","","TOTAL — WON only",monthWon.length,totalWonBase,totalWonVat,totalWonGross,""]];
+        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(closedData),"Closed Deals");
+        const pipeData=[["Client","Project Name","Service Type","Stage","CE#","Note"],...openPipeline.map(d=>{const f=[];if(!d.client)f.push("Client missing");if(!Number(d.value))f.push("No value");if(!d.ceNo)f.push("No CE#");return[d.client||"(blank)",d.product||"—",svcType(d.ceType),d.stage||"—",d.ceNo||"—",f.join("; ")||null];})];
+        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(pipeData),"Open Pipeline");
+        const flagData=[[null,"DATA FLAGS — RESOLVE BEFORE THIS REPORT IS FINAL"],["#","Issue","Detail","₱ at Stake"],...dataFlags.map(f=>[f.n,f.issue,f.detail,f.stake]),...(dataFlags.length===0?[[null,"✅ No issues detected","",""]]:[] )];
+        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(flagData),"Data Flags");
+        window.XLSX.writeFile(wb,`GMD-Sales-MonthEnd-${MONTHS[CM]}${CY}.xlsx`);
+      } else {
+        const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+Number(d.value||0),0)]];
+        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh1),"Sales");
+        const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
+        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh2),"Finance");
+        const sh3=[["Category","Amount ₱","% of Total"],...expCatRows.map(([cat,amt])=>[cat,amt,totalExpCat>0?Math.round(amt/totalExpCat*100):0])];
+        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh3),"Expenses by Category");
+        window.XLSX.writeFile(wb,`FabHub-Report-${CY}-${repPeriod}.xlsx`);
+      }
+    };
+    const TH=(l,right)=><th style={{padding:"9px 12px",fontWeight:700,fontSize:".72rem",color:"#64748b",textTransform:"uppercase",letterSpacing:".04em",textAlign:right?"right":"left",background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>{l}</th>;
+    const TD=(v,opts={})=><td style={{padding:"8px 12px",fontSize:".82rem",textAlign:opts.right?"right":"left",borderBottom:"1px solid #f1f5f9",fontWeight:opts.bold?700:400,color:opts.color||"#374151",...(opts.style||{})}}>{v}</td>;
+    const monthLabel=`${MONTHS[CM]} ${CY}`;
+    return(
+      <Wrap>
+        <SecHead title="📊 Reports Center" sub={repPeriod==="monthly"?`Sales Month-End Report — ${monthLabel}`:`Sales & Finance — ${CY}`}/>
+        <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:20}}>
+          <select value={repPeriod} onChange={e=>setRepPeriod(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="yearly">Full Year</option>
+          </select>
+          {repPeriod==="monthly"&&(
+            <select value={repMonth} onChange={e=>setRepMonth(Number(e.target.value))} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
+              {MONTHS.map((m,i)=><option key={m} value={i}>{m}</option>)}
+            </select>
+          )}
+          <select value={repYear} onChange={e=>setRepYear(Number(e.target.value))} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
+            {REPORT_YEARS.map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+          <div style={{flex:1}}/>
+          <button onClick={exportReports} style={{background:"#10b981",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>📥 Export Excel</button>
+          <button onClick={()=>window.print()} style={{background:"#64748b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
+        </div>
+        <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24}}>
+          {[["sales","📊 Sales Report"],["finance","💰 Finance Report"]].map(([t,l])=>(
+            <button key={t} onClick={()=>setRepTab(t)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:repTab===t?700:500,color:repTab===t?"#3b82f6":"#64748b",borderBottom:repTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
+          ))}
+        </div>
+
+        {repTab==="sales"&&(
+          repPeriod==="monthly"?(
+            <div>
+              <div style={{background:"#1e293b",borderRadius:12,padding:"20px 24px",marginBottom:20,color:"#fff"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.4rem",letterSpacing:-.5}}>GMD PRODUCTIONS INC.</div>
+                <div style={{fontSize:"1rem",fontWeight:700,color:"#f59e0b",marginTop:2}}>Sales Month-End Report — {monthLabel.toUpperCase()}</div>
+                <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:6}}>Prepared by FabHub · Values include 12% VAT where applicable (OR) · Review Data Flags before circulating</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                <KPI label="Deals Won"     value={monthWon.length}       color="#059669"/>
+                <KPI label="Cancelled"     value={monthCancelled.length} color="#94a3b8"/>
+                <KPI label="Open Pipeline" value={openPipeline.length}   color="#3b82f6"/>
+              </div>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:"1rem",marginBottom:14}}>CLOSED REVENUE — {monthLabel.toUpperCase()} (incl. VAT)</div>
+                <div style={{maxWidth:500}}>
+                  {[["Total closed (all WON rows, as recorded)",fmt(totalWonGross),"#059669",true],["  ↳ Memo: ex-VAT base",fmt(totalWonBase),"#64748b",false],["  ↳ Memo: total VAT collected",fmt(totalWonVat),"#64748b",false]].map(([label,val,color,bold],i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}>
+                      <span style={{fontSize:".88rem",color:"#64748b"}}>{label}</span>
+                      <span style={{fontWeight:bold?700:400,color,fontSize:".88rem"}}>{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <Card style={{marginTop:16}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:12}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>CLOSED REVENUE BY SALES OWNER</div>
+                  <div style={{display:"flex",gap:4}}>
+                    {[["gross","By Revenue"],["won","By Deals"],["clients","By Clients"]].map(([k,l])=>(
+                      <button key={k} onClick={()=>setRepAESort(k)} style={{padding:"4px 10px",border:"1.5px solid",borderColor:repAESort===k?"#3b82f6":"#e2e8f0",borderRadius:6,background:repAESort===k?"#eff6ff":"#fff",color:repAESort===k?"#1d4ed8":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:repAESort===k?700:400,cursor:"pointer"}}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["Sales Owner","AE Code","Deals Won","Unique Clients","Closed (incl. VAT)","% of Total"].map((h,i)=>TH(h,i>1))}</tr></thead>
+                  <tbody>
+                    {aeRows.map((r,i)=>(
+                      <tr key={i} style={{background:repAEFilter===r.name?"#eff6ff":i%2===0?"#fff":"#f9fafb",cursor:"pointer"}} onClick={()=>setRepAEFilter(repAEFilter===r.name?"":r.name)} title={repAEFilter===r.name?"Click to clear filter":"Click to filter deals by this AE"}>
+                        {TD(<span style={{display:"flex",alignItems:"center",gap:6}}>{repAEFilter===r.name&&<span style={{fontSize:".65rem",background:"#3b82f6",color:"#fff",borderRadius:4,padding:"1px 5px"}}>filtered</span>}<strong>{r.name}</strong></span>)}
+                        {TD(<span style={{fontFamily:"monospace",fontWeight:700,color:"#6366f1"}}>{r.code}</span>)}
+                        {TD(r.won,{right:true,bold:repAESort==="won",color:repAESort==="won"?"#059669":"#374151"})}
+                        {TD(r.clients,{right:true,bold:repAESort==="clients",color:repAESort==="clients"?"#6366f1":"#374151"})}
+                        {TD(fmt(r.gross),{right:true,bold:repAESort==="gross",color:"#059669"})}
+                        {TD((aeTotal>0?Math.round(r.gross/aeTotal*100):0)+"%",{right:true,color:"#64748b"})}
+                      </tr>
+                    ))}
+                    {aeRows.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No won deals for {monthLabel}</td></tr>}
+                    <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD("")}{TD(aeRows.reduce((s,r)=>s+r.won,0),{right:true,bold:true,color:"#1e40af"})}{TD([...new Set(monthWon.map(d=>d.client).filter(Boolean))].length,{right:true,bold:true,color:"#6366f1"})}{TD(fmt(aeTotal),{right:true,bold:true,color:"#059669"})}{TD("100%",{right:true,color:"#64748b"})}</tr>
+                  </tbody>
+                </table>
+                {aeRows.length>0&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:8}}>💡 Click an AE row to filter the Closed Deals and Open Pipeline tables below</div>}
+              </Card>
+              <Card style={{marginTop:16}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:8,marginBottom:12}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>CLOSED DEALS — {monthLabel.toUpperCase()}</div>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    {repAEFilter&&<span style={{fontSize:".78rem",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 10px",color:"#1d4ed8",fontWeight:600}}>AE: {repAEFilter} <button onClick={()=>setRepAEFilter("")} style={{marginLeft:4,background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".8rem",padding:0}}>✕</button></span>}
+                    <select value={repAEFilter} onChange={e=>setRepAEFilter(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
+                      <option value="">All AEs</option>
+                      {allAEs.map(ae=><option key={ae} value={ae}>{ae}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
+                    <thead><tr>{["Service","Project Type","AE","Client","Project Name","Ex-VAT","VAT","Total (incl VAT)","Flags"].map((h,i)=>TH(h,i>=5))}</tr></thead>
+                    <tbody>
+                      {filteredWon.map((d,i)=>{
+                        const t=dealTax(d);const flags=[];
+                        if(!Number(d.value))flags.push("No value");
+                        if(!d.ceNo)flags.push("Missing CE#");
+                        if(t.vat===0&&Number(d.value)>50000)flags.push("VAT=0 — confirm exempt");
+                        return(
+                          <tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>
+                            {TD(<span style={{fontSize:".74rem",background:"#e0e7ff",color:"#3730a3",padding:"2px 7px",borderRadius:5,fontWeight:600}}>{svcType(d.ceType)}</span>)}
+                            {TD(d.ceType||"—")}{TD(<span style={{fontFamily:"monospace",fontWeight:700,color:"#6366f1",fontSize:".8rem"}}>{aeCode(d.salesOwner||"")}</span>)}
+                            {TD(<strong>{d.client||"—"}</strong>)}{TD(d.product||"—")}
+                            {TD(t.base>0?fmt(t.base):"—",{right:true})}{TD(t.vat>0?fmt(t.vat):"—",{right:true,color:"#94a3b8"})}{TD(fmt(t.gross),{right:true,bold:true,color:"#059669"})}
+                            {TD(flags.length>0?<span style={{fontSize:".72rem",color:"#f59e0b"}}>⚠ {flags.join("; ")}</span>:"")}
+                          </tr>
+                        );
+                      })}
+                      {filteredWon.length===0&&<tr><td colSpan={9} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>{repAEFilter?`No won deals for ${repAEFilter} in ${monthLabel}`:`No won deals for ${monthLabel}`}</td></tr>}
+                      <tr style={{background:"#f0fdf4",borderTop:"2px solid #6ee7b7"}}>
+                        <td colSpan={5} style={{padding:"8px 12px",fontWeight:700,color:"#065f46",fontSize:".82rem"}}>TOTAL — {repAEFilter?`${repAEFilter} · `:""}WON only ({filteredWon.length} deals)</td>
+                        {TD(fmt(filteredWon.reduce((s,d)=>s+dealTax(d).base,0)),{right:true,bold:true,color:"#065f46"})}{TD(fmt(filteredWon.reduce((s,d)=>s+dealTax(d).vat,0)),{right:true,color:"#94a3b8"})}{TD(fmt(filteredWon.reduce((s,d)=>s+dealTax(d).gross,0)),{right:true,bold:true,color:"#059669"})}{TD("")}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+              <Card style={{marginTop:16}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>OPEN PIPELINE{repAEFilter?` — ${repAEFilter}`:""}</div>
+                  <div style={{fontSize:".78rem",color:"#64748b"}}>{filteredPipeline.length} active opportunities</div>
+                </div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:600}}>
+                    <thead><tr>{["Client","Project Name","Service","Stage","CE#","Note"].map(h=>TH(h,false))}</tr></thead>
+                    <tbody>
+                      {filteredPipeline.slice(0,30).map((d,i)=>{
+                        const flags=[];
+                        if(!d.client)flags.push("Client missing");if(!Number(d.value))flags.push("No value");if(!d.ceNo)flags.push("No CE#");
+                        return(<tr key={d.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(d.client||<span style={{color:"#ef4444",fontStyle:"italic"}}>(blank)</span>)}{TD(d.product||"—")}{TD(<span style={{fontSize:".74rem",background:"#f1f5f9",color:"#475569",padding:"2px 6px",borderRadius:4}}>{svcType(d.ceType)}</span>)}{TD(<span style={{fontSize:".74rem",color:"#6366f1",fontWeight:600}}>{d.stage}</span>)}{TD(d.ceNo||"—")}{TD(flags.length>0?<span style={{fontSize:".72rem",color:"#f59e0b"}}>⚠ {flags.join("; ")}</span>:"")}</tr>);
+                      })}
+                      {filteredPipeline.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>{repAEFilter?`No pipeline deals for ${repAEFilter}`:"No open pipeline deals"}</td></tr>}
+                      {filteredPipeline.length>30&&<tr><td colSpan={6} style={{textAlign:"center",padding:10,color:"#94a3b8",fontSize:".78rem"}}>...and {filteredPipeline.length-30} more — export to Excel for full list</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+              <Card style={{marginTop:16,border:"1.5px solid #fde68a",background:"#fffbeb"}}>
+                <div style={{fontWeight:700,color:"#92400e",fontSize:".95rem",marginBottom:4}}>⚠ DATA FLAGS — RESOLVE BEFORE THIS REPORT IS FINAL</div>
+                <div style={{fontSize:".75rem",color:"#b45309",marginBottom:12}}>Devil's-advocate read on the data. None of this is fatal — but a number you can't defend is worse than a smaller number you can.</div>
+                {dataFlags.length===0?(
+                  <div style={{textAlign:"center",padding:16,color:"#059669",fontWeight:600,fontSize:".88rem"}}>✅ No data quality issues detected for {monthLabel}</div>
+                ):(
+                  <table style={{width:"100%",borderCollapse:"collapse"}}>
+                    <thead><tr>{["#","Issue","Detail","₱ at Stake"].map(h=>TH(h,false))}</tr></thead>
+                    <tbody>
+                      {dataFlags.map((f,i)=>(<tr key={i} style={{background:i%2===0?"#fffbeb":"#fef9c3"}}>{TD(f.n,{bold:true,color:"#92400e"})}{TD(f.issue,{bold:true,color:"#92400e"})}{TD(f.detail,{style:{maxWidth:340,fontSize:".78rem"}})}{TD(f.stake,{bold:true,color:"#ef4444"})}</tr>))}
+                    </tbody>
+                  </table>
+                )}
+              </Card>
+            </div>
+          ):(
+            <div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:12,marginBottom:24}}>
+                <KPI label="Deals Acquired" value={yearDeals.length} color="#3b82f6"/>
+                <KPI label="Deals Won"      value={yearWon.length}  color="#10b981"/>
+                <KPI label="Win Rate"       value={(yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%"} color="#f59e0b"/>
+                <KPI label="Pipeline Value" value={fmtK(yearDeals.reduce((s,d)=>s+Number(d.value||0),0))} color="#6366f1"/>
+                <KPI label="Won Value"      value={fmtK(yearWon.reduce((s,d)=>s+Number(d.value||0),0))} color="#059669"/>
+              </div>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>{repPeriod==="quarterly"?"Quarterly":"Yearly"} Breakdown — {CY}</div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse"}}>
+                    <thead><tr>{[repPeriod==="quarterly"?"Quarter":"Year","Acquired","Won","Win Rate","Pipeline","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                    <tbody>
+                      {salesPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.acquired,{right:true})}{TD(p.won,{right:true,color:p.won>0?"#059669":"#94a3b8"})}{TD(p.winRate+"%",{right:true,color:p.winRate>=50?"#059669":p.winRate>=25?"#f59e0b":"#ef4444"})}{TD(p.pipelineValue>0?fmt(p.pipelineValue):"—",{right:true})}{TD(p.wonValue>0?fmt(p.wonValue):"—",{right:true,bold:true,color:"#059669"})}</tr>))}
+                      <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(yearDeals.length,{right:true,bold:true,color:"#1e40af"})}{TD(yearWon.length,{right:true,bold:true,color:"#059669"})}{TD((yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0)+"%",{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearDeals.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#1e40af"})}{TD(fmt(yearWon.reduce((s,d)=>s+Number(d.value||0),0)),{right:true,bold:true,color:"#059669"})}</tr>
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+                <Card>
+                  <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>By Sales Owner</div>
+                  <table style={{width:"100%",borderCollapse:"collapse"}}>
+                    <thead><tr>{["Sales Owner","Acq.","Won","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                    <tbody>
+                      {ownerRows.map((o,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(o.owner)}{TD(o.acquired,{right:true})}{TD(o.won,{right:true,color:o.won>0?"#059669":"#94a3b8"})}{TD(fmtK(o.value),{right:true,bold:true,color:"#059669"})}</tr>))}
+                      {ownerRows.length===0&&<tr><td colSpan={4} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No data for {CY}</td></tr>}
+                    </tbody>
+                  </table>
+                </Card>
+                <Card>
+                  <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>By Project Type</div>
+                  <table style={{width:"100%",borderCollapse:"collapse"}}>
+                    <thead><tr>{["CE Type","Acq.","Won","Won Value"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                    <tbody>
+                      {ceRows.map((r,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(r.type)}{TD(r.acquired,{right:true})}{TD(r.won,{right:true,color:r.won>0?"#059669":"#94a3b8"})}{TD(fmtK(r.value),{right:true,bold:true,color:"#059669"})}</tr>))}
+                      {ceRows.length===0&&<tr><td colSpan={4} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No data for {CY}</td></tr>}
+                    </tbody>
+                  </table>
+                </Card>
+              </div>
+            </div>
+          )
+        )}
+
+        {repTab==="finance"&&(
+          <div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:24}}>
+              <KPI label="Revenue"     value={fmtK(finTot.revenue)}     color="#3b82f6"/>
+              <KPI label="Collections" value={fmtK(finTot.collections)} color="#10b981"/>
+              <KPI label="Outstanding" value={fmtK(finTot.outstanding)} color="#f59e0b"/>
+              <KPI label="Expenses"    value={fmtK(finTot.expenses)}    color="#ef4444"/>
+              <KPI label="Net Profit"  value={fmtK(finTot.net)}         color={finTot.net>=0?"#059669":"#ef4444"}/>
+            </div>
+            <Card>
+              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>Income Statement — {CY}</div>
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{[repPeriod==="monthly"?"Month":repPeriod==="quarterly"?"Quarter":"Year","Revenue","Collections","Outstanding","Expenses","Net Profit"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                  <tbody>
+                    {finPeriods.map((p,i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<strong>{p.label}</strong>)}{TD(p.revenue>0?fmt(p.revenue):"—",{right:true,color:"#3b82f6"})}{TD(p.collections>0?fmt(p.collections):"—",{right:true,color:"#10b981"})}{TD(p.outstanding>0?fmt(p.outstanding):"—",{right:true,color:"#f59e0b"})}{TD(p.expenses>0?fmt(p.expenses):"—",{right:true,color:"#ef4444"})}{TD(p.revenue>0||p.expenses>0?fmt(p.net):"—",{right:true,bold:true,color:p.net>=0?"#059669":"#ef4444"})}</tr>))}
+                    <tr style={{background:"#eff6ff"}}>{TD(<strong style={{color:"#1e40af"}}>TOTAL</strong>)}{TD(fmt(finTot.revenue),{right:true,bold:true,color:"#3b82f6"})}{TD(fmt(finTot.collections),{right:true,bold:true,color:"#10b981"})}{TD(fmt(finTot.outstanding),{right:true,bold:true,color:"#f59e0b"})}{TD(fmt(finTot.expenses),{right:true,bold:true,color:"#ef4444"})}{TD(fmt(finTot.net),{right:true,bold:true,color:finTot.net>=0?"#059669":"#ef4444"})}</tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>Expenses by Category — {CY}</div>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["Category","Amount","% of Total"].map((h,i)=>TH(h,i>0))}</tr></thead>
+                  <tbody>
+                    {expCatRows.map(([cat,amt],i)=>(<tr key={i} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(cat)}{TD(fmt(amt),{right:true,color:"#ef4444"})}{TD((totalExpCat>0?Math.round(amt/totalExpCat*100):0)+"%",{right:true,color:"#94a3b8"})}</tr>))}
+                    {expCatRows.length===0&&<tr><td colSpan={3} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No expenses for {CY}</td></tr>}
+                  </tbody>
+                </table>
+              </Card>
+              <Card>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>Outstanding Invoices Aging</div>
+                <table style={{width:"100%",borderCollapse:"collapse"}}>
+                  <thead><tr>{["Client","Milestone","Amount","Days"].map((h,i)=>TH(h,i>1))}</tr></thead>
+                  <tbody>
+                    {agingMs.map((b,i)=>(<tr key={b.id} style={{background:i%2===0?"#fff":"#f9fafb"}}>{TD(<span style={{maxWidth:90,display:"block",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.clientName}</span>)}{TD(b.name||b.label||"Milestone")}{TD(fmt(b.amount),{right:true,bold:true,color:"#f59e0b"})}{TD(b.daysOver!=null?b.daysOver+"d":"—",{right:true,color:b.daysOver>30?"#ef4444":b.daysOver>0?"#f59e0b":"#94a3b8"})}</tr>))}
+                    {agingMs.length===0&&<tr><td colSpan={4} style={{textAlign:"center",padding:20,color:"#94a3b8",fontSize:".82rem"}}>No outstanding invoices</td></tr>}
+                  </tbody>
+                </table>
+              </Card>
+            </div>
+          </div>
+        )}
+      </Wrap>
+    );
+  }
   if(page==="pipeline") return(
     <>
       <Wrap>
@@ -5285,10 +5675,6 @@ export default function App(){
             </div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <button onClick={()=>{if(!window.XLSX){toastEmit("Excel library not loaded — please refresh the page and try again.","error");return;}smartImportInputRef.current?.click();}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-              📥 Smart Import
-              {importLoading&&<span style={{fontSize:".7rem",color:"#f59e0b",marginLeft:6}}>📂 Reading…</span>}
-            </button>
             <input ref={smartImportInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" style={{display:"none"}} onChange={async e=>{
                 const file=e.target.files[0]; if(!file) return;
                 e.target.value="";
@@ -5434,8 +5820,8 @@ export default function App(){
         })()}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
-            {l:"Total Pipeline",    v:fmtK(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
-            {l:"Awarded Value",     v:fmtK(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
+            {l:"Total Pipeline",    v:fmt(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
+            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
             {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
@@ -5571,7 +5957,7 @@ export default function App(){
                 </div>
               </div>
 
-              {/* Awarded Projects — compact table */}
+              {/* Awarded Projects — grouped by CE Type */}
               <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
                 🏆 Awarded Projects
                 <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({wonDeals.length})</span>
@@ -5584,38 +5970,56 @@ export default function App(){
                   <span style={{width:72,textAlign:"right"}}>Payment</span>
                   <span style={{width:60,textAlign:"right"}}>Actions</span>
                 </div>
-                <div style={{maxHeight:260,overflowY:"auto"}}>
-                  {wonDeals.map((d,i)=>{
-                    const jo=jos.find(j=>j.dealId===d.id);
-                    const paid=Number(d.amountPaid)||0;
-                    const inv=Number(d.invoiced)||0;
-                    const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
-                    return(
-                      <div key={d.id} style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<wonDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                          <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
-                            {d.ceNo&&<span>{d.ceNo}</span>}
-                            {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
-                            {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
-                            {d.stage&&<span style={{color:"#8b5cf6"}}>{d.stage.split("·")[0].trim()}</span>}
-                            {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
-                              <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 5px",fontWeight:700,fontSize:".62rem"}}>{e.type}</span>
-                            ))}
+                <div style={{maxHeight:320,overflowY:"auto"}}>
+                  {(()=>{
+                    const groups=[...new Set(wonDeals.map(d=>d.ceType||"Other"))];
+                    return groups.map(grp=>{
+                      const grpDeals=wonDeals.filter(d=>(d.ceType||"Other")===grp);
+                      return(
+                        <div key={grp}>
+                          <div style={{padding:"5px 12px",background:"#f1f5f9",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center",gap:6}}>
+                            <span>{grp}</span>
+                            <span style={{fontWeight:400,color:"#94a3b8"}}>({grpDeals.length})</span>
                           </div>
+                          {grpDeals.map((d,i)=>{
+                            const jo=jos.find(j=>j.dealId===d.id);
+                            const paid=Number(d.amountPaid)||0;
+                            const inv=Number(d.invoiced)||0;
+                            const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                            const pc=pcards[d.id];
+                            const tatLabel=pc?.targetEndDate?new Date(pc.targetEndDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"No TAT";
+                            const ae=d.salesOwner?(d.salesOwner.split(" ").filter(w=>!["de","del","ng","la","the"].includes(w.toLowerCase())).map(w=>w[0]||"").join("").toUpperCase().slice(0,3)):"";
+                            return(
+                              <div key={d.id} style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<grpDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                                  <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                                    {d.ceNo&&<span>{d.ceNo}</span>}
+                                    {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
+                                    {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
+                                    {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".6rem"}}>{ae}</span>}
+                                    <span style={{color:pc?.targetEndDate?"#8b5cf6":"#cbd5e1",fontSize:".63rem"}}>📅 {tatLabel}</span>
+                                    {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
+                                      <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 5px",fontWeight:700,fontSize:".62rem"}}>{e.type}</span>
+                                    ))}
+                                  </div>
+                                </div>
+                                <div style={{width:60,textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",flexShrink:0}}>{fmtK(Number(d.value))}</div>
+                                <div style={{width:72,flexShrink:0,textAlign:"right"}}>
+                                  <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
+                                  <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
+                                </div>
+                                <div style={{width:60,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
+                                  <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                                  {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div style={{width:60,textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",flexShrink:0}}>{fmtK(Number(d.value))}</div>
-                        <div style={{width:72,flexShrink:0,textAlign:"right"}}>
-                          <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
-                          <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
-                        </div>
-                        <div style={{width:60,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
-                          <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                          {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
@@ -6599,6 +7003,7 @@ export default function App(){
                   importReview.forEach(rec=>{
                     if(rec._exists){
                       upDeals(ds=>ds.map(d=>d.id===rec._existingId?rec:d));
+                      if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
                       if(WON_STAGES.includes(rec.stage)){
                         upProjs(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:ps[rec.id]||emptyProjectCard(rec.id,rec)}));
@@ -6606,10 +7011,11 @@ export default function App(){
                       skipped++;
                     } else {
                       upDeals(ds=>[...ds,rec]);
+                      if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
                       if(WON_STAGES.includes(rec.stage)){
                         upProjs(ps=>({...ps,[rec.id]:emptyProject()}));
                         upPcards(ps=>({...ps,[rec.id]:emptyProjectCard(rec.id,rec)}));
-                        upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,{
+                        const newJo={
                           id:"jo"+rec.id,dealId:rec.id,
                           joNo:`JO-${new Date().getFullYear()}-${String(jos.length+imported+1).padStart(3,"0")}`,
                           client:rec.client,ceNo:rec.ceNo,projectName:rec.product||rec.client,
@@ -6618,7 +7024,9 @@ export default function App(){
                           startDate:rec.dateAcquired||today,commsLink:"",
                           scopeNotes:rec.notes||"",specialInstructions:"",
                           budgetStatus:"QS Budget Pending",status:"Active",issuedDate:today,
-                        }]);
+                        };
+                        upJos(js=>js.find(j=>j.dealId===rec.id)?js:[...js,newJo]);
+                        if(isSupabaseReady()) sbSyncOne("job_orders",newJo,toSbJO);
                       }
                       imported++;
                     }
