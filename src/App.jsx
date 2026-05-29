@@ -3111,7 +3111,7 @@ export default function App(){
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const openAddDeal=()=>{setDealForm({...emptyDeal,ceNo:nextCENo()});setEditDeal(null);setDealModal(true);};
-  const openEditDeal=d=>{setDealForm({...d,value:String(d.value),invoiced:String(d.invoiced||0),amountPaid:String(d.amountPaid||0)});setEditDeal(d.id);setDealModal(true);};
+  const openEditDeal=d=>{setDealForm({...d,value:String(d.value),invoiced:String(d.invoiced||0),amountPaid:String(d.amountPaid||0),dateAcquired:d.dateAcquired||today});setEditDeal(d.id);setDealModal(true);};
   // ── Supabase deal writers ───────────────────────────────────────────────────
   const sbSaveDeal=async(rec)=>{
     try {
@@ -5326,12 +5326,14 @@ export default function App(){
     const aeCode=(name)=>{if(!name)return"—";const skip=new Set(["de","del","ng","la","the"]);return name.split(" ").filter(w=>w&&!skip.has(w.toLowerCase())).map(w=>w[0].toUpperCase()).join("");};
     const getPCount=()=>repPeriod==="monthly"?12:repPeriod==="quarterly"?4:1;
     const getPLabel=(i)=>repPeriod==="monthly"?MONTHS[i]:repPeriod==="quarterly"?`Q${i+1}`:`${CY}`;
-    const getDealPeriod=(d)=>{if(!d.dateAcquired)return -1;const dt=new Date(d.dateAcquired);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
+    // acqDate: falls back to project card awardDate for WON deals with no dateAcquired
+    const acqDate=(d)=>d.dateAcquired||(WON_STAGES.includes(d.stage)?pcards[d.id]?.awardDate:null)||null;
+    const getDealPeriod=(d)=>{const ds=acqDate(d);if(!ds)return -1;const dt=new Date(ds);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
     const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
     const n=getPCount();
     const dealTax=(d)=>calcTax(Number(d.value||0),d.receiptType||"OR",d.withholding||false);
-    const monthWon=deals.filter(d=>WON_STAGES.includes(d.stage)&&d.dateAcquired&&new Date(d.dateAcquired).getFullYear()===CY&&new Date(d.dateAcquired).getMonth()===CM);
-    const monthCancelled=deals.filter(d=>d.stage==="Cancelled"&&d.dateAcquired&&new Date(d.dateAcquired).getFullYear()===CY&&new Date(d.dateAcquired).getMonth()===CM);
+    const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
+    const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     const openPipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled");
     const totalWonGross=monthWon.reduce((s,d)=>s+dealTax(d).gross,0);
     const totalWonBase=monthWon.reduce((s,d)=>s+dealTax(d).base,0);
@@ -5359,7 +5361,7 @@ export default function App(){
     if(noClient.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals missing client name",detail:`${noClient.length} deal(s) with no client`,stake:"—"});
     const noVal=openPipeline.filter(d=>!Number(d.value));
     if(noVal.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals with no value",detail:`${noVal.length} deal(s) have ₱0 value — pipeline understated`,stake:"unknown"});
-    const yearDeals=deals.filter(d=>d.dateAcquired&&new Date(d.dateAcquired).getFullYear()===CY);
+    const yearDeals=deals.filter(d=>{const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY;});
     const yearWon=yearDeals.filter(d=>WON_STAGES.includes(d.stage));
     const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>WON_STAGES.includes(d.stage));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+Number(d.value||0),0)};});
     const ownerMap={};yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=Number(d.value||0);}});
