@@ -2484,6 +2484,7 @@ export default function App(){
           paymentStatus:rec.payment_status,receiptType:rec.receipt_type,
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
+          location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
           awardRequestData:rec.award_request_data||null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
