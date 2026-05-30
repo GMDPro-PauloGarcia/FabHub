@@ -5391,12 +5391,21 @@ export default function App(){
               </div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {escalations.slice(0,5).map((e,i)=>(
-                <div key={i} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".78rem"}}>
+              {escalations.slice(0,5).map((e,i)=>{
+                const dest={
+                  'E-1':'billing','E-2':'addenda','E-3':'pipeline',
+                  'E-4':'drfs','E-5':'procurement','E-6':'budgetreq','E-7':'billing'
+                }[e.type]||'home';
+                return(
+                <div key={i} onClick={()=>setPage(dest)} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".78rem",cursor:"pointer",borderRadius:7,padding:"3px 4px",transition:"background .12s"}}
+                  onMouseEnter={ev=>ev.currentTarget.style.background="#fee2e2"}
+                  onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
                   <span style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,color:e.severity==="high"?"#dc2626":"#92400e",borderRadius:6,padding:"1px 6px",fontWeight:700,flexShrink:0,fontSize:".68rem"}}>{e.type}</span>
-                  <span style={{color:"#64748b"}}><strong style={{color:"#0f172a"}}>{e.client}</strong> — {e.label}</span>
+                  <span style={{color:"#64748b",flex:1}}><strong style={{color:"#0f172a"}}>{e.client}</strong> — {e.label}</span>
+                  <span style={{color:"#94a3b8",fontSize:".65rem",whiteSpace:"nowrap",alignSelf:"center"}}>→</span>
                 </div>
-              ))}
+                );
+              })}
               {escalations.length>5&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>+{escalations.length-5} more escalations</div>}
             </div>
           </div>
