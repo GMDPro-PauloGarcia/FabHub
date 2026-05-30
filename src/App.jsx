@@ -1923,6 +1923,7 @@ export default function App(){
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""},hideValueInBots:false});
   const[customClients,setCustomClients]= useState([]);
+  const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
   const[authView, setAuthView]= useState("login"); // login | register
@@ -1971,6 +1972,7 @@ export default function App(){
         const sc=localStorage.getItem(KEYS.subcons); if(sc) setSubcons(JSON.parse(sc));
         const bs=localStorage.getItem(KEYS.botsettings); if(bs) setBotSettings(JSON.parse(bs));
         const cc=localStorage.getItem(KEYS.customclients); if(cc) setCustomClients(JSON.parse(cc));
+        const cpData=localStorage.getItem("gmdv5:clientprofiles"); if(cpData) setClientProfiles(JSON.parse(cpData));
         const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
         const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
         const bl=localStorage.getItem(KEYS.billings); if(bl) setBillings(JSON.parse(bl));
@@ -2008,6 +2010,7 @@ export default function App(){
             if(data.subcontractors?.length){const d=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(d);localStorage.setItem(KEYS.subcons,JSON.stringify(d));}
             if(data.settings?.vvip){const s=new Set(data.settings.vvip);setVvip(s);localStorage.setItem(KEYS.vvip,JSON.stringify([...s]));}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);localStorage.setItem(KEYS.customclients,JSON.stringify(cc));cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
+            if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(cp));}catch{}}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);localStorage.setItem(KEYS.projects,JSON.stringify(data.projs));}
             // Sync to localStorage as cache
             const ls=localStorage.setItem.bind(localStorage);
@@ -6471,7 +6474,15 @@ export default function App(){
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="clients") return(
       <Wrap>
-        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients}/>
+        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients}
+          clientProfiles={clientProfiles}
+          saveClientProfile={(name,profile)=>{
+            const next={...clientProfiles,[name]:profile};
+            setClientProfiles(next);
+            try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(next));}catch{}
+            if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+          }}
+        />
       </Wrap>
     );
     const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse'];
@@ -7463,6 +7474,7 @@ export default function App(){
         deleteMilestone={deleteMilestone} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
+        clientProfiles={clientProfiles}
         cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}/>
     </Wrap>
   );
@@ -9402,7 +9414,7 @@ function SalesCalendarView({deals, session, role}){
 }
 
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
-function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients}){
+function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile}){
   const[selClient,  setSelClient]  = useState(null);
   const[search,     setSearch]     = useState("");
   const[filter,     setFilter]     = useState("all");
@@ -9410,7 +9422,19 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
   const[editName,   setEditName]   = useState("");
   const[addName,    setAddName]    = useState("");
   const[addOpen,    setAddOpen]    = useState(false);
+  const[profileModal,setProfileModal]=useState(null); // client name being profiled
+  const[profileForm, setProfileForm]=useState({});
   const[,forceUpdate]              = useState(0);
+  const fp2=(k,v)=>setProfileForm(p=>({...p,[k]:v}));
+  const openProfile=(name)=>{
+    setProfileForm({...({contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""}),...((clientProfiles||{})[name]||{})});
+    setProfileModal(name);
+  };
+  const saveProfile=()=>{
+    if(!profileModal) return;
+    saveClientProfile(profileModal,profileForm);
+    setProfileModal(null);
+  };
 
   const saveClientEdit=()=>{
     if(!editName.trim()) return;
@@ -9553,6 +9577,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                         <span style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{c.name}</span>
                         {vvipClients?.has(c.name)&&<span style={{fontSize:".65rem",background:"#fef3c7",color:"#d97706",border:"1px solid #fde68a",borderRadius:20,padding:"1px 7px",fontWeight:700}}>VVIP</span>}
                         {(role==="Manager")&&<button onClick={e=>{e.stopPropagation();setEditClient(c.name);setEditName(c.name);}} style={{background:"none",border:"none",cursor:"pointer",fontSize:".75rem",color:"#94a3b8",padding:"0 2px"}} title="Edit client name">✏️</button>}
+                        {saveClientProfile&&<button onClick={e=>{e.stopPropagation();openProfile(c.name);}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"1px 7px",cursor:"pointer",fontSize:".65rem",color:"#3b82f6",fontWeight:700}} title="Edit client profile">👤 Profile</button>}
                       </>
                     )}
                   </div>
@@ -9627,6 +9652,68 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
           </Modal>
         );
       })()}
+
+      {/* ── CLIENT PROFILE MODAL ─────────────────────────────────────── */}
+      {profileModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setProfileModal(null)}>
+          <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div>
+                <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a"}}>👤 Client Profile</div>
+                <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>{profileModal}</div>
+              </div>
+              <button onClick={()=>setProfileModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:99,width:32,height:32,cursor:"pointer",fontSize:"1rem",color:"#64748b"}}>✕</button>
+            </div>
+
+            {/* Name & Contact */}
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Fld label="Contact Person"><Inp value={profileForm.contactPerson||""} onChange={e=>fp2("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
+                <Fld label="Email"><Inp type="email" value={profileForm.email||""} onChange={e=>fp2("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
+                <Fld label="Phone"><Inp value={profileForm.phone||""} onChange={e=>fp2("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
+                <Fld label="Mobile"><Inp value={profileForm.mobile||""} onChange={e=>fp2("mobile",e.target.value)} placeholder="+63 9xx xxx xxxx"/></Fld>
+                <Fld label="Website"><Inp value={profileForm.website||""} onChange={e=>fp2("website",e.target.value)} placeholder="www.company.com"/></Fld>
+              </div>
+            </div>
+
+            {/* Billing Address */}
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📍 Billing Address</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Street Address"><Inp value={profileForm.billingAddress||""} onChange={e=>fp2("billingAddress",e.target.value)} placeholder="Unit/Floor, Building, Street"/></Fld></div>
+                <Fld label="City"><Inp value={profileForm.city||""} onChange={e=>fp2("city",e.target.value)} placeholder="Makati"/></Fld>
+                <Fld label="Province / Region"><Inp value={profileForm.province||""} onChange={e=>fp2("province",e.target.value)} placeholder="Metro Manila"/></Fld>
+                <Fld label="ZIP Code"><Inp value={profileForm.zipCode||""} onChange={e=>fp2("zipCode",e.target.value)} placeholder="1200"/></Fld>
+                <Fld label="Country"><Inp value={profileForm.country||""} onChange={e=>fp2("country",e.target.value)} placeholder="Philippines"/></Fld>
+              </div>
+            </div>
+
+            {/* Business Details */}
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:16,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>🏢 Business Details</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Fld label="Client TIN"><Inp value={profileForm.tin||""} onChange={e=>fp2("tin",e.target.value)} placeholder="000-000-000-000"/></Fld>
+                <Fld label="Payment Terms">
+                  <Sel value={profileForm.paymentTerms||"Due on receipt"} onChange={e=>fp2("paymentTerms",e.target.value)}>
+                    <option>Due on receipt</option>
+                    <option>Net 15</option>
+                    <option>Net 30</option>
+                    <option>Net 60</option>
+                    <option>50% DP, Balance on completion</option>
+                  </Sel>
+                </Fld>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={profileForm.notes||""} onChange={e=>fp2("notes",e.target.value)} placeholder="Special billing instructions, key contacts…"/></Fld></div>
+              </div>
+            </div>
+
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={saveProfile} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Save Profile</button>
+              <button onClick={()=>setProfileModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -11185,7 +11272,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals}){
+function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles}){
   const[selDeal,  setSelDeal]  =useState(null);
   const[showForm, setShowForm] =useState(false);
   const[showPay,  setShowPay]  =useState(null);
@@ -11238,142 +11325,185 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
     const tx=calcTax(ms.amount,d?.receiptType||"OR",d?.withholding||false);
     const totalPaid=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
     const balance=Math.max(0,tx.netReceivable-totalPaid);
-    const jo=null; // jos not passed here, but project name is in d.contact
+    const cp=(clientProfiles||{})[d?.client||""]||{};
     const win=window.open("","_blank");
-    win.document.write(`<!DOCTYPE html><html><head><title>Invoice — ${ms.invoiceNo}</title>
+    const issuedDate=new Date().toLocaleDateString("en-PH",{month:"2-digit",day:"2-digit",year:"numeric"});
+    const clientAddr=[cp.billingAddress,cp.city,cp.province,cp.zipCode].filter(Boolean).join(", ");
+    win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${ms.invoiceNo}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1e293b;font-size:13px;padding:0;}
-  .page{max-width:760px;margin:0 auto;padding:48px 48px 40px;}
-  .accent-bar{height:6px;background:linear-gradient(90deg,#1e293b 0%,#f59e0b 100%);}
-  .header{display:flex;justify-content:space-between;align-items:flex-start;padding:28px 0 22px;border-bottom:1.5px solid #e2e8f0;}
-  .logo-block .logo{font-size:26px;font-weight:900;letter-spacing:-1px;color:#1e293b;}
-  .logo-block .logo span{color:#f59e0b;}
-  .logo-block .tagline{font-size:11px;color:#64748b;margin-top:3px;}
-  .logo-block .addr{font-size:10.5px;color:#94a3b8;margin-top:8px;line-height:1.6;}
-  .inv-meta{text-align:right;}
-  .inv-meta .inv-label{font-size:22px;font-weight:900;letter-spacing:1px;color:#1e293b;text-transform:uppercase;}
-  .inv-meta .inv-no{font-size:18px;font-weight:800;color:#f59e0b;margin-top:2px;}
-  .inv-meta .inv-dates{font-size:11px;color:#64748b;margin-top:6px;line-height:1.8;}
-  .bill-section{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:22px 0;border-bottom:1px solid #f1f5f9;margin-bottom:22px;}
-  .bill-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:6px;}
-  .bill-client{font-size:16px;font-weight:800;color:#0f172a;}
-  .bill-sub{font-size:11.5px;color:#64748b;margin-top:4px;line-height:1.7;}
-  table{width:100%;border-collapse:collapse;margin-bottom:0;}
-  thead tr{background:#1e293b;}
-  th{color:#fff;padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
-  th:last-child{text-align:right;}
-  td{padding:12px 14px;border-bottom:1px solid #f1f5f9;font-size:12.5px;vertical-align:top;}
-  td:last-child{text-align:right;font-weight:600;white-space:nowrap;}
-  tr.sub td{background:#fafafa;color:#64748b;font-size:11.5px;}
-  .totals-wrap{display:flex;justify-content:flex-end;margin-top:16px;}
-  .totals{width:300px;border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden;}
-  .totals tr td{border-bottom:1px solid #f1f5f9;font-size:12.5px;padding:9px 14px;}
-  .totals tr:last-child td{border-bottom:none;}
-  .totals .grand td{background:#f8fafc;font-weight:800;font-size:14px;border-top:2px solid #1e293b;}
-  .totals .grand td:last-child{color:#059669;}
-  .totals .balance td{background:#fef2f2;}
-  .totals .balance td:last-child{color:#ef4444;font-weight:800;}
-  .totals .paid-row td:last-child{color:#3b82f6;}
-  .bank-section{margin-top:28px;padding:16px 18px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;}
-  .bank-section .bank-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:10px;}
-  .bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  .bank-item{font-size:11.5px;color:#475569;}
-  .bank-item strong{color:#0f172a;display:block;margin-bottom:1px;}
-  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;}
-  .footer .note{font-size:10.5px;color:#94a3b8;line-height:1.6;}
-  .footer .sig{font-size:11px;color:#94a3b8;text-align:right;}
-  .print-btn{display:block;text-align:center;margin-top:24px;}
-  .print-btn button{padding:11px 28px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;letter-spacing:.3px;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:12px;background:#fff;}
+  .page{max-width:780px;margin:0 auto;padding:36px 44px;}
+  /* Header */
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
+  .co-name{font-weight:900;font-size:14px;margin-bottom:4px;}
+  .co-info{font-size:11px;color:#444;line-height:1.65;}
+  .logo-box{text-align:right;}
+  .logo-hex{font-size:48px;line-height:1;}
+  .logo-text{font-size:22px;font-weight:900;letter-spacing:1px;color:#1a1a1a;}
+  .logo-text span{color:#c0883a;}
+  /* Doc title */
+  .doc-title{font-size:22px;font-weight:700;color:#4a90d9;margin-bottom:18px;}
+  /* Bill-to + meta grid */
+  .meta-row{display:grid;grid-template-columns:1fr auto;gap:40px;margin-bottom:24px;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:12px 0;}
+  .bill-label{font-size:10px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:4px;letter-spacing:.5px;}
+  .bill-name{font-weight:700;font-size:13px;}
+  .bill-addr{font-size:11px;color:#555;margin-top:3px;line-height:1.6;}
+  .meta-table td{font-size:11.5px;padding:2px 0 2px 24px;vertical-align:top;}
+  .meta-table .label{color:#888;padding-left:0;white-space:nowrap;}
+  .meta-table .val{font-weight:600;}
+  /* Items table */
+  table.items{width:100%;border-collapse:collapse;margin-bottom:0;}
+  table.items thead tr{background:#d6e4f0;}
+  table.items th{padding:8px 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;color:#4a4a4a;text-align:left;letter-spacing:.3px;}
+  table.items th.r{text-align:right;}
+  table.items td{padding:10px 10px;font-size:11.5px;border-bottom:1px solid #eee;vertical-align:top;}
+  table.items td.r{text-align:right;white-space:nowrap;}
+  table.items td.bold{font-weight:700;}
+  /* Footer row: terms left, totals right */
+  .footer-row{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:0;border-top:1px dashed #ccc;padding-top:14px;}
+  .terms{font-size:11px;color:#444;line-height:1.7;}
+  .terms strong{display:block;margin-bottom:4px;font-size:11.5px;}
+  .totals-tbl{width:260px;}
+  .totals-tbl td{font-size:11.5px;padding:3px 0 3px 16px;}
+  .totals-tbl .label{color:#666;padding-left:0;}
+  .totals-tbl .sep{border-top:1px dashed #ccc;}
+  .totals-tbl .grand-sep td{border-top:2px solid #555;font-weight:900;font-size:13px;}
+  .bal{font-size:14px;font-weight:900;}
+  /* Tax summary */
+  .tax-summary{margin-top:20px;}
+  .tax-summary .ts-title{font-weight:700;color:#4a90d9;font-size:12px;margin-bottom:4px;}
+  table.ts{width:100%;border-collapse:collapse;}
+  table.ts thead tr{background:#d6e4f0;}
+  table.ts th{padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:#4a4a4a;text-align:right;}
+  table.ts th:first-child{text-align:center;}
+  table.ts td{padding:6px 10px;font-size:11.5px;text-align:right;}
+  table.ts td:first-child{text-align:center;}
+  /* Signature */
+  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;border-top:1px solid #eee;}
+  .sig-block{font-size:11px;color:#555;}
+  .sig-line{border-top:1px solid #999;margin-top:28px;padding-top:4px;}
+  /* Print */
+  .print-btn{text-align:center;margin-top:24px;}
+  .print-btn button{padding:10px 28px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;}
   @media print{
     .print-btn{display:none;}
-    .page{padding:28px;}
-    .accent-bar{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-    thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+    table.items thead tr,table.ts thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
   }
 </style>
-</head><body>
-<div class="accent-bar"></div>
-<div class="page">
-  <div class="header">
-    <div class="logo-block">
-      <div class="logo">GMD <span>PROD</span></div>
-      <div class="tagline">GMD Productions Inc.</div>
-      <div class="addr">
-        TIN: 009-768-590-000<br/>
-        Tel: (02) 8531-xxxx · gmdproductionsinc@gmail.com
+</head><body><div class="page">
+
+  <!-- Header -->
+  <div class="hdr">
+    <div>
+      <div class="co-name">GMD PRODUCTIONS INC</div>
+      <div class="co-info">
+        32 Santan Unit H Brgy Fortune Marikina<br/>
+        Marikina, NCR 1802 PH<br/>
+        +63 9189338436<br/>
+        sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph<br/>
+        TIN 010-063-229-000
       </div>
     </div>
-    <div class="inv-meta">
-      <div class="inv-label">Invoice</div>
-      <div class="inv-no">${ms.invoiceNo||"INV-####"}</div>
-      <div class="inv-dates">
-        Date: <strong>${ms.invoiceDate||today}</strong><br/>
-        Due:&nbsp; <strong style="color:${ms.dueDate&&ms.dueDate<today?"#ef4444":"#1e293b"}">${ms.dueDate||"—"}</strong>
-      </div>
+    <div class="logo-box">
+      <div style="font-size:52px;line-height:1">⬡</div>
+      <div class="logo-text">GMD <span>PRO</span></div>
     </div>
   </div>
 
-  <div class="bill-section">
+  <!-- Document title -->
+  <div class="doc-title">${d?.receiptType==="SI"?"Tax Invoice":"Invoice"}</div>
+
+  <!-- Bill-to + Invoice meta -->
+  <div class="meta-row">
     <div>
       <div class="bill-label">Bill To</div>
-      <div class="bill-client">${d?.client||"—"}</div>
-      <div class="bill-sub">
-        ${d?.contact?`Project: ${d.contact}<br/>`:""}
-        ${d?.ceNo?`CE No: ${d.ceNo}<br/>`:""}
-        ${d?.location?`Location: ${d.location}`:""}
-      </div>
+      <div class="bill-name">${d?.client||"—"}</div>
+      ${cp.contactPerson?`<div class="bill-addr">${cp.contactPerson}</div>`:""}
+      ${clientAddr?`<div class="bill-addr">${clientAddr}</div>`:""}
+      ${cp.email?`<div class="bill-addr">${cp.email}</div>`:""}
+      ${cp.tin?`<div class="bill-addr">TIN: ${cp.tin}</div>`:""}
     </div>
-    <div>
-      <div class="bill-label">Details</div>
-      <div class="bill-sub" style="font-size:13px;color:#1e293b;font-weight:600;">${ms.name}</div>
-      ${ms.description?`<div class="bill-sub" style="margin-top:4px;">${ms.description}</div>`:""}
-      <div class="bill-sub" style="margin-top:8px;">
-        ${d?.receiptType==="SI"?"VAT-registered (12% VAT applies)":"Official Receipt (OR)"}
-        ${d?.withholding?"· Subject to 2% EWT":""}
-      </div>
-    </div>
-  </div>
-
-  <table>
-    <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-    <tbody>
-      <tr><td style="font-weight:600">${ms.name}${ms.description?`<br/><span style="font-size:11.5px;color:#64748b;font-weight:400">${ms.description}</span>`:""}</td><td>${fmt(ms.amount)}</td></tr>
-      ${tx.vat>0?`<tr class="sub"><td>VAT (12%)</td><td style="color:#f59e0b;">${fmt(tx.vat)}</td></tr>`:""}
-    </tbody>
-  </table>
-
-  <div class="totals-wrap">
-    <table class="totals">
-      <tr><td>Gross Amount</td><td>${fmt(tx.gross)}</td></tr>
-      ${tx.ewt>0?`<tr><td style="color:#ef4444">Less: EWT (2%)</td><td style="color:#ef4444">(${fmt(tx.ewt)})</td></tr>`:""}
-      <tr class="grand"><td>Net Amount Due</td><td>${fmt(tx.netReceivable)}</td></tr>
-      ${totalPaid>0?`<tr class="paid-row"><td>Amount Paid</td><td>(${fmt(totalPaid)})</td></tr>`:""}
-      ${totalPaid>0?`<tr class="${balance>0?"balance":"grand"}"><td>${balance>0?"Balance Due":"Fully Paid"}</td><td>${balance>0?fmt(balance):"✓ CLEAR"}</td></tr>`:""}
+    <table class="meta-table">
+      <tr><td class="label">INVOICE</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
+      <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
+      <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
+      <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#c0392b":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
     </table>
   </div>
 
-  <div class="bank-section">
-    <div class="bank-title">Payment Details</div>
-    <div class="bank-grid">
-      <div class="bank-item"><strong>BPI</strong>Acct No: 1234-5678-90<br/>Acct Name: GMD Productions Inc.</div>
-      <div class="bank-item"><strong>Metrobank</strong>Acct No: 0987-6543-21<br/>Acct Name: GMD Productions Inc.</div>
-      <div class="bank-item" style="margin-top:8px"><strong>BDO</strong>Acct No: 1122-3344-55<br/>Acct Name: GMD Productions Inc.</div>
-      <div class="bank-item" style="margin-top:8px"><strong>Cheques payable to</strong>GMD Productions Inc.</div>
+  <!-- Line items -->
+  <table class="items">
+    <thead>
+      <tr>
+        <th style="width:80px">DATE</th>
+        <th style="width:130px">SERVICE</th>
+        <th>DESCRIPTION</th>
+        <th class="r" style="width:60px">TAX</th>
+        <th class="r" style="width:40px">QTY</th>
+        <th class="r" style="width:100px">RATE</th>
+        <th class="r" style="width:100px">AMOUNT</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${ms.invoiceDate||today}</td>
+        <td class="bold">${ms.name}</td>
+        <td>${[d?.contact?`${d.contact}`:"",d?.location?`Location: ${d.location}`:"",ms.description||""].filter(Boolean).join("<br/>")}</td>
+        <td class="r">${tx.vat>0?"12% S":"—"}</td>
+        <td class="r">1</td>
+        <td class="r">${fmt(ms.amount)}</td>
+        <td class="r">${fmt(ms.amount)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Footer: payment terms + totals -->
+  <div class="footer-row">
+    <div class="terms">
+      <strong>We require the ff payment terms:</strong>
+      1) 50% DP to start project<br/>
+      2) Billing of 40% up until installation<br/>
+      3) Retention of 10% upon certificate of completion<br/><br/>
+      <strong>Account Name: GMD PRODUCTIONS INC</strong>
+      BDO CHECKING — 012758000370<br/>
+      BPI CHECKING — 6011 04 82 03<br/>
+      METROBANK — 382-7-38202059-2
+    </div>
+    <table class="totals-tbl">
+      <tr><td class="label">SUBTOTAL</td><td style="text-align:right">${fmt(ms.amount)}</td></tr>
+      <tr><td class="label sep">TAX</td><td style="text-align:right" class="sep">${fmt(tx.vat)}</td></tr>
+      <tr><td class="label">TOTAL</td><td style="text-align:right">${fmt(tx.gross)}</td></tr>
+      ${tx.ewt>0?`<tr><td class="label" style="color:#c0392b">Less: EWT</td><td style="text-align:right;color:#c0392b">(${fmt(tx.ewt)})</td></tr>`:""}
+      ${totalPaid>0?`<tr><td class="label" style="color:#2980b9">AMOUNT PAID</td><td style="text-align:right;color:#2980b9">(${fmt(totalPaid)})</td></tr>`:""}
+      <tr class="grand-sep">
+        <td class="label">BALANCE DUE</td>
+        <td style="text-align:right;color:${balance>0?"#c0392b":"#27ae60"}">PHP ${balance>0?Number(balance).toLocaleString("en-PH",{minimumFractionDigits:2}):"0.00"}</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- Tax summary -->
+  ${tx.vat>0?`
+  <div class="tax-summary">
+    <div class="ts-title">TAX SUMMARY</div>
+    <table class="ts">
+      <thead><tr><th>RATE</th><th>TAX</th><th>NET</th></tr></thead>
+      <tbody><tr><td>VAT @ 12%</td><td>${fmt(tx.vat)}</td><td>${fmt(ms.amount)}</td></tr></tbody>
+    </table>
+  </div>`:""}
+
+  <!-- Signature -->
+  <div class="sig-row">
+    <div class="sig-block">
+      <div class="sig-line">Accepted By</div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line">Accepted Date</div>
     </div>
   </div>
 
-  <div class="footer">
-    <div class="note">
-      Thank you for your business!<br/>
-      Please include the invoice number <strong>${ms.invoiceNo}</strong> as payment reference.<br/>
-      For inquiries: billing@gmdproductions.com
-    </div>
-    <div class="sig">
-      Generated via FabHub<br/>
-      ${new Date().toLocaleDateString("en-PH",{dateStyle:"long"})}
-    </div>
-  </div>
+  <div style="text-align:center;margin-top:12px;font-size:10px;color:#aaa">Page 1 of 1</div>
 </div>
 <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
 </body></html>`);
