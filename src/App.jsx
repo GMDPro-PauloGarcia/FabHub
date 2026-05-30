@@ -3314,6 +3314,12 @@ export default function App(){
   const[selProj,   setSelProj]  =useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("cash");
+  const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
+  const[dashEditMode,setDashEditMode]=useState(false);
+  const[dashOrder,setDashOrder]=useState(()=>{
+    try{const k="gmdv5:dashOrder";const v=localStorage.getItem(k);return v?JSON.parse(v):["active","collections","activity","dept"];}catch{return["active","collections","activity","dept"];}
+  });
+  const saveDashOrder=o=>{setDashOrder(o);try{localStorage.setItem("gmdv5:dashOrder",JSON.stringify(o));}catch{}};
   const[repPeriod, setRepPeriod]=useState("monthly");
   const[repYear,   setRepYear]  =useState(new Date().getFullYear());
   const[repMonth,  setRepMonth] =useState(new Date().getMonth());
@@ -5411,164 +5417,191 @@ export default function App(){
           </div>
         )}
 
-        {/* ── MAIN CONTENT GRID ───────────────────────────────────────── */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+        {/* ── DASHBOARD CUSTOMIZE BUTTON ──────────────────────────────── */}
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8,gap:8}}>
+          {dashEditMode&&(
+            <div style={{display:"flex",gap:6,alignItems:"center",background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8"}}>
+              {["active","collections","activity","dept"].map(id=>{
+                const labels={"active":"🏗 Active Projects","collections":"💵 Collections","activity":"📋 Recent Activity","dept":"🏢 Dept Status"};
+                const idx=dashOrder.indexOf(id);
+                return(
+                  <div key={id} style={{display:"flex",alignItems:"center",gap:4,background:"#fff",borderRadius:6,padding:"3px 8px",border:"1px solid #bfdbfe"}}>
+                    <span style={{fontWeight:600}}>{labels[id]}</span>
+                    <button onClick={()=>{if(idx>0){const o=[...dashOrder];[o[idx-1],o[idx]]=[o[idx],o[idx-1]];saveDashOrder(o);}}} disabled={idx===0} style={{background:"none",border:"none",cursor:idx===0?"not-allowed":"pointer",color:idx===0?"#cbd5e1":"#3b82f6",fontSize:".8rem",padding:"0 2px"}}>◀</button>
+                    <button onClick={()=>{if(idx<dashOrder.length-1){const o=[...dashOrder];[o[idx],o[idx+1]]=[o[idx+1],o[idx]];saveDashOrder(o);}}} disabled={idx===dashOrder.length-1} style={{background:"none",border:"none",cursor:idx===dashOrder.length-1?"not-allowed":"pointer",color:idx===dashOrder.length-1?"#cbd5e1":"#3b82f6",fontSize:".8rem",padding:"0 2px"}}>▶</button>
+                  </div>
+                );
+              })}
+              <button onClick={()=>saveDashOrder(["active","collections","activity","dept"])} style={{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".7rem"}}>Reset</button>
+            </div>
+          )}
+          <button onClick={()=>setDashEditMode(m=>!m)} style={{background:dashEditMode?"#1d4ed8":"#f1f5f9",color:dashEditMode?"#fff":"#64748b",border:"1.5px solid "+(dashEditMode?"#1d4ed8":"#e2e8f0"),borderRadius:8,padding:"4px 12px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>
+            ⚙ {dashEditMode?"Done":"Arrange"}
+          </button>
+        </div>
 
-          {/* ── AWARD REQUESTS PANEL ──────────────────────────────── */}
-          {(()=>{
-            const reqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
-            if(!reqs.length) return null;
-            return(
-              <div style={{background:"#fffbeb",borderRadius:14,border:"2px solid #f59e0b",padding:"14px 18px",marginBottom:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                  <span style={{fontSize:"1.2rem"}}>🏆</span>
-                  <span style={{fontWeight:800,color:"#92400e",fontSize:".95rem"}}>
-                    {reqs.length} Deal{reqs.length>1?"s":""} Pending Your Award Approval
-                  </span>
-                </div>
-                {reqs.map(d=>{
-                  const reqLine=d.notes.split("\n").filter(l=>l.includes("[AWARD REQUEST")).pop()||"";
-                  const reqBy=reqLine.match(/]: (.+?) flagged/)?.[1]||"Sales";
-                  const reqDate=reqLine.match(/REQUEST (.+?)]/)?.[1]||"";
-                  return(
-                    <div key={d.id} style={{background:"#fff",borderRadius:8,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:"1px solid #fde68a"}}>
-                      <div>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"#92400e",marginTop:2}}>
-                          Requested by {reqBy} · {reqDate} · ₱{Number(d.value||0).toLocaleString()}
-                        </div>
+        {/* ── AWARD REQUESTS PANEL ────────────────────────────────────── */}
+        {(()=>{
+          const reqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
+          if(!reqs.length) return null;
+          return(
+            <div style={{background:"#fffbeb",borderRadius:14,border:"2px solid #f59e0b",padding:"14px 18px",marginBottom:16}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <span style={{fontSize:"1.2rem"}}>🏆</span>
+                <span style={{fontWeight:800,color:"#92400e",fontSize:".95rem"}}>
+                  {reqs.length} Deal{reqs.length>1?"s":""} Pending Your Award Approval
+                </span>
+              </div>
+              {reqs.map(d=>{
+                const reqLine=d.notes.split("\n").filter(l=>l.includes("[AWARD REQUEST")).pop()||"";
+                const reqBy=reqLine.match(/]: (.+?) flagged/)?.[1]||"Sales";
+                const reqDate=reqLine.match(/REQUEST (.+?)]/)?.[1]||"";
+                return(
+                  <div key={d.id} style={{background:"#fff",borderRadius:8,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:"1px solid #fde68a"}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
+                      <div style={{fontSize:".72rem",color:"#92400e",marginTop:2}}>
+                        Requested by {reqBy} · {reqDate} · ₱{Number(d.value||0).toLocaleString()}
                       </div>
-                      <button onClick={()=>{openAward(d);setPage("pipeline");}}
-                        style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
-                        🏆 Review & Award
-                      </button>
                     </div>
-                  );
-                })}
+                    <button onClick={()=>{openAward(d);setPage("pipeline");}}
+                      style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
+                      🏆 Review & Award
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
+        {/* ── 4 REORDERABLE WIDGETS rendered in dashOrder pairs ── */}
+          {(()=>{
+            const widgetActive=(
+              <div key="active" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>🏗 Active Projects</span>
+                  <button onClick={()=>setPage("projects")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View all</button>
+                </div>
+                <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
+                  {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No active projects</div>}
+                  {wonDeals.slice(0,6).map(d=>{
+                    const pc=pcards[d.id];const jo=jos.find(j=>j.dealId===d.id);
+                    const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date())/(1000*60*60*24)):null;
+                    const isOver=daysLeft!==null&&daysLeft<0;
+                    const deptsDone=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
+                    return(
+                      <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}
+                        onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                          <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{jo?.pm1||"No PM"} · {deptsDone}/6 depts</div>
+                        </div>
+                        {daysLeft!==null?<span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",padding:"2px 8px",borderRadius:20,flexShrink:0}}>{isOver?`${Math.abs(daysLeft)}d over`:`${daysLeft}d left`}</span>:<span style={{fontSize:".68rem",color:"#e2e8f0",flexShrink:0}}>No TAT</span>}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
+            const widgetCollections=(
+              <div key="collections" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:"#4ade80",fontSize:".85rem"}}>💵 Collections</span>
+                  <button onClick={()=>setPage("billing")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View billing</button>
+                </div>
+                <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
+                  {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No awarded projects</div>}
+                  {wonDeals.slice(0,6).map(d=>{
+                    const ms=billings.filter(b=>b.dealId===d.id);
+                    const billed=ms.reduce((s,m)=>s+Number(m.amount||0),0);
+                    const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+                    const balance=billed-collected;
+                    const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+                    return(
+                      <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hasOverdue&&<span style={{color:"#ef4444",marginRight:4}}>🔴</span>}{d.client}</div>
+                          <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{ms.length} milestone{ms.length!==1?"s":""} · Billed ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                        </div>
+                        <div style={{textAlign:"right",flexShrink:0}}>
+                          <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".82rem"}}>{balance>0?`-₱${balance.toLocaleString("en-PH",{minimumFractionDigits:0})}`:"✓ Clear"}</div>
+                          {balance>0&&<div style={{fontSize:".65rem",color:"#94a3b8"}}>outstanding</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+            const widgetActivity=(
+              <div key="activity" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{background:"#1e293b",padding:"10px 16px",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontWeight:700,color:"#a78bfa",fontSize:".85rem",flex:1}}>📋 Recent Activity</span>
+                  <button onClick={()=>{const v=!actCollapsed;setActCollapsed(v);try{localStorage.setItem("gmdv5:actCollapsed",JSON.stringify(v));}catch{}}}
+                    style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"2px 8px",color:"rgba(255,255,255,.6)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>
+                    {actCollapsed?"▼ Show":"▲ Hide"}
+                  </button>
+                </div>
+                {!actCollapsed&&(
+                  <div style={{padding:"4px 0",maxHeight:260,overflowY:"auto"}}>
+                    {actLog.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No activity yet</div>}
+                    {actLog.slice(0,15).map(entry=>{
+                      const clr={"New Deal":"#10b981","Project Awarded":"#f59e0b","Stage Change":"#3b82f6","Deal Updated":"#94a3b8","Department Done":"#8b5cf6","TAT Set":"#06b6d4"}[entry.action]||"#94a3b8";
+                      return(
+                        <div key={entry.id} style={{display:"flex",gap:10,padding:"6px 14px",borderBottom:"1px solid #f8fafc",alignItems:"flex-start"}}>
+                          <div style={{width:6,height:6,borderRadius:"50%",background:clr,flexShrink:0,marginTop:5}}/>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:".75rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.detail}</div>
+                            <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{entry.by} · {entry.date} {entry.time}</div>
+                          </div>
+                          <span style={{fontSize:".6rem",color:clr,background:clr+"18",padding:"1px 6px",borderRadius:20,flexShrink:0,fontWeight:600}}>{entry.action}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {actCollapsed&&<div style={{padding:"8px 16px",fontSize:".72rem",color:"#94a3b8"}}>{actLog.length} entries — click Show to expand</div>}
+              </div>
+            );
+            const widgetDept=(
+              <div key="dept" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{background:"#1e293b",padding:"12px 16px"}}>
+                  <span style={{fontWeight:700,color:"#fb923c",fontSize:".85rem"}}>🏢 Dept Status — Active Projects</span>
+                </div>
+                <div style={{padding:"12px 16px"}}>
+                  {DEPT_ORDER.map(dept=>{
+                    const clr=DEPT_CLR[dept];const total=wonDeals.length;
+                    const done=Object.values(pcards).filter(p=>p.departments?.[dept]?.done).length;
+                    const pct=total>0?Math.round(done/total*100):0;
+                    return(
+                      <div key={dept} style={{marginBottom:10}}>
+                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".75rem",marginBottom:3}}>
+                          <span style={{fontWeight:600,color:"#475569"}}>{dept}</span>
+                          <span style={{color:clr,fontWeight:700}}>{done}/{total} done</span>
+                        </div>
+                        <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:pct+"%",background:clr,borderRadius:3,transition:"width .5s"}}/>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+            const widgetMap={"active":widgetActive,"collections":widgetCollections,"activity":widgetActivity,"dept":widgetDept};
+            const ordered=dashOrder.map(id=>widgetMap[id]).filter(Boolean);
+            // Render as 2-column pairs
+            const rows=[];
+            for(let i=0;i<ordered.length;i+=2){
+              rows.push(
+                <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+                  {ordered[i]}{ordered[i+1]||null}
+                </div>
+              );
+            }
+            return rows;
           })()}
-
-          {/* Active Projects — TAT status */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>🏗 Active Projects</span>
-              <button onClick={()=>setPage("projects")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View all</button>
-            </div>
-            <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
-              {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No active projects</div>}
-              {wonDeals.slice(0,6).map(d=>{
-                const pc=pcards[d.id];
-                const jo=jos.find(j=>j.dealId===d.id);
-                const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date())/(1000*60*60*24)):null;
-                const isOver=daysLeft!==null&&daysLeft<0;
-                const deptsDone=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
-                return(
-                  <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{jo?.pm1||"No PM"} · {deptsDone}/6 depts</div>
-                    </div>
-                    {daysLeft!==null?(
-                      <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",padding:"2px 8px",borderRadius:20,flexShrink:0}}>
-                        {isOver?`${Math.abs(daysLeft)}d over`:`${daysLeft}d left`}
-                      </span>
-                    ):<span style={{fontSize:".68rem",color:"#e2e8f0",flexShrink:0}}>No TAT</span>}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Collections snapshot */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700,color:"#4ade80",fontSize:".85rem"}}>💵 Collections</span>
-              <button onClick={()=>setPage("billing")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View billing</button>
-            </div>
-            <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
-              {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No awarded projects</div>}
-              {wonDeals.slice(0,6).map(d=>{
-                const ms=billings.filter(b=>b.dealId===d.id);
-                const billed=ms.reduce((s,m)=>s+Number(m.amount||0),0);
-                const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-                const balance=billed-collected;
-                const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
-                return(
-                  <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc"}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                        {hasOverdue&&<span style={{color:"#ef4444",marginRight:4}}>🔴</span>}{d.client}
-                      </div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{ms.length} milestone{ms.length!==1?"s":""} · Billed ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".82rem"}}>
-                        {balance>0?`-₱${balance.toLocaleString("en-PH",{minimumFractionDigits:0})}`:"✓ Clear"}
-                      </div>
-                      {balance>0&&<div style={{fontSize:".65rem",color:"#94a3b8"}}>outstanding</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* ── BOTTOM ROW ──────────────────────────────────────────────── */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-
-          {/* Recent Activity */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#a78bfa",fontSize:".85rem"}}>📋 Recent Activity</span>
-            </div>
-            <div style={{padding:"4px 0",maxHeight:200,overflowY:"auto"}}>
-              {actLog.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No activity yet</div>}
-              {actLog.slice(0,10).map(entry=>{
-                const clr={"New Deal":"#10b981","Project Awarded":"#f59e0b","Stage Change":"#3b82f6","Deal Updated":"#94a3b8","Department Done":"#8b5cf6","TAT Set":"#06b6d4"}[entry.action]||"#94a3b8";
-                return(
-                  <div key={entry.id} style={{display:"flex",gap:10,padding:"7px 14px",borderBottom:"1px solid #f8fafc",alignItems:"flex-start"}}>
-                    <div style={{width:6,height:6,borderRadius:"50%",background:clr,flexShrink:0,marginTop:5}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".78rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.detail}</div>
-                      <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1}}>{entry.by} · {entry.date} {entry.time}</div>
-                    </div>
-                    <span style={{fontSize:".62rem",color:clr,background:clr+"18",padding:"1px 6px",borderRadius:20,flexShrink:0,fontWeight:600}}>{entry.action}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Department Status Overview */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#fb923c",fontSize:".85rem"}}>🏢 Dept Status — Active Projects</span>
-            </div>
-            <div style={{padding:"12px 16px"}}>
-              {DEPT_ORDER.map(dept=>{
-                const clr=DEPT_CLR[dept];
-                const total=wonDeals.length;
-                const done=Object.values(pcards).filter(p=>p.departments?.[dept]?.done).length;
-                const pct=total>0?Math.round(done/total*100):0;
-                return(
-                  <div key={dept} style={{marginBottom:10}}>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:".75rem",marginBottom:3}}>
-                      <span style={{fontWeight:600,color:"#475569"}}>{dept}</span>
-                      <span style={{color:clr,fontWeight:700}}>{done}/{total} done</span>
-                    </div>
-                    <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                      <div style={{height:"100%",width:pct+"%",background:clr,borderRadius:3,transition:"width .5s"}}/>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
       </Wrap>
     );
   }
@@ -11157,6 +11190,8 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
   const[showForm, setShowForm] =useState(false);
   const[showPay,  setShowPay]  =useState(null);
   const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
+  const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
+  const[editMsForm,setEditMsForm]=useState({});
   const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft"});
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:""});
   const[editPayForm,setEditPayForm]=useState({});
@@ -11167,6 +11202,7 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
   const fm =(k,v)=>setMsForm(p=>({...p,[k]:v}));
   const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
+  const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Finance";
   const deal=wonDeals.find(d=>d.id===selDeal);
 
@@ -11187,33 +11223,160 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
     setPayForm({amount:"",date:today,refNo:"",note:""});
     setShowPay(null);
   };
+  const saveEditMs=()=>{
+    if(!editMs) return;
+    updateMilestone(editMs,{
+      name:editMsForm.name,description:editMsForm.description,
+      amount:Number(editMsForm.amount)||0,
+      invoiceNo:editMsForm.invoiceNo,invoiceDate:editMsForm.invoiceDate,
+      dueDate:editMsForm.dueDate,
+    });
+    setEditMs(null);setEditMsForm({});
+  };
   const printInvoice=(ms)=>{
     const d=wonDeals.find(x=>x.id===ms.dealId);
     const tx=calcTax(ms.amount,d?.receiptType||"OR",d?.withholding||false);
     const totalPaid=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
+    const balance=Math.max(0,tx.netReceivable-totalPaid);
+    const jo=null; // jos not passed here, but project name is in d.contact
     const win=window.open("","_blank");
-    win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${ms.invoiceNo}</title>
-    <style>body{font-family:Arial,sans-serif;margin:40px;color:#1e293b;font-size:13px;}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;border-bottom:3px solid #1e293b;padding-bottom:18px;}.logo{font-size:22px;font-weight:900;letter-spacing:-1px;}.logo span{color:#f59e0b;}table{width:100%;border-collapse:collapse;margin-bottom:16px;}th{background:#1e293b;color:#fff;padding:9px 12px;text-align:left;font-size:11px;}td{padding:9px 12px;border-bottom:1px solid #e2e8f0;}.totals{margin-left:auto;width:300px;}.grand{font-weight:900;font-size:15px;border-top:2px solid #1e293b;}.net{color:#059669;font-weight:900;}@media print{button{display:none;}}</style>
-    </head><body>
-    <div class="header"><div><div class="logo">GMD <span>PROD</span></div><div style="color:#64748b;font-size:12px;margin-top:6px;">GMD Productions Inc.</div></div>
-    <div style="text-align:right"><h2 style="margin:0">INVOICE</h2><p style="margin:3px 0"><strong>${ms.invoiceNo}</strong></p><p style="margin:3px 0;color:#64748b">Date: ${ms.invoiceDate||today}</p><p style="margin:3px 0;color:#64748b">Due: ${ms.dueDate||"—"}</p></div></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
-    <div><h3 style="font-size:11px;text-transform:uppercase;color:#94a3b8;margin:0 0 6px">Bill To</h3><strong style="font-size:15px">${d?.client||"—"}</strong><br/>${d?.ceNo?"CE: "+d.ceNo:""}</div>
-    <div><h3 style="font-size:11px;text-transform:uppercase;color:#94a3b8;margin:0 0 6px">Details</h3>${ms.description||ms.name}</div></div>
-    <table><thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
-    <tbody><tr><td>${ms.name}${ms.description?" — "+ms.description:""}</td><td style="text-align:right">${fmt(ms.amount)}</td></tr>
-    ${tx.vat>0?"<tr><td style='color:#64748b'>VAT (12%)</td><td style='text-align:right;color:#f59e0b'>"+fmt(tx.vat)+"</td></tr>":""}
-    </tbody></table>
-    <div class="totals"><table>
-    <tr><td>Gross Amount</td><td style="text-align:right;font-weight:700">${fmt(tx.gross)}</td></tr>
-    ${tx.ewt>0?"<tr><td style='color:#ef4444'>Less: EWT (2%)</td><td style='text-align:right;color:#ef4444'>("+fmt(tx.ewt)+")</td></tr>":""}
-    <tr class="grand"><td>Net Amount Due</td><td style="text-align:right" class="net">${fmt(tx.netReceivable)}</td></tr>
-    ${totalPaid>0?"<tr><td style='color:#3b82f6'>Amount Paid</td><td style='text-align:right;color:#3b82f6'>("+fmt(totalPaid)+")</td></tr>":""}
-    ${totalPaid>0?"<tr class='grand'><td>Balance Due</td><td style='text-align:right;color:"+(totalPaid>=n(tx.netReceivable)?"#059669":"#ef4444")+"'>"+fmt(Math.max(0,tx.netReceivable-totalPaid))+"</td></tr>":""}
-    </table></div>
-    <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">GMD Productions Inc. · Generated via FabHub · ${new Date().toLocaleDateString("en-PH",{dateStyle:"long"})}</div>
-    <div style="text-align:center;margin-top:20px"><button onclick="window.print()" style="padding:10px 24px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700">Print / Save as PDF</button></div>
-    </body></html>`);
+    win.document.write(`<!DOCTYPE html><html><head><title>Invoice — ${ms.invoiceNo}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#fff;color:#1e293b;font-size:13px;padding:0;}
+  .page{max-width:760px;margin:0 auto;padding:48px 48px 40px;}
+  .accent-bar{height:6px;background:linear-gradient(90deg,#1e293b 0%,#f59e0b 100%);}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;padding:28px 0 22px;border-bottom:1.5px solid #e2e8f0;}
+  .logo-block .logo{font-size:26px;font-weight:900;letter-spacing:-1px;color:#1e293b;}
+  .logo-block .logo span{color:#f59e0b;}
+  .logo-block .tagline{font-size:11px;color:#64748b;margin-top:3px;}
+  .logo-block .addr{font-size:10.5px;color:#94a3b8;margin-top:8px;line-height:1.6;}
+  .inv-meta{text-align:right;}
+  .inv-meta .inv-label{font-size:22px;font-weight:900;letter-spacing:1px;color:#1e293b;text-transform:uppercase;}
+  .inv-meta .inv-no{font-size:18px;font-weight:800;color:#f59e0b;margin-top:2px;}
+  .inv-meta .inv-dates{font-size:11px;color:#64748b;margin-top:6px;line-height:1.8;}
+  .bill-section{display:grid;grid-template-columns:1fr 1fr;gap:32px;padding:22px 0;border-bottom:1px solid #f1f5f9;margin-bottom:22px;}
+  .bill-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:6px;}
+  .bill-client{font-size:16px;font-weight:800;color:#0f172a;}
+  .bill-sub{font-size:11.5px;color:#64748b;margin-top:4px;line-height:1.7;}
+  table{width:100%;border-collapse:collapse;margin-bottom:0;}
+  thead tr{background:#1e293b;}
+  th{color:#fff;padding:10px 14px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  th:last-child{text-align:right;}
+  td{padding:12px 14px;border-bottom:1px solid #f1f5f9;font-size:12.5px;vertical-align:top;}
+  td:last-child{text-align:right;font-weight:600;white-space:nowrap;}
+  tr.sub td{background:#fafafa;color:#64748b;font-size:11.5px;}
+  .totals-wrap{display:flex;justify-content:flex-end;margin-top:16px;}
+  .totals{width:300px;border:1.5px solid #e2e8f0;border-radius:8px;overflow:hidden;}
+  .totals tr td{border-bottom:1px solid #f1f5f9;font-size:12.5px;padding:9px 14px;}
+  .totals tr:last-child td{border-bottom:none;}
+  .totals .grand td{background:#f8fafc;font-weight:800;font-size:14px;border-top:2px solid #1e293b;}
+  .totals .grand td:last-child{color:#059669;}
+  .totals .balance td{background:#fef2f2;}
+  .totals .balance td:last-child{color:#ef4444;font-weight:800;}
+  .totals .paid-row td:last-child{color:#3b82f6;}
+  .bank-section{margin-top:28px;padding:16px 18px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;}
+  .bank-section .bank-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:10px;}
+  .bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .bank-item{font-size:11.5px;color:#475569;}
+  .bank-item strong{color:#0f172a;display:block;margin-bottom:1px;}
+  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;}
+  .footer .note{font-size:10.5px;color:#94a3b8;line-height:1.6;}
+  .footer .sig{font-size:11px;color:#94a3b8;text-align:right;}
+  .print-btn{display:block;text-align:center;margin-top:24px;}
+  .print-btn button{padding:11px 28px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:700;letter-spacing:.3px;}
+  @media print{
+    .print-btn{display:none;}
+    .page{padding:28px;}
+    .accent-bar{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+    thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+  }
+</style>
+</head><body>
+<div class="accent-bar"></div>
+<div class="page">
+  <div class="header">
+    <div class="logo-block">
+      <div class="logo">GMD <span>PROD</span></div>
+      <div class="tagline">GMD Productions Inc.</div>
+      <div class="addr">
+        TIN: 009-768-590-000<br/>
+        Tel: (02) 8531-xxxx · gmdproductionsinc@gmail.com
+      </div>
+    </div>
+    <div class="inv-meta">
+      <div class="inv-label">Invoice</div>
+      <div class="inv-no">${ms.invoiceNo||"INV-####"}</div>
+      <div class="inv-dates">
+        Date: <strong>${ms.invoiceDate||today}</strong><br/>
+        Due:&nbsp; <strong style="color:${ms.dueDate&&ms.dueDate<today?"#ef4444":"#1e293b"}">${ms.dueDate||"—"}</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="bill-section">
+    <div>
+      <div class="bill-label">Bill To</div>
+      <div class="bill-client">${d?.client||"—"}</div>
+      <div class="bill-sub">
+        ${d?.contact?`Project: ${d.contact}<br/>`:""}
+        ${d?.ceNo?`CE No: ${d.ceNo}<br/>`:""}
+        ${d?.location?`Location: ${d.location}`:""}
+      </div>
+    </div>
+    <div>
+      <div class="bill-label">Details</div>
+      <div class="bill-sub" style="font-size:13px;color:#1e293b;font-weight:600;">${ms.name}</div>
+      ${ms.description?`<div class="bill-sub" style="margin-top:4px;">${ms.description}</div>`:""}
+      <div class="bill-sub" style="margin-top:8px;">
+        ${d?.receiptType==="SI"?"VAT-registered (12% VAT applies)":"Official Receipt (OR)"}
+        ${d?.withholding?"· Subject to 2% EWT":""}
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Description</th><th style="text-align:right">Amount</th></tr></thead>
+    <tbody>
+      <tr><td style="font-weight:600">${ms.name}${ms.description?`<br/><span style="font-size:11.5px;color:#64748b;font-weight:400">${ms.description}</span>`:""}</td><td>${fmt(ms.amount)}</td></tr>
+      ${tx.vat>0?`<tr class="sub"><td>VAT (12%)</td><td style="color:#f59e0b;">${fmt(tx.vat)}</td></tr>`:""}
+    </tbody>
+  </table>
+
+  <div class="totals-wrap">
+    <table class="totals">
+      <tr><td>Gross Amount</td><td>${fmt(tx.gross)}</td></tr>
+      ${tx.ewt>0?`<tr><td style="color:#ef4444">Less: EWT (2%)</td><td style="color:#ef4444">(${fmt(tx.ewt)})</td></tr>`:""}
+      <tr class="grand"><td>Net Amount Due</td><td>${fmt(tx.netReceivable)}</td></tr>
+      ${totalPaid>0?`<tr class="paid-row"><td>Amount Paid</td><td>(${fmt(totalPaid)})</td></tr>`:""}
+      ${totalPaid>0?`<tr class="${balance>0?"balance":"grand"}"><td>${balance>0?"Balance Due":"Fully Paid"}</td><td>${balance>0?fmt(balance):"✓ CLEAR"}</td></tr>`:""}
+    </table>
+  </div>
+
+  <div class="bank-section">
+    <div class="bank-title">Payment Details</div>
+    <div class="bank-grid">
+      <div class="bank-item"><strong>BPI</strong>Acct No: 1234-5678-90<br/>Acct Name: GMD Productions Inc.</div>
+      <div class="bank-item"><strong>Metrobank</strong>Acct No: 0987-6543-21<br/>Acct Name: GMD Productions Inc.</div>
+      <div class="bank-item" style="margin-top:8px"><strong>BDO</strong>Acct No: 1122-3344-55<br/>Acct Name: GMD Productions Inc.</div>
+      <div class="bank-item" style="margin-top:8px"><strong>Cheques payable to</strong>GMD Productions Inc.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="note">
+      Thank you for your business!<br/>
+      Please include the invoice number <strong>${ms.invoiceNo}</strong> as payment reference.<br/>
+      For inquiries: billing@gmdproductions.com
+    </div>
+    <div class="sig">
+      Generated via FabHub<br/>
+      ${new Date().toLocaleDateString("en-PH",{dateStyle:"long"})}
+    </div>
+  </div>
+</div>
+<div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+</body></html>`);
     win.document.close();
   };
 
@@ -11570,6 +11733,24 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
                           ))}
                         </div>
                       )}
+                      {/* Edit milestone inline */}
+                      {editMs===ms.id&&canEdit&&(
+                        <div style={{background:"#eff6ff",borderRadius:8,padding:"10px 12px",border:"1.5px solid #93c5fd",marginTop:8}}>
+                          <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Edit Milestone</div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            <Fld label="Milestone Name"><Inp value={editMsForm.name||""} onChange={e=>fme("name",e.target.value)} placeholder="e.g. 30% Down Payment"/></Fld>
+                            <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/></Fld>
+                            <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
+                            <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
+                            <Fld label="Due Date"><Inp type="date" value={editMsForm.dueDate||""} onChange={e=>fme("dueDate",e.target.value)}/></Fld>
+                            <Fld label="Description"><Inp value={editMsForm.description||""} onChange={e=>fme("description",e.target.value)} placeholder="Optional details…"/></Fld>
+                          </div>
+                          <div style={{display:"flex",gap:8,marginTop:8}}>
+                            <button onClick={saveEditMs} style={{background:"#1d4ed8",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
+                            <button onClick={()=>{setEditMs(null);setEditMsForm({});}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                          </div>
+                        </div>
+                      )}
                       {/* Log payment inline */}
                       {showPay===ms.id&&canEdit&&(
                         <div style={{background:"#eff6ff",borderRadius:8,padding:"10px 12px",border:"1.5px solid #93c5fd",marginTop:8}}>
@@ -11602,6 +11783,7 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
                       {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <button onClick={()=>setShowPay(showPay===ms.id?null:ms.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
+                      {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||""});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
                       {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
                       {canEdit&&<button onClick={()=>{if(window.confirm("Delete this milestone?"))deleteMilestone(ms.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontFamily:"inherit",fontWeight:600,fontSize:".7rem",color:"#dc2626",cursor:"pointer"}}>Delete</button>}
                     </div>
