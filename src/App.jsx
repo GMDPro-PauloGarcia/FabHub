@@ -9545,7 +9545,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       {/* Client list */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
         <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:0,padding:"8px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".65rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8"}}>
-          {["Client Name","City","Contact","Status"].map(h=><div key={h}>{h}</div>)}
+          {["Client Name","Awarded Deals","Contact","Status"].map(h=><div key={h}>{h}</div>)}
         </div>
         {filtered.map((c,i)=>{
           const clientDeals = deals.filter(d=>d.client===c.name);
@@ -9585,8 +9585,27 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                   {hasBalance&&<div style={{fontSize:".72rem",color:"#ef4444",fontWeight:700,marginTop:2}}>⚠ ₱{c.balance.toLocaleString()} outstanding</div>}
                 </div>
               </div>
-              <div style={{fontSize:".78rem",color:"#64748b"}}>{c.city||"—"}</div>
-              <div style={{fontSize:".78rem",color:"#64748b"}}>{c.phone||"—"}</div>
+              <div>{(()=>{
+                const wonC=clientDeals.filter(d=>WON_STAGES.includes(d.stage));
+                const wonVal=wonC.reduce((s,d)=>s+Number(d.value||0),0);
+                return wonC.length>0?(
+                  <div>
+                    <div style={{fontWeight:700,color:"#059669",fontSize:".82rem"}}>{wonC.length} project{wonC.length>1?"s":""}</div>
+                    <div style={{fontSize:".72rem",color:"#10b981",marginTop:1}}>₱{wonVal.toLocaleString("en-PH")}</div>
+                  </div>
+                ):<span style={{fontSize:".72rem",color:"#cbd5e1"}}>None yet</span>;
+              })()}</div>
+              <div>{(()=>{
+                const cp=(clientProfiles||{})[c.name]||{};
+                const contact=cp.contactPerson||"";
+                const phone=cp.phone||cp.mobile||c.phone||"";
+                return(
+                  <div style={{fontSize:".78rem",color:"#64748b"}}>
+                    {contact&&<div style={{fontWeight:600,color:"#0f172a",marginBottom:1}}>{contact}</div>}
+                    {phone?<div>{phone}</div>:<span style={{color:"#cbd5e1"}}>—</span>}
+                  </div>
+                );
+              })()}</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {hasDeals?(
                   <span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>
