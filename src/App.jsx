@@ -1329,6 +1329,14 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             <Inp value={form.location||""} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM North EDSA – 3F Activity Area"/>
           </Fld>
         </div>
+        {editId&&form.addedBy&&(
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#4338ca",display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontWeight:700}}>✏ Added by:</span> {form.addedBy}
+              {form.addedAt&&<span style={{color:"#6366f1",marginLeft:4}}>· {form.addedAt}</span>}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── SECTION 2: CONTEXT & FOLLOW-UP ─────────────────────────────── */}
@@ -1896,7 +1904,7 @@ export default function App(){
         try{
           const data = await sbLoadAll();
           if(data){
-            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
+            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
             if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
             if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
             if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
@@ -1972,7 +1980,7 @@ export default function App(){
       lastRefresh=now;
       try{
         const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
@@ -1987,7 +1995,7 @@ export default function App(){
     if(!isSupabaseReady()) return;
     const data = await sbLoadAll();
     if(!data) return;
-    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",awardRequestData:d.award_request_data||null})));
+    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null})));
     if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
@@ -2041,6 +2049,7 @@ export default function App(){
     sales_repo_link:r.salesRepoLink||"", proposal_folder_link:r.proposalFolderLink||"",
     notes:r.notes||"", probability:Number(r.probability)||0,
     location:r.location||"",
+    added_by:r.addedBy||"", added_at:r.addedAt||null,
     award_request_data:r.awardRequestData||null,
     updated_at:new Date().toISOString(),
   });
@@ -3165,7 +3174,10 @@ export default function App(){
     const data = overrideData||dealForm;
     if(!data.client) return;
     const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
-    const rec={...data,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob};
+    const rec={...data,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
+      addedBy:editDeal?(data.addedBy||""):(session?.name||""),
+      addedAt:editDeal?(data.addedAt||today):today,
+    };
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
@@ -5927,6 +5939,7 @@ export default function App(){
                   {d.ceNo&&<span style={{color:"#475569",fontWeight:600}}>{d.ceNo}</span>}
                   {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
                   {d.salesOwner&&<span>👤 {d.salesOwner.split(" ")[0]}</span>}
+                  {d.addedBy&&d.addedBy!==d.salesOwner&&<span style={{color:"#6366f1",background:"#eef2ff",borderRadius:4,padding:"0 4px",fontSize:".6rem",fontWeight:700}} title={`Added by ${d.addedBy}`}>+{d.addedBy.split(" ")[0]}</span>}
                   <span style={{color:d.followUp&&d.followUp<today?"#ef4444":daysSince(d.dateAcquired)>15?"#f59e0b":"#94a3b8"}}>
                     {d.followUp&&d.followUp<today?"⚠ "+d.followUp:daysSince(d.dateAcquired)+"d ago"}
                   </span>
