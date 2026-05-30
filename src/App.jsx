@@ -691,7 +691,7 @@ const emptyDeal={
   progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
   // GMD fields
   ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,
-  assignedAE:"",bizDevSource:"",
+  assignedAE:"",bizDevSource:"",location:"",
   // File links (Drive + FabHub)
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
   // Design Request (inline DRF)
@@ -920,6 +920,9 @@ function AwardModal({deal,session,today,onClose,onConfirm}){
     startDate:today,commsLink:deal?.commsGroup||"",
     scopeNotes:req.scopeNotes||"",
     specialInstructions:req.specialInstructions||"",
+    designer:"",
+    ownerSupplied:"",
+    location:deal?.location||"",
   });
   const[step,setStep]=React.useState(1);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1000,7 +1003,7 @@ function AwardModal({deal,session,today,onClose,onConfirm}){
               {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
             </Sel>
           </Fld>
-          <Fld label="Target Opening"><Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/></Fld>
+          <Fld label="Target Turnover Date" hint="When do we hand over the project to the client?"><Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/></Fld>
           <div style={{gridColumn:"1/-1"}}>
             <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
               <Inp value={form.commsLink} onChange={e=>f("commsLink",e.target.value)} placeholder="https://chat.whatsapp.com/…"/>
@@ -1016,6 +1019,22 @@ function AwardModal({deal,session,today,onClose,onConfirm}){
               <Inp rows={3} value={form.specialInstructions} onChange={e=>f("specialInstructions",e.target.value)} placeholder="e.g. SM Megamall: night delivery only 10PM-6AM, GS permit required 2 weeks before. Client contact on site: Kat Santos +63917-xxx-xxxx"/>
             </Fld>
             <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>💡 Venue Memory (SM, Ayala, Robinsons requirements) — coming in a future update</div>
+          </div>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Project Location" hint="Full venue / address — will appear in JO and notifications">
+              <Inp value={form.location||""} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM North EDSA – 3F Activity Area, Quezon City"/>
+            </Fld>
+          </div>
+          <Fld label="Assigned Designer" hint="Design team member handling this project">
+            <Sel value={form.designer||""} onChange={e=>f("designer",e.target.value)}>
+              <option value="">— Assign later —</option>
+              {DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}
+            </Sel>
+          </Fld>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Owner-Supplied Items / Works" hint="Any materials, fixtures, or works that the client/owner will supply">
+              <Inp rows={2} value={form.ownerSupplied||""} onChange={e=>f("ownerSupplied",e.target.value)} placeholder="e.g. Client to supply all tiles and flooring materials. Owner's electrician to handle MEP rough-ins."/>
+            </Fld>
           </div>
         </div>
         {form.pm1&&(
@@ -1311,6 +1330,11 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Sel>
         </Fld>
         <Fld label="Date Acquired"><Inp type="date" value={form.dateAcquired||today} onChange={e=>f("dateAcquired",e.target.value)}/></Fld>
+        <div style={{gridColumn:"1/-1"}}>
+          <Fld label="Project Location" hint="e.g. SM North EDSA 3F Activity Area, BGC Taguig, Makati CBD">
+            <Inp value={form.location||""} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM North EDSA – 3F Activity Area"/>
+          </Fld>
+        </div>
       </div>
 
       {/* ── SECTION 2: CONTEXT & FOLLOW-UP ─────────────────────────────── */}
@@ -1878,8 +1902,8 @@ export default function App(){
         try{
           const data = await sbLoadAll();
           if(data){
-            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
-            if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
+            if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",ownerSupplied:j.owner_supplied||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
             if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
             if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
             if(data.exps?.length)   setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
@@ -1954,7 +1978,7 @@ export default function App(){
       lastRefresh=now;
       try{
         const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
@@ -1969,8 +1993,8 @@ export default function App(){
     if(!isSupabaseReady()) return;
     const data = await sbLoadAll();
     if(!data) return;
-    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",awardRequestData:d.award_request_data||null})));
-    if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+    if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",awardRequestData:d.award_request_data||null})));
+    if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",ownerSupplied:j.owner_supplied||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
     if(data.exps?.length)        setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
@@ -2022,6 +2046,7 @@ export default function App(){
     withholding:r.withholding||false, comms_group:r.commsGroup||"",
     sales_repo_link:r.salesRepoLink||"", proposal_folder_link:r.proposalFolderLink||"",
     notes:r.notes||"", probability:Number(r.probability)||0,
+    location:r.location||"",
     award_request_data:r.awardRequestData||null,
     updated_at:new Date().toISOString(),
   });
@@ -2034,6 +2059,8 @@ export default function App(){
     ae_assigned:r.aeAssigned||"", start_date:r.startDate||null,
     comms_link:r.commsLink||"", scope_notes:r.scopeNotes||"",
     special_instructions:r.specialInstructions||"",
+    designer:r.designer||"", owner_supplied:r.ownerSupplied||"",
+    location:r.location||"",
     budget_status:r.budgetStatus||"QS Budget Pending",
     status:r.status||"Active", issued_date:r.issuedDate||r.dateIssued||null,
   });
@@ -3254,6 +3281,9 @@ export default function App(){
       commsLink:form.commsLink,
       scopeNotes:form.scopeNotes,
       specialInstructions:form.specialInstructions,
+      designer:form.designer||"",
+      ownerSupplied:form.ownerSupplied||"",
+      location:form.location||awardModal.location||"",
       budgetStatus:"QS Budget Pending",
       issuedBy:session?.name||"Manager",
       issuedDate:today,
@@ -3315,13 +3345,19 @@ export default function App(){
     sendToAllChannels(
       `🏆 <b>PROJECT AWARDED!</b>\n\n` +
       `Client: <b>${awardModal.client}</b>\n` +
+      (awardModal.contact?`Project: <b>${awardModal.contact}</b>\n`:"")+
       `${awardModal.ceNo?`CE No: ${awardModal.ceNo} · `:``}${awardModal.ceType||""}\n` +
+      (jo.location?`📍 Location: ${jo.location}\n`:"")+
       (botSettings.hideValueInBots?"":(`Value: ₱${contractVal.toLocaleString("en-PH",{maximumFractionDigits:0})}\n`)) +
-      `PM: ${pmDisplay}\n` +
-      `AE: ${jo.aeAssigned||"—"}\n` +
-      `JO: ${jo.joNo}\n` +
+      `\n👷 PM: ${pmDisplay}\n` +
+      `🤝 AE: ${jo.aeAssigned||"—"}\n` +
+      (jo.designer?`🎨 Designer: ${jo.designer}\n`:"")+
+      `📋 JO: ${jo.joNo}\n` +
+      (jo.startDate?`🗓 Target Turnover: ${jo.startDate}\n`:"")+
       `Awarded by: ${session?.name||"Manager"}\n` +
-      (form.scopeNotes?`\nScope: ${form.scopeNotes}\n`:"")+
+      (form.scopeNotes?`\n📝 Scope:\n${form.scopeNotes}\n`:"")+
+      (form.specialInstructions?`\n⚠️ Special Instructions:\n${form.specialInstructions}\n`:"")+
+      (form.ownerSupplied?`\n📦 Owner-Supplied:\n${form.ownerSupplied}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
     setAwardModal(null);
@@ -3527,7 +3563,7 @@ export default function App(){
                   try{
                     const data=await sbLoadAll();
                     if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",stage:normalizeStage(d.stage)})));
-                    if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+                    if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",ownerSupplied:j.owner_supplied||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
                     if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
                     setSync("saved");
                   }catch(e){setSync("error");}
@@ -12929,6 +12965,7 @@ function DataManagement({
         <div class="field"><label>CE Number</label><span>${jo.ceNo||d.ceNo||"—"}</span></div>
         <div class="field"><label>Project Name</label><span>${jo.projectName||d.contact||"—"}</span></div>
         <div class="field"><label>CE Type</label><span>${jo.ceType||d.ceType||"—"} ${jo.product||d.product?("· "+(jo.product||d.product)):"" }</span></div>
+        <div class="field"><label>Project Location</label><span>${jo.location||d.location||"—"}</span></div>
         <div class="field"><label>Contract Value</label><span>₱${(jo.value||d.value||0).toLocaleString("en-PH")}</span></div>
         <div class="field"><label>Award Trigger</label><span>${jo.awardTrigger||"—"} ${jo.triggerDate?("· "+jo.triggerDate):""}</span></div>
       </div>
@@ -12946,7 +12983,8 @@ function DataManagement({
           <span>${jo.coordinator||"—"}</span>
         </div>
         <div class="field"><label>Account Executive</label><span>${jo.aeAssigned||d.salesOwner||"—"}</span></div>
-        <div class="field"><label>Target Opening</label><span>${jo.startDate||"—"}</span></div>
+        <div class="field"><label>Designer</label><span>${jo.designer||"—"}</span></div>
+        <div class="field"><label>Target Turnover Date</label><span>${jo.startDate||"—"}</span></div>
       </div>
       ${jo.commsLink?('<div style="margin-top:10px"><div class="field"><label>Comms Group</label><a href="'+jo.commsLink+'" style="color:#3b82f6">'+jo.commsLink+'</a></div></div>'):""}
     </div>
@@ -12957,6 +12995,8 @@ function DataManagement({
     </div>
 
     ${jo.specialInstructions?'<div class="section"><div class="section-title">Special Instructions / Venue Requirements</div><div class="scope-box" style="background:#fffbeb;border-color:#fde68a;">'+(jo.specialInstructions||"").replace(/\\n/g,"<br/>")+'</div></div>':""}
+    ${jo.ownerSupplied?'<div class="section"><div class="section-title">Owner-Supplied Items / Works</div><div class="scope-box" style="background:#f0fdf4;border-color:#6ee7b7;">'+(jo.ownerSupplied||"").replace(/\\n/g,"<br/>")+'</div></div>':""}
+
 
     <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:#1d4ed8;">
       <strong>Budget Status:</strong> ${jo.budgetStatus||"QS Budget Pending"} &nbsp;·&nbsp;
