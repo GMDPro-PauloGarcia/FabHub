@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -808,6 +808,86 @@ const Card=({children,onClick,accent,style:sx={}})=>(
     {children}
   </div>
 );
+// ── File Attachments — upload/view/delete files for any entity via Supabase Storage
+const FileAttachments=({folder,label="Attachments"})=>{
+  const [files,setFiles]=React.useState([]);
+  const [loading,setLoading]=React.useState(false);
+  const [uploading,setUploading]=React.useState(false);
+  const [open,setOpen]=React.useState(false);
+  const fileRef=React.useRef();
+
+  const load=React.useCallback(async()=>{
+    if(!folder||!isSupabaseReady()) return;
+    setLoading(true);
+    const list=await sbListFiles(folder);
+    setFiles(list);
+    setLoading(false);
+  },[folder]);
+
+  React.useEffect(()=>{ if(open) load(); },[open,load]);
+
+  const upload=async(e)=>{
+    const file=e.target.files?.[0]; if(!file) return;
+    setUploading(true);
+    const path=await sbUploadFile(folder,file);
+    if(path) await load();
+    setUploading(false);
+    e.target.value="";
+  };
+
+  const del=async(fileName)=>{
+    if(!window.confirm(`Delete "${fileName}"?`)) return;
+    await sbDeleteFile(`${folder}/${fileName}`);
+    await load();
+  };
+
+  const fileIcon=(name)=>{
+    const ext=name.split('.').pop().toLowerCase();
+    if(['jpg','jpeg','png','gif','webp'].includes(ext)) return '🖼';
+    if(['pdf'].includes(ext)) return '📄';
+    if(['xlsx','xls','csv'].includes(ext)) return '📊';
+    if(['docx','doc'].includes(ext)) return '📝';
+    return '📎';
+  };
+
+  if(!isSupabaseReady()) return null;
+
+  return(
+    <div style={{borderTop:"1px solid #f1f5f9",marginTop:12,paddingTop:10}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}} onClick={()=>setOpen(o=>!o)}>
+        <span style={{fontSize:".78rem",fontWeight:700,color:"#475569"}}>📎 {label}</span>
+        {files.length>0&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:99,padding:"0 7px",fontSize:".68rem",fontWeight:700}}>{files.length}</span>}
+        <span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:"auto"}}>{open?"▲":"▼"}</span>
+      </div>
+      {open&&(
+        <div style={{marginTop:8}}>
+          {loading&&<div style={{fontSize:".75rem",color:"#94a3b8"}}>Loading…</div>}
+          {!loading&&files.length===0&&<div style={{fontSize:".75rem",color:"#94a3b8",fontStyle:"italic"}}>No files yet.</div>}
+          {files.map(f=>{
+            const displayName=f.name.replace(/^\d+_/,"");
+            const url=sbGetPublicUrl(`${folder}/${f.name}`);
+            return(
+              <div key={f.name} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 0",borderBottom:"1px solid #f8fafc"}}>
+                <span>{fileIcon(f.name)}</span>
+                <a href={url} target="_blank" rel="noreferrer" style={{flex:1,fontSize:".75rem",color:"#3b82f6",textDecoration:"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={displayName}>{displayName}</a>
+                <span style={{fontSize:".68rem",color:"#94a3b8",whiteSpace:"nowrap"}}>{f.metadata?.size?`${(f.metadata.size/1024).toFixed(0)}KB`:""}</span>
+                <button onClick={()=>del(f.name)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",padding:"0 2px"}} title="Delete">✕</button>
+              </div>
+            );
+          })}
+          <div style={{marginTop:8}}>
+            <input ref={fileRef} type="file" style={{display:"none"}} onChange={upload} />
+            <button onClick={()=>fileRef.current?.click()} disabled={uploading}
+              style={{fontSize:".73rem",background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:6,padding:"5px 12px",color:"#64748b",cursor:"pointer",width:"100%"}}>
+              {uploading?"Uploading…":"+ Upload File"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Modal=({open,onClose,title,children,wide})=>{
   if(!open) return null;
   return(
@@ -1371,6 +1451,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
           <Fld label="Repository Notes"><Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall — all plans uploaded"/></Fld>
         </div>
+        {editId&&<FileAttachments folder={`deals/${editId}`} label="Deal Attachments"/>}
       </div>
 
       {/* Design Request Form (DRF) — always shown */}
@@ -2537,12 +2618,153 @@ export default function App(){
         setActLog(al=>[{...payload.new,dealId:payload.new.deal_id},...al].slice(0,200));
     });
 
+    // Job Orders — PM assigned, everyone sees it live
+    const joSub = sbSubscribe('jos-rt', 'job_orders', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={...rec,dealId:rec.deal_id,joNo:rec.jo_no,projectName:rec.project_name,
+          awardTrigger:rec.award_trigger,triggerDate:rec.trigger_date,startDate:rec.start_date,
+          commsLink:rec.comms_link,scopeNotes:rec.scope_notes,
+          specialInstructions:rec.special_instructions,designer:rec.designer||"",
+          location:rec.location||"",budgetStatus:rec.budget_status,
+          issuedDate:rec.issued_date,aeAssigned:rec.ae_assigned};
+        setJos(js=>{const ex=js.find(j=>j.id===rec.id);
+          return ex?js.map(j=>j.id===rec.id?{...j,...mapped}:j):[...js,mapped];});
+      }
+      if(eventType==='DELETE') setJos(js=>js.filter(j=>j.id!==oldRow.id));
+    });
+
+    // Purchase Requests — Procurement approves, Ops sees it immediately
+    const prSub = sbSubscribe('prs-rt', 'purchase_requests', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={...rec,dealId:rec.deal_id,estimatedCost:rec.estimated_cost,
+          actualCost:rec.actual_cost,budgetCategory:rec.budget_category,
+          qtyDelivered:rec.qty_delivered,deliveryDate:rec.delivery_date,
+          drNo:rec.dr_no,createdBy:rec.created_by};
+        setPrs(ps=>{const ex=ps.find(p=>p.id===rec.id);
+          return ex?ps.map(p=>p.id===rec.id?{...p,...mapped}:p):[...ps,mapped];});
+      }
+      if(eventType==='DELETE') setPrs(ps=>ps.filter(p=>p.id!==oldRow.id));
+    });
+
+    // Material Requests — submitted on site, office sees it live
+    const mreqSub = sbSubscribe('mreqs-rt', 'material_requests', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={...rec,dealId:rec.deal_id,estimatedCost:rec.estimated_cost,
+          submittedBy:rec.submitted_by};
+        setMreqs(ms=>{const ex=ms.find(m=>m.id===rec.id);
+          return ex?ms.map(m=>m.id===rec.id?{...m,...mapped}:m):[...ms,mapped];});
+      }
+      if(eventType==='DELETE') setMreqs(ms=>ms.filter(m=>m.id!==oldRow.id));
+    });
+
+    // Budget Requests — Finance approves, PM notified instantly
+    const breqSub = sbSubscribe('breqs-rt', 'budget_requests', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={...rec,dealId:rec.deal_id,dateNeeded:rec.date_needed,
+          approvedBy:rec.approved_by,submittedBy:rec.submitted_by};
+        setBreqs(bs=>{const ex=bs.find(b=>b.id===rec.id);
+          return ex?bs.map(b=>b.id===rec.id?{...b,...mapped}:b):[...bs,mapped];});
+      }
+      if(eventType==='DELETE') setBreqs(bs=>bs.filter(b=>b.id!==oldRow.id));
+    });
+
+    // Billing payments — payment logged, Finance dashboard updates immediately
+    const paymentSub = sbSubscribe('payments-rt', 'billing_payments', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={...rec,milestoneId:rec.milestone_id,refNo:rec.ref_no,
+          recordedBy:rec.recorded_by};
+        setBillings(bs=>bs.map(b=>{
+          if(b.id!==rec.milestone_id) return b;
+          const payments=b.payments||[];
+          const ex=payments.find(p=>p.id===rec.id);
+          return{...b,payments:ex?payments.map(p=>p.id===rec.id?{...p,...mapped}:p):[...payments,mapped]};
+        }));
+      }
+      if(eventType==='DELETE')
+        setBillings(bs=>bs.map(b=>({...b,payments:(b.payments||[]).filter(p=>p.id!==oldRow.id)})));
+    });
+
+    // Expenses — anyone logs cost, Finance sees it live
+    const expSub = sbSubscribe('exps-rt', 'expenses', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const dt=rec.date?new Date(rec.date):null;
+        const mapped={...rec,dealId:rec.deal_id,receiptNo:rec.receipt_no,
+          month:dt?dt.getMonth():new Date().getMonth(),
+          year:dt?dt.getFullYear():new Date().getFullYear()};
+        setExps(es=>{const ex=es.find(e=>e.id===rec.id);
+          return ex?es.map(e=>e.id===rec.id?{...e,...mapped}:e):[...es,mapped];});
+      }
+      if(eventType==='DELETE') setExps(es=>es.filter(e=>e.id!==oldRow.id));
+    });
+
+    // Inflows — payment received, cash position updates across all devices
+    const inflowSub = sbSubscribe('inflows-rt', 'inflows', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={...rec,dealId:rec.deal_id,refNo:rec.ref_no};
+        setInfs(is=>{const ex=is.find(i=>i.id===rec.id);
+          return ex?is.map(i=>i.id===rec.id?{...i,...mapped}:i):[...is,mapped];});
+      }
+      if(eventType==='DELETE') setInfs(is=>is.filter(i=>i.id!==oldRow.id));
+    });
+
+    // Project card tasks — Ryon checks off a task, Arrius sees it live
+    const taskSub = sbSubscribe('tasks-rt', 'project_card_dept_tasks', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const task={id:rec.id,text:rec.task_text,done:rec.done,doneAt:rec.done_at,doneBy:rec.done_by};
+        setPcards(pc=>{
+          if(!pc) return pc;
+          const card=Object.values(pc).find(c=>c.id===rec.card_id);
+          if(!card||!card.departments?.[rec.department]) return pc;
+          const dept=card.departments[rec.department];
+          const tasks=dept.tasks||[];
+          const ex=tasks.find(t=>t.id===rec.id);
+          const newTasks=ex?tasks.map(t=>t.id===rec.id?{...t,...task}:t):[...tasks,task];
+          return{...pc,[card.dealId||card.deal_id]:{...card,departments:{
+            ...card.departments,[rec.department]:{...dept,tasks:newTasks}
+          }}};
+        });
+      }
+      if(eventType==='DELETE'){
+        setPcards(pc=>{
+          if(!pc) return pc;
+          const next={...pc};
+          Object.keys(next).forEach(k=>{
+            const card=next[k];
+            Object.keys(card.departments||{}).forEach(dept=>{
+              if(card.departments[dept]?.tasks?.find(t=>t.id===oldRow.id)){
+                next[k]={...card,departments:{...card.departments,
+                  [dept]:{...card.departments[dept],tasks:card.departments[dept].tasks.filter(t=>t.id!==oldRow.id)}
+                }};
+              }
+            });
+          });
+          return next;
+        });
+      }
+    });
+
     return ()=>{
       dealsSub?.unsubscribe?.();
       pcardSub?.unsubscribe?.();
       billSub?.unsubscribe?.();
       addSub?.unsubscribe?.();
       actSub?.unsubscribe?.();
+      joSub?.unsubscribe?.();
+      prSub?.unsubscribe?.();
+      mreqSub?.unsubscribe?.();
+      breqSub?.unsubscribe?.();
+      paymentSub?.unsubscribe?.();
+      expSub?.unsubscribe?.();
+      inflowSub?.unsubscribe?.();
+      taskSub?.unsubscribe?.();
     };
   },[session?.userId]);
 

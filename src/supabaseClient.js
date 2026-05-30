@@ -143,3 +143,39 @@ export const sbSubscribe = (channel, table, callback) => {
     .on('postgres_changes', { event: '*', schema: 'public', table }, callback)
     .subscribe()
 }
+
+// ── FILE STORAGE (Supabase Storage bucket: "fabhub-files") ───────────────────
+// Bucket must be created in Supabase dashboard with public access enabled.
+// Path convention: deals/{dealId}/{filename}  |  jos/{joId}/{filename}
+
+export const sbUploadFile = async (folder, file) => {
+  if (!supabase) return null
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const path = `${folder}/${Date.now()}_${safeName}`
+  const { data, error } = await supabase.storage
+    .from('fabhub-files')
+    .upload(path, file, { upsert: false })
+  if (error) { console.error('SB UPLOAD:', error.message); return null }
+  return data?.path || path
+}
+
+export const sbDeleteFile = async (path) => {
+  if (!supabase) return
+  const { error } = await supabase.storage.from('fabhub-files').remove([path])
+  if (error) console.error('SB DELETE FILE:', error.message)
+}
+
+export const sbGetPublicUrl = (path) => {
+  if (!supabase) return null
+  const { data } = supabase.storage.from('fabhub-files').getPublicUrl(path)
+  return data?.publicUrl || null
+}
+
+export const sbListFiles = async (folder) => {
+  if (!supabase) return []
+  const { data, error } = await supabase.storage.from('fabhub-files').list(folder, {
+    sortBy: { column: 'created_at', order: 'desc' }
+  })
+  if (error) { console.error('SB LIST FILES:', error.message); return [] }
+  return (data || []).filter(f => f.name !== '.emptyFolderPlaceholder')
+}
