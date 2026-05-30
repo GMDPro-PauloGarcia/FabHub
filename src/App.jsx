@@ -7898,6 +7898,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         </div>
         <Badge label={proj?.currentStage} color={PROD_CLR[proj?.currentStage||"Design"]}/>
         <span style={{fontWeight:800,color:"#10b981"}}>{fmt(projDeal?.value)}</span>
+        {projDeal?.salesRepoLink&&<a href={projDeal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,color:"#3b82f6",textDecoration:"none",fontWeight:700,fontSize:".78rem",whiteSpace:"nowrap"}}>📁 Sales Repo</a>}
       </div>
       <div style={{display:"flex",gap:2,borderBottom:"1.5px solid #e2e8f0",marginBottom:18}}>
         {tabs.map(([k,l])=>(
@@ -12178,6 +12179,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                               {hasDupe&&<span style={{fontSize:".62rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 7px",fontWeight:700}}>DUPLICATE</span>}
                             </div>
                             {(()=>{const j=jos.find(j=>j.dealId===d.id);return j?(<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>📋 {j.joNo} · {[j.pm1,j.pm2,j.pm3].filter(Boolean).join(", ")||"No PM"}</div>):null;})()}
+                            {d.salesRepoLink&&<a href={d.salesRepoLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:3,fontSize:".67rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"2px 7px"}}>📁 Sales Repo</a>}
                           </div>
                           {/* Right: pct + delete stacked */}
                           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0,marginLeft:10}}>
