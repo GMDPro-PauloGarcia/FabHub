@@ -6034,19 +6034,6 @@ export default function App(){
                 }
                 setImportLoading(false);
               }}/>
-            <button onClick={()=>{
-              const hdrs=["Client","Project Name","CE No","CE Type","Stage","Contract Value","Invoiced","Amount Paid","Payment Status","Receipt Type","Sales Owner","Date Acquired","Notes"];
-              const rows=[
-                ["Metro Retail Co.","SM Megamall Renovation","CE-2025-001","Fabrication / General","01 · BizDev","500000","0","0","Unpaid","OR","Paulo Garcia","2025-05-23","Sample entry — delete before importing"],
-                ["ABC Corporation","Office Fit-Out Phase 2","CE-2025-002","Retail Fit-Out","04 · Design & CE in Progress","750000","0","0","Unpaid","OR","Paolo Gomez","2025-05-20",""],
-                ["XYZ Holdings","Lobby Display Walls","CE-2025-003","Fabrication / General","06 · Project Kickoff","1200000","600000","300000","Partial","OR","April Gail De Ello","2025-04-15","50% down collected"],
-              ];
-              const csv=[hdrs,...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\r\n");
-              const a=Object.assign(document.createElement("a"),{href:URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"})),download:"GMD_Sales_Import_Template.csv"});
-              document.body.appendChild(a);a.click();document.body.removeChild(a);
-            }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#1d4ed8",cursor:"pointer"}}>
-              📄 Template
-            </button>
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
             <button onClick={()=>{
               const name=window.prompt("New client name:");
