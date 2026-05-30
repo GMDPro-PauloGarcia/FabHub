@@ -5403,7 +5403,7 @@ export default function App(){
               {escalations.slice(0,5).map((e,i)=>{
                 const dest={
                   'E-1':'billing','E-2':'addenda','E-3':'pipeline',
-                  'E-4':'drfs','E-5':'procurement','E-6':'budgetreq','E-7':'billing'
+                  'E-4':'drf','E-5':'procurement','E-6':'budgetreq','E-7':'billing'
                 }[e.type]||'home';
                 return(
                 <div key={i} onClick={()=>setPage(dest)} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".78rem",cursor:"pointer",borderRadius:7,padding:"3px 4px",transition:"background .12s"}}
