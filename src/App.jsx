@@ -921,7 +921,6 @@ function AwardModal({deal,session,today,onClose,onConfirm}){
     scopeNotes:req.scopeNotes||"",
     specialInstructions:req.specialInstructions||"",
     designer:"",
-    ownerSupplied:"",
     location:deal?.location||"",
   });
   const[step,setStep]=React.useState(1);
@@ -1031,11 +1030,6 @@ function AwardModal({deal,session,today,onClose,onConfirm}){
               {DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}
             </Sel>
           </Fld>
-          <div style={{gridColumn:"1/-1"}}>
-            <Fld label="Owner-Supplied Items / Works" hint="Any materials, fixtures, or works that the client/owner will supply">
-              <Inp rows={2} value={form.ownerSupplied||""} onChange={e=>f("ownerSupplied",e.target.value)} placeholder="e.g. Client to supply all tiles and flooring materials. Owner's electrician to handle MEP rough-ins."/>
-            </Fld>
-          </div>
         </div>
         {form.pm1&&(
           <div style={{background:"#f8fafc",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 16px",marginTop:14}}>
@@ -1903,7 +1897,7 @@ export default function App(){
           const data = await sbLoadAll();
           if(data){
             if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
-            if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",ownerSupplied:j.owner_supplied||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+            if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
             if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
             if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
             if(data.exps?.length)   setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
@@ -1994,7 +1988,7 @@ export default function App(){
     const data = await sbLoadAll();
     if(!data) return;
     if(data.deals?.length)       setDeals(data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",awardRequestData:d.award_request_data||null})));
-    if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",ownerSupplied:j.owner_supplied||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+    if(data.jos?.length)         setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
     if(data.exps?.length)        setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
@@ -2059,7 +2053,7 @@ export default function App(){
     ae_assigned:r.aeAssigned||"", start_date:r.startDate||null,
     comms_link:r.commsLink||"", scope_notes:r.scopeNotes||"",
     special_instructions:r.specialInstructions||"",
-    designer:r.designer||"", owner_supplied:r.ownerSupplied||"",
+    designer:r.designer||"",
     location:r.location||"",
     budget_status:r.budgetStatus||"QS Budget Pending",
     status:r.status||"Active", issued_date:r.issuedDate||r.dateIssued||null,
@@ -3282,7 +3276,6 @@ export default function App(){
       scopeNotes:form.scopeNotes,
       specialInstructions:form.specialInstructions,
       designer:form.designer||"",
-      ownerSupplied:form.ownerSupplied||"",
       location:form.location||awardModal.location||"",
       budgetStatus:"QS Budget Pending",
       issuedBy:session?.name||"Manager",
@@ -3357,7 +3350,6 @@ export default function App(){
       `Awarded by: ${session?.name||"Manager"}\n` +
       (form.scopeNotes?`\n📝 Scope:\n${form.scopeNotes}\n`:"")+
       (form.specialInstructions?`\n⚠️ Special Instructions:\n${form.specialInstructions}\n`:"")+
-      (form.ownerSupplied?`\n📦 Owner-Supplied:\n${form.ownerSupplied}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
     setAwardModal(null);
@@ -3563,7 +3555,7 @@ export default function App(){
                   try{
                     const data=await sbLoadAll();
                     if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",stage:normalizeStage(d.stage)})));
-                    if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",ownerSupplied:j.owner_supplied||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
+                    if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
                     if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
                     setSync("saved");
                   }catch(e){setSync("error");}
@@ -12995,7 +12987,6 @@ function DataManagement({
     </div>
 
     ${jo.specialInstructions?'<div class="section"><div class="section-title">Special Instructions / Venue Requirements</div><div class="scope-box" style="background:#fffbeb;border-color:#fde68a;">'+(jo.specialInstructions||"").replace(/\\n/g,"<br/>")+'</div></div>':""}
-    ${jo.ownerSupplied?'<div class="section"><div class="section-title">Owner-Supplied Items / Works</div><div class="scope-box" style="background:#f0fdf4;border-color:#6ee7b7;">'+(jo.ownerSupplied||"").replace(/\\n/g,"<br/>")+'</div></div>':""}
 
 
     <div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:12px;margin-bottom:20px;font-size:12px;color:#1d4ed8;">
