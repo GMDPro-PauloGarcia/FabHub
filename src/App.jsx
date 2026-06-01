@@ -2857,6 +2857,13 @@ export default function App(){
     }
   };
   const updateMilestone=(id,ch)=>{
+    if(ch.status==='Fully Paid'){
+      const ms=billings.find(b=>b.id===id);
+      const msDeal=ms?.dealId?deals.find(d=>d.id===ms.dealId):null;
+      const msg=`✅ <b>Milestone Fully Paid</b>\nClient: <b>${msDeal?.client||ms?.title||"?"}</b>\nMilestone: ${ms?.title||"—"}\nAmount: ₱${Number(ms?.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nUpdated by: ${session?.name||"Finance"}`;
+      sendTelegramNotification("sales",msg);
+      sendTelegramNotification("management",msg);
+    }
     upBillings(bs=>bs.map(b=>{
       if(b.id!==id) return b;
       const n={...b,...ch};
@@ -2898,6 +2905,12 @@ export default function App(){
     const payId=uid();
     const milestone=billings.find(b=>b.id===msId);
     const dealId=milestone?.dealId;
+    const payDeal=dealId?deals.find(d=>d.id===dealId):null;
+    const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
+    const isFullyPaid=totalPaidAfter>=Number(milestone?.amount||0);
+    const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
+    sendTelegramNotification("sales",payMsg);
+    sendTelegramNotification("management",payMsg);
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
@@ -3053,6 +3066,10 @@ export default function App(){
     const rec={...pr,id:uid(),createdDate:today};
     upPrs(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbSyncOne("purchase_requests",rec,toSbPR);
+    const deal=deals.find(d=>d.id===(pr.projectId||pr.dealId));
+    const msg=`🛒 <b>New Purchase Request</b>\n${pr.itemName||pr.item||"?"}\nProject: ${deal?.client||pr.dealId||"?"}\nQty: ${pr.qty||"?"} ${pr.unit||""}\nCategory: ${pr.category||"—"}\nUrgency: ${pr.urgency||"Normal"}\nBy: ${pr.requestedBy||session?.name||"?"}`;
+    sendTelegramNotification("procurement",msg);
+    sendTelegramNotification("management",msg);
   };
   const updatePR=(id,changes)=>{
     if(changes.status==="PO Issued"&&changes.approvedBy){
@@ -6419,6 +6436,10 @@ export default function App(){
                                     upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st}:x));
                                     if(isSupabaseReady()) sbUpdate('deals',d.id,{stage:st}).catch(()=>{});
                                     logActivity(d.id,"Stage Change",`Pipeline stage → ${st}`,session?.name);
+                                    const stMsg=`📌 <b>Project Stage Updated</b>\nClient: <b>${d.client}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}${d.contact?`\nProject: ${d.contact}`:""}\nStage: ${st}\nBy: ${session?.name||"Sales"}`;
+                                    sendTelegramNotification("ops",stMsg);
+                                    sendTelegramNotification("sales",stMsg);
+                                    sendTelegramNotification("management",stMsg);
                                     toastEmit(`Stage updated → ${st}`);
                                   }} style={{width:110,fontSize:".63rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 4px",fontFamily:"inherit",color:d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"?"#059669":"#475569",background:d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"?"#f0fdf4":"#fff",fontWeight:600,cursor:"pointer",flexShrink:0}}>
                                     {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
@@ -6652,7 +6673,7 @@ export default function App(){
         )}
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);sendTelegramNotification("management",`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`);}}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
         addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
         openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
@@ -7012,7 +7033,7 @@ export default function App(){
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);sendTelegramNotification("management",`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`);}}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -8627,6 +8648,10 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                     if(!proj?.cocDate){toastEmit("Set a COC date first","warning");return;}
                     upProj(selProj,p=>({...p,cocCreated:true}));
                     logActivity&&logActivity(selProj,"COC Issued",`COC issued for ${projDeal?.client}. Finance notified for final billing.`,session?.name);
+                    const cocMsg=`📋 <b>Certificate of Completion Issued</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nCOC Date: ${proj?.cocDate||today}\nIssued by: ${session?.name||"Ops"}\n\n💰 Finance: please finalize billing.`;
+                    sendTelegramNotification("sales",cocMsg);
+                    sendTelegramNotification("ops",cocMsg);
+                    sendTelegramNotification("management",cocMsg);
                     toastEmit("COC issued — Finance notified to finalize billing","success");
                   }}>✅ Mark COC as Issued → Notify Finance</Btn>
                 </div>
