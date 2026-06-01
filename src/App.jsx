@@ -3501,7 +3501,7 @@ export default function App(){
     }
     if(!editDeal){
       logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
-      sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo} · `:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Stage: ${rec.stage}\nAdded by: ${session?.name||"Sales"}`);
+      sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo}\n`:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Added by: ${session?.name||"Sales"}`);
     } else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
     setEditDeal(null);
     setDealModal(false);
