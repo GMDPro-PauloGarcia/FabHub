@@ -6370,7 +6370,8 @@ export default function App(){
                   <span style={{flex:1}}>Client / CE</span>
                   <span style={{width:60,textAlign:"right"}}>Value</span>
                   <span style={{width:72,textAlign:"right"}}>Payment</span>
-                  <span style={{width:60,textAlign:"right"}}>Actions</span>
+                  <span style={{width:110,textAlign:"right"}}>Stage</span>
+                  <span style={{width:56,textAlign:"right"}}>Actions</span>
                 </div>
                 <div style={{maxHeight:320,overflowY:"auto"}}>
                   {(()=>{
@@ -6412,7 +6413,20 @@ export default function App(){
                                   <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
                                   <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
                                 </div>
-                                <div style={{width:60,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
+                                {(role==="Manager"||role==="Sales")?(
+                                  <select value={d.stage} onChange={e=>{
+                                    const st=e.target.value;
+                                    upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st}:x));
+                                    if(isSupabaseReady()) sbUpdate('deals',d.id,{stage:st}).catch(()=>{});
+                                    logActivity(d.id,"Stage Change",`Pipeline stage → ${st}`,session?.name);
+                                    toastEmit(`Stage updated → ${st}`);
+                                  }} style={{width:110,fontSize:".63rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 4px",fontFamily:"inherit",color:d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"?"#059669":"#475569",background:d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"?"#f0fdf4":"#fff",fontWeight:600,cursor:"pointer",flexShrink:0}}>
+                                    {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
+                                  </select>
+                                ):(
+                                  <div style={{width:110,fontSize:".63rem",color:"#94a3b8",textAlign:"right",flexShrink:0}}>{d.stage?.replace(/^0?(\d+) · /,"$1·")||"—"}</div>
+                                )}
+                                <div style={{width:56,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
                                   <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
                                   {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                                 </div>
@@ -6638,7 +6652,7 @@ export default function App(){
         )}
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);sendTelegramNotification("management",`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`);}}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
         addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
         openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
@@ -6998,7 +7012,7 @@ export default function App(){
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);sendTelegramNotification("management",`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`);}}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -8021,7 +8035,7 @@ function PLStatement({billings,exps,wonDeals}){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role,onCloseProject}){
   const BUDGET_ONLY_OPS=["Operations","ProjectMover"];
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
   const opsAmt=(d)=>{if(BUDGET_ONLY_OPS.includes(role)){const t=qsBudgetTotalOps(d?.id);return t>0?fmt(t)+" (budget)":"Budget Pending";}return fmt(d?.value);};
@@ -8556,8 +8570,42 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         const wEnd=warranty.startDate?(()=>{const d=new Date(warranty.startDate);d.setDate(d.getDate()+Number(warranty.type||30));return d.toISOString().slice(0,10);})():"";
         const wExpired=wEnd&&wEnd<today;
         const wActive=warranty.active&&wEnd&&wEnd>=today;
+        const dealStage=projDeal?.stage||"";
+        const isClosedOut=dealStage==="12 · Project Close-Out"||dealStage==="13 · Client Feedback";
+        const isFeedback=dealStage==="13 · Client Feedback";
+        const stageIdx=WON_STAGES.indexOf(dealStage);
         return(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {/* ── Pipeline Stage ── */}
+            <Card accent={isClosedOut?"#059669":"#f59e0b"}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:isClosedOut?0:12}}>
+                <div>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>📌 Pipeline Stage</div>
+                  <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>Current: <strong style={{color:isClosedOut?"#059669":"#f59e0b"}}>{dealStage||"—"}</strong></div>
+                </div>
+                {isClosedOut&&<span style={{background:"#dcfce7",color:"#059669",borderRadius:20,padding:"3px 14px",fontSize:".78rem",fontWeight:800}}>✅ CLOSED</span>}
+              </div>
+              {!isClosedOut&&onCloseProject&&(
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button onClick={()=>{
+                    onCloseProject(selProj,"12 · Project Close-Out");
+                    toastEmit("Project moved to Close-Out","success");
+                  }} style={{flex:1,background:"#059669",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>
+                    🔒 Mark as Project Close-Out (Stage 12)
+                  </button>
+                </div>
+              )}
+              {dealStage==="12 · Project Close-Out"&&onCloseProject&&(
+                <div style={{marginTop:10}}>
+                  <button onClick={()=>{
+                    onCloseProject(selProj,"13 · Client Feedback");
+                    toastEmit("Project moved to Client Feedback stage","success");
+                  }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#059669",cursor:"pointer"}}>
+                    💬 Advance to Client Feedback (Stage 13)
+                  </button>
+                </div>
+              )}
+            </Card>
             <Card accent={proj?.cocCreated?"#059669":"#f59e0b"}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                 <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>📋 Certificate of Completion (COC)</span>
