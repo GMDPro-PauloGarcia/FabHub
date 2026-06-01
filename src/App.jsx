@@ -2021,6 +2021,9 @@ export default function App(){
       if(!isSupabaseReady()){ setSbReady(true); return; }
       if(isSupabaseReady()){
         try{
+          // Ensure we have a Supabase session (needed for RLS policies on new devices)
+          const {data:{session:sbSess}}=await supabase.auth.getSession();
+          if(!sbSess) await supabase.auth.signInAnonymously().catch(()=>{});
           const data = await sbLoadAll();
           if(data){
             if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
@@ -3217,6 +3220,8 @@ export default function App(){
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
+    // Force a fresh Supabase load after login — critical on new devices with empty localStorage
+    loadAllFromSupabase();
     return null; // null = success
   };
   const logout=async()=>{
