@@ -3107,11 +3107,9 @@ export default function App(){
 
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
   const sendTelegramNotification=useCallback(async(dept,message)=>{
-    const stored=localStorage.getItem(KEYS.botsettings);
-    const bs=stored?JSON.parse(stored):botSettings;
-    const token=bs.token||botSettings.token;
+    const token=botSettings.token;
     if(!token) return;
-    const ids=bs.chatIds&&Object.values(bs.chatIds).some(Boolean)?bs.chatIds:botSettings.chatIds;
+    const ids=botSettings.chatIds;
     const chatId=ids?.[dept]||ids?.management;
     if(!chatId) return;
     try{
@@ -3415,6 +3413,10 @@ export default function App(){
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
+  const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
+  const[quickAddClientForm,setQuickAddClientForm]=useState({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
+  const fqac=(k,v)=>setQuickAddClientForm(p=>({...p,[k]:v}));
+  const resetQAC=()=>setQuickAddClientForm({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
   const[pmUpdateModal,setPmUpdateModal]= useState(null);   // {dealId, dealName} — PM update entry
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
@@ -6163,13 +6165,7 @@ export default function App(){
                 setImportLoading(false);
               }}/>
             <Btn onClick={openAddDeal}>+ Add Deal</Btn>
-            <button onClick={()=>{
-              const name=window.prompt("New client name:");
-              if(!name?.trim()) return;
-              if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())){toastEmit("Client already exists.","warning");return;}
-              GMD_CLIENTS.push({name:name.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
-              toastEmit("Client \""+name.trim()+"\" added to directory.","success");
-            }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer"}}>
+            <button onClick={()=>setQuickAddClientOpen(true)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#059669",cursor:"pointer"}}>
               + Add Client
             </button>
           </div>
@@ -6508,6 +6504,76 @@ export default function App(){
         toastEmit("Price saved — Sales team notified.");
         setPriceModal(null);
       }}/>}
+      {quickAddClientOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setQuickAddClientOpen(false);resetQAC();}}>
+          <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div>
+                <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a"}}>Add New Client</div>
+                <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>Fill in what you know — you can always update later</div>
+              </div>
+              <button onClick={()=>{setQuickAddClientOpen(false);resetQAC();}} style={{background:"#f1f5f9",border:"none",borderRadius:99,width:32,height:32,cursor:"pointer",fontSize:"1rem",color:"#64748b"}}>✕</button>
+            </div>
+            <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
+              <Inp autoFocus value={quickAddClientForm.name} onChange={e=>fqac("name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const n=quickAddClientForm.name.trim();if(!n)return;const allC=[...GMD_CLIENTS,...customClients];if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};GMD_CLIENTS.push(nc);const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};const next=[...customClients,nc];setCustomClients(next);try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});if(Object.values(prof).some(v=>v)){const np={...clientProfiles,[n]:prof};setClientProfiles(np);try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(np));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});}toastEmit(`Client "${n}" added to directory.`,"success");setQuickAddClientOpen(false);resetQAC();}}} placeholder="Full company or client name…"/>
+            </div>
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Fld label="Contact Person"><Inp value={quickAddClientForm.contactPerson} onChange={e=>fqac("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
+                <Fld label="Email"><Inp type="email" value={quickAddClientForm.email} onChange={e=>fqac("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
+                <Fld label="Phone"><Inp value={quickAddClientForm.phone} onChange={e=>fqac("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
+                <Fld label="Mobile"><Inp value={quickAddClientForm.mobile} onChange={e=>fqac("mobile",e.target.value)} placeholder="+63 9xx xxx xxxx"/></Fld>
+                <Fld label="Website"><Inp value={quickAddClientForm.website} onChange={e=>fqac("website",e.target.value)} placeholder="www.company.com"/></Fld>
+              </div>
+            </div>
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📍 Billing Address</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Street Address"><Inp value={quickAddClientForm.billingAddress} onChange={e=>fqac("billingAddress",e.target.value)} placeholder="Unit/Floor, Building, Street"/></Fld></div>
+                <Fld label="City"><Inp value={quickAddClientForm.city} onChange={e=>fqac("city",e.target.value)} placeholder="Makati"/></Fld>
+                <Fld label="Province / Region"><Inp value={quickAddClientForm.province} onChange={e=>fqac("province",e.target.value)} placeholder="Metro Manila"/></Fld>
+                <Fld label="ZIP Code"><Inp value={quickAddClientForm.zipCode} onChange={e=>fqac("zipCode",e.target.value)} placeholder="1200"/></Fld>
+                <Fld label="Country"><Inp value={quickAddClientForm.country} onChange={e=>fqac("country",e.target.value)} placeholder="Philippines"/></Fld>
+              </div>
+            </div>
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:16,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>🏢 Business Details</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Fld label="Client TIN"><Inp value={quickAddClientForm.tin} onChange={e=>fqac("tin",e.target.value)} placeholder="000-000-000-000"/></Fld>
+                <Fld label="Payment Terms"><Sel value={quickAddClientForm.paymentTerms} onChange={e=>fqac("paymentTerms",e.target.value)}><option>Due on receipt</option><option>Net 15</option><option>Net 30</option><option>Net 60</option><option>50% DP, Balance on completion</option></Sel></Fld>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={quickAddClientForm.notes} onChange={e=>fqac("notes",e.target.value)} placeholder="Special billing instructions, key contacts…"/></Fld></div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={()=>{
+                const n=quickAddClientForm.name.trim();
+                if(!n) return;
+                const allC=[...GMD_CLIENTS,...customClients];
+                if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}
+                const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
+                GMD_CLIENTS.push(nc);
+                const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};
+                const next=[...customClients,nc];
+                setCustomClients(next);
+                try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}
+                if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+                if(Object.values(prof).some(v=>v)){
+                  const np={...clientProfiles,[n]:prof};
+                  setClientProfiles(np);
+                  try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(np));}catch{}
+                  if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});
+                }
+                toastEmit(`Client "${n}" added to directory.`,"success");
+                setQuickAddClientOpen(false);
+                resetQAC();
+              }} style={{flex:1,background:"#059669",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Add Client</button>
+              <button onClick={()=>{setQuickAddClientOpen(false);resetQAC();}} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
     );
 
