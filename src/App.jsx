@@ -1970,6 +1970,7 @@ export default function App(){
   const[swatches, setSwatches]= useState([]);
   const[checklist,setChecklist]= useState([]);
   const[ready,    setReady]   = useState(false);
+  const[sbReady,  setSbReady] = useState(false); // true once Supabase load completes
   const[sync,     setSync]    = useState("saved");
 
   // Load SheetJS once for Excel import
@@ -2017,6 +2018,7 @@ export default function App(){
       setReady(true);
 
       // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
+      if(!isSupabaseReady()){ setSbReady(true); return; }
       if(isSupabaseReady()){
         try{
           const data = await sbLoadAll();
@@ -2054,6 +2056,8 @@ export default function App(){
           }
         }catch(sbErr){
           console.warn("Supabase load failed — using localStorage cache:", sbErr.message);
+        }finally{
+          setSbReady(true);
         }
       }
     };
@@ -3993,7 +3997,7 @@ export default function App(){
   );
 
   // ── AUTH GATE ─────────────────────────────────────────────────────────────
-  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register}/><Toaster/></>;
+  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register} sbReady={sbReady}/><Toaster/></>;
 
 
   if(page==="home"){
@@ -9223,7 +9227,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
 }
 
 // ─── AUTH SCREEN ──────────────────────────────────────────────────────────────
-function AuthScreen({authView,setAuthView,onLogin,onRegister}){
+function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
   const[uname,  setUname]  = useState("");
   const[pw,     setPw]     = useState("");
   const[name,   setName]   = useState("");
@@ -9259,6 +9263,10 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister}){
             GMD <span style={{color:"#f59e0b"}}>PROD</span>
           </div>
           <div style={{color:"rgba(255,255,255,.4)",fontSize:".8rem",marginTop:4}}>Internal Operations Platform</div>
+          {!sbReady&&<div style={{marginTop:12,background:"rgba(245,158,11,.15)",border:"1px solid rgba(245,158,11,.4)",borderRadius:8,padding:"8px 14px",fontSize:".78rem",color:"#fcd34d",display:"flex",alignItems:"center",gap:8}}>
+            <span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:"#f59e0b",animation:"pulse 1s infinite"}}/>
+            Connecting to server… please wait before logging in.
+          </div>}
         </div>
 
         {/* Card */}
@@ -9315,10 +9323,10 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister}){
           </>)}
 
           {/* Submit */}
-          <button onClick={isLogin?doLogin:doRegister} style={{width:"100%",background:"#f59e0b",border:"none",borderRadius:10,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".92rem",color:"#0f172a",cursor:"pointer",marginTop:6,transition:"all .15s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="#fbbf24"}
-            onMouseLeave={e=>e.currentTarget.style.background="#f59e0b"}>
-            {isLogin?"Log In →":"Create Account →"}
+          <button onClick={isLogin?doLogin:doRegister} disabled={isLogin&&!sbReady} style={{width:"100%",background:isLogin&&!sbReady?"#475569":"#f59e0b",border:"none",borderRadius:10,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".92rem",color:isLogin&&!sbReady?"#94a3b8":"#0f172a",cursor:isLogin&&!sbReady?"not-allowed":"pointer",marginTop:6,transition:"all .15s"}}
+            onMouseEnter={e=>{if(!(isLogin&&!sbReady))e.currentTarget.style.background="#fbbf24";}}
+            onMouseLeave={e=>{if(!(isLogin&&!sbReady))e.currentTarget.style.background="#f59e0b";}}>
+            {isLogin&&!sbReady?"⏳ Connecting…":isLogin?"Log In →":"Create Account →"}
           </button>
 
           {isLogin&&(
