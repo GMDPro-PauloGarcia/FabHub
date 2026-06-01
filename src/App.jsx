@@ -3051,10 +3051,12 @@ export default function App(){
 
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
   const sendTelegramNotification=useCallback(async(dept,message)=>{
-    const bs=JSON.parse(localStorage.getItem(KEYS.botsettings)||"{}");
-    const token=bs.token;
+    const stored=localStorage.getItem(KEYS.botsettings);
+    const bs=stored?JSON.parse(stored):botSettings;
+    const token=bs.token||botSettings.token;
     if(!token) return;
-    const chatId=bs.chatIds?.[dept]||bs.chatIds?.management;
+    const ids=bs.chatIds&&Object.values(bs.chatIds).some(Boolean)?bs.chatIds:botSettings.chatIds;
+    const chatId=ids?.[dept]||ids?.management;
     if(!chatId) return;
     try{
       await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
@@ -3062,7 +3064,7 @@ export default function App(){
         body:JSON.stringify({chat_id:chatId,text:message,parse_mode:"HTML"})
       });
     }catch(e){console.warn("Telegram notify failed:",e);}
-  },[]);
+  },[botSettings]);
 
   const sendToAllChannels=(message)=>{
     ["general","ops","design","procurement","sales","management"].forEach(dept=>sendTelegramNotification(dept,message));
