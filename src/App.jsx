@@ -902,6 +902,40 @@ const Modal=({open,onClose,title,children,wide})=>{
     </div>
   );
 };
+// ─── QS SET PRICE MODAL ───────────────────────────────────────────────────────
+function SetPriceModal({deal,today,onClose,onSave}){
+  const[val,setVal]=React.useState(deal?.value||"");
+  const[note,setNote]=React.useState("");
+  const ok=Number(val)>0;
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:420,padding:"24px 24px 20px",boxShadow:"0 24px 64px rgba(0,0,0,.25)"}}>
+        <div style={{fontWeight:800,color:"#4f46e5",fontSize:"1.05rem",marginBottom:4}}>₱ Set Client Submission Price</div>
+        <div style={{fontSize:".78rem",color:"#64748b",marginBottom:18}}>
+          <span style={{fontWeight:700,color:"#0f172a"}}>{deal?.client}</span>{deal?.ceNo?" · "+deal.ceNo:""}
+          <div style={{marginTop:3}}>This is the amount being quoted to the client.</div>
+        </div>
+        <div style={{marginBottom:12}}>
+          <div style={{fontSize:".72rem",fontWeight:700,color:"#475569",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Contract / Proposal Amount (₱) *</div>
+          <input type="number" value={val} onChange={e=>setVal(e.target.value)} placeholder="e.g. 1250000"
+            style={{width:"100%",border:"1.5px solid #6366f1",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:"1rem",fontWeight:700,color:"#0f172a",outline:"none",boxSizing:"border-box"}}
+            autoFocus/>
+          {val&&Number(val)>0&&<div style={{fontSize:".78rem",color:"#6366f1",fontWeight:700,marginTop:4}}>₱{Number(val).toLocaleString("en-PH",{maximumFractionDigits:0})}</div>}
+        </div>
+        <div style={{marginBottom:18}}>
+          <div style={{fontSize:".72rem",fontWeight:700,color:"#475569",marginBottom:4,textTransform:"uppercase",letterSpacing:".5px"}}>Costing Notes (optional)</div>
+          <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="e.g. Based on cost study dated today. Includes 30% markup." rows={3}
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 14px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#475569",cursor:"pointer"}}>Cancel</button>
+          <button disabled={!ok} onClick={()=>onSave(Number(val),note)} style={{background:ok?"#4f46e5":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:ok?"#fff":"#94a3b8",cursor:ok?"pointer":"default"}}>Save Price →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AwardReqModal({deal,session,today,onClose,onSubmit}){
   const[form,setForm]=React.useState({
     awardTrigger:deal?.awardRequestData?.awardTrigger||"CE Signed by Client",
@@ -3356,6 +3390,7 @@ export default function App(){
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
+  const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[pmUpdateModal,setPmUpdateModal]= useState(null);   // {dealId, dealName} — PM update entry
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
@@ -6201,6 +6236,11 @@ export default function App(){
           const hotDeals=allActive.filter(d=>daysSince(d.dateAcquired)<=15);
           const coldDeals=allActive.filter(d=>daysSince(d.dateAcquired)>15);
 
+          // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
+          const BUDGET_ONLY=["Design","Operations","ProjectMover"];
+          const qsBudgetTotal=id=>{const b=budgets[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
+          const pipeAmt=d=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"Budget Pending";}return d.value?fmtK(Number(d.value)):"—";};
+
           // Compact row for Hot/Cold pipeline tables
           const PipeRow=({d,list,i})=>(
             <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
@@ -6210,7 +6250,7 @@ export default function App(){
                 <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
                   {vvipClients?.has(d.client)&&<span style={{fontSize:".58rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⭐</span>}
-                  {Number(d.value)>=3000000&&<span style={{fontSize:".58rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>₱3M+</span>}
+                  {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".58rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>₱3M+</span>}
                   {d.awardRequestData&&<span style={{fontSize:".58rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>🏆 Pending</span>}
                 </div>
                 <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -6223,9 +6263,11 @@ export default function App(){
                   </span>
                 </div>
               </div>
-              <div style={{fontWeight:700,color:"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
+              <div style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{pipeAmt(d)}</div>
               <div style={{display:"flex",gap:3,flexShrink:0}}>
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>}
+                {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Set Client Price">₱</button>}
+                {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Update Client Price">₱✏</button>}
                 {(role==="Manager"||role==="Sales")
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award Project">🏆</button>
                   :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
@@ -6326,7 +6368,7 @@ export default function App(){
                                     ))}
                                   </div>
                                 </div>
-                                <div style={{width:60,textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",flexShrink:0}}>{fmtK(Number(d.value))}</div>
+                                <div style={{width:60,textAlign:"right",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".78rem",flexShrink:0}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"Budget Pending";}return fmtK(Number(d.value));})()}</div>
                                 <div style={{width:72,flexShrink:0,textAlign:"right"}}>
                                   <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
                                   <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
@@ -6416,6 +6458,13 @@ export default function App(){
           setAwardReqModal(null);
         }}/>}
       {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward}/>}
+      {priceModal&&<SetPriceModal deal={priceModal} today={today} onClose={()=>setPriceModal(null)} onSave={(val,note)=>{
+        upDeals(ds=>ds.map(x=>x.id===priceModal.id?{...x,value:val,notes:(x.notes||"")+(note?`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")} — ${note}`:`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")}`)}:x));
+        logActivity(priceModal.id,"QS Pricing",`${priceModal.client} — price set to ₱${val.toLocaleString("en-PH")} by ${session?.name||"QS"}`);
+        sendTelegramNotification("sales",`💰 <b>Price Set by QS</b>\nClient: <b>${priceModal.client}</b>${priceModal.ceNo?" · "+priceModal.ceNo:""}\nAmount: ₱${val.toLocaleString("en-PH",{maximumFractionDigits:0})}\nSet by: ${session?.name||"QS"}`);
+        toastEmit("Price saved — Sales team notified.");
+        setPriceModal(null);
+      }}/>}
     </>
     );
 
@@ -6480,7 +6529,7 @@ export default function App(){
         )}
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
         addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
         openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
@@ -6840,7 +6889,7 @@ export default function App(){
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -7116,7 +7165,7 @@ export default function App(){
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
         delDeal={delDeal} delPcard={delPcard}
-        session={session} role={role}/>
+        session={session} role={role} budgets={budgets}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -7863,7 +7912,10 @@ function PLStatement({billings,exps,wonDeals}){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role}){
+  const BUDGET_ONLY_OPS=["Operations","ProjectMover"];
+  const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
+  const opsAmt=(d)=>{if(BUDGET_ONLY_OPS.includes(role)){const t=qsBudgetTotalOps(d?.id);return t>0?fmt(t)+" (budget)":"Budget Pending";}return fmt(d?.value);};
   const uid2=()=>String(Date.now());
   const ViewTabs=setPage?(
     <div style={{display:"flex",gap:6,marginBottom:16,background:"#f8fafc",borderRadius:10,padding:4,width:"fit-content"}}>
@@ -7900,8 +7952,8 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
               </div>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><ProgBar pct={prog} color={PROD_CLR[p.currentStage]} h={6}/><span style={{fontWeight:700,color:PROD_CLR[p.currentStage],minWidth:36,fontSize:".85rem"}}>{prog}%</span></div>
               <div style={{display:"flex",gap:12,fontSize:".73rem",color:"#64748b",flexWrap:"wrap"}}>
-                <span style={{color:"#10b981",fontWeight:600}}>{fmt(d.value)}</span>
-                <span>Margin: <strong style={{color:m>=20?"#059669":"#f59e0b"}}>{m}%</strong></span>
+                <span style={{color:BUDGET_ONLY_OPS.includes(role)?"#8b5cf6":"#10b981",fontWeight:600}}>{opsAmt(d)}</span>
+                {!BUDGET_ONLY_OPS.includes(role)&&<span>Margin: <strong style={{color:m>=20?"#059669":"#f59e0b"}}>{m}%</strong></span>}
                 <span>Team: {p.team.length}</span>
                 {pending>0&&<span style={{color:"#ef4444"}}>🛒 {pending} to buy</span>}
               </div>
@@ -7926,7 +7978,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                   <div key={d.id} style={{background:"#f0fdf4",borderRadius:10,border:"1.5px solid #6ee7b7",padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:.8}}>
                     <div>
                       <div style={{fontWeight:700,color:"#059669",fontSize:".85rem"}}>{d.client}</div>
-                      <div style={{fontSize:".7rem",color:"#64748b",marginTop:1}}>{d.contact||d.ceNo} · {fmt(d.value)}</div>
+                      <div style={{fontSize:".7rem",color:"#64748b",marginTop:1}}>{d.contact||d.ceNo} · {opsAmt(d)}</div>
                     </div>
                     <span style={{background:"#059669",color:"#fff",fontSize:".68rem",fontWeight:800,padding:"3px 10px",borderRadius:20}}>✅ DONE</span>
                   </div>
@@ -7950,7 +8002,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
           <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{projDeal?.contact} · Delivery: {proj?.stageDates?.Delivery?.e||"TBD"} · <span style={{color:PAY_CLR[projDeal?.paymentStatus]}}>{projDeal?.paymentStatus}</span></div>
         </div>
         <Badge label={proj?.currentStage} color={PROD_CLR[proj?.currentStage||"Design"]}/>
-        <span style={{fontWeight:800,color:"#10b981"}}>{fmt(projDeal?.value)}</span>
+        <span style={{fontWeight:800,color:BUDGET_ONLY_OPS.includes(role)?"#8b5cf6":"#10b981"}}>{opsAmt(projDeal)}</span>
         {projDeal?.salesRepoLink&&<a href={projDeal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,color:"#3b82f6",textDecoration:"none",fontWeight:700,fontSize:".78rem",whiteSpace:"nowrap"}}>📁 Sales Repo</a>}
       </div>
       <div style={{display:"flex",gap:2,borderBottom:"1.5px solid #e2e8f0",marginBottom:18}}>
@@ -8179,7 +8231,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                   </div>
                 ))}
                 <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginTop:14}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:".85rem"}}><span style={{color:"#64748b"}}>Contract Value</span><span style={{color:"#10b981",fontWeight:700}}>{fmt(d.value)}</span></div>
+                  {!BUDGET_ONLY_OPS.includes(role)&&<div style={{display:"flex",justifyContent:"space-between",marginBottom:6,fontSize:".85rem"}}><span style={{color:"#64748b"}}>Contract Value</span><span style={{color:"#10b981",fontWeight:700}}>{fmt(d.value)}</span></div>}
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontWeight:700}}>Gross Margin</span>
                     <div style={{textAlign:"right"}}>
@@ -12155,7 +12207,9 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role}){
+function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets}){
+  const BUDGET_ONLY_PC=["Design","Operations","ProjectMover"];
+  const pcAmt=(d)=>{if(!BUDGET_ONLY_PC.includes(role))return fmt(d?.value);const b=(budgets||{})[d?.id]||{};const t=["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);return t>0?fmt(t)+" 📊":"Budget Pending";};
   const[selDeal,     setSelDeal]    =useState(null);
   const[selDept,     setSelDept]    =useState(null);
   const[pcFilter,    setPcFilter]   =useState(null);   // "done"|"attention"|null
@@ -12311,7 +12365,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                             <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
                             {d.contact&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact}</div>}
                             <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,flexWrap:"wrap"}}>
-                              <span style={{fontSize:".7rem",color:"#94a3b8"}}>{d.ceNo||"No CE"} · {fmt(d.value)}</span>
+                              <span style={{fontSize:".7rem",color:BUDGET_ONLY_PC.includes(role)?"#8b5cf6":"#94a3b8"}}>{d.ceNo||"No CE"} · {pcAmt(d)}</span>
                               {hasDupe&&<span style={{fontSize:".62rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 7px",fontWeight:700}}>DUPLICATE</span>}
                             </div>
                             {(()=>{const j=jos.find(j=>j.dealId===d.id);return j?(<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>📋 {j.joNo} · {[j.pm1,j.pm2,j.pm3].filter(Boolean).join(", ")||"No PM"}</div>):null;})()}
@@ -12395,7 +12449,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
             <button onClick={()=>setSelDeal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← Back</button>
             <div>
               <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem"}}>{deal?.client}</div>
-              <div style={{fontSize:".73rem",color:"#64748b"}}>{deal?.ceNo} · {fmt(deal?.value)} · {deal?.stage?.replace(/^\d+ · /,"")}</div>
+              <div style={{fontSize:".73rem",color:"#64748b"}}>{deal?.ceNo} · {pcAmt(deal)} · {deal?.stage?.replace(/^\d+ · /,"")}</div>
             </div>
             <div style={{marginLeft:"auto",display:"flex",gap:12,alignItems:"center"}}>
               {projectProgress(card)===100&&(
