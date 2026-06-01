@@ -3719,11 +3719,13 @@ export default function App(){
     ],
     Operations:[
       {group:"Overview",  items:[{id:"home",l:"Projects"},{id:"calendar",l:"📅 Calendar"}]},
+      {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"📋 Project Cards"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
     ],
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"Design Work", items:[{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}]},
     ],
     ProjectMover:[
@@ -5377,7 +5379,7 @@ export default function App(){
         {/* ── KPI STRIP ───────────────────────────────────────────────── */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:10,marginBottom:20}}>
           {[
-            {l:"Pipeline",      v:fmtK(deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>!["Cancelled","Lost"].includes(d.stage)&&!WON_STAGES.includes(d.stage)).length+" deals"},
+            {l:"Pipeline",      v:fmtK(deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).length+" deals"},
             {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects"},
             {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`},
             {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
@@ -5971,7 +5973,7 @@ export default function App(){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
-            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length} active deals · {todayL}</div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length} active deals · {todayL}</div>
             {/* Search bar */}
             <div style={{position:"relative",marginTop:8}}>
               <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
@@ -6170,7 +6172,7 @@ export default function App(){
               {["all",...aeList].map(ae=>(
                 <button key={ae} onClick={()=>setPipeAE(ae)}
                   style={{padding:"4px 11px",borderRadius:20,border:`1.5px solid ${pipeAE===ae?"#6366f1":"#e2e8f0"}`,background:pipeAE===ae?"#6366f1":"#fff",color:pipeAE===ae?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pipeAE===ae?700:400,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
-                  {ae==="all"?`All (${deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length})`:ae}
+                  {ae==="all"?`All (${deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length})`:ae}
                 </button>
               ))}
             </div>
@@ -6223,13 +6225,13 @@ export default function App(){
               </div>
               <div style={{fontWeight:700,color:"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
               <div style={{display:"flex",gap:3,flexShrink:0}}>
-                <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>
+                {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>}
                 {(role==="Manager"||role==="Sales")
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award Project">🏆</button>
                   :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
                 }
                 {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Delete">✕</button>}
-                <button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"4px 5px",fontSize:".68rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}} title="Did Not Win">✗</button>
+                {(role==="Manager"||role==="Sales")&&<button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"4px 5px",fontSize:".68rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}} title="Did Not Win">✗</button>}
               </div>
             </div>
           );
@@ -6370,8 +6372,8 @@ export default function App(){
                           <div style={{fontSize:".78rem",color:"#64748b"}}>👤 {d.salesOwner||"—"}</div>
                           <div style={{fontWeight:600,color:"#94a3b8",fontSize:".85rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
                           <div style={{display:"flex",gap:5}}>
-                            <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                            <button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"01 · BizDev"}:x));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>
+                            {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
+                            {(role==="Manager"||role==="Sales")&&<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"01 · BizDev"}:x));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>}
                           </div>
                         </div>
                       ))}
@@ -6532,24 +6534,24 @@ export default function App(){
       <Wrap>
         <SecHead title="My Pipeline" action={<Btn onClick={openAddDeal}>+ Add Deal</Btn>}/>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
-          <KPI label="Active Deals"    value={deals.filter(d=>d.stage!=="Lost").length}       color="#3b82f6"/>
+          <KPI label="Active Deals"    value={deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled").length} color="#3b82f6"/>
           <KPI label="Won Revenue"     value={fmtK(wonDeals.reduce((s,d)=>s+d.value,0))}     color="#10b981"/>
-          <KPI label="Follow-ups Due"  value={deals.filter(d=>d.followUp&&d.followUp<=today&&d.stage!=="Won"&&d.stage!=="Lost").length} color="#ef4444"/>
+          <KPI label="Follow-ups Due"  value={deals.filter(d=>d.followUp&&d.followUp<=today&&!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled").length} color="#ef4444"/>
         </div>
         {deals.map(d=>(
-          <Card key={d.id} accent={d.stage==="Lost"?"#fca5a5":d.stage==="Won"?"#6ee7b7":d.followUp&&d.followUp<today?"#fed7aa":undefined}>
+          <Card key={d.id} accent={d.stage==="Did Not Win"||d.stage==="Cancelled"?"#fca5a5":WON_STAGES.includes(d.stage)?"#6ee7b7":d.followUp&&d.followUp<today?"#fed7aa":undefined}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
               <div style={{flex:1}}>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
                   <span style={{fontWeight:700,fontSize:"1rem",color:"#0f172a"}}>{d.client}</span>
                   <Badge label={d.stage} color={STAGE_CLR[d.stage]}/>
-                  {d.stage==="Won"&&<Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>}
+                  {WON_STAGES.includes(d.stage)&&<Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>}
                   {d.salesOwner&&d.salesOwner!==session?.name&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#6366f1",borderRadius:20,padding:"1px 6px",fontWeight:700}}>👤 {d.salesOwner.split(" ")[0]}</span>}
                 </div>
                 <div style={{fontSize:".78rem",color:"#64748b"}}>{d.product} · {d.contact}</div>
-                {d.followUp&&<div style={{fontSize:".73rem",color:d.followUp<today&&d.stage!=="Won"&&d.stage!=="Lost"?"#ef4444":"#94a3b8",marginTop:5}}>📅 Follow-up: {d.followUp}{d.followUp<today&&d.stage!=="Won"?" — OVERDUE":""}</div>}
+                {d.followUp&&<div style={{fontSize:".73rem",color:d.followUp<today&&!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"?"#ef4444":"#94a3b8",marginTop:5}}>📅 Follow-up: {d.followUp}{d.followUp<today&&!WON_STAGES.includes(d.stage)?" — OVERDUE":""}</div>}
                 {d.notes&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>{d.notes}</div>}
-                {d.stage==="Won"&&d.invoiced>0&&(
+                {WON_STAGES.includes(d.stage)&&d.invoiced>0&&(
                   <div style={{marginTop:10}}>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:4}}>
                       <span>{fmt(d.amountPaid)} of {fmt(d.invoiced)} collected</span>
@@ -8950,7 +8952,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
             <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".8px",marginBottom:5}}>Project</div>
             <select value={clProjF} onChange={e=>setClProjF(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",background:"#fff",cursor:"pointer",width:"100%"}}>
               <option value="all">All Projects</option>
-              {[...wonDeals,...deals.filter(d=>d.stage!=="Won"&&checklist.some(c=>c.projectId===d.id))].map(d=>(
+              {[...wonDeals,...deals.filter(d=>!WON_STAGES.includes(d.stage)&&checklist.some(c=>c.projectId===d.id))].map(d=>(
                 <option key={d.id} value={d.id}>{d.client}</option>
               ))}
             </select>
@@ -9007,7 +9009,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
             {clProjF==="all"&&(
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                 <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>{deal?deal.client:"No Project"}</div>
-                {deal&&<Badge label={deal.stage==="Won"?(projs?.[deal.id]?.currentStage||"Won"):deal.stage} color={deal.stage==="Won"?PROD_CLR[projs?.[deal.id]?.currentStage||"Design"]:STAGE_CLR[deal.stage]}/>}
+                {deal&&<Badge label={WON_STAGES.includes(deal.stage)?(projs?.[deal.id]?.currentStage||deal.stage):deal.stage} color={WON_STAGES.includes(deal.stage)?PROD_CLR[projs?.[deal.id]?.currentStage||"Design"]:STAGE_CLR[deal.stage]}/>}
                 <div style={{flex:1,height:1,background:"#e2e8f0"}}/>
                 <Btn small onClick={()=>openAddCl(projId===("__none__")?null:projId,role==="Design"?"Design":"Operations")}>+ Add to {deal?.client||"project"}</Btn>
               </div>
