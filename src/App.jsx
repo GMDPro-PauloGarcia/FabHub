@@ -1023,8 +1023,9 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
     </Modal>
   );
 }
-function AwardModal({deal,session,today,onClose,onConfirm}){
+function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
   const req=deal?.awardRequestData||{};
+  const drf=(drfs||[]).filter(d=>d.dealId===deal?.id).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))[0]||{};
   const[form,setForm]=React.useState({
     awardTrigger:req.awardTrigger||"CE Signed",
     triggerDate:req.triggerDate||today,
@@ -1034,7 +1035,7 @@ function AwardModal({deal,session,today,onClose,onConfirm}){
     startDate:today,commsLink:deal?.commsGroup||"",
     scopeNotes:req.scopeNotes||"",
     specialInstructions:req.specialInstructions||"",
-    designer:"",
+    designer:req.designer||drf.designer||"",
     location:deal?.location||"",
   });
   const[step,setStep]=React.useState(1);
@@ -6499,7 +6500,7 @@ export default function App(){
           toastEmit("Award request submitted — Paulo will review and confirm.");
           setAwardReqModal(null);
         }}/>}
-      {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward}/>}
+      {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward} drfs={drfs}/>}
       {priceModal&&<SetPriceModal deal={priceModal} today={today} onClose={()=>setPriceModal(null)} onSave={(val,note)=>{
         upDeals(ds=>ds.map(x=>x.id===priceModal.id?{...x,value:val,notes:(x.notes||"")+(note?`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")} — ${note}`:`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")}`)}:x));
         logActivity(priceModal.id,"QS Pricing",`${priceModal.client} — price set to ₱${val.toLocaleString("en-PH")} by ${session?.name||"QS"}`);
