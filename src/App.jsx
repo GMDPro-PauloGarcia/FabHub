@@ -2261,9 +2261,11 @@ export default function App(){
     ref_link:r.refLink||r.swatchLink||"", status:r.status||"To Buy", notes:r.notes||"",
     est_cost:Number(r.estCost)||0, swatch_link:r.swatchLink||r.refLink||"",
     added_by:r.addedBy||"",
+    client_approved_by:r.clientApprovedBy||null,
+    client_approved_at:r.clientApprovedAt||null,
   });
   const toSbChecklist = r=>({
-    id:r.id, deal_id:r.dealId||null, type:r.type||"Task", title:r.title||"",
+    id:r.id, deal_id:r.dealId||r.projectId||null, type:r.type||"Task", title:r.title||"",
     description:r.description||"", status:r.status||"Pending",
     assigned_to:r.assignedTo||"", due_date:r.dueDate||null,
     risk_note:r.riskNote||"", sort_order:r.sortOrder||0,
@@ -3525,13 +3527,34 @@ export default function App(){
   };
   const delDeal=id=>{
     const deal=deals.find(d=>d.id===id);
+    // Cascade-clear all related local state
+    const dealMsIds=billings.filter(b=>b.dealId===id).map(b=>b.id);
     upDeals(ds=>ds.filter(d=>d.id!==id));
     upProjs(ps=>{const n={...ps};delete n[id];return n;});
+    upBillings(bs=>bs.filter(b=>b.dealId!==id));
+    upPrs(ps=>ps.filter(p=>(p.dealId||p.projectId)!==id));
+    upMreqs(ms=>ms.filter(m=>m.dealId!==id));
+    upBreqs(bs=>bs.filter(b=>b.dealId!==id));
+    upAddenda(as=>as.filter(a=>a.dealId!==id));
+    upDrfs(ds=>ds.filter(d=>d.dealId!==id));
+    upChecklist(cs=>cs.filter(c=>(c.projectId||c.dealId)!==id));
+    upSwatches(ss=>ss.filter(s=>(s.projectId||s.dealId)!==id));
+    upExps(es=>es.filter(e=>(e.projectId||e.dealId)!==id));
     setConfirmDel(null);
     logActivity(id,"Deal Deleted",`${deal?.client||id} permanently deleted`,session?.name||role);
     if(isSupabaseReady()){
       sbDelete('deals',id).catch(()=>{});
-      supabase.from('projects').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});
+      // Delete billing payments before milestones
+      dealMsIds.forEach(msId=>supabase.from('billing_payments').delete().eq('milestone_id',msId).catch(()=>{}));
+      const tables=['projects','billing_milestones','job_orders','purchase_requests',
+        'material_requests','budget_requests','addenda','design_requests',
+        'checklists','project_cards','project_budgets','swatches'];
+      tables.forEach(t=>supabase.from(t).delete().eq('deal_id',id).catch(()=>{}));
+      supabase.from('expenses').delete().eq('deal_id',id).catch(()=>{});
+      supabase.from('project_card_dept_tasks').delete()
+        .in('card_id',pcards[id]?.id?[pcards[id].id]:[]).catch(()=>{});
+      supabase.from('project_card_dept_status').delete()
+        .in('card_id',pcards[id]?.id?[pcards[id].id]:[]).catch(()=>{});
     }
   };
 
@@ -3740,7 +3763,9 @@ export default function App(){
       sendTelegramNotification("procurement",msg);
       sendTelegramNotification("sales",msg);
     }
-    return {...s,status:st,...extra};
+    const updated={...s,status:st,...extra};
+    if(isSupabaseReady()) sbSyncOne("swatches",updated,toSbSwatch);
+    return updated;
   }));
 
   const openDesignEdit=()=>{setDesignForm({...(proj?.design||mkDesign())});setDesignModal(true);};
