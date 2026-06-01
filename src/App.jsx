@@ -6457,7 +6457,7 @@ export default function App(){
         )}
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity}/>;
+    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
         addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
         openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
@@ -6481,6 +6481,16 @@ export default function App(){
             setClientProfiles(next);
             try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(next));}catch{}
             if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+          }}
+          addNewClient={(name)=>{
+            if(!name.trim()) return;
+            if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())||customClients.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())) return;
+            const nc={name:name.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
+            GMD_CLIENTS.push(nc);
+            const next=[...customClients,nc];
+            setCustomClients(next);
+            try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}
+            if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
           }}
         />
       </Wrap>
@@ -6805,7 +6815,7 @@ export default function App(){
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
@@ -7607,7 +7617,25 @@ export default function App(){
   // Clients directory (Manager, Sales, Finance)
   if(page==="clients") return(
     <Wrap>
-      <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip}/>
+      <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients}
+        clientProfiles={clientProfiles}
+        saveClientProfile={(name,profile)=>{
+          const next={...clientProfiles,[name]:profile};
+          setClientProfiles(next);
+          try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(next));}catch{}
+          if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+        }}
+        addNewClient={(name)=>{
+          if(!name.trim()) return;
+          if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())||customClients.find(c=>c.name.toLowerCase()===name.trim().toLowerCase())) return;
+          const nc={name:name.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
+          GMD_CLIENTS.push(nc);
+          const next=[...customClients,nc];
+          setCustomClients(next);
+          try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}
+          if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+        }}
+      />
     </Wrap>
   );
 
@@ -7810,7 +7838,7 @@ function PLStatement({billings,exps,wonDeals}){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos}){
   const uid2=()=>String(Date.now());
   const ViewTabs=setPage?(
     <div style={{display:"flex",gap:6,marginBottom:16,background:"#f8fafc",borderRadius:10,padding:4,width:"fit-content"}}>
@@ -7908,6 +7936,38 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 
       {opsTab==="progress"&&(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          {(()=>{
+            const drf=(drfs||[]).find(d=>d.dealId===selProj);
+            const jo=(jos||[]).find(j=>j.dealId===selProj);
+            const hasBrief=drf||jo?.scopeNotes||jo?.specialInstructions||jo?.location||projDeal?.salesRepoLink;
+            if(!hasBrief) return null;
+            return(
+              <div style={{gridColumn:"1/-1",background:"#fff",borderRadius:12,border:"1.5px solid #a5b4fc",padding:"16px 18px",marginBottom:4}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                  <span style={{fontWeight:800,color:"#4f46e5",fontSize:".9rem"}}>📋 Project Brief & Handoff</span>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {projDeal?.salesRepoLink&&<a href={projDeal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 11px",background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:7,color:"#3b82f6",textDecoration:"none",fontWeight:700,fontSize:".74rem"}}>📁 Sales Repo</a>}
+                    {drf?.approvedLink&&<a href={drf.approvedLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,padding:"5px 11px",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:7,color:"#059669",textDecoration:"none",fontWeight:700,fontSize:".74rem"}}>✅ Approved Files</a>}
+                  </div>
+                </div>
+                {drf&&(
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                    {drf.size&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Size / Dimensions</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.size}</div></div>)}
+                    {drf.designer&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Assigned Designer</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.designer}</div></div>)}
+                    {drf.designDeadline&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Design Deadline</div><div style={{fontWeight:600,color:"#dc2626",fontSize:".84rem"}}>{drf.designDeadline}</div></div>)}
+                    {drf.description&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Description / Scope</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{drf.description}</div></div>)}
+                    {(drf.accessories||[]).filter(Boolean).length>0&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Accessories / Components</div><div style={{display:"flex",flexWrap:"wrap",gap:5}}>{drf.accessories.filter(Boolean).map((a,i)=><span key={i} style={{background:"#e0e7ff",color:"#4338ca",borderRadius:5,padding:"2px 9px",fontSize:".74rem",fontWeight:600}}>{a}</span>)}</div></div>)}
+                    {(drf.refLinks||[]).filter(Boolean).length>0&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Reference Links</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{drf.refLinks.filter(Boolean).map((r,i)=><a key={i} href={r} target="_blank" rel="noreferrer" style={{color:"#6366f1",fontSize:".76rem",fontWeight:600,textDecoration:"none"}}>🔗 Ref {i+1}</a>)}</div></div>)}
+                  </div>
+                )}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,borderTop:drf?"1px solid #e2e8f0":"none",paddingTop:drf?10:0}}>
+                  {jo?.scopeNotes&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Scope of Work (JO)</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{jo.scopeNotes}</div></div>)}
+                  {jo?.specialInstructions&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Special Instructions</div><div style={{color:"#dc2626",fontSize:".83rem",fontWeight:600,whiteSpace:"pre-wrap"}}>{jo.specialInstructions}</div></div>)}
+                  {jo?.location&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Site Location</div><div style={{color:"#334155",fontSize:".83rem"}}>{jo.location}</div></div>)}
+                </div>
+              </div>
+            );
+          })()}
           {["Design","Fabrication","QC","Delivery"].map((s,i)=>{
             const done=["Design","Fabrication","QC","Delivery"].indexOf(proj.currentStage)>i;
             const cur=proj.currentStage===s; const locked=["Design","Fabrication","QC","Delivery"].indexOf(proj.currentStage)<i;
@@ -9415,14 +9475,28 @@ function SalesCalendarView({deals, session, role}){
 }
 
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
-function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile}){
+function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient}){
   const[selClient,  setSelClient]  = useState(null);
   const[search,     setSearch]     = useState("");
   const[filter,     setFilter]     = useState("all");
   const[editClient, setEditClient] = useState(null);
   const[editName,   setEditName]   = useState("");
-  const[addName,    setAddName]    = useState("");
   const[addOpen,    setAddOpen]    = useState(false);
+  const EMPTY_ADD={name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""};
+  const[addForm,    setAddForm]    = useState(EMPTY_ADD);
+  const fa=(k,v)=>setAddForm(p=>({...p,[k]:v}));
+  const doAddClient=()=>{
+    const name=addForm.name.trim();
+    if(!name) return;
+    const allC=[...GMD_CLIENTS,...(customClients||[])];
+    if(allC.find(c=>c.name.toLowerCase()===name.toLowerCase())){alert("Client already exists.");return;}
+    if(addNewClient) addNewClient(name); else GMD_CLIENTS.push({name,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});
+    const prof={contactPerson:addForm.contactPerson,email:addForm.email,phone:addForm.phone,mobile:addForm.mobile,website:addForm.website,billingAddress:addForm.billingAddress,city:addForm.city,province:addForm.province,zipCode:addForm.zipCode,country:addForm.country,tin:addForm.tin,paymentTerms:addForm.paymentTerms,notes:addForm.notes};
+    if(saveClientProfile&&Object.values(prof).some(v=>v)) saveClientProfile(name,prof);
+    setAddForm(EMPTY_ADD);
+    setAddOpen(false);
+    forceUpdate(n=>n+1);
+  };
   const[profileModal,setProfileModal]=useState(null); // client name being profiled
   const[profileForm, setProfileForm]=useState({});
   const[,forceUpdate]              = useState(0);
@@ -9476,20 +9550,6 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         </div>
         <button onClick={()=>setAddOpen(true)} style={{background:"#059669",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>+ Add Client</button>
       </div>
-      {addOpen&&(
-        <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"16px 18px",marginBottom:16}}>
-          <div style={{fontWeight:700,color:"#059669",fontSize:".88rem",marginBottom:10}}>Add New Client</div>
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-            <input value={addName} onChange={e=>setAddName(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter"&&addName.trim()){if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===addName.trim().toLowerCase())){alert("Client already exists.");return;}GMD_CLIENTS.push({name:addName.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});setAddName("");setAddOpen(false);forceUpdate(n=>n+1);}}}
-              placeholder="Full client / company name…" autoFocus
-              style={{flex:1,border:"1.5px solid #6ee7b7",borderRadius:8,padding:"9px 13px",fontFamily:"inherit",fontSize:".86rem",outline:"none"}}/>
-            <button onClick={()=>{if(!addName.trim())return;if(GMD_CLIENTS.find(c=>c.name.toLowerCase()===addName.trim().toLowerCase())){alert("Client already exists.");return;}GMD_CLIENTS.push({name:addName.trim(),id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today});setAddName("");setAddOpen(false);forceUpdate(n=>n+1);}}
-              style={{background:"#059669",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Add</button>
-            <button onClick={()=>{setAddOpen(false);setAddName("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 14px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-          </div>
-        </div>
-      )}
 
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
@@ -9672,6 +9732,57 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
           </Modal>
         );
       })()}
+
+      {/* ── ADD CLIENT MODAL ─────────────────────────────────────────── */}
+      {addOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setAddOpen(false);setAddForm(EMPTY_ADD);}}>
+          <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <div>
+                <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a"}}>Add New Client</div>
+                <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>Fill in what you know — you can always update later</div>
+              </div>
+              <button onClick={()=>{setAddOpen(false);setAddForm(EMPTY_ADD);}} style={{background:"#f1f5f9",border:"none",borderRadius:99,width:32,height:32,cursor:"pointer",fontSize:"1rem",color:"#64748b"}}>✕</button>
+            </div>
+            <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
+              <Inp autoFocus value={addForm.name} onChange={e=>fa("name",e.target.value)} onKeyDown={e=>e.key==="Enter"&&doAddClient()} placeholder="Full company or client name…"/>
+            </div>
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Fld label="Contact Person"><Inp value={addForm.contactPerson} onChange={e=>fa("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
+                <Fld label="Email"><Inp type="email" value={addForm.email} onChange={e=>fa("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
+                <Fld label="Phone"><Inp value={addForm.phone} onChange={e=>fa("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
+                <Fld label="Mobile"><Inp value={addForm.mobile} onChange={e=>fa("mobile",e.target.value)} placeholder="+63 9xx xxx xxxx"/></Fld>
+                <Fld label="Website"><Inp value={addForm.website} onChange={e=>fa("website",e.target.value)} placeholder="www.company.com"/></Fld>
+              </div>
+            </div>
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📍 Billing Address</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Street Address"><Inp value={addForm.billingAddress} onChange={e=>fa("billingAddress",e.target.value)} placeholder="Unit/Floor, Building, Street"/></Fld></div>
+                <Fld label="City"><Inp value={addForm.city} onChange={e=>fa("city",e.target.value)} placeholder="Makati"/></Fld>
+                <Fld label="Province / Region"><Inp value={addForm.province} onChange={e=>fa("province",e.target.value)} placeholder="Metro Manila"/></Fld>
+                <Fld label="ZIP Code"><Inp value={addForm.zipCode} onChange={e=>fa("zipCode",e.target.value)} placeholder="1200"/></Fld>
+                <Fld label="Country"><Inp value={addForm.country} onChange={e=>fa("country",e.target.value)} placeholder="Philippines"/></Fld>
+              </div>
+            </div>
+            <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:16,border:"1px solid #e2e8f0"}}>
+              <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>🏢 Business Details</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Fld label="Client TIN"><Inp value={addForm.tin} onChange={e=>fa("tin",e.target.value)} placeholder="000-000-000-000"/></Fld>
+                <Fld label="Payment Terms"><Sel value={addForm.paymentTerms} onChange={e=>fa("paymentTerms",e.target.value)}><option>Due on receipt</option><option>Net 15</option><option>Net 30</option><option>Net 60</option><option>50% DP, Balance on completion</option></Sel></Fld>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={addForm.notes} onChange={e=>fa("notes",e.target.value)} placeholder="Special billing instructions, key contacts…"/></Fld></div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:10}}>
+              <button onClick={doAddClient} style={{flex:1,background:"#059669",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>Add Client</button>
+              <button onClick={()=>{setAddOpen(false);setAddForm(EMPTY_ADD);}} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── CLIENT PROFILE MODAL ─────────────────────────────────────── */}
       {profileModal&&(
