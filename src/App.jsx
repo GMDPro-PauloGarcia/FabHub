@@ -161,7 +161,7 @@ const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expens
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
-const drfFromSb=(r)=>({...r,dealId:r.deal_id,drfNo:r.drf_no,designDeadline:r.design_deadline,projectTitle:r.project_title,refLinks:r.ref_links||[],approvedLink:r.approved_link,createdBy:r.created_by});
+const drfFromSb=(r)=>({...r,dealId:r.deal_id,drfNo:r.drf_no,designDeadline:r.design_deadline,projectTitle:r.project_title,refLinks:r.ref_links||[],approvedLink:r.approved_link,createdBy:r.created_by,createdAt:r.created_at});
 const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.category||'',sub_category:r.subCategory||'',brand:r.brand||'',supplier:r.supplier||'',unit:r.unit||'',unit_size:r.unitSize||'',location:r.location||'Main Warehouse',qty_on_hand:Number(r.qtyOnHand)||0,reorder_point:Number(r.reorderPoint)||0,last_purchase_price:Number(r.lastPurchasePrice)||0,avg_cost:Number(r.avgCost)||0,last_updated:r.lastUpdated||null,notes:r.notes||'',status:r.status||'Active',created_by:r.createdBy||''});
 const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,lastUpdated:r.last_updated,createdBy:r.created_by});
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
@@ -1025,7 +1025,7 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
 }
 function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
   const req=deal?.awardRequestData||{};
-  const drf=(drfs||[]).filter(d=>d.dealId===deal?.id).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))[0]||{};
+  const drf=(drfs||[]).filter(d=>d.dealId===deal?.id||(d.client&&d.client===deal?.client)).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))[0]||{};
   const[form,setForm]=React.useState({
     awardTrigger:req.awardTrigger||"CE Signed",
     triggerDate:req.triggerDate||today,
@@ -8785,7 +8785,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
             <Fld label="Size / Dimensions"><Inp value={form.size} onChange={e=>f("size",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
             <Fld label="Assigned Designer"><Sel value={form.designer} onChange={e=>f("designer",e.target.value)}><option value="">— Assign later —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
             <Fld label="Design Deadline"><Inp type="date" value={form.designDeadline} onChange={e=>f("designDeadline",e.target.value)}/></Fld>
-            <Fld label="Linked Deal / Project"><Sel value={form.dealId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);f("dealId",e.target.value);if(d&&!form.client)f("client",d.client);}}><option value="">— Link to deal (optional) —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}</Sel></Fld>
+            <Fld label="Linked Deal / Project"><Sel value={form.dealId} onChange={e=>{const d=[...wonDeals,...deals].find(x=>x.id===e.target.value);f("dealId",e.target.value);if(d&&!form.client)f("client",d.client);}}><option value="">— Link to deal (optional) —</option>{[...deals].sort((a,b)=>a.client.localeCompare(b.client)).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""} ({d.stage?.replace(/^\d+ · /,"")||d.stage})</option>)}</Sel></Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={5} value={form.description} onChange={e=>f("description",e.target.value)} placeholder="RE-CREATE: Golf bag organizer rack with shelving&#10;SIZE: Must fit two large golf bags&#10;FUNCTION: Store 2 bags + shoe shelf (3-4 pairs) + drawer cabinet"/></Fld></div>
             {/* Accessories / Components */}
             <div style={{gridColumn:"1/-1"}}>
