@@ -3353,6 +3353,7 @@ export default function App(){
   const[confirmDel, setConfirmDel] =useState(null);
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
+  const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[pmUpdateModal,setPmUpdateModal]= useState(null);   // {dealId, dealName} — PM update entry
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
@@ -6157,6 +6158,23 @@ export default function App(){
           </div>
         </div>
 
+        {/* AE / Salesperson filter */}
+        {(()=>{
+          const aeList=[...new Set(deals.filter(d=>d.salesOwner).map(d=>d.salesOwner))].sort();
+          if(aeList.length===0) return null;
+          return(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12,alignItems:"center"}}>
+              <span style={{fontSize:".7rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginRight:2}}>AE:</span>
+              {["all",...aeList].map(ae=>(
+                <button key={ae} onClick={()=>setPipeAE(ae)}
+                  style={{padding:"4px 11px",borderRadius:20,border:`1.5px solid ${pipeAE===ae?"#6366f1":"#e2e8f0"}`,background:pipeAE===ae?"#6366f1":"#fff",color:pipeAE===ae?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pipeAE===ae?700:400,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                  {ae==="all"?`All (${deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length})`:ae}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Stage filter expanded view */}
         {/* Search results notice */}
         {pipeSearch&&(
@@ -6173,7 +6191,8 @@ export default function App(){
           const daysSince=dt=>dt?Math.floor((new Date(today)-new Date(dt))/(864e5)):0;
           const allActive=deals.filter(d=>
             !WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&
-            (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))
+            (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))&&
+            (pipeAE==="all"||d.salesOwner===pipeAE)
           ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
           const hotDeals=allActive.filter(d=>daysSince(d.dateAcquired)<=15);
           const coldDeals=allActive.filter(d=>daysSince(d.dateAcquired)>15);
@@ -6203,8 +6222,8 @@ export default function App(){
               <div style={{fontWeight:700,color:"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
               <div style={{display:"flex",gap:3,flexShrink:0}}>
                 <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>
-                {role==="Manager"
-                  ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award">🏆</button>
+                {(role==="Manager"||role==="Sales")
+                  ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award Project">🏆</button>
                   :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
                 }
                 {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Delete">✕</button>}
@@ -6523,6 +6542,7 @@ export default function App(){
                   <span style={{fontWeight:700,fontSize:"1rem",color:"#0f172a"}}>{d.client}</span>
                   <Badge label={d.stage} color={STAGE_CLR[d.stage]}/>
                   {d.stage==="Won"&&<Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>}
+                  {d.salesOwner&&d.salesOwner!==session?.name&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#6366f1",borderRadius:20,padding:"1px 6px",fontWeight:700}}>👤 {d.salesOwner.split(" ")[0]}</span>}
                 </div>
                 <div style={{fontSize:".78rem",color:"#64748b"}}>{d.product} · {d.contact}</div>
                 {d.followUp&&<div style={{fontSize:".73rem",color:d.followUp<today&&d.stage!=="Won"&&d.stage!=="Lost"?"#ef4444":"#94a3b8",marginTop:5}}>📅 Follow-up: {d.followUp}{d.followUp<today&&d.stage!=="Won"?" — OVERDUE":""}</div>}
@@ -6541,6 +6561,7 @@ export default function App(){
                 <div style={{fontWeight:800,color:"#10b981",fontSize:"1.15rem"}}>{fmt(d.value)}</div>
                 <div style={{display:"flex",gap:6,marginTop:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
                   <Btn small variant="ghost" onClick={()=>openEditDeal(d)}>✏ Edit</Btn>
+                  {!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"&&<Btn small onClick={()=>openAward(d)} style={{background:"#059669",color:"#fff",border:"none"}}>🏆 Award</Btn>}
                   {role==="Manager"&&<Btn small variant="danger" onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}}>✕</Btn>}
                 </div>
                 <div style={{marginTop:8,minWidth:160}}>
