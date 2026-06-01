@@ -101,13 +101,14 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="gmd">GMD <span>PROD</span></div>
-    <div class="sub">FabHub Team Handbook v1.3</div>
-    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: May 28, 2026</div>
+    <div class="sub">FabHub Team Handbook v1.4</div>
+    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: June 1, 2026</div>
   </div>
   <nav>
     <div class="nav-group">General</div>
     <a href="#ch1"><span class="nav-num">1</span> Getting Started</a>
     <a href="#ch2"><span class="nav-num">2</span> Login Credentials</a>
+    <a href="#ch23"><span class="nav-num">✦</span> What's New in v1.4</a>
     <div class="nav-group">Sales</div>
     <a href="#ch3"><span class="nav-num">3</span> Sales Pipeline</a>
     <a href="#ch4"><span class="nav-num">4</span> Job Order Flow</a>
@@ -140,15 +141,87 @@
     <h1>FabHub <span>Handbook</span></h1>
     <p>GMD Productions Inc. — Internal Operations Platform</p>
     <div class="meta">
-      <span class="badge">Version 1.3</span>
-      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: May 28, 2026</span>
+      <span class="badge">Version 1.4</span>
+      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: June 1, 2026</span>
       <span class="badge">fab-hub.vercel.app</span>
       <span class="badge">9 Roles</span>
-      <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">v1.3 — P&amp;L, Compliance, Smart Import, Walkthrough</span>
+      <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">v1.4 — QS Pricing, Role Visibility, Pipeline Improvements</span>
     </div>
   </div>
 
   <div class="content">
+
+    <!-- CH23 — WHAT'S NEW v1.4 -->
+    <div class="chapter" id="ch23">
+      <div class="chapter-header" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
+        <span class="ch-num">✦</span><h2>What's New in v1.4 <span class="new-badge">LATEST</span></h2>
+      </div>
+      <div class="roles">
+        <span class="role-badge" style="background:#f59e0b">All Roles</span>
+      </div>
+      <p>Version 1.4 (June 1, 2026) introduces QS pricing ownership, role-based value visibility, pipeline improvements, and several data quality fixes. Below is the complete change log.</p>
+
+      <h3>💰 QS Pricing — QS Now Sets the Client Submission Price</h3>
+      <p>QS is now the pricing gatekeeper. After completing a cost study, QS enters the final proposal amount via a <strong>₱ button</strong> in the Sales Pipeline. Sales then quotes that price to the client. This ensures every submission has been validated against a cost study before going out.</p>
+      <ul>
+        <li>Purple <strong>₱</strong> button on each active deal (QS pipeline view) — opens "Set Client Submission Price" modal</li>
+        <li>Enter contract amount + optional costing note</li>
+        <li>Saves to deal history; Sales team receives a Telegram notification automatically</li>
+        <li>Deals with a price show <strong>₱✏</strong> (update) instead of ₱ (set)</li>
+      </ul>
+
+      <h3>👁 Role-Based Value Visibility</h3>
+      <p>Production teams (Operations, Design, ProjectMover) no longer see the client contract price. Instead, they see the <strong>QS production budget total</strong> (Materials + Labor + Overhead + Subcon) shown in purple. If QS has not set a budget yet, they see "Budget Pending".</p>
+      <table class="data-table">
+        <thead><tr><th>Role</th><th>Pipeline value shown</th><th>ProjectCards value shown</th></tr></thead>
+        <tbody>
+          <tr><td><b>Manager, Sales, Finance, QS</b></td><td>Contract value (₱)</td><td>Contract value (₱)</td></tr>
+          <tr><td><b>Operations, Design, ProjectMover</b></td><td style="color:#8b5cf6">QS Budget 📊</td><td style="color:#8b5cf6">QS Budget 📊</td></tr>
+        </tbody>
+      </table>
+
+      <h3>🏆 Sales Can Award Directly</h3>
+      <p>Sales team members now see a green 🏆 Award button and can complete the full award flow (Job Order + scope + PM assignment) without requiring Manager approval. This removes the bottleneck when Paulo is on mobile or unavailable.</p>
+
+      <h3>👤 AE Badges &amp; Filter</h3>
+      <ul>
+        <li><strong>AE badge</strong> appears on every deal row showing the Account Executive's first name</li>
+        <li><strong>AE filter chips</strong> (purple) above the pipeline let Manager filter by salesperson</li>
+        <li>On Sales home cards, a badge shows when viewing a deal owned by a different team member (e.g. 👤 Gail)</li>
+      </ul>
+
+      <h3>📋 Sales → Ops Handoff Improvements</h3>
+      <ul>
+        <li><strong>Sales Repo link</strong> (📁 Sales Repo button) now visible in the OpsView project header and on every ProjectCard — PMs can open the folder directly</li>
+        <li><strong>Project Brief &amp; Handoff panel</strong> added to OpsView Progress tab — shows DRF data (size, designer, deadline, accessories, ref links), JO scope/instructions/location, and links to Approved Files</li>
+        <li><strong>Design Brief panel</strong> auto-appears when DRF or JO scope data exists for a project</li>
+      </ul>
+
+      <h3>🏢 Client Directory Improvements</h3>
+      <ul>
+        <li>"City" column replaced with <strong>Awarded Deals</strong> — shows number of projects won and total contract value per client</li>
+        <li>Contact column now reads from the saved Client Profile (contact person + phone)</li>
+        <li><strong>Add Client</strong> form now includes full profile fields in one step: contact person, email, phone, billing address, TIN, payment terms, notes</li>
+      </ul>
+
+      <h3>🔔 Telegram Notification Fix</h3>
+      <p>Bot settings are now read from <strong>Supabase</strong> across all user devices, not just the device where settings were configured. Sales users on their own devices now correctly receive and send notifications for new deals and project awards.</p>
+
+      <h3>📊 Pipeline Visibility for More Roles</h3>
+      <ul>
+        <li><strong>Operations</strong> now has "Sales Pipeline" in their sidebar — useful for seeing what's coming before it lands in their lap</li>
+        <li><strong>Design</strong> now has "Sales Pipeline" in their sidebar — useful for capacity planning</li>
+        <li>Pipeline actions (Edit, Did Not Win, move-back) are restricted to Manager and Sales only; other roles can only view and request awards</li>
+      </ul>
+
+      <h3>🐛 Data Quality Fixes</h3>
+      <ul>
+        <li>Active deal counts now correctly exclude "Did Not Win" and "Cancelled" everywhere (pipeline header, AE filter chip, Manager KPI)</li>
+        <li>Follow-up "OVERDUE" warnings no longer appear for won or closed deals</li>
+        <li>Checklist project dropdown no longer includes already-won deals in the "pre-award" list</li>
+        <li>E-4 escalation now correctly routes to the DRF view (was routing to a non-existent "drfs" page)</li>
+      </ul>
+    </div>
 
     <!-- CH1 -->
     <div class="chapter" id="ch1">
@@ -215,17 +288,34 @@
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">Manager</span>
         <span class="role-badge" style="background:#10b981">Sales</span>
+        <span class="role-badge" style="background:#8b5cf6">QS</span>
+        <span class="role-badge" style="background:#f97316">Operations</span>
+        <span class="role-badge" style="background:#6366f1">Design</span>
       </div>
       <h3>Adding a New Deal</h3>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Click + Add Deal</b><span>Top right of the Sales tab</span></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Click + Add Deal</b><span>Top right of the Sales Pipeline tab (Sales and Manager only)</span></div></div>
         <div class="step"><div class="step-num">2</div><div class="step-content"><b>Fill in Client Name</b><span>Start typing — autocomplete from existing GMD clients</span></div></div>
         <div class="step"><div class="step-num">3</div><div class="step-content"><b>Fill in Project Name</b><span>e.g. SM Megamall Fit-Out Phase 1</span></div></div>
         <div class="step"><div class="step-num">4</div><div class="step-content"><b>CE Number auto-generated</b><span>Format: CE-2026-001. Do not change unless necessary</span></div></div>
         <div class="step"><div class="step-num">5</div><div class="step-content"><b>Select CE Type + Sub-Type</b><span>Fabrication/General or Construction, then sub-category (Fit-Out, Kiosk, Signage, etc.)</span></div></div>
         <div class="step"><div class="step-num">6</div><div class="step-content"><b>Set Tax Settings</b><span>OR (Official Receipt with 12% VAT) or AR (Acknowledgement Receipt, no VAT) + EWT 2% if applicable</span></div></div>
-        <div class="step"><div class="step-num">7</div><div class="step-content"><b>Save</b><span>Deal appears in Stage 01 BizDev</span></div></div>
+        <div class="step"><div class="step-num">7</div><div class="step-content"><b>Save — then alert QS</b><span>Deal appears in Stage 01 BizDev. If a contract value is not yet known, QS will set it after completing the cost study</span></div></div>
       </div>
+
+      <h3>Who Sees What Value in the Pipeline</h3>
+      <table class="data-table">
+        <thead><tr><th>Role</th><th>Value displayed</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><b>Manager, Sales, Finance, QS</b></td><td>Contract / Client Submission Price</td><td>These roles need the full commercial picture</td></tr>
+          <tr><td><b>Operations, Design, ProjectMover</b></td><td style="color:#8b5cf6;font-weight:700">QS Budget total 📊</td><td>Production teams work within their allocated budget, not the client price</td></tr>
+        </tbody>
+      </table>
+      <div class="note">If a project has not yet been priced by QS, Operations and Design will see <strong>"Budget Pending"</strong> instead of a number.</div>
+
+      <h3>AE Filter (Manager)</h3>
+      <p>Purple chips above the pipeline let the Manager filter deals by Account Executive (salesperson). Click an AE's name to see only their deals. Click <strong>All</strong> to reset.</p>
+
       <h3>The 13 GMD Stages</h3>
       <table class="data-table">
         <thead><tr><th>#</th><th>Stage</th><th>What happens here</th></tr></thead>
@@ -270,9 +360,12 @@
         <div class="step"><div class="step-num">6</div><div class="step-content"><b>Click Confirm Award &amp; Issue Job Order</b><span>JO issued. Telegram sends award alert to ALL 6 department channels immediately</span></div></div>
       </div>
       <div class="note" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;">
-        🤖 <strong>Auto-Budget on Award:</strong> FabHub automatically sets a 30% margin target budget for QS when a project is awarded. Budget is split: Materials 50%, Labor 25%, Overhead 15%, Subcon 10% of the 70% cost target. QS (Rodney) should review and adjust this in Cost Analysis.
+        🏆 <strong>Sales can award directly</strong> — Sales team members see a green 🏆 Award button and can complete the full award flow without needing Manager approval. Other roles (Operations, Design, QS, Procurement) see an orange 🏆 Request Award button that sends a notification to the Manager for review.
       </div>
-      <div class="note">After award: Finance (Aerwin) must set up billing milestones. Both will see alert banners on their dashboards.</div>
+      <div class="note" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;">
+        🤖 <strong>Auto-Budget on Award:</strong> FabHub automatically sets a 30% margin target budget for QS when a project is awarded. Budget is split: Materials 50%, Labor 25%, Overhead 15%, Subcon 10% of the 70% cost target. QS should review and adjust this in Cost Analysis.
+      </div>
+      <div class="note">After award: Finance must set up billing milestones. Both Finance and QS will see alert banners on their dashboards.</div>
     </div>
 
     <!-- CH5 -->
@@ -389,11 +482,22 @@
         </div>
       </div>
 
+      <h3>Setting the Client Submission Price (QS) <span class="new-badge">NEW v1.4</span></h3>
+      <p>QS is now the <strong>pricing gatekeeper</strong>. After completing a cost study for a pre-award deal, QS enters the price that Sales will quote to the client.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open Sales Pipeline (QS)</b><span>Navigate to Sales Pipeline from the QS sidebar</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Click ₱ (purple button) on the deal</b><span>Appears next to deals that have no price yet. Deals with an existing price show ₱✏ to update</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Enter the Contract / Proposal Amount</b><span>This is the final price being quoted to the client — include all markup</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Add a costing note (optional)</b><span>e.g. "Based on cost study June 1. 30% markup applied." This note is saved in deal history</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Click Save Price</b><span>Price is saved to the deal. Sales team receives a Telegram notification automatically</span></div></div>
+      </div>
+      <div class="note">Once QS sets the price, Sales can quote the client with confidence. The contract value flows through to billing milestones and reports automatically.</div>
+
       <h3>Setting / Adjusting a Budget (QS)</h3>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open Cost Analysis → select project</b><span>Auto-budget is pre-filled if contract value was entered at award</span></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open Cost Analysis → select project</b><span>Auto-budget is pre-filled when the project is awarded</span></div></div>
         <div class="step"><div class="step-num">2</div><div class="step-content"><b>Review and adjust each category</b><span>Materials / Labor / Overhead / Subcon — adjust to reflect actual scope</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Save Budget</b><span>Actuals auto-pull from PRs and Expenses. Traffic light updates in real time</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Save Budget</b><span>Actuals auto-pull from PRs and Expenses. Traffic light updates in real time. Ops/Design teams will see this budget total instead of the contract value</span></div></div>
       </div>
     </div>
 
@@ -901,7 +1005,7 @@
     </div>
 
     <div style="text-align:center;padding:40px 0;color:#94a3b8;font-size:13px;border-top:1px solid #e2e8f0;margin-top:20px">
-      GMD Productions Inc. — FabHub Handbook v1.3 — Last Updated: May 28, 2026<br>
+      GMD Productions Inc. — FabHub Handbook v1.4 — Last Updated: June 1, 2026<br>
       Confidential — Internal Use Only — fab-hub.vercel.app
     </div>
 
