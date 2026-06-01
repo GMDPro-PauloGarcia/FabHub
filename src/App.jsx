@@ -1971,6 +1971,7 @@ export default function App(){
   const[checklist,setChecklist]= useState([]);
   const[ready,    setReady]   = useState(false);
   const[sbReady,  setSbReady] = useState(false); // true once Supabase load completes
+  const[syncRetry,setSyncRetry]=useState(false); // manual sync in progress
   const[sync,     setSync]    = useState("saved");
 
   // Load SheetJS once for Excel import
@@ -2023,8 +2024,14 @@ export default function App(){
         try{
           // Ensure we have a Supabase session (needed for RLS policies on new devices)
           const {data:{session:sbSess}}=await supabase.auth.getSession();
-          if(!sbSess) await supabase.auth.signInAnonymously().catch(()=>{});
+          if(!sbSess){
+            // Try anonymous sign-in first; if not enabled fall back gracefully
+            const {error:anonErr}=await supabase.auth.signInAnonymously();
+            if(anonErr) console.warn("Anon sign-in failed (may not be enabled):",anonErr.message);
+          }
           const data = await sbLoadAll();
+          // Diagnostic — visible in browser console AND stored for the sync banner
+          console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
             if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
@@ -3897,6 +3904,7 @@ export default function App(){
         <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); .fi{animation:fadeIn .2s ease} @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} @media print{.noprint{display:none}}`}</style>
         <Nav/>
         <Toaster/>
+        {SyncBanner}
         <div style={{maxWidth:1140,margin:"0 auto",padding:"22px 24px"}} className="fi">{children}</div>
       {showExportRef.current&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
@@ -4003,6 +4011,24 @@ export default function App(){
 
   // ── AUTH GATE ─────────────────────────────────────────────────────────────
   if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register} sbReady={sbReady}/><Toaster/></>;
+
+  // ── SYNC FAILURE BANNER — shown when logged in but Supabase returned no deals ─
+  const SyncBanner=sbReady&&deals.length===0&&isSupabaseReady()?(
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#fef2f2",borderBottom:"2px solid #fca5a5",padding:"10px 20px",display:"flex",alignItems:"center",gap:12,justifyContent:"center",fontSize:".82rem",fontFamily:"'Segoe UI',sans-serif"}}>
+      <span style={{color:"#991b1b",fontWeight:700}}>⚠ Data not loaded from server.</span>
+      <span style={{color:"#b91c1c"}}>Supabase returned 0 deals. This is usually an RLS or session issue.</span>
+      <button disabled={syncRetry} onClick={async()=>{
+        setSyncRetry(true);
+        const {data:{session:s}}=await supabase.auth.getSession();
+        console.info("[FabHub] Manual sync — Supabase session:",s?.user?.id||"none");
+        await loadAllFromSupabase();
+        setSyncRetry(false);
+        toastEmit("Sync complete — deals: "+deals.length);
+      }} style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:syncRetry?"not-allowed":"pointer"}}>
+        {syncRetry?"Syncing…":"↺ Retry Sync"}
+      </button>
+    </div>
+  ):null;
 
 
   if(page==="home"){
