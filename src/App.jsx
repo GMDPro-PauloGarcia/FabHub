@@ -2088,7 +2088,7 @@ export default function App(){
     return () => subscription.unsubscribe();
   },[]);
 
-  // Auto-refresh when user switches back to FabHub tab
+  // Auto-refresh when user switches back to FabHub tab/app
   useEffect(()=>{
     let lastRefresh=0;
     const refresh=async()=>{
@@ -2104,8 +2104,15 @@ export default function App(){
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
+    const onVisibility=()=>{ if(document.visibilityState==="visible") refresh(); };
     window.addEventListener("focus",refresh);
-    return()=>window.removeEventListener("focus",refresh);
+    window.addEventListener("online",refresh); // network reconnect (mobile/PWA)
+    document.addEventListener("visibilitychange",onVisibility);
+    return()=>{
+      window.removeEventListener("focus",refresh);
+      window.removeEventListener("online",refresh);
+      document.removeEventListener("visibilitychange",onVisibility);
+    };
   },[session]);
 
   // ── SUPABASE: Load all data ───────────────────────────────────────────────
