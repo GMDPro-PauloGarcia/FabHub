@@ -3456,6 +3456,7 @@ export default function App(){
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
   const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
   const[isMobile,     setIsMobile]     = useState(()=>window.innerWidth<768);
+  const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
@@ -3981,8 +3982,6 @@ export default function App(){
     if(!isMobile) return null;
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
-    // Pick first 4 unique items + fixed "Me" tab
-    const primary=allItems.slice(0,4);
     const NAV_ICONS={
       home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
       checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
@@ -3999,31 +3998,100 @@ export default function App(){
       swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
-      pmupdates:"Updates",addenda:"Scope",
+      pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",
     };
-    const tabs=[...primary,{id:"myaccount",l:"Me"}];
+    const navigate=(id)=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);};
+    // For Manager show fixed key tabs + More; others show first 4 + Me
+    const primaryIds=role==="Manager"
+      ? ["home","pipeline","projects","finance"]
+      : allItems.slice(0,4).map(x=>x.id);
+    const tabs=[
+      ...primaryIds.map(id=>({id,l:allItems.find(x=>x.id===id)?.l||id})),
+      {id:"__more__",l:"More"},
+    ];
     return(
-      <div style={{position:"fixed",bottom:0,left:0,right:0,height:62,background:"#1e293b",display:"flex",alignItems:"stretch",zIndex:300,borderTop:"1px solid rgba(255,255,255,.08)",boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}} className="noprint">
-        {tabs.map(({id,l})=>{
-          const active=page===id;
-          const icon=id==="myaccount"?"👤":(NAV_ICONS[id]||"•");
-          const label=id==="myaccount"?"Me":(NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l);
-          return(
-            <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);}}
-              style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
-              <span style={{fontSize:"1.1rem",lineHeight:1}}>{icon}</span>
-              <span style={{fontSize:".55rem",fontWeight:active?700:400,letterSpacing:".2px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:54}}>{label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <>
+        {/* More drawer backdrop */}
+        {moreNavOpen&&(
+          <div onClick={()=>setMoreNavOpen(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:298}}/>
+        )}
+        {/* More drawer sheet */}
+        {moreNavOpen&&(
+          <div style={{position:"fixed",bottom:62,left:0,right:0,maxHeight:"70vh",overflowY:"auto",background:"#1e293b",zIndex:299,borderRadius:"18px 18px 0 0",borderTop:"1px solid rgba(255,255,255,.12)",boxShadow:"0 -4px 24px rgba(0,0,0,.35)",paddingBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:"#f8fafc",letterSpacing:.5}}>All Sections</span>
+              <button onClick={()=>setMoreNavOpen(false)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,width:28,height:28,color:"#94a3b8",cursor:"pointer",fontSize:".9rem"}}>✕</button>
+            </div>
+            {groups.map((sec,si)=>(
+              <div key={si} style={{padding:"6px 0"}}>
+                <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".08em"}}>{sec.group}</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+                  {(sec.items||[]).map(({id,l})=>{
+                    const active=page===id;
+                    const icon=NAV_ICONS[id]||"•";
+                    const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+                    return(
+                      <button key={id} onClick={()=>navigate(id)}
+                        style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",textAlign:"left"}}>
+                        <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div style={{padding:"6px 0 0",borderTop:"1px solid rgba(255,255,255,.08)",marginTop:4}}>
+              <button onClick={()=>navigate("myaccount")}
+                style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",padding:"10px 16px",background:page==="myaccount"?"rgba(245,158,11,.15)":"transparent",color:page==="myaccount"?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",cursor:"pointer",borderLeft:page==="myaccount"?"3px solid #f59e0b":"3px solid transparent"}}>
+                <span style={{fontSize:"1rem"}}>⚙️</span>
+                <span>My Account</span>
+              </button>
+            </div>
+          </div>
+        )}
+        {/* Bottom tab bar */}
+        <div style={{position:"fixed",bottom:0,left:0,right:0,height:62,background:"#1e293b",display:"flex",alignItems:"stretch",zIndex:300,borderTop:"1px solid rgba(255,255,255,.08)",boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}} className="noprint">
+          {tabs.map(({id,l})=>{
+            if(id==="__more__"){
+              return(
+                <button key="__more__" onClick={()=>setMoreNavOpen(o=>!o)}
+                  style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:moreNavOpen?"rgba(245,158,11,.15)":"transparent",color:moreNavOpen?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:moreNavOpen?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
+                  <span style={{fontSize:"1.1rem",lineHeight:1}}>☰</span>
+                  <span style={{fontSize:".55rem",fontWeight:moreNavOpen?700:400,letterSpacing:".2px"}}>More</span>
+                </button>
+              );
+            }
+            if(id==="myaccount"){
+              const active=page==="myaccount";
+              return(
+                <button key="myaccount" onClick={()=>navigate("myaccount")}
+                  style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
+                  <span style={{fontSize:"1.1rem",lineHeight:1}}>👤</span>
+                  <span style={{fontSize:".55rem",fontWeight:active?700:400,letterSpacing:".2px"}}>Me</span>
+                </button>
+              );
+            }
+            const active=page===id;
+            const icon=NAV_ICONS[id]||"•";
+            const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+            return(
+              <button key={id} onClick={()=>navigate(id)}
+                style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
+                <span style={{fontSize:"1.1rem",lineHeight:1}}>{icon}</span>
+                <span style={{fontSize:".55rem",fontWeight:active?700:400,letterSpacing:".2px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:54}}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </>
     );
   };
 
   const Wrap=React.useCallback(({children})=>{
     const W=navCollapsed?64:220;
     return(
-      <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:isMobile?0:W,transition:"margin-left .2s"}}>
+      <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:isMobile?0:W,transition:isMobile?"none":"margin-left .2s",overflowX:"hidden",width:isMobile?"100%":undefined}}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap');
           .fi{animation:fadeIn .2s ease}
@@ -4198,7 +4266,7 @@ export default function App(){
         const overdue30=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
         const todayCash=Object.values(cashPositions).find(c=>c.date===today)||null;
         return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
             {[
               {l:"Total Billed YTD",   v:"₱"+Math.round(totalBilled/1000)+"K",              c:"#3b82f6", icon:"🧾"},
               {l:"Collected",          v:"₱"+Math.round(totalPaid/1000)+"K",                c:"#059669", icon:"✅"},
@@ -4215,7 +4283,7 @@ export default function App(){
         );
       })()}
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16}}>
         {/* Cash position shortcut */}
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -4334,7 +4402,7 @@ export default function App(){
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* KPI Row */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
               {l:"Active Projects",    v:wonDeals.length,         c:"#8b5cf6", icon:"📋"},
               {l:"Auto-Budget Set",    v:autoBudgets.length,      c:"#06b6d4", icon:"🤖", sub:"needs QS review"},
@@ -4476,7 +4544,7 @@ export default function App(){
         const pendingBRs=breqs.filter(b=>b.status==="Pending"||b.status==="Approved");
         const deliveredToday=prs.filter(p=>p.deliveryDate===today&&p.status==="Delivered");
         return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
             {[
               {l:"Open Purchase Orders", v:pendingPRs.length, c:"#06b6d4", icon:"📦", click:()=>setPage("procurement")},
               {l:"Material Requests",    v:pendingMRs.length, c:"#f97316", icon:"🔧", click:()=>setPage("materialreq")},
@@ -4869,7 +4937,7 @@ export default function App(){
                 <button onClick={()=>setPage("drf")} style={{background:"#ec4899",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"}}>View DRFs →</button>
               </div>
             )}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12}}>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:12}}>
               {[
                 {l:"New DRFs",          v:drfs.filter(d=>d.status==="New").length, c:"#dc2626", icon:"🔔", pg:"drf"},
                 {l:"In Your Queue",     v:inQueue.length,            c:"#ec4899", icon:"📐"},
@@ -5012,7 +5080,7 @@ export default function App(){
         return(
           <div style={{display:"flex",flexDirection:"column",gap:20}}>
             {/* KPIs */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
               {[
                 {l:"My Projects",    v:myProjects.length,  c:"#0ea5e9", icon:"🏗"},
                 {l:"All Active",     v:wonDeals.length,    c:"#0f172a", icon:"📋"},
@@ -5156,7 +5224,7 @@ export default function App(){
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* KPI Row 1 — Financial health */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
               {l:"Total Cash (6 banks)",   v:"₱"+Math.round(totalCash/1000)+"K",        c:"#059669",  icon:"🏦", sub:latestCash?"As of "+latestCash.date:"No entry yet"},
               {l:"Total Collected YTD",    v:"₱"+Math.round(totalPaid/1000)+"K",         c:"#3b82f6",  icon:"✅", sub:"Collection rate: "+collRate+"%"},
@@ -5173,7 +5241,7 @@ export default function App(){
           </div>
 
           {/* KPI Row 2 — Pipeline */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
               {l:"Pipeline Value",      v:"₱"+Math.round(totalPipeVal/1000000)+"M", c:"#8b5cf6", icon:"📊"},
               {l:"Awarded Projects",    v:wonDeals.length,                           c:"#0f172a",  icon:"🏆"},
@@ -5279,7 +5347,7 @@ export default function App(){
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* KPI Row */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
               {l:"Active Projects",    v:wonDeals.length,          c:"#f97316", icon:"🏗",  click:()=>setPage("projects")},
               {l:"TAT Overdue",        v:overdueProjects.length,   c:"#ef4444", icon:"⏰",  click:()=>setPage("projects")},
@@ -5448,7 +5516,7 @@ export default function App(){
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* KPI Row */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
               {l:"Total Pipeline",     v:"₱"+Math.round(totalPipeVal/1000000)+"M",  c:"#10b981", icon:"📊", click:()=>setPage("pipeline")},
               {l:"Awarded Value",      v:"₱"+Math.round(awardedVal/1000000)+"M",    c:"#3b82f6", icon:"🏆"},
@@ -5595,7 +5663,7 @@ export default function App(){
         })()}
 
         {/* ── KPI STRIP ───────────────────────────────────────────────── */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:10,marginBottom:20}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(7,1fr)",gap:10,marginBottom:20}}>
           {[
             {l:"Pipeline",      v:fmtK(deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).length+" deals"},
             {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects"},
@@ -6332,7 +6400,7 @@ export default function App(){
             </div>
           ):null;
         })()}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:24}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
             {l:"Total Pipeline",    v:fmt(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
             {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
