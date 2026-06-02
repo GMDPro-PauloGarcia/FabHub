@@ -6408,12 +6408,12 @@ export default function App(){
               </div>
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
                 {wonDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>No awarded projects yet. Use the 🏆 button above to award a deal.</div>}
-                <div style={{display:"flex",padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px"}}>
+                <div style={{display:"flex",gap:8,padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px",alignItems:"center"}}>
                   <span style={{flex:1}}>Client / CE</span>
-                  <span style={{width:60,textAlign:"right"}}>Value</span>
-                  <span style={{width:72,textAlign:"right"}}>Payment</span>
-                  <span style={{width:110,textAlign:"right"}}>Stage</span>
-                  <span style={{width:56,textAlign:"right"}}>Actions</span>
+                  <span style={{width:60,textAlign:"right",flexShrink:0}}>Value</span>
+                  <span style={{width:72,textAlign:"right",flexShrink:0}}>Payment</span>
+                  <span style={{width:110,textAlign:"right",flexShrink:0}}>Stage</span>
+                  <span style={{width:56,textAlign:"right",flexShrink:0}}>Actions</span>
                 </div>
                 <div style={{maxHeight:320,overflowY:"auto"}}>
                   {(()=>{
