@@ -205,6 +205,7 @@ const TAT_REFERENCE = {
 
 const DEPT_ORDER = ["Sales","Design","QS","Procurement","Operations","Finance"];
 const DEPT_CLR   = {Sales:"#10b981",Design:"#8b5cf6",QS:"#f59e0b",Procurement:"#06b6d4",Operations:"#f97316",Finance:"#3b82f6"};
+const ACT_SCORE  = {"Login":1,"New Deal":10,"Deal Updated":3,"Stage Change":5,"Project Awarded":15,"PM Update":8,"Department Done":12,"Blocker Flagged":4,"TAT Set":3,"Project Card Created":5,"Password Changed":1,"Profile Updated":1,"JO Deleted":-2};
 
 const DEFAULT_DEPT_TASKS = {
   Sales:[
@@ -1729,8 +1730,135 @@ class ErrorBoundary extends React.Component{
 
 // ── PM UPDATE MODAL (proper component — fixes focus loss from IIFE hooks) ──
 
+// ── ACTIVITY HELPERS ──────────────────────────────────────────────────────
+function calcStreak(actLog,userName){
+  const days=new Set((actLog||[]).filter(e=>e.by===userName).map(e=>e.date));
+  if(!days.size)return 0;
+  let streak=0;const d=new Date();
+  while(true){const ds=d.toISOString().slice(0,10);if(days.has(ds)){streak++;d.setDate(d.getDate()-1);}else break;}
+  return streak;
+}
+
+// ── ACTIVITY DASHBOARD ────────────────────────────────────────────────────
+function ActivityDashboard({actLog,users,session,isMobile}){
+  const[period,setPeriod]=React.useState("month");
+  const[selRole,setSelRole]=React.useState("all");
+  const now=new Date();
+  let startDate;
+  if(period==="month") startDate=new Date(now.getFullYear(),now.getMonth(),1);
+  else if(period==="quarter"){const q=Math.floor(now.getMonth()/3);startDate=new Date(now.getFullYear(),q*3,1);}
+  else startDate=new Date(now.getFullYear(),0,1);
+  const startStr=startDate.toISOString().slice(0,10);
+  const periodLog=(actLog||[]).filter(e=>e.date>=startStr);
+  const scoreMap=periodLog.reduce((acc,e)=>{if(!e.by||e.by==="System")return acc;acc[e.by]=(acc[e.by]||0)+Math.max(0,ACT_SCORE[e.action]||1);return acc;},{});
+  const countMap=periodLog.reduce((acc,e)=>{if(!e.by||e.by==="System")return acc;acc[e.by]=(acc[e.by]||0)+1;return acc;},{});
+  const breakMap=periodLog.reduce((acc,e)=>{if(!e.by||e.by==="System")return acc;if(!acc[e.by])acc[e.by]={};acc[e.by][e.action]=(acc[e.by][e.action]||0)+1;return acc;},{});
+  const lboard=(users||[]).filter(u=>u.status==="active").map(u=>({id:u.id,name:u.name,role:u.role,title:u.title||u.role,score:scoreMap[u.name]||0,count:countMap[u.name]||0,breakdown:breakMap[u.name]||{}})).sort((a,b)=>b.score-a.score);
+  const roleGroups=[...new Set(lboard.map(u=>u.role))];
+  const filtered=selRole==="all"?lboard:lboard.filter(u=>u.role===selRole);
+  const top3=lboard.filter(u=>u.score>0).slice(0,3);
+  const periodLabel={month:"This Month",quarter:"This Quarter",year:"This Year"}[period];
+  const MEDALS=["🥇","🥈","🥉"];
+  const podiumOrder=top3.length===3?[top3[1],top3[0],top3[2]]:top3;
+  return(
+    <div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:isMobile?"1.5rem":"1.8rem",color:"#0f172a"}}>📈 Team Activity</div>
+          <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:2}}>{periodLabel} · {lboard.filter(u=>u.score>0).length} active contributors</div>
+        </div>
+        <div style={{display:"flex",gap:4,background:"#f1f5f9",borderRadius:10,padding:3}}>
+          {[["month","Month"],["quarter","Quarter"],["year","Year"]].map(([k,l])=>(
+            <button key={k} onClick={()=>setPeriod(k)} style={{padding:"6px 14px",border:"none",borderRadius:8,fontFamily:"inherit",fontSize:".78rem",fontWeight:period===k?700:500,background:period===k?"#0f172a":"transparent",color:period===k?"#fff":"#64748b",cursor:"pointer"}}>{l}</button>
+          ))}
+        </div>
+      </div>
+      {top3.length>0&&(
+        <div style={{background:"linear-gradient(135deg,#1e293b 0%,#0f172a 100%)",borderRadius:16,padding:"20px 24px",marginBottom:20}}>
+          <div style={{fontSize:".7rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".1em",marginBottom:16}}>🏆 Top Performers · {periodLabel}</div>
+          <div style={{display:"flex",gap:isMobile?8:20,justifyContent:"center",alignItems:"flex-end"}}>
+            {podiumOrder.filter(Boolean).map(u=>{
+              const rank=lboard.indexOf(u)+1;const clr=ROLE_CLR[u.role]||"#64748b";const isFirst=rank===1;
+              return(
+                <div key={u.id} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6,maxWidth:isMobile?90:120}}>
+                  <div style={{fontSize:isFirst?"1.8rem":"1.2rem"}}>{MEDALS[rank-1]}</div>
+                  <div style={{width:isFirst?52:40,height:isFirst?52:40,borderRadius:"50%",background:clr+"33",border:`2.5px solid ${clr}`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:isFirst?"1.1rem":".85rem",color:clr}}>
+                    {u.name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
+                  </div>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{color:"#f8fafc",fontWeight:700,fontSize:isFirst?".9rem":".78rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:90}}>{u.name.split(" ")[0]}</div>
+                    <div style={{color:clr,fontWeight:800,fontSize:isFirst?"1.15rem":".9rem"}}>{u.score}pts</div>
+                    <div style={{color:"#475569",fontSize:".62rem"}}>{u.role}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      <div style={{display:"flex",gap:6,marginBottom:16,overflowX:"auto",paddingBottom:4}}>
+        <button onClick={()=>setSelRole("all")} style={{whiteSpace:"nowrap",padding:"5px 12px",border:"none",borderRadius:20,fontFamily:"inherit",fontSize:".75rem",fontWeight:selRole==="all"?700:500,background:selRole==="all"?"#0f172a":"#f1f5f9",color:selRole==="all"?"#fff":"#64748b",cursor:"pointer"}}>All Roles</button>
+        {roleGroups.map(r=>{const clr=ROLE_CLR[r]||"#64748b";return(
+          <button key={r} onClick={()=>setSelRole(r===selRole?"all":r)} style={{whiteSpace:"nowrap",padding:"5px 12px",border:"none",borderRadius:20,fontFamily:"inherit",fontSize:".75rem",fontWeight:selRole===r?700:500,background:selRole===r?clr:clr+"22",color:selRole===r?"#fff":clr,cursor:"pointer"}}>{r}</button>
+        );})}
+      </div>
+      <div style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:20}}>
+        <div style={{padding:"12px 16px",borderBottom:"1px solid #f1f5f9",background:"#f8fafc"}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".9rem",color:"#0f172a"}}>Leaderboard · {selRole==="all"?"All Roles":selRole}</span>
+        </div>
+        {filtered.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".85rem"}}>No activity data for this period.</div>}
+        {filtered.map((u,idx)=>{
+          const rank=lboard.indexOf(u)+1;const clr=ROLE_CLR[u.role]||"#64748b";
+          const topAct=Object.entries(u.breakdown).sort((a,b)=>b[1]-a[1])[0];
+          const isSelf=u.name===session?.name;
+          return(
+            <div key={u.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:"1px solid #f8fafc",background:isSelf?"rgba(245,158,11,.07)":idx===0?"rgba(16,185,129,.04)":"transparent"}}>
+              <div style={{width:28,textAlign:"center",fontWeight:800,fontSize:rank<=3?"1rem":".82rem",color:rank<=3?"#f59e0b":"#94a3b8"}}>{rank<=3?MEDALS[rank-1]:rank}</div>
+              <div style={{width:36,height:36,borderRadius:"50%",background:clr+"22",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".82rem",color:clr,flexShrink:0,border:isSelf?`2px solid ${clr}`:"2px solid transparent"}}>
+                {u.name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:isSelf?800:700,fontSize:".85rem",color:"#0f172a",display:"flex",alignItems:"center",gap:5}}>
+                  {u.name}
+                  {isSelf&&<span style={{fontSize:".62rem",color:clr,background:clr+"22",borderRadius:10,padding:"1px 6px",fontWeight:700}}>You</span>}
+                </div>
+                <div style={{fontSize:".7rem",color:"#94a3b8"}}>{u.role}{topAct?` · ${topAct[0]} ×${topAct[1]}`:""}</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                <div style={{fontWeight:800,color:u.score>0?clr:"#94a3b8",fontSize:".9rem"}}>{u.score} pts</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{u.count} actions</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{padding:"12px 16px",borderBottom:"1px solid #f1f5f9",background:"#f8fafc"}}>
+          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".9rem",color:"#0f172a"}}>Recent Activity</span>
+        </div>
+        {periodLog.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".85rem"}}>No activity this {period}.</div>}
+        {periodLog.slice(0,25).map((e,i)=>{
+          const u=(users||[]).find(x=>x.name===e.by);const clr=ROLE_CLR[u?.role]||"#64748b";
+          return(
+            <div key={e.id||i} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 16px",borderBottom:"1px solid #f8fafc"}}>
+              <div style={{width:28,height:28,borderRadius:"50%",background:clr+"22",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".68rem",color:clr,flexShrink:0,marginTop:1}}>
+                {(e.by||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:".8rem",color:"#0f172a"}}><strong>{e.by}</strong> · <span style={{color:"#0ea5e9"}}>{e.action}</span></div>
+                {e.detail&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.detail}</div>}
+              </div>
+              <div style={{fontSize:".65rem",color:"#94a3b8",flexShrink:0,textAlign:"right",lineHeight:1.4}}>{e.date}<br/>{e.time}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
-function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw}){
+function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog}){
           const[tab,setTab]=useState("password");
           const[curPw,setCurPw]=useState("");
           const[newPw,setNewPw]=useState("");
@@ -1768,6 +1896,19 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
             logActivityExt&&logActivityExt(null,"Profile Updated","User updated their name/username");
           };
 
+          // ── Personal stats computation ─────────────────────────────────
+          const myRole=session?.role||"";
+          const myName=session?.name||"";
+          const nowD=new Date();const mStart=new Date(nowD.getFullYear(),nowD.getMonth(),1).toISOString().slice(0,10);
+          const myMonthLog=(actLog||[]).filter(e=>e.by===myName&&e.date>=mStart);
+          const myScore=myMonthLog.reduce((s,e)=>s+Math.max(0,ACT_SCORE[e.action]||1),0);
+          const myStreak=calcStreak(actLog,myName);
+          const activeUsers=(users||[]).filter(u=>u.status==="active");
+          const sameRole=activeUsers.filter(u=>u.role===myRole);
+          const roleScores=sameRole.map(u=>({name:u.name,score:(actLog||[]).filter(e=>e.by===u.name&&e.date>=mStart).reduce((s,e)=>s+Math.max(0,ACT_SCORE[e.action]||1),0)})).sort((a,b)=>b.score-a.score);
+          const myRoleRank=(roleScores.findIndex(u=>u.name===myName))+1||roleScores.length;
+          const roleClr=ROLE_CLR[myRole]||"#64748b";
+
           return(
             <div style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               {/* Profile banner */}
@@ -1778,8 +1919,18 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
                 <div>
                   <div style={{fontWeight:700,color:"#fff",fontSize:"1rem"}}>{session?.name}</div>
                   <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:2}}>@{session?.username}</div>
-                  <div style={{display:"inline-block",marginTop:4,background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 10px",fontSize:".7rem",fontWeight:700,color:"#f59e0b"}}>{session?.title||role}</div>
+                  <div style={{display:"inline-block",marginTop:4,background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 10px",fontSize:".7rem",fontWeight:700,color:"#f59e0b"}}>{session?.title||myRole}</div>
                 </div>
+              </div>
+              {/* Stats strip */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",borderBottom:"1.5px solid #e2e8f0"}}>
+                {[{icon:"⭐",val:myScore+" pts",lbl:"This Month"},{icon:"🏅",val:`#${myRoleRank} of ${sameRole.length}`,lbl:myRole},{icon:"🔥",val:myStreak+(myStreak===1?" day":" days"),lbl:"Streak"}].map(({icon,val,lbl})=>(
+                  <div key={lbl} style={{padding:"12px 10px",textAlign:"center",borderRight:"1px solid #f1f5f9"}}>
+                    <div style={{fontSize:"1.1rem",marginBottom:2}}>{icon}</div>
+                    <div style={{fontWeight:800,fontSize:".88rem",color:roleClr}}>{val}</div>
+                    <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{lbl}</div>
+                  </div>
+                ))}
               </div>
 
               {/* Tabs */}
@@ -3272,6 +3423,7 @@ export default function App(){
     if(!checkPw(password,u.passwordHash)) return "Incorrect password.";
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
+    logActivity(null,"Login",u.role,sess.name);
     // Set default landing page per role
     const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home"};
     setPage(defaultPages[u.role]||"home");
@@ -3834,7 +3986,7 @@ export default function App(){
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
       {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
@@ -4009,6 +4161,7 @@ export default function App(){
       materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",drf:"📝",
       deliveries:"🚚",stockmove:"📦",reports:"📊",suppliers:"🏭",
       subcontractors:"👷",calendar:"📅",inventory:"📦",pmupdates:"📝",addenda:"⚠️",
+      activity:"🏆",
     };
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",
@@ -4018,8 +4171,23 @@ export default function App(){
       swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
-      pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",
+      pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",activity:"Activity",
     };
+    // Notification badge counts per tab
+    const openBlockersAll=(blockers||[]).filter(b=>b.status==="Open").length;
+    const pendingMRs=(mreqs||[]).filter(m=>m.status==="Submitted"||m.status==="Reviewed").length;
+    const pendingBRs=(breqs||[]).filter(b=>b.status==="Submitted"||b.status==="Under Review").length;
+    const pendingDRFs=(drfs||[]).filter(d=>d.status==="New"||d.status==="In Progress").length;
+    const BADGE_MAP={
+      projects:openBlockersAll||0,
+      materialreq:pendingMRs||0,
+      budgetreq:pendingBRs||0,
+      drf:pendingDRFs||0,
+    };
+    const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
+    const BadgeDot=({count})=>count>0?(
+      <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(18px)",background:"#ef4444",color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:".6rem",fontWeight:800,lineHeight:1.2,minWidth:14,textAlign:"center"}}>{count>9?"9+":count}</span>
+    ):null;
     const navigate=(id)=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);};
     // For Manager show fixed key tabs + More; others show first 4 + Me
     const primaryIds=role==="Manager"
@@ -4076,9 +4244,10 @@ export default function App(){
             if(id==="__more__"){
               return(
                 <button key="__more__" onClick={()=>setMoreNavOpen(o=>!o)}
-                  style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:moreNavOpen?"rgba(245,158,11,.15)":"transparent",color:moreNavOpen?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:moreNavOpen?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
+                  style={{flex:1,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:moreNavOpen?"rgba(245,158,11,.15)":"transparent",color:moreNavOpen?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:moreNavOpen?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
                   <span style={{fontSize:"1.1rem",lineHeight:1}}>☰</span>
                   <span style={{fontSize:".55rem",fontWeight:moreNavOpen?700:400,letterSpacing:".2px"}}>More</span>
+                  <BadgeDot count={moreBadge}/>
                 </button>
               );
             }
@@ -4095,11 +4264,13 @@ export default function App(){
             const active=page===id;
             const icon=NAV_ICONS[id]||"•";
             const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+            const bc=BADGE_MAP[id]||0;
             return(
               <button key={id} onClick={()=>navigate(id)}
-                style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
+                style={{flex:1,position:"relative",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
                 <span style={{fontSize:"1.1rem",lineHeight:1}}>{icon}</span>
                 <span style={{fontSize:".55rem",fontWeight:active?700:400,letterSpacing:".2px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:54}}>{label}</span>
+                <BadgeDot count={bc}/>
               </button>
             );
           })}
@@ -7417,6 +7588,12 @@ export default function App(){
   if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
 
   // ── PROJECT CARDS ────────────────────────────────────────────────────────────
+  // ── TEAM ACTIVITY DASHBOARD ──────────────────────────────────────────────
+  if(page==="activity") return(
+    <Wrap>
+      <ActivityDashboard actLog={actLog} users={users} session={session} isMobile={isMobile}/>
+    </Wrap>
+  );
   // ── MY ACCOUNT PAGE ─────────────────────────────────────────────────────
   if(page==="myaccount") return(
     <Wrap>
@@ -7428,7 +7605,7 @@ export default function App(){
             <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:1}}>Logged in as <strong>{session?.username}</strong> · {role}</div>
           </div>
         </div>
-        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw}/>
+        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog}/>
       </div>
     </Wrap>
   );
@@ -12796,7 +12973,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                 {dept}
               </button>
             ))}
-            {[["tat","⏰ Urgent"],["pct","📊 Least done"],["client","🔤 Client"]].map(([v,l])=>(
+            {[["tat","⏰ Urgent"],["pct","📊 Least done"],["project","🔤 Project"],["client","📁 Client"]].map(([v,l])=>(
               <button key={v} onClick={()=>setPcSort(s=>s===v?null:v)}
                 style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pcSort===v?"#1e293b":"#e2e8f0"}`,background:pcSort===v?"#1e293b":"#fff",color:pcSort===v?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcSort===v?700:400,fontSize:".72rem",cursor:"pointer"}}>
                 {l}
@@ -12812,6 +12989,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
             if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
+              if(pcSort==="project")return (a.contact||a.client).localeCompare(b.contact||b.client);
               if(pcSort==="pct")return projPct(pcards[a.id])-projPct(pcards[b.id]);
               if(pcSort==="tat"){
                 const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/86400000):999;
@@ -12839,8 +13017,9 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                       onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                          <div style={{fontSize:".7rem",color:"#64748b"}}>{d.ceNo||"No CE"} · {pcAmt(d)}</div>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                          {d.contact&&<div style={{fontSize:".68rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:1}}>📁 {d.client}</div>}
+                          <div style={{fontSize:".7rem",color:"#64748b",marginTop:d.contact?1:0}}>{d.ceNo||"No CE"} · {pcAmt(d)}</div>
                           {joR&&<div style={{fontSize:".67rem",color:"#3b82f6",marginTop:1}}>📋 {joR.joNo} · {[joR.pm1,joR.pm2].filter(Boolean).join(", ")||"No PM"}</div>}
                         </div>
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0,marginLeft:10}}>
@@ -12901,7 +13080,8 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
               <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"14px":"18px 22px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:12}}>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.client}</div>
+                    <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.contact||deal?.client}</div>
+                    {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
                     <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deal?.ceNo} · {pcAmt(deal)} · <span style={{color:"#8b5cf6",fontWeight:600}}>{deal?.stage?.replace(/^\d+ · /,"")}</span></div>
                     {jo&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:3}}>📋 {jo.joNo} · PMs: {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")||"Not assigned"}</div>}
                   </div>
