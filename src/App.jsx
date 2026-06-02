@@ -889,12 +889,13 @@ const FileAttachments=({folder,label="Attachments"})=>{
 };
 
 const Modal=({open,onClose,title,children,wide})=>{
+  const mob=window.innerWidth<768;
   if(!open) return null;
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={onClose}>
-      <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:wide?640:480,maxHeight:"94vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
-          <div style={{fontWeight:800,fontSize:"1.1rem",color:"#0f172a"}}>{title}</div>
+    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16}} onClick={mob?undefined:onClose}>
+      <div style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:wide?640:480,maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:mob?16:22}}>
+          <div style={{fontWeight:800,fontSize:mob?"1rem":"1.1rem",color:"#0f172a"}}>{title}</div>
           <button onClick={onClose} style={{background:"#f1f5f9",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
         {children}
@@ -3454,6 +3455,8 @@ export default function App(){
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
   const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
+  const[isMobile,     setIsMobile]     = useState(()=>window.innerWidth<768);
+  useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
@@ -3955,15 +3958,94 @@ export default function App(){
       </aside>
     );
   };
+  // ── MOBILE HEADER (top bar) ───────────────────────────────────────────────
+  const MobileHeader=()=>{
+    if(!isMobile) return null;
+    return(
+      <div style={{position:"fixed",top:0,left:0,right:0,height:48,background:"#1e293b",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:300,boxShadow:"0 2px 8px rgba(0,0,0,.25)"}} className="noprint">
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"#fff",letterSpacing:-.5}}>
+          GMD <span style={{color:"#f59e0b"}}>FabHub</span>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
+            {session?.name?.split(" ")[0]} · {session?.title||role}
+          </span>
+          <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"4px 8px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>↩</button>
+        </div>
+      </div>
+    );
+  };
+
+  // ── MOBILE BOTTOM NAV ─────────────────────────────────────────────────────
+  const MobileBottomNav=()=>{
+    if(!isMobile) return null;
+    const groups=navMap[role]||[];
+    const allItems=groups.flatMap(g=>g.items||[]);
+    // Pick first 4 unique items + fixed "Me" tab
+    const primary=allItems.slice(0,4);
+    const NAV_ICONS={
+      home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
+      checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
+      procurement:"📦",clients:"🏢",accounts:"👥",collections:"💵",
+      materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",drf:"📝",
+      deliveries:"🚚",stockmove:"📦",reports:"📊",suppliers:"🏭",
+      subcontractors:"👷",calendar:"📅",inventory:"📦",pmupdates:"📝",addenda:"⚠️",
+    };
+    const NAV_LABELS={
+      home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",
+      billing:"Billing",checklist:"Checklist",joborders:"JOs",
+      costanalysis:"Costs",accounting:"Accounts",procurement:"Orders",
+      clients:"Clients",materialreq:"Materials",budgetreq:"Budget",
+      swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
+      stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
+      subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
+      pmupdates:"Updates",addenda:"Scope",
+    };
+    const tabs=[...primary,{id:"myaccount",l:"Me"}];
+    return(
+      <div style={{position:"fixed",bottom:0,left:0,right:0,height:62,background:"#1e293b",display:"flex",alignItems:"stretch",zIndex:300,borderTop:"1px solid rgba(255,255,255,.08)",boxShadow:"0 -2px 12px rgba(0,0,0,.2)"}} className="noprint">
+        {tabs.map(({id,l})=>{
+          const active=page===id;
+          const icon=id==="myaccount"?"👤":(NAV_ICONS[id]||"•");
+          const label=id==="myaccount"?"Me":(NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l);
+          return(
+            <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);}}
+              style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,border:"none",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#64748b",fontFamily:"inherit",cursor:"pointer",padding:"6px 0",borderTop:active?"2px solid #f59e0b":"2px solid transparent",transition:"all .12s"}}>
+              <span style={{fontSize:"1.1rem",lineHeight:1}}>{icon}</span>
+              <span style={{fontSize:".55rem",fontWeight:active?700:400,letterSpacing:".2px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:54}}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
   const Wrap=React.useCallback(({children})=>{
     const W=navCollapsed?64:220;
     return(
-      <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:W,transition:"margin-left .2s"}}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); .fi{animation:fadeIn .2s ease} @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}} @media print{.noprint{display:none}}`}</style>
-        <Nav/>
+      <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:isMobile?0:W,transition:"margin-left .2s"}}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap');
+          .fi{animation:fadeIn .2s ease}
+          @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+          @media print{.noprint{display:none}}
+          body{overflow-x:hidden}
+          @media(max-width:767px){
+            input,select,textarea{font-size:16px!important}
+            select{max-width:100%}
+            .grid2{grid-template-columns:1fr!important}
+            .grid3{grid-template-columns:1fr!important}
+            .grid4{grid-template-columns:1fr 1fr!important}
+            .tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+            .hide-mobile{display:none!important}
+            .card-stack{flex-direction:column!important}
+          }
+        `}</style>
+        {!isMobile&&<Nav/>}
+        <MobileHeader/>
         <Toaster/>
         {SyncBanner}
-        <div style={{maxWidth:1140,margin:"0 auto",padding:"22px 24px"}} className="fi">{children}</div>
+        <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?56:undefined,paddingBottom:isMobile?72:undefined}} className="fi">{children}</div>
       {showExportRef.current&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -4054,9 +4136,10 @@ export default function App(){
           <Btn variant="ghost" onClick={()=>setInfModal(false)}>Cancel</Btn>
         </div>
       </Modal>
+      <MobileBottomNav/>
     </div>
   );
-  },[navCollapsed, role]);
+  },[navCollapsed, isMobile, role, page]);
   // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
   if(!ready) return(
     <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -9489,8 +9572,8 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
   const isLogin = authView==="login";
 
   return(
-    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:24,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);}`}</style>
+    <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);} input,select,textarea{font-size:16px;}`}</style>
       <div style={{width:"100%",maxWidth:400}}>
         {/* Logo */}
         <div style={{textAlign:"center",marginBottom:32}}>
