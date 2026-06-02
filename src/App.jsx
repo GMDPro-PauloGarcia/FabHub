@@ -4184,7 +4184,6 @@ export default function App(){
       budgetreq:pendingBRs||0,
       drf:pendingDRFs||0,
     };
-    const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
     const BadgeDot=({count})=>count>0?(
       <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(18px)",background:"#ef4444",color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:".6rem",fontWeight:800,lineHeight:1.2,minWidth:14,textAlign:"center"}}>{count>9?"9+":count}</span>
     ):null;
@@ -4193,6 +4192,7 @@ export default function App(){
     const primaryIds=role==="Manager"
       ? ["home","pipeline","projects","finance"]
       : allItems.slice(0,4).map(x=>x.id);
+    const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
     const tabs=[
       ...primaryIds.map(id=>({id,l:allItems.find(x=>x.id===id)?.l||id})),
       {id:"__more__",l:"More"},
