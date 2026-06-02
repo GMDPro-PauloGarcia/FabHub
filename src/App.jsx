@@ -3126,9 +3126,21 @@ export default function App(){
 
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
   const sendTelegramNotification=useCallback(async(dept,message)=>{
-    const token=botSettings.token;
+    let token=botSettings.token;
+    let ids=botSettings.chatIds;
+    // If botSettings not yet hydrated (race with Supabase load), fetch live
+    if(!token && isSupabaseReady()){
+      try{
+        const {data:row}=await supabase.from('app_settings').select('value').eq('key','botsettings').single();
+        if(row?.value?.token){
+          token=row.value.token;
+          ids=row.value.chatIds;
+          setBotSettings(row.value);
+          localStorage.setItem(KEYS.botsettings,JSON.stringify(row.value));
+        }
+      }catch{}
+    }
     if(!token) return;
-    const ids=botSettings.chatIds;
     const chatId=ids?.[dept]||ids?.management;
     if(!chatId) return;
     try{
