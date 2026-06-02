@@ -12346,8 +12346,7 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
       </div>
     </div>
     <div class="logo-box">
-      <div style="font-size:52px;line-height:1">⬡</div>
-      <div class="logo-text">GMD <span>PRO</span></div>
+      <img src="/gmd-logo.png" alt="GMD PRO" style="height:56px;width:auto;display:block;margin-left:auto;">
     </div>
   </div>
 
@@ -13165,11 +13164,6 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
   .co-info{font-size:10.5px;color:#555;line-height:1.7;}
   .co-name{font-weight:900;font-size:13px;color:#1a1a1a;margin-bottom:3px;letter-spacing:.3px;}
   .logo-wrap{text-align:right;}
-  .logo-hex{display:inline-block;width:46px;height:52px;background:#f97316;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);position:relative;margin-bottom:4px;}
-  .logo-hex-inner{position:absolute;inset:6px;background:#fff;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);}
-  .logo-text{font-size:20px;font-weight:900;letter-spacing:2px;color:#1a1a1a;display:block;}
-  .logo-text span{color:#f97316;}
-  .logo-sub{font-size:9px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;}
   /* ── Doc title ── */
   .doc-title{font-size:18px;font-weight:900;color:#f97316;letter-spacing:.5px;margin-bottom:4px;}
   .doc-meta{font-size:10.5px;color:#666;margin-bottom:24px;}
@@ -13228,13 +13222,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
       </div>
     </div>
     <div class="logo-wrap">
-      <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;">
-        <div class="logo-hex"><div class="logo-hex-inner"></div></div>
-        <div>
-          <span class="logo-text">GMD<span>PRO</span></span>
-          <span class="logo-sub">Productions Inc.</span>
-        </div>
-      </div>
+      <img src="/gmd-logo.png" alt="GMD PRO" style="height:56px;width:auto;display:block;margin-left:auto;">
     </div>
   </div>
 
