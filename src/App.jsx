@@ -5,18 +5,18 @@ import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLo
 // GMD Real 13-Stage Workflow
 const DEAL_STAGES = [
   "01 · BizDev",
-  "02 · Client Engagement",
-  "03 · Design Request & Folder Setup",
-  "04 · Design & CE in Progress",
-  "05 · Client Approval / Revision",
-  "06 · Project Kickoff",
-  "07 · Budget & Briefing",
-  "08 · Fabrication / Construction",
-  "09 · Site Visit & Progress Billing",
+  "02 · Engagement",
+  "03 · Design & Folder",
+  "04 · CE in Progress",
+  "05 · For Approval",
+  "06 · Kickoff",
+  "07 · Briefing",
+  "08 · Fabrication",
+  "09 · Site & Billing",
   "10 · Installation",
   "11 · Punchlist",
-  "12 · Project Close-Out",
-  "13 · Client Feedback",
+  "12 · Close-Out",
+  "13 · Feedback",
   "Cancelled",
   "Did Not Win",
 ];
@@ -24,18 +24,18 @@ const DEAL_STAGES = [
 // Normalize any stage string to canonical format
 const STAGE_ALIASES={
   "bizdev":"01 · BizDev","biz dev":"01 · BizDev","01":"01 · BizDev","1":"01 · BizDev",
-  "client engagement":"02 · Client Engagement","engagement":"02 · Client Engagement","02":"02 · Client Engagement","2":"02 · Client Engagement",
-  "design request":"03 · Design Request & Folder Setup","folder setup":"03 · Design Request & Folder Setup","03":"03 · Design Request & Folder Setup","3":"03 · Design Request & Folder Setup",
-  "design & ce in progress":"04 · Design & CE in Progress","ce in progress":"04 · Design & CE in Progress","04":"04 · Design & CE in Progress","4":"04 · Design & CE in Progress",
-  "client approval":"05 · Client Approval / Revision","approval":"05 · Client Approval / Revision","revision":"05 · Client Approval / Revision","05":"05 · Client Approval / Revision","5":"05 · Client Approval / Revision",
-  "project kickoff":"06 · Project Kickoff","kickoff":"06 · Project Kickoff","awarded":"06 · Project Kickoff","06":"06 · Project Kickoff","6":"06 · Project Kickoff",
-  "budget & briefing":"07 · Budget & Briefing","briefing":"07 · Budget & Briefing","07":"07 · Budget & Briefing","7":"07 · Budget & Briefing",
-  "fabrication":"08 · Fabrication / Construction","construction":"08 · Fabrication / Construction","fabrication / construction":"08 · Fabrication / Construction","08":"08 · Fabrication / Construction","8":"08 · Fabrication / Construction",
-  "site visit":"09 · Site Visit & Progress Billing","progress billing":"09 · Site Visit & Progress Billing","09":"09 · Site Visit & Progress Billing","9":"09 · Site Visit & Progress Billing",
+  "client engagement":"02 · Engagement","engagement":"02 · Engagement","02":"02 · Engagement","2":"02 · Engagement",
+  "design request":"03 · Design & Folder","folder setup":"03 · Design & Folder","03":"03 · Design & Folder","3":"03 · Design & Folder",
+  "design & ce in progress":"04 · CE in Progress","ce in progress":"04 · CE in Progress","04":"04 · CE in Progress","4":"04 · CE in Progress",
+  "client approval":"05 · For Approval","approval":"05 · For Approval","revision":"05 · For Approval","05":"05 · For Approval","5":"05 · For Approval",
+  "project kickoff":"06 · Kickoff","kickoff":"06 · Kickoff","awarded":"06 · Kickoff","06":"06 · Kickoff","6":"06 · Kickoff",
+  "budget & briefing":"07 · Briefing","briefing":"07 · Briefing","07":"07 · Briefing","7":"07 · Briefing",
+  "fabrication":"08 · Fabrication","construction":"08 · Fabrication","fabrication / construction":"08 · Fabrication","08":"08 · Fabrication","8":"08 · Fabrication",
+  "site visit":"09 · Site & Billing","progress billing":"09 · Site & Billing","09":"09 · Site & Billing","9":"09 · Site & Billing",
   "installation":"10 · Installation","10":"10 · Installation",
   "punchlist":"11 · Punchlist","punch list":"11 · Punchlist","11":"11 · Punchlist",
-  "project close-out":"12 · Project Close-Out","close out":"12 · Project Close-Out","closeout":"12 · Project Close-Out","close-out":"12 · Project Close-Out","12":"12 · Project Close-Out",
-  "client feedback":"13 · Client Feedback","feedback":"13 · Client Feedback","13":"13 · Client Feedback",
+  "project close-out":"12 · Close-Out","close out":"12 · Close-Out","closeout":"12 · Close-Out","close-out":"12 · Close-Out","12":"12 · Close-Out",
+  "client feedback":"13 · Feedback","feedback":"13 · Feedback","13":"13 · Feedback",
   "cancelled":"Cancelled","canceled":"Cancelled",
 };
 const normalizeStage=(s)=>{
@@ -53,28 +53,28 @@ const normalizeStage=(s)=>{
   }
   return "01 · BizDev";
 };
-const WON_STAGES    = ["06 · Project Kickoff","07 · Budget & Briefing","08 · Fabrication / Construction","09 · Site Visit & Progress Billing","10 · Installation","11 · Punchlist","12 · Project Close-Out","13 · Client Feedback"];
-const ACTIVE_STAGES = ["01 · BizDev","02 · Client Engagement","03 · Design Request & Folder Setup","04 · Design & CE in Progress","05 · Client Approval / Revision"];
-const PAULO_GATE    = ["05 · Client Approval / Revision","06 · Project Kickoff"];
+const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out","13 · Feedback"];
+const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];
+const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
 const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
 const STAGE_OWNER   = {
   "01 · BizDev":                       "BizDev Director",
-  "02 · Client Engagement":            "Account Executive",
-  "03 · Design Request & Folder Setup":"Account Executive",
-  "04 · Design & CE in Progress":      "Design + Cost Estimator",
-  "05 · Client Approval / Revision":   "Account Executive + Paulo",
-  "06 · Project Kickoff":              "Sales + Finance + Ops",
-  "07 · Budget & Briefing":            "Cost Control + Project Manager",
-  "08 · Fabrication / Construction":   "Operations + Procurement",
-  "09 · Site Visit & Progress Billing":"Project Manager + Finance",
+  "02 · Engagement":            "Account Executive",
+  "03 · Design & Folder":"Account Executive",
+  "04 · CE in Progress":      "Design + Cost Estimator",
+  "05 · For Approval":   "Account Executive + Paulo",
+  "06 · Kickoff":              "Sales + Finance + Ops",
+  "07 · Briefing":            "Cost Control + Project Manager",
+  "08 · Fabrication":   "Operations + Procurement",
+  "09 · Site & Billing":"Project Manager + Finance",
   "10 · Installation":                 "Operations",
   "11 · Punchlist":                    "Project Manager",
-  "12 · Project Close-Out":            "Project Manager + Finance",
-  "13 · Client Feedback":              "Account Executive",
+  "12 · Close-Out":            "Project Manager + Finance",
+  "13 · Feedback":              "Account Executive",
 };
 const STAGE_DURATION = {
-  "04 · Design & CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
-  "08 · Fabrication / Construction":   "Fab: 45 days · Construction: 45–60 days",
+  "04 · CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
+  "08 · Fabrication":   "Fab: 45 days · Construction: 45–60 days",
 };
 const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
@@ -96,18 +96,18 @@ const PRIORITIES      = ["Normal","High","Urgent"];
 
 const STAGE_CLR = {
   "01 · BizDev":                       "#94a3b8",
-  "02 · Client Engagement":            "#60a5fa",
-  "03 · Design Request & Folder Setup":"#a78bfa",
-  "04 · Design & CE in Progress":      "#f59e0b",
-  "05 · Client Approval / Revision":   "#f97316",
-  "06 · Project Kickoff":              "#10b981",
-  "07 · Budget & Briefing":            "#06b6d4",
-  "08 · Fabrication / Construction":   "#3b82f6",
-  "09 · Site Visit & Progress Billing":"#8b5cf6",
+  "02 · Engagement":            "#60a5fa",
+  "03 · Design & Folder":"#a78bfa",
+  "04 · CE in Progress":      "#f59e0b",
+  "05 · For Approval":   "#f97316",
+  "06 · Kickoff":              "#10b981",
+  "07 · Briefing":            "#06b6d4",
+  "08 · Fabrication":   "#3b82f6",
+  "09 · Site & Billing":"#8b5cf6",
   "10 · Installation":                 "#ec4899",
   "11 · Punchlist":                    "#eab308",
-  "12 · Project Close-Out":            "#059669",
-  "13 · Client Feedback":              "#4ade80",
+  "12 · Close-Out":            "#059669",
+  "13 · Feedback":              "#4ade80",
   "Cancelled":                         "#ef4444",
   "Did Not Win":                       "#94a3b8",
 };
@@ -1055,7 +1055,7 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
         <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"14px 18px",marginBottom:20}}>
           <div style={{fontWeight:700,color:"#059669",marginBottom:8,fontSize:".9rem"}}>Confirming this award will:</div>
           <div style={{fontSize:".82rem",color:"#065f46",lineHeight:2}}>
-            ✓ Move to <strong>Stage 06 · Project Kickoff</strong><br/>
+            ✓ Move to <strong>Stage 06 · Kickoff</strong><br/>
             ✓ Issue a <strong>Job Order</strong> to all departments<br/>
             ✓ Create a <strong>Project Card</strong> — all depts start their task checklists<br/>
             ✓ Notify <strong>Finance</strong> to set up billing milestones<br/>
@@ -3282,7 +3282,7 @@ export default function App(){
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals  =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
-  const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"),[deals]);
+  const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="13 · Feedback"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
   useEffect(()=>{
     const missing=wonDeals.filter(d=>!projs[d.id]);
@@ -3496,7 +3496,7 @@ export default function App(){
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
-    if(data.stage==="06 · Project Kickoff" && !editDeal && !wasAlreadyAwarded) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
+    if(data.stage==="06 · Kickoff" && !editDeal && !wasAlreadyAwarded) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
     // Save new client to master list if not already present
@@ -3562,7 +3562,7 @@ export default function App(){
 
   const stageQ=(id,st)=>{
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
-    if(st==="06 · Project Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
+    if(st==="06 · Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
     upDeals(ds=>ds.map(d=>{
       if(d.id!==id) return d;
       const prob=WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability;
@@ -3583,7 +3583,7 @@ export default function App(){
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
-      stage:"06 · Project Kickoff",
+      stage:"06 · Kickoff",
       probability:100,
       paymentStatus:"Unpaid",
       notes:form.scopeNotes||d.notes,
@@ -3591,7 +3591,7 @@ export default function App(){
     }:d));
     // Persist stage change to Supabase immediately so refresh doesn't lose the award
     if(isSupabaseReady()) sbUpdate('deals',id,{
-      stage:"06 · Project Kickoff",
+      stage:"06 · Kickoff",
       probability:100,
       payment_status:"Unpaid",
       notes:form.scopeNotes||awardModal.notes||"",
@@ -6438,15 +6438,14 @@ export default function App(){
                               <div key={d.id} style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<grpDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
                                 <div style={{flex:1,minWidth:0}}>
                                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                                  <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                                    {d.ceNo&&<span>{d.ceNo}</span>}
-                                    {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
-                                    {grp==="Other"&&d.ceType&&<span style={{background:"#f1f5f9",color:"#64748b",borderRadius:4,padding:"0 5px",fontSize:".6rem",fontWeight:600,border:"1px solid #e2e8f0"}}>{d.ceType}</span>}
-                                    {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
+                                  <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2,display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
+                                    {d.ceNo&&<span style={{fontWeight:600,color:"#64748b"}}>{d.ceNo}</span>}
+                                    {d.contact&&<span style={{color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120,whiteSpace:"nowrap"}}>{d.contact}</span>}
+                                    {jo?.pm1&&<span style={{color:"#64748b"}}>👷 {jo.pm1.split(" ")[0]}</span>}
                                     {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".6rem"}}>{ae}</span>}
-                                    <span style={{color:pc?.targetEndDate?"#8b5cf6":"#cbd5e1",fontSize:".63rem"}}>📅 {tatLabel}</span>
+                                    {pc?.targetEndDate&&<span style={{color:"#8b5cf6",fontSize:".62rem"}}>📅 {tatLabel}</span>}
                                     {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
-                                      <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 5px",fontWeight:700,fontSize:".62rem"}}>{e.type}</span>
+                                      <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 4px",fontWeight:700,fontSize:".6rem"}}>{e.type}</span>
                                     ))}
                                   </div>
                                 </div>
@@ -6466,7 +6465,7 @@ export default function App(){
                                     sendTelegramNotification("sales",stMsg);
                                     sendTelegramNotification("management",stMsg);
                                     toastEmit(`Stage updated → ${st}`);
-                                  }} style={{width:110,fontSize:".63rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 4px",fontFamily:"inherit",color:d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"?"#059669":"#475569",background:d.stage==="12 · Project Close-Out"||d.stage==="13 · Client Feedback"?"#f0fdf4":"#fff",fontWeight:600,cursor:"pointer",flexShrink:0}}>
+                                  }} style={{width:110,fontSize:".63rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 4px",fontFamily:"inherit",color:d.stage==="12 · Close-Out"||d.stage==="13 · Feedback"?"#059669":"#475569",background:d.stage==="12 · Close-Out"||d.stage==="13 · Feedback"?"#f0fdf4":"#fff",fontWeight:600,cursor:"pointer",flexShrink:0}}>
                                     {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
                                   </select>
                                 ):(
@@ -8617,8 +8616,8 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         const wExpired=wEnd&&wEnd<today;
         const wActive=warranty.active&&wEnd&&wEnd>=today;
         const dealStage=projDeal?.stage||"";
-        const isClosedOut=dealStage==="12 · Project Close-Out"||dealStage==="13 · Client Feedback";
-        const isFeedback=dealStage==="13 · Client Feedback";
+        const isClosedOut=dealStage==="12 · Close-Out"||dealStage==="13 · Feedback";
+        const isFeedback=dealStage==="13 · Feedback";
         const stageIdx=WON_STAGES.indexOf(dealStage);
         return(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -8634,17 +8633,17 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
               {!isClosedOut&&onCloseProject&&(
                 <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
                   <button onClick={()=>{
-                    onCloseProject(selProj,"12 · Project Close-Out");
+                    onCloseProject(selProj,"12 · Close-Out");
                     toastEmit("Project moved to Close-Out","success");
                   }} style={{flex:1,background:"#059669",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>
                     🔒 Mark as Project Close-Out (Stage 12)
                   </button>
                 </div>
               )}
-              {dealStage==="12 · Project Close-Out"&&onCloseProject&&(
+              {dealStage==="12 · Close-Out"&&onCloseProject&&(
                 <div style={{marginTop:10}}>
                   <button onClick={()=>{
-                    onCloseProject(selProj,"13 · Client Feedback");
+                    onCloseProject(selProj,"13 · Feedback");
                     toastEmit("Project moved to Client Feedback stage","success");
                   }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#059669",cursor:"pointer"}}>
                     💬 Advance to Client Feedback (Stage 13)
