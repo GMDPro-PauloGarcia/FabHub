@@ -13128,6 +13128,205 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
           const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
           const canSetTAT=role==="Manager"||role==="QS"||role==="Operations";
 
+          // ── Client Progress Report PDF ────────────────────────────────────
+          const generateClientReport=()=>{
+            const reportDate=new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
+            const pms=[jo?.pm1,jo?.pm2,jo?.pm3,jo?.coordinator].filter(Boolean).join(", ")||"Not assigned";
+            const allUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date));
+            const projName=deal?.contact||deal?.client||"—";
+            const deptRows=DEPT_ORDER.map(dept=>{
+              const d=card?.departments?.[dept];
+              const dk=(d?.tasks||[]).filter(t=>t.done).length;
+              const dt=(d?.tasks||[]).length||DEFAULT_DEPT_TASKS[dept]?.length||0;
+              return{dept,done:d?.done,dk,dt};
+            });
+            const phaseRows=PHASES.map(ph=>{
+              const pi=phaseIdx(deal?.stage);
+              const myIdx=PHASES.indexOf(ph);
+              return{...ph,status:myIdx<pi?"done":myIdx===pi?"current":"pending"};
+            });
+            const progressBar=(pct,color="#f97316",height=14)=>`
+              <div style="background:#e8e8e8;border-radius:${height/2}px;height:${height}px;overflow:hidden;margin:4px 0;">
+                <div style="height:100%;width:${Math.max(0,Math.min(100,pct))}%;background:${color};border-radius:${height/2}px;"></div>
+              </div>`;
+            const deptClr={Sales:"#10b981",Design:"#8b5cf6",QS:"#f59e0b",Procurement:"#06b6d4",Operations:"#f97316",Finance:"#3b82f6"};
+            const win=window.open("","_blank","width=960,height=1100");
+            if(!win){alert("Please allow pop-ups to generate the report.");return;}
+            win.document.write(`<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8">
+<title>Progress Report — ${projName}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#1a1a1a;background:#fff;line-height:1.5;}
+  .page{max-width:780px;margin:0 auto;padding:40px 48px;}
+  /* ── Letterhead ── */
+  .letterhead{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:18px;border-bottom:3px solid #f97316;margin-bottom:24px;}
+  .co-info{font-size:10.5px;color:#555;line-height:1.7;}
+  .co-name{font-weight:900;font-size:13px;color:#1a1a1a;margin-bottom:3px;letter-spacing:.3px;}
+  .logo-wrap{text-align:right;}
+  .logo-hex{display:inline-block;width:46px;height:52px;background:#f97316;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);position:relative;margin-bottom:4px;}
+  .logo-hex-inner{position:absolute;inset:6px;background:#fff;clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);}
+  .logo-text{font-size:20px;font-weight:900;letter-spacing:2px;color:#1a1a1a;display:block;}
+  .logo-text span{color:#f97316;}
+  .logo-sub{font-size:9px;font-weight:700;color:#888;letter-spacing:1.5px;text-transform:uppercase;}
+  /* ── Doc title ── */
+  .doc-title{font-size:18px;font-weight:900;color:#f97316;letter-spacing:.5px;margin-bottom:4px;}
+  .doc-meta{font-size:10.5px;color:#666;margin-bottom:24px;}
+  /* ── Section ── */
+  .section{margin-bottom:22px;}
+  .section-title{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#f97316;border-bottom:1.5px solid #f97316;padding-bottom:4px;margin-bottom:12px;}
+  /* ── Info grid ── */
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;}
+  .info-row{display:flex;gap:6px;font-size:11px;}
+  .info-label{font-weight:700;color:#555;min-width:90px;flex-shrink:0;}
+  .info-val{color:#1a1a1a;}
+  /* ── Phase timeline ── */
+  .phase-row{display:flex;gap:0;margin:8px 0;}
+  .phase-box{flex:1;text-align:center;padding:10px 4px 8px;border:1.5px solid #e0e0e0;border-right:none;font-size:10px;position:relative;}
+  .phase-box:last-child{border-right:1.5px solid #e0e0e0;}
+  .phase-box.done{background:#f0fdf4;border-color:#6ee7b7;color:#059669;}
+  .phase-box.current{background:#fff7ed;border-color:#f97316;color:#f97316;}
+  .phase-box.pending{background:#f8fafc;color:#94a3b8;}
+  .phase-icon{font-size:16px;display:block;margin-bottom:3px;}
+  .phase-label{font-weight:700;font-size:9.5px;display:block;}
+  .phase-badge{font-size:8.5px;margin-top:2px;display:block;}
+  /* ── Dept grid ── */
+  .dept-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
+  .dept-box{padding:8px 6px;border-radius:6px;text-align:center;border:1.5px solid #e0e0e0;}
+  .dept-box.done{border-color:currentColor;}
+  .dept-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+  .dept-status{font-size:10px;margin-top:3px;}
+  /* ── Updates table ── */
+  .upd-table{width:100%;border-collapse:collapse;}
+  .upd-table th{background:#1e293b;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 10px;text-align:left;}
+  .upd-table td{padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:11px;vertical-align:top;}
+  .upd-table tr:last-child td{border-bottom:none;}
+  .upd-table tr:nth-child(even) td{background:#f8fafc;}
+  .upd-date{white-space:nowrap;color:#64748b;font-size:10.5px;}
+  .upd-stage{color:#f97316;font-weight:700;font-size:10px;white-space:nowrap;}
+  .upd-text{color:#1a1a1a;line-height:1.55;}
+  /* ── Footer ── */
+  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:9.5px;color:#999;}
+  @media print{
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    .page{padding:28px 36px;}
+    .no-print{display:none!important;}
+  }
+</style>
+</head><body>
+<div class="page">
+
+  <!-- Letterhead -->
+  <div class="letterhead">
+    <div>
+      <div class="co-name">GMD Productions Inc.</div>
+      <div class="co-info">
+        Interior Design &amp; Fabrication<br>
+        Metro Manila, Philippines<br>
+        www.gmd.ph
+      </div>
+    </div>
+    <div class="logo-wrap">
+      <div style="display:flex;align-items:center;gap:10px;justify-content:flex-end;">
+        <div class="logo-hex"><div class="logo-hex-inner"></div></div>
+        <div>
+          <span class="logo-text">GMD<span>PRO</span></span>
+          <span class="logo-sub">Productions Inc.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Doc title -->
+  <div class="doc-title">PROJECT PROGRESS REPORT</div>
+  <div class="doc-meta">Report Date: ${reportDate} &nbsp;·&nbsp; Prepared by: ${session?.name||"—"} &nbsp;·&nbsp; ${session?.title||session?.role||""}</div>
+
+  <!-- Project Info -->
+  <div class="section">
+    <div class="section-title">Project Information</div>
+    <div class="info-grid">
+      <div class="info-row"><span class="info-label">Project Name</span><span class="info-val" style="font-weight:700;color:#f97316;">${projName}</span></div>
+      <div class="info-row"><span class="info-label">Client</span><span class="info-val">${deal?.client||"—"}</span></div>
+      <div class="info-row"><span class="info-label">CE No.</span><span class="info-val">${deal?.ceNo||"—"}</span></div>
+      <div class="info-row"><span class="info-label">Contract Value</span><span class="info-val" style="font-weight:700;">₱${Number(deal?.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</span></div>
+      <div class="info-row"><span class="info-label">Assigned PMs</span><span class="info-val">${pms}</span></div>
+      <div class="info-row"><span class="info-label">Location</span><span class="info-val">${deal?.location||"—"}</span></div>
+      <div class="info-row"><span class="info-label">Award Date</span><span class="info-val">${card?.awardDate||"—"}</span></div>
+      <div class="info-row"><span class="info-label">Target Due</span><span class="info-val">${card?.targetEndDate||"Not set"}</span></div>
+      <div class="info-row"><span class="info-label">Current Stage</span><span class="info-val" style="font-weight:700;color:#8b5cf6;">${deal?.stage?.replace(/^\d+ · /,"")||"—"}</span></div>
+      <div class="info-row"><span class="info-label">Overall Progress</span><span class="info-val" style="font-weight:700;">${pct}% complete</span></div>
+    </div>
+    <div style="margin-top:10px;">${progressBar(pct,"#f97316",16)}</div>
+  </div>
+
+  <!-- Phase Timeline -->
+  <div class="section">
+    <div class="section-title">Phase Timeline</div>
+    <div class="phase-row">
+      ${phaseRows.map(ph=>`
+        <div class="phase-box ${ph.status}">
+          <span class="phase-icon">${ph.status==="done"?"✅":ph.status==="current"?"🔄":"⬜"}</span>
+          <span class="phase-label">${ph.icon} ${ph.label}</span>
+          <span class="phase-badge">${ph.status==="done"?"Complete":ph.status==="current"?"In Progress":"Pending"}</span>
+        </div>`).join("")}
+    </div>
+  </div>
+
+  <!-- Department Status -->
+  <div class="section">
+    <div class="section-title">Department Status</div>
+    <div class="dept-grid">
+      ${deptRows.map(({dept,done,dk,dt})=>`
+        <div class="dept-box ${done?"done":""}" style="${done?`color:${deptClr[dept]||"#64748b"};background:${deptClr[dept]||"#64748b"}11;border-color:${deptClr[dept]||"#64748b"}66;`:`color:#94a3b8;`}">
+          <div class="dept-name">${dept}</div>
+          <div class="dept-status">${done?"✅":"◯"}</div>
+          <div style="font-size:9px;margin-top:2px;">${dk}/${dt} tasks</div>
+        </div>`).join("")}
+    </div>
+  </div>
+
+  <!-- PM Updates -->
+  <div class="section">
+    <div class="section-title">Progress Updates (${allUpdates.length} total)</div>
+    ${allUpdates.length===0?`<p style="color:#94a3b8;font-size:11px;font-style:italic;">No progress updates logged yet.</p>`:`
+    <table class="upd-table">
+      <thead><tr><th style="width:80px;">Date</th><th style="width:120px;">Stage / %</th><th>Update</th></tr></thead>
+      <tbody>
+        ${allUpdates.map(u=>{
+          const match=u.detail?.match(/^\[([^\]]+)\]:\s*(.*)/s);
+          const meta=match?match[1]:"";const text=match?match[2]:u.detail||"";
+          const stagePart=meta.split("·").find(p=>p.trim()&&!p.includes("%"))?.trim()||"";
+          const pctPart=meta.match(/(\d+)%/)?.[1]||"";
+          return`<tr>
+            <td class="upd-date">${u.date}</td>
+            <td><span class="upd-stage">${stagePart||"—"}</span>${pctPart?`<br><span style="font-size:10px;color:#64748b;">${pctPart}% complete</span>`:""}</td>
+            <td class="upd-text">${text||u.detail||""}</td>
+          </tr>`;
+        }).join("")}
+      </tbody>
+    </table>`}
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>GMD Productions Inc. &nbsp;|&nbsp; Internal use — FabHub Project Report</span>
+    <span>Generated: ${reportDate}</span>
+  </div>
+
+  <!-- Print button (hidden on print) -->
+  <div class="no-print" style="text-align:center;margin-top:28px;">
+    <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;letter-spacing:.3px;">
+      🖨️ Print / Save as PDF
+    </button>
+    <p style="margin-top:10px;font-size:11px;color:#94a3b8;">In the print dialog, select <strong>Save as PDF</strong> and set paper to A4 or Letter</p>
+  </div>
+
+</div>
+</body></html>`);
+            win.document.close();
+            win.focus();
+          };
+
           return(
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
@@ -13151,6 +13350,9 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
                 </div>
                 <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
                   <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:4,transition:"width .5s"}}/>
+                </div>
+                <div style={{marginTop:10,display:"flex",justifyContent:"flex-end"}}>
+                  <button onClick={generateClientReport} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>📄 Client Report</button>
                 </div>
               </div>
 
