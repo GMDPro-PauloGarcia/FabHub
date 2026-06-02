@@ -4010,7 +4010,7 @@ export default function App(){
       {group:"Projects", items:[{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Operations:[
-      {group:"Overview",  items:[{id:"home",l:"Projects"},{id:"calendar",l:"📅 Calendar"}]},
+      {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"📋 Project Cards"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
@@ -7160,9 +7160,9 @@ export default function App(){
         matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm}
         editMat={editMat} setEditMat={setEditMat} saveMat={saveMat}
         addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} updateJO={updateJO} delJo={delJo} role={role} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -7254,7 +7254,7 @@ export default function App(){
       </Wrap>
     );
         if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} updateJO={updateJO} delJo={delJo} role={role} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
   }
 
   // ─── FINANCE ──────────────────────────────────────────────────────────────
@@ -7345,7 +7345,7 @@ export default function App(){
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="expenses") return(
       <Wrap>
         <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
@@ -7515,7 +7515,7 @@ export default function App(){
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap}/>;
+    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -8546,6 +8546,50 @@ function PLStatement({billings,exps,wonDeals}){
 }
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
+const PM_STAGES=["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"];
+function OpsUpdateForm({selProj,session,addPmUpdate,logActivity}){
+  const[note,setNote]=React.useState("");
+  const[stage,setStage]=React.useState("");
+  const[pct,setPct]=React.useState("");
+  const post=()=>{
+    if(!note.trim()){toastEmit("Please enter an update note.","warning");return;}
+    const txt=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
+    addPmUpdate(selProj,txt,session?.name);
+    logActivity&&logActivity(selProj,"PM Update",txt,session?.name);
+    setNote("");setStage("");setPct("");
+    toastEmit("Update posted!");
+  };
+  return(
+    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:14}}>
+      <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:10}}>📝 Log PM Update <span style={{fontSize:".72rem",color:"#94a3b8",fontWeight:400,marginLeft:6}}>Daily/weekly — client-visible progress</span></div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+        <div>
+          <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:3}}>Current Stage</label>
+          <select value={stage} onChange={e=>setStage(e.target.value)}
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff"}}>
+            <option value="">Select stage...</option>
+            {PM_STAGES.map(s=><option key={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:3}}>% Complete</label>
+          <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 65"
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
+        </div>
+      </div>
+      <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
+        placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
+        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",resize:"vertical",boxSizing:"border-box",marginBottom:8}}/>
+      <div style={{display:"flex",justifyContent:"flex-end"}}>
+        <button onClick={post} disabled={!note.trim()}
+          style={{background:note.trim()?"#0ea5e9":"#e2e8f0",border:"none",borderRadius:8,padding:"9px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:note.trim()?"#fff":"#94a3b8",cursor:note.trim()?"pointer":"not-allowed"}}>
+          ✅ Post Update
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role,onCloseProject}){
   const BUDGET_ONLY_OPS=["Operations","ProjectMover"];
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
@@ -8590,6 +8634,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 {!BUDGET_ONLY_OPS.includes(role)&&<span>Margin: <strong style={{color:m>=20?"#059669":"#f59e0b"}}>{m}%</strong></span>}
                 <span>Team: {p.team.length}</span>
                 {pending>0&&<span style={{color:"#ef4444"}}>🛒 {pending} to buy</span>}
+                {(()=>{const ps=p?.stageDates?.Punchlist?.s;if(!ps)return null;const el=bizDaysElapsed(ps);const left=5-el;const over=left<0;return<span style={{color:over?"#ef4444":left<=1?"#f59e0b":"#f97316",fontWeight:700}}>📋 Punchlist {over?`${Math.abs(left)}d OVERDUE`:`${left}d left`}</span>})()}
               </div>
             </Card>
           );
@@ -8896,28 +8941,18 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
       })()}
 
       {/* PM UPDATES TAB */}
-      {opsTab==="updates"&&(()=>{
-        const updates=proj.pmUpdates||[];
-        const[newUpd,setNewUpd]=useState("");
-        return(
-          <div>
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:14}}>
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:10}}>📝 Log PM Update <span style={{fontSize:".72rem",color:"#94a3b8",fontWeight:400,marginLeft:6}}>Daily/weekly — client-visible progress</span></div>
-              <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
-                <div style={{flex:1}}><FInp rows={2} value={newUpd} onChange={e=>setNewUpd(e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",boxSizing:"border-box",resize:"vertical"}} placeholder="e.g. Steel frame 60% complete. Laminate delivery confirmed tomorrow. Client notified via Viber."/></div>
-                <Btn onClick={()=>{addPmUpdate(selProj,newUpd,session?.name);setNewUpd("");}} disabled={!newUpd.trim()}>Post Update</Btn>
-              </div>
-            </div>
-            {updates.length===0&&<EmptyState icon="📝" msg="No PM updates yet. Log daily or weekly updates here."/>}
-            {updates.map(u=>(
-              <Card key={u.id}>
-                <div style={{fontSize:".88rem",color:"#0f172a",lineHeight:1.6}}>{u.text}</div>
-                <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:5}}>{u.by} · {u.date}{u.time&&` at ${u.time}`}</div>
-              </Card>
-            ))}
-          </div>
-        );
-      })()}
+      {opsTab==="updates"&&(
+        <div>
+          <OpsUpdateForm selProj={selProj} session={session} addPmUpdate={addPmUpdate} logActivity={logActivity}/>
+          {(proj.pmUpdates||[]).length===0&&<EmptyState icon="📝" msg="No PM updates yet. Log daily or weekly updates here."/>}
+          {(proj.pmUpdates||[]).map(u=>(
+            <Card key={u.id}>
+              <div style={{fontSize:".88rem",color:"#0f172a",lineHeight:1.6}}>{u.text}</div>
+              <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:5}}>{u.by} · {u.date}{u.time&&` at ${u.time}`}</div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* ADDENDA TAB — full workflow */}
       {opsTab==="addenda"&&(()=>{
@@ -9619,7 +9654,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
 
 
 // ─── CHECKLIST VIEW ───────────────────────────────────────────────────────────
-function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,loadChecklistTemplate,Wrap}){
+function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,clProjF,setClProjF,clTypeF,setClTypeF,clStatF,setClStatF,clDeptF,setClDeptF,role,wonDeals,loadChecklistTemplate,Wrap,users}){
   const f=(k,v)=>setClForm(p=>({...p,[k]:v}));
   const allTypes=["All",...CL_TYPES,"Custom"];
   const isCustom=!CL_TYPES.includes(clForm.type)||clForm.type==="Custom";
@@ -9647,7 +9682,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
     byProject[key].push(c);
   });
 
-  const allMembers=["Carlo M.","Dana R.","Enzo P.","Faye T.","Gino A.","Hana C.","Ivan L.","Jade O.","Alex R.","Bea T.","Chris N.","Diana L.","Edric M."];
+  const allMembers=(users||[]).filter(u=>u.status==="active").map(u=>u.name).sort();
 
   return(
     <Wrap>
@@ -11851,7 +11886,9 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
 
   const convertToPR=(mr)=>{
     addPR({projectId:mr.projectId,projectName:wonDeals.find(d=>d.id===mr.projectId)?.client||"",itemName:mr.itemName,category:mr.category,description:mr.purpose,qty:mr.qty,unit:mr.unit,estUnitCost:mr.estUnitCost||0,actUnitCost:0,supplier:"",poNumber:"",poDate:"",qtyDelivered:0,deliveryDate:"",deliveryNote:"",status:"Pending Approval",requestedBy:mr.requestedBy,approvedBy:session?.name||"",budgetCategory:"Materials",notes:`Converted from MR by ${session?.name||"Cost Control"}. Original notes: ${mr.notes||"—"}`});
-    updateMR(mr.id,{status:"Converted to PR"});
+    updateMR(mr.id,{status:"Converted to PR",statusChangedAt:today});
+    const deal=wonDeals.find(d=>d.id===mr.projectId);
+    sendTelegramNotification("operations",`✅ <b>Material Request Approved</b>\n${mr.itemName}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nQty: ${mr.qty} ${mr.unit||""}\nConverted to PO by: ${session?.name}`);
   };
 
   const canApprove = role==="Cost Control"||role==="Manager";
@@ -11973,6 +12010,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                     {estTotal>0&&<span>Est: {fmt(estTotal)}</span>}
                     <span>By: {mr.requestedBy||"—"}</span>
                     <span>{mr.createdDate}</span>
+                    {mr.statusChangedAt&&mr.status!=="Submitted"&&(()=>{const d=Math.ceil((new Date()-new Date(mr.statusChangedAt))/86400000);return<span style={{color:mr.status==="Rejected"?"#ef4444":"#059669",fontWeight:600}}>{mr.status==="Rejected"?"❌":"✓"} {d===0?"Today":d+"d ago"}</span>})()}
                   </div>
                   {mr.purpose&&<div style={{fontSize:".75rem",color:"#475569",marginTop:5,fontStyle:"italic"}}>"{mr.purpose}"</div>}
                 </div>
@@ -11981,7 +12019,11 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                     <button onClick={()=>convertToPR(mr)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>
                       ✓ Convert to PO
                     </button>
-                    <button onClick={()=>updateMR(mr.id,{status:"Rejected"})} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
+                    <button onClick={()=>{
+                      updateMR(mr.id,{status:"Rejected",statusChangedAt:today});
+                      const deal=wonDeals.find(d=>d.id===mr.projectId);
+                      sendTelegramNotification("operations",`❌ <b>Material Request Rejected</b>\n${mr.itemName}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nRejected by: ${session?.name}`);
+                    }} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
                       ✕ Reject
                     </button>
                   </div>
@@ -12115,34 +12157,47 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
                     <span style={{fontSize:".68rem",background:STATUS_CLR[br.status]+"22",color:STATUS_CLR[br.status],border:`1px solid ${STATUS_CLR[br.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{br.status}</span>
                     {br.urgency!=="Normal"&&<span style={{fontSize:".68rem",color:br.urgency==="Urgent"?"#ef4444":"#f59e0b",background:br.urgency==="Urgent"?"#fef2f2":"#fffbeb",border:`1px solid ${br.urgency==="Urgent"?"#fecaca":"#fde68a"}`,borderRadius:20,padding:"1px 9px",fontWeight:600}}>{br.urgency}</span>}
                   </div>
-                  <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
+                  <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
                     {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
                     {br.dateNeeded&&<span>📅 Needed by {br.dateNeeded}</span>}
                     <span>By: {br.requestedBy||"—"}</span>
                     <span>{br.createdDate}</span>
+                    {br.statusChangedAt&&br.status!=="Submitted"&&(()=>{const d=Math.ceil((new Date()-new Date(br.statusChangedAt))/86400000);const clr={Approved:"#059669",Released:"#1d4ed8",Rejected:"#ef4444"}[br.status]||"#64748b";return<span style={{color:clr,fontWeight:600}}>{br.status==="Approved"?"✓ ":br.status==="Released"?"💵 ":"❌ "}{d===0?"Today":d+"d ago"}</span>})()}
                   </div>
                   {br.description&&<div style={{fontSize:".75rem",color:"#475569",marginTop:5,fontStyle:"italic"}}>"{br.description}"</div>}
                 </div>
                 {canApprove&&(br.status==="Submitted"||br.status==="Under Review")&&(
                   <div style={{display:"flex",gap:7,flexShrink:0,flexWrap:"wrap"}}>
-                    <button onClick={()=>updateBR(br.id,{status:"Approved",approvedBy:session?.name,approvedDate:today})}
-                      style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>
+                    <button onClick={()=>{
+                      updateBR(br.id,{status:"Approved",approvedBy:session?.name,approvedDate:today,statusChangedAt:today});
+                      const deal=wonDeals.find(d=>d.id===br.projectId);
+                      sendTelegramNotification("operations",`✅ <b>Budget Request Approved</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nApproved by: ${session?.name}`);
+                    }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>
                       ✓ Approve
                     </button>
-                    <button onClick={()=>updateBR(br.id,{status:"Released",releasedBy:session?.name,releasedDate:today})}
-                      style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
+                    <button onClick={()=>{
+                      updateBR(br.id,{status:"Released",releasedBy:session?.name,releasedDate:today,statusChangedAt:today});
+                      const deal=wonDeals.find(d=>d.id===br.projectId);
+                      sendTelegramNotification("operations",`💵 <b>Budget Released</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nReleased by: ${session?.name}`);
+                    }} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
                       💵 Release
                     </button>
-                    <button onClick={()=>updateBR(br.id,{status:"Rejected"})}
-                      style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
+                    <button onClick={()=>{
+                      updateBR(br.id,{status:"Rejected",statusChangedAt:today});
+                      const deal=wonDeals.find(d=>d.id===br.projectId);
+                      sendTelegramNotification("operations",`❌ <b>Budget Request Rejected</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nRejected by: ${session?.name}`);
+                    }} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
                       ✕ Reject
                     </button>
                     {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete this budget request?"))delBR(br.id);}} style={{background:"#fee2e2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 10px",fontWeight:700,fontSize:".73rem",color:"#991b1b",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
                   </div>
                 )}
                 {br.status==="Approved"&&canApprove&&(
-                  <button onClick={()=>updateBR(br.id,{status:"Released",releasedBy:session?.name,releasedDate:today})}
-                    style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
+                  <button onClick={()=>{
+                    updateBR(br.id,{status:"Released",releasedBy:session?.name,releasedDate:today,statusChangedAt:today});
+                    const deal=wonDeals.find(d=>d.id===br.projectId);
+                    sendTelegramNotification("operations",`💵 <b>Budget Released</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nReleased by: ${session?.name}`);
+                  }} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
                     💵 Mark Released
                   </button>
                 )}
