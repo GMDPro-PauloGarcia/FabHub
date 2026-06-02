@@ -6419,7 +6419,42 @@ export default function App(){
           const pipeAmt=d=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"Budget Pending";}return d.value?fmtK(Number(d.value)):"—";};
 
           // Compact row for Hot/Cold pipeline tables
-          const PipeRow=({d,list,i})=>(
+          const PipeRow=({d,list,i})=>{
+            const border=i<list.length-1?"1px solid #f1f5f9":"none";
+            if(isMobile) return(
+              <div style={{padding:"12px 14px",borderBottom:border,background:"#fff"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
+                      {vvipClients?.has(d.client)&&<span style={{fontSize:".6rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⭐</span>}
+                      {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".6rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700}}>₱3M+</span>}
+                      {d.awardRequestData&&<span style={{fontSize:".6rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>🏆 Pending</span>}
+                    </div>
+                    <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
+                      {d.contact&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.contact}</span>}
+                    </div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3,display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {d.salesOwner&&<span>👤 {d.salesOwner.split(" ")[0]}</span>}
+                      <span style={{color:d.followUp&&d.followUp<today?"#ef4444":daysSince(d.dateAcquired)>15?"#f59e0b":"#94a3b8"}}>
+                        {d.followUp&&d.followUp<today?"⚠ "+d.followUp:daysSince(d.dateAcquired)+"d ago"}
+                      </span>
+                      <Badge label={d.stage?.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]}/>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
+                    <span style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".9rem"}}>{pipeAmt(d)}</span>
+                    <div style={{display:"flex",gap:4}}>
+                      {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
+                      {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>₱</button>}
+                      {(role==="Manager"||role==="Sales")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>🏆</button>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+            return(
             <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff",transition:"background .1s"}}
               onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
               onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
@@ -6453,9 +6488,10 @@ export default function App(){
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"4px 5px",fontSize:".68rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}} title="Did Not Win">✗</button>}
               </div>
             </div>
-          );
+            );
+          };
 
-          const PipeTableHeader=()=>(
+          const PipeTableHeader=()=>isMobile?null:(
             <div style={{display:"flex",padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px"}}>
               <span style={{flex:1}}>Client / CE</span>
               <span style={{width:44,textAlign:"right"}}>Value</span>
@@ -6465,8 +6501,8 @@ export default function App(){
 
           return(
             <div>
-              {/* 🔥 Hot + 🧊 Cold — side by side compact tables */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+              {/* 🔥 Hot + 🧊 Cold — side by side on desktop, stacked on mobile */}
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14,marginBottom:20}}>
                 {/* Hot */}
                 <div>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
@@ -6509,6 +6545,44 @@ export default function App(){
                   const pc=pcards[d.id];
                   const tatLabel=pc?.targetEndDate?new Date(pc.targetEndDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"";
                   const ae=d.salesOwner?(d.salesOwner.split(" ").filter(w=>!["de","del","ng","la","the"].includes(w.toLowerCase())).map(w=>w[0]||"").join("").toUpperCase().slice(0,3)):"";
+                  const stageSelect=(
+                    <select value={d.stage} onChange={e=>{
+                      const st=e.target.value;
+                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st}:x));
+                      if(isSupabaseReady()) sbUpdate('deals',d.id,{stage:st}).catch(()=>{});
+                      logActivity(d.id,"Stage Change",`Pipeline stage → ${st}`,session?.name);
+                      const stMsg=`📌 <b>Project Stage Updated</b>\nClient: <b>${d.client}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}${d.contact?`\nProject: ${d.contact}`:""}\nStage: ${st}\nBy: ${session?.name||"Sales"}`;
+                      sendTelegramNotification("ops",stMsg);sendTelegramNotification("sales",stMsg);sendTelegramNotification("management",stMsg);
+                      toastEmit(`Stage updated → ${st}`);
+                    }} style={{fontSize:".75rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 6px",fontFamily:"inherit",color:"#475569",background:"#fff",fontWeight:600,cursor:"pointer",width:"100%"}}>
+                      {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
+                    </select>
+                  );
+                  if(isMobile) return(
+                    <div style={{padding:"12px 14px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:2}}>{d.client}</div>
+                          <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
+                            {d.contact&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.contact}</span>}
+                            {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
+                            {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".65rem"}}>{ae}</span>}
+                            {tatLabel&&<span style={{color:"#8b5cf6"}}>📅 {tatLabel}</span>}
+                          </div>
+                        </div>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                          <span style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".9rem"}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"—";}return fmtK(Number(d.value));})()}</span>
+                          <span style={{fontSize:".7rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}% paid</span>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <div style={{flex:1}}>{(role==="Manager"||role==="Sales")?stageSelect:<span style={{fontSize:".75rem",color:"#64748b",fontWeight:600}}>{d.stage?.replace(/^0?(\d+) · /,"$1·")||"—"}</span>}</div>
+                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"6px 10px",fontSize:".78rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
+                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"6px 9px",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
+                      </div>
+                    </div>
+                  );
                   return(
                     <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
                       <div style={{flex:1,minWidth:0}}>
@@ -6569,7 +6643,7 @@ export default function App(){
                     </div>
                   );
                 };
-                const ColHeader=()=>(
+                const ColHeader=()=>isMobile?null:(
                   <div style={{display:"flex",gap:8,padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px",alignItems:"center"}}>
                     <span style={{flex:1}}>Client / CE</span>
                     <span style={{width:60,textAlign:"right",flexShrink:0}}>Value</span>
