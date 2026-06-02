@@ -3442,6 +3442,7 @@ export default function App(){
   const[confirmDel, setConfirmDel] =useState(null);
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
+  const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
@@ -6413,89 +6414,116 @@ export default function App(){
                 </div>
               </div>
 
-              {/* Awarded Projects — grouped by CE Type */}
-              <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
-                🏆 Awarded Projects
-                <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({wonDeals.length})</span>
-              </div>
-              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-                {wonDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>No awarded projects yet. Use the 🏆 button above to award a deal.</div>}
-                <div style={{display:"flex",gap:8,padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px",alignItems:"center"}}>
-                  <span style={{flex:1}}>Client / CE</span>
-                  <span style={{width:60,textAlign:"right",flexShrink:0}}>Value</span>
-                  <span style={{width:72,textAlign:"right",flexShrink:0}}>Payment</span>
-                  <span style={{width:110,textAlign:"right",flexShrink:0}}>Stage</span>
-                  <span style={{width:56,textAlign:"right",flexShrink:0}}>Actions</span>
-                </div>
-                <div style={{maxHeight:320,overflowY:"auto"}}>
-                  {(()=>{
-                    const groups=[...new Set(wonDeals.map(d=>d.ceType||"Other"))];
-                    return groups.map(grp=>{
-                      const grpDeals=wonDeals.filter(d=>(d.ceType||"Other")===grp);
-                      return(
-                        <div key={grp}>
-                          <div style={{padding:"5px 12px",background:"#f1f5f9",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center",gap:6}}>
-                            <span>{grp}</span>
-                            <span style={{fontWeight:400,color:"#94a3b8"}}>({grpDeals.length})</span>
-                          </div>
-                          {grpDeals.map((d,i)=>{
-                            const jo=jos.find(j=>j.dealId===d.id);
-                            const paid=Number(d.amountPaid)||0;
-                            const inv=Number(d.invoiced)||0;
-                            const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
-                            const pc=pcards[d.id];
-                            const tatLabel=pc?.targetEndDate?new Date(pc.targetEndDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"No TAT";
-                            const ae=d.salesOwner?(d.salesOwner.split(" ").filter(w=>!["de","del","ng","la","the"].includes(w.toLowerCase())).map(w=>w[0]||"").join("").toUpperCase().slice(0,3)):"";
-                            return(
-                              <div key={d.id} style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<grpDeals.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
-                                <div style={{flex:1,minWidth:0}}>
-                                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                                  <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2,display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
-                                    {d.ceNo&&<span style={{fontWeight:600,color:"#64748b"}}>{d.ceNo}</span>}
-                                    {d.contact&&<span style={{color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120,whiteSpace:"nowrap"}}>{d.contact}</span>}
-                                    {jo?.pm1&&<span style={{color:"#64748b"}}>👷 {jo.pm1.split(" ")[0]}</span>}
-                                    {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".6rem"}}>{ae}</span>}
-                                    {pc?.targetEndDate&&<span style={{color:"#8b5cf6",fontSize:".62rem"}}>📅 {tatLabel}</span>}
-                                    {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
-                                      <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 4px",fontWeight:700,fontSize:".6rem"}}>{e.type}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                                <div style={{width:60,textAlign:"right",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".78rem",flexShrink:0}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"Budget Pending";}return fmtK(Number(d.value));})()}</div>
-                                <div style={{width:72,flexShrink:0,textAlign:"right"}}>
-                                  <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
-                                  <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
-                                </div>
-                                {(role==="Manager"||role==="Sales")?(
-                                  <select value={d.stage} onChange={e=>{
-                                    const st=e.target.value;
-                                    upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st}:x));
-                                    if(isSupabaseReady()) sbUpdate('deals',d.id,{stage:st}).catch(()=>{});
-                                    logActivity(d.id,"Stage Change",`Pipeline stage → ${st}`,session?.name);
-                                    const stMsg=`📌 <b>Project Stage Updated</b>\nClient: <b>${d.client}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}${d.contact?`\nProject: ${d.contact}`:""}\nStage: ${st}\nBy: ${session?.name||"Sales"}`;
-                                    sendTelegramNotification("ops",stMsg);
-                                    sendTelegramNotification("sales",stMsg);
-                                    sendTelegramNotification("management",stMsg);
-                                    toastEmit(`Stage updated → ${st}`);
-                                  }} style={{width:110,fontSize:".63rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 4px",fontFamily:"inherit",color:d.stage==="12 · Close-Out"||d.stage==="13 · Feedback"?"#059669":"#475569",background:d.stage==="12 · Close-Out"||d.stage==="13 · Feedback"?"#f0fdf4":"#fff",fontWeight:600,cursor:"pointer",flexShrink:0}}>
-                                    {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
-                                  </select>
-                                ):(
-                                  <div style={{width:110,fontSize:".63rem",color:"#94a3b8",textAlign:"right",flexShrink:0}}>{d.stage?.replace(/^0?(\d+) · /,"$1·")||"—"}</div>
-                                )}
-                                <div style={{width:56,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
-                                  <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                                  {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
-                                </div>
-                              </div>
-                            );
-                          })}
+              {/* Awarded Projects — active only (stages 06–11) */}
+              {(()=>{
+                const activeWon=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="13 · Feedback");
+                const doneWon  =wonDeals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="13 · Feedback");
+                const AwardRow=({d,list,i})=>{
+                  const jo=jos.find(j=>j.dealId===d.id);
+                  const paid=Number(d.amountPaid)||0;
+                  const inv=Number(d.invoiced)||0;
+                  const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const pc=pcards[d.id];
+                  const tatLabel=pc?.targetEndDate?new Date(pc.targetEndDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"";
+                  const ae=d.salesOwner?(d.salesOwner.split(" ").filter(w=>!["de","del","ng","la","the"].includes(w.toLowerCase())).map(w=>w[0]||"").join("").toUpperCase().slice(0,3)):"";
+                  return(
+                    <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                        <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2,display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
+                          {d.ceNo&&<span style={{fontWeight:600,color:"#64748b"}}>{d.ceNo}</span>}
+                          {d.contact&&<span style={{color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120,whiteSpace:"nowrap"}}>{d.contact}</span>}
+                          {jo?.pm1&&<span style={{color:"#64748b"}}>👷 {jo.pm1.split(" ")[0]}</span>}
+                          {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".6rem"}}>{ae}</span>}
+                          {tatLabel&&<span style={{color:"#8b5cf6",fontSize:".62rem"}}>📅 {tatLabel}</span>}
+                          {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
+                            <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 4px",fontWeight:700,fontSize:".6rem"}}>{e.type}</span>
+                          ))}
                         </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
+                      </div>
+                      <div style={{width:60,textAlign:"right",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".78rem",flexShrink:0}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"Budget Pending";}return fmtK(Number(d.value));})()}</div>
+                      <div style={{width:72,flexShrink:0,textAlign:"right"}}>
+                        <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
+                        <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
+                      </div>
+                      {(role==="Manager"||role==="Sales")?(
+                        <select value={d.stage} onChange={e=>{
+                          const st=e.target.value;
+                          upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st}:x));
+                          if(isSupabaseReady()) sbUpdate('deals',d.id,{stage:st}).catch(()=>{});
+                          logActivity(d.id,"Stage Change",`Pipeline stage → ${st}`,session?.name);
+                          const stMsg=`📌 <b>Project Stage Updated</b>\nClient: <b>${d.client}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}${d.contact?`\nProject: ${d.contact}`:""}\nStage: ${st}\nBy: ${session?.name||"Sales"}`;
+                          sendTelegramNotification("ops",stMsg);sendTelegramNotification("sales",stMsg);sendTelegramNotification("management",stMsg);
+                          toastEmit(`Stage updated → ${st}`);
+                        }} style={{width:110,fontSize:".63rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 4px",fontFamily:"inherit",color:"#475569",background:"#fff",fontWeight:600,cursor:"pointer",flexShrink:0}}>
+                          {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
+                        </select>
+                      ):(
+                        <div style={{width:110,fontSize:".63rem",color:"#94a3b8",textAlign:"right",flexShrink:0}}>{d.stage?.replace(/^0?(\d+) · /,"$1·")||"—"}</div>
+                      )}
+                      <div style={{width:56,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
+                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                      </div>
+                    </div>
+                  );
+                };
+                const AwardTable=({deals:list,maxH=320})=>{
+                  const groups=[...new Set(list.map(d=>d.ceType||"Other"))];
+                  return(
+                    <div style={{maxHeight:maxH,overflowY:"auto"}}>
+                      {groups.map(grp=>{
+                        const gd=list.filter(d=>(d.ceType||"Other")===grp);
+                        return(
+                          <div key={grp}>
+                            <div style={{padding:"5px 12px",background:"#f1f5f9",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center",gap:6}}>
+                              <span>{grp}</span><span style={{fontWeight:400,color:"#94a3b8"}}>({gd.length})</span>
+                            </div>
+                            {gd.map((d,i)=><AwardRow key={d.id} d={d} list={gd} i={i}/>)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                };
+                const ColHeader=()=>(
+                  <div style={{display:"flex",gap:8,padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px",alignItems:"center"}}>
+                    <span style={{flex:1}}>Client / CE</span>
+                    <span style={{width:60,textAlign:"right",flexShrink:0}}>Value</span>
+                    <span style={{width:72,textAlign:"right",flexShrink:0}}>Payment</span>
+                    <span style={{width:110,textAlign:"right",flexShrink:0}}>Stage</span>
+                    <span style={{width:56,textAlign:"right",flexShrink:0}}>Actions</span>
+                  </div>
+                );
+                return(<>
+                  {/* Active Awarded (06–11) */}
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                    🏆 Awarded Projects
+                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({activeWon.length} active)</span>
+                  </div>
+                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                    {activeWon.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>No active projects right now.</div>}
+                    {activeWon.length>0&&<><ColHeader/><AwardTable deals={activeWon}/></>}
+                  </div>
+
+                  {/* Closed Out / Done (12–13) */}
+                  {doneWon.length>0&&(
+                    <div style={{marginBottom:16}}>
+                      <button onClick={()=>setDoneExpanded(p=>!p)} style={{width:"100%",display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:"0 0 7px 0",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                        <span style={{fontWeight:700,color:"#059669",fontSize:".84rem"}}>✅ Closed Out / Done</span>
+                        <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({doneWon.length} project{doneWon.length!==1?"s":""})</span>
+                        <span style={{marginLeft:"auto",fontSize:".7rem",color:"#94a3b8",fontWeight:600}}>{doneExpanded?"▲ Hide":"▼ Show"}</span>
+                      </button>
+                      {doneExpanded&&(
+                        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #d1fae5",overflow:"hidden"}}>
+                          <ColHeader/>
+                          <AwardTable deals={doneWon} maxH={400}/>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>);
+              })()}
 
               {/* Did Not Win */}
               {(()=>{
