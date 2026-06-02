@@ -4143,6 +4143,7 @@ export default function App(){
           <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
             {session?.name?.split(" ")[0]} · {session?.title||role}
           </span>
+          <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.2)",border:"none",borderRadius:6,padding:"4px 8px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none"}}>📘</a>
           <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"4px 8px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>↩</button>
         </div>
       </div>
