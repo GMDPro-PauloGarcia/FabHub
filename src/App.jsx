@@ -157,7 +157,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -3156,6 +3156,25 @@ export default function App(){
     ["general","ops","design","procurement","sales","management"].forEach(dept=>sendTelegramNotification(dept,message));
   };
 
+  const addBlocker=useCallback((dealId,title,dept,detail)=>{
+    const entry={id:uid(),dealId,title,dept:dept||"Operations",detail:detail||"",flaggedBy:session?.name||"PM",status:"Open",createdAt:new Date().toISOString(),resolvedBy:null,resolvedAt:null};
+    setBlockers(prev=>{const n=[entry,...prev];localStorage.setItem(KEYS.blockers,JSON.stringify(n));return n;});
+    logActivity(dealId,"Blocker Flagged",`${title} — needs ${dept}`,session?.name);
+    const d=deals.find(x=>x.id===dealId);
+    const msg=`⛔ <b>Blocker Flagged</b>\n${d?.client||dealId}\n<b>${title}</b>${detail?"\n"+detail:""}\nFlagged by: ${session?.name} · Dept: ${dept}`;
+    const deptKey=(dept||"").toLowerCase().replace(/[^a-z]/g,"");
+    sendTelegramNotification(deptKey,msg);
+    sendTelegramNotification("management",msg);
+  },[session,deals,logActivity,sendTelegramNotification]);
+
+  const resolveBlocker=useCallback((blockerId)=>{
+    setBlockers(prev=>{
+      const n=prev.map(b=>b.id===blockerId?{...b,status:"Resolved",resolvedBy:session?.name,resolvedAt:new Date().toISOString()}:b);
+      localStorage.setItem(KEYS.blockers,JSON.stringify(n));
+      return n;
+    });
+  },[session]);
+
   const addDRF=(drf)=>upDrfs(ds=>{
     const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;
     const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New"};
@@ -3457,6 +3476,7 @@ export default function App(){
   const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
   const[isMobile,     setIsMobile]     = useState(()=>window.innerWidth<768);
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
+  const[blockers,     setBlockers]     = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.blockers)||"[]");}catch{return [];}});
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
@@ -7598,7 +7618,11 @@ export default function App(){
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
         delDeal={delDeal} delPcard={delPcard}
-        session={session} role={role} budgets={budgets}/>
+        session={session} role={role} budgets={budgets}
+        blockers={blockers} addBlocker={addBlocker} resolveBlocker={resolveBlocker}
+        logActivity={logActivity} actLog={actLog}
+        addenda={addenda} billings={billings} mreqs={mreqs} breqs={breqs}
+        isMobile={isMobile} createCard={createProjectCard}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -12682,423 +12706,468 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets}){
-  const BUDGET_ONLY_PC=["Design","Operations","ProjectMover"];
-  const pcAmt=(d)=>{if(!BUDGET_ONLY_PC.includes(role))return fmt(d?.value);const b=(budgets||{})[d?.id]||{};const t=["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);return t>0?fmt(t)+" 📊":"Budget Pending";};
-  const[selDeal,     setSelDeal]    =useState(null);
-  const[selDept,     setSelDept]    =useState(null);
-  const[pcFilter,    setPcFilter]   =useState(null);   // "done"|"attention"|null
-  const[pcDeptFilter,setPcDeptFilter]=useState("All"); // dept filter
-  const[pcSort,      setPcSort]     =useState("tat");  // "client"|"tat"|"pct"|"ce"
+function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard}){
+  const[selDeal,setSelDeal]=useState(null);
+  const[pcFilter,setPcFilter]=useState(null);
+  const[pcDeptFilter,setPcDeptFilter]=useState("All");
+  const[pcSort,setPcSort]=useState("tat");
+  const[expandDept,setExpandDept]=useState(null);
+  const[showBForm,setShowBForm]=useState(false);
+  const[bfTitle,setBfTitle]=useState(""); const[bfDept,setBfDept]=useState("Operations"); const[bfDetail,setBfDetail]=useState("");
+  const[showUForm,setShowUForm]=useState(false); const[uText,setUText]=useState("");
+  const[tatOpen,setTatOpen]=useState(false);
 
-  const card = selDeal ? pcards[selDeal] : null;
-  const deal = wonDeals.find(d=>d.id===selDeal);
+  const today2=new Date();
+  const card=selDeal?pcards[selDeal]:null;
+  const deal=wonDeals.find(d=>d.id===selDeal);
+  const jo=jos.find(j=>j.dealId===selDeal);
 
-  // Which dept can this user edit?
-  const editableDepts = {
-    Manager:["Sales","Design","QS","Procurement","Operations","Finance"],
-    Sales:["Sales"],
-    Design:["Design"],
-    QS:["QS"],
-    Procurement:["Procurement"],
-    Operations:["Operations"],
-    Finance:["Finance"],
-  }[role]||[];
-
-  // Overall project progress
-  const projectProgress=(card)=>{
-    if(!card) return 0;
-    const depts=Object.values(card.departments);
-    return Math.round(depts.filter(d=>d.done).length/depts.length*100);
-  };
+  const PHASES=[
+    {id:"design",    label:"Design",     icon:"🎨", stgs:["06 · Kickoff","07 · Briefing"]},
+    {id:"fab",       label:"Fabrication",icon:"🔨", stgs:["08 · Fabrication"]},
+    {id:"site",      label:"Site",       icon:"🏗",  stgs:["09 · Site & Billing","10 · Installation"]},
+    {id:"punchlist", label:"Punchlist",  icon:"📋", stgs:["11 · Punchlist"]},
+    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out","13 · Feedback"]},
+  ];
+  const phaseIdx=stg=>PHASES.findIndex(p=>p.stgs.includes(stg));
 
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  const BUDGET_ONLY_PC=["Design","Operations","ProjectMover"];
+  const pcAmt=d=>{
+    if(!BUDGET_ONLY_PC.includes(role))return fmt(d?.value);
+    const b=(budgets||{})[d?.id]||{};
+    const t=["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);
+    return t>0?fmt(t)+" 📊":"Budget Pending";
+  };
+  const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"]}[role]||[];
+  const projPct=pc=>pc?Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100):0;
+  const getHealth=(d,pc)=>{
+    if(!pc||!d)return "none";
+    const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
+    const ob=(blockers||[]).some(b=>b.status==="Open"&&b.dealId===d.id);
+    if(end&&today2>end)return "red";
+    if(ob)return "yellow";
+    if(end){const dl=Math.ceil((end-today2)/86400000);if(dl/(pc.targetDays||30)<0.25)return "yellow";}
+    return "green";
+  };
+  const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Overdue"],none:["#94a3b8","No TAT"]};
+
+  const totalCards=Object.keys(pcards).length;
+  const fullyDone=Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length;
+  const needsAttn=wonDeals.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dep=>!pcards[d.id]?.departments?.[dep]?.done)).length;
+  const openBCount=(blockers||[]).filter(b=>b.status==="Open").length;
 
   return(
     <div>
-      {/* Header */}
-      <div style={{marginBottom:20}}>
-        <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📋 Project Cards</h2>
-        <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{wonDeals.length} awarded project{wonDeals.length!==1?"s":""} · {Object.keys(pcards).length} cards initialized · all departments work from the same source</div>
+      {/* Page header */}
+      <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📋 Project Cards</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{wonDeals.length} awarded · {totalCards} cards · all departments in one view</div>
+        </div>
+        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
       </div>
 
-      {/* Duplicate warning */}
-      {(()=>{
-        const ceCounts={};
-        wonDeals.forEach(d=>{
-          const key=d.ceNo&&d.ceNo.trim()&&d.ceNo!=="No CE"?d.ceNo:null;
-          if(key) ceCounts[key]=(ceCounts[key]||0)+1;
-        });
-        const dupes=Object.entries(ceCounts).filter(([,c])=>c>1);
-        return dupes.length>0?(
-          <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 16px",marginBottom:16,fontSize:".82rem",color:"#dc2626"}}>
-            ⚠️ <strong>{dupes.length} duplicate CE number{dupes.length>1?"s":""} detected</strong> — {dupes.map(([k,c])=>`${k} (×${c})`).join(", ")}. Delete the extras using the ✕ button on each card.
-          </div>
-        ):null;
-      })()}
-      {/* Summary KPIs — clickable */}
-      {(()=>{
-        const totalCards=Object.keys(pcards).length;
-        const fullyDone=Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length;
-        const needsAttn=Object.values(pcards).filter(p=>DEPT_ORDER.some(d=>!p.departments?.[d]?.done)).length;
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
-            {[
-              {l:"Active Projects",  v:wonDeals.length,  c:"#0f172a",  filter:null,    hint:"Show all"},
-              {l:"Project Cards",    v:totalCards,       c:"#3b82f6",  filter:null,    hint:"Show all"},
-              {l:"Fully Complete",   v:fullyDone,        c:"#059669",  filter:"done",  hint:"Click to filter"},
-              {l:"Needs Attention",  v:needsAttn,        c:"#f59e0b",  filter:"attention", hint:"Click to filter"},
-            ].map(({l,v,c,filter,hint})=>(
-              <div key={l}
-                onClick={()=>setPcFilter(f=>f===filter?null:filter)}
-                style={{background:pcFilter===filter?"#1e293b":"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${pcFilter===filter?c:"#e2e8f0"}`,cursor:filter?"pointer":"default",transition:"all .15s"}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pcFilter===filter?"#fff":c}}>{v}</div>
-                <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:pcFilter===filter?"rgba(255,255,255,.6)":"#94a3b8",marginTop:5}}>{l}</div>
-                {filter&&<div style={{fontSize:".6rem",color:pcFilter===filter?"#f59e0b":"#cbd5e1",marginTop:3}}>{pcFilter===filter?"✓ Active filter — click to clear":hint}</div>}
-              </div>
-            ))}
-          </div>
-        );
-      })()}
+      {/* KPI bar — only on grid view */}
+      {!selDeal&&(
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+          {[
+            {l:"Active Projects",v:wonDeals.length,c:"#0f172a",f:null},
+            {l:"Fully Complete",v:fullyDone,c:"#059669",f:"done"},
+            {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
+            {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
+          ].map(({l,v,c,f})=>(
+            <div key={l} onClick={()=>f&&setPcFilter(x=>x===f?null:f)}
+              style={{background:pcFilter===f?"#1e293b":"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${pcFilter===f?c:"#e2e8f0"}`,cursor:f?"pointer":"default",transition:"all .15s"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pcFilter===f?"#fff":c}}>{v}</div>
+              <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:pcFilter===f?"rgba(255,255,255,.6)":"#94a3b8",marginTop:5}}>{l}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!selDeal?(
-        // ── PROJECT LIST ─────────────────────────────────────────────────────
+        // ── PROJECT GRID ────────────────────────────────────────────────────
         <div>
-          {/* Filter bar */}
-          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
-            <span style={{fontSize:".75rem",fontWeight:700,color:"#64748b"}}>Filter by dept:</span>
+          <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
             {["All",...DEPT_ORDER].map(dept=>(
               <button key={dept} onClick={()=>setPcDeptFilter(f=>f===dept?"All":dept)}
-                style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#e2e8f0"}`,background:pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#fff",color:pcDeptFilter===dept&&dept!=="All"?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcDeptFilter===dept?700:400,fontSize:".75rem",cursor:"pointer"}}>
+                style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#e2e8f0"}`,background:pcDeptFilter===dept&&dept!=="All"?(DEPT_CLR[dept]||"#1e293b"):"#fff",color:pcDeptFilter===dept&&dept!=="All"?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcDeptFilter===dept?700:400,fontSize:".72rem",cursor:"pointer"}}>
                 {dept}
               </button>
             ))}
-            {(pcFilter||pcDeptFilter!=="All")&&(
-              <button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");}}
-                style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer"}}>
-                ✕ Clear all filters
-              </button>
-            )}
-          </div>
-
-          {/* Sort controls */}
-          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
-            <span style={{fontSize:".75rem",fontWeight:700,color:"#64748b"}}>Sort by:</span>
-            {[["client","Client"],["tat","TAT (urgent first)"],["pct","Progress"],["ce","CE Number"]].map(([val,lbl])=>(
-              <button key={val} onClick={()=>setPcSort(s=>s===val?null:val)}
-                style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${pcSort===val?"#1e293b":"#e2e8f0"}`,background:pcSort===val?"#1e293b":"#fff",color:pcSort===val?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcSort===val?700:400,fontSize:".75rem",cursor:"pointer"}}>
-                {lbl}
+            {[["tat","⏰ Urgent"],["pct","📊 Least done"],["client","🔤 Client"]].map(([v,l])=>(
+              <button key={v} onClick={()=>setPcSort(s=>s===v?null:v)}
+                style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${pcSort===v?"#1e293b":"#e2e8f0"}`,background:pcSort===v?"#1e293b":"#fff",color:pcSort===v?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pcSort===v?700:400,fontSize:".72rem",cursor:"pointer"}}>
+                {l}
               </button>
             ))}
+            {(pcFilter||pcDeptFilter!=="All")&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
-
-          {/* Cards grid */}
           {(()=>{
-            let filtered=wonDeals;
-            // Always include the currently selected deal even if filter hides it
-            const selectedDeal = wonDeals.find(d=>d.id===selDeal);
-            if(pcFilter==="done") filtered=filtered.filter(d=>pcards[d.id]&&DEPT_ORDER.every(dept=>pcards[d.id].departments?.[dept]?.done));
-            if(pcFilter==="attention") filtered=filtered.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dept=>!pcards[d.id]?.departments?.[dept]?.done));
-            if(pcDeptFilter!=="All") filtered=filtered.filter(d=>pcards[d.id]&&!pcards[d.id].departments?.[pcDeptFilter]?.done);
-            // Re-add selected deal if filter removed it
-            if(selectedDeal && !filtered.find(d=>d.id===selDeal)) filtered=[selectedDeal,...filtered];
-            // Sort
-            filtered=[...filtered].sort((a,b)=>{
-              if(pcSort==="client") return a.client.localeCompare(b.client);
-              if(pcSort==="ce") return (a.ceNo||"").localeCompare(b.ceNo||"");
-              if(pcSort==="pct"){
-                const pa=pcards[a.id]?projectProgress(pcards[a.id]):0;
-                const pb=pcards[b.id]?projectProgress(pcards[b.id]):0;
-                return pa-pb; // least complete first
-              }
+            let list=wonDeals;
+            if(pcFilter==="done") list=list.filter(d=>pcards[d.id]&&DEPT_ORDER.every(dep=>pcards[d.id]?.departments?.[dep]?.done));
+            if(pcFilter==="attention") list=list.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dep=>!pcards[d.id]?.departments?.[dep]?.done));
+            if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
+            if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
+            list=[...list].sort((a,b)=>{
+              if(pcSort==="client")return a.client.localeCompare(b.client);
+              if(pcSort==="pct")return projPct(pcards[a.id])-projPct(pcards[b.id]);
               if(pcSort==="tat"){
-                const today2=new Date();
-                const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/(1000*60*60*24)):999;
-                const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/(1000*60*60*24)):999;
-                return da-db; // most urgent first
+                const da=pcards[a.id]?.targetEndDate?Math.ceil((new Date(pcards[a.id].targetEndDate)-today2)/86400000):999;
+                const db=pcards[b.id]?.targetEndDate?Math.ceil((new Date(pcards[b.id].targetEndDate)-today2)/86400000):999;
+                return da-db;
               }
               return 0;
             });
             return(
-              <div>
-                {filtered.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
-                  {filtered.map(d=>{
-                    const pc=pcards[d.id];
-                    const pct=pc?projectProgress(pc):0;
-                    const doneCount=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
-                    const hasDupe=wonDeals.filter(x=>x.ceNo&&x.ceNo===d.ceNo&&x.ceNo!=="No CE").length>1;
-                    return(
-                      <div key={d.id} style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"14px 16px",transition:"all .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
-                        onMouseEnter={e=>{e.currentTarget.style.borderColor="#3b82f6";e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)";}}
-                        onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)";}}>
-
-                        {/* Card top row: client info + pct + delete */}
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                          {/* Left: client info */}
-                          <div style={{flex:1,cursor:"pointer",minWidth:0}} onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}}>
-                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                            {d.contact&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact}</div>}
-                            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,flexWrap:"wrap"}}>
-                              <span style={{fontSize:".7rem",color:BUDGET_ONLY_PC.includes(role)?"#8b5cf6":"#94a3b8"}}>{d.ceNo||"No CE"} · {pcAmt(d)}</span>
-                              {hasDupe&&<span style={{fontSize:".62rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 7px",fontWeight:700}}>DUPLICATE</span>}
-                            </div>
-                            {(()=>{const j=jos.find(j=>j.dealId===d.id);return j?(<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>📋 {j.joNo} · {[j.pm1,j.pm2,j.pm3].filter(Boolean).join(", ")||"No PM"}</div>):null;})()}
-                            {d.salesRepoLink&&<a href={d.salesRepoLink} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:3,fontSize:".67rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"2px 7px"}}>📁 Sales Repo</a>}
-                          </div>
-                          {/* Right: pct + delete stacked */}
-                          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0,marginLeft:10}}>
-                            {pct===100&&<span style={{fontSize:".62rem",background:"#059669",color:"#fff",fontWeight:800,padding:"2px 7px",borderRadius:20}}>✅ DONE</span>}
-                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
-                            <div style={{fontSize:".6rem",color:"#94a3b8"}}>{doneCount}/{DEPT_ORDER.length} depts</div>
-                            {role==="Manager"&&(
-                              <button
-                                onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+"? This removes the deal, project card, JO and checklist."))
-                                  {delDeal(d.id);delPcard(d.id);}}}
-                                style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:700,fontFamily:"inherit",marginTop:2}}>
-                                ✕ Delete
-                              </button>
-                            )}
-                          </div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2,1fr)",gap:12}}>
+                {list.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>}
+                {list.map(d=>{
+                  const pc=pcards[d.id];
+                  const pct=projPct(pc);
+                  const h=getHealth(d,pc);const[hc,hl]=HC[h];
+                  const pi=phaseIdx(d.stage);
+                  const joR=jos.find(j=>j.dealId===d.id);
+                  const lastUpd=(actLog||[]).filter(a=>a.dealId===d.id&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date))[0];
+                  const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
+                  const hasDupe=wonDeals.filter(x=>x.ceNo&&x.ceNo===d.ceNo&&x.ceNo!=="No CE").length>1;
+                  return(
+                    <div key={d.id} onClick={()=>setSelDeal(d.id)}
+                      style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",borderLeft:`4px solid ${hc}`,padding:"14px 16px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
+                      onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)"}
+                      onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                          <div style={{fontSize:".7rem",color:"#64748b"}}>{d.ceNo||"No CE"} · {pcAmt(d)}</div>
+                          {joR&&<div style={{fontSize:".67rem",color:"#3b82f6",marginTop:1}}>📋 {joR.joNo} · {[joR.pm1,joR.pm2].filter(Boolean).join(", ")||"No PM"}</div>}
                         </div>
-
-                        {/* Dept pills — clickable */}
-                        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8,cursor:"pointer"}} onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}}>
-                          {DEPT_ORDER.map(dept=>{
-                            const done=pc?.departments?.[dept]?.done;
-                            const tasksDone=pc?.departments?.[dept]?.tasks?.filter(t=>t.done).length||0;
-                            const tasksTotal=pc?.departments?.[dept]?.tasks?.length||DEFAULT_DEPT_TASKS[dept].length;
-                            return(
-                              <div key={dept} style={{fontSize:".62rem",padding:"2px 8px",borderRadius:20,fontWeight:600,background:done?(DEPT_CLR[dept]+"22"):pc?((DEPT_CLR[dept]+"11")):"#f8fafc",color:done?DEPT_CLR[dept]:"#94a3b8",border:`1px solid ${done?(DEPT_CLR[dept]+"44"):"#e2e8f0"}`}} title={`${dept}: ${tasksDone}/${tasksTotal} tasks`}>
-                                {done?"✓ ":""}{dept}
-                              </div>
-                            );
-                          })}
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0,marginLeft:10}}>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
+                          <span style={{fontSize:".6rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"1px 7px"}}>{pct===100?"✅ DONE":hl}</span>
+                          {projB>0&&<span style={{fontSize:".6rem",fontWeight:700,color:"#ef4444",background:"#fef2f2",borderRadius:20,padding:"1px 7px"}}>⛔ {projB} blocker{projB>1?"s":""}</span>}
+                          {hasDupe&&<span style={{fontSize:".6rem",fontWeight:700,color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 7px"}}>DUPE</span>}
+                          {role==="Manager"&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+"? Removes deal, card, JO.")){delDeal(d.id);delPcard(d.id);}}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",fontWeight:700,fontFamily:"inherit"}}>✕</button>}
                         </div>
-
-                        {/* Progress bar */}
-                        <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden",cursor:"pointer"}} onClick={()=>{setSelDeal(d.id);setSelDept(editableDepts[0]||"Sales");}}>
-                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":"#3b82f6",borderRadius:3,transition:"width .5s"}}/>
-                        </div>
-
-                        {/* TAT badge */}
-                        {pc?.targetDays&&(()=>{
-                          const today2=new Date(); const end=new Date(pc.targetEndDate);
-                          const daysLeft=Math.ceil((end-today2)/(1000*60*60*24));
-                          const isOver=daysLeft<0;
-                          return(
-                            <div style={{marginTop:7,display:"flex",gap:8,alignItems:"center",fontSize:".7rem"}}>
-                              <span style={{color:"#94a3b8"}}>🕐 {pc.targetDays}d</span>
-                              <span style={{fontWeight:700,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669"}}>
-                                {isOver?`${Math.abs(daysLeft)}d overdue`:`${daysLeft}d left`}
-                              </span>
-                              <span style={{color:"#94a3b8"}}>Due {pc.targetEndDate}</span>
-                            </div>
-                          );
-                        })()}
-
-                        {!pc&&(
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:6}}>
-                            <div style={{fontSize:".7rem",color:"#f59e0b",fontWeight:600}}>⚠ No project card yet</div>
-                            {role==="Manager"&&(
-                              <button onClick={e=>{e.stopPropagation();createProjectCard(d.id,d);}}
-                                style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"3px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                                + Create Card
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:7,flexWrap:"wrap"}}>
+                        {pi>=0&&<span style={{fontSize:".62rem",background:"#1e293b",color:"#f59e0b",borderRadius:20,padding:"1px 8px",fontWeight:700}}>{PHASES[pi].icon} {PHASES[pi].label}</span>}
+                        <span style={{fontSize:".62rem",color:lastUpd?"#94a3b8":"#f59e0b"}}>{lastUpd?"Updated "+lastUpd.date:"No PM updates yet"}</span>
+                      </div>
+                      <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:7}}>
+                        {DEPT_ORDER.map(dep=>{const dn=pc?.departments?.[dep]?.done;const dk=pc?.departments?.[dep]?.tasks?.filter(t=>t.done).length||0;const dt=pc?.departments?.[dep]?.tasks?.length||DEFAULT_DEPT_TASKS[dep].length;return <div key={dep} style={{fontSize:".58rem",padding:"1px 6px",borderRadius:20,fontWeight:600,background:dn?(DEPT_CLR[dep]+"22"):"#f8fafc",color:dn?DEPT_CLR[dep]:"#94a3b8",border:`1px solid ${dn?(DEPT_CLR[dep]+"44"):"#e2e8f0"}`}} title={`${dep}: ${dk}/${dt}`}>{dn?"✓ ":""}{dep}</div>;})}
+                      </div>
+                      <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:3,transition:"width .5s"}}/>
+                      </div>
+                      {pc?.targetDays?(()=>{const end=new Date(pc.targetEndDate);const dl=Math.ceil((end-today2)/86400000);return <div style={{marginTop:5,fontSize:".68rem",color:dl<0?"#ef4444":dl<=7?"#f59e0b":"#94a3b8"}}>{dl<0?`⚠ ${Math.abs(dl)}d overdue`:`🕐 ${dl}d left`} · Due {pc.targetEndDate}</div>;})():null}
+                      {!pc&&<div style={{marginTop:5,fontSize:".7rem",color:"#f59e0b",fontWeight:600}}>⚠ No project card yet {role==="Manager"&&<button onClick={e=>{e.stopPropagation();createCard(d.id,d);}} style={{marginLeft:6,background:"#f59e0b",border:"none",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700}}>+ Create</button>}</div>}
+                    </div>
+                  );
+                })}
               </div>
             );
           })()}
         </div>
       ):(
-        // ── SINGLE PROJECT CARD ───────────────────────────────────────────────
-        <div>
-          {/* Back + header */}
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-            <button onClick={()=>setSelDeal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← Back</button>
-            <div>
-              <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem"}}>{deal?.client}</div>
-              <div style={{fontSize:".73rem",color:"#64748b"}}>{deal?.ceNo} · {pcAmt(deal)} · {deal?.stage?.replace(/^\d+ · /,"")}</div>
-            </div>
-            <div style={{marginLeft:"auto",display:"flex",gap:12,alignItems:"center"}}>
-              {projectProgress(card)===100&&(
-                <span style={{background:"#059669",color:"#fff",fontWeight:800,fontSize:".82rem",padding:"5px 14px",borderRadius:20,letterSpacing:".5px"}}>
-                  ✅ PROJECT DONE
-                </span>
-              )}
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:projectProgress(card)===100?"#059669":"#3b82f6"}}>
-                {projectProgress(card)}% Complete
+        // ── PROJECT HQ ─────────────────────────────────────────────────────
+        (()=>{
+          const pct=projPct(card);
+          const h=getHealth(deal,card);const[hc,hl]=HC[h];
+          const pi=phaseIdx(deal?.stage);
+          const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
+          const end=card?.targetEndDate?new Date(card.targetEndDate):null;
+          const dLeft=end?Math.ceil((end-today2)/86400000):null;
+          const isOver=dLeft!==null&&dLeft<0;
+          const projBlockers=(blockers||[]).filter(b=>b.dealId===selDeal);
+          const openProjB=projBlockers.filter(b=>b.status==="Open");
+          const projUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+          const projAddenda=(addenda||[]).filter(a=>a.dealId===selDeal);
+          const projBillings=(billings||[]).filter(b=>b.dealId===selDeal);
+          const totalBilled=projBillings.reduce((s,b)=>s+Number(b.amountBilled||0),0);
+          const totalColl=projBillings.reduce((s,b)=>s+Number(b.amountPaid||0),0);
+          const pendingMRs=(mreqs||[]).filter(m=>m.projectId===selDeal&&(m.status==="Submitted"||m.status==="Reviewed")).length;
+          const pendingBRs=(breqs||[]).filter(b=>(b.projectId===selDeal||b.dealId===selDeal)&&(b.status==="Pending"||b.status==="Under Review")).length;
+          const canFlagBlocker=["Manager","Operations","ProjectMover","Sales","Design","QS","Procurement","Finance"].includes(role);
+          const ceType=deal?.ceType||"Fabrication / General";
+          const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
+          const canSetTAT=role==="Manager"||role==="QS"||role==="Operations";
+
+          return(
+            <div style={{display:"flex",flexDirection:"column",gap:12}}>
+
+              {/* ── Header card ── */}
+              <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"14px":"18px 22px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:12}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.client}</div>
+                    <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deal?.ceNo} · {pcAmt(deal)} · <span style={{color:"#8b5cf6",fontWeight:600}}>{deal?.stage?.replace(/^\d+ · /,"")}</span></div>
+                    {jo&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:3}}>📋 {jo.joNo} · PMs: {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")||"Not assigned"}</div>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:pct===100?"#059669":hc}}>{pct}%</div>
+                    <span style={{fontSize:".7rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"3px 10px"}}>{pct===100?"✅ PROJECT DONE":hl}</span>
+                  </div>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:4}}>
+                  <span>{Object.values(card?.departments||{}).filter(d=>d.done).length}/6 departments complete</span>
+                  {card?.targetDays&&<span style={{color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#94a3b8"}}>{isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d remaining`}</span>}
+                </div>
+                <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:4,transition:"width .5s"}}/>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {/* If no card yet */}
-          {!card&&(
-            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 20px",textAlign:"center"}}>
-              <div style={{fontWeight:700,color:"#92400e",marginBottom:6}}>No project card yet</div>
-              <div style={{fontSize:".82rem",color:"#92400e"}}>Project cards are created automatically when a deal is awarded via the Pipeline. If this deal was awarded before this feature was added, contact a Manager.</div>
-            </div>
-          )}
+              {/* ── Vitals ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>📌 Project Vitals</div>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:8,marginBottom:10}}>
+                  {[{l:"Location",v:deal?.location||"—"},{l:"Award Date",v:card?.awardDate||"—"},{l:"Target Due",v:card?.targetEndDate||"Not set"},{l:"CE Type",v:deal?.ceType||"—"},{l:"Elapsed",v:card?.awardDate?elapsed+"d":"—"},{l:"TAT",v:card?.targetDays?card.targetDays+"d target":"Not set"}].map(({l,v})=>(
+                    <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
+                      <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px"}}>📁 Sales Repo</a>}
+                  {jo?.commsLink&&<a href={jo.commsLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#059669",textDecoration:"none",fontWeight:700,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 10px"}}>📱 Comms Group</a>}
+                </div>
+              </div>
 
-          {card&&(
-            <>
-              {/* Dept tabs */}
-              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
-                {DEPT_ORDER.map(dept=>{
-                  const done=card.departments?.[dept]?.done;
-                  const isActive=selDept===dept;
+              {/* ── Phase Timeline ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:12}}>🗺 Project Phases</div>
+                <div style={{display:"flex",alignItems:"center",overflowX:"auto",paddingBottom:4}}>
+                  {PHASES.map((phase,i)=>{
+                    const isActive=i===pi; const isPast=i<pi;
+                    return(
+                      <React.Fragment key={phase.id}>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,minWidth:64}}>
+                          <div style={{width:38,height:38,borderRadius:"50%",background:isActive?"#1e293b":isPast?"#10b981":"#f1f5f9",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",border:isActive?"2.5px solid #f59e0b":"2.5px solid transparent",boxShadow:isActive?"0 0 0 3px rgba(245,158,11,.2)":undefined}}>
+                            {isPast?"✓":phase.icon}
+                          </div>
+                          <div style={{fontSize:".58rem",fontWeight:isActive?800:500,color:isActive?"#f59e0b":isPast?"#10b981":"#94a3b8",textAlign:"center",whiteSpace:"nowrap"}}>{phase.label}</div>
+                        </div>
+                        {i<PHASES.length-1&&<div style={{flex:1,height:2,background:i<pi?"#10b981":"#e2e8f0",minWidth:8}}/>}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── Blockers ── */}
+              <div style={{background:openProjB.length>0?"#fef2f2":"#fff",borderRadius:14,border:`1.5px solid ${openProjB.length>0?"#fecaca":"#e2e8f0"}`,padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:openProjB.length>0||showBForm?10:0}}>
+                  <div style={{fontWeight:700,color:openProjB.length>0?"#dc2626":"#0f172a",fontSize:".82rem"}}>
+                    ⛔ Blockers{openProjB.length>0&&<span style={{background:"#ef4444",color:"#fff",borderRadius:20,fontSize:".6rem",padding:"1px 7px",marginLeft:5}}>{openProjB.length}</span>}
+                    {openProjB.length===0&&projBlockers.filter(b=>b.status==="Resolved").length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:6}}>({projBlockers.filter(b=>b.status==="Resolved").length} resolved)</span>}
+                  </div>
+                  {canFlagBlocker&&!showBForm&&<button onClick={()=>{setShowBForm(true);setBfTitle("");setBfDept("Operations");setBfDetail("");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>+ Flag Blocker</button>}
+                </div>
+                {openProjB.map(b=>(
+                  <div key={b.id} style={{background:"#fff",border:"1px solid #fecaca",borderRadius:10,padding:"10px 14px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{b.title}</div>
+                      {b.detail&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{b.detail}</div>}
+                      <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:3}}>By {b.flaggedBy} · {b.createdAt?.split("T")[0]} · <span style={{color:DEPT_CLR[b.dept]||"#64748b",fontWeight:700}}>{b.dept}</span> to act</div>
+                    </div>
+                    {(role==="Manager"||editableDepts.includes(b.dept))&&<button onClick={()=>resolveBlocker(b.id)} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".72rem",color:"#059669",cursor:"pointer",fontWeight:700,flexShrink:0}}>✓ Resolve</button>}
+                  </div>
+                ))}
+                {openProjB.length===0&&!showBForm&&<div style={{fontSize:".78rem",color:"#94a3b8",textAlign:"center",padding:"2px 0"}}>No open blockers ✓</div>}
+                {showBForm&&(
+                  <div style={{background:"#fff",border:"1px solid #fecaca",borderRadius:10,padding:"14px",marginTop:8}}>
+                    <input value={bfTitle} onChange={e=>setBfTitle(e.target.value)} placeholder="What's blocking? (required)" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",marginBottom:8,boxSizing:"border-box"}}/>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                      <select value={bfDept} onChange={e=>setBfDept(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem"}}>
+                        {DEPT_ORDER.map(d=><option key={d} value={d}>{d}</option>)}
+                      </select>
+                      <input value={bfDetail} onChange={e=>setBfDetail(e.target.value)} placeholder="Context / details (optional)" style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem"}}/>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{if(!bfTitle.trim())return;addBlocker(selDeal,bfTitle.trim(),bfDept||"Operations",bfDetail.trim());setShowBForm(false);}} style={{background:"#ef4444",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>⛔ Submit</button>
+                      <button onClick={()=>setShowBForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Department Tasks (accordion) ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{padding:isMobile?"12px 14px":"14px 20px",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>✅ Department Tasks</div>
+                </div>
+                {!card&&<div style={{padding:"14px 20px",background:"#fffbeb",fontSize:".82rem",color:"#92400e"}}>No project card yet.{role==="Manager"&&<button onClick={()=>createCard(selDeal,deal)} style={{marginLeft:8,background:"#f59e0b",border:"none",borderRadius:6,padding:"3px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Create Card</button>}</div>}
+                {card&&DEPT_ORDER.map(dept=>{
+                  const deptData=card.departments?.[dept];
+                  const tasks=deptData?.tasks||[];
+                  const doneCount=tasks.filter(t=>t.done).length;
+                  const isOpen=expandDept===dept;
                   const clr=DEPT_CLR[dept];
-                  const tasksDone=card.departments?.[dept]?.tasks?.filter(t=>t.done).length||0;
-                  const tasksTotal=card.departments?.[dept]?.tasks?.length||0;
+                  const canEdit=editableDepts.includes(dept);
+                  const allTasksDone=tasks.length>0&&tasks.every(t=>t.done);
                   return(
-                    <button key={dept} onClick={()=>setSelDept(dept)}
-                      style={{padding:"8px 16px",borderRadius:20,border:`2px solid ${isActive?clr:done?(clr+"55"):"#e2e8f0"}`,background:isActive?clr:done?(clr+"11"):"#fff",color:isActive?"#fff":done?clr:"#64748b",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer",transition:"all .15s"}}>
-                      {done?"✓ ":""}{dept} {tasksTotal>0&&`(${tasksDone}/${tasksTotal})`}
-                    </button>
+                    <div key={dept} style={{borderBottom:"1px solid #f1f5f9"}}>
+                      <div onClick={()=>setExpandDept(e=>e===dept?null:dept)} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"10px 14px":"12px 20px",cursor:"pointer",background:isOpen?(clr+"08"):"#fff"}}>
+                        <div style={{width:10,height:10,borderRadius:"50%",background:deptData?.done?clr:"#e2e8f0",flexShrink:0}}/>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{dept}</div>
+                          <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1}}>{doneCount}/{tasks.length} tasks{deptData?.done?" · Done by "+deptData.doneBy:""}</div>
+                        </div>
+                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <span style={{fontSize:".63rem",background:deptData?.done?(clr+"22"):doneCount>0?"#fef3c7":"#f8fafc",color:deptData?.done?clr:doneCount>0?"#92400e":"#94a3b8",borderRadius:20,padding:"2px 8px",fontWeight:600}}>{deptData?.done?"✓ DONE":doneCount>0?"In Progress":"Pending"}</span>
+                          <div style={{width:36,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:(tasks.length>0?doneCount/tasks.length*100:0)+"%",background:deptData?.done?clr:clr+"88",borderRadius:2}}/></div>
+                          <span style={{fontSize:".72rem",color:"#94a3b8"}}>{isOpen?"▲":"▼"}</span>
+                        </div>
+                      </div>
+                      {isOpen&&(
+                        <div style={{padding:"0 16px 14px",background:clr+"05"}}>
+                          <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10,paddingTop:8}}>
+                            {tasks.map(task=>(
+                              <div key={task.id} onClick={()=>canEdit&&toggleDeptTask(selDeal,dept,task.id)}
+                                style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 10px",borderRadius:8,background:task.done?(clr+"09"):"#fff",cursor:canEdit?"pointer":"default",border:`1px solid ${task.done?(clr+"33"):"#f1f5f9"}`}}>
+                                <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${task.done?clr:"#cbd5e1"}`,background:task.done?clr:"#fff",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>
+                                  {task.done&&<span style={{color:"#fff",fontSize:".65rem",fontWeight:900}}>✓</span>}
+                                </div>
+                                <div style={{flex:1}}>
+                                  <div style={{fontSize:".82rem",color:task.done?"#64748b":"#0f172a",textDecoration:task.done?"line-through":"none",fontWeight:task.done?400:500}}>{task.text}</div>
+                                  {task.done&&task.doneBy&&<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>✓ {task.doneBy} · {task.doneAt?.split("T")[0]}</div>}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {canEdit&&(
+                            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                              {!deptData?.done&&allTasksDone&&<button onClick={()=>markDeptDone(selDeal,dept,true)} style={{background:clr,border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>✓ Mark {dept} Done</button>}
+                              {deptData?.done&&<button onClick={()=>markDeptDone(selDeal,dept,false)} style={{background:"transparent",border:`1.5px solid ${clr}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:clr,cursor:"pointer"}}>Reopen</button>}
+                              {!deptData?.done&&!allTasksDone&&<span style={{fontSize:".72rem",color:"#94a3b8",padding:"7px 0"}}>{tasks.length-doneCount} task{tasks.length-doneCount!==1?"s":""} remaining</span>}
+                            </div>
+                          )}
+                          {!canEdit&&<div style={{fontSize:".72rem",color:"#94a3b8",fontStyle:"italic"}}>View only — {dept} team updates their own tasks</div>}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
 
-              {/* ── TAT Panel ── */}
-              {(()=>{
-                const canSetTAT=role==="Manager"||role==="QS"||role==="Operations";
-                const today2=new Date();
-                const endDate=card.targetEndDate?new Date(card.targetEndDate):null;
-                const daysLeft=endDate?Math.ceil((endDate-today2)/(1000*60*60*24)):null;
-                const isOver=daysLeft!==null&&daysLeft<0;
-                const awardDate=card.awardDate||today;
-                const elapsed=Math.ceil((today2-new Date(awardDate))/(1000*60*60*24));
-                const ceType=deal?.ceType||"Fabrication / General";
-                const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
-
-                return(
-                  <div style={{background:isOver?"#fef2f2":"#f0fdf4",border:`1.5px solid ${isOver?"#fecaca":"#6ee7b7"}`,borderRadius:12,padding:"14px 18px",marginBottom:16}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-                      <div>
-                        <div style={{fontWeight:700,color:isOver?"#dc2626":"#059669",fontSize:".88rem",marginBottom:4}}>
-                          🕐 Turnaround Time
-                        </div>
-                        {card.targetDays?(
-                          <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:".82rem"}}>
-                            <div><span style={{color:"#94a3b8"}}>Award date: </span><strong>{awardDate}</strong></div>
-                            <div><span style={{color:"#94a3b8"}}>Target: </span><strong>{card.targetDays} days</strong></div>
-                            <div><span style={{color:"#94a3b8"}}>Due: </span><strong style={{color:isOver?"#ef4444":"#0f172a"}}>{card.targetEndDate}</strong></div>
-                            <div><span style={{color:"#94a3b8"}}>Elapsed: </span><strong>{elapsed} days</strong></div>
-                            <div style={{fontWeight:800,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669",fontSize:".92rem"}}>
-                              {isOver?`⚠ ${Math.abs(daysLeft)} days overdue`:`${daysLeft} days remaining`}
-                            </div>
-                          </div>
-                        ):(
-                          <div style={{fontSize:".8rem",color:"#94a3b8"}}>Not set yet — QS or Operations Director should set the target turnaround time.</div>
-                        )}
-                        {card.tatSetBy&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>Set by {card.tatSetBy} · {card.tatSetAt?.split("T")[0]}</div>}
-                        {card.tatCategory&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Category: {card.tatCategory}</div>}
-                      </div>
-
-                      {/* TAT setter */}
-                      {canSetTAT&&(
-                        <TATSetter deal={deal} card={card} onSet={setProjectTAT} refTable={refTable} ceType={ceType}/>
-                      )}
-                    </div>
-
-                    {/* Progress bar if TAT set */}
-                    {card.targetDays&&(
-                      <div style={{marginTop:12}}>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:3}}>
-                          <span>Day {elapsed} of {card.targetDays}</span>
-                          <span>{Math.min(100,Math.round(elapsed/card.targetDays*100))}% of time used</span>
-                        </div>
-                        <div style={{height:6,background:"rgba(0,0,0,.08)",borderRadius:3,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:Math.min(100,elapsed/card.targetDays*100)+"%",background:isOver?"#ef4444":elapsed/card.targetDays>0.8?"#f59e0b":"#10b981",borderRadius:3,transition:"width .5s"}}/>
-                        </div>
-                      </div>
-                    )}
+              {/* ── TAT (collapsible) ── */}
+              {card&&(
+                <div style={{background:isOver?"#fef2f2":"#f0fdf4",borderRadius:14,border:`1.5px solid ${isOver?"#fecaca":"#6ee7b7"}`,overflow:"hidden"}}>
+                  <div onClick={()=>setTatOpen(o=>!o)} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:isMobile?"12px 14px":"14px 20px",cursor:"pointer"}}>
+                    <div style={{fontWeight:700,color:isOver?"#dc2626":"#059669",fontSize:".82rem"}}>⏱ Turnaround Time{card.targetDays&&<span style={{fontWeight:400,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669",marginLeft:6}}>{isOver?`— ⚠ ${Math.abs(dLeft)}d overdue`:`— ${dLeft}d remaining`}</span>}</div>
+                    <span style={{color:"#94a3b8",fontSize:".8rem"}}>{tatOpen?"▲":"▼"}</span>
                   </div>
-                );
-              })()}
-
-              {/* Dept task panel */}
-              {selDept&&(()=>{
-                const deptData=card.departments?.[selDept];
-                const tasks=deptData?.tasks||[];
-                const canEdit=editableDepts.includes(selDept)||role==="Manager";
-                const allDone=tasks.every(t=>t.done);
-                const clr=DEPT_CLR[selDept];
-
-                return(
-                  <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${clr}33`,padding:"18px 20px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
-                      <div>
-                        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",display:"flex",alignItems:"center",gap:10}}>
-                          <span style={{width:12,height:12,borderRadius:"50%",background:clr,display:"inline-block"}}/>
-                          {selDept}
-                          {deptData?.done&&<span style={{fontSize:".72rem",background:clr+"22",color:clr,border:`1px solid ${clr}44`,borderRadius:20,padding:"2px 10px",fontWeight:700}}>✓ DONE</span>}
-                        </div>
-                        {deptData?.done&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>Completed by {deptData.doneBy} on {deptData.doneAt?.split("T")[0]}</div>}
-                      </div>
-                      {canEdit&&(
-                        <div style={{display:"flex",gap:8}}>
-                          {!deptData?.done&&allDone&&(
-                            <button onClick={()=>markDeptDone(selDeal,selDept,true)}
-                              style={{background:clr,border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:"pointer"}}>
-                              ✓ Mark {selDept} Done
-                            </button>
-                          )}
-                          {deptData?.done&&(
-                            <button onClick={()=>markDeptDone(selDeal,selDept,false)}
-                              style={{background:"transparent",border:`1.5px solid ${clr}`,borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:clr,cursor:"pointer"}}>
-                              Reopen
-                            </button>
-                          )}
+                  {tatOpen&&(
+                    <div style={{padding:isMobile?"0 14px 14px":"0 20px 16px"}}>
+                      {card.targetDays&&(
+                        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8,marginBottom:10}}>
+                          {[{l:"Award Date",v:card.awardDate||"—"},{l:"Target",v:card.targetDays+" days"},{l:"Due Date",v:card.targetEndDate||"—"},{l:"Elapsed",v:elapsed+" days"}].map(({l,v})=>(
+                            <div key={l} style={{background:"rgba(255,255,255,.7)",borderRadius:8,padding:"8px 10px"}}>
+                              <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:1}}>{l}</div>
+                              <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
+                            </div>
+                          ))}
                         </div>
                       )}
-                    </div>
-
-                    {/* Task list */}
-                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                      {tasks.map(task=>{
-                        return(
-                          <div key={task.id} onClick={e=>{e.stopPropagation();if(canEdit)toggleDeptTask(selDeal,selDept,task.id);}}
-                            style={{display:"flex",alignItems:"flex-start",gap:12,padding:"10px 12px",borderRadius:8,background:task.done?(clr+"09"):"#f8fafc",cursor:canEdit?"pointer":"default",border:`1px solid ${task.done?(clr+"33"):"#f1f5f9"}`,transition:"all .15s"}}
-                            onMouseEnter={e=>{if(canEdit)e.currentTarget.style.background=task.done?(clr+"18"):"#f1f5f9";}}
-                            onMouseLeave={e=>{e.currentTarget.style.background=task.done?(clr+"09"):"#f8fafc";}}>
-                            <div style={{width:20,height:20,borderRadius:5,border:`2px solid ${task.done?clr:"#cbd5e1"}`,background:task.done?clr:"#fff",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1,transition:"all .2s"}}>
-                              {task.done&&<span style={{color:"#fff",fontSize:".7rem",fontWeight:900}}>✓</span>}
-                            </div>
-                            <div style={{flex:1}}>
-                              <div style={{fontSize:".85rem",color:task.done?"#64748b":"#0f172a",textDecoration:task.done?"line-through":"none",fontWeight:task.done?400:600}}>{task.text}</div>
-                              {task.done&&task.doneBy&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>✓ {task.doneBy} · {task.doneAt?.split("T")[0]}</div>}
-                            </div>
+                      {!card.targetDays&&<div style={{fontSize:".8rem",color:"#94a3b8",marginBottom:10}}>TAT not set — QS or Operations should set the target days.</div>}
+                      {card.targetDays&&(
+                        <div style={{marginBottom:12}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:3}}>
+                            <span>Day {elapsed} of {card.targetDays}</span>
+                            <span>{Math.min(100,Math.round(elapsed/card.targetDays*100))}% of time used</span>
                           </div>
-                        );
-                      })}
+                          <div style={{height:6,background:"rgba(0,0,0,.1)",borderRadius:3,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:Math.min(100,elapsed/card.targetDays*100)+"%",background:isOver?"#ef4444":elapsed/card.targetDays>0.8?"#f59e0b":"#10b981",borderRadius:3}}/>
+                          </div>
+                        </div>
+                      )}
+                      {canSetTAT&&<TATSetter deal={deal} card={card} onSet={setProjectTAT} refTable={refTable} ceType={ceType}/>}
+                      {card.tatSetBy&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:8}}>Set by {card.tatSetBy} · {card.tatSetAt?.split("T")[0]}</div>}
                     </div>
+                  )}
+                </div>
+              )}
 
-                    {/* Completion status */}
-                    <div style={{marginTop:12,padding:"10px 12px",background:"#f8fafc",borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div style={{fontSize:".75rem",color:"#64748b"}}>{tasks.filter(t=>t.done).length} of {tasks.length} tasks complete</div>
-                      <div style={{height:6,background:"#e2e8f0",borderRadius:3,overflow:"hidden",width:200}}>
-                        <div style={{height:"100%",width:(tasks.filter(t=>t.done).length/tasks.length*100)+"%",background:clr,borderRadius:3,transition:"width .4s"}}/>
+              {/* ── PM Updates ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projUpdates.length>0||showUForm?10:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📝 PM Updates</div>
+                  {!showUForm&&["Manager","Operations","ProjectMover"].includes(role)&&<button onClick={()=>{setShowUForm(true);setUText("");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#059669",cursor:"pointer",fontWeight:700}}>+ Log Update</button>}
+                </div>
+                {projUpdates.length===0&&!showUForm&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No updates logged yet.</div>}
+                {projUpdates.map((u,i)=>(
+                  <div key={u.id||i} style={{padding:"9px 10px",borderRadius:8,background:"#f8fafc",marginBottom:6}}>
+                    <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
+                      <span style={{fontSize:".6rem",background:"#1e293b",color:"#f59e0b",borderRadius:20,padding:"1px 7px",fontWeight:700,flexShrink:0,marginTop:2}}>{u.date}</span>
+                      <div>
+                        <div style={{fontSize:".82rem",color:"#0f172a",lineHeight:1.4}}>{u.detail}</div>
+                        <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>by {u.by} · {u.time}</div>
                       </div>
                     </div>
-
-                    {!canEdit&&(
-                      <div style={{marginTop:10,fontSize:".75rem",color:"#94a3b8",fontStyle:"italic",textAlign:"center"}}>
-                        View only — {selDept} team updates their own tasks
-                      </div>
-                    )}
                   </div>
-                );
-              })()}
-            </>
-          )}
-        </div>
+                ))}
+                {showUForm&&(
+                  <div style={{marginTop:8}}>
+                    <textarea value={uText} onChange={e=>setUText(e.target.value)} rows={3} placeholder="What happened today? Progress, decisions, issues, next steps..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",resize:"vertical",boxSizing:"border-box",marginBottom:8}}/>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{if(!uText.trim())return;logActivity(selDeal,"PM Update",uText.trim(),session?.name);setShowUForm(false);setUText("");}} style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Log Update</button>
+                      <button onClick={()=>setShowUForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Scope Changes ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
+                </div>
+                {projAddenda.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
+                {projAddenda.slice(0,3).map(a=>{
+                  const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
+                  return(
+                    <div key={a.id} style={{padding:"9px 12px",borderRadius:8,background:"#fffbeb",border:"1px solid #fde68a",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                        {Number(a.value)>0&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:1}}>₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+                      </div>
+                      <span style={{fontSize:".63rem",background:sc+"22",color:sc,border:`1px solid ${sc}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,flexShrink:0}}>{a.status}</span>
+                    </div>
+                  );
+                })}
+                {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
+              </div>
+
+              {/* ── Finance Snapshot ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>💰 Finance Snapshot</div>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8}}>
+                  {[
+                    {l:"Contract",v:fmt2(deal?.value||0),c:"#0f172a"},
+                    {l:"Billed",v:totalBilled>0?fmt2(totalBilled):"Not yet billed",c:totalBilled>0?"#3b82f6":"#94a3b8"},
+                    {l:"Collected",v:totalColl>0?fmt2(totalColl):"₱0",c:totalColl>0?"#059669":"#94a3b8"},
+                    {l:"Outstanding",v:totalBilled>totalColl?fmt2(totalBilled-totalColl):"—",c:totalBilled>totalColl?"#f59e0b":"#94a3b8"},
+                  ].map(({l,v,c})=>(
+                    <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
+                      <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                {(pendingMRs>0||pendingBRs>0)&&(
+                  <div style={{marginTop:10,display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {pendingMRs>0&&<span style={{fontSize:".72rem",background:"#fff3ed",color:"#f97316",border:"1px solid #fed7aa",borderRadius:6,padding:"3px 10px",fontWeight:700}}>🔧 {pendingMRs} MR{pendingMRs>1?"s":""} pending</span>}
+                    {pendingBRs>0&&<span style={{fontSize:".72rem",background:"#f5f3ff",color:"#8b5cf6",border:"1px solid #ddd6fe",borderRadius:6,padding:"3px 10px",fontWeight:700}}>💳 {pendingBRs} BR{pendingBRs>1?"s":""} pending</span>}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          );
+        })()
       )}
     </div>
   );
