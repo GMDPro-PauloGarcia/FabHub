@@ -11284,6 +11284,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
   const[histOpen,setHistOpen]=useState(false);
+  const mob=window.innerWidth<768;
 
   // Billing-derived metrics
   const billingMetrics=useMemo(()=>{
@@ -11507,7 +11508,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
       )}
 
       {/* KPI strip */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:10,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
           ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
           ["Working Capital (5 Banks)", "₱"+fmt2(workingBook), "#1d4ed8"],
@@ -11524,7 +11525,9 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
       </div>
 
       {/* Main cash position table */}
-      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+      <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+      <div style={{background:"#fff",minWidth:mob?720:undefined}}>
         {/* Table header */}
         <div style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",background:"#1e293b"}}>
           <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
@@ -11641,9 +11644,11 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
           </div>
         </div>
       </div>
+      </div>
+      </div>
 
       {/* Bottom grid: Key Areas + FabHub Collections breakdown */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16,marginBottom:16}}>
 
         {/* YTD Key Areas */}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
@@ -11655,14 +11660,14 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
             ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444"],
             ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316"],
           ].map(([label,path,color])=>(
-            <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
+            <div key={path} style={{display:"flex",flexDirection:mob?"column":"row",justifyContent:"space-between",alignItems:mob?"flex-start":"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",gap:mob?6:0}}>
               <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
               <div style={{display:"flex",gap:8,alignItems:"center"}}>
                 <CurrInp
                   value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
                   onChange={e=>f(path,e.target.value)}
-                  style={{...inpStyle,width:160,borderColor:`${color}44`}}/>
-                <span style={{fontWeight:700,color,minWidth:90,textAlign:"right",fontSize:".82rem"}}>
+                  style={{...inpStyle,width:mob?140:160,borderColor:`${color}44`}}/>
+                <span style={{fontWeight:700,color,minWidth:mob?70:90,textAlign:"right",fontSize:".82rem"}}>
                   {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
                 </span>
               </div>
