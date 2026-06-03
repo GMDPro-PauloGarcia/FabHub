@@ -11455,7 +11455,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
     padding:"8px 12px",borderBottom:"1px solid #e2e8f0",
     background:"#f8fafc",fontWeight:600,fontSize:".8rem",
     color:"#475569",fontStyle:"italic",borderRight:"2px solid #e2e8f0",
-    whiteSpace:"nowrap"
+    whiteSpace:"nowrap",position:"sticky",left:0,zIndex:2
   };
 
   return(
@@ -11511,8 +11511,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
           ["Total Cash Available", "₱"+fmt2(totalCashAvailable), totalCashAvailable>=0?"#059669":"#ef4444"],
-          ["Working Capital (5 Banks)", "₱"+fmt2(workingBook), "#1d4ed8"],
-          ["GMD Capital (Unionbank)",  "₱"+fmt2(bankTotals.capBook), "#0e7490"],
+          ["Working Capital", "₱"+fmt2(workingBook), "#1d4ed8"],
+          ["GMD Capital",  "₱"+fmt2(bankTotals.capBook), "#0e7490"],
           ["Collections Today",    "₱"+fmt2(totalCollections),   "#10b981"],
           ["Outstanding Invoices", "₱"+billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2}), billingMetrics.outstanding>0?"#f59e0b":"#059669"],
           ["YTD Collected",        "₱"+billingMetrics.collectedYTD.toLocaleString("en-PH",{minimumFractionDigits:2}), "#8b5cf6"],
@@ -11525,12 +11525,12 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
       </div>
 
       {/* Main cash position table */}
-      <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
-      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
+      <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",borderRadius:14,overflow:"hidden"}}>
       <div style={{background:"#fff",minWidth:mob?720:undefined}}>
         {/* Table header */}
         <div style={{display:"grid",gridTemplateColumns:"200px repeat(5,1fr) 130px",background:"#1e293b"}}>
-          <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155"}}>CATEGORY</div>
+          <div style={{padding:"12px 14px",color:"rgba(255,255,255,.6)",fontSize:".72rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"1px",borderRight:"1px solid #334155",position:"sticky",left:0,zIndex:3,background:"#1e293b"}}>CATEGORY</div>
           {BANKS.filter(b=>!b.capital).map(b=>(
             <div key={b.id} style={{padding:"10px 8px",textAlign:"center",borderRight:"1px solid #334155"}}>
               <div style={{fontWeight:800,color:"#fff",fontSize:".78rem"}}>{b.short}</div>
@@ -11568,7 +11568,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
         {/* Collections section */}
         <div style={{background:"#f0fdf4",borderBottom:"1px solid #d1fae5",borderTop:"2px solid #6ee7b7"}}>
           <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px"}}>
-            <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center",borderRight:"2px solid #6ee7b7"}}>COLLECTIONS</div>
+            <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center",borderRight:"2px solid #6ee7b7",position:"sticky",left:0,zIndex:2}}>COLLECTIONS</div>
             <div style={{padding:"8px 12px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:".75rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>
                 🔗 FabHub Auto: ₱{fmt2(todayInflows)}
@@ -11593,7 +11593,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
 
         {/* Less section */}
         <div style={{background:"#fef2f2",borderBottom:"1px solid #fecaca",borderTop:"2px solid #fca5a5"}}>
-          <div style={{padding:"7px 14px",fontWeight:700,color:"#dc2626",fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",borderBottom:"1px solid #fee2e2"}}>LESS:</div>
+          <div style={{padding:"7px 14px",fontWeight:700,color:"#dc2626",fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",borderBottom:"1px solid #fee2e2",position:"sticky",left:0,zIndex:2,background:"#fef2f2"}}>LESS:</div>
           {[
             ["Online Transaction (Bizlink)","less.bizlink"],
             ["Check Float",                "less.checkFloat"],
@@ -11633,7 +11633,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
 
         {/* Total Cash Available — highlighted */}
         <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",background:"#1e293b",borderTop:"3px solid #f59e0b"}}>
-          <div style={{padding:"14px 14px",color:"#f59e0b",fontWeight:800,fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center"}}>TOTAL CASH AVAILABLE</div>
+          <div style={{padding:"14px 14px",color:"#f59e0b",fontWeight:800,fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center",position:"sticky",left:0,zIndex:2,background:"#1e293b"}}>TOTAL CASH AVAILABLE</div>
           <div style={{padding:"14px 12px",color:"rgba(255,255,255,.5)",fontSize:".78rem",display:"flex",alignItems:"center"}}>
             Book Balance minus all deductions
           </div>
