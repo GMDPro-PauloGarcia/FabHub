@@ -3585,7 +3585,14 @@ export default function App(){
   const[infForm,   setInfForm]  =useState({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
   const[selProj,   setSelProj]  =useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
-  const[finTab,    setFinTab]   =useState("cash");
+  const[finTab,    setFinTab]   =useState("overview");
+  const[payables,  setPayables] =useState(()=>{try{const v=localStorage.getItem("gmdv5:payables");return v?JSON.parse(v):[];}catch{return[];}});
+  const[payModal,  setPayModal] =useState(false);
+  const[payForm,   setPayForm]  =useState({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
+  const[editPayId, setEditPayId]=useState(null);
+  const[acctSearch,setAcctSearch]=useState("");
+  const[acctCat,   setAcctCat]  =useState("All");
+  const[acctProj,  setAcctProj] =useState("all");
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -3962,6 +3969,17 @@ export default function App(){
     setExpModal(false);
   };
   const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
+
+  const upPayables=fn=>{const next=fn(payables);setPayables(next);try{localStorage.setItem("gmdv5:payables",JSON.stringify(next));}catch{}};
+  const savePayable=(data)=>{
+    if(!data.vendor||!data.amount) return;
+    const rec={...data,amount:Number(data.amount),id:editPayId||uid(),status:editPayId?(data.status||"Unpaid"):"Unpaid",createdAt:editPayId?data.createdAt:today,createdBy:session?.name||""};
+    upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
+    setPayModal(false);setEditPayId(null);setPayForm({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
+  };
+  const markPayablePaid=(id)=>upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidDate:today}:p));
+  const delPayable=(id)=>upPayables(ps=>ps.filter(p=>p.id!==id));
+
   const saveInf=()=>{
     if(!infForm.source||!infForm.amount) return;
     const rec={...infForm,amount:Number(infForm.amount),id:uid()};
@@ -7201,26 +7219,170 @@ export default function App(){
 
     if(page==="finance") return(
       <Wrap>
-        {/* Finance tab switcher */}
-        <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24}}>
-          {[["cash","📊 Cash Position"],["pl","📈 P&L / Income Statement"]].map(([t,l])=>(
-            <button key={t} onClick={()=>setFinTab(t)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,transition:"all .15s"}}>{l}</button>
+        {/* Finance tab bar */}
+        <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,overflowX:"auto"}}>
+          {[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"]].map(([t,l])=>(
+            <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
+              {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}
+            </button>
           ))}
         </div>
 
+        {/* ── OVERVIEW TAB ── */}
+        {finTab==="overview"&&(()=>{
+          const now=new Date();
+          const cy=now.getFullYear();
+          const totalBilled=billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>s+Number(b.amount||0),0);
+          const totalCollected=billings.reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
+          const totalExpenses=exps.reduce((s,e)=>s+Number(e.amount||0),0);
+          const grossProfit=totalCollected-totalExpenses;
+          const grossMargin=totalCollected>0?Math.round(grossProfit/totalCollected*100):0;
+          const collectionRate=totalBilled>0?Math.round(totalCollected/totalBilled*100):0;
+          const outstanding=Math.max(0,totalBilled-totalCollected);
+          // DSO: (outstanding / (totalCollected/365)) — how many days to collect
+          const dso=totalCollected>0?Math.round(outstanding/(totalCollected/365)):0;
+          // Backlog: awarded deal value minus already-billed
+          const backlog=wonDeals.reduce((s,d)=>{
+            const billed=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").reduce((bs,b)=>bs+Number(b.amount||0),0);
+            return s+Math.max(0,Number(d.value||0)-billed);
+          },0);
+          const pipelineVal=deals.filter(d=>ACTIVE_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
+          // Win rate last 12 months
+          const y12ago=new Date();y12ago.setFullYear(y12ago.getFullYear()-1);
+          const recentDeals=deals.filter(d=>{const dt=new Date(d.createdAt||"2020-01-01");return dt>=y12ago;});
+          const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>WON_STAGES.includes(d.stage)||d.stage==="14 · Completed").length/recentDeals.length*100):0;
+          const avgDeal=wonDeals.length>0?Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)/wonDeals.length):0;
+          // Monthly revenue (last 6 months)
+          const months6=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{y:d.getFullYear(),m:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]};});
+          const monthlyRev=months6.map(({y,m})=>billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>{const d=new Date(b.invoiceDate||b.dueDate||"");return d.getFullYear()===y&&d.getMonth()===m?s+Number(b.amount||0):s;},0));
+          const monthlyExp=months6.map(({y,m})=>exps.reduce((s,e)=>((e.year||cy)===y&&Number(e.month||0)===m)?s+Number(e.amount||0):s,0));
+          const maxBar=Math.max(...monthlyRev,1);
+          // Top clients by collected
+          const clientMap={};billings.forEach(b=>{const d=wonDeals.find(x=>x.id===b.dealId)||completedDeals.find(x=>x.id===b.dealId);if(!d)return;const k=d.client;if(!clientMap[k])clientMap[k]=0;clientMap[k]+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);});
+          const topClients=Object.entries(clientMap).sort(([,a],[,b])=>b-a).slice(0,5);
+          // Unpaid payables total
+          const totalPayables=payables.filter(p=>p.status==="Unpaid").reduce((s,p)=>s+Number(p.amount||0),0);
+          const overduePayables=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).length;
+          return(
+            <div>
+              {/* Expansion Signal Banner */}
+              {(()=>{
+                const signals=[];
+                if(grossMargin>=25) signals.push({text:`Gross margin ${grossMargin}% — healthy`,ok:true});
+                else signals.push({text:`Gross margin ${grossMargin}% — below 25% target`,ok:false});
+                if(dso<=60) signals.push({text:`DSO ${dso} days — good cash conversion`,ok:true});
+                else signals.push({text:`DSO ${dso} days — clients paying slowly`,ok:false});
+                if(backlog>0) signals.push({text:`₱${Math.round(backlog/1000000)}M backlog — forward visibility`,ok:true});
+                const allGreen=signals.every(s=>s.ok);
+                return(
+                  <div style={{background:allGreen?"#f0fdf4":"#fffbeb",border:`1.5px solid ${allGreen?"#6ee7b7":"#fde68a"}`,borderRadius:12,padding:"12px 16px",marginBottom:20,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+                    <span style={{fontWeight:700,fontSize:".82rem",color:allGreen?"#059669":"#92400e"}}>{allGreen?"🟢 Expansion signals look strong":"🟡 Watch these before expanding"}</span>
+                    {signals.map((s,i)=><span key={i} style={{fontSize:".75rem",color:s.ok?"#059669":"#b45309",fontWeight:600}}>{s.ok?"✓":"⚠"} {s.text}</span>)}
+                  </div>
+                );
+              })()}
+
+              {/* KPI Grid Row 1 — Revenue & Profitability */}
+              <div style={{marginBottom:8,fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Revenue &amp; Profitability</div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
+                {[
+                  {l:"Total Billed",v:"₱"+Math.round(totalBilled/1000)+"K",sub:wonDeals.length+" active projects",c:"#3b82f6"},
+                  {l:"Gross Margin",v:grossMargin+"%",sub:grossMargin>=25?"✓ Healthy":"⚠ Below target",c:grossMargin>=25?"#059669":"#f59e0b"},
+                  {l:"Collected YTD",v:"₱"+Math.round(totalCollected/1000)+"K",sub:`${collectionRate}% collection rate`,c:"#10b981"},
+                  {l:"Outstanding AR",v:"₱"+Math.round(outstanding/1000)+"K",sub:`DSO: ${dso} days`,c:outstanding>0?"#ef4444":"#10b981"},
+                ].map(({l,v,sub,c})=>(
+                  <div key={l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",borderTop:`3px solid ${c}`}}>
+                    <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>{l}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
+                    <div style={{fontSize:".68rem",color:"#64748b",marginTop:3}}>{sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* KPI Grid Row 2 — Growth & Pipeline */}
+              <div style={{marginBottom:8,fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Growth &amp; Pipeline</div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
+                {[
+                  {l:"Contract Backlog",v:"₱"+Math.round(backlog/1000000*10)/10+"M",sub:"Awarded, not yet billed",c:"#8b5cf6"},
+                  {l:"Pipeline Value",  v:"₱"+Math.round(pipelineVal/1000000*10)/10+"M",sub:"Active deals in progress",c:"#06b6d4"},
+                  {l:"Win Rate",        v:winRate+"%",sub:"Last 12 months",c:winRate>=40?"#059669":"#f59e0b"},
+                  {l:"Avg Deal Size",   v:"₱"+Math.round(avgDeal/1000)+"K",sub:wonDeals.length+" awarded projects",c:"#f97316"},
+                ].map(({l,v,sub,c})=>(
+                  <div key={l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",borderTop:`3px solid ${c}`}}>
+                    <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>{l}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
+                    <div style={{fontSize:".68rem",color:"#64748b",marginTop:3}}>{sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Revenue vs Expenses — Last 6 Months */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 20px",marginBottom:20}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:14}}>📈 Revenue vs Expenses — Last 6 Months</div>
+                <div style={{display:"flex",gap:6,alignItems:"flex-end",height:80}}>
+                  {months6.map(({label},i)=>(
+                    <div key={label} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                      <div style={{width:"100%",display:"flex",gap:2,alignItems:"flex-end",height:60}}>
+                        <div style={{flex:1,background:"#3b82f6",borderRadius:"3px 3px 0 0",height:Math.max(2,monthlyRev[i]/maxBar*60)+"px",minHeight:2}} title={`Revenue ₱${Math.round(monthlyRev[i]/1000)}K`}/>
+                        <div style={{flex:1,background:"#ef4444",borderRadius:"3px 3px 0 0",height:Math.max(2,monthlyExp[i]/maxBar*60)+"px",minHeight:2}} title={`Expenses ₱${Math.round(monthlyExp[i]/1000)}K`}/>
+                      </div>
+                      <div style={{fontSize:".6rem",color:"#94a3b8"}}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:16,marginTop:8,fontSize:".7rem",color:"#64748b"}}>
+                  <span><span style={{display:"inline-block",width:10,height:10,background:"#3b82f6",borderRadius:2,marginRight:4}}/>Revenue Billed</span>
+                  <span><span style={{display:"inline-block",width:10,height:10,background:"#ef4444",borderRadius:2,marginRight:4}}/>Expenses</span>
+                </div>
+              </div>
+
+              {/* Bottom row: Top Clients + Payables Alert */}
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16}}>
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 20px"}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>🏆 Top Clients by Collections</div>
+                  {topClients.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No collection data yet.</div>}
+                  {topClients.map(([client,collected],i)=>(
+                    <div key={client} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f1f5f9"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{width:20,height:20,background:["#f59e0b","#94a3b8","#cd7f32","#64748b","#94a3b8"][i]||"#e2e8f0",borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".62rem",fontWeight:800,color:"#fff",flexShrink:0}}>{i+1}</span>
+                        <span style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{client}</span>
+                      </div>
+                      <span style={{fontSize:".82rem",fontWeight:700,color:"#059669"}}>₱{Math.round(collected/1000)}K</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>📤 Payables Summary</div>
+                    <button onClick={()=>setFinTab("payables")} style={{fontSize:".72rem",color:"#3b82f6",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>View all →</button>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                    <div style={{background:"#fef2f2",borderRadius:8,padding:"10px 12px"}}>
+                      <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Unpaid</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#ef4444"}}>₱{Math.round(totalPayables/1000)}K</div>
+                    </div>
+                    <div style={{background:overduePayables>0?"#fff7ed":"#f0fdf4",borderRadius:8,padding:"10px 12px"}}>
+                      <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Overdue</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:overduePayables>0?"#f97316":"#059669"}}>{overduePayables>0?`${overduePayables} items`:"None"}</div>
+                    </div>
+                  </div>
+                  {payables.filter(p=>p.status==="Unpaid").slice(0,3).map(p=>(
+                    <div key={p.id} style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",padding:"5px 0",borderBottom:"1px solid #f1f5f9"}}>
+                      <span style={{color:"#0f172a",fontWeight:600}}>{p.vendor}</span>
+                      <span style={{color:p.dueDate&&p.dueDate<today?"#ef4444":"#64748b",fontWeight:700}}>₱{Number(p.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
+                    </div>
+                  ))}
+                  {payables.filter(p=>p.status==="Unpaid").length===0&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No outstanding payables.</div>}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── CASH POSITION TAB ── */}
         {finTab==="cash"&&(
           <>
-            <DailyCashPosition
-              cashPositions={cashPositions}
-              saveDayPos={saveDayPos}
-              infs={infs}
-              wonDeals={wonDeals}
-              billings={billings}
-              totRev={totRev}
-              totExp={totExp}
-              totColl={totColl}
-              totOut={totOut}
-            />
+            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} infs={infs} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut}/>
             <div style={{marginTop:24,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
               <KPI label="Revenue"      value={fmtK(totRev)}         color="#3b82f6"/>
               <KPI label="Expenses"     value={fmtK(totExp)}         color="#ef4444"/>
@@ -7228,7 +7390,7 @@ export default function App(){
               <KPI label="Collected"    value={fmtK(totColl)}        color="#10b981" sub={`${fmtK(totOut)} out`}/>
             </div>
             <div style={{marginTop:24}}>
-              <SecHead title="Recent Expenses" sub="Recorded by Accounting — view only"/>
+              <SecHead title="Recent Expenses" sub="Last 10 recorded"/>
               {exps.slice(-10).reverse().map(e=>(
                 <Card key={e.id}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
@@ -7239,7 +7401,6 @@ export default function App(){
                       </div>
                       <div style={{fontWeight:600,color:"#0f172a"}}>{e.note}</div>
                       <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>{MONTHS[e.month]}</div>
-                      {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{fontSize:".72rem",color:"#3b82f6",marginTop:3,display:"block"}}>📎 Receipt</a>}
                     </div>
                     <div style={{textAlign:"right",flexShrink:0}}>
                       <div style={{fontWeight:800,color:"#ef4444",fontSize:"1.05rem"}}>{fmt(e.amount)}</div>
@@ -7252,12 +7413,171 @@ export default function App(){
           </>
         )}
 
+        {/* ── P&L TAB ── */}
         {finTab==="pl"&&(
           <>
             <SecHead title="P&L / Income Statement" sub="Revenue, collections, expenses and gross profit"/>
             <PLStatement billings={billings} exps={exps} wonDeals={wonDeals}/>
           </>
         )}
+
+        {/* ── PROJECTS P&L TAB ── */}
+        {finTab==="projects"&&(()=>{
+          const allProj=[...wonDeals,...completedDeals];
+          const rows=allProj.map(d=>{
+            const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
+            const billed=ms.reduce((s,b)=>s+Number(b.amount||0),0);
+            const collected=ms.reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),ss),0);
+            const directExp=exps.filter(e=>(e.projectId||e.dealId)===d.id).reduce((s,e)=>s+Number(e.amount||0),0);
+            const grossProfit=collected-directExp;
+            const margin=collected>0?Math.round(grossProfit/collected*100):null;
+            const contractVal=Number(d.value||0);
+            const balance=Math.max(0,billed-collected);
+            return{d,contractVal,billed,collected,directExp,grossProfit,margin,balance};
+          }).sort((a,b)=>b.contractVal-a.contractVal);
+          const totContract=rows.reduce((s,r)=>s+r.contractVal,0);
+          const totBilled=rows.reduce((s,r)=>s+r.billed,0);
+          const totCollected=rows.reduce((s,r)=>s+r.collected,0);
+          const totExp2=rows.reduce((s,r)=>s+r.directExp,0);
+          const totGP=rows.reduce((s,r)=>s+r.grossProfit,0);
+          const totMargin=totCollected>0?Math.round(totGP/totCollected*100):0;
+          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+          return(
+            <div>
+              {/* Summary strip */}
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
+                {[{l:"Contract Value",v:fmtM(totContract),c:"#3b82f6"},{l:"Total Billed",v:fmtM(totBilled),c:"#8b5cf6"},{l:"Collected",v:fmtM(totCollected),c:"#10b981"},{l:"Direct Costs",v:fmtM(totExp2),c:"#ef4444"},{l:"Gross Profit",v:fmtM(totGP),sub:totMargin+"%",c:totGP>=0?"#059669":"#ef4444"}].map(({l,v,sub,c})=>(
+                  <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
+                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
+                    {sub&&<div style={{fontSize:".7rem",color:c,fontWeight:700}}>{sub} margin</div>}
+                  </div>
+                ))}
+              </div>
+              {/* Table */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:8}}>
+                  {["Project","Contract","Billed","Collected","Direct Costs","Margin"].map(h=>(
+                    <div key={h} style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
+                  ))}
+                </div>
+                {rows.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No projects yet.</div>}
+                {rows.map(({d,contractVal,billed,collected,directExp,grossProfit,margin,balance},i)=>(
+                  <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:8,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                      {d.contact&&<div style={{fontSize:".67rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {d.client}</div>}
+                      <div style={{fontSize:".65rem",color:"#94a3b8"}}>{d.ceNo||"—"} · {d.stage==="14 · Completed"?<span style={{color:"#059669",fontWeight:700}}>✅ Completed</span>:<span style={{color:"#3b82f6"}}>{d.stage?.replace(/^\d+ · /,"")}</span>}</div>
+                    </div>
+                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{contractVal?fmtM(contractVal):"—"}</div>
+                    <div style={{fontSize:".82rem",color:"#8b5cf6"}}>{billed?fmtM(billed):"—"}</div>
+                    <div style={{fontSize:".82rem",color:"#10b981",fontWeight:600}}>{collected?fmtM(collected):"—"}</div>
+                    <div style={{fontSize:".82rem",color:"#ef4444"}}>{directExp?fmtM(directExp):"—"}</div>
+                    <div style={{textAlign:"center"}}>
+                      {margin!==null?(
+                        <span style={{fontSize:".75rem",fontWeight:800,color:margin>=25?"#059669":margin>=10?"#f59e0b":"#ef4444",background:margin>=25?"#f0fdf4":margin>=10?"#fffbeb":"#fef2f2",borderRadius:20,padding:"3px 8px"}}>{margin}%</span>
+                      ):<span style={{color:"#94a3b8",fontSize:".75rem"}}>—</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ── PAYABLES TAB ── */}
+        {finTab==="payables"&&(()=>{
+          const unpaid=payables.filter(p=>p.status==="Unpaid");
+          const paid=payables.filter(p=>p.status==="Paid");
+          const totalUnpaid=unpaid.reduce((s,p)=>s+Number(p.amount||0),0);
+          const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
+          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+          return(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+                <div>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>📤 Accounts Payable</div>
+                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Track what GMD owes to suppliers, subcontractors, and vendors.</div>
+                </div>
+                <button onClick={()=>{setPayForm({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});setEditPayId(null);setPayModal(true);}}
+                  style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>+ Add Payable</button>
+              </div>
+              {/* Summary */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
+                {[{l:"Total Unpaid",v:fmtM(totalUnpaid),c:"#ef4444"},{l:"Overdue",v:unpaid.filter(p=>p.dueDate&&p.dueDate<today).length+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0)),c:"#059669"}].map(({l,v,c})=>(
+                  <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
+                    <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Unpaid list */}
+              {unpaid.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No outstanding payables — all clear! ✓</div>}
+              {unpaid.sort((a,b)=>(a.dueDate||"9999").localeCompare(b.dueDate||"9999")).map(p=>{
+                const isOverdue=p.dueDate&&p.dueDate<today;
+                const proj=wonDeals.find(d=>d.id===p.projectId)||completedDeals.find(d=>d.id===p.projectId);
+                return(
+                  <div key={p.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isOverdue?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${isOverdue?"#ef4444":"#f59e0b"}`,padding:"12px 16px",marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{p.vendor}</span>
+                          <span style={{fontSize:".65rem",background:"#f1f5f9",color:"#64748b",borderRadius:20,padding:"1px 8px",fontWeight:600}}>{p.category}</span>
+                          {isOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#ef4444",borderRadius:20,padding:"1px 8px",fontWeight:700}}>OVERDUE</span>}
+                        </div>
+                        {p.invoiceRef&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Invoice: {p.invoiceRef}</div>}
+                        {proj&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</div>}
+                        {p.notes&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:3}}>{p.notes}</div>}
+                        <div style={{fontSize:".7rem",color:isOverdue?"#ef4444":"#94a3b8",marginTop:3}}>{p.dueDate?`Due: ${p.dueDate}`:"No due date"} · Added {p.createdAt}</div>
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:isOverdue?"#ef4444":"#0f172a"}}>{fmtM(p.amount)}</div>
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>markPayablePaid(p.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#059669",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Paid</button>
+                          <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                          <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Paid history */}
+              {paid.length>0&&(
+                <div style={{marginTop:16}}>
+                  <div style={{fontSize:".75rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>✅ Paid ({paid.length})</div>
+                  {paid.slice(0,10).map(p=>(
+                    <div key={p.id} style={{background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",padding:"9px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",opacity:.75}}>
+                      <div>
+                        <span style={{fontWeight:600,color:"#64748b",fontSize:".83rem"}}>{p.vendor}</span>
+                        <span style={{fontSize:".7rem",color:"#94a3b8",marginLeft:8}}>{p.paidDate} · {p.category}</span>
+                      </div>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <span style={{fontWeight:700,color:"#059669",fontSize:".82rem"}}>{fmtM(p.amount)}</span>
+                        <button onClick={()=>delPayable(p.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Add/Edit Payable Modal */}
+              <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?"Edit Payable":"Add Payable"}>
+                {[{k:"vendor",l:"Vendor / Payee",ph:"e.g. ABC Steel Supply"},{k:"invoiceRef",l:"Invoice / Ref #",ph:"Optional"}].map(({k,l,ph})=>(
+                  <Fld key={k} label={l}><Inp value={payForm[k]||""} onChange={e=>setPayForm(p=>({...p,[k]:e.target.value}))} placeholder={ph}/></Fld>
+                ))}
+                <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
+                <Fld label="Due Date"><Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/></Fld>
+                <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+                <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
+                <Fld label="Notes"><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder="Optional details"/></Fld>
+                <div style={{display:"flex",gap:10,marginTop:18}}>
+                  <Btn full variant="green" onClick={()=>savePayable(payForm)}>Save Payable</Btn>
+                  <Btn variant="ghost" onClick={()=>{setPayModal(false);setEditPayId(null);}}>Cancel</Btn>
+                </div>
+              </Modal>
+            </div>
+          );
+        })()}
       </Wrap>
     );
     if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
@@ -8330,48 +8650,75 @@ export default function App(){
   // ── ACCOUNTING (Expenses) ─────────────────────────────────────────────────
   if(page==="accounting") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-        <SecHead title="Accounting — Expenses" action={<Btn onClick={openAddExp}>+ Log Expense</Btn>}/>
-        <button onClick={()=>{
-          const rows=[["Date","Category","Description","Amount","Project","Receipt"]];
-          exps.forEach(e=>rows.push([
-            e.date||MONTHS[e.month]||"",e.category||"",e.note||"",
-            Number(e.amount||0).toFixed(2),
-            wonDeals.find(d=>d.id===e.projectId)?.client||"Company-wide",
-            e.receipt||""
-          ]));
-          const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-          const a=document.createElement("a");
-          a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);
-          a.download=`GMD_Expenses_${today}.csv`;a.click();
-        }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",flexShrink:0}}>
-          ⬇ Export CSV
-        </button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem"}}>📋 Accounting — Expenses</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <Btn onClick={openAddExp}>+ Log Expense</Btn>
+          <button onClick={()=>{
+            const rows=[["Date","Category","Description","Amount","Project","Receipt"]];
+            exps.forEach(e=>rows.push([e.date||MONTHS[e.month]||"",e.category||"",e.note||"",Number(e.amount||0).toFixed(2),(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId))?.client||"Company-wide",e.receipt||""]));
+            const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);a.download=`GMD_Expenses_${today}.csv`;a.click();
+          }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
+        </div>
       </div>
-      <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".82rem",color:"#92400e"}}>
-        📋 <strong>Accounting</strong> — Record all expenses here and tag them to projects. This matches what is being released from the bank to actual project costs.
+      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+        <div style={{position:"relative",flex:1,minWidth:180}}>
+          <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".8rem"}}>🔍</span>
+          <input value={acctSearch} onChange={e=>setAcctSearch(e.target.value)} placeholder="Search expenses…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px 7px 28px",fontFamily:"inherit",fontSize:".83rem",boxSizing:"border-box"}}/>
+        </div>
+        <select value={acctCat} onChange={e=>setAcctCat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}>
+          <option value="All">All Categories</option>
+          {EXP_CATS.map(c=><option key={c}>{c}</option>)}
+        </select>
+        <select value={acctProj} onChange={e=>setAcctProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer",maxWidth:180}}>
+          <option value="all">All Projects</option>
+          <option value="company">Company-wide only</option>
+          {[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
+        </select>
+        {(acctSearch||acctCat!=="All"||acctProj!=="all")&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
       </div>
-      {exps.length===0&&<EmptyState icon="📋" msg="No expenses logged yet. Hit + Log Expense to start recording."/>}
-      {exps.map(e=>(
-        <Card key={e.id}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700,color:"#0f172a"}}>{e.note}</div>
-              <div style={{fontSize:".75rem",color:"#64748b",marginTop:3,display:"flex",gap:10,flexWrap:"wrap"}}>
-                <span>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
-                <span>{e.category}</span>
-                {e.projectId&&<span>📁 {wonDeals.find(d=>d.id===e.projectId)?.client||e.projectId}</span>}
-                <span>{e.date||e.month}</span>
-              </div>
+      {(()=>{
+        let list=[...exps].sort((a,b)=>(b.date||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}`).localeCompare(a.date||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}`));
+        if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
+        if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
+        if(acctProj==="company") list=list.filter(e=>!e.projectId);
+        else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
+        const total=list.reduce((s,e)=>s+Number(e.amount||0),0);
+        return(
+          <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"8px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+              <span style={{fontSize:".78rem",color:"#64748b"}}>{list.length} expense{list.length!==1?"s":""}{(acctSearch||acctCat!=="All"||acctProj!=="all")?" matching filter":""}</span>
+              <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{total.toLocaleString("en-PH",{maximumFractionDigits:0})} total</span>
             </div>
-            <div style={{display:"flex",gap:7}}>
-              <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-              <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
-            </div>
-          </div>
-        </Card>
-      ))}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
+            {list.length===0&&<EmptyState icon="📋" msg="No expenses match your filter."/>}
+            {list.map(e=>{
+              const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));
+              return(
+                <Card key={e.id}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,color:"#0f172a"}}>{e.note}</div>
+                      <div style={{fontSize:".75rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                        <span style={{background:"#f1f5f9",borderRadius:20,padding:"1px 8px",fontWeight:600}}>{e.category}</span>
+                        {proj?<span style={{color:"#8b5cf6"}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</span>:<span style={{color:"#94a3b8"}}>Company-wide</span>}
+                        <span>{e.date||MONTHS[e.month]}</span>
+                        {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{color:"#3b82f6",textDecoration:"none",fontWeight:600}}>📎 Receipt</a>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontWeight:800,color:"#ef4444",fontSize:"1rem"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+                      <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                      <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </>
+        );
+      })()}
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={[...projList,...completedDeals]} clientName={clientName}/>
     </Wrap>
   );
 
