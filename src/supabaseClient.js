@@ -56,7 +56,8 @@ export const sbLoadAll = async () => {
       prs, mreqs, breqs, addenda,
       cashPos, budgets, checklists, swatches, actLog, users, appSettings,
       drfs, inventory, stocklog, projRows,
-      suppliers, subcontractors
+      suppliers, subcontractors,
+      payables, loans, loanPayments
     ] = await Promise.all([
       sbList('deals',                    { order: 'created_at', limit: 1000 }),
       sbList('job_orders',               { order: 'created_at', limit: 500 }),
@@ -84,6 +85,9 @@ export const sbLoadAll = async () => {
       sbList('projects',                 {}),
       sbList('suppliers',       { order: 'company_name', asc: true }),
       sbList('subcontractors',  { order: 'company_name', asc: true }),
+      sbList('payables',        { order: 'created_at', limit: 500 }),
+      sbList('loans',           { order: 'created_at', limit: 200 }),
+      sbList('loan_payments',   { order: 'date',        limit: 1000 }),
     ])
 
     // Build pcards object with departments embedded
@@ -121,10 +125,19 @@ export const sbLoadAll = async () => {
     const settingsObj = Object.fromEntries((appSettings||[]).map(s => [s.key, s.value]))
     const projsObj    = Object.fromEntries((projRows||[]).map(r => [r.deal_id, r.data]))
 
+    // Embed loan_payments into loans
+    const loansArr = loans.map(l => ({
+      ...l,
+      payments: loanPayments.filter(p => p.loan_id === l.id).map(p => ({
+        id: p.id, loan_id: p.loan_id, amount: Number(p.amount), date: p.date
+      }))
+    }))
+
     return { deals, jos, pcards: pcardsObj, billings: billingsArr, exps: expenses, inflows,
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
              checklist: checklists, swatches, actLog, users, settings: settingsObj,
-             drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors }
+             drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors,
+             payables, loans: loansArr }
   } catch (err) {
     console.error('sbLoadAll failed:', err)
     return null

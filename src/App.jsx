@@ -169,6 +169,8 @@ const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyO
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
 const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||""});
+const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
 const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
@@ -2203,6 +2205,8 @@ export default function App(){
             if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
             if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
             if(data.inflows?.length) setInfs(data.inflows);
+            if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);try{localStorage.setItem("gmdv5:payables",JSON.stringify(ps));}catch{}}
+            if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);try{localStorage.setItem("gmdv5:loans",JSON.stringify(ls));}catch{}}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);localStorage.setItem(KEYS.botsettings,JSON.stringify(bs));}
             if(data.drfs?.length){const d=data.drfs.map(drfFromSb);setDrfs(d);localStorage.setItem(KEYS.drfs,JSON.stringify(d));}
             if(data.inventory?.length){const d=data.inventory.map(invFromSb);setInventory(d);localStorage.setItem(KEYS.inventory,JSON.stringify(d));}
@@ -3980,25 +3984,41 @@ export default function App(){
     if(!data.vendor||!data.amount) return;
     const rec={...data,amount:Number(data.amount),id:editPayId||uid(),status:editPayId?(data.status||"Unpaid"):"Unpaid",createdAt:editPayId?data.createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
+    if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
     setPayModal(false);setEditPayId(null);setPayForm({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
   };
-  const markPayablePaid=(id)=>upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidDate:today}:p));
-  const delPayable=(id)=>upPayables(ps=>ps.filter(p=>p.id!==id));
+  const markPayablePaid=(id)=>{
+    upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidDate:today}:p));
+    if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_date:today},"id").catch(()=>{});
+  };
+  const delPayable=(id)=>{
+    upPayables(ps=>ps.filter(p=>p.id!==id));
+    if(isSupabaseReady()) sbDelete("payables",id).catch(()=>{});
+  };
 
   const upLoans=fn=>{const next=fn(loans);setLoans(next);try{localStorage.setItem("gmdv5:loans",JSON.stringify(next));}catch{}};
   const saveLoan=(data)=>{
     if(!data.lender||!data.principal) return;
     const rec={...data,principal:Number(data.principal),monthlyPayment:Number(data.monthlyPayment||0),termMonths:Number(data.termMonths||0),interestRate:Number(data.interestRate||0),id:editLoanId||uid(),createdAt:editLoanId?data.createdAt:today,payments:editLoanId?(data.payments||[]):[]};
     upLoans(ls=>editLoanId?ls.map(l=>l.id===editLoanId?rec:l):[rec,...ls]);
+    if(isSupabaseReady()) sbUpsert("loans",loanToSb(rec),"id").catch(()=>{});
     setLoanModal(false);setEditLoanId(null);setLoanForm({lender:"",type:"Bank Loan",principal:"",disbursedDate:"",termMonths:"",interestRate:"",monthlyPayment:"",notes:""});
   };
-  const delLoan=(id)=>upLoans(ls=>ls.filter(l=>l.id!==id));
+  const delLoan=(id)=>{
+    upLoans(ls=>ls.filter(l=>l.id!==id));
+    if(isSupabaseReady()) sbDelete("loans",id).catch(()=>{});
+  };
   const addLoanPayment=(loanId,amount,date)=>{
     if(!amount||Number(amount)<=0) return;
-    upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:[...(l.payments||[]),{id:uid(),amount:Number(amount),date:date||today}]}:l));
+    const pm={id:uid(),amount:Number(amount),date:date||today};
+    upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:[...(l.payments||[]),pm]}:l));
+    if(isSupabaseReady()) sbUpsert("loan_payments",{id:pm.id,loan_id:loanId,amount:pm.amount,date:pm.date},"id").catch(()=>{});
     setLoanPay(p=>({...p,[loanId]:{amount:"",date:today}}));
   };
-  const delLoanPayment=(loanId,payId)=>upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:(l.payments||[]).filter(p=>p.id!==payId)}:l));
+  const delLoanPayment=(loanId,payId)=>{
+    upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:(l.payments||[]).filter(p=>p.id!==payId)}:l));
+    if(isSupabaseReady()) sbDelete("loan_payments",payId).catch(()=>{});
+  };
 
   const saveInf=()=>{
     if(!infForm.source||!infForm.amount) return;
