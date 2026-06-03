@@ -3590,6 +3590,11 @@ export default function App(){
   const[payModal,  setPayModal] =useState(false);
   const[payForm,   setPayForm]  =useState({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
   const[editPayId, setEditPayId]=useState(null);
+  const[loans,     setLoans]    =useState(()=>{try{const v=localStorage.getItem("gmdv5:loans");return v?JSON.parse(v):[];}catch{return[];}});
+  const[loanModal, setLoanModal]=useState(false);
+  const[editLoanId,setEditLoanId]=useState(null);
+  const[loanPay,   setLoanPay]  =useState({});
+  const[loanForm,  setLoanForm] =useState({lender:"",type:"Bank Loan",principal:"",disbursedDate:"",termMonths:"",interestRate:"",monthlyPayment:"",notes:""});
   const[acctSearch,setAcctSearch]=useState("");
   const[acctCat,   setAcctCat]  =useState("All");
   const[acctProj,  setAcctProj] =useState("all");
@@ -3979,6 +3984,21 @@ export default function App(){
   };
   const markPayablePaid=(id)=>upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidDate:today}:p));
   const delPayable=(id)=>upPayables(ps=>ps.filter(p=>p.id!==id));
+
+  const upLoans=fn=>{const next=fn(loans);setLoans(next);try{localStorage.setItem("gmdv5:loans",JSON.stringify(next));}catch{}};
+  const saveLoan=(data)=>{
+    if(!data.lender||!data.principal) return;
+    const rec={...data,principal:Number(data.principal),monthlyPayment:Number(data.monthlyPayment||0),termMonths:Number(data.termMonths||0),interestRate:Number(data.interestRate||0),id:editLoanId||uid(),createdAt:editLoanId?data.createdAt:today,payments:editLoanId?(data.payments||[]):[]};
+    upLoans(ls=>editLoanId?ls.map(l=>l.id===editLoanId?rec:l):[rec,...ls]);
+    setLoanModal(false);setEditLoanId(null);setLoanForm({lender:"",type:"Bank Loan",principal:"",disbursedDate:"",termMonths:"",interestRate:"",monthlyPayment:"",notes:""});
+  };
+  const delLoan=(id)=>upLoans(ls=>ls.filter(l=>l.id!==id));
+  const addLoanPayment=(loanId,amount,date)=>{
+    if(!amount||Number(amount)<=0) return;
+    upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:[...(l.payments||[]),{id:uid(),amount:Number(amount),date:date||today}]}:l));
+    setLoanPay(p=>({...p,[loanId]:{amount:"",date:today}}));
+  };
+  const delLoanPayment=(loanId,payId)=>upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:(l.payments||[]).filter(p=>p.id!==payId)}:l));
 
   const saveInf=()=>{
     if(!infForm.source||!infForm.amount) return;
@@ -7221,9 +7241,9 @@ export default function App(){
       <Wrap>
         {/* Finance tab bar */}
         <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,overflowX:"auto"}}>
-          {[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"]].map(([t,l])=>(
+          {[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"],["loans","💳 Loans"]].map(([t,l])=>(
             <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
-              {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}
+              {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
             </button>
           ))}
         </div>
@@ -7573,6 +7593,134 @@ export default function App(){
                 <div style={{display:"flex",gap:10,marginTop:18}}>
                   <Btn full variant="green" onClick={()=>savePayable(payForm)}>Save Payable</Btn>
                   <Btn variant="ghost" onClick={()=>{setPayModal(false);setEditPayId(null);}}>Cancel</Btn>
+                </div>
+              </Modal>
+            </div>
+          );
+        })()}
+        {finTab==="loans"&&(()=>{
+          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+          const totalPrincipal=loans.reduce((s,l)=>s+l.principal,0);
+          const totalPaid=loans.reduce((s,l)=>s+(l.payments||[]).reduce((a,p)=>a+p.amount,0),0);
+          const totalOutstanding=Math.max(0,totalPrincipal-totalPaid);
+          const totalMonthly=loans.reduce((s,l)=>s+l.monthlyPayment,0);
+          const LOAN_TYPES=["Bank Loan","SSS Loan","Pag-IBIG Loan","GSIS Loan","Personal Loan","Credit Line","Investor Loan","Supplier Credit","Other"];
+          return(
+            <div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+                <div>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>💳 Loans & Financing</div>
+                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Track borrowed funds, credit lines, and repayment schedules.</div>
+                </div>
+                <button onClick={()=>{setLoanForm({lender:"",type:"Bank Loan",principal:"",disbursedDate:"",termMonths:"",interestRate:"",monthlyPayment:"",notes:""});setEditLoanId(null);setLoanModal(true);}}
+                  style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>+ Add Loan</button>
+              </div>
+              {/* KPI strip */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
+                {[{l:"Total Borrowed",v:fmtM(totalPrincipal),c:"#7c3aed"},{l:"Outstanding Balance",v:fmtM(totalOutstanding),c:"#ef4444"},{l:"Monthly Obligations",v:fmtM(totalMonthly),c:"#f97316"}].map(({l,v,c})=>(
+                  <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
+                    <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+              {loans.length===0&&<div style={{textAlign:"center",padding:"48px",color:"#94a3b8",fontSize:".84rem"}}>No loans recorded. Add a loan to track repayments and outstanding balance.</div>}
+              {loans.map(loan=>{
+                const paid=(loan.payments||[]).reduce((s,p)=>s+p.amount,0);
+                const outstanding=Math.max(0,loan.principal-paid);
+                const pct=loan.principal>0?Math.min(100,Math.round(paid/loan.principal*100)):0;
+                const matDate=loan.disbursedDate&&loan.termMonths?new Date(new Date(loan.disbursedDate).setMonth(new Date(loan.disbursedDate).getMonth()+Number(loan.termMonths))).toISOString().slice(0,10):null;
+                const isOverdue=matDate&&matDate<today&&outstanding>0;
+                const lp=loanPay[loan.id]||{amount:"",date:today};
+                return(
+                  <div key={loan.id} style={{background:"#fff",borderRadius:14,border:`1.5px solid ${isOverdue?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${isOverdue?"#ef4444":"#7c3aed"}`,padding:"16px",marginBottom:12}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                          <span style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>{loan.lender}</span>
+                          <span style={{fontSize:".65rem",background:"#ede9fe",color:"#7c3aed",borderRadius:20,padding:"2px 8px",fontWeight:700}}>{loan.type}</span>
+                          {isOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#ef4444",borderRadius:20,padding:"2px 8px",fontWeight:700}}>OVERDUE</span>}
+                          {outstanding===0&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",borderRadius:20,padding:"2px 8px",fontWeight:700}}>✓ SETTLED</span>}
+                        </div>
+                        <div style={{display:"flex",gap:16,marginTop:6,flexWrap:"wrap"}}>
+                          {loan.disbursedDate&&<span style={{fontSize:".72rem",color:"#64748b"}}>Disbursed: {loan.disbursedDate}</span>}
+                          {loan.termMonths&&<span style={{fontSize:".72rem",color:"#64748b"}}>{loan.termMonths} months</span>}
+                          {loan.interestRate>0&&<span style={{fontSize:".72rem",color:"#64748b"}}>{loan.interestRate}% p.a.</span>}
+                          {matDate&&<span style={{fontSize:".72rem",color:isOverdue?"#ef4444":"#64748b"}}>Matures: {matDate}</span>}
+                        </div>
+                        {loan.notes&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:4}}>{loan.notes}</div>}
+                        {/* Progress bar */}
+                        <div style={{marginTop:10}}>
+                          <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#64748b",marginBottom:3}}>
+                            <span>Paid: {fmtM(paid)} ({pct}%)</span>
+                            <span>Outstanding: {fmtM(outstanding)}</span>
+                          </div>
+                          <div style={{height:6,background:"#f1f5f9",borderRadius:10,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:`${pct}%`,background:outstanding===0?"#059669":"#7c3aed",borderRadius:10,transition:"width .3s"}}/>
+                          </div>
+                        </div>
+                        {/* Log payment inline */}
+                        {outstanding>0&&(
+                          <div style={{display:"flex",gap:8,marginTop:10,alignItems:"center",flexWrap:"wrap"}}>
+                            <input type="number" placeholder="Payment amount" value={lp.amount} onChange={e=>setLoanPay(p=>({...p,[loan.id]:{...lp,amount:e.target.value}}))} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontSize:".78rem",fontFamily:"inherit",width:140}}/>
+                            <input type="date" value={lp.date} onChange={e=>setLoanPay(p=>({...p,[loan.id]:{...lp,date:e.target.value}}))} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontSize:".78rem",fontFamily:"inherit"}}/>
+                            <button onClick={()=>addLoanPayment(loan.id,lp.amount,lp.date)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"5px 12px",fontSize:".75rem",color:"#059669",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Log Payment</button>
+                          </div>
+                        )}
+                        {/* Payment history */}
+                        {(loan.payments||[]).length>0&&(
+                          <div style={{marginTop:10}}>
+                            <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",marginBottom:4}}>Payment History</div>
+                            {[...(loan.payments||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(pm=>(
+                              <div key={pm.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid #f1f5f9",fontSize:".78rem"}}>
+                                <span style={{color:"#475569"}}>{pm.date}</span>
+                                <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                                  <span style={{fontWeight:700,color:"#059669"}}>{fmtM(pm.amount)}</span>
+                                  <button onClick={()=>delLoanPayment(loan.id,pm.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",fontFamily:"inherit"}}>x</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Right side: principal + actions */}
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,minWidth:120}}>
+                        <div>
+                          <div style={{fontSize:".65rem",color:"#94a3b8",textAlign:"right"}}>Original</div>
+                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#0f172a"}}>{fmtM(loan.principal)}</div>
+                        </div>
+                        {loan.monthlyPayment>0&&(
+                          <div>
+                            <div style={{fontSize:".65rem",color:"#94a3b8",textAlign:"right"}}>Monthly</div>
+                            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"1rem",color:"#f97316"}}>{fmtM(loan.monthlyPayment)}</div>
+                          </div>
+                        )}
+                        <div style={{display:"flex",gap:6}}>
+                          <button onClick={()=>{setLoanForm({...loan});setEditLoanId(loan.id);setLoanModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                          <button onClick={()=>delLoan(loan.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Add/Edit Loan Modal */}
+              <Modal open={loanModal} onClose={()=>{setLoanModal(false);setEditLoanId(null);}} title={editLoanId?"Edit Loan":"Add Loan / Financing"}>
+                <Fld label="Lender / Source" required><Inp value={loanForm.lender} onChange={e=>setLoanForm(p=>({...p,lender:e.target.value}))} placeholder="e.g. BDO, SSS, Investor name"/></Fld>
+                <Fld label="Type"><Sel value={loanForm.type} onChange={e=>setLoanForm(p=>({...p,type:e.target.value}))}>{["Bank Loan","SSS Loan","Pag-IBIG Loan","GSIS Loan","Personal Loan","Credit Line","Investor Loan","Supplier Credit","Other"].map(t=><option key={t}>{t}</option>)}</Sel></Fld>
+                <Fld label="Principal Amount (₱)" required><Inp type="number" value={loanForm.principal} onChange={e=>setLoanForm(p=>({...p,principal:e.target.value}))} placeholder="0"/></Fld>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Fld label="Disbursed Date"><Inp type="date" value={loanForm.disbursedDate} onChange={e=>setLoanForm(p=>({...p,disbursedDate:e.target.value}))}/></Fld>
+                  <Fld label="Term (months)"><Inp type="number" value={loanForm.termMonths} onChange={e=>setLoanForm(p=>({...p,termMonths:e.target.value}))} placeholder="e.g. 24"/></Fld>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Fld label="Interest Rate (% p.a.)"><Inp type="number" value={loanForm.interestRate} onChange={e=>setLoanForm(p=>({...p,interestRate:e.target.value}))} placeholder="e.g. 8"/></Fld>
+                  <Fld label="Monthly Payment (₱)"><Inp type="number" value={loanForm.monthlyPayment} onChange={e=>setLoanForm(p=>({...p,monthlyPayment:e.target.value}))} placeholder="0"/></Fld>
+                </div>
+                <Fld label="Notes"><Inp value={loanForm.notes} onChange={e=>setLoanForm(p=>({...p,notes:e.target.value}))} placeholder="Purpose, collateral, terms, etc."/></Fld>
+                <div style={{display:"flex",gap:10,marginTop:18}}>
+                  <Btn full variant="green" onClick={()=>saveLoan(loanForm)}>Save Loan</Btn>
+                  <Btn variant="ghost" onClick={()=>{setLoanModal(false);setEditLoanId(null);}}>Cancel</Btn>
                 </div>
               </Modal>
             </div>
