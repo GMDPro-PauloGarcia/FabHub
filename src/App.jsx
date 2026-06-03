@@ -207,7 +207,7 @@ const TAT_REFERENCE = {
 
 const DEPT_ORDER = ["Sales","Design","QS","Procurement","Operations","Finance"];
 const DEPT_CLR   = {Sales:"#10b981",Design:"#8b5cf6",QS:"#f59e0b",Procurement:"#06b6d4",Operations:"#f97316",Finance:"#3b82f6"};
-const ACT_SCORE  = {"Login":1,"New Deal":10,"Deal Updated":3,"Stage Change":5,"Project Awarded":15,"PM Update":8,"Department Done":12,"Blocker Flagged":4,"TAT Set":3,"Project Card Created":5,"Password Changed":1,"Profile Updated":1,"JO Deleted":-2};
+const ACT_SCORE  = {"Login":1,"New Deal":10,"Deal Updated":3,"Stage Change":5,"Project Awarded":15,"PM Update":8,"Department Done":12,"Blocker Flagged":4,"TAT Set":3,"Project Card Created":5,"Password Changed":1,"Profile Updated":1,"JO Deleted":-2,"AE Update":4};
 
 const DEFAULT_DEPT_TASKS = {
   Sales:[
@@ -3617,6 +3617,9 @@ export default function App(){
   const[confirmDel, setConfirmDel] =useState(null);
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
+  const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "updates"
+  const[aeUpdates,    setAeUpdates]    = useState(()=>{try{const v=localStorage.getItem("gmdv5:aeUpdates");return v?JSON.parse(v):[];}catch{return[];}});
+  const[aeUpdateText, setAeUpdateText] = useState("");
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
@@ -3773,6 +3776,23 @@ export default function App(){
   const payQ=(id,ps)=>{
     upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentStatus:ps}:d));
     if(isSupabaseReady()) sbUpdate('deals',id,{payment_status:ps,updated_at:new Date().toISOString()}).catch(()=>{});
+  };
+
+  const addAeUpdate=(text)=>{
+    if(!text.trim()) return;
+    const now=new Date();
+    const entry={id:uid(),by:session?.name||"",role:session?.role||"Sales",date:today,time:now.toTimeString().slice(0,5),text:text.trim()};
+    const next=[entry,...aeUpdates].slice(0,300);
+    setAeUpdates(next);
+    setAeUpdateText("");
+    try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
+    logActivity(null,"AE Update",text.trim(),session?.name);
+    toastEmit("Update posted!","success");
+  };
+  const delAeUpdate=(id)=>{
+    const next=aeUpdates.filter(u=>u.id!==id);
+    setAeUpdates(next);
+    try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
   };
 
   const openAward=(deal)=>setAwardModal(deal);
@@ -6454,12 +6474,83 @@ export default function App(){
       </Wrap>
     );
   }
+  // ── Pipeline tab bar (shared) ───────────────────────────────────────────
+  const PipeTabBar=()=>(
+    <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
+      {[["pipeline","📊 Pipeline"],["updates","📝 AE Updates"]].map(([t,l])=>(
+        <button key={t} onClick={()=>setPipeTab(t)}
+          style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:pipeTab===t?700:500,color:pipeTab===t?"#3b82f6":"#64748b",borderBottom:pipeTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
+          {l}{t==="updates"&&aeUpdates.length>0&&<span style={{marginLeft:5,background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".65rem",fontWeight:700}}>{aeUpdates.filter(u=>u.date===today).length||""}</span>}
+        </button>
+      ))}
+    </div>
+  );
+
+  if(page==="pipeline"&&pipeTab==="updates") return(
+    <Wrap>
+      <PipeTabBar/>
+      <div style={{maxWidth:700}}>
+        {/* Post form */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 18px",marginBottom:20}}>
+          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10}}>
+            ✏️ Post an Update
+            <span style={{marginLeft:8,fontSize:".72rem",fontWeight:400,color:"#94a3b8"}}>What did you accomplish today? What's next?</span>
+          </div>
+          <textarea
+            value={aeUpdateText}
+            onChange={e=>setAeUpdateText(e.target.value)}
+            rows={3}
+            placeholder="e.g. Followed up with 3 clients, submitted CE for ABC Corp, scheduled site visit for XYZ project..."
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical",boxSizing:"border-box",marginBottom:10}}
+          />
+          <button onClick={()=>addAeUpdate(aeUpdateText)}
+            disabled={!aeUpdateText.trim()}
+            style={{background:aeUpdateText.trim()?"#3b82f6":"#e2e8f0",border:"none",borderRadius:8,padding:"9px 22px",fontFamily:"inherit",fontSize:".84rem",color:aeUpdateText.trim()?"#fff":"#94a3b8",cursor:aeUpdateText.trim()?"pointer":"default",fontWeight:700}}>
+            Post Update
+          </button>
+        </div>
+
+        {/* Feed */}
+        {aeUpdates.length===0&&<div style={{textAlign:"center",padding:"40px",color:"#94a3b8",fontSize:".84rem"}}>No updates yet. Be the first to post!</div>}
+        {(()=>{
+          const grouped={};
+          aeUpdates.forEach(u=>{if(!grouped[u.date])grouped[u.date]=[];grouped[u.date].push(u);});
+          return Object.entries(grouped).sort(([a],[b])=>b.localeCompare(a)).map(([date,entries])=>(
+            <div key={date} style={{marginBottom:20}}>
+              <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>
+                {date===today?"📅 Today":date}
+              </div>
+              {entries.map(u=>(
+                <div key={u.id} style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
+                  <div style={{width:34,height:34,borderRadius:"50%",background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#3b82f6",fontSize:".82rem",flexShrink:0}}>
+                    {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{u.by}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8"}}>{u.time}</span>
+                    </div>
+                    <div style={{fontSize:".84rem",color:"#1e293b",lineHeight:1.55}}>{u.text}</div>
+                  </div>
+                  {(u.by===session?.name||role==="Manager")&&(
+                    <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",padding:"0 2px",flexShrink:0}}>✕</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          ));
+        })()}
+      </div>
+    </Wrap>
+  );
+
   if(page==="pipeline") return(
     <>
       <Wrap>
         {/* KPIs */}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
           <div>
+            <PipeTabBar/>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
             <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length} active deals · {todayL}</div>
             {/* Search bar */}
