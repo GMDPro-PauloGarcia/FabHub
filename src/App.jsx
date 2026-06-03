@@ -17,6 +17,7 @@ const DEAL_STAGES = [
   "11 · Punchlist",
   "12 · Close-Out",
   "13 · Feedback",
+  "14 · Completed",
   "Cancelled",
   "Did Not Win",
 ];
@@ -36,6 +37,7 @@ const STAGE_ALIASES={
   "punchlist":"11 · Punchlist","punch list":"11 · Punchlist","11":"11 · Punchlist",
   "project close-out":"12 · Close-Out","close out":"12 · Close-Out","closeout":"12 · Close-Out","close-out":"12 · Close-Out","12":"12 · Close-Out",
   "client feedback":"13 · Feedback","feedback":"13 · Feedback","13":"13 · Feedback",
+  "completed":"14 · Completed","project completed":"14 · Completed","closed":"14 · Completed","project closed":"14 · Completed","done":"14 · Completed","14":"14 · Completed",
   "cancelled":"Cancelled","canceled":"Cancelled",
 };
 const normalizeStage=(s)=>{
@@ -3465,7 +3467,8 @@ export default function App(){
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────
-  const wonDeals  =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
+  const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
+  const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"),[deals]);
   const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="13 · Feedback"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
   useEffect(()=>{
@@ -3752,9 +3755,16 @@ export default function App(){
   const stageQ=(id,st)=>{
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="06 · Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
+    if(st==="14 · Completed"){
+      const d=deals.find(x=>x.id===id);
+      const missing=[];
+      if(!d?.value||Number(d.value)===0) missing.push("Contract Value");
+      if(!d?.amountPaid&&Number(d?.amountPaid)===0) missing.push("Payments Received");
+      if(missing.length>0) toastEmit(`⚠ Before closing: please ensure ${missing.join(" and ")} are recorded in Finance.`,"warning");
+    }
     upDeals(ds=>ds.map(d=>{
       if(d.id!==id) return d;
-      const prob=WON_STAGES.includes(st)?100:st==="Cancelled"?0:d.probability;
+      const prob=WON_STAGES.includes(st)?100:st==="Cancelled"?0:st==="14 · Completed"?100:d.probability;
       logActivity(id,"Stage Change",`${d.client}: ${d.stage} → ${st}`,session?.name);
       if(isSupabaseReady()) sbUpdate('deals',id,{stage:st,probability:prob,updated_at:new Date().toISOString()}).catch(()=>{});
       return{...d,stage:st,probability:prob};
@@ -12450,7 +12460,7 @@ function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,delet
   };
 
   // Per-project summary for list
-  const projectSummaries=wonDeals.map(d=>{
+  const projectSummaries=[...wonDeals,...completedDeals].map(d=>{
     const ms=billings.filter(b=>b.dealId===d.id);
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
@@ -12943,6 +12953,7 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
+  const[pcShowClosed,setPcShowClosed]=useState(false);
   const[expandDept,setExpandDept]=useState(null);
   const[showBForm,setShowBForm]=useState(false);
   const[bfTitle,setBfTitle]=useState(""); const[bfDept,setBfDept]=useState("Operations"); const[bfDetail,setBfDetail]=useState("");
@@ -13103,6 +13114,46 @@ function ProjectCards({pcards,wonDeals,deals,toggleDeptTask,markDeptDone,setProj
               </div>
             );
           })()}
+
+          {/* ── Closed / Completed Projects ── */}
+          {completedDeals.length>0&&(
+            <div style={{marginTop:16}}>
+              <button onClick={()=>setPcShowClosed(x=>!x)}
+                style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 16px",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+                <span style={{fontSize:".82rem",fontWeight:700,color:"#64748b"}}>✅ Completed Projects ({completedDeals.length})</span>
+                <span style={{marginLeft:"auto",color:"#94a3b8",fontSize:".75rem"}}>{pcShowClosed?"▲ Hide":"▼ Show"}</span>
+              </button>
+              {pcShowClosed&&(
+                <div style={{marginTop:8,display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2,1fr)",gap:10}}>
+                  {completedDeals.map(d=>{
+                    const val=Number(d.value||0);
+                    const paid=Number(d.amountPaid||0);
+                    const outstanding=Math.max(0,val-paid);
+                    return(
+                      <div key={d.id} style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",borderLeft:"4px solid #10b981",padding:"12px 14px"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                            {d.contact&&<div style={{fontSize:".67rem",color:"#8b5cf6",marginTop:1}}>📁 {d.client}</div>}
+                            <div style={{fontSize:".7rem",color:"#64748b",marginTop:2}}>{d.ceNo||"No CE"} · {d.ceType||"—"}</div>
+                          </div>
+                          <span style={{fontSize:".62rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 8px",flexShrink:0,marginLeft:8}}>✅ Completed</span>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
+                          {[{l:"Contract Value",v:val?`₱${val.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"⚠ Not set",w:!val},{l:"Amount Paid",v:paid?`₱${paid.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"⚠ Not set",w:!paid},{l:"Outstanding",v:outstanding>0?`₱${outstanding.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"✓ Settled",w:outstanding>0&&!val}].map(({l,v,w})=>(
+                            <div key={l} style={{background:w?"#fff7ed":"#fff",border:`1px solid ${w?"#fed7aa":"#e2e8f0"}`,borderRadius:7,padding:"6px 8px"}}>
+                              <div style={{fontSize:".58rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+                              <div style={{fontSize:".75rem",fontWeight:700,color:w?"#f97316":"#0f172a",marginTop:2}}>{v}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ):(
         // ── PROJECT HQ ─────────────────────────────────────────────────────
