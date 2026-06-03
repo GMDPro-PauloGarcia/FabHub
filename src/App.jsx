@@ -3458,6 +3458,11 @@ export default function App(){
   const deactivateUser=(id)  =>upUsers(us=>us.map(u=>u.id===id?{...u,status:"inactive"}:u));
   const deleteUser  =(id)    =>upUsers(us=>us.filter(u=>u.id!==id));
   const resetPw     =(id,pw) =>upUsers(us=>us.map(u=>u.id===id?{...u,passwordHash:hashPw(pw)}:u));
+  const createUser  =(name,username,password,role,title)=>{
+    const newUser={id:"u"+Date.now(),name:name.trim(),username:username.toLowerCase().trim(),passwordHash:hashPw(password),role,title:title.trim()||role,status:"active",createdAt:today};
+    upUsers(us=>[...us,newUser]);
+    if(isSupabaseReady()) sbUpsert('user_profiles',{id:newUser.id,name:newUser.name,username:newUser.username,password_hash:newUser.passwordHash,role:newUser.role,title:newUser.title,status:"active",created_at:new Date().toISOString()},'id').catch(()=>{});
+  };
   const changePw    =(oldPw,newPw)=>{
     const u=users.find(x=>x.id===session?.userId);
     if(!u||!checkPw(oldPw,u.passwordHash)) return "Current password is incorrect.";
@@ -7296,7 +7301,7 @@ export default function App(){
     const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse'];
     if(page==="accounts") return(
       <Wrap>
-        <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} ROLES={ROLES}/>
+        <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
       </Wrap>
     );
   
@@ -8452,7 +8457,7 @@ export default function App(){
   // Accounts management (Manager only)
   if(role==="Manager"&&page==="accounts") return(
     <Wrap>
-      <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} ROLES={ROLES}/>
+      <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
     </Wrap>
   );
   return <Wrap><EmptyState icon="🔍" msg={`No view for ${role}/${page}`}/></Wrap>;
@@ -10153,21 +10158,59 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
 }
 
 // ─── ACCOUNTS MANAGER ─────────────────────────────────────────────────────────
-function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete,onResetPw,ROLES}){
+function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete,onResetPw,onCreateUser,ROLES}){
   const[resetId,  setResetId]  = useState(null);
   const[newPw,    setNewPw]    = useState("");
   const[resetMsg, setResetMsg] = useState("");
   const[editRole, setEditRole] = useState({});
+  const[showCreate,setShowCreate]=useState(false);
+  const[cf,setCf]=useState({name:"",username:"",password:"",role:"Sales",title:""});
+  const[createErr,setCreateErr]=useState("");
   const STATUS_CLR = {active:"#10b981",pending:"#f59e0b",inactive:"#94a3b8",rejected:"#ef4444"};
+  const ALL_ROLES=["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","ProjectMover","Manager"];
 
   const pending  = users.filter(u=>u.status==="pending");
   const active   = users.filter(u=>u.status==="active");
   const inactive = users.filter(u=>u.status==="inactive"||u.status==="rejected");
 
+  const submitCreate=()=>{
+    if(!cf.name.trim()||!cf.username.trim()||cf.password.length<6){setCreateErr("Name, username, and password (min 6 chars) are required.");return;}
+    if(users.some(u=>u.username===cf.username.toLowerCase().trim())){setCreateErr("Username already taken.");return;}
+    onCreateUser(cf.name,cf.username,cf.password,cf.role,cf.title);
+    setCf({name:"",username:"",password:"",role:"Sales",title:""});
+    setCreateErr("");setShowCreate(false);
+  };
+  const inp={border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",width:"100%",boxSizing:"border-box"};
+
   return(
     <div>
-      <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.2rem",marginBottom:4}}>Account Management</div>
-      <div style={{fontSize:".78rem",color:"#64748b",marginBottom:20}}>Approve registrations, manage roles, reset passwords.</div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap",gap:10}}>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.2rem"}}>Account Management</div>
+        <button onClick={()=>{setShowCreate(s=>!s);setCreateErr("");}} style={{background:"#0f172a",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>
+          {showCreate?"✕ Cancel":"+ Create Account"}
+        </button>
+      </div>
+      <div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Approve registrations, manage roles, reset passwords.</div>
+
+      {/* Create Account Form */}
+      {showCreate&&(
+        <div style={{background:"#f8fafc",border:"1.5px solid #1e293b",borderRadius:12,padding:"18px 20px",marginBottom:20}}>
+          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:14}}>✨ New Account</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Full Name *</div><input style={inp} value={cf.name} onChange={e=>setCf(p=>({...p,name:e.target.value}))} placeholder="e.g. Juan dela Cruz"/></div>
+            <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Username *</div><input style={inp} value={cf.username} onChange={e=>setCf(p=>({...p,username:e.target.value.toLowerCase()}))} placeholder="e.g. juan"/></div>
+            <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Password * (min 6 chars)</div><input type="password" style={inp} value={cf.password} onChange={e=>setCf(p=>({...p,password:e.target.value}))} placeholder="Temporary password"/></div>
+            <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Role *</div>
+              <select style={{...inp,cursor:"pointer"}} value={cf.role} onChange={e=>setCf(p=>({...p,role:e.target.value}))}>
+                {ALL_ROLES.map(r=><option key={r}>{r}</option>)}
+              </select>
+            </div>
+            <div style={{gridColumn:"1/-1"}}><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Job Title (optional)</div><input style={inp} value={cf.title} onChange={e=>setCf(p=>({...p,title:e.target.value}))} placeholder="e.g. Account Executive"/></div>
+          </div>
+          {createErr&&<div style={{fontSize:".78rem",color:"#ef4444",marginBottom:8,fontWeight:600}}>{createErr}</div>}
+          <button onClick={submitCreate} style={{background:"#059669",border:"none",borderRadius:8,padding:"9px 22px",fontFamily:"inherit",fontSize:".84rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Create Account →</button>
+        </div>
+      )}
 
       {/* Pending approvals */}
       {pending.length>0&&(
