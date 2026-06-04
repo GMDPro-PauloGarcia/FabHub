@@ -3815,6 +3815,11 @@ export default function App(){
     setAeUpdateDealId("");
     try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
     logActivity(dealId||null,"AE Update",text.trim(),session?.name);
+    const taggedDeal=dealId?[...wonDeals,...deals].find(d=>d.id===dealId):null;
+    const projectLine=taggedDeal?`\n📌 Project: <b>${taggedDeal.client}</b> — ${taggedDeal.ceNo||taggedDeal.ceno||"(no CE)"} | ${taggedDeal.stage}`:"";
+    const tgMsg=`📋 <b>AE Update</b>${projectLine}\nBy: ${session?.name||"?"} · ${now.toTimeString().slice(0,5)}\n${text.trim()}`;
+    sendTelegramNotification("sales",tgMsg);
+    sendTelegramNotification("ops",tgMsg);
     toastEmit("Update posted!","success");
   };
   const delAeUpdate=(id)=>{
@@ -6559,88 +6564,119 @@ export default function App(){
   if(page==="pipeline"&&pipeTab==="updates") return(
     <Wrap>
       <PipeTabBar/>
-      <div style={{maxWidth:700}}>
-        {/* Post form */}
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 18px",marginBottom:20}}>
-          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10}}>
-            ✏️ Post an Update
-            <span style={{marginLeft:8,fontSize:".72rem",fontWeight:400,color:"#94a3b8"}}>What project are you working on today?</span>
-          </div>
-          {/* Project selector */}
-          <div style={{marginBottom:10}}>
-            <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Tag a Project (optional)</div>
-            <select
-              value={aeUpdateDealId}
-              onChange={e=>setAeUpdateDealId(e.target.value)}
-              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",background:"#f8fafc",color:"#0f172a",boxSizing:"border-box"}}
-            >
-              <option value="">— No specific project / general update —</option>
-              <optgroup label="Active Projects (Won)">
-                {wonDeals.map(d=>(
-                  <option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"} | {d.stage}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Pipeline">
-                {deals.filter(d=>!WON_STAGES.includes(d.stage)).slice(0,30).map(d=>(
-                  <option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"} | {d.stage}</option>
-                ))}
-              </optgroup>
-            </select>
-          </div>
-          <textarea
-            value={aeUpdateText}
-            onChange={e=>setAeUpdateText(e.target.value)}
-            rows={3}
-            placeholder="e.g. Followed up with 3 clients, submitted CE for ABC Corp, scheduled site visit for XYZ project..."
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical",boxSizing:"border-box",marginBottom:10}}
-          />
-          <button onClick={()=>addAeUpdate(aeUpdateText,aeUpdateDealId)}
-            disabled={!aeUpdateText.trim()}
-            style={{background:aeUpdateText.trim()?"#3b82f6":"#e2e8f0",border:"none",borderRadius:8,padding:"9px 22px",fontFamily:"inherit",fontSize:".84rem",color:aeUpdateText.trim()?"#fff":"#94a3b8",cursor:aeUpdateText.trim()?"pointer":"default",fontWeight:700}}>
-            Post Update
-          </button>
-        </div>
-
-        {/* Feed */}
-        {aeUpdates.length===0&&<div style={{textAlign:"center",padding:"40px",color:"#94a3b8",fontSize:".84rem"}}>No updates yet. Be the first to post!</div>}
-        {(()=>{
-          const grouped={};
-          aeUpdates.forEach(u=>{if(!grouped[u.date])grouped[u.date]=[];grouped[u.date].push(u);});
-          return Object.entries(grouped).sort(([a],[b])=>b.localeCompare(a)).map(([date,entries])=>(
-            <div key={date} style={{marginBottom:20}}>
-              <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>
-                {date===today?"📅 Today":date}
+      {(()=>{
+        const todayCount=aeUpdates.filter(u=>u.date===today).length;
+        const allDeals=[...wonDeals,...deals.filter(d=>!WON_STAGES.includes(d.stage))];
+        const grouped={};
+        aeUpdates.forEach(u=>{if(!grouped[u.date])grouped[u.date]=[];grouped[u.date].push(u);});
+        const AV_COLORS=["#3b82f6","#8b5cf6","#059669","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"];
+        const colorFor=name=>AV_COLORS[(name||"").split("").reduce((s,c)=>s+c.charCodeAt(0),0)%AV_COLORS.length];
+        return(
+          <div style={{maxWidth:720}}>
+            {/* Compact form */}
+            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 14px",marginBottom:12}}>
+              <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
+                <div style={{width:32,height:32,borderRadius:"50%",background:colorFor(session?.name),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".75rem",flexShrink:0}}>
+                  {session?.name?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
+                </div>
+                <select
+                  value={aeUpdateDealId}
+                  onChange={e=>setAeUpdateDealId(e.target.value)}
+                  style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400}}
+                >
+                  <option value="">📌 Tag a project (optional)</option>
+                  <optgroup label="Active Projects">
+                    {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"}</option>)}
+                  </optgroup>
+                  <optgroup label="Pipeline">
+                    {deals.filter(d=>!WON_STAGES.includes(d.stage)).slice(0,30).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"}</option>)}
+                  </optgroup>
+                </select>
               </div>
-              {entries.map(u=>{
-                const taggedDeal=u.dealId?[...wonDeals,...deals].find(d=>d.id===u.dealId):null;
-                return(
-                  <div key={u.id} style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
-                    <div style={{width:34,height:34,borderRadius:"50%",background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#3b82f6",fontSize:".82rem",flexShrink:0}}>
-                      {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap",gap:4}}>
-                        <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{u.by}</span>
-                        <span style={{fontSize:".68rem",color:"#94a3b8"}}>{u.time}</span>
-                      </div>
-                      {taggedDeal&&(
-                        <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",marginBottom:6,fontSize:".72rem",fontWeight:700,color:"#1d4ed8"}}>
-                          📌 {taggedDeal.client} — {taggedDeal.ceNo||taggedDeal.ceno||"(no CE)"}
-                          <span style={{fontWeight:400,color:"#64748b",marginLeft:2}}>| {taggedDeal.stage}</span>
-                        </div>
-                      )}
-                      <div style={{fontSize:".84rem",color:"#1e293b",lineHeight:1.55}}>{u.text}</div>
-                    </div>
-                    {(u.by===session?.name||role==="Manager")&&(
-                      <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",padding:"0 2px",flexShrink:0}}>✕</button>
-                    )}
-                  </div>
-                );
-              })}
+              <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                <textarea
+                  value={aeUpdateText}
+                  onChange={e=>setAeUpdateText(e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(aeUpdateText.trim())addAeUpdate(aeUpdateText,aeUpdateDealId);}}}
+                  rows={2}
+                  placeholder="What did you work on? Any follow-ups, submissions, site visits?…"
+                  style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",resize:"none",boxSizing:"border-box",lineHeight:1.5}}
+                />
+                <button onClick={()=>addAeUpdate(aeUpdateText,aeUpdateDealId)}
+                  disabled={!aeUpdateText.trim()}
+                  title="Post (Ctrl+Enter)"
+                  style={{background:aeUpdateText.trim()?"#3b82f6":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".82rem",color:aeUpdateText.trim()?"#fff":"#94a3b8",cursor:aeUpdateText.trim()?"pointer":"default",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>
+                  Post →
+                </button>
+              </div>
+              <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:5}}>Ctrl+Enter to post · Sent to Sales &amp; Ops Telegram</div>
             </div>
-          ));
-        })()}
-      </div>
+
+            {/* Stats strip */}
+            {aeUpdates.length>0&&(
+              <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+                <span style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"3px 12px",fontSize:".72rem",fontWeight:700,color:"#1d4ed8"}}>
+                  📅 Today: {todayCount} update{todayCount!==1?"s":""}
+                </span>
+                <span style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:20,padding:"3px 12px",fontSize:".72rem",fontWeight:600,color:"#059669"}}>
+                  Total: {aeUpdates.length}
+                </span>
+                {(()=>{
+                  const byPerson={};
+                  aeUpdates.filter(u=>u.date===today).forEach(u=>{byPerson[u.by]=(byPerson[u.by]||0)+1;});
+                  return Object.entries(byPerson).map(([name,cnt])=>(
+                    <span key={name} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:20,padding:"3px 10px",fontSize:".72rem",color:"#64748b",fontWeight:600}}>
+                      <span style={{display:"inline-block",width:14,height:14,borderRadius:"50%",background:colorFor(name),verticalAlign:"middle",marginRight:4}}/>
+                      {name.split(" ")[0]}: {cnt}
+                    </span>
+                  ));
+                })()}
+              </div>
+            )}
+
+            {/* Feed */}
+            {aeUpdates.length===0&&(
+              <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem",background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0"}}>
+                No updates yet — post the first one above!
+              </div>
+            )}
+            {Object.entries(grouped).sort(([a],[b])=>b.localeCompare(a)).map(([date,entries])=>(
+              <div key={date} style={{marginBottom:16}}>
+                <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
+                  <span>{date===today?"📅 Today":date}</span>
+                  <span style={{flex:1,borderTop:"1px solid #e2e8f0",display:"inline-block"}}/>
+                  <span style={{fontWeight:500}}>{entries.length} update{entries.length!==1?"s":""}</span>
+                </div>
+                {entries.map(u=>{
+                  const taggedDeal=u.dealId?allDeals.find(d=>d.id===u.dealId):null;
+                  return(
+                    <div key={u.id} style={{background:"#fff",borderRadius:9,border:"1.5px solid #f1f5f9",padding:"9px 12px",marginBottom:6,display:"flex",gap:9,alignItems:"flex-start"}}>
+                      <div style={{width:30,height:30,borderRadius:"50%",background:colorFor(u.by),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".72rem",flexShrink:0}}>
+                        {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{u.by}</span>
+                          {taggedDeal&&(
+                            <span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8"}}>
+                              📌 {taggedDeal.client} <span style={{color:"#93c5fd"}}>·</span> <span style={{color:"#64748b",fontWeight:500}}>{taggedDeal.ceNo||taggedDeal.ceno||"(no CE)"}</span>
+                            </span>
+                          )}
+                          <span style={{fontSize:".65rem",color:"#94a3b8",marginLeft:"auto"}}>{u.time}</span>
+                        </div>
+                        <div style={{fontSize:".82rem",color:"#1e293b",lineHeight:1.5}}>{u.text}</div>
+                      </div>
+                      {(u.by===session?.name||role==="Manager")&&(
+                        <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#cbd5e1",cursor:"pointer",fontSize:".72rem",padding:"0 2px",flexShrink:0,lineHeight:1}} title="Delete">✕</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
     </Wrap>
   );
 
