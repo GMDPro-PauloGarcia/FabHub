@@ -3644,6 +3644,7 @@ export default function App(){
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "updates"
   const[aeUpdates,    setAeUpdates]    = useState(()=>{try{const v=localStorage.getItem("gmdv5:aeUpdates");return v?JSON.parse(v):[];}catch{return[];}});
   const[aeUpdateText, setAeUpdateText] = useState("");
+  const[aeUpdateDealId, setAeUpdateDealId] = useState("");
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
   const[openGroups,   setOpenGroups]   = useState({});     // per-ceType accordion in awarded projects
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
@@ -3804,15 +3805,16 @@ export default function App(){
     if(isSupabaseReady()) sbUpdate('deals',id,{payment_status:ps,updated_at:new Date().toISOString()}).catch(()=>{});
   };
 
-  const addAeUpdate=(text)=>{
+  const addAeUpdate=(text,dealId)=>{
     if(!text.trim()) return;
     const now=new Date();
-    const entry={id:uid(),by:session?.name||"",role:session?.role||"Sales",date:today,time:now.toTimeString().slice(0,5),text:text.trim()};
+    const entry={id:uid(),by:session?.name||"",role:session?.role||"Sales",date:today,time:now.toTimeString().slice(0,5),text:text.trim(),dealId:dealId||null};
     const next=[entry,...aeUpdates].slice(0,300);
     setAeUpdates(next);
     setAeUpdateText("");
+    setAeUpdateDealId("");
     try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
-    logActivity(null,"AE Update",text.trim(),session?.name);
+    logActivity(dealId||null,"AE Update",text.trim(),session?.name);
     toastEmit("Update posted!","success");
   };
   const delAeUpdate=(id)=>{
@@ -6562,7 +6564,28 @@ export default function App(){
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 18px",marginBottom:20}}>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:10}}>
             ✏️ Post an Update
-            <span style={{marginLeft:8,fontSize:".72rem",fontWeight:400,color:"#94a3b8"}}>What did you accomplish today? What's next?</span>
+            <span style={{marginLeft:8,fontSize:".72rem",fontWeight:400,color:"#94a3b8"}}>What project are you working on today?</span>
+          </div>
+          {/* Project selector */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Tag a Project (optional)</div>
+            <select
+              value={aeUpdateDealId}
+              onChange={e=>setAeUpdateDealId(e.target.value)}
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",background:"#f8fafc",color:"#0f172a",boxSizing:"border-box"}}
+            >
+              <option value="">— No specific project / general update —</option>
+              <optgroup label="Active Projects (Won)">
+                {wonDeals.map(d=>(
+                  <option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"} | {d.stage}</option>
+                ))}
+              </optgroup>
+              <optgroup label="Pipeline">
+                {deals.filter(d=>!WON_STAGES.includes(d.stage)).slice(0,30).map(d=>(
+                  <option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"} | {d.stage}</option>
+                ))}
+              </optgroup>
+            </select>
           </div>
           <textarea
             value={aeUpdateText}
@@ -6571,7 +6594,7 @@ export default function App(){
             placeholder="e.g. Followed up with 3 clients, submitted CE for ABC Corp, scheduled site visit for XYZ project..."
             style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical",boxSizing:"border-box",marginBottom:10}}
           />
-          <button onClick={()=>addAeUpdate(aeUpdateText)}
+          <button onClick={()=>addAeUpdate(aeUpdateText,aeUpdateDealId)}
             disabled={!aeUpdateText.trim()}
             style={{background:aeUpdateText.trim()?"#3b82f6":"#e2e8f0",border:"none",borderRadius:8,padding:"9px 22px",fontFamily:"inherit",fontSize:".84rem",color:aeUpdateText.trim()?"#fff":"#94a3b8",cursor:aeUpdateText.trim()?"pointer":"default",fontWeight:700}}>
             Post Update
@@ -6588,23 +6611,32 @@ export default function App(){
               <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8}}>
                 {date===today?"📅 Today":date}
               </div>
-              {entries.map(u=>(
-                <div key={u.id} style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
-                  <div style={{width:34,height:34,borderRadius:"50%",background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#3b82f6",fontSize:".82rem",flexShrink:0}}>
-                    {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
-                  </div>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
-                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{u.by}</span>
-                      <span style={{fontSize:".68rem",color:"#94a3b8"}}>{u.time}</span>
+              {entries.map(u=>{
+                const taggedDeal=u.dealId?[...wonDeals,...deals].find(d=>d.id===u.dealId):null;
+                return(
+                  <div key={u.id} style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
+                    <div style={{width:34,height:34,borderRadius:"50%",background:"#eff6ff",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#3b82f6",fontSize:".82rem",flexShrink:0}}>
+                      {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
                     </div>
-                    <div style={{fontSize:".84rem",color:"#1e293b",lineHeight:1.55}}>{u.text}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4,flexWrap:"wrap",gap:4}}>
+                        <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{u.by}</span>
+                        <span style={{fontSize:".68rem",color:"#94a3b8"}}>{u.time}</span>
+                      </div>
+                      {taggedDeal&&(
+                        <div style={{display:"inline-flex",alignItems:"center",gap:5,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",marginBottom:6,fontSize:".72rem",fontWeight:700,color:"#1d4ed8"}}>
+                          📌 {taggedDeal.client} — {taggedDeal.ceNo||taggedDeal.ceno||"(no CE)"}
+                          <span style={{fontWeight:400,color:"#64748b",marginLeft:2}}>| {taggedDeal.stage}</span>
+                        </div>
+                      )}
+                      <div style={{fontSize:".84rem",color:"#1e293b",lineHeight:1.55}}>{u.text}</div>
+                    </div>
+                    {(u.by===session?.name||role==="Manager")&&(
+                      <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",padding:"0 2px",flexShrink:0}}>✕</button>
+                    )}
                   </div>
-                  {(u.by===session?.name||role==="Manager")&&(
-                    <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".75rem",padding:"0 2px",flexShrink:0}}>✕</button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           ));
         })()}
@@ -7350,10 +7382,10 @@ export default function App(){
               <div style={{marginBottom:8,fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Revenue &amp; Profitability</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
                 {[
-                  {l:"Total Billed",v:"₱"+Math.round(totalBilled/1000)+"K",sub:wonDeals.length+" active projects",c:"#3b82f6"},
+                  {l:"Total Billed",v:fmtPHP(totalBilled),sub:wonDeals.length+" active projects",c:"#3b82f6"},
                   {l:"Gross Margin",v:grossMargin+"%",sub:grossMargin>=25?"✓ Healthy":"⚠ Below target",c:grossMargin>=25?"#059669":"#f59e0b"},
-                  {l:"Collected YTD",v:"₱"+Math.round(totalCollected/1000)+"K",sub:`${collectionRate}% collection rate`,c:"#10b981"},
-                  {l:"Outstanding AR",v:"₱"+Math.round(outstanding/1000)+"K",sub:`DSO: ${dso} days`,c:outstanding>0?"#ef4444":"#10b981"},
+                  {l:"Collected YTD",v:fmtPHP(totalCollected),sub:`${collectionRate}% collection rate`,c:"#10b981"},
+                  {l:"Outstanding AR",v:fmtPHP(outstanding),sub:`DSO: ${dso} days`,c:outstanding>0?"#ef4444":"#10b981"},
                 ].map(({l,v,sub,c})=>(
                   <div key={l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",borderTop:`3px solid ${c}`}}>
                     <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>{l}</div>
@@ -7367,10 +7399,10 @@ export default function App(){
               <div style={{marginBottom:8,fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Growth &amp; Pipeline</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
                 {[
-                  {l:"Contract Backlog",v:"₱"+Math.round(backlog/1000000*10)/10+"M",sub:"Awarded, not yet billed",c:"#8b5cf6"},
-                  {l:"Pipeline Value",  v:"₱"+Math.round(pipelineVal/1000000*10)/10+"M",sub:"Active deals in progress",c:"#06b6d4"},
+                  {l:"Contract Backlog",v:fmtPHP(backlog),sub:"Awarded, not yet billed",c:"#8b5cf6"},
+                  {l:"Pipeline Value",  v:fmtPHP(pipelineVal),sub:"Active deals in progress",c:"#06b6d4"},
                   {l:"Win Rate",        v:winRate+"%",sub:"Last 12 months",c:winRate>=40?"#059669":"#f59e0b"},
-                  {l:"Avg Deal Size",   v:"₱"+Math.round(avgDeal/1000)+"K",sub:wonDeals.length+" awarded projects",c:"#f97316"},
+                  {l:"Avg Deal Size",   v:fmtPHP(avgDeal),sub:wonDeals.length+" awarded projects",c:"#f97316"},
                 ].map(({l,v,sub,c})=>(
                   <div key={l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",borderTop:`3px solid ${c}`}}>
                     <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>{l}</div>
@@ -11988,7 +12020,7 @@ function ExportImportPanel({KEYS, onClose}){
 
 // ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
 function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
-  const[selDeal,setSelDeal]=useState(wonDeals[0]?.id||null);
+  const[selDeal,setSelDeal]=useState(null);
   const deal = wonDeals.find(d=>d.id===selDeal);
   const budget = budgets[selDeal]||emptyBudget();
   const[form,setForm]=useState(budget);
@@ -12001,9 +12033,33 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
   const f=(k,v)=>{setSaved(false);setForm(p=>({...p,[k]:v}));};
   const n=v=>Number(String(v).replace(/,/g,""))||0;
-  const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2});
 
-  // Actuals from PRs + expenses tagged to this project
+  // Compute per-project budget data for card grid
+  const allProjectData=useMemo(()=>{
+    return wonDeals.map(d=>{
+      const b=budgets[d.id]||emptyBudget();
+      const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
+      prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
+        const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+        const cat=p.budgetCategory||"Materials";
+        if(result[cat]!==undefined) result[cat]+=cost;
+      });
+      exps.filter(e=>e.projectId===d.id).forEach(e=>{
+        const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
+        result[cat]+=n(e.amount);
+      });
+      const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(b[c]),0);
+      const totalActual=BUDGET_CATS.reduce((s,c)=>s+result[c],0);
+      const contractVal=n(d.value)||0;
+      const pctUsed=totalBudget>0?Math.round(totalActual/totalBudget*100):0;
+      const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
+      const isOver=totalBudget>0&&totalActual>totalBudget;
+      const hasBudget=totalBudget>0;
+      return{d,b,actuals:result,totalBudget,totalActual,contractVal,pctUsed,grossMargin,isOver,hasBudget};
+    });
+  },[wonDeals,budgets,prs,exps]);
+
+  // Actuals for the selected deal (detail view)
   const actuals = useMemo(()=>{
     const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
     prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").forEach(p=>{
@@ -12026,126 +12082,225 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   const linkedPRs   = prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").length;
   const linkedExps  = exps.filter(e=>e.projectId===selDeal).length;
 
+  // Summary KPIs across all projects
+  const overBudgetCount=allProjectData.filter(p=>p.isOver).length;
+  const noBudgetCount=allProjectData.filter(p=>!p.hasBudget).length;
+  const totalAllBudget=allProjectData.reduce((s,p)=>s+p.totalBudget,0);
+  const totalAllActual=allProjectData.reduce((s,p)=>s+p.totalActual,0);
+
+  // ── CARD GRID VIEW ───────────────────────────────────────────────────────────
+  if(!selDeal) return(
+    <div>
+      <div style={{marginBottom:20}}>
+        <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Project Budget</h2>
+        <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Click a project to set or update its budget — track actual spend vs plan</div>
+      </div>
+
+      {/* Summary KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+        {[
+          {l:"Active Projects",  v:wonDeals.length,                        c:"#0f172a"},
+          {l:"Total Budget Set", v:fmtPHP(totalAllBudget),                 c:"#3b82f6"},
+          {l:"Total Actual Spend",v:fmtPHP(totalAllActual),                c:totalAllActual>totalAllBudget&&totalAllBudget>0?"#ef4444":"#10b981"},
+          {l:"Over Budget",      v:overBudgetCount,                        c:overBudgetCount>0?"#ef4444":"#059669"},
+        ].map(({l,v,c})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+            <div style={{fontWeight:800,fontSize:typeof v==="number"&&v<1000?"1.5rem":"1rem",color:c,lineHeight:1.2,wordBreak:"break-all"}}>{v}</div>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {noBudgetCount>0&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:16,fontSize:".8rem",color:"#92400e"}}>
+          ⚠️ <strong>{noBudgetCount} project{noBudgetCount!==1?"s":""} have no budget set</strong> — click them below to add a budget.
+        </div>
+      )}
+
+      {/* Project Cards Grid */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
+        {allProjectData.map(({d,actuals:acts,totalBudget:tb,totalActual:ta,contractVal:cv,pctUsed,grossMargin:gm,isOver,hasBudget})=>{
+          const healthClr=isOver?"#ef4444":!hasBudget?"#94a3b8":pctUsed>80?"#f59e0b":"#059669";
+          const healthLabel=isOver?"Over Budget":!hasBudget?"No Budget":pctUsed>80?"At Risk":"On Track";
+          return(
+            <div key={d.id} onClick={()=>setSelDeal(d.id)}
+              style={{background:"#fff",borderRadius:14,border:`1.5px solid ${isOver?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${healthClr}`,padding:"16px 18px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
+              onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)"}
+              onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}>
+
+              {/* Header */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                  {d.contact&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:1}}>📁 {d.client}</div>}
+                  <div style={{fontSize:".7rem",color:"#64748b",marginTop:2}}>{d.ceNo||"No CE"}</div>
+                </div>
+                <span style={{fontSize:".65rem",fontWeight:700,color:healthClr,background:healthClr+"18",border:`1px solid ${healthClr}33`,borderRadius:20,padding:"2px 9px",flexShrink:0,marginLeft:8}}>{healthLabel}</span>
+              </div>
+
+              {/* Budget bars */}
+              {hasBudget?(
+                <>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                    <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".5px"}}>Budget</div>
+                      <div style={{fontWeight:700,color:"#3b82f6",fontSize:".85rem",lineHeight:1.2}}>{fmtPHP(tb)}</div>
+                    </div>
+                    <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".5px"}}>Actual Spend</div>
+                      <div style={{fontWeight:700,color:isOver?"#ef4444":"#10b981",fontSize:".85rem",lineHeight:1.2}}>{fmtPHP(ta)}</div>
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:".65rem",color:"#94a3b8",marginBottom:3}}>
+                      <span>{pctUsed}% of budget used</span>
+                      {gm!==null&&<span style={{color:gm>=20?"#059669":gm>=10?"#f59e0b":"#ef4444",fontWeight:700}}>{gm}% margin</span>}
+                    </div>
+                    <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:Math.min(100,pctUsed)+"%",background:healthClr,borderRadius:3,transition:"width .5s"}}/>
+                    </div>
+                  </div>
+                  {/* Category dots */}
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                    {BUDGET_CATS.map(cat=>{
+                      const bcat=Number((budgets[d.id]||{})[cat]||0);
+                      const acat=acts[cat];
+                      const cpct=bcat>0?Math.round(acat/bcat*100):0;
+                      const cc=acat>bcat&&bcat>0?"#ef4444":cpct>80?"#f59e0b":BUDGET_CAT_CLR[cat];
+                      return bcat>0?(
+                        <span key={cat} style={{fontSize:".65rem",background:cc+"18",color:cc,border:`1px solid ${cc}33`,borderRadius:20,padding:"1px 7px",fontWeight:600}}>
+                          {cat} {cpct}%
+                        </span>
+                      ):null;
+                    })}
+                  </div>
+                </>
+              ):(
+                <div style={{textAlign:"center",padding:"14px 0",color:"#94a3b8",fontSize:".8rem"}}>
+                  No budget set — <span style={{color:"#3b82f6",fontWeight:600}}>click to add</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ── DETAIL / EDIT VIEW ───────────────────────────────────────────────────────
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Project Budget</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Set budgets per project — track actual spend vs plan</div>
+          <button onClick={()=>setSelDeal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600,marginBottom:8}}>← All Projects</button>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>{deal?.contact||deal?.client}</h2>
+          {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deal?.ceNo||"No CE"} · Set budget per category, save to track vs actual spend</div>
         </div>
-        <select value={selDeal||""} onChange={e=>setSelDeal(e.target.value)}
-          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",background:"#fff",cursor:"pointer",minWidth:220}}>
-          <option value="">— Select Project —</option>
-          {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-        </select>
       </div>
 
-      {!deal&&<div style={{textAlign:"center",padding:"48px 0",color:"#94a3b8"}}>Select a project above to set its budget.</div>}
-
-      {deal&&(
-        <>
-          {/* Data source status */}
-          {totalActual===0&&totalBudget>0&&(
-            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".82rem",color:"#92400e"}}>
-              ⚠️ <strong>Actual Spend shows ₱0</strong> — to populate it, link your expenses and PRs to this project:<br/>
-              <span style={{fontWeight:600}}>1.</span> In <em>Expenses</em>, set "Link to Project" to this project.<br/>
-              <span style={{fontWeight:600}}>2.</span> In <em>Purchase Orders</em>, set the project and budget category (Materials / Labor / Overhead / Subcon).<br/>
-              Currently: <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> · <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
-            </div>
-          )}
-          {totalActual>0&&(
-            <div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:".78rem",color:"#065f46"}}>
-              📊 Actual spend from <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> + <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
-            </div>
-          )}
-          {/* KPIs */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
-            {[
-              {l:"Contract Value",  v:fmtPHP(contractVal),       c:"#0f172a"},
-              {l:"Total Budget",    v:totalBudget>0?fmtPHP(totalBudget):"Not set", c:"#3b82f6"},
-              {l:"Actual Spend",    v:fmtPHP(totalActual),       c:totalActual>totalBudget&&totalBudget>0?"#ef4444":"#10b981"},
-              {l:"Gross Margin",    v:contractVal>0?grossMargin+"%":"—", c:grossMargin>=20?"#059669":grossMargin>=10?"#f59e0b":"#ef4444"},
-            ].map(({l,v,c})=>(
-              <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c,lineHeight:1.2,wordBreak:"break-all"}}>{v}</div>
-                <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Budget table */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-            <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:12}}>
-              {["Category","Budget (₱)","Actual Spend","Variance","% Used"].map(h=>(
-                <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
-              ))}
-            </div>
-            {BUDGET_CATS.map((cat,i)=>{
-              const bgt=n(form[cat]);
-              const act=actuals[cat];
-              const variance=bgt-act;
-              const pct=bgt>0?Math.round(act/bgt*100):act>0?999:0;
-              return(
-                <div key={cat} style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{width:10,height:10,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],flexShrink:0,display:"inline-block"}}/>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{cat}</span>
-                  </div>
-                  <div>
-                    <input
-                      value={form[cat]||""}
-                      onChange={e=>f(cat,e.target.value)}
-                      placeholder="0.00"
-                      style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",width:"100%",boxSizing:"border-box",textAlign:"right",outline:"none"}}/>
-                  </div>
-                  <div style={{fontWeight:600,color:act>bgt&&bgt>0?"#ef4444":"#10b981",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(act)}</div>
-                  <div style={{fontWeight:600,color:variance<0?"#ef4444":"#059669",fontSize:".82rem",textAlign:"right"}}>
-                    {bgt>0?(variance<0?"▼ ":"▲ ")+fmtPHP(Math.abs(variance)):"—"}
-                  </div>
-                  <div style={{textAlign:"center"}}>
-                    <span style={{fontSize:".78rem",fontWeight:700,color:pct>100?"#ef4444":pct>80?"#f59e0b":"#059669"}}>
-                      {pct===999?"N/A":pct+"%"}
-                    </span>
-                    {bgt>0&&(
-                      <div style={{height:4,background:"#f1f5f9",borderRadius:2,marginTop:4,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:Math.min(pct,100)+"%",background:pct>100?"#ef4444":pct>80?"#f59e0b":"#10b981",borderRadius:2}}/>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {/* Totals row */}
-            <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,background:"#1e293b",alignItems:"center"}}>
-              <div style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>TOTAL</div>
-              <div style={{fontWeight:800,color:"#fff",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalBudget)}</div>
-              <div style={{fontWeight:800,color:totalActual>totalBudget?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalActual)}</div>
-              <div style={{fontWeight:800,color:totalBudget-totalActual<0?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>
-                {totalBudget>0?(totalBudget-totalActual<0?"▼ ":"▲ ")+fmtPHP(Math.abs(totalBudget-totalActual)):"—"}
-              </div>
-              <div style={{textAlign:"center",fontWeight:800,color:budgetUsed>100?"#f87171":"#4ade80",fontSize:".85rem"}}>{budgetUsed}%</div>
-            </div>
-          </div>
-
-          {/* Notes + Save */}
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:12}}>
-            <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Budget Notes</div>
-            <textarea value={form.notes||""} onChange={e=>f("notes",e.target.value)}
-              placeholder="e.g. Includes mobilization, based on approved CE dated…"
-              rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
-          </div>
-          <div style={{display:"flex",gap:10,alignItems:"center"}}>
-            <button onClick={()=>{saveBudget(selDeal,form);setSaved(true);}}
-              style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
-              {saved?"✓ Saved":"Save Budget"}
-            </button>
-            {budget.savedAt&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Last saved {new Date(budget.savedAt).toLocaleDateString("en-PH")}</span>}
-            {totalActual>totalBudget&&totalBudget>0&&(
-              <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>⚠️ Over budget by {fmtPHP(totalActual-totalBudget)}</span>
-            )}
-          </div>
-        </>
+      {/* Data source status */}
+      {totalActual===0&&totalBudget>0&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".82rem",color:"#92400e"}}>
+          ⚠️ <strong>Actual Spend shows ₱0</strong> — to populate it, link your expenses and PRs to this project:<br/>
+          <span style={{fontWeight:600}}>1.</span> In <em>Expenses</em>, set "Link to Project" to this project.<br/>
+          <span style={{fontWeight:600}}>2.</span> In <em>Purchase Orders</em>, set the project and budget category (Materials / Labor / Overhead / Subcon).<br/>
+          Currently: <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> · <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
+        </div>
       )}
+      {totalActual>0&&(
+        <div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:".78rem",color:"#065f46"}}>
+          📊 Actual spend from <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> + <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+        {[
+          {l:"Contract Value",  v:fmtPHP(contractVal),       c:"#0f172a"},
+          {l:"Total Budget",    v:totalBudget>0?fmtPHP(totalBudget):"Not set", c:"#3b82f6"},
+          {l:"Actual Spend",    v:fmtPHP(totalActual),       c:totalActual>totalBudget&&totalBudget>0?"#ef4444":"#10b981"},
+          {l:"Gross Margin",    v:contractVal>0?grossMargin+"%":"—", c:grossMargin>=20?"#059669":grossMargin>=10?"#f59e0b":"#ef4444"},
+        ].map(({l,v,c})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+            <div style={{fontWeight:800,fontSize:"1rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Budget table */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:12}}>
+          {["Category","Budget (₱)","Actual Spend","Variance","% Used"].map(h=>(
+            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+          ))}
+        </div>
+        {BUDGET_CATS.map((cat,i)=>{
+          const bgt=n(form[cat]);
+          const act=actuals[cat];
+          const variance=bgt-act;
+          const pct=bgt>0?Math.round(act/bgt*100):act>0?999:0;
+          return(
+            <div key={cat} style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:10,height:10,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],flexShrink:0,display:"inline-block"}}/>
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{cat}</span>
+              </div>
+              <div>
+                <input
+                  value={form[cat]||""}
+                  onChange={e=>f(cat,e.target.value)}
+                  placeholder="0.00"
+                  style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",width:"100%",boxSizing:"border-box",textAlign:"right",outline:"none"}}/>
+              </div>
+              <div style={{fontWeight:600,color:act>bgt&&bgt>0?"#ef4444":"#10b981",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(act)}</div>
+              <div style={{fontWeight:600,color:variance<0?"#ef4444":"#059669",fontSize:".82rem",textAlign:"right"}}>
+                {bgt>0?(variance<0?"▼ ":"▲ ")+fmtPHP(Math.abs(variance)):"—"}
+              </div>
+              <div style={{textAlign:"center"}}>
+                <span style={{fontSize:".78rem",fontWeight:700,color:pct>100?"#ef4444":pct>80?"#f59e0b":"#059669"}}>
+                  {pct===999?"N/A":pct+"%"}
+                </span>
+                {bgt>0&&(
+                  <div style={{height:4,background:"#f1f5f9",borderRadius:2,marginTop:4,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min(pct,100)+"%",background:pct>100?"#ef4444":pct>80?"#f59e0b":"#10b981",borderRadius:2}}/>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {/* Totals row */}
+        <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,background:"#1e293b",alignItems:"center"}}>
+          <div style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>TOTAL</div>
+          <div style={{fontWeight:800,color:"#fff",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalBudget)}</div>
+          <div style={{fontWeight:800,color:totalActual>totalBudget?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalActual)}</div>
+          <div style={{fontWeight:800,color:totalBudget-totalActual<0?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>
+            {totalBudget>0?(totalBudget-totalActual<0?"▼ ":"▲ ")+fmtPHP(Math.abs(totalBudget-totalActual)):"—"}
+          </div>
+          <div style={{textAlign:"center",fontWeight:800,color:budgetUsed>100?"#f87171":"#4ade80",fontSize:".85rem"}}>{budgetUsed}%</div>
+        </div>
+      </div>
+
+      {/* Notes + Save */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:12}}>
+        <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Budget Notes</div>
+        <textarea value={form.notes||""} onChange={e=>f("notes",e.target.value)}
+          placeholder="e.g. Includes mobilization, based on approved CE dated…"
+          rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+      </div>
+      <div style={{display:"flex",gap:10,alignItems:"center"}}>
+        <button onClick={()=>{saveBudget(selDeal,form);setSaved(true);}}
+          style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
+          {saved?"✓ Saved":"Save Budget"}
+        </button>
+        {budget.savedAt&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Last saved {new Date(budget.savedAt).toLocaleDateString("en-PH")}</span>}
+        {totalActual>totalBudget&&totalBudget>0&&(
+          <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>⚠️ Over budget by {fmtPHP(totalActual-totalBudget)}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -13496,6 +13651,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                         <span><span style={{color:"#94a3b8"}}>Paid: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         {balance>0&&<span><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
                         {ms.dueDate&&<span style={{color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>Due: {ms.dueDate}</span>}
+                        <span title="Month this revenue is counted in the chart. Click Edit to change.">
+                          <span style={{color:"#94a3b8"}}>Rev. Period: </span>
+                          <strong style={{color:"#8b5cf6"}}>{(()=>{const d=new Date(ms.invoiceDate||ms.dueDate||"");return isNaN(d.getTime())?"Not set":d.toLocaleDateString("en-PH",{month:"short",year:"numeric"});})()}</strong>
+                        </span>
                       </div>
                       {/* Progress */}
                       <div style={{height:5,background:"#e2e8f0",borderRadius:3,overflow:"hidden",marginBottom:6}}>
