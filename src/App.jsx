@@ -3645,6 +3645,7 @@ export default function App(){
   const[aeUpdates,    setAeUpdates]    = useState(()=>{try{const v=localStorage.getItem("gmdv5:aeUpdates");return v?JSON.parse(v):[];}catch{return[];}});
   const[aeUpdateText, setAeUpdateText] = useState("");
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
+  const[openGroups,   setOpenGroups]   = useState({});     // per-ceType accordion in awarded projects
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
@@ -7053,23 +7054,34 @@ export default function App(){
                     </div>
                   );
                 };
-                const AwardTable=({deals:list,maxH=320})=>{
-                  const groups=[...new Set(list.map(d=>d.ceType||"Other"))];
-                  return(
-                    <div style={{maxHeight:maxH,overflowY:"auto"}}>
-                      {groups.map(grp=>{
-                        const gd=list.filter(d=>(d.ceType||"Other")===grp);
-                        return(
-                          <div key={grp}>
-                            <div style={{padding:"5px 12px",background:"#f1f5f9",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center",gap:6}}>
-                              <span>{grp}</span><span style={{fontWeight:400,color:"#94a3b8"}}>({gd.length})</span>
+                const AwardGroups=({deals:list})=>{
+                  const groups=[...new Set(list.map(d=>d.ceType||"Other"))].sort();
+                  return(<>
+                    {groups.map(grp=>{
+                      const gd=list.filter(d=>(d.ceType||"Other")===grp);
+                      const total=gd.reduce((s,d)=>s+Number(d.value||0),0);
+                      const paid=gd.reduce((s,d)=>s+Number(d.amountPaid||0),0);
+                      const isOpen=openGroups[grp]!==false;
+                      return(
+                        <div key={grp} style={{marginBottom:10}}>
+                          <button onClick={()=>setOpenGroups(g=>({...g,[grp]:!isOpen}))}
+                            style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:isOpen?"#1e293b":"#f8fafc",border:`1.5px solid ${isOpen?"#334155":"#e2e8f0"}`,borderRadius:isOpen?"10px 10px 0 0":"10px",padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
+                            <span style={{fontWeight:800,color:isOpen?"#f59e0b":"#0f172a",fontSize:".85rem"}}>{grp}</span>
+                            <span style={{background:isOpen?"rgba(255,255,255,.12)":"#e2e8f0",color:isOpen?"#fff":"#64748b",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700}}>{gd.length}</span>
+                            <span style={{marginLeft:"auto",fontWeight:700,color:isOpen?"#4ade80":"#10b981",fontSize:".82rem"}}>{fmtK(total)}</span>
+                            {paid>0&&<span style={{fontSize:".68rem",color:isOpen?"rgba(255,255,255,.5)":"#94a3b8",fontWeight:600}}>{Math.round(paid/total*100)}% collected</span>}
+                            <span style={{fontSize:".65rem",color:isOpen?"rgba(255,255,255,.4)":"#94a3b8",marginLeft:4}}>{isOpen?"▲":"▼"}</span>
+                          </button>
+                          {isOpen&&(
+                            <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #e2e8f0",borderTop:"none",overflow:"hidden"}}>
+                              <ColHeader/>
+                              {gd.map((d,i)=><AwardRow key={d.id} d={d} list={gd} i={i}/>)}
                             </div>
-                            {gd.map((d,i)=><AwardRow key={d.id} d={d} list={gd} i={i}/>)}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>);
                 };
                 const ColHeader=()=>isMobile?null:(
                   <div style={{display:"flex",gap:8,padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px",alignItems:"center"}}>
@@ -7081,28 +7093,25 @@ export default function App(){
                   </div>
                 );
                 return(<>
-                  {/* Active Awarded (06–11) */}
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
+                  {/* Active Awarded — one collapsible card per project type */}
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
                     🏆 Awarded Projects
                     <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({activeWon.length} active)</span>
                   </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-                    {activeWon.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>No active projects right now.</div>}
-                    {activeWon.length>0&&<><ColHeader/><AwardTable deals={activeWon}/></>}
-                  </div>
+                  {activeWon.length===0&&<div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem",marginBottom:16}}>No active projects right now.</div>}
+                  {activeWon.length>0&&<div style={{marginBottom:16}}><AwardGroups deals={activeWon}/></div>}
 
                   {/* Closed Out / Done (12–13) */}
                   {doneWon.length>0&&(
                     <div style={{marginBottom:16}}>
-                      <button onClick={()=>setDoneExpanded(p=>!p)} style={{width:"100%",display:"flex",alignItems:"center",gap:6,background:"none",border:"none",padding:"0 0 7px 0",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-                        <span style={{fontWeight:700,color:"#059669",fontSize:".84rem"}}>✅ Closed Out / Done</span>
-                        <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({doneWon.length} project{doneWon.length!==1?"s":""})</span>
-                        <span style={{marginLeft:"auto",fontSize:".7rem",color:"#94a3b8",fontWeight:600}}>{doneExpanded?"▲ Hide":"▼ Show"}</span>
+                      <button onClick={()=>setDoneExpanded(p=>!p)} style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:doneExpanded?"#059669":"#f0fdf4",border:`1.5px solid ${doneExpanded?"#059669":"#6ee7b7"}`,borderRadius:doneExpanded?"10px 10px 0 0":"10px",padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
+                        <span style={{fontWeight:800,color:doneExpanded?"#fff":"#059669",fontSize:".85rem"}}>✅ Closed Out / Done</span>
+                        <span style={{background:doneExpanded?"rgba(255,255,255,.2)":"#d1fae5",color:doneExpanded?"#fff":"#059669",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700}}>{doneWon.length}</span>
+                        <span style={{marginLeft:"auto",fontSize:".65rem",color:doneExpanded?"rgba(255,255,255,.6)":"#94a3b8"}}>{doneExpanded?"▲ Hide":"▼ Show"}</span>
                       </button>
                       {doneExpanded&&(
-                        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #d1fae5",overflow:"hidden"}}>
-                          <ColHeader/>
-                          <AwardTable deals={doneWon} maxH={400}/>
+                        <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #d1fae5",borderTop:"none",overflow:"hidden"}}>
+                          <AwardGroups deals={doneWon}/>
                         </div>
                       )}
                     </div>
