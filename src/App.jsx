@@ -7467,7 +7467,7 @@ export default function App(){
           const rows=allProj.map(d=>{
             const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
             const billed=ms.reduce((s,b)=>s+Number(b.amount||0),0);
-            const collected=ms.reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),ss),0);
+            const collected=ms.reduce((s,b)=>s+(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),0),0);
             const directExp=exps.filter(e=>(e.projectId||e.dealId)===d.id).reduce((s,e)=>s+Number(e.amount||0),0);
             const grossProfit=collected-directExp;
             const margin=collected>0?Math.round(grossProfit/collected*100):null;
