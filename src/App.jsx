@@ -1641,7 +1641,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
           <Fld label="Link to Project" hint="Choose the project this expense belongs to, or leave as Company-wide">
             <Sel value={form.projectId||"company"} onChange={e=>f("projectId",e.target.value==="company"?null:e.target.value)}>
               <option value="company">Company-wide (salaries, rent, overhead)</option>
-              {projList.map(d=><option key={d.id} value={d.id}>{d.client} — {d.product}</option>)}
+              {projList.map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)}
             </Sel>
           </Fld>
           <Fld label="Receipt / Invoice Link" hint="Paste a Google Drive, email, or any URL link to the receipt">
@@ -7435,33 +7435,6 @@ export default function App(){
         {finTab==="cash"&&(
           <>
             <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} infs={infs} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut}/>
-            <div style={{marginTop:24,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
-              <KPI label="Revenue"      value={fmtK(totRev)}         color="#3b82f6"/>
-              <KPI label="Expenses"     value={fmtK(totExp)}         color="#ef4444"/>
-              <KPI label="Gross Profit" value={fmtK(totRev-totExp)}  color={totRev-totExp>=0?"#059669":"#ef4444"}/>
-              <KPI label="Collected"    value={fmtK(totColl)}        color="#10b981" sub={`${fmtK(totOut)} out`}/>
-            </div>
-            <div style={{marginTop:24}}>
-              <SecHead title="Recent Expenses" sub="Last 10 recorded"/>
-              {exps.slice(-10).reverse().map(e=>(
-                <Card key={e.id}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
-                    <div style={{flex:1}}>
-                      <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                        <Badge label={e.category} color="#64748b"/>
-                        {e.projectId?<Badge label={clientName(e.projectId)} color="#8b5cf6"/>:<Badge label="Company-wide" color="#94a3b8"/>}
-                      </div>
-                      <div style={{fontWeight:600,color:"#0f172a"}}>{e.note}</div>
-                      <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>{MONTHS[e.month]}</div>
-                    </div>
-                    <div style={{textAlign:"right",flexShrink:0}}>
-                      <div style={{fontWeight:800,color:"#ef4444",fontSize:"1.05rem"}}>{fmt(e.amount)}</div>
-                      <div style={{display:"flex",gap:6,marginTop:8}}><Btn small variant="ghost" onClick={()=>openEditExp(e)}>✏ Edit</Btn><Btn small variant="danger" onClick={()=>delExp(e.id)}>Delete</Btn></div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
           </>
         )}
 
@@ -8794,7 +8767,7 @@ export default function App(){
         );
       })()}
       <BillingView
-        billings={billings} wonDeals={wonDeals} deals={deals}
+        billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         addMilestone={addMilestone} updateMilestone={updateMilestone}
         deleteMilestone={deleteMilestone} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
@@ -12899,7 +12872,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles}){
+function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles}){
   const[selDeal,  setSelDeal]  =useState(null);
   const[showForm, setShowForm] =useState(false);
   const[showPay,  setShowPay]  =useState(null);
@@ -14760,7 +14733,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
           <BTN onClick={()=>setViewDate(d=>{const n=new Date(d);n.setMonth(n.getMonth()+1);return n;})}>Next ›</BTN>
         </div>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12,padding:"8px 12px",background:"#f8fafc",borderRadius:10,border:"1px solid #e2e8f0"}}>
-          {[{c:"#3b82f6",l:"Project End"},{c:"#f97316",l:"PO Delivery"},{c:"#10b981",l:"Billing Due"},{c:"#ec4899",l:"DRF Deadline"}].map(({c,l})=>(
+          {[{c:"#3b82f6",l:"Turnover"},{c:"#f97316",l:"PO Delivery"},{c:"#10b981",l:"Billing Due"},{c:"#ec4899",l:"DRF Deadline"}].map(({c,l})=>(
             <div key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#475569"}}>
               <div style={{width:10,height:10,borderRadius:"50%",background:c}}/>{l}
             </div>
@@ -14812,7 +14785,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
                   <span style={{fontSize:".68rem",fontWeight:700,color:e.color,background:e.color+"18",border:`1px solid ${e.color}44`,borderRadius:20,padding:"2px 8px"}}>
-                    {e.type==="end"?"Project End":e.type==="delivery"?"PO Delivery":e.type==="billing"?"Billing Due":"DRF Deadline"}
+                    {e.type==="end"?"Turnover":e.type==="delivery"?"PO Delivery":e.type==="billing"?"Billing Due":"DRF Deadline"}
                   </span>
                   {e.dealId&&<button onClick={()=>{setPage("billing");}} style={{fontSize:".7rem",fontWeight:700,background:"#eff6ff",color:"#3b82f6",border:"1px solid #bfdbfe",borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit"}}>→ View</button>}
                 </div>
@@ -14837,7 +14810,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
                 <div style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                   <div style={{fontSize:".7rem",color:"#64748b",fontWeight:600}}>TYPE</div>
-                  <div style={{fontWeight:700,color:"#0f172a",marginTop:2}}>{eventModal.type==="end"?"Project End":eventModal.type==="delivery"?"PO Delivery":eventModal.type==="billing"?"Billing Due":"DRF Deadline"}</div>
+                  <div style={{fontWeight:700,color:"#0f172a",marginTop:2}}>{eventModal.type==="end"?"Turnover":eventModal.type==="delivery"?"PO Delivery":eventModal.type==="billing"?"Billing Due":"DRF Deadline"}</div>
                 </div>
                 <div style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                   <div style={{fontSize:".7rem",color:"#64748b",fontWeight:600}}>DATE</div>
