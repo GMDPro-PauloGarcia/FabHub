@@ -377,6 +377,7 @@ const emptyDayPosition = (date) => ({
     otherNote: "",
     otherAmt: "",
   },
+  transactions: [],  // [{id, category, description, amount}]
   ytd: {
     supplierPayable: "",
     loansPayable: "",
@@ -11306,6 +11307,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
   const[histOpen,setHistOpen]=useState(false);
+  const[txForm,setTxForm]=useState({description:"",amount:"",category:"Online Transaction (Bizlink)"});
+  const TX_CATS=["Online Transaction (Bizlink)","Check Float","Supplier Payment","Loan Payment","Payroll","Utilities","Fund Transfer","Other"];
   const mob=window.innerWidth<768;
 
   // Billing-derived metrics
@@ -11420,15 +11423,15 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
     return todayInflows+n(pos.collections.manualAmt);
   },[todayInflows,pos.collections.manualAmt]);
 
-  // Less total
+  // Transactions total (deductions / outflows)
   const totalLess=useMemo(()=>{
-    return n(pos.less.bizlink)+n(pos.less.checkFloat)+n(pos.less.otherAmt);
-  },[pos.less]);
+    return (pos.transactions||[]).reduce((s,t)=>s+n(t.amount),0);
+  },[pos.transactions]);
 
   // Total Cash Available = Total Book Balance - Less
   // Book balance = what bank confirms; if not filled, use ending balance
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
-  const totalCashAvailable=workingBook-totalLess; // Working capital only — Unionbank (capital) excluded
+  const totalCashAvailable=workingBook+totalCollections-totalLess; // Working capital only — Unionbank (capital) excluded
 
   const handleSave=()=>{
     const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
@@ -11613,60 +11616,69 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
           </div>
         </div>
 
-        {/* Less section */}
-        <div style={{background:"#fef2f2",borderBottom:"1px solid #fecaca",borderTop:"2px solid #fca5a5"}}>
-          <div style={{padding:"7px 14px",fontWeight:700,color:"#dc2626",fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",borderBottom:"1px solid #fee2e2",position:"sticky",left:0,zIndex:2,background:"#fef2f2"}}>LESS:</div>
+      </div>
+      </div>
+      </div>
+
+      {/* Today's Transactions — outflows / deductions */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
+        <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <span style={{fontWeight:700,color:"#f87171",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📤 Today's Transactions</span>
+            <span style={{fontSize:".72rem",color:"rgba(255,255,255,.4)",marginLeft:8}}>Outflows, deductions & fund movements</span>
+          </div>
+          {(pos.transactions||[]).length>0&&<span style={{fontWeight:800,color:"#f87171",fontSize:".9rem"}}>−₱{fmt2(totalLess)}</span>}
+        </div>
+        {(pos.transactions||[]).length===0&&<div style={{padding:"18px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No transactions recorded yet. Add outflows below.</div>}
+        {(pos.transactions||[]).map((tx,i)=>(
+          <div key={tx.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff"}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{tx.description&&tx.description!==tx.category?tx.description:tx.category}</div>
+              {tx.description&&tx.description!==tx.category&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{tx.category}</div>}
+            </div>
+            <div style={{fontWeight:700,color:"#dc2626",fontSize:".88rem",minWidth:110,textAlign:"right"}}>₱{fmt2(tx.amount)}</div>
+            <button onClick={()=>{setPos(p=>({...p,transactions:(p.transactions||[]).filter((_,j)=>j!==i)}));setSaved(false);}}
+              style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,cursor:"pointer",color:"#dc2626",fontSize:".75rem",padding:"3px 9px",flexShrink:0,fontFamily:"inherit",lineHeight:1.4}}>✕</button>
+          </div>
+        ))}
+        <div style={{padding:"12px 16px",background:"#fef2f2",borderTop:"1.5px solid #fee2e2",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          <select value={txForm.category} onChange={e=>setTxForm(f=>({...f,category:e.target.value}))}
+            style={{border:"1.5px solid #fca5a5",borderRadius:6,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",flexShrink:0}}>
+            {TX_CATS.map(c=><option key={c}>{c}</option>)}
+          </select>
+          <input type="text" value={txForm.description} onChange={e=>setTxForm(f=>({...f,description:e.target.value}))}
+            placeholder="Description (optional)"
+            style={{...inpStyle,flex:1,minWidth:120,textAlign:"left",borderColor:"#fca5a5"}}/>
+          <CurrInp value={txForm.amount} onChange={e=>setTxForm(f=>({...f,amount:e.target.value}))}
+            style={{...inpStyle,width:130,borderColor:"#fca5a5",flexShrink:0}}/>
+          <button onClick={()=>{if(!n(txForm.amount))return;const nt={id:String(Date.now()),category:txForm.category,description:txForm.description||txForm.category,amount:txForm.amount};setPos(p=>({...p,transactions:[...(p.transactions||[]),nt]}));setSaved(false);setTxForm(f=>({...f,description:"",amount:""}));}}
+            style={{background:"#dc2626",border:"none",borderRadius:6,padding:"7px 16px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700,flexShrink:0}}>+ Add</button>
+        </div>
+      </div>
+
+      {/* Position Summary */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
+        <div style={{background:"#1e293b",padding:"12px 16px"}}>
+          <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📊 Position Summary</span>
+        </div>
+        <div style={{padding:"0 20px"}}>
           {[
-            ["Online Transaction (Bizlink)","less.bizlink"],
-            ["Check Float",                "less.checkFloat"],
-          ].map(([label,path])=>(
-            <div key={path} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderBottom:"1px solid #fee2e2"}}>
-              <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem",borderRight:"2px solid #fca5a5"}}>{label}</div>
-              <div style={{padding:"5px 10px",display:"flex",alignItems:"center"}}>
-                <CurrInp
-                  value={path.split(".").reduce((o,k)=>o?.[k],pos)||""}
-                  onChange={e=>f(path,e.target.value)}
-                  style={{...inpStyle,borderColor:"#fca5a5"}}/>
+            ["Book Balance (Working Capital)", workingBook,      "#1d4ed8", "+"],
+            ["Collections Today",              totalCollections, "#059669", "+"],
+            ["Today's Transactions",           totalLess,        "#dc2626", "−"],
+          ].map(([label,val,color,sign])=>(
+            <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 0",borderBottom:"1px solid #f1f5f9"}}>
+              <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color,fontSize:"1.05rem",minWidth:18,display:"inline-block"}}>{sign}</span>{label}
               </div>
-              <div style={{padding:"8px 12px",textAlign:"right",fontWeight:600,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-                {fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}
-              </div>
+              <div style={{fontWeight:700,color,fontSize:".88rem"}}>₱{fmt2(val)}</div>
             </div>
           ))}
-          {/* Other less */}
-          <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px"}}>
-            <div style={{...labelCell,background:"#fff5f5",color:"#dc2626",fontSize:".78rem",borderRight:"2px solid #fca5a5"}}>Other</div>
-            <div style={{padding:"5px 10px",display:"flex",gap:8,alignItems:"center"}}>
-              <CurrInp
-                value={pos.less.otherAmt||""}
-                onChange={e=>f("less.otherAmt",e.target.value)}
-                style={{...inpStyle,width:150,flexShrink:0,borderColor:"#fca5a5"}}/>
-              <input className="cash-inp" type="text"
-                key={`other-note-${selDate}`}
-                value={pos.less.otherNote||""}
-                onChange={e=>f("less.otherNote",e.target.value)}
-                placeholder="Description" style={{...inpStyle,flex:1,textAlign:"left",borderColor:"#fca5a5"}}/>
-            </div>
-            <div style={{padding:"8px 12px",textAlign:"right",fontWeight:600,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-              {fmt2(pos.less.otherAmt)}
-            </div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0"}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:".9rem",textTransform:"uppercase",letterSpacing:".5px"}}>= Total Cash Available</div>
+            <div style={{fontWeight:900,color:totalCashAvailable>=0?"#059669":"#ef4444",fontSize:"1.35rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{fmt2(totalCashAvailable)}</div>
           </div>
         </div>
-
-        {/* Total Cash Available — highlighted */}
-        <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",background:"#1e293b",borderTop:"3px solid #f59e0b"}}>
-          <div style={{padding:"14px 14px",color:"#f59e0b",fontWeight:800,fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px",display:"flex",alignItems:"center",position:"sticky",left:0,zIndex:2,background:"#1e293b"}}>TOTAL CASH AVAILABLE</div>
-          <div style={{padding:"14px 12px",color:"rgba(255,255,255,.5)",fontSize:".78rem",display:"flex",alignItems:"center"}}>
-            Book Balance minus all deductions
-          </div>
-          <div style={{padding:"14px 12px",textAlign:"right",fontWeight:800,fontSize:"1.1rem",
-            color:totalCashAvailable>=0?"#4ade80":"#f87171",
-            fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-            ₱{fmt2(totalCashAvailable)}
-          </div>
-        </div>
-      </div>
-      </div>
       </div>
 
       {/* Bottom grid: Key Areas + FabHub Collections breakdown */}
