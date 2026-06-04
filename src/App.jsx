@@ -133,6 +133,7 @@ const CS_CLR    = { "To Do":"#94a3b8","In Progress":"#f59e0b",Done:"#10b981" };
 
 const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
 const fmtK  = n => n>=1000000?"₱"+(n/1000000).toFixed(1)+"M":n>=1000?"₱"+(n/1000).toFixed(0)+"k":"₱"+(n||0);
+const fmtPHP= n => "Php "+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const today = new Date().toISOString().split("T")[0];
 const BUSINESS_DAYS_SLA = 5;
 function bizDaysElapsed(startDateStr){
@@ -3646,6 +3647,7 @@ export default function App(){
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
   const[openGroups,   setOpenGroups]   = useState({});     // per-ceType accordion in awarded projects
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
+  const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
   const[quickAddClientForm,setQuickAddClientForm]=useState({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
@@ -6634,7 +6636,11 @@ export default function App(){
               {pipeSearch&&<button onClick={()=>setPipeSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>✕</button>}
             </div>
           </div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            <button onClick={()=>setShowActChat(v=>!v)} style={{background:showActChat?"#1e293b":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:showActChat?"#4ade80":"#64748b",cursor:"pointer",position:"relative"}}>
+              💬 Activity
+              {actLog.length>0&&!showActChat&&<span style={{position:"absolute",top:-5,right:-5,background:"#ef4444",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:".6rem",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}}>{Math.min(actLog.length,9)}</span>}
+            </button>
             <input ref={smartImportInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" style={{display:"none"}} onChange={async e=>{
                 const file=e.target.files[0]; if(!file) return;
                 e.target.value="";
@@ -6774,32 +6780,38 @@ export default function App(){
           ))}
         </div>
 
-        {/* Activity Feed + New Clients widget */}
-        {/* Activity Feed — full width */}
-        <div style={{marginBottom:24}}>
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#4ade80",fontSize:".85rem"}}>📋 Recent Activity</span>
+        {/* Activity Chat Pop-up Panel */}
+        {showActChat&&(
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:20,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,.1)"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem"}}>💬 Activity Feed — Sales Pipeline</span>
+              <button onClick={()=>setShowActChat(false)} style={{background:"transparent",border:"none",color:"rgba(255,255,255,.5)",cursor:"pointer",fontSize:"1rem",lineHeight:1,padding:"0 4px"}}>✕</button>
             </div>
-            <div style={{padding:"8px 0",maxHeight:220,overflowY:"auto"}}>
-              {actLog.length===0&&<div style={{textAlign:"center",padding:"20px",color:"#94a3b8",fontSize:".78rem"}}>No activity yet — actions will appear here</div>}
-              {actLog.slice(0,12).map(entry=>{
-                const deal=deals.find(d=>d.id===entry.dealId);
-                const actionClr={"New Deal":"#10b981","Project Awarded":"#f59e0b","Stage Change":"#3b82f6","Deal Updated":"#94a3b8"}[entry.action]||"#94a3b8";
+            <div style={{maxHeight:400,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
+              {actLog.length===0&&<div style={{textAlign:"center",padding:"20px",color:"#94a3b8",fontSize:".82rem"}}>No activity yet — add a deal to get started.</div>}
+              {actLog.slice(0,30).map((entry,i)=>{
+                const actionClr={"New Deal":"#10b981","Project Awarded":"#f59e0b","Stage Change":"#3b82f6","Deal Updated":"#94a3b8","Deal Deleted":"#ef4444"}[entry.action]||"#64748b";
+                const initials=(entry.by||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
                 return(
-                  <div key={entry.id} style={{display:"flex",gap:10,padding:"7px 16px",borderBottom:"1px solid #f8fafc",alignItems:"flex-start"}}>
-                    <div style={{width:6,height:6,borderRadius:"50%",background:actionClr,flexShrink:0,marginTop:5}}/>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:".78rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.detail}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{entry.by} · {entry.date} {entry.time}</div>
+                  <div key={entry.id||i} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                    <div style={{width:32,height:32,borderRadius:"50%",background:actionClr+"22",border:`1.5px solid ${actionClr}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
+                      <span style={{fontSize:".65rem",fontWeight:800,color:actionClr}}>{initials}</span>
                     </div>
-                    <span style={{fontSize:".65rem",color:actionClr,background:actionClr+"18",padding:"1px 7px",borderRadius:20,whiteSpace:"nowrap",flexShrink:0,fontWeight:600}}>{entry.action}</span>
+                    <div style={{flex:1,background:"#f8fafc",borderRadius:"4px 12px 12px 12px",padding:"8px 12px",border:"1px solid #f1f5f9"}}>
+                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:3,flexWrap:"wrap"}}>
+                        <span style={{fontWeight:700,color:"#0f172a",fontSize:".78rem"}}>{entry.by||"System"}</span>
+                        <span style={{fontSize:".62rem",color:actionClr,background:actionClr+"18",padding:"1px 7px",borderRadius:20,fontWeight:700}}>{entry.action}</span>
+                        <span style={{fontSize:".65rem",color:"#94a3b8",marginLeft:"auto"}}>{entry.date} {entry.time}</span>
+                      </div>
+                      <div style={{fontSize:".8rem",color:"#475569",lineHeight:1.4}}>{entry.detail}</div>
+                    </div>
                   </div>
                 );
               })}
+              {actLog.length>30&&<div style={{textAlign:"center",fontSize:".72rem",color:"#94a3b8",padding:"4px 0"}}>Showing last 30 of {actLog.length} activities</div>}
             </div>
           </div>
-        </div>
+        )}
 
         {/* AE / Salesperson filter */}
         {(()=>{
@@ -9063,10 +9075,10 @@ function PLStatement({billings,exps,wonDeals}){
           {[curYear-2,curYear-1,curYear].map(y=><option key={y} value={y}>{y}</option>)}
         </select>
         <div style={{marginLeft:"auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,minWidth:480}}>
-          <KPI label="YTD Revenue"   value={"₱"+Math.round(ytdRev/1000)+"K"}  color="#3b82f6"/>
-          <KPI label="YTD Collected" value={"₱"+Math.round(ytdColl/1000)+"K"} color="#10b981"/>
-          <KPI label="YTD Expenses"  value={"₱"+Math.round(ytdExp/1000)+"K"}  color="#ef4444"/>
-          <KPI label="Gross Profit"  value={"₱"+Math.round(ytdGP/1000)+"K"}   color={gpColor(ytdGP)} sub={ytdRev>0?ytdGPPct+"%":"-"}/>
+          <KPI label="YTD Revenue"   value={fmtPHP(ytdRev)}  color="#3b82f6"/>
+          <KPI label="YTD Collected" value={fmtPHP(ytdColl)} color="#10b981"/>
+          <KPI label="YTD Expenses"  value={fmtPHP(ytdExp)}  color="#ef4444"/>
+          <KPI label="Gross Profit"  value={fmtPHP(ytdGP)}   color={gpColor(ytdGP)} sub={ytdRev>0?ytdGPPct+"%":"-"}/>
         </div>
       </div>
 
@@ -10375,7 +10387,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
             {clProjF==="all"&&(
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
                 <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>{deal?deal.client:"No Project"}</div>
-                {deal&&<Badge label={WON_STAGES.includes(deal.stage)?(projs?.[deal.id]?.currentStage||deal.stage):deal.stage} color={WON_STAGES.includes(deal.stage)?PROD_CLR[projs?.[deal.id]?.currentStage||"Design"]:STAGE_CLR[deal.stage]}/>}
+                {deal&&<Badge label={deal.stage} color={STAGE_CLR[deal.stage]||"#94a3b8"}/>}
                 <div style={{flex:1,height:1,background:"#e2e8f0"}}/>
                 <Btn small onClick={()=>openAddCl(projId===("__none__")?null:projId,role==="Design"?"Design":"Operations")}>+ Add to {deal?.client||"project"}</Btn>
               </div>
@@ -11340,6 +11352,28 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
       .sort((a,b)=>b.balance-a.balance);
   },[billings,wonDeals]);
 
+  // Collections breakdown by milestone type
+  const billingByType=useMemo(()=>{
+    const TYPES=["Downpayment","Progress Bill","Assume Balance","Retention"];
+    const classify=name=>{
+      const n=(name||"").toLowerCase();
+      if(n.includes("down")) return "Downpayment";
+      if(n.includes("progress")||n.includes("billing")||n.includes("partial")) return "Progress Bill";
+      if(n.includes("assume")) return "Assume Balance";
+      if(n.includes("retention")||n.includes("retent")) return "Retention";
+      return "Progress Bill";
+    };
+    const totals={};
+    TYPES.forEach(t=>{totals[t]={billed:0,collected:0};});
+    (billings||[]).forEach(b=>{
+      if(b.status==="Cancelled") return;
+      const t=classify(b.name);
+      totals[t].billed+=Number(b.amount||0);
+      totals[t].collected+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    });
+    return TYPES.map(t=>({type:t,...totals[t],outstanding:Math.max(0,totals[t].billed-totals[t].collected)}));
+  },[billings]);
+
   // When date changes, load that day's position or start fresh
   const switchDate=(d)=>{
     setSelDate(d);
@@ -11602,6 +11636,36 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
       </div>
       </div>
 
+      {/* FabHub Collections — by project (moved below bank table) */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
+        <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>🔗 FabHub Collections — Outstanding by Project</span>
+          <span style={{fontSize:".72rem",color:"rgba(255,255,255,.4)"}}>Auto-pulled from Billing milestones</span>
+        </div>
+        {billingByDeal.length===0?(
+          <div style={{textAlign:"center",padding:"20px",color:"#94a3b8",fontSize:".82rem"}}>No outstanding balances 🎉</div>
+        ):(
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"repeat(2,1fr)"}}>
+            {billingByDeal.slice(0,8).map((row,i)=>(
+              <div key={row.dealId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",borderRight:!mob&&i%2===0?"1px solid #f1f5f9":"none",gap:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.client}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{row.pct}% collected · Php {row.totalPaid.toLocaleString("en-PH",{minimumFractionDigits:2})} received</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontWeight:700,color:"#ef4444",fontSize:".83rem"}}>Php {row.balance.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8"}}>of Php {row.totalAmount.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:"#f8fafc",borderTop:"1.5px solid #e2e8f0"}}>
+          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Total Outstanding</span>
+          <span style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>Php {billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+        </div>
+      </div>
+
       {/* Today's Transactions — outflows / deductions */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
         <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -11663,16 +11727,15 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
         </div>
       </div>
 
-      {/* Bottom grid: Key Areas + FabHub Collections breakdown */}
+      {/* Bottom grid: Key Areas (full width) */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16,marginBottom:16}}>
 
-        {/* YTD Key Areas */}
+        {/* YTD Key Areas — Payables */}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",gap:8,alignItems:"center"}}>
             <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>KEY AREAS</span>
           </div>
           {[
-            ["Expected Collection",   "ytd.expectedCollection",  "#f59e0b"],
             ["YTD Supplier Payable",  "ytd.supplierPayable",     "#ef4444"],
             ["YTD Loans Payable",     "ytd.loansPayable",        "#f97316"],
           ].map(([label,path,color])=>(
@@ -11684,48 +11747,55 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
                   onChange={e=>f(path,e.target.value)}
                   style={{...inpStyle,width:mob?140:160,borderColor:`${color}44`}}/>
                 <span style={{fontWeight:700,color,minWidth:mob?70:90,textAlign:"right",fontSize:".82rem"}}>
-                  {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
+                  {path.split(".").reduce((o,k)=>o?.[k],pos)?`Php ${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
                 </span>
               </div>
             </div>
           ))}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",background:"#f0fdf4"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:"#f0fdf4"}}>
             <div>
               <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>Due This Month</div>
               <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>Billing milestones due this calendar month</div>
             </div>
             <span style={{fontWeight:800,color:billingMetrics.dueThisMonth>0?"#f59e0b":"#10b981",fontSize:".88rem"}}>
-              ₱{billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
+              Php {billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
             </span>
           </div>
         </div>
 
-        {/* FabHub Collections breakdown */}
+        {/* FabHub Collections by type */}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{background:"#1e293b",padding:"12px 16px"}}>
-            <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>🔗 FabHub Collections</span>
+            <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 Collections by Type</span>
           </div>
-          <div style={{padding:"12px 16px"}}>
-            <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10}}>Outstanding balances by project — auto-pulled from Billing milestones</div>
-            {billingByDeal.slice(0,8).map(row=>(
-              <div key={row.dealId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #f1f5f9",gap:10}}>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.client}</div>
-                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{row.pct}% collected · ₱{row.totalPaid.toLocaleString("en-PH",{minimumFractionDigits:0})} received</div>
+          {billingByType.map(({type,billed,collected,outstanding})=>{
+            const pct=billed>0?Math.round(collected/billed*100):0;
+            const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
+            return(
+              <div key={type} style={{padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{width:8,height:8,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
+                    <span style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{type}</span>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".82rem"}}>
+                      {outstanding>0?`Php ${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} due`:"Fully collected"}
+                    </div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>Php {collected.toLocaleString("en-PH",{minimumFractionDigits:2})} / Php {billed.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                  </div>
                 </div>
-                <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontWeight:700,color:"#ef4444",fontSize:".82rem"}}>₱{row.balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                  <div style={{fontSize:".68rem",color:"#94a3b8"}}>of ₱{row.totalAmount.toLocaleString("en-PH")}</div>
-                </div>
+                {billed>0&&(
+                  <div style={{height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2,transition:"width .5s"}}/>
+                  </div>
+                )}
               </div>
-            ))}
-            {billingByDeal.length===0&&(
-              <div style={{textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:".82rem"}}>No outstanding balances 🎉</div>
-            )}
-            <div style={{marginTop:10,display:"flex",justifyContent:"space-between",padding:"8px 0",borderTop:"1.5px solid #e2e8f0"}}>
-              <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Total Outstanding</span>
-              <span style={{fontWeight:800,color:"#ef4444",fontSize:".92rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
-            </div>
+            );
+          })}
+          <div style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:"#f8fafc"}}>
+            <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>Total Outstanding</span>
+            <span style={{fontWeight:800,color:"#ef4444",fontSize:".85rem"}}>Php {billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
           </div>
         </div>
       </div>
@@ -11953,6 +12023,8 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   const contractVal = n(deal?.value)||0;
   const grossMargin = contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):0;
   const budgetUsed  = totalBudget>0?Math.round(totalActual/totalBudget*100):0;
+  const linkedPRs   = prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").length;
+  const linkedExps  = exps.filter(e=>e.projectId===selDeal).length;
 
   return(
     <div>
@@ -11972,16 +12044,30 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
       {deal&&(
         <>
+          {/* Data source status */}
+          {totalActual===0&&totalBudget>0&&(
+            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".82rem",color:"#92400e"}}>
+              ⚠️ <strong>Actual Spend shows ₱0</strong> — to populate it, link your expenses and PRs to this project:<br/>
+              <span style={{fontWeight:600}}>1.</span> In <em>Expenses</em>, set "Link to Project" to this project.<br/>
+              <span style={{fontWeight:600}}>2.</span> In <em>Purchase Orders</em>, set the project and budget category (Materials / Labor / Overhead / Subcon).<br/>
+              Currently: <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> · <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
+            </div>
+          )}
+          {totalActual>0&&(
+            <div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:".78rem",color:"#065f46"}}>
+              📊 Actual spend from <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> + <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
+            </div>
+          )}
           {/* KPIs */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
             {[
-              {l:"Contract Value",  v:fmt(contractVal),          c:"#0f172a"},
-              {l:"Total Budget",    v:fmt(totalBudget),          c:"#3b82f6"},
-              {l:"Actual Spend",    v:fmt(totalActual),          c:totalActual>totalBudget?"#ef4444":"#10b981"},
-              {l:"Gross Margin",    v:grossMargin+"%",           c:grossMargin>=20?"#059669":"#ef4444"},
+              {l:"Contract Value",  v:fmtPHP(contractVal),       c:"#0f172a"},
+              {l:"Total Budget",    v:totalBudget>0?fmtPHP(totalBudget):"Not set", c:"#3b82f6"},
+              {l:"Actual Spend",    v:fmtPHP(totalActual),       c:totalActual>totalBudget&&totalBudget>0?"#ef4444":"#10b981"},
+              {l:"Gross Margin",    v:contractVal>0?grossMargin+"%":"—", c:grossMargin>=20?"#059669":grossMargin>=10?"#f59e0b":"#ef4444"},
             ].map(({l,v,c})=>(
               <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c,lineHeight:1.2,wordBreak:"break-all"}}>{v}</div>
                 <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
               </div>
             ))}
@@ -12012,9 +12098,9 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
                       placeholder="0.00"
                       style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",width:"100%",boxSizing:"border-box",textAlign:"right",outline:"none"}}/>
                   </div>
-                  <div style={{fontWeight:600,color:act>bgt&&bgt>0?"#ef4444":"#10b981",fontSize:".88rem",textAlign:"right"}}>{fmt(act)}</div>
-                  <div style={{fontWeight:600,color:variance<0?"#ef4444":"#059669",fontSize:".88rem",textAlign:"right"}}>
-                    {variance<0?"▼":"▲"} {fmt(Math.abs(variance))}
+                  <div style={{fontWeight:600,color:act>bgt&&bgt>0?"#ef4444":"#10b981",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(act)}</div>
+                  <div style={{fontWeight:600,color:variance<0?"#ef4444":"#059669",fontSize:".82rem",textAlign:"right"}}>
+                    {bgt>0?(variance<0?"▼ ":"▲ ")+fmtPHP(Math.abs(variance)):"—"}
                   </div>
                   <div style={{textAlign:"center"}}>
                     <span style={{fontSize:".78rem",fontWeight:700,color:pct>100?"#ef4444":pct>80?"#f59e0b":"#059669"}}>
@@ -12032,10 +12118,10 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
             {/* Totals row */}
             <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,background:"#1e293b",alignItems:"center"}}>
               <div style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>TOTAL</div>
-              <div style={{fontWeight:800,color:"#fff",fontSize:".9rem",textAlign:"right"}}>{fmt(totalBudget)}</div>
-              <div style={{fontWeight:800,color:totalActual>totalBudget?"#f87171":"#4ade80",fontSize:".9rem",textAlign:"right"}}>{fmt(totalActual)}</div>
-              <div style={{fontWeight:800,color:totalBudget-totalActual<0?"#f87171":"#4ade80",fontSize:".9rem",textAlign:"right"}}>
-                {totalBudget-totalActual<0?"▼":"▲"} {fmt(Math.abs(totalBudget-totalActual))}
+              <div style={{fontWeight:800,color:"#fff",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalBudget)}</div>
+              <div style={{fontWeight:800,color:totalActual>totalBudget?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalActual)}</div>
+              <div style={{fontWeight:800,color:totalBudget-totalActual<0?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>
+                {totalBudget>0?(totalBudget-totalActual<0?"▼ ":"▲ ")+fmtPHP(Math.abs(totalBudget-totalActual)):"—"}
               </div>
               <div style={{textAlign:"center",fontWeight:800,color:budgetUsed>100?"#f87171":"#4ade80",fontSize:".85rem"}}>{budgetUsed}%</div>
             </div>
@@ -12055,7 +12141,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
             </button>
             {budget.savedAt&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Last saved {new Date(budget.savedAt).toLocaleDateString("en-PH")}</span>}
             {totalActual>totalBudget&&totalBudget>0&&(
-              <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>⚠️ Over budget by {fmt(totalActual-totalBudget)}</span>
+              <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>⚠️ Over budget by {fmtPHP(totalActual-totalBudget)}</span>
             )}
           </div>
         </>
@@ -14218,34 +14304,68 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
               )}
 
-              {/* ── PM Updates ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projUpdates.length>0||showUForm?10:0}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📝 PM Updates</div>
-                  {!showUForm&&["Manager","Operations","ProjectMover"].includes(role)&&<button onClick={()=>{setShowUForm(true);setUText("");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#059669",cursor:"pointer",fontWeight:700}}>+ Log Update</button>}
-                </div>
-                {projUpdates.length===0&&!showUForm&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No updates logged yet.</div>}
-                {projUpdates.map((u,i)=>(
-                  <div key={u.id||i} style={{padding:"9px 10px",borderRadius:8,background:"#f8fafc",marginBottom:6}}>
-                    <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-                      <span style={{fontSize:".6rem",background:"#1e293b",color:"#f59e0b",borderRadius:20,padding:"1px 7px",fontWeight:700,flexShrink:0,marginTop:2}}>{u.date}</span>
-                      <div>
-                        <div style={{fontSize:".82rem",color:"#0f172a",lineHeight:1.4}}>{u.detail}</div>
-                        <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>by {u.by} · {u.time}</div>
+              {/* ── PM Updates / Team Chat ── */}
+              {(()=>{
+                const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
+                return(
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{fontWeight:700,color:"#4ade80",fontSize:".82rem"}}>💬 Team Updates ({allProjUpdates.length})</div>
+                    {!showUForm&&["Manager","Operations","ProjectMover"].includes(role)&&<button onClick={()=>{setShowUForm(true);setUText("");}} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
+                  </div>
+                  {/* Post form */}
+                  {showUForm&&(
+                    <div style={{padding:"12px 16px",background:"#f0fdf4",borderBottom:"1px solid #e2e8f0"}}>
+                      <textarea value={uText} onChange={e=>setUText(e.target.value)} rows={3}
+                        placeholder={"What's the update? @mention teammates (e.g. @Mark please confirm delivery date)\nProgress, decisions, blockers, next steps..."}
+                        style={{width:"100%",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".84rem",resize:"vertical",boxSizing:"border-box",marginBottom:8,outline:"none"}}/>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>{if(!uText.trim())return;logActivity(selDeal,"PM Update",uText.trim(),session?.name);setShowUForm(false);setUText("");}}
+                          style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Post</button>
+                        <button onClick={()=>setShowUForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
                       </div>
                     </div>
+                  )}
+                  {/* Chat messages */}
+                  <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:400,overflowY:"auto"}}>
+                    {allProjUpdates.length===0&&!showUForm&&(
+                      <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet. Post the first update above.</div>
+                    )}
+                    {allProjUpdates.map((u,i)=>{
+                      const isMe=u.by===session?.name;
+                      const initials=(u.by||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+                      const hasTag=u.detail?.includes("@");
+                      return(
+                        <div key={u.id||i} style={{display:"flex",gap:8,alignItems:"flex-start",flexDirection:isMe?"row-reverse":"row"}}>
+                          <div style={{width:32,height:32,borderRadius:"50%",background:isMe?"#059669":"#1e293b",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2}}>
+                            <span style={{fontSize:".65rem",fontWeight:800,color:"#fff"}}>{initials}</span>
+                          </div>
+                          <div style={{maxWidth:"75%"}}>
+                            <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:3,flexDirection:isMe?"row-reverse":"row"}}>
+                              <span style={{fontWeight:700,color:"#0f172a",fontSize:".75rem"}}>{u.by}</span>
+                              <span style={{fontSize:".65rem",color:"#94a3b8"}}>{u.date} {u.time}</span>
+                            </div>
+                            <div style={{
+                              background:isMe?"#dcfce7":hasTag?"#fef3c7":"#f8fafc",
+                              border:`1px solid ${isMe?"#6ee7b7":hasTag?"#fde68a":"#e2e8f0"}`,
+                              borderRadius:isMe?"12px 4px 12px 12px":"4px 12px 12px 12px",
+                              padding:"9px 12px",fontSize:".82rem",color:"#0f172a",lineHeight:1.5,
+                              wordBreak:"break-word"
+                            }}>
+                              {(u.detail||"").split(/(@\w+)/g).map((part,j)=>
+                                part.startsWith("@")
+                                  ?<strong key={j} style={{color:"#2563eb"}}>{part}</strong>
+                                  :<span key={j}>{part}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-                {showUForm&&(
-                  <div style={{marginTop:8}}>
-                    <textarea value={uText} onChange={e=>setUText(e.target.value)} rows={3} placeholder="What happened today? Progress, decisions, issues, next steps..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",resize:"vertical",boxSizing:"border-box",marginBottom:8}}/>
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>{if(!uText.trim())return;logActivity(selDeal,"PM Update",uText.trim(),session?.name);setShowUForm(false);setUText("");}} style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Log Update</button>
-                      <button onClick={()=>setShowUForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+                );
+              })()}
 
               {/* ── Scope Changes ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -14273,14 +14393,14 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>💰 Finance Snapshot</div>
                 <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8}}>
                   {[
-                    {l:"Contract",v:fmt2(deal?.value||0),c:"#0f172a"},
-                    {l:"Billed",v:totalBilled>0?fmt2(totalBilled):"Not yet billed",c:totalBilled>0?"#3b82f6":"#94a3b8"},
-                    {l:"Collected",v:totalColl>0?fmt2(totalColl):"₱0",c:totalColl>0?"#059669":"#94a3b8"},
-                    {l:"Outstanding",v:totalBilled>totalColl?fmt2(totalBilled-totalColl):"—",c:totalBilled>totalColl?"#f59e0b":"#94a3b8"},
+                    {l:"Contract",v:fmtPHP(deal?.value||0),c:"#0f172a"},
+                    {l:"Billed",v:totalBilled>0?fmtPHP(totalBilled):"Not yet billed",c:totalBilled>0?"#3b82f6":"#94a3b8"},
+                    {l:"Collected",v:fmtPHP(totalColl),c:totalColl>0?"#059669":"#94a3b8"},
+                    {l:"Outstanding",v:totalBilled>totalColl?fmtPHP(totalBilled-totalColl):"—",c:totalBilled>totalColl?"#f59e0b":"#94a3b8"},
                   ].map(({l,v,c})=>(
                     <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
+                      <div style={{fontWeight:800,fontSize:".88rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
                     </div>
                   ))}
                 </div>
