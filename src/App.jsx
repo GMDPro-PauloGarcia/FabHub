@@ -1903,8 +1903,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 
           // ── Personal stats computation ─────────────────────────────────
           const myRole=session?.role||"";
-          const myName=session?.name||"";
-          const nowD=new Date();const mStart=new Date(nowD.getFullYear(),nowD.getMonth(),1).toISOString().slice(0,10);
+          const myName=session?.name||"";          const nowD=new Date();const mStart=new Date(nowD.getFullYear(),nowD.getMonth(),1).toISOString().slice(0,10);
           const myMonthLog=(actLog||[]).filter(e=>e.by===myName&&e.date>=mStart);
           const myScore=myMonthLog.reduce((s,e)=>s+Math.max(0,ACT_SCORE[e.action]||1),0);
           const myStreak=calcStreak(actLog,myName);
@@ -2035,7 +2034,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
                       <div style={{fontSize:".75rem",color:"#94a3b8",marginTop:4}}>Lowercase letters and numbers only. You will use this to log in.</div>
                     </div>
                     <div style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:8,padding:"10px 14px",fontSize:".8rem",color:"#64748b"}}>
-                      🔒 Your <strong>role</strong> ({role}) can only be changed by a Manager.
+                      🔒 Your <strong>role</strong> ({myRole}) can only be changed by a Manager.
                     </div>
                     <button onClick={saveProfile}
                       style={{background:"#0f172a",border:"none",borderRadius:9,padding:"12px",fontFamily:"inherit",fontWeight:700,fontSize:".9rem",color:"#fff",cursor:"pointer"}}>
