@@ -2309,6 +2309,8 @@ export default function App(){
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
     if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
     if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,title:u.title||u.role,status:u.status})));
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);try{localStorage.setItem("gmdv5:payables",JSON.stringify(ps));}catch{}}
+    if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);try{localStorage.setItem("gmdv5:loans",JSON.stringify(ls));}catch{}}
   };
 
 
