@@ -6876,6 +6876,7 @@ export default function App(){
                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>₱</button>}
                       {(role==="Manager"||role==="Sales")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>🏆</button>}
+                      {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}} title="Delete">✕</button>}
                     </div>
                   </div>
                 </div>
