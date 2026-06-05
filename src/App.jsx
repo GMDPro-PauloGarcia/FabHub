@@ -3815,9 +3815,11 @@ export default function App(){
     upExps(es=>es.filter(e=>(e.projectId||e.dealId)!==id));
     setConfirmDel(null);
     logActivity(id,"Deal Deleted",`${deal?.client||id} permanently deleted`,session?.name||role);
-    if(isSupabaseReady()){
-      sbDelete('deals',id).catch(()=>{});
-      // Delete billing payments before milestones
+    if(isSupabaseReady()&&isUUID(id)){
+      sbDelete('deals',id)
+        .then(()=>{ toastEmit("Deal deleted","success"); })
+        .catch(e=>{ toastEmit("Supabase delete failed — check console","error"); console.error("delDeal:",e); });
+      // Cascade deletes (DB has ON DELETE CASCADE but clean up explicitly too)
       dealMsIds.forEach(msId=>supabase.from('billing_payments').delete().eq('milestone_id',msId).catch(()=>{}));
       const tables=['projects','billing_milestones','job_orders','purchase_requests',
         'material_requests','budget_requests','addenda','design_requests',
@@ -3828,6 +3830,8 @@ export default function App(){
         .in('card_id',pcards[id]?.id?[pcards[id].id]:[]).catch(()=>{});
       supabase.from('project_card_dept_status').delete()
         .in('card_id',pcards[id]?.id?[pcards[id].id]:[]).catch(()=>{});
+    } else if(isSupabaseReady()&&!isUUID(id)){
+      toastEmit("Deal removed locally — not synced (legacy ID)","warning");
     }
   };
 
