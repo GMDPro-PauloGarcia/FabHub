@@ -14066,6 +14066,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
   const[pcShowClosed,setPcShowClosed]=useState(false);
+  const[pcSearch,setPcSearch]=useState("");
   const[expandDept,setExpandDept]=useState(null);
   const[showBForm,setShowBForm]=useState(false);
   const[bfTitle,setBfTitle]=useState(""); const[bfDept,setBfDept]=useState("Operations"); const[bfDetail,setBfDetail]=useState("");
@@ -14144,6 +14145,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
       {!selDeal?(
         // ── PROJECT GRID ────────────────────────────────────────────────────
         <div>
+          <div style={{marginBottom:8,position:"relative"}}>
+            <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:".85rem",pointerEvents:"none"}}>🔍</span>
+            <input value={pcSearch} onChange={e=>setPcSearch(e.target.value)} placeholder="Search projects, clients, CE#…"
+              style={{width:"100%",boxSizing:"border-box",padding:"7px 10px 7px 30px",borderRadius:8,border:"1.5px solid #e2e8f0",fontFamily:"inherit",fontSize:".82rem",outline:"none",background:"#f8fafc"}}/>
+          </div>
           <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:12,flexWrap:"wrap"}}>
             {["All",...DEPT_ORDER].map(dept=>(
               <button key={dept} onClick={()=>setPcDeptFilter(f=>f===dept?"All":dept)}
@@ -14157,10 +14163,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {l}
               </button>
             ))}
-            {(pcFilter||pcDeptFilter!=="All")&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
+            {(pcFilter||pcDeptFilter!=="All"||pcSearch)&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");setPcSearch("");}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
           {(()=>{
             let list=wonDeals;
+            if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
             if(pcFilter==="done") list=list.filter(d=>pcards[d.id]&&DEPT_ORDER.every(dep=>pcards[d.id]?.departments?.[dep]?.done));
             if(pcFilter==="attention") list=list.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dep=>!pcards[d.id]?.departments?.[dep]?.done));
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
@@ -14198,7 +14205,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
                           {d.contact&&<div style={{fontSize:".68rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:1}}>📁 {d.client}</div>}
                           <div style={{fontSize:".7rem",color:"#64748b",marginTop:d.contact?1:0}}>{d.ceNo||"No CE"} · {pcAmt(d)}</div>
-                          {joR&&<div style={{fontSize:".67rem",color:"#3b82f6",marginTop:1}}>📋 {joR.joNo} · {[joR.pm1,joR.pm2].filter(Boolean).join(", ")||"No PM"}</div>}
+                          {joR&&<div style={{fontSize:".67rem",color:"#3b82f6",marginTop:1}}>📋 {joR.joNo} · 👷 {[joR.pm1,joR.pm2,joR.pm3].filter(Boolean).join(", ")||"No PM"}</div>}
+                          {joR&&<div style={{fontSize:".67rem",color:"#64748b",marginTop:1}}>🤝 AE: {joR.aeAssigned||d.salesOwner||"—"}{joR.coordinator&&` · Coord: ${joR.coordinator}`}</div>}
                         </div>
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0,marginLeft:10}}>
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
@@ -14489,7 +14497,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.contact||deal?.client}</div>
                     {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
                     <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deal?.ceNo} · {pcAmt(deal)} · <span style={{color:"#8b5cf6",fontWeight:600}}>{deal?.stage?.replace(/^\d+ · /,"")}</span></div>
-                    {jo&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:3}}>📋 {jo.joNo} · PMs: {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")||"Not assigned"}</div>}
+                    {jo&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:3}}>📋 {jo.joNo} · 👷 {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")||"Not assigned"}</div>}
+                    {jo&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>🤝 AE: {jo.aeAssigned||deal?.salesOwner||"—"}{jo.coordinator&&` · Coord: ${jo.coordinator}`}</div>}
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:pct===100?"#059669":hc}}>{pct}%</div>
