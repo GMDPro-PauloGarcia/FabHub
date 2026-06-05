@@ -3872,7 +3872,7 @@ export default function App(){
     try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
     logActivity(dealId||null,"AE Update",text.trim(),session?.name);
     const taggedDeal=dealId?[...wonDeals,...deals].find(d=>d.id===dealId):null;
-    const projectLine=taggedDeal?`\n📌 Project: <b>${taggedDeal.client}</b> — ${taggedDeal.ceNo||taggedDeal.ceno||"(no CE)"} | ${taggedDeal.stage}`:"";
+    const projectLine=taggedDeal?`\n📌 Project: <b>${taggedDeal.contact||taggedDeal.client}</b> — ${taggedDeal.client}${taggedDeal.ceNo||taggedDeal.ceno?" · "+(taggedDeal.ceNo||taggedDeal.ceno):""} | ${taggedDeal.stage}`:"";
     const tgMsg=`📋 <b>AE Update</b>${projectLine}\nBy: ${session?.name||"?"} · ${now.toTimeString().slice(0,5)}\n${text.trim()}`;
     sendTelegramNotification("sales",tgMsg);
     sendTelegramNotification("ops",tgMsg);
@@ -6642,10 +6642,10 @@ export default function App(){
                 >
                   <option value="">📌 Tag a project (optional)</option>
                   <optgroup label="Active Projects">
-                    {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"}</option>)}
+                    {wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""}</option>)}
                   </optgroup>
                   <optgroup label="Pipeline">
-                    {deals.filter(d=>!WON_STAGES.includes(d.stage)).slice(0,30).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo||d.ceno||"(no CE)"}</option>)}
+                    {deals.filter(d=>!WON_STAGES.includes(d.stage)).slice(0,30).map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""}</option>)}
                   </optgroup>
                 </select>
               </div>
@@ -6715,7 +6715,7 @@ export default function App(){
                           <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{u.by}</span>
                           {taggedDeal&&(
                             <span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8"}}>
-                              📌 {taggedDeal.client} <span style={{color:"#93c5fd"}}>·</span> <span style={{color:"#64748b",fontWeight:500}}>{taggedDeal.ceNo||taggedDeal.ceno||"(no CE)"}</span>
+                              📌 {taggedDeal.contact||taggedDeal.client} <span style={{color:"#93c5fd"}}>·</span> <span style={{color:"#64748b",fontWeight:500}}>{taggedDeal.client}{(taggedDeal.ceNo||taggedDeal.ceno)?" · "+(taggedDeal.ceNo||taggedDeal.ceno):""}</span>
                             </span>
                           )}
                           <span style={{fontSize:".65rem",color:"#94a3b8",marginLeft:"auto"}}>{u.time}</span>
