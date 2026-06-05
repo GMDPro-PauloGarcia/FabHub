@@ -3769,6 +3769,7 @@ export default function App(){
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
+  const[dupPrompt,   setDupPrompt]   = useState(null);   // {newData, matches[]} — duplicate deal detection
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[showExport, setShowExport] =useState(false);
@@ -3811,9 +3812,23 @@ export default function App(){
     return rec.id;
   };
 
-  const saveDeal=(overrideData)=>{
+  const saveDeal=(overrideData,skipDupCheck=false)=>{
     const data = overrideData||dealForm;
     if(!data.client) return;
+    // Duplicate detection — only on new deals, not edits or forced saves
+    if(!editDeal&&!skipDupCheck){
+      const clientLower=data.client.toLowerCase();
+      const titleLower=(data.product||data.contact||"").toLowerCase();
+      const dupes=deals.filter(d=>{
+        if(d.stage==="Cancelled") return false;
+        if(d.client.toLowerCase()!==clientLower) return false;
+        const existTitle=(d.product||d.contact||"").toLowerCase();
+        const titleMatch=titleLower&&existTitle&&(existTitle.includes(titleLower)||titleLower.includes(existTitle));
+        const ceMatch=data.ceNo&&d.ceNo&&data.ceNo.trim()===d.ceNo.trim();
+        return titleMatch||ceMatch;
+      });
+      if(dupes.length>0){setDupPrompt({newData:data,matches:dupes});return;}
+    }
     const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
     const rec={...data,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
@@ -7495,6 +7510,25 @@ export default function App(){
         toastEmit("Price saved — Sales team notified.");
         setPriceModal(null);
       }}/>}
+      {dupPrompt&&(
+        <div onClick={()=>setDupPrompt(null)} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:500,padding:"24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)"}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>⚠️ Looks like a duplicate</div>
+            <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>We found a similar project already in the pipeline for <strong>{dupPrompt.newData.client}</strong>. Is this a brand-new separate project, or a scope addition to an existing one?</div>
+            {dupPrompt.matches.map(m=>(
+              <div key={m.id} style={{background:"#fffbeb",borderRadius:10,padding:"12px 14px",marginBottom:10,border:"1.5px solid #fbbf24"}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{m.client}{m.product?` — ${m.product}`:""}</div>
+                <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{[m.ceNo,m.stage].filter(Boolean).join(" · ")}</div>
+                <button onClick={()=>{setDupPrompt(null);setPage("ops");setSelProj(m.id);setOpsTab("addenda");}} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
+              </div>
+            ))}
+            <div style={{display:"flex",gap:10,marginTop:16}}>
+              <button onClick={()=>{const d=dupPrompt.newData;setDupPrompt(null);saveDeal(d,true);}} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✅ Save as New Project</button>
+              <button onClick={()=>setDupPrompt(null)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>↩ Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
       {quickAddClientOpen&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:16}} onClick={()=>{setQuickAddClientOpen(false);resetQAC();}}>
           <div style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":18,padding:isMobile?"20px 16px 28px":28,width:"100%",maxWidth:isMobile?undefined:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
@@ -8679,7 +8713,8 @@ export default function App(){
         logActivity={logActivity} actLog={actLog}
         addenda={addenda} billings={billings} mreqs={mreqs} breqs={breqs}
         isMobile={isMobile} createCard={createProjectCard}
-        updateJO={updateJO} upPcards={upPcards}/>
+        updateJO={updateJO} upPcards={upPcards}
+        setPage={setPage} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -9602,7 +9637,8 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
           {(()=>{
             const drf=(drfs||[]).find(d=>d.dealId===selProj);
             const jo=(jos||[]).find(j=>j.dealId===selProj);
-            const hasBrief=drf||jo?.scopeNotes||jo?.specialInstructions||jo?.location||projDeal?.salesRepoLink;
+            const pcard=pcards?.[selProj];
+            const hasBrief=drf||jo?.scopeNotes||jo?.specialInstructions||jo?.location||projDeal?.salesRepoLink||pcard?.scopeNotes||pcard?.specialInstructions||pcard?.commsLink;
             if(!hasBrief) return null;
             return(
               <div style={{gridColumn:"1/-1",background:"#fff",borderRadius:12,border:"1.5px solid #a5b4fc",padding:"16px 18px",marginBottom:4}}>
@@ -14089,7 +14125,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,setPage,setSelProj,setOpsTab}){
   const[selDeal,setSelDeal]=useState(null);
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
@@ -14552,7 +14588,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
                   <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:4,transition:"width .5s"}}/>
                 </div>
-                <div style={{marginTop:10,display:"flex",justifyContent:"flex-end"}}>
+                <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
+                  {setPage&&setSelProj&&setOpsTab&&<button onClick={()=>{setSelProj(selDeal);setOpsTab("addenda");setPage("ops");}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
                   <button onClick={generateClientReport} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>📄 Client Report</button>
                 </div>
               </div>
