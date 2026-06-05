@@ -1446,6 +1446,13 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             <Inp value={form.location||""} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM North EDSA – 3F Activity Area"/>
           </Fld>
         </div>
+        {isWon&&(
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="🏁 Client Turnover Date" hint="Date promised to client — notifies Ops & Management when changed">
+              <Inp type="date" value={form.turnoverDate||""} onChange={e=>f("turnoverDate",e.target.value)}/>
+            </Fld>
+          </div>
+        )}
         {editId&&form.addedBy&&(
           <div style={{gridColumn:"1/-1"}}>
             <div style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#4338ca",display:"flex",gap:8,alignItems:"center"}}>
@@ -3696,6 +3703,7 @@ export default function App(){
   const[aeUpdateText, setAeUpdateText] = useState("");
   const[aeUpdateDealId, setAeUpdateDealId] = useState("");
   const[aeUpdateDealType, setAeUpdateDealType] = useState("active");
+  const[aeFeedFilter, setAeFeedFilter] = useState("all");
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
   const[openGroups,   setOpenGroups]   = useState({});     // per-ceType accordion in awarded projects
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
@@ -3729,7 +3737,7 @@ export default function App(){
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const openAddDeal=()=>{setDealForm({...emptyDeal,ceNo:nextCENo()});setEditDeal(null);setDealModal(true);};
-  const openEditDeal=d=>{setDealForm({...d,value:String(d.value),invoiced:String(d.invoiced||0),amountPaid:String(d.amountPaid||0),dateAcquired:d.dateAcquired||today});setEditDeal(d.id);setDealModal(true);};
+  const openEditDeal=d=>{setDealForm({...d,value:String(d.value),invoiced:String(d.invoiced||0),amountPaid:String(d.amountPaid||0),dateAcquired:d.dateAcquired||today,turnoverDate:pcards[d.id]?.targetEndDate||""});setEditDeal(d.id);setDealModal(true);};
   // ── Supabase deal writers ───────────────────────────────────────────────────
   const sbSaveDeal=async(rec)=>{
     try {
@@ -3795,6 +3803,21 @@ export default function App(){
       logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
       sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo}\n`:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Added by: ${session?.name||"Sales"}`);
     } else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+    // Save turnover date to project card if provided and deal is a won project
+    if(rec.turnoverDate&&WON_STAGES.includes(rec.stage)){
+      const card=pcards[rec.id];
+      if(card){
+        upPcards(ps=>({...ps,[rec.id]:{...ps[rec.id],targetEndDate:rec.turnoverDate}}));
+        if(isSupabaseReady()&&card.id&&isUUID(card.id)){
+          sbUpdate('project_cards',card.id,{target_end_date:rec.turnoverDate}).catch(()=>{});
+        }
+        if(rec.turnoverDate!==(card.targetEndDate||"")){
+          const tgMsg=`📅 <b>Turnover Date Updated</b>\nProject: <b>${rec.contact||rec.client}</b>${rec.ceNo?` — ${rec.ceNo}`:""}\n🏁 Turnover Date: <b>${rec.turnoverDate}</b>\nUpdated by: ${session?.name||"Sales"}`;
+          sendTelegramNotification("ops",tgMsg);
+          sendTelegramNotification("management",tgMsg);
+        }
+      }
+    }
     setEditDeal(null);
     setDealModal(false);
   };
@@ -6681,11 +6704,10 @@ export default function App(){
             {(()=>{
               const pipelineIds=new Set(deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=>d.id));
               const wonIds=new Set(wonDeals.map(d=>d.id));
-              const[feedFilter,setFeedFilter]=React.useState("all");
               const filteredUpdates=aeUpdates.filter(u=>{
-                if(feedFilter==="active") return u.dealId&&wonIds.has(u.dealId);
-                if(feedFilter==="pipeline") return u.dealId&&pipelineIds.has(u.dealId);
-                if(feedFilter==="general") return !u.dealId;
+                if(aeFeedFilter==="active") return u.dealId&&wonIds.has(u.dealId);
+                if(aeFeedFilter==="pipeline") return u.dealId&&pipelineIds.has(u.dealId);
+                if(aeFeedFilter==="general") return !u.dealId;
                 return true;
               });
               const byPerson={};aeUpdates.filter(u=>u.date===today).forEach(u=>{byPerson[u.by]=(byPerson[u.by]||0)+1;});
@@ -6693,8 +6715,8 @@ export default function App(){
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
                   <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:8,padding:2}}>
                     {[["all","All",aeUpdates.length],["active","🏗 Active",aeUpdates.filter(u=>u.dealId&&wonIds.has(u.dealId)).length],["pipeline","📊 Pipeline",aeUpdates.filter(u=>u.dealId&&pipelineIds.has(u.dealId)).length],["general","📝 General",aeUpdates.filter(u=>!u.dealId).length]].map(([t,l,cnt])=>(
-                      <button key={t} onClick={()=>setFeedFilter(t)}
-                        style={{padding:"4px 11px",border:"none",borderRadius:6,fontFamily:"inherit",fontSize:".73rem",fontWeight:feedFilter===t?700:500,cursor:"pointer",background:feedFilter===t?"#fff":"transparent",color:feedFilter===t?"#1d4ed8":"#64748b",boxShadow:feedFilter===t?"0 1px 3px rgba(0,0,0,.1)":"none"}}>
+                      <button key={t} onClick={()=>setAeFeedFilter(t)}
+                        style={{padding:"4px 11px",border:"none",borderRadius:6,fontFamily:"inherit",fontSize:".73rem",fontWeight:aeFeedFilter===t?700:500,cursor:"pointer",background:aeFeedFilter===t?"#fff":"transparent",color:aeFeedFilter===t?"#1d4ed8":"#64748b",boxShadow:aeFeedFilter===t?"0 1px 3px rgba(0,0,0,.1)":"none"}}>
                         {l} <span style={{opacity:.65}}>({cnt})</span>
                       </button>
                     ))}
