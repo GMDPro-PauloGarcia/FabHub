@@ -3701,6 +3701,7 @@ export default function App(){
   const[aeUpdates,    setAeUpdates]    = useState(()=>{try{const v=localStorage.getItem("gmdv5:aeUpdates");return v?JSON.parse(v):[];}catch{return[];}});
   const[aeUpdateText, setAeUpdateText] = useState("");
   const[aeUpdateDealId, setAeUpdateDealId] = useState("");
+  const[aeUpdateDealType, setAeUpdateDealType] = useState("active");
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
   const[openGroups,   setOpenGroups]   = useState({});     // per-ceType accordion in awarded projects
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
@@ -6635,19 +6636,29 @@ export default function App(){
                 <div style={{width:32,height:32,borderRadius:"50%",background:colorFor(session?.name),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".75rem",flexShrink:0}}>
                   {session?.name?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
                 </div>
-                <select
-                  value={aeUpdateDealId}
-                  onChange={e=>setAeUpdateDealId(e.target.value)}
-                  style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400}}
-                >
-                  <option value="">📌 Tag a project (optional)</option>
-                  <optgroup label="Active Projects">
-                    {wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""}</option>)}
-                  </optgroup>
-                  <optgroup label="Pipeline">
-                    {deals.filter(d=>!WON_STAGES.includes(d.stage)).slice(0,30).map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""}</option>)}
-                  </optgroup>
-                </select>
+                <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
+                  {/* Tab toggle */}
+                  <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:7,padding:2,width:"fit-content"}}>
+                    {[["active","🏗 Active Projects",wonDeals.length],["pipeline","📊 Pipeline",deals.filter(d=>!WON_STAGES.includes(d.stage)).length]].map(([t,l,cnt])=>(
+                      <button key={t} onClick={()=>{setAeUpdateDealType(t);setAeUpdateDealId("");}}
+                        style={{padding:"4px 12px",border:"none",borderRadius:5,fontFamily:"inherit",fontSize:".75rem",fontWeight:aeUpdateDealType===t?700:500,cursor:"pointer",background:aeUpdateDealType===t?"#fff":"transparent",color:aeUpdateDealType===t?"#1d4ed8":"#64748b",boxShadow:aeUpdateDealType===t?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .15s"}}>
+                        {l} <span style={{fontSize:".65rem",opacity:.7}}>({cnt})</span>
+                      </button>
+                    ))}
+                  </div>
+                  {/* Filtered dropdown */}
+                  <select
+                    value={aeUpdateDealId}
+                    onChange={e=>setAeUpdateDealId(e.target.value)}
+                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400}}
+                  >
+                    <option value="">— Select a {aeUpdateDealType==="active"?"project":"pipeline deal"} —</option>
+                    {aeUpdateDealType==="active"
+                      ? wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""}</option>)
+                      : deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""} | {d.stage}</option>)
+                    }
+                  </select>
+                </div>
               </div>
               <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
                 <textarea
@@ -6668,68 +6679,87 @@ export default function App(){
               <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:5}}>Ctrl+Enter to post · Sent to Sales &amp; Ops Telegram</div>
             </div>
 
-            {/* Stats strip */}
-            {aeUpdates.length>0&&(
-              <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-                <span style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"3px 12px",fontSize:".72rem",fontWeight:700,color:"#1d4ed8"}}>
-                  📅 Today: {todayCount} update{todayCount!==1?"s":""}
-                </span>
-                <span style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:20,padding:"3px 12px",fontSize:".72rem",fontWeight:600,color:"#059669"}}>
-                  Total: {aeUpdates.length}
-                </span>
+            {/* Feed filter tabs + stats */}
+            {(()=>{
+              const pipelineIds=new Set(deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=>d.id));
+              const wonIds=new Set(wonDeals.map(d=>d.id));
+              const[feedFilter,setFeedFilter]=React.useState("all");
+              const filteredUpdates=aeUpdates.filter(u=>{
+                if(feedFilter==="active") return u.dealId&&wonIds.has(u.dealId);
+                if(feedFilter==="pipeline") return u.dealId&&pipelineIds.has(u.dealId);
+                if(feedFilter==="general") return !u.dealId;
+                return true;
+              });
+              const byPerson={};aeUpdates.filter(u=>u.date===today).forEach(u=>{byPerson[u.by]=(byPerson[u.by]||0)+1;});
+              return(<>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                  <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:8,padding:2}}>
+                    {[["all","All",aeUpdates.length],["active","🏗 Active",aeUpdates.filter(u=>u.dealId&&wonIds.has(u.dealId)).length],["pipeline","📊 Pipeline",aeUpdates.filter(u=>u.dealId&&pipelineIds.has(u.dealId)).length],["general","📝 General",aeUpdates.filter(u=>!u.dealId).length]].map(([t,l,cnt])=>(
+                      <button key={t} onClick={()=>setFeedFilter(t)}
+                        style={{padding:"4px 11px",border:"none",borderRadius:6,fontFamily:"inherit",fontSize:".73rem",fontWeight:feedFilter===t?700:500,cursor:"pointer",background:feedFilter===t?"#fff":"transparent",color:feedFilter===t?"#1d4ed8":"#64748b",boxShadow:feedFilter===t?"0 1px 3px rgba(0,0,0,.1)":"none"}}>
+                        {l} <span style={{opacity:.65}}>({cnt})</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <span style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",fontSize:".7rem",fontWeight:700,color:"#1d4ed8"}}>📅 Today: {todayCount}</span>
+                    {Object.entries(byPerson).map(([name,cnt])=>(
+                      <span key={name} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:20,padding:"2px 8px",fontSize:".7rem",color:"#64748b",fontWeight:600}}>
+                        <span style={{display:"inline-block",width:10,height:10,borderRadius:"50%",background:colorFor(name),verticalAlign:"middle",marginRight:3}}/>
+                        {name.split(" ")[0]}: {cnt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Feed */}
+                {filteredUpdates.length===0&&(
+                  <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem",background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0"}}>
+                    No {feedFilter==="all"?"updates":feedFilter+" updates"} yet.
+                  </div>
+                )}
                 {(()=>{
-                  const byPerson={};
-                  aeUpdates.filter(u=>u.date===today).forEach(u=>{byPerson[u.by]=(byPerson[u.by]||0)+1;});
-                  return Object.entries(byPerson).map(([name,cnt])=>(
-                    <span key={name} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:20,padding:"3px 10px",fontSize:".72rem",color:"#64748b",fontWeight:600}}>
-                      <span style={{display:"inline-block",width:14,height:14,borderRadius:"50%",background:colorFor(name),verticalAlign:"middle",marginRight:4}}/>
-                      {name.split(" ")[0]}: {cnt}
-                    </span>
+                  const grp={};filteredUpdates.forEach(u=>{if(!grp[u.date])grp[u.date]=[];grp[u.date].push(u);});
+                  return Object.entries(grp).sort(([a],[b])=>b.localeCompare(a)).map(([date,entries])=>(
+                    <div key={date} style={{marginBottom:16}}>
+                      <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
+                        <span>{date===today?"📅 Today":date}</span>
+                        <span style={{flex:1,borderTop:"1px solid #e2e8f0",display:"inline-block"}}/>
+                        <span style={{fontWeight:500}}>{entries.length} update{entries.length!==1?"s":""}</span>
+                      </div>
+                      {entries.map(u=>{
+                        const taggedDeal=u.dealId?allDeals.find(d=>d.id===u.dealId):null;
+                        const isActive=u.dealId&&wonIds.has(u.dealId);
+                        const isPipeline=u.dealId&&pipelineIds.has(u.dealId);
+                        return(
+                          <div key={u.id} style={{background:"#fff",borderRadius:9,border:"1.5px solid #f1f5f9",padding:"9px 12px",marginBottom:6,display:"flex",gap:9,alignItems:"flex-start"}}>
+                            <div style={{width:30,height:30,borderRadius:"50%",background:colorFor(u.by),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".72rem",flexShrink:0}}>
+                              {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
+                            </div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                                <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{u.by}</span>
+                                {taggedDeal&&(
+                                  <span style={{display:"inline-flex",alignItems:"center",gap:4,background:isActive?"#eff6ff":isPipeline?"#fdf4ff":"#f1f5f9",border:`1px solid ${isActive?"#bfdbfe":isPipeline?"#e9d5ff":"#e2e8f0"}`,borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700,color:isActive?"#1d4ed8":isPipeline?"#7c3aed":"#64748b"}}>
+                                    {isActive?"🏗":"📊"} {taggedDeal.contact||taggedDeal.client} <span style={{opacity:.6}}>·</span> <span style={{fontWeight:500,opacity:.8}}>{taggedDeal.client}</span>
+                                  </span>
+                                )}
+                                <span style={{fontSize:".65rem",color:"#94a3b8",marginLeft:"auto"}}>{u.time}</span>
+                              </div>
+                              <div style={{fontSize:".82rem",color:"#1e293b",lineHeight:1.5}}>{u.text}</div>
+                            </div>
+                            {(u.by===session?.name||role==="Manager")&&(
+                              <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#cbd5e1",cursor:"pointer",fontSize:".72rem",padding:"0 2px",flexShrink:0}} title="Delete">✕</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   ));
                 })()}
-              </div>
-            )}
+              </>);
+            })()}
 
-            {/* Feed */}
-            {aeUpdates.length===0&&(
-              <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem",background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0"}}>
-                No updates yet — post the first one above!
-              </div>
-            )}
-            {Object.entries(grouped).sort(([a],[b])=>b.localeCompare(a)).map(([date,entries])=>(
-              <div key={date} style={{marginBottom:16}}>
-                <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
-                  <span>{date===today?"📅 Today":date}</span>
-                  <span style={{flex:1,borderTop:"1px solid #e2e8f0",display:"inline-block"}}/>
-                  <span style={{fontWeight:500}}>{entries.length} update{entries.length!==1?"s":""}</span>
-                </div>
-                {entries.map(u=>{
-                  const taggedDeal=u.dealId?allDeals.find(d=>d.id===u.dealId):null;
-                  return(
-                    <div key={u.id} style={{background:"#fff",borderRadius:9,border:"1.5px solid #f1f5f9",padding:"9px 12px",marginBottom:6,display:"flex",gap:9,alignItems:"flex-start"}}>
-                      <div style={{width:30,height:30,borderRadius:"50%",background:colorFor(u.by),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".72rem",flexShrink:0}}>
-                        {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
-                      </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3,flexWrap:"wrap"}}>
-                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{u.by}</span>
-                          {taggedDeal&&(
-                            <span style={{display:"inline-flex",alignItems:"center",gap:4,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8"}}>
-                              📌 {taggedDeal.contact||taggedDeal.client} <span style={{color:"#93c5fd"}}>·</span> <span style={{color:"#64748b",fontWeight:500}}>{taggedDeal.client}{(taggedDeal.ceNo||taggedDeal.ceno)?" · "+(taggedDeal.ceNo||taggedDeal.ceno):""}</span>
-                            </span>
-                          )}
-                          <span style={{fontSize:".65rem",color:"#94a3b8",marginLeft:"auto"}}>{u.time}</span>
-                        </div>
-                        <div style={{fontSize:".82rem",color:"#1e293b",lineHeight:1.5}}>{u.text}</div>
-                      </div>
-                      {(u.by===session?.name||role==="Manager")&&(
-                        <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#cbd5e1",cursor:"pointer",fontSize:".72rem",padding:"0 2px",flexShrink:0,lineHeight:1}} title="Delete">✕</button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
           </div>
         );
       })()}
@@ -12127,9 +12157,9 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   const f=(k,v)=>{setSaved(false);setForm(p=>({...p,[k]:v}));};
   const n=v=>Number(String(v).replace(/,/g,""))||0;
 
-  // Compute per-project budget data for card grid
+  // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
-    return wonDeals.map(d=>{
+    return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="13 · Feedback").map(d=>{
       const b=budgets[d.id]||emptyBudget();
       const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
       prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
@@ -12192,7 +12222,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       {/* Summary KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
         {[
-          {l:"Active Projects",  v:wonDeals.length,                        c:"#0f172a"},
+          {l:"Active Projects",  v:allProjectData.length,                  c:"#0f172a"},
           {l:"Total Budget Set", v:fmtPHP(totalAllBudget),                 c:"#3b82f6"},
           {l:"Total Actual Spend",v:fmtPHP(totalAllActual),                c:totalAllActual>totalAllBudget&&totalAllBudget>0?"#ef4444":"#10b981"},
           {l:"Over Budget",      v:overBudgetCount,                        c:overBudgetCount>0?"#ef4444":"#059669"},
