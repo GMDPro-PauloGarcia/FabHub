@@ -7123,8 +7123,9 @@ export default function App(){
 
               {/* Awarded Projects — active only (stages 06–11) */}
               {(()=>{
-                const activeWon=wonDeals.filter(d=>d.stage!=="12 · Close-Out");
-                const doneWon  =wonDeals.filter(d=>d.stage==="12 · Close-Out");
+                const matchSearch=d=>!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase());
+                const activeWon=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&matchSearch(d));
+                const doneWon  =wonDeals.filter(d=>d.stage==="12 · Close-Out"&&matchSearch(d));
                 const AwardRow=({d,list,i})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const paid=Number(d.amountPaid)||0;
