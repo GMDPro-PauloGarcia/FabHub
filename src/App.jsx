@@ -2400,6 +2400,7 @@ export default function App(){
     qty:Number(r.qty)||0, unit:r.unit||"", estimated_cost:Number(r.estimatedCost)||0,
     urgency:r.urgency||"Normal", purpose:r.purpose||"",
     status:r.status||"Submitted", submitted_by:r.submittedBy||"",
+    created_by:r.createdBy||r.submittedBy||"",
   });
   const toSbBR = r=>({
     id:r.id, deal_id:r.dealId||null, purpose:r.purpose||"",
@@ -2430,6 +2431,10 @@ export default function App(){
     description:r.description||"", status:r.status||"Pending",
     assigned_to:r.assignedTo||"", due_date:r.dueDate||null,
     risk_note:r.riskNote||"", sort_order:r.sortOrder||0,
+    dept:r.dept||"", priority:r.priority||"Normal",
+    notes:r.notes||"", supplier:r.supplier||"",
+    created_by:r.createdBy||"", what_could_go_wrong:r.whatCouldGoWrong||"",
+    qty:Number(r.qty)||0, unit:r.unit||"pcs",
   });
   const toSbBudget = (dealId,b)=>({
     deal_id:dealId, materials:Number(b.Materials)||0, labor:Number(b.Labor)||0,
@@ -2757,6 +2762,10 @@ export default function App(){
       sbUpdate('project_cards',card.id,{target_days:Number(days),target_end_date:endStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()}).catch(()=>{});
     }
     logActivity(dealId,"TAT Set",`Target: ${days} days → Due ${endStr}`,session?.name);
+    const deal=deals.find(d=>d.id===dealId);
+    const tgMsg=`📅 <b>Turnover Date Set</b>\nProject: <b>${deal?.client||card.client||"?"}</b> — ${deal?.ceNo||card.ceNo||"(no CE)"}\nTarget: ${days} days from award (${award})\n🏁 Turnover Date: <b>${endStr}</b>${category?`\nCategory: ${category}`:""}\nSet by: ${session?.name||"?"}`;
+    sendTelegramNotification("ops",tgMsg);
+    sendTelegramNotification("management",tgMsg);
   };
 
   const markDeptDone=(dealId,dept,done)=>{
@@ -3150,14 +3159,14 @@ export default function App(){
   };
   // Auto invoice number generator
   const nextCENo=()=>{
-    const nums=deals.map(d=>d.ceNo).filter(Boolean)
+    const nums=(deals||[]).map(d=>d.ceNo).filter(Boolean)
       .map(n=>{const m=n.match(/(\d+)$/);return m?parseInt(m[1]):0;});
     const next=(nums.length?Math.max(...nums):0)+1;
     const yr=new Date().getFullYear();
     return`CE-${yr}-${String(next).padStart(3,"0")}`;
   };
   const nextInvoiceNo=()=>{
-    const nums=billings.map(b=>b.invoiceNo).filter(Boolean)
+    const nums=(billings||[]).map(b=>b.invoiceNo).filter(Boolean)
       .map(n=>parseInt(n.replace(/\D/g,''))||0);
     const next=(nums.length?Math.max(...nums):0)+1;
     return'INV-'+String(next).padStart(4,'0');
@@ -3179,11 +3188,24 @@ export default function App(){
       return n;
     }));
   };
-  const deleteAddendum=(id)=>{upAddenda(as=>as.filter(a=>a.id!==id));if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});};
+  const deleteAddendum=(id)=>{
+    const adm=addenda.find(a=>a.id===id);
+    if(adm&&role!=="Manager"&&adm.discoveredBy!==session?.name) return toastEmit("Only Managers or the creator can delete scope changes.","error");
+    upAddenda(as=>as.filter(a=>a.id!==id));
+    if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});
+  };
   const delJo        =(id)=>{const jo=jos.find(j=>j.id===id);upJos(js=>js.filter(j=>j.id!==id));if(isSupabaseReady()) sbDelete('job_orders',id).catch(()=>{});logActivity(id,"JO Deleted",`JO ${jo?.joNo||id} deleted`,session?.name||role);};
   const updateJO     =(id,changes)=>{upJos(js=>js.map(j=>{if(j.id!==id)return j;const u={...j,...changes};if(isSupabaseReady())sbSyncOne("job_orders",u,toSbJO);return u;}));}
-  const delMR        =(id)=>{upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});};
-  const delBR        =(id)=>{upBreqs(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('budget_requests',id).catch(()=>{});};
+  const delMR        =(id)=>{
+    const mr=mreqs.find(m=>m.id===id);
+    if(mr&&role!=="Manager"&&role!=="Procurement"&&mr.submittedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the submitter can delete material requests.","error");
+    upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});
+  };
+  const delBR        =(id)=>{
+    const br=breqs.find(b=>b.id===id);
+    if(br&&role!=="Manager"&&br.submittedBy!==session?.name) return toastEmit("Only Managers or the submitter can delete budget requests.","error");
+    upBreqs(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('budget_requests',id).catch(()=>{});
+  };
   const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_cards').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
   const delBudget    =(id)=>{upBudgets(bs=>{const n={...bs};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_budgets').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
   const delChecklist =(id)=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady()) sbDelete('checklists',id).catch(()=>{});};
@@ -3247,7 +3269,11 @@ export default function App(){
       return n;
     }));
   };
-  const deletePR   =(id)=>{upPrs(ps=>ps.filter(p=>p.id!==id));if(isSupabaseReady()) sbDelete('purchase_requests',id).catch(()=>{});};
+  const deletePR   =(id)=>{
+    const pr=prs.find(p=>p.id===id);
+    if(pr&&role!=="Manager"&&role!=="Procurement"&&pr.createdBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete purchase requests.","error");
+    upPrs(ps=>ps.filter(p=>p.id!==id));if(isSupabaseReady()) sbDelete('purchase_requests',id).catch(()=>{});
+  };
   const saveDayPos=(date,pos)=>{
     upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
     if(isSupabaseReady()){
@@ -3271,7 +3297,11 @@ export default function App(){
   const upInflows  =upInfs; // alias for DataManagement
   const upJos      =useCallback(fn=>setJos(p=>{const n=fn(p);persist(KEYS.jos,n);return n;}),[persist]);
   const upSwatches =useCallback(fn=>setSwatches(p=>{const n=fn(p);persist(KEYS.swatches,n);return n;}),[persist]);
-  const delSwatch  =(id)=>{upSwatches(ss=>ss.filter(s=>s.id!==id));if(isSupabaseReady()) sbDelete('swatches',id).catch(()=>{});};
+  const delSwatch  =(id)=>{
+    const sw=swatches.find(s=>s.id===id);
+    if(sw&&role!=="Manager"&&role!=="Procurement"&&sw.addedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete swatch items.","error");
+    upSwatches(ss=>ss.filter(s=>s.id!==id));if(isSupabaseReady()) sbDelete('swatches',id).catch(()=>{});
+  };
   const upChecklist=useCallback(fn=>setChecklist(p=>{const n=fn(p);persist(KEYS.checklist,n);return n;}),[persist]);
 
   // ── DRF CRUD ─────────────────────────────────────────────────────────────
@@ -10085,17 +10115,18 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
 
 // ─── PROCUREMENT VIEW ─────────────────────────────────────────────────────────
 function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwatch,delSwatch,swQ,Wrap}){
-  const toBuy=swatches.filter(s=>s.status==="To Buy");
-  const ordered=swatches.filter(s=>s.status==="Ordered");
-  const received=swatches.filter(s=>s.status==="Received");
-  const approved=swatches.filter(s=>s.status==="Client Approved");
+  const sw=swatches||[];
+  const toBuy=sw.filter(s=>s.status==="To Buy");
+  const ordered=sw.filter(s=>s.status==="Ordered");
+  const received=sw.filter(s=>s.status==="Received");
+  const approved=sw.filter(s=>s.status==="Client Approved");
   const[filter,setFilter]=useState("All");
-  const shown=filter==="All"?swatches:swatches.filter(s=>s.status===filter);
+  const shown=filter==="All"?sw:sw.filter(s=>s.status===filter);
   return(
     <Wrap>
       <SecHead title="Procurement Swatchboard" sub="Shared checklist — Design & Ops add, Procurement fulfills"/>
       <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
-        <KPI label="Total Items"     value={swatches.length}   color="#3b82f6"/>
+        <KPI label="Total Items"     value={sw.length}         color="#3b82f6"/>
         <KPI label="To Buy"          value={toBuy.length}      color="#ef4444"/>
         <KPI label="Ordered"         value={ordered.length}    color="#f59e0b"/>
         <KPI label="Received"        value={received.length}   color="#10b981"/>
