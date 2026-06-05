@@ -6645,140 +6645,159 @@ export default function App(){
       {(()=>{
         const todayCount=aeUpdates.filter(u=>u.date===today).length;
         const allDeals=[...wonDeals,...deals.filter(d=>!WON_STAGES.includes(d.stage))];
-        const grouped={};
-        aeUpdates.forEach(u=>{if(!grouped[u.date])grouped[u.date]=[];grouped[u.date].push(u);});
         const AV_COLORS=["#3b82f6","#8b5cf6","#059669","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"];
         const colorFor=name=>AV_COLORS[(name||"").split("").reduce((s,c)=>s+c.charCodeAt(0),0)%AV_COLORS.length];
+        const pipelineIds=new Set(deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=>d.id));
+        const wonIds=new Set(wonDeals.map(d=>d.id));
+        const filteredUpdates=aeUpdates.filter(u=>{
+          if(aeFeedFilter==="active") return u.dealId&&wonIds.has(u.dealId);
+          if(aeFeedFilter==="pipeline") return u.dealId&&pipelineIds.has(u.dealId);
+          if(aeFeedFilter==="general") return !u.dealId;
+          return true;
+        });
+        const byPerson={};aeUpdates.filter(u=>u.date===today).forEach(u=>{byPerson[u.by]=(byPerson[u.by]||0)+1;});
         return(
-          <div style={{maxWidth:720}}>
-            {/* Compact form */}
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 14px",marginBottom:12}}>
-              <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-                <div style={{width:32,height:32,borderRadius:"50%",background:colorFor(session?.name),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".75rem",flexShrink:0}}>
-                  {session?.name?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
-                </div>
-                <div style={{flex:1,display:"flex",flexDirection:"column",gap:6}}>
-                  {/* Tab toggle */}
-                  <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:7,padding:2,width:"fit-content"}}>
-                    {[["active","🏗 Active Projects",wonDeals.length],["pipeline","📊 Pipeline",deals.filter(d=>!WON_STAGES.includes(d.stage)).length]].map(([t,l,cnt])=>(
-                      <button key={t} onClick={()=>{setAeUpdateDealType(t);setAeUpdateDealId("");}}
-                        style={{padding:"4px 12px",border:"none",borderRadius:5,fontFamily:"inherit",fontSize:".75rem",fontWeight:aeUpdateDealType===t?700:500,cursor:"pointer",background:aeUpdateDealType===t?"#fff":"transparent",color:aeUpdateDealType===t?"#1d4ed8":"#64748b",boxShadow:aeUpdateDealType===t?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .15s"}}>
-                        {l} <span style={{fontSize:".65rem",opacity:.7}}>({cnt})</span>
-                      </button>
-                    ))}
+          <div style={{display:"grid",gridTemplateColumns:"360px 1fr",gap:18,alignItems:"start"}}>
+
+            {/* ── LEFT: Compose form (sticky) ── */}
+            <div style={{position:"sticky",top:16}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:10}}>📝 Post an Update</div>
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px"}}>
+                {/* Avatar + name */}
+                <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
+                  <div style={{width:36,height:36,borderRadius:"50%",background:colorFor(session?.name),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".8rem",flexShrink:0}}>
+                    {session?.name?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
                   </div>
-                  {/* Filtered dropdown */}
-                  <select
-                    value={aeUpdateDealId}
-                    onChange={e=>setAeUpdateDealId(e.target.value)}
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400}}
-                  >
-                    <option value="">— Select a {aeUpdateDealType==="active"?"project":"pipeline deal"} —</option>
-                    {aeUpdateDealType==="active"
-                      ? wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""}</option>)
-                      : deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo||d.ceno?" · "+(d.ceNo||d.ceno):""} | {d.stage}</option>)
-                    }
-                  </select>
+                  <div>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{session?.name||"You"}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>{session?.role||role}</div>
+                  </div>
                 </div>
-              </div>
-              <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                {/* Project type toggle */}
+                <div style={{fontSize:".7rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Tag a project</div>
+                <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:7,padding:2,marginBottom:8}}>
+                  {[["active","🏗 Active Projects",wonDeals.length],["pipeline","📊 Pipeline",deals.filter(d=>!WON_STAGES.includes(d.stage)).length]].map(([t,l,cnt])=>(
+                    <button key={t} onClick={()=>{setAeUpdateDealType(t);setAeUpdateDealId("");}}
+                      style={{flex:1,padding:"5px 8px",border:"none",borderRadius:5,fontFamily:"inherit",fontSize:".75rem",fontWeight:aeUpdateDealType===t?700:500,cursor:"pointer",background:aeUpdateDealType===t?"#fff":"transparent",color:aeUpdateDealType===t?"#1d4ed8":"#64748b",boxShadow:aeUpdateDealType===t?"0 1px 3px rgba(0,0,0,.1)":"none",transition:"all .15s",textAlign:"center"}}>
+                      {l} <span style={{fontSize:".62rem",opacity:.7}}>({cnt})</span>
+                    </button>
+                  ))}
+                </div>
+                <select
+                  value={aeUpdateDealId}
+                  onChange={e=>setAeUpdateDealId(e.target.value)}
+                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400,marginBottom:12,boxSizing:"border-box"}}
+                >
+                  <option value="">— Optional: tag a {aeUpdateDealType==="active"?"project":"pipeline deal"} —</option>
+                  {aeUpdateDealType==="active"
+                    ? wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
+                    : deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client} — {d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
+                  }
+                </select>
+                {/* Text + post */}
+                <div style={{fontSize:".7rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Update</div>
                 <textarea
                   value={aeUpdateText}
                   onChange={e=>setAeUpdateText(e.target.value)}
                   onKeyDown={e=>{if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){e.preventDefault();if(aeUpdateText.trim())addAeUpdate(aeUpdateText,aeUpdateDealId);}}}
-                  rows={2}
-                  placeholder="What did you work on? Any follow-ups, submissions, site visits?…"
-                  style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",resize:"none",boxSizing:"border-box",lineHeight:1.5}}
+                  rows={4}
+                  placeholder="What did you work on? Site visits, follow-ups, client calls, submissions…"
+                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 11px",fontFamily:"inherit",fontSize:".84rem",resize:"vertical",boxSizing:"border-box",lineHeight:1.55,outline:"none",marginBottom:10}}
+                  onFocus={e=>e.target.style.borderColor="#3b82f6"}
+                  onBlur={e=>e.target.style.borderColor="#e2e8f0"}
                 />
                 <button onClick={()=>addAeUpdate(aeUpdateText,aeUpdateDealId)}
                   disabled={!aeUpdateText.trim()}
-                  title="Post (Ctrl+Enter)"
-                  style={{background:aeUpdateText.trim()?"#3b82f6":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".82rem",color:aeUpdateText.trim()?"#fff":"#94a3b8",cursor:aeUpdateText.trim()?"pointer":"default",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>
-                  Post →
+                  style={{width:"100%",background:aeUpdateText.trim()?"#3b82f6":"#e2e8f0",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontSize:".85rem",color:aeUpdateText.trim()?"#fff":"#94a3b8",cursor:aeUpdateText.trim()?"pointer":"default",fontWeight:700,transition:"background .15s"}}>
+                  Post Update →
                 </button>
+                <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:7,textAlign:"center"}}>Ctrl+Enter to post · Notifies Sales &amp; Ops on Telegram</div>
               </div>
-              <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:5}}>Ctrl+Enter to post · Sent to Sales &amp; Ops Telegram</div>
-            </div>
 
-            {/* Feed filter tabs + stats */}
-            {(()=>{
-              const pipelineIds=new Set(deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=>d.id));
-              const wonIds=new Set(wonDeals.map(d=>d.id));
-              const filteredUpdates=aeUpdates.filter(u=>{
-                if(aeFeedFilter==="active") return u.dealId&&wonIds.has(u.dealId);
-                if(aeFeedFilter==="pipeline") return u.dealId&&pipelineIds.has(u.dealId);
-                if(aeFeedFilter==="general") return !u.dealId;
-                return true;
-              });
-              const byPerson={};aeUpdates.filter(u=>u.date===today).forEach(u=>{byPerson[u.by]=(byPerson[u.by]||0)+1;});
-              return(<>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
-                  <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:8,padding:2}}>
-                    {[["all","All",aeUpdates.length],["active","🏗 Active",aeUpdates.filter(u=>u.dealId&&wonIds.has(u.dealId)).length],["pipeline","📊 Pipeline",aeUpdates.filter(u=>u.dealId&&pipelineIds.has(u.dealId)).length],["general","📝 General",aeUpdates.filter(u=>!u.dealId).length]].map(([t,l,cnt])=>(
-                      <button key={t} onClick={()=>setAeFeedFilter(t)}
-                        style={{padding:"4px 11px",border:"none",borderRadius:6,fontFamily:"inherit",fontSize:".73rem",fontWeight:aeFeedFilter===t?700:500,cursor:"pointer",background:aeFeedFilter===t?"#fff":"transparent",color:aeFeedFilter===t?"#1d4ed8":"#64748b",boxShadow:aeFeedFilter===t?"0 1px 3px rgba(0,0,0,.1)":"none"}}>
-                        {l} <span style={{opacity:.65}}>({cnt})</span>
-                      </button>
-                    ))}
-                  </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    <span style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",fontSize:".7rem",fontWeight:700,color:"#1d4ed8"}}>📅 Today: {todayCount}</span>
+              {/* Today's activity summary */}
+              {Object.keys(byPerson).length>0&&(
+                <div style={{marginTop:12,background:"#f8fafc",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"10px 14px"}}>
+                  <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>📅 Today's Activity</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {Object.entries(byPerson).map(([name,cnt])=>(
-                      <span key={name} style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:20,padding:"2px 8px",fontSize:".7rem",color:"#64748b",fontWeight:600}}>
-                        <span style={{display:"inline-block",width:10,height:10,borderRadius:"50%",background:colorFor(name),verticalAlign:"middle",marginRight:3}}/>
-                        {name.split(" ")[0]}: {cnt}
+                      <span key={name} style={{display:"inline-flex",alignItems:"center",gap:5,background:"#fff",border:"1px solid #e2e8f0",borderRadius:20,padding:"3px 10px",fontSize:".72rem",color:"#475569",fontWeight:600}}>
+                        <span style={{width:8,height:8,borderRadius:"50%",background:colorFor(name),display:"inline-block",flexShrink:0}}/>
+                        {name.split(" ")[0]} · {cnt}
                       </span>
                     ))}
                   </div>
                 </div>
+              )}
+            </div>
 
-                {/* Feed */}
-                {filteredUpdates.length===0&&(
-                  <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem",background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0"}}>
-                    No {aeFeedFilter==="all"?"updates":aeFeedFilter+" updates"} yet.
-                  </div>
-                )}
-                {(()=>{
-                  const grp={};filteredUpdates.forEach(u=>{if(!grp[u.date])grp[u.date]=[];grp[u.date].push(u);});
-                  return Object.entries(grp).sort(([a],[b])=>b.localeCompare(a)).map(([date,entries])=>(
-                    <div key={date} style={{marginBottom:16}}>
-                      <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
-                        <span>{date===today?"📅 Today":date}</span>
-                        <span style={{flex:1,borderTop:"1px solid #e2e8f0",display:"inline-block"}}/>
-                        <span style={{fontWeight:500}}>{entries.length} update{entries.length!==1?"s":""}</span>
-                      </div>
-                      {entries.map(u=>{
-                        const taggedDeal=u.dealId?allDeals.find(d=>d.id===u.dealId):null;
-                        const isActive=u.dealId&&wonIds.has(u.dealId);
-                        const isPipeline=u.dealId&&pipelineIds.has(u.dealId);
-                        return(
-                          <div key={u.id} style={{background:"#fff",borderRadius:9,border:"1.5px solid #f1f5f9",padding:"9px 12px",marginBottom:6,display:"flex",gap:9,alignItems:"flex-start"}}>
-                            <div style={{width:30,height:30,borderRadius:"50%",background:colorFor(u.by),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".72rem",flexShrink:0}}>
-                              {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
-                            </div>
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}>
-                                <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{u.by}</span>
-                                {taggedDeal&&(
-                                  <span style={{display:"inline-flex",alignItems:"center",gap:4,background:isActive?"#eff6ff":isPipeline?"#fdf4ff":"#f1f5f9",border:`1px solid ${isActive?"#bfdbfe":isPipeline?"#e9d5ff":"#e2e8f0"}`,borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700,color:isActive?"#1d4ed8":isPipeline?"#7c3aed":"#64748b"}}>
-                                    {isActive?"🏗":"📊"} {taggedDeal.contact||taggedDeal.client} <span style={{opacity:.6}}>·</span> <span style={{fontWeight:500,opacity:.8}}>{taggedDeal.client}</span>
-                                  </span>
-                                )}
-                                <span style={{fontSize:".65rem",color:"#94a3b8",marginLeft:"auto"}}>{u.time}</span>
-                              </div>
-                              <div style={{fontSize:".82rem",color:"#1e293b",lineHeight:1.5}}>{u.text}</div>
-                            </div>
-                            {(u.by===session?.name||role==="Manager")&&(
-                              <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#cbd5e1",cursor:"pointer",fontSize:".72rem",padding:"0 2px",flexShrink:0}} title="Delete">✕</button>
-                            )}
-                          </div>
-                        );
-                      })}
+            {/* ── RIGHT: Feed ── */}
+            <div>
+              {/* Header + filter tabs */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                <div>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>📋 Team Updates</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{aeUpdates.length} total · {todayCount} today</div>
+                </div>
+                <div style={{display:"flex",gap:0,background:"#f1f5f9",borderRadius:8,padding:2}}>
+                  {[["all","All",aeUpdates.length],["active","🏗 Active",aeUpdates.filter(u=>u.dealId&&wonIds.has(u.dealId)).length],["pipeline","📊 Pipeline",aeUpdates.filter(u=>u.dealId&&pipelineIds.has(u.dealId)).length],["general","📝 General",aeUpdates.filter(u=>!u.dealId).length]].map(([t,l,cnt])=>(
+                    <button key={t} onClick={()=>setAeFeedFilter(t)}
+                      style={{padding:"5px 12px",border:"none",borderRadius:6,fontFamily:"inherit",fontSize:".73rem",fontWeight:aeFeedFilter===t?700:500,cursor:"pointer",background:aeFeedFilter===t?"#fff":"transparent",color:aeFeedFilter===t?"#1d4ed8":"#64748b",boxShadow:aeFeedFilter===t?"0 1px 3px rgba(0,0,0,.1)":"none",whiteSpace:"nowrap"}}>
+                      {l} <span style={{opacity:.65}}>({cnt})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Feed entries */}
+              {filteredUpdates.length===0&&(
+                <div style={{textAlign:"center",padding:"48px 32px",color:"#94a3b8",fontSize:".84rem",background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0"}}>
+                  No {aeFeedFilter==="all"?"updates":aeFeedFilter+" updates"} yet.
+                </div>
+              )}
+              {(()=>{
+                const grp={};filteredUpdates.forEach(u=>{if(!grp[u.date])grp[u.date]=[];grp[u.date].push(u);});
+                return Object.entries(grp).sort(([a],[b])=>b.localeCompare(a)).map(([date,entries])=>(
+                  <div key={date} style={{marginBottom:20}}>
+                    <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px",marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+                      <span>{date===today?"📅 Today":date}</span>
+                      <span style={{flex:1,borderTop:"1px solid #e2e8f0",display:"inline-block"}}/>
+                      <span style={{fontWeight:500}}>{entries.length} update{entries.length!==1?"s":""}</span>
                     </div>
-                  ));
-                })()}
-              </>);
-            })()}
+                    {entries.map(u=>{
+                      const taggedDeal=u.dealId?allDeals.find(d=>d.id===u.dealId):null;
+                      const isActive=u.dealId&&wonIds.has(u.dealId);
+                      const isPipeline=u.dealId&&pipelineIds.has(u.dealId);
+                      return(
+                        <div key={u.id} style={{background:"#fff",borderRadius:10,border:"1.5px solid #f1f5f9",padding:"11px 14px",marginBottom:8,display:"flex",gap:10,alignItems:"flex-start",transition:"box-shadow .1s"}}
+                          onMouseEnter={e=>e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,.06)"}
+                          onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+                          <div style={{width:34,height:34,borderRadius:"50%",background:colorFor(u.by),display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#fff",fontSize:".75rem",flexShrink:0}}>
+                            {u.by?.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()||"?"}
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,flexWrap:"wrap"}}>
+                              <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{u.by}</span>
+                              {taggedDeal&&(
+                                <span style={{display:"inline-flex",alignItems:"center",gap:4,background:isActive?"#eff6ff":isPipeline?"#fdf4ff":"#f1f5f9",border:`1px solid ${isActive?"#bfdbfe":isPipeline?"#e9d5ff":"#e2e8f0"}`,borderRadius:20,padding:"2px 9px",fontSize:".69rem",fontWeight:700,color:isActive?"#1d4ed8":isPipeline?"#7c3aed":"#64748b"}}>
+                                  {isActive?"🏗":"📊"} {taggedDeal.contact||taggedDeal.client}
+                                  <span style={{opacity:.5,margin:"0 2px"}}>·</span>
+                                  <span style={{fontWeight:500,opacity:.75}}>{taggedDeal.client}</span>
+                                </span>
+                              )}
+                              <span style={{fontSize:".65rem",color:"#94a3b8",marginLeft:"auto",flexShrink:0}}>{u.time}</span>
+                            </div>
+                            <div style={{fontSize:".83rem",color:"#1e293b",lineHeight:1.6}}>{u.text}</div>
+                          </div>
+                          {(u.by===session?.name||role==="Manager")&&(
+                            <button onClick={()=>delAeUpdate(u.id)} style={{background:"none",border:"none",color:"#cbd5e1",cursor:"pointer",fontSize:".75rem",padding:"2px 4px",flexShrink:0,lineHeight:1}} title="Delete">✕</button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ));
+              })()}
+            </div>
 
           </div>
         );
