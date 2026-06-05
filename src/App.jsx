@@ -915,9 +915,10 @@ function SetPriceModal({deal,today,onClose,onSave}){
   const[val,setVal]=React.useState(deal?.value||"");
   const[note,setNote]=React.useState("");
   const ok=Number(val)>0;
+  const mob=window.innerWidth<768;
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:900,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-      <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:420,padding:"24px 24px 20px",boxShadow:"0 24px 64px rgba(0,0,0,.25)"}}>
+    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:900,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20}}>
+      <div style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,width:"100%",maxWidth:mob?undefined:420,padding:"24px 24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{fontWeight:800,color:"#4f46e5",fontSize:"1.05rem",marginBottom:4}}>₱ Set Client Submission Price</div>
         <div style={{fontSize:".78rem",color:"#64748b",marginBottom:18}}>
           <span style={{fontWeight:700,color:"#0f172a"}}>{deal?.client}</span>{deal?.ceNo?" · "+deal.ceNo:""}
@@ -956,6 +957,7 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
   });
   const[step,setStep]=React.useState(1);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const mob=window.innerWidth<768;
   if(!deal) return null;
   return(
     <Modal open title={`🏆 Request Award — ${deal.client}`} onClose={onClose} wide>
@@ -978,7 +980,7 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
         <div style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"10px 14px",marginBottom:18,fontSize:".8rem",color:"#1d4ed8"}}>
           📋 Fill in what confirmed this award. Your information will be pre-loaded for Paulo when he approves.
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
           <Fld label="Award Trigger" required hint="What officially confirmed this project?">
             <Sel value={form.awardTrigger} onChange={e=>f("awardTrigger",e.target.value)}>
               {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
@@ -996,7 +998,7 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
         </div>
       </div>)}
       {step===2&&(<div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
           <Fld label="AE (Account Executive)" hint="Client relationship owner — usually you">
             <Sel value={form.aeAssigned} onChange={e=>f("aeAssigned",e.target.value)}>
               <option value="">— Select AE —</option>
@@ -1048,6 +1050,7 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
   });
   const[step,setStep]=React.useState(1);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const mob=window.innerWidth<768;
   if(!deal) return null;
   return(
     <Modal open title={`🏆 Award — ${deal.client}`} onClose={onClose} wide>
@@ -1070,7 +1073,7 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
             ✓ Flag <strong>QS</strong> to set the budget target in Cost Analysis
           </div>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
           <Fld label="Award Trigger" required hint="What officially confirmed this project?">
             <Sel value={form.awardTrigger} onChange={e=>f("awardTrigger",e.target.value)}>
               {["CE Signed by Client","Purchase Order Received","Downpayment Received","Verbal Confirmation (to be followed by written)","Letter of Intent Received"].map(t=><option key={t}>{t}</option>)}
@@ -1094,7 +1097,7 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
         <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"12px 16px",marginBottom:18,fontSize:".82rem",color:"#1d4ed8"}}>
           📋 This Job Order is the official start signal. Once issued, every department sees a new project in their queue. <strong> QS (Rodney) will set the budget target separately in Cost Analysis.</strong>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
           <Fld label="Project Manager 1" required hint="Primary PM — owns day-to-day execution">
             <Sel value={form.pm1} onChange={e=>f("pm1",e.target.value)}>
               <option value="">— Assign PM —</option>
@@ -1256,7 +1259,7 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
   return(
     <div>
       {/* Summary KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
         <KPI label="Total Invoiced"  value={fmtK(totalInvoiced)} color="#3b82f6"/>
         <KPI label="Total Collected" value={fmtK(totalCollected)} color="#059669"/>
         <KPI label="Outstanding"     value={fmtK(totalOut)}       color={totalOut>0?"#ef4444":"#059669"}/>
@@ -1409,6 +1412,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const addDrfAcc=()=>f("drfAccessories",[...(form.drfAccessories||[]),""])
   const remDrfAcc=(i)=>f("drfAccessories",(form.drfAccessories||[]).filter((_,ai)=>ai!==i));
   const setDrfRef=(i,v)=>f("drfRefLinks",(form.drfRefLinks||["","",""]).map((r,ri)=>ri===i?v:r));
+  const mob=window.innerWidth<768;
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
@@ -1425,7 +1429,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
 
       {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="Client Name" required hint="Start typing to search from your GMD clients">
             <ClientAutocomplete value={form.client} onChange={v=>f("client",v)}/>
@@ -1472,7 +1476,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       {/* ── SECTION 2: CONTEXT & FOLLOW-UP ─────────────────────────────── */}
       <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
         <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📋 Context & Follow-up</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
           <Fld label="BizDev Source" hint="How did we get this client?">
             <Sel value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)}>
               <option value="">— Select source —</option>
@@ -1491,7 +1495,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       {/* ── SECTION 3: FILES & COMMS ────────────────────────────────────── */}
       <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
         <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Files & Comms</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
           <div style={{gridColumn:"1/-1"}}><Fld label="Sales Repository Link" hint="Main Google Drive folder for this deal"><Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld></div>
           <Fld label="Comms Group">
             <Sel value={form.commsGroup||""} onChange={e=>f("commsGroup",e.target.value)}>
@@ -1508,7 +1512,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #ddd6fe"}}>
         <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:4}}>🎨 Design Request</div>
         <div style={{fontSize:".72rem",color:"#a78bfa",marginBottom:12}}>Fill this out to auto-create a DRF when the deal is saved.</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
           <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
           <Fld label="Assigned Designer"><Sel value={form.drfDesigner||""} onChange={e=>f("drfDesigner",e.target.value)}><option value="">— Assign later —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
           <Fld label="Design Deadline"><Inp type="date" value={form.drfDeadline||""} onChange={e=>f("drfDeadline",e.target.value)}/></Fld>
@@ -1525,7 +1529,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </div>
           <div style={{gridColumn:"1/-1"}}>
             <div style={{fontSize:".8rem",fontWeight:700,color:"#64748b",marginBottom:6}}>Reference Images (links)</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:10}}>
               {(form.drfRefLinks||["","",""]).map((r,i)=>(
                 <Fld key={i} label={`Ref ${i+1}`}><Inp type="url" value={r} onChange={e=>setDrfRef(i,e.target.value)} placeholder="https://…"/></Fld>
               ))}
@@ -1555,7 +1559,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       {Number(form.value)>0&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"16px 18px",marginTop:10}}>
           <div style={{fontWeight:700,color:"#92400e",fontSize:".88rem",marginBottom:12}}>🧾 Tax Settings</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14,marginBottom:14}}>
             <div>
               <label style={{display:"block",fontSize:".68rem",fontWeight:700,color:"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Receipt Type</label>
               <div style={{display:"flex",gap:8}}>
@@ -1593,7 +1597,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           {(()=>{
             const tx=calcTax(form.value,form.receiptType||"OR",form.withholding||false);
             return(
-              <div style={{background:"rgba(255,255,255,.8)",borderRadius:8,padding:"12px 14px",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,borderTop:"1px solid #fde68a"}}>
+              <div style={{background:"rgba(255,255,255,.8)",borderRadius:8,padding:"12px 14px",display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,borderTop:"1px solid #fde68a"}}>
                 {[
                   ["Contract (Base)",  tx.base,          "#0f172a"],
                   ["VAT 12%",          tx.vat,           tx.vat>0?"#f59e0b":"#94a3b8"],
@@ -1935,7 +1939,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
                 </div>
               </div>
               {/* Stats strip */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",borderBottom:"1.5px solid #e2e8f0"}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",borderBottom:"1.5px solid #e2e8f0"}}>
                 {[{icon:"⭐",val:myScore+" pts",lbl:"This Month"},{icon:"🏅",val:`#${myRoleRank} of ${sameRole.length}`,lbl:myRole},{icon:"🔥",val:myStreak+(myStreak===1?" day":" days"),lbl:"Streak"}].map(({icon,val,lbl})=>(
                   <div key={lbl} style={{padding:"12px 10px",textAlign:"center",borderRight:"1px solid #f1f5f9"}}>
                     <div style={{fontSize:"1.1rem",marginBottom:2}}>{icon}</div>
@@ -4832,7 +4836,7 @@ export default function App(){
           </div>
 
           {/* Margin health summary row */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10}}>
             {[
               {l:"On Target (≥30%)",  v:healthGreen.length,  c:"#059669", bg:"#f0fdf4", border:"#6ee7b7", icon:"🟢"},
               {l:"At Risk (20–29%)",  v:healthYellow.length, c:"#d97706", bg:"#fffbeb", border:"#fde68a", icon:"🟡"},
@@ -5256,7 +5260,7 @@ export default function App(){
             </div>
 
             {/* Quick action tiles */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10}}>
               {[
                 {l:"Pending MRs",     v:mreqs.filter(m=>m.status==="Submitted").length,                                      icon:"🔧", page:"materialreq", c:"#f97316"},
                 {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length,                                        icon:"💳", page:"budgetreq",   c:"#8b5cf6"},
@@ -6452,7 +6456,7 @@ export default function App(){
                 <div style={{fontSize:"1rem",fontWeight:700,color:"#f59e0b",marginTop:2}}>Sales Month-End Report — {monthLabel.toUpperCase()}</div>
                 <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:6}}>Prepared by FabHub · Values include 12% VAT where applicable (OR) · Review Data Flags before circulating</div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
                 <KPI label="Deals Won"     value={monthWon.length}       color="#059669"/>
                 <KPI label="Cancelled"     value={monthCancelled.length} color="#94a3b8"/>
                 <KPI label="Open Pipeline" value={openPipeline.length}   color="#3b82f6"/>
@@ -7481,8 +7485,8 @@ export default function App(){
         setPriceModal(null);
       }}/>}
       {quickAddClientOpen&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setQuickAddClientOpen(false);resetQAC();}}>
-          <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:16}} onClick={()=>{setQuickAddClientOpen(false);resetQAC();}}>
+          <div style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":18,padding:isMobile?"20px 16px 28px":28,width:"100%",maxWidth:isMobile?undefined:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
                 <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a"}}>Add New Client</div>
@@ -7496,7 +7500,7 @@ export default function App(){
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <Fld label="Contact Person"><Inp value={quickAddClientForm.contactPerson} onChange={e=>fqac("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
                 <Fld label="Email"><Inp type="email" value={quickAddClientForm.email} onChange={e=>fqac("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
                 <Fld label="Phone"><Inp value={quickAddClientForm.phone} onChange={e=>fqac("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
@@ -7506,7 +7510,7 @@ export default function App(){
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📍 Billing Address</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Street Address"><Inp value={quickAddClientForm.billingAddress} onChange={e=>fqac("billingAddress",e.target.value)} placeholder="Unit/Floor, Building, Street"/></Fld></div>
                 <Fld label="City"><Inp value={quickAddClientForm.city} onChange={e=>fqac("city",e.target.value)} placeholder="Makati"/></Fld>
                 <Fld label="Province / Region"><Inp value={quickAddClientForm.province} onChange={e=>fqac("province",e.target.value)} placeholder="Metro Manila"/></Fld>
@@ -7516,7 +7520,7 @@ export default function App(){
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:16,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>🏢 Business Details</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <Fld label="Client TIN"><Inp value={quickAddClientForm.tin} onChange={e=>fqac("tin",e.target.value)} placeholder="000-000-000-000"/></Fld>
                 <Fld label="Payment Terms"><Sel value={quickAddClientForm.paymentTerms} onChange={e=>fqac("paymentTerms",e.target.value)}><option>Due on receipt</option><option>Net 15</option><option>Net 30</option><option>Net 60</option><option>50% DP, Balance on completion</option></Sel></Fld>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={quickAddClientForm.notes} onChange={e=>fqac("notes",e.target.value)} placeholder="Special billing instructions, key contacts…"/></Fld></div>
@@ -8070,7 +8074,7 @@ export default function App(){
     if(page==="home") return(
       <Wrap>
         <SecHead title="My Pipeline" action={<Btn onClick={openAddDeal}>+ Add Deal</Btn>}/>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
           <KPI label="Active Deals"    value={deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled").length} color="#3b82f6"/>
           <KPI label="Won Revenue"     value={fmtK(wonDeals.reduce((s,d)=>s+d.value,0))}     color="#10b981"/>
           <KPI label="Follow-ups Due"  value={deals.filter(d=>d.followUp&&d.followUp<=today&&!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled").length} color="#ef4444"/>
@@ -8154,7 +8158,7 @@ export default function App(){
     if(page==="home"&&role==="Procurement") return(
       <Wrap>
         <SecHead title="Procurement Overview"/>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
           {[
             {l:"Pending Material Requests", v:mreqs.filter(m=>m.status==="Submitted").length, c:"#f59e0b", action:()=>setPage("materialreq")},
             {l:"Pending Budget Requests",   v:breqs.filter(b=>b.status==="Submitted").length, c:"#ef4444", action:()=>setPage("budgetreq")},
@@ -8275,7 +8279,7 @@ export default function App(){
           return(
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
               {/* KPI strip */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
                 {[
                   {l:"Arriving Today",    v:arrivedToday.length,        c:"#dc2626", icon:"🚨"},
                   {l:"Overdue",           v:overdueDeliveries.length,   c:"#f97316", icon:"⏰"},
@@ -8698,7 +8702,7 @@ export default function App(){
               </div>
 
               {/* Stats row */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:20}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10,marginBottom:20}}>
                 {[
                   {l:"Total Rows",     v:smartImport.analysis.rowCount||smartImport.rows.length, c:"#3b82f6"},
                   {l:"Columns Found",  v:smartImport.analysis.fieldsFound?.length||0,            c:"#8b5cf6"},
@@ -9347,7 +9351,7 @@ function PLStatement({billings,exps,wonDeals}){
         <select value={year} onChange={e=>setYear(Number(e.target.value))} style={{padding:"6px 12px",borderRadius:8,border:"1px solid #e2e8f0",fontSize:".85rem",color:"#0f172a",background:"#fff"}}>
           {[curYear-2,curYear-1,curYear].map(y=><option key={y} value={y}>{y}</option>)}
         </select>
-        <div style={{marginLeft:"auto",display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,minWidth:480}}>
+        <div style={{marginLeft:window.innerWidth<768?undefined:"auto",width:"100%",display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10}}>
           <KPI label="YTD Revenue"   value={fmtPHP(ytdRev)}  color="#3b82f6"/>
           <KPI label="YTD Collected" value={fmtPHP(ytdColl)} color="#10b981"/>
           <KPI label="YTD Expenses"  value={fmtPHP(ytdExp)}  color="#ef4444"/>
@@ -9857,7 +9861,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         return(
           <div>
             {/* Header summary */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10,marginBottom:14}}>
               {[
                 {l:"Original Contract",  v:"₱"+originalVal.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#0f172a"},
                 {l:"Addenda Value",      v:"₱"+totalApproved.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#f59e0b"},
@@ -10571,7 +10575,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
       <SecHead title="Project Checklist" sub="All departments — Operations, Design, Procurement — add tasks here"/>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:20}}>
         <KPI label="To Do"       value={toDo}   color="#94a3b8"/>
         <KPI label="In Progress" value={inProg}  color="#f59e0b"/>
         <KPI label="Done"        value={done}    color="#10b981"/>
@@ -11260,7 +11264,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[
           {l:"Total Clients",    v:allClients.length,                                      c:"#3b82f6"},
           {l:"With Active Deals",v:allClients.filter(c=>deals.some(d=>d.client===c.name)).length, c:"#10b981"},
@@ -11409,7 +11413,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         const isVvip=vvipClients?.has(selClient);
         return(
           <Modal open title={`${isVvip?"⭐ ":""}${selClient}`} onClose={()=>setSelClient(null)} wide>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10,marginBottom:16}}>
               {[
                 {l:"Total Projects",  v:clientDeals.length,                           c:"#3b82f6"},
                 {l:"Total Value",     v:"₱"+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#0f172a"},
@@ -11443,8 +11447,8 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
       {/* ── ADD CLIENT MODAL ─────────────────────────────────────────── */}
       {addOpen&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setAddOpen(false);setAddForm(EMPTY_ADD);}}>
-          <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:16}} onClick={()=>{setAddOpen(false);setAddForm(EMPTY_ADD);}}>
+          <div style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":18,padding:isMobile?"20px 16px 28px":28,width:"100%",maxWidth:isMobile?undefined:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
                 <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a"}}>Add New Client</div>
@@ -11458,7 +11462,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <Fld label="Contact Person"><Inp value={addForm.contactPerson} onChange={e=>fa("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
                 <Fld label="Email"><Inp type="email" value={addForm.email} onChange={e=>fa("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
                 <Fld label="Phone"><Inp value={addForm.phone} onChange={e=>fa("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
@@ -11468,7 +11472,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📍 Billing Address</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Street Address"><Inp value={addForm.billingAddress} onChange={e=>fa("billingAddress",e.target.value)} placeholder="Unit/Floor, Building, Street"/></Fld></div>
                 <Fld label="City"><Inp value={addForm.city} onChange={e=>fa("city",e.target.value)} placeholder="Makati"/></Fld>
                 <Fld label="Province / Region"><Inp value={addForm.province} onChange={e=>fa("province",e.target.value)} placeholder="Metro Manila"/></Fld>
@@ -11478,7 +11482,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:16,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>🏢 Business Details</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <Fld label="Client TIN"><Inp value={addForm.tin} onChange={e=>fa("tin",e.target.value)} placeholder="000-000-000-000"/></Fld>
                 <Fld label="Payment Terms"><Sel value={addForm.paymentTerms} onChange={e=>fa("paymentTerms",e.target.value)}><option>Due on receipt</option><option>Net 15</option><option>Net 30</option><option>Net 60</option><option>50% DP, Balance on completion</option></Sel></Fld>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={addForm.notes} onChange={e=>fa("notes",e.target.value)} placeholder="Special billing instructions, key contacts…"/></Fld></div>
@@ -11494,8 +11498,8 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
       {/* ── CLIENT PROFILE MODAL ─────────────────────────────────────── */}
       {profileModal&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setProfileModal(null)}>
-          <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1100,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:16}} onClick={()=>setProfileModal(null)}>
+          <div style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":18,padding:isMobile?"20px 16px 28px":28,width:"100%",maxWidth:isMobile?undefined:580,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
               <div>
                 <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a"}}>👤 Client Profile</div>
@@ -11507,7 +11511,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             {/* Name & Contact */}
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <Fld label="Contact Person"><Inp value={profileForm.contactPerson||""} onChange={e=>fp2("contactPerson",e.target.value)} placeholder="e.g. Juan dela Cruz"/></Fld>
                 <Fld label="Email"><Inp type="email" value={profileForm.email||""} onChange={e=>fp2("email",e.target.value)} placeholder="accounts@company.com"/></Fld>
                 <Fld label="Phone"><Inp value={profileForm.phone||""} onChange={e=>fp2("phone",e.target.value)} placeholder="+63 2 8xxx xxxx"/></Fld>
@@ -11519,7 +11523,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             {/* Billing Address */}
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📍 Billing Address</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Street Address"><Inp value={profileForm.billingAddress||""} onChange={e=>fp2("billingAddress",e.target.value)} placeholder="Unit/Floor, Building, Street"/></Fld></div>
                 <Fld label="City"><Inp value={profileForm.city||""} onChange={e=>fp2("city",e.target.value)} placeholder="Makati"/></Fld>
                 <Fld label="Province / Region"><Inp value={profileForm.province||""} onChange={e=>fp2("province",e.target.value)} placeholder="Metro Manila"/></Fld>
@@ -11531,7 +11535,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
             {/* Business Details */}
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:16,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>🏢 Business Details</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
                 <Fld label="Client TIN"><Inp value={profileForm.tin||""} onChange={e=>fp2("tin",e.target.value)} placeholder="000-000-000-000"/></Fld>
                 <Fld label="Payment Terms">
                   <Sel value={profileForm.paymentTerms||"Due on receipt"} onChange={e=>fp2("paymentTerms",e.target.value)}>
@@ -12328,7 +12332,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       </div>
 
       {/* Summary KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
         {[
           {l:"Active Projects",  v:allProjectData.length,                  c:"#0f172a"},
           {l:"Total Budget Set", v:fmtPHP(totalAllBudget),                 c:"#3b82f6"},
@@ -12447,7 +12451,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       )}
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
         {[
           {l:"Contract Value",  v:fmtPHP(contractVal),       c:"#0f172a"},
           {l:"Total Budget",    v:totalBudget>0?fmtPHP(totalBudget):"Not set", c:"#3b82f6"},
@@ -12588,7 +12592,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
       </div>
 
       {/* KPI strip */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:18}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
         {[
           {l:"Total PRs",       v:prs.length,                                           c:"#0f172a"},
           {l:"Pending Approval",v:prs.filter(p=>p.status==="Pending Approval").length,  c:"#f59e0b"},
@@ -12852,7 +12856,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
       {view==="company"&&(
         <>
           {/* Company-wide KPIs */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:20}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
             {[
               {l:"Total Contract Value", v:fmt(companyTotals.totalContract), c:"#0f172a"},
               {l:"Total Budgeted",       v:fmt(companyTotals.totalBudget),   c:"#3b82f6"},
@@ -12959,7 +12963,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
                 </div>
               </div>
               {/* Category breakdown */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:0}}>
                 {BUDGET_CATS.map((cat,i)=>{
                   const bgt=n(pd.budget[cat]);
                   const act=pd.actuals[cat];
@@ -13040,7 +13044,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Requests",    v:mreqs.length,              c:"#0f172a"},
           {l:"Pending Review",    v:pending.length,            c:"#f59e0b"},
@@ -13204,7 +13208,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Requests", v:breqs.length,                                        c:"#0f172a"},
           {l:"Pending",        v:pending.length,                                      c:"#f59e0b"},
@@ -13638,7 +13642,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Billed",      v:fmt(allBilled),                c:"#3b82f6"},
           {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
@@ -13663,7 +13667,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         return(
           <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"14px 18px",marginBottom:12}}>
             <div style={{fontWeight:700,color:"#dc2626",marginBottom:10,fontSize:".88rem"}}>🚨 Overdue Invoice Aging Summary</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:10}}>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:10}}>
               {[[d30,"1–30 days","#f59e0b","#fffbeb"],[d60,"31–60 days","#f97316","#fff7ed"],[d90,"61–90 days","#ef4444","#fef2f2"],[d90p,"90+ days","#dc2626","#fef2f2"]].map(([grp,lbl,clr,bg])=>(
                 <div key={lbl} style={{background:bg,borderRadius:8,padding:"10px 12px",textAlign:"center",border:`1px solid ${clr}33`}}>
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:clr}}>{grp.length}</div>
@@ -13760,7 +13764,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
             const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
             const tx=calcTax(deal?.value||0,deal?.receiptType||"OR",deal?.withholding||false);
             return(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
                 {[
                   {l:"Contract Value",v:fmt(deal?.value||0),    c:"#0f172a"},
                   {l:"Total Billed",  v:fmt(billed),            c:"#3b82f6"},
@@ -14283,7 +14287,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           </div>
                           <span style={{fontSize:".62rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 8px",flexShrink:0,marginLeft:8}}>✅ Completed</span>
                         </div>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginTop:10}}>
+                        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr",gap:6,marginTop:10}}>
                           {[{l:"Contract Value",v:val?`₱${val.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"⚠ Not set",w:!val},{l:"Amount Paid",v:paid?`₱${paid.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"⚠ Not set",w:!paid},{l:"Outstanding",v:outstanding>0?`₱${outstanding.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"✓ Settled",w:outstanding>0&&!val}].map(({l,v,w})=>(
                             <div key={l} style={{background:w?"#fff7ed":"#fff",border:`1px solid ${w?"#fed7aa":"#e2e8f0"}`,borderRadius:7,padding:"6px 8px"}}>
                               <div style={{fontSize:".58rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
@@ -14658,7 +14662,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {showBForm&&(
                   <div style={{background:"#fff",border:"1px solid #fecaca",borderRadius:10,padding:"14px",marginTop:8}}>
                     <input value={bfTitle} onChange={e=>setBfTitle(e.target.value)} placeholder="What's blocking? (required)" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",marginBottom:8,boxSizing:"border-box"}}/>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:8}}>
                       <select value={bfDept} onChange={e=>setBfDept(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem"}}>
                         {DEPT_ORDER.map(d=><option key={d} value={d}>{d}</option>)}
                       </select>
@@ -14887,6 +14891,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
 function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
+  const mob=window.innerWidth<768;
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
   const[form,setForm]=useState(emptyItem());
@@ -14948,7 +14953,7 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Inventory Value", v:"₱"+Math.round(totalValue).toLocaleString("en-PH"), c:"#059669"},
           {l:"Total Items",           v:inventory.length,                                     c:"#3b82f6"},
@@ -14996,7 +15001,7 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
       {showForm&&canEdit&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>{editId?"Edit Item":"Add Inventory Item"}</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
             <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={form.name} onChange={e=>f("name",e.target.value)} placeholder="e.g. Melamine Board 18mm White 4x8 ft"/></Fld></div>
             <Fld label="Category"><Sel value={form.category} onChange={e=>{f("category",e.target.value);f("subCategory",INV_CATEGORIES.find(c=>c.main===e.target.value)?.subs[0]||"Other");}}>
               {INV_CATEGORIES.map(c=><option key={c.main}>{c.main}</option>)}</Sel></Fld>
@@ -15052,7 +15057,7 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
                   {showMove===item.id&&canEdit&&(
                     <div style={{background:"#eff6ff",borderRadius:8,padding:"12px 14px",border:"1.5px solid #93c5fd",marginTop:10}}>
                       <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:10,fontSize:".84rem"}}>Log Stock Movement</div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+                      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"1fr 1fr 1fr",gap:10}}>
                         <Fld label="Type"><Sel value={moveForm.moveType} onChange={e=>fm("moveType",e.target.value)}>{STOCK_MOVE_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
                         <Fld label="Qty">{moveForm.moveType.startsWith("ADJUST")
                           ?<Inp type="number" value={moveForm.qty} onChange={e=>fm("qty",e.target.value)} placeholder="New total count"/>
@@ -15129,7 +15134,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
         <button onClick={()=>setShowForm(s=>!s)} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Log Movement</button>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Movements",  v:stocklog.length,           c:"#0f172a"},
           {l:"Total Stock IN (₱)",v:"₱"+Math.round(totalIn).toLocaleString("en-PH"), c:"#059669"},
@@ -15842,7 +15847,7 @@ function DataManagement({
       {/* Current data summary */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"18px 20px",marginBottom:20}}>
         <div style={{fontWeight:700,color:"#0f172a",marginBottom:14,fontSize:".9rem"}}>Current Data Summary</div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:8,marginBottom:14}}>
           {Object.entries(counts).map(([label,count])=>(
             <div key={label} style={{display:"flex",justifyContent:"space-between",padding:"7px 12px",background:count>0?"#f8fafc":"#fff",borderRadius:8,border:"1px solid #f1f5f9"}}>
               <span style={{fontSize:".78rem",color:"#475569"}}>{label}</span>
@@ -16073,7 +16078,7 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Suppliers",v:suppliers.length,c:"#3b82f6"},
           {l:"Excellent & Reliable",v:suppliers.filter(s=>s.rating&&s.rating.startsWith("5")).length,c:"#059669"},
@@ -16212,7 +16217,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
       </div>
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:16}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10,marginBottom:16}}>
         {[
           {l:"Total Subcontractors",v:subcons.length,c:"#3b82f6"},
           {l:"Acceptable",v:subcons.filter(s=>s.rating==="YES - ACCEPTABLE").length,c:"#059669"},
