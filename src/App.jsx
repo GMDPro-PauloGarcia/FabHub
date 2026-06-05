@@ -16,7 +16,6 @@ const DEAL_STAGES = [
   "10 · Installation",
   "11 · Punchlist",
   "12 · Close-Out",
-  "13 · Feedback",
   "14 · Completed",
   "Cancelled",
   "Did Not Win",
@@ -36,7 +35,6 @@ const STAGE_ALIASES={
   "installation":"10 · Installation","10":"10 · Installation",
   "punchlist":"11 · Punchlist","punch list":"11 · Punchlist","11":"11 · Punchlist",
   "project close-out":"12 · Close-Out","close out":"12 · Close-Out","closeout":"12 · Close-Out","close-out":"12 · Close-Out","12":"12 · Close-Out",
-  "client feedback":"13 · Feedback","feedback":"13 · Feedback","13":"13 · Feedback",
   "completed":"14 · Completed","project completed":"14 · Completed","closed":"14 · Completed","project closed":"14 · Completed","done":"14 · Completed","14":"14 · Completed",
   "cancelled":"Cancelled","canceled":"Cancelled",
 };
@@ -55,7 +53,7 @@ const normalizeStage=(s)=>{
   }
   return "01 · BizDev";
 };
-const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out","13 · Feedback"];
+const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out"];
 const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];
 const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
 const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
@@ -72,7 +70,6 @@ const STAGE_OWNER   = {
   "10 · Installation":                 "Operations",
   "11 · Punchlist":                    "Project Manager",
   "12 · Close-Out":            "Project Manager + Finance",
-  "13 · Feedback":              "Account Executive",
 };
 const STAGE_DURATION = {
   "04 · CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
@@ -109,7 +106,6 @@ const STAGE_CLR = {
   "10 · Installation":                 "#ec4899",
   "11 · Punchlist":                    "#eab308",
   "12 · Close-Out":            "#059669",
-  "13 · Feedback":              "#4ade80",
   "Cancelled":                         "#ef4444",
   "Did Not Win":                       "#94a3b8",
 };
@@ -422,8 +418,6 @@ const GMD_CHECKLIST_TEMPLATE = [
   // Stage 12 — Close-Out
   { type:"Task",           dept:"Operations",   title:"PM creates COC and close-out report",             priority:"High",  notes:"Include all addenda, punchlist resolved, final specs", whatCouldGoWrong:"COC missing details — review against original scope before submitting" },
   { type:"Task",           dept:"Cost Control", title:"Final billing issued to client",                  priority:"High",  notes:"Full remaining balance",                              whatCouldGoWrong:"Balance not collected — escalate if not paid within agreed terms" },
-  // Stage 13 — Feedback
-  { type:"Task",           dept:"Sales",        title:"Request client feedback (score + testimonial)",   priority:"Normal",notes:"Log in FabHub — Stage 13",                            whatCouldGoWrong:"Feedback never collected — ask within 1 week of close-out, not months later" },
 ];
 
 // ─── GMD CLIENT DIRECTORY ────────────────────────────────────────────────────
@@ -3537,7 +3531,7 @@ export default function App(){
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
   const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"),[deals]);
-  const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="13 · Feedback"),[deals]);
+  const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
   useEffect(()=>{
     const missing=wonDeals.filter(d=>!projs[d.id]);
@@ -7129,8 +7123,8 @@ export default function App(){
 
               {/* Awarded Projects — active only (stages 06–11) */}
               {(()=>{
-                const activeWon=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="13 · Feedback");
-                const doneWon  =wonDeals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="13 · Feedback");
+                const activeWon=wonDeals.filter(d=>d.stage!=="12 · Close-Out");
+                const doneWon  =wonDeals.filter(d=>d.stage==="12 · Close-Out");
                 const AwardRow=({d,list,i})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const paid=Number(d.amountPaid)||0;
@@ -9890,8 +9884,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         const wExpired=wEnd&&wEnd<today;
         const wActive=warranty.active&&wEnd&&wEnd>=today;
         const dealStage=projDeal?.stage||"";
-        const isClosedOut=dealStage==="12 · Close-Out"||dealStage==="13 · Feedback";
-        const isFeedback=dealStage==="13 · Feedback";
+        const isClosedOut=dealStage==="12 · Close-Out";
         const stageIdx=WON_STAGES.indexOf(dealStage);
         return(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -9911,16 +9904,6 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                     toastEmit("Project moved to Close-Out","success");
                   }} style={{flex:1,background:"#059669",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>
                     🔒 Mark as Project Close-Out (Stage 12)
-                  </button>
-                </div>
-              )}
-              {dealStage==="12 · Close-Out"&&onCloseProject&&(
-                <div style={{marginTop:10}}>
-                  <button onClick={()=>{
-                    onCloseProject(selProj,"13 · Feedback");
-                    toastEmit("Project moved to Client Feedback stage","success");
-                  }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#059669",cursor:"pointer"}}>
-                    💬 Advance to Client Feedback (Stage 13)
                   </button>
                 </div>
               )}
@@ -12159,7 +12142,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
   // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
-    return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="13 · Feedback").map(d=>{
+    return wonDeals.filter(d=>d.stage!=="12 · Close-Out").map(d=>{
       const b=budgets[d.id]||emptyBudget();
       const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
       prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
@@ -13988,7 +13971,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     {id:"fab",       label:"Fabrication",icon:"🔨", stgs:["08 · Fabrication"]},
     {id:"site",      label:"Site",       icon:"🏗",  stgs:["09 · Site & Billing","10 · Installation"]},
     {id:"punchlist", label:"Punchlist",  icon:"📋", stgs:["11 · Punchlist"]},
-    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out","13 · Feedback"]},
+    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out"]},
   ];
   const phaseIdx=stg=>PHASES.findIndex(p=>p.stgs.includes(stg));
 
