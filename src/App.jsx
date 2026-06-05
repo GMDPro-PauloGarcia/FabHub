@@ -7519,7 +7519,7 @@ export default function App(){
               <div key={m.id} style={{background:"#fffbeb",borderRadius:10,padding:"12px 14px",marginBottom:10,border:"1.5px solid #fbbf24"}}>
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{m.client}{m.product?` — ${m.product}`:""}</div>
                 <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{[m.ceNo,m.stage].filter(Boolean).join(" · ")}</div>
-                <button onClick={()=>{setDupPrompt(null);setPage("ops");setSelProj(m.id);setOpsTab("addenda");}} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
+                <button onClick={()=>{setDupPrompt(null);if(role==="ProjectMover"){setPage("addenda");}else{setSelProj(m.id);setOpsTab("addenda");setPage(role==="Operations"?"home":"ops");}}} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
               </div>
             ))}
             <div style={{display:"flex",gap:10,marginTop:16}}>
@@ -8714,7 +8714,7 @@ export default function App(){
         addenda={addenda} billings={billings} mreqs={mreqs} breqs={breqs}
         isMobile={isMobile} createCard={createProjectCard}
         updateJO={updateJO} upPcards={upPcards}
-        setPage={setPage} setSelProj={setSelProj} setOpsTab={setOpsTab}/>
+        addAddendum2={addAddendum2}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -14125,7 +14125,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,setPage,setSelProj,setOpsTab}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2}){
   const[selDeal,setSelDeal]=useState(null);
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
@@ -14139,6 +14139,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[tatOpen,setTatOpen]=useState(false);
   const[showTeamEdit,setShowTeamEdit]=useState(false);
   const[teamForm,setTeamForm]=useState({ae:"",pm1:"",pm2:"",pm3:"",designer:"",coordinator:""});
+  const[showScopeForm,setShowScopeForm]=useState(false);
+  const[scopeForm,setScopeForm]=useState({title:"",desc:"",value:"",ceNo:""});
+  const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
@@ -14589,9 +14592,41 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:4,transition:"width .5s"}}/>
                 </div>
                 <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
-                  {setPage&&setSelProj&&setOpsTab&&<button onClick={()=>{setSelProj(selDeal);setOpsTab("addenda");setPage("ops");}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
+                  {addAddendum2&&<button onClick={()=>{setScopeForm({title:"",desc:"",value:"",ceNo:""});setShowScopeForm(true);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
                   <button onClick={generateClientReport} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>📄 Client Report</button>
                 </div>
+                {showScopeForm&&addAddendum2&&(
+                  <div style={{marginTop:12,background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"14px 16px"}}>
+                    <div style={{fontWeight:700,color:"#92400e",fontSize:".82rem",marginBottom:10}}>⚠️ Log Scope Change / Addendum</div>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
+                      <div style={{gridColumn:"1/-1"}}>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
+                        <input value={scopeForm.title} onChange={e=>fsc("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
+                      </div>
+                      <div style={{gridColumn:"1/-1"}}>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description / Impact</div>
+                        <textarea value={scopeForm.desc} onChange={e=>fsc("desc",e.target.value)} rows={2} placeholder="What changed, why, impact on timeline…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
+                        <input type="number" value={scopeForm.value} onChange={e=>fsc("value",e.target.value)} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>CE No. (if applicable)</div>
+                        <input value={scopeForm.ceNo} onChange={e=>fsc("ceNo",e.target.value)} placeholder="e.g. CE-2025-002A" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{
+                        if(!scopeForm.title.trim()) return;
+                        addAddendum2({...scopeForm,value:scopeForm.value?Number(scopeForm.value):0,projectId:selDeal,projectName:deal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
+                        setShowScopeForm(false);
+                        setScopeForm({title:"",desc:"",value:"",ceNo:""});
+                      }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Log Scope Change</button>
+                      <button onClick={()=>setShowScopeForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* ── Project Team ── */}
