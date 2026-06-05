@@ -2309,7 +2309,7 @@ export default function App(){
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
     if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
-    if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username,name:u.full_name,role:u.role,title:u.title||u.role,status:u.status})));
+    if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||"",createdAt:u.created_at||""})));
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);try{localStorage.setItem("gmdv5:payables",JSON.stringify(ps));}catch{}}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);try{localStorage.setItem("gmdv5:loans",JSON.stringify(ls));}catch{}}
   };
@@ -2435,6 +2435,11 @@ export default function App(){
     notes:r.notes||"", supplier:r.supplier||"",
     created_by:r.createdBy||"", what_could_go_wrong:r.whatCouldGoWrong||"",
     qty:Number(r.qty)||0, unit:r.unit||"pcs",
+  });
+  const toSbUser = u=>({
+    id:u.id, name:u.name||"", username:u.username||"", role:u.role||"Sales",
+    title:u.title||"", status:u.status||"active", password_hash:u.passwordHash||"",
+    email:u.email||"", created_at:u.createdAt||null,
   });
   const toSbBudget = (dealId,b)=>({
     deal_id:dealId, materials:Number(b.Materials)||0, labor:Number(b.Labor)||0,
@@ -2982,6 +2987,23 @@ export default function App(){
       }
     });
 
+    const checkSub = sbSubscribe('checklist-rt','checklists',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setChecklist(cs=>cs.filter(c=>c.id!==oldRow.id));return;}
+      if(rec){
+        const item={...rec,projectId:rec.deal_id,dealId:rec.deal_id,assignedTo:rec.assigned_to,dueDate:rec.due_date,riskNote:rec.risk_note,sortOrder:rec.sort_order};
+        setChecklist(cs=>eventType==='UPDATE'?cs.map(c=>c.id===rec.id?{...c,...item}:c):cs.find(c=>c.id===rec.id)?cs:[...cs,item]);
+      }
+    });
+    const swatchSub = sbSubscribe('swatches-rt','swatches',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setSwatches(ss=>ss.filter(s=>s.id!==oldRow.id));return;}
+      if(rec){
+        const item={...rec,dealId:rec.deal_id,refLink:rec.ref_link,swatchLink:rec.swatch_link,estCost:Number(rec.est_cost)||0,addedBy:rec.added_by,clientApprovedBy:rec.client_approved_by,clientApprovedAt:rec.client_approved_at};
+        setSwatches(ss=>eventType==='UPDATE'?ss.map(s=>s.id===rec.id?{...s,...item}:s):ss.find(s=>s.id===rec.id)?ss:[...ss,item]);
+      }
+    });
+
     return ()=>{
       dealsSub?.unsubscribe?.();
       pcardSub?.unsubscribe?.();
@@ -2996,6 +3018,8 @@ export default function App(){
       expSub?.unsubscribe?.();
       inflowSub?.unsubscribe?.();
       taskSub?.unsubscribe?.();
+      checkSub?.unsubscribe?.();
+      swatchSub?.unsubscribe?.();
     };
   },[session?.userId]);
 
@@ -3490,21 +3514,23 @@ export default function App(){
     upUsers(us=>[...us,newUser]);
     return null; // null = success
   };
-  const approveUser =(id,role)=>upUsers(us=>us.map(u=>u.id===id?{...u,status:"active",role}:u));
-  const rejectUser  =(id)    =>upUsers(us=>us.map(u=>u.id===id?{...u,status:"rejected"}:u));
-  const deactivateUser=(id)  =>upUsers(us=>us.map(u=>u.id===id?{...u,status:"inactive"}:u));
-  const deleteUser  =(id)    =>upUsers(us=>us.filter(u=>u.id!==id));
-  const resetPw     =(id,pw) =>upUsers(us=>us.map(u=>u.id===id?{...u,passwordHash:hashPw(pw)}:u));
+  const approveUser =(id,role)=>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"active",role};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
+  const rejectUser  =(id)    =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"rejected"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
+  const deactivateUser=(id)  =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"inactive"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
+  const deleteUser  =(id)    =>{upUsers(us=>us.filter(u=>u.id!==id));if(isSupabaseReady())sbDelete('user_profiles',id).catch(()=>{});};
+  const resetPw     =(id,pw) =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,passwordHash:hashPw(pw)};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const createUser  =(name,username,password,role,title)=>{
     const newUser={id:"u"+Date.now(),name:name.trim(),username:username.toLowerCase().trim(),passwordHash:hashPw(password),role,title:title.trim()||role,status:"active",createdAt:today};
     upUsers(us=>[...us,newUser]);
-    if(isSupabaseReady()) sbUpsert('user_profiles',{id:newUser.id,name:newUser.name,username:newUser.username,password_hash:newUser.passwordHash,role:newUser.role,title:newUser.title,status:"active",created_at:new Date().toISOString()},'id').catch(()=>{});
+    if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
   };
   const changePw    =(oldPw,newPw)=>{
     const u=users.find(x=>x.id===session?.userId);
     if(!u||!checkPw(oldPw,u.passwordHash)) return "Current password is incorrect.";
     if(newPw.length<6) return "New password must be at least 6 characters.";
-    upUsers(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
+    const n={...u,passwordHash:hashPw(newPw)};
+    upUsers(us=>us.map(x=>x.id===u.id?n:x));
+    if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});
     return null;
   };
 
