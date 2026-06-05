@@ -8653,7 +8653,8 @@ export default function App(){
         blockers={blockers} addBlocker={addBlocker} resolveBlocker={resolveBlocker}
         logActivity={logActivity} actLog={actLog}
         addenda={addenda} billings={billings} mreqs={mreqs} breqs={breqs}
-        isMobile={isMobile} createCard={createProjectCard}/>
+        isMobile={isMobile} createCard={createProjectCard}
+        updateJO={updateJO} upPcards={upPcards}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -14063,7 +14064,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards}){
   const[selDeal,setSelDeal]=useState(null);
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
@@ -14075,6 +14076,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[bfTitle,setBfTitle]=useState(""); const[bfDept,setBfDept]=useState("Operations"); const[bfDetail,setBfDetail]=useState("");
   const[showUForm,setShowUForm]=useState(false); const[uText,setUText]=useState("");
   const[tatOpen,setTatOpen]=useState(false);
+  const[showTeamEdit,setShowTeamEdit]=useState(false);
+  const[teamForm,setTeamForm]=useState({ae:"",pm1:"",pm2:"",pm3:"",designer:"",coordinator:""});
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
@@ -14124,7 +14127,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📋 Project Cards</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{wonDeals.length} awarded · {totalCards} cards · all departments in one view</div>
         </div>
-        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
+        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
       </div>
 
       {/* KPI bar — only on grid view */}
@@ -14199,7 +14202,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
                   const hasDupe=wonDeals.filter(x=>x.ceNo&&x.ceNo===d.ceNo&&x.ceNo!=="No CE").length>1;
                   return(
-                    <div key={d.id} onClick={()=>setSelDeal(d.id)}
+                    <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
                       style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",borderLeft:`4px solid ${hc}`,padding:"14px 16px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
                       onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)"}
                       onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}>
@@ -14518,6 +14521,57 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{marginTop:10,display:"flex",justifyContent:"flex-end"}}>
                   <button onClick={generateClientReport} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>📄 Client Report</button>
                 </div>
+              </div>
+
+              {/* ── Project Team ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
+                  {(role==="Manager"||role==="Operations")&&!showTeamEdit&&(
+                    <button onClick={()=>{
+                      setTeamForm({ae:jo?.aeAssigned||deal?.salesOwner||"",pm1:jo?.pm1||card?.pmAssigned||"",pm2:jo?.pm2||"",pm3:jo?.pm3||"",designer:jo?.designer||"",coordinator:jo?.coordinator||""});
+                      setShowTeamEdit(true);
+                    }} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
+                  )}
+                </div>
+                {showTeamEdit?(
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    {[["ae","AE (Account Executive)",SALES_TEAM],["pm1","PM 1",OPS_TEAM],["pm2","PM 2",OPS_TEAM],["pm3","PM 3",OPS_TEAM],["designer","Designer",DESIGN_MEMBERS],["coordinator","Coordinator",OPS_TEAM]].map(([k,l,opts])=>(
+                      <div key={k}>
+                        <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>{l}</label>
+                        <select value={teamForm[k]} onChange={e=>setTeamForm(f=>({...f,[k]:e.target.value}))}
+                          style={{width:"100%",padding:"7px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontFamily:"inherit",fontSize:".82rem",background:"#fff"}}>
+                          <option value="">— Not assigned —</option>
+                          {opts.map(m=><option key={m}>{m}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                    <div style={{display:"flex",gap:8,marginTop:4}}>
+                      <button onClick={()=>{
+                        const tf=teamForm;
+                        if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
+                        if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],pmAssigned:tf.pm1,aeAssigned:tf.ae}}));
+                        logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
+                        setShowTeamEdit(false);
+                      }} style={{flex:1,background:"#1e293b",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Save Team</button>
+                      <button onClick={()=>setShowTeamEdit(false)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
+                    </div>
+                  </div>
+                ):(
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    {[
+                      {l:"AE",v:jo?.aeAssigned||deal?.salesOwner||"—"},
+                      {l:"Designer",v:jo?.designer||"—"},
+                      {l:"PM",v:[jo?.pm1||card?.pmAssigned,jo?.pm2,jo?.pm3].filter(Boolean).join(", ")||"—"},
+                      {l:"Coordinator",v:jo?.coordinator||"—"},
+                    ].map(({l,v})=>(
+                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
+                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* ── Vitals ── */}
