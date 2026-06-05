@@ -6735,7 +6735,7 @@ export default function App(){
                 {/* Feed */}
                 {filteredUpdates.length===0&&(
                   <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem",background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0"}}>
-                    No {feedFilter==="all"?"updates":feedFilter+" updates"} yet.
+                    No {aeFeedFilter==="all"?"updates":aeFeedFilter+" updates"} yet.
                   </div>
                 )}
                 {(()=>{
