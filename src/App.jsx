@@ -205,6 +205,7 @@ const TAT_REFERENCE = {
 };
 
 const DEPT_ORDER = ["Sales","Design","QS","Procurement","Operations","Finance"];
+const HAS_ADDENDA_PAGE = ["Manager","Operations","ProjectMover"];
 const DEPT_CLR   = {Sales:"#10b981",Design:"#8b5cf6",QS:"#f59e0b",Procurement:"#06b6d4",Operations:"#f97316",Finance:"#3b82f6"};
 const ACT_SCORE  = {"Login":1,"New Deal":10,"Deal Updated":3,"Stage Change":5,"Project Awarded":15,"PM Update":8,"Department Done":12,"Blocker Flagged":4,"TAT Set":3,"Project Card Created":5,"Password Changed":1,"Profile Updated":1,"JO Deleted":-2,"AE Update":4};
 
@@ -2431,7 +2432,7 @@ export default function App(){
     category:r.category||"",
   });
   const toSbAddendum = r=>({
-    id:r.id, deal_id:r.dealId, title:r.title||"", description:r.description||"",
+    id:r.id, deal_id:r.dealId||r.projectId, title:r.title||"", description:r.description||r.desc||"",
     value:Number(r.value)||0, ce_no:r.ceNo||"",
     receipt_type:r.receiptType||"OR", withholding:r.withholding||false,
     status:r.status||"Discovered", sales_notified:r.salesNotified||false,
@@ -3042,7 +3043,8 @@ export default function App(){
       if(!dealId) return;
       setPcards(ps=>{
         const existing=ps[dealId]||{};
-        return {...ps,[dealId]:{...existing,aeAssigned:rec.ae_assigned??existing.aeAssigned,pm1:rec.pm1??existing.pm1,pm2:rec.pm2??existing.pm2,pm3:rec.pm3??existing.pm3,designer:rec.designer??existing.designer,coordinator:rec.coordinator??existing.coordinator,commsLink:rec.comms_link??existing.commsLink,scopeNotes:rec.scope_notes??existing.scopeNotes,specialInstructions:rec.special_instructions??existing.specialInstructions}};
+        const m=(v,e)=>v!==undefined?v:e;
+        return {...ps,[dealId]:{...existing,aeAssigned:m(rec.ae_assigned,existing.aeAssigned),pm1:m(rec.pm1,existing.pm1),pm2:m(rec.pm2,existing.pm2),pm3:m(rec.pm3,existing.pm3),designer:m(rec.designer,existing.designer),coordinator:m(rec.coordinator,existing.coordinator),commsLink:m(rec.comms_link,existing.commsLink),scopeNotes:m(rec.scope_notes,existing.scopeNotes),specialInstructions:m(rec.special_instructions,existing.specialInstructions)}};
       });
     });
 
@@ -3772,7 +3774,6 @@ export default function App(){
   const[dupPrompt,   setDupPrompt]   = useState(null);   // {newData, matches[]} — duplicate deal detection
   const[dupScopeTarget,setDupScopeTarget]=useState(null); // {dealId,dealName} — inline scope form inside dup prompt
   const[dupScopeForm,setDupScopeForm]=useState({title:"",desc:"",value:""});
-  const HAS_ADDENDA_PAGE=["Manager","Operations","ProjectMover"]; // roles with a dedicated addenda workflow
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[showExport, setShowExport] =useState(false);
@@ -7514,8 +7515,8 @@ export default function App(){
         setPriceModal(null);
       }}/>}
       {dupPrompt&&(
-        <div onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:"",});}} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:500,padding:"24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)"}}>
+        <div onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:"",});}} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:isMobile?"flex-end":"center",justifyContent:"center",padding:isMobile?0:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:isMobile?"18px 18px 0 0":16,width:"100%",maxWidth:isMobile?undefined:500,padding:isMobile?"20px 18px 28px":"24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"92vh",overflowY:"auto"}}>
             {!dupScopeTarget?(
               <>
                 <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>⚠️ Looks like a duplicate</div>
@@ -7563,7 +7564,7 @@ export default function App(){
                 <div style={{display:"flex",gap:10,marginTop:16}}>
                   <button onClick={()=>{
                     if(!dupScopeForm.title.trim()) return;
-                    addAddendum2({...dupScopeForm,value:dupScopeForm.value?Number(dupScopeForm.value):0,projectId:dupScopeTarget.dealId,projectName:dupScopeTarget.dealName,status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
+                    addAddendum2({...dupScopeForm,value:dupScopeForm.value?Number(dupScopeForm.value):0,dealId:dupScopeTarget.dealId,projectName:dupScopeTarget.dealName,status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
                     setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:""});
                   }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Log Scope Change</button>
                   <button onClick={()=>setDupScopeTarget(null)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>← Back</button>
@@ -10019,7 +10020,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 <div style={{display:"flex",gap:8,marginTop:12}}>
                   <Btn onClick={()=>{
                     if(!af.title) return;
-                    addAddendum2({...af,projectId:selProj,projectName:projDeal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false});
+                    addAddendum2({...af,dealId:selProj,projectName:projDeal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false});
                     setAf({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
                     setShowAF(false);
                   }}>Log Scope Change</Btn>
@@ -14235,7 +14236,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📋 Project Cards</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{wonDeals.length} awarded · {totalCards} cards · all departments in one view</div>
         </div>
-        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
+        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setShowScopeForm(false);setScopeForm({title:"",desc:"",value:"",ceNo:""});setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
       </div>
 
       {/* KPI bar — only on grid view */}
@@ -14663,7 +14664,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={()=>{
                         if(!scopeForm.title.trim()) return;
-                        addAddendum2({...scopeForm,value:scopeForm.value?Number(scopeForm.value):0,projectId:selDeal,projectName:deal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
+                        addAddendum2({...scopeForm,value:scopeForm.value?Number(scopeForm.value):0,dealId:selDeal,projectName:deal?.client||"",status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
                         setShowScopeForm(false);
                         setScopeForm({title:"",desc:"",value:"",ceNo:""});
                       }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Log Scope Change</button>
