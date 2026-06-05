@@ -95,7 +95,14 @@ export const sbLoadAll = async () => {
     const pcardsObj = {}
     pcards.forEach(card => {
       pcardsObj[card.deal_id] = {
-        ...card, dealId: card.deal_id,
+        ...card,
+        dealId: card.deal_id,
+        aeAssigned: card.ae_assigned || '',
+        pm1: card.pm1 || '',
+        pm2: card.pm2 || '',
+        pm3: card.pm3 || '',
+        designer: card.designer || '',
+        coordinator: card.coordinator || '',
         departments: Object.fromEntries(DEPT_ORDER.map(d => [d, { done: false, doneAt: null, doneBy: null, tasks: [] }]))
       }
     })

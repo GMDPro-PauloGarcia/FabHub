@@ -275,6 +275,12 @@ const emptyProjectCard=(dealId,dealData)=>({
   tatCategory:"",            // Project type used for reference
   tatSetBy:null,             // Who set the turnaround time
   tatSetAt:null,
+  aeAssigned:dealData?.aeAssigned||dealData?.salesOwner||"",
+  pm1:dealData?.pm1||dealData?.pmAssigned||"",
+  pm2:dealData?.pm2||"",
+  pm3:dealData?.pm3||"",
+  designer:dealData?.designer||"",
+  coordinator:dealData?.coordinator||"",
   departments:Object.fromEntries(DEPT_ORDER.map(dept=>([dept,{
     done:false,
     doneAt:null,
@@ -2717,7 +2723,7 @@ export default function App(){
     upPcards(ps=>({...ps,[dealId]:card}));
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
     if(isSupabaseReady()){
-      sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt},'deal_id').catch(()=>{});
+      sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id').catch(()=>{});
       DEPT_ORDER.forEach(dept=>{
         (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
           sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
@@ -4016,8 +4022,12 @@ export default function App(){
     }
     // Create project card with PM/AE pre-populated
     createProjectCard(id,{...awardModal,
-      pmAssigned:pmDisplay,
       aeAssigned:jo.aeAssigned,
+      pm1:jo.pm1||"",
+      pm2:jo.pm2||"",
+      pm3:jo.pm3||"",
+      designer:jo.designer||"",
+      coordinator:jo.coordinator||"",
       awardDate:form.triggerDate||today,
     });
     // Load checklist
@@ -14211,8 +14221,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
                           {d.contact&&<div style={{fontSize:".68rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:1}}>📁 {d.client}</div>}
                           <div style={{fontSize:".7rem",color:"#64748b",marginTop:d.contact?1:0}}>{d.ceNo||"No CE"} · {pcAmt(d)}</div>
-                          {joR&&<div style={{fontSize:".67rem",color:"#3b82f6",marginTop:1}}>📋 {joR.joNo} · 👷 {[joR.pm1,joR.pm2,joR.pm3].filter(Boolean).join(", ")||"No PM"}</div>}
-                          {joR&&<div style={{fontSize:".67rem",color:"#64748b",marginTop:1}}>🤝 AE: {joR.aeAssigned||d.salesOwner||"—"}{joR.coordinator&&` · Coord: ${joR.coordinator}`}</div>}
+                          {(()=>{
+                            const pc=pcards[d.id];
+                            const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean).join(", ")||"No PM";
+                            const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
+                            const coord=pc?.coordinator||joR?.coordinator;
+                            return(<>
+                              {(joR||pc?.pm1)&&<div style={{fontSize:".67rem",color:"#3b82f6",marginTop:1}}>{joR&&`📋 ${joR.joNo} · `}👷 {pm}</div>}
+                              {(ae&&ae!=="—")&&<div style={{fontSize:".67rem",color:"#64748b",marginTop:1}}>🤝 AE: {ae}{coord&&` · Coord: ${coord}`}</div>}
+                            </>);
+                          })()}
                         </div>
                         <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0,marginLeft:10}}>
                           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
@@ -14503,8 +14521,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.contact||deal?.client}</div>
                     {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
                     <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deal?.ceNo} · {pcAmt(deal)} · <span style={{color:"#8b5cf6",fontWeight:600}}>{deal?.stage?.replace(/^\d+ · /,"")}</span></div>
-                    {jo&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:3}}>📋 {jo.joNo} · 👷 {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")||"Not assigned"}</div>}
-                    {jo&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>🤝 AE: {jo.aeAssigned||deal?.salesOwner||"—"}{jo.coordinator&&` · Coord: ${jo.coordinator}`}</div>}
+                    {jo&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:3}}>📋 {jo.joNo}</div>}
+                    {(card?.pm1||card?.pm2||jo?.pm1)&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:1}}>👷 {[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")}</div>}
+                    {(card?.aeAssigned||deal?.salesOwner)&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>🤝 AE: {card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"}{(card?.coordinator||jo?.coordinator)&&` · Coord: ${card?.coordinator||jo?.coordinator}`}</div>}
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:pct===100?"#059669":hc}}>{pct}%</div>
@@ -14529,7 +14548,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
                   {(role==="Manager"||role==="Operations")&&!showTeamEdit&&(
                     <button onClick={()=>{
-                      setTeamForm({ae:jo?.aeAssigned||deal?.salesOwner||"",pm1:jo?.pm1||card?.pmAssigned||"",pm2:jo?.pm2||"",pm3:jo?.pm3||"",designer:jo?.designer||"",coordinator:jo?.coordinator||""});
+                      setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||""});
                       setShowTeamEdit(true);
                     }} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
                   )}
@@ -14549,8 +14568,12 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <div style={{display:"flex",gap:8,marginTop:4}}>
                       <button onClick={()=>{
                         const tf=teamForm;
+                        if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}}));
+                        const cardId=pcards[selDeal]?.id;
+                        if(isSupabaseReady&&isSupabaseReady()&&cardId&&isUUID(cardId)){
+                          sbUpdate('project_cards',cardId,{ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}).catch(()=>{});
+                        }
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
-                        if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],pmAssigned:tf.pm1,aeAssigned:tf.ae}}));
                         logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
                         setShowTeamEdit(false);
                       }} style={{flex:1,background:"#1e293b",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Save Team</button>
@@ -14560,10 +14583,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 ):(
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
                     {[
-                      {l:"AE",v:jo?.aeAssigned||deal?.salesOwner||"—"},
-                      {l:"Designer",v:jo?.designer||"—"},
-                      {l:"PM",v:[jo?.pm1||card?.pmAssigned,jo?.pm2,jo?.pm3].filter(Boolean).join(", ")||"—"},
-                      {l:"Coordinator",v:jo?.coordinator||"—"},
+                      {l:"AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
+                      {l:"Designer",v:card?.designer||jo?.designer||"—"},
+                      {l:"PM",v:[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"—"},
+                      {l:"Coordinator",v:card?.coordinator||jo?.coordinator||"—"},
                     ].map(({l,v})=>(
                       <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
                         <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
