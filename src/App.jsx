@@ -2224,6 +2224,15 @@ export default function App(){
             if(data.deals?.length)   ls(KEYS.deals,   JSON.stringify(data.deals));
             if(data.billings?.length)ls(KEYS.billings, JSON.stringify(data.billings));
             console.log("✅ FabHub: Loaded from Supabase — "+( data.deals?.length||0)+" deals");
+            // Load AE updates from Supabase (cross-device sync)
+            try{
+              const{data:aeRows,error:aeErr}=await supabase.from('ae_updates').select('*').order('created_at',{ascending:false}).limit(300);
+              if(!aeErr&&aeRows?.length){
+                const mapped=aeRows.map(r=>({id:r.id,by:r.by,role:r.role,date:r.date,time:r.time,text:r.text,dealId:r.deal_id||null}));
+                setAeUpdates(mapped);
+                try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(mapped));}catch{}
+              }
+            }catch{}
           }
         }catch(sbErr){
           console.warn("Supabase load failed — using localStorage cache:", sbErr.message);
@@ -3004,6 +3013,18 @@ export default function App(){
         setSwatches(ss=>eventType==='UPDATE'?ss.map(s=>s.id===rec.id?{...s,...item}:s):ss.find(s=>s.id===rec.id)?ss:[...ss,item]);
       }
     });
+    const aeUpdateSub = sbSubscribe('ae-updates-rt','ae_updates',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setAeUpdates(us=>us.filter(u=>u.id!==oldRow.id));return;}
+      if(rec){
+        const item={id:rec.id,by:rec.by,role:rec.role,date:rec.date,time:rec.time,text:rec.text,dealId:rec.deal_id||null};
+        setAeUpdates(us=>{
+          if(eventType==='UPDATE') return us.map(u=>u.id===rec.id?item:u);
+          if(us.find(u=>u.id===rec.id)) return us; // already have it (own post)
+          return [item,...us].slice(0,300);
+        });
+      }
+    });
 
     return ()=>{
       dealsSub?.unsubscribe?.();
@@ -3021,6 +3042,7 @@ export default function App(){
       taskSub?.unsubscribe?.();
       checkSub?.unsubscribe?.();
       swatchSub?.unsubscribe?.();
+      aeUpdateSub?.unsubscribe?.();
     };
   },[session?.userId]);
 
@@ -3893,6 +3915,7 @@ export default function App(){
     setAeUpdateText("");
     setAeUpdateDealId("");
     try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
+    if(isSupabaseReady()) sbInsert('ae_updates',{id:entry.id,by:entry.by,role:entry.role,date:entry.date,time:entry.time,text:entry.text,deal_id:entry.dealId||null}).catch(()=>{});
     logActivity(dealId||null,"AE Update",text.trim(),session?.name);
     const taggedDeal=dealId?[...wonDeals,...deals].find(d=>d.id===dealId):null;
     const projectLine=taggedDeal?`\n📌 Project: <b>${taggedDeal.contact||taggedDeal.client}</b> — ${taggedDeal.client}${taggedDeal.ceNo||taggedDeal.ceno?" · "+(taggedDeal.ceNo||taggedDeal.ceno):""} | ${taggedDeal.stage}`:"";
@@ -3905,6 +3928,7 @@ export default function App(){
     const next=aeUpdates.filter(u=>u.id!==id);
     setAeUpdates(next);
     try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
+    if(isSupabaseReady()) sbDelete('ae_updates',id).catch(()=>{});
   };
 
   const openAward=(deal)=>setAwardModal(deal);
