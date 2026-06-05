@@ -917,8 +917,8 @@ function SetPriceModal({deal,today,onClose,onSave}){
   const ok=Number(val)>0;
   const mob=window.innerWidth<768;
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:900,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20}}>
-      <div style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,width:"100%",maxWidth:mob?undefined:420,padding:"24px 24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"92vh",overflowY:"auto"}}>
+    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:900,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,width:"100%",maxWidth:mob?undefined:420,padding:"24px 24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"92vh",overflowY:"auto"}}>
         <div style={{fontWeight:800,color:"#4f46e5",fontSize:"1.05rem",marginBottom:4}}>₱ Set Client Submission Price</div>
         <div style={{fontSize:".78rem",color:"#64748b",marginBottom:18}}>
           <span style={{fontWeight:700,color:"#0f172a"}}>{deal?.client}</span>{deal?.ceNo?" · "+deal.ceNo:""}
@@ -3035,6 +3035,16 @@ export default function App(){
         });
       }
     });
+    const pcardsTableSub = sbSubscribe('pcards-table-rt','project_cards',payload=>{
+      const{eventType,new:rec}=payload;
+      if(eventType==='DELETE'||!rec) return;
+      const dealId=rec.deal_id;
+      if(!dealId) return;
+      setPcards(ps=>{
+        const existing=ps[dealId]||{};
+        return {...ps,[dealId]:{...existing,aeAssigned:rec.ae_assigned??existing.aeAssigned,pm1:rec.pm1??existing.pm1,pm2:rec.pm2??existing.pm2,pm3:rec.pm3??existing.pm3,designer:rec.designer??existing.designer,coordinator:rec.coordinator??existing.coordinator,commsLink:rec.comms_link??existing.commsLink,scopeNotes:rec.scope_notes??existing.scopeNotes,specialInstructions:rec.special_instructions??existing.specialInstructions}};
+      });
+    });
 
     return ()=>{
       dealsSub?.unsubscribe?.();
@@ -3053,6 +3063,7 @@ export default function App(){
       checkSub?.unsubscribe?.();
       swatchSub?.unsubscribe?.();
       aeUpdateSub?.unsubscribe?.();
+      pcardsTableSub?.unsubscribe?.();
     };
   },[session?.userId]);
 
@@ -9613,8 +9624,8 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                   </div>
                 )}
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,borderTop:drf?"1px solid #e2e8f0":"none",paddingTop:drf?10:0}}>
-                  {jo?.scopeNotes&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Scope of Work (JO)</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{jo.scopeNotes}</div></div>)}
-                  {jo?.specialInstructions&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Special Instructions</div><div style={{color:"#dc2626",fontSize:".83rem",fontWeight:600,whiteSpace:"pre-wrap"}}>{jo.specialInstructions}</div></div>)}
+                  {(pcards?.[selProj]?.scopeNotes||jo?.scopeNotes)&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Scope of Work</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{pcards?.[selProj]?.scopeNotes||jo?.scopeNotes}</div></div>)}
+                  {(pcards?.[selProj]?.specialInstructions||jo?.specialInstructions)&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Special Instructions</div><div style={{color:"#dc2626",fontSize:".83rem",fontWeight:600,whiteSpace:"pre-wrap"}}>{pcards?.[selProj]?.specialInstructions||jo?.specialInstructions}</div></div>)}
                   {jo?.location&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Site Location</div><div style={{color:"#334155",fontSize:".83rem"}}>{jo.location}</div></div>)}
                 </div>
               </div>
@@ -14141,7 +14152,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📋 Project Cards</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{wonDeals.length} awarded · {totalCards} cards · all departments in one view</div>
         </div>
-        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
+        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
       </div>
 
       {/* KPI bar — only on grid view */}
@@ -14550,7 +14561,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
-                  {(role==="Manager"||role==="Operations")&&!showTeamEdit&&(
+                  {(role==="Manager"||role==="Operations")&&!showTeamEdit&&card&&(
                     <button onClick={()=>{
                       setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||""});
                       setShowTeamEdit(true);
@@ -14572,9 +14583,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <div style={{display:"flex",gap:8,marginTop:4}}>
                       <button onClick={()=>{
                         const tf=teamForm;
-                        if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}}));
+                        if(upPcards&&pcards[selDeal]) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}}));
                         const cardId=pcards[selDeal]?.id;
-                        if(isSupabaseReady&&isSupabaseReady()&&cardId&&isUUID(cardId)){
+                        if(isSupabaseReady()&&cardId&&isUUID(cardId)){
                           sbUpdate('project_cards',cardId,{ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}).catch(()=>{});
                         }
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
@@ -14614,7 +14625,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px"}}>📁 Sales Repo</a>}
-                  {jo?.commsLink&&<a href={jo.commsLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#059669",textDecoration:"none",fontWeight:700,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 10px"}}>📱 Comms Group</a>}
+                  {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#059669",textDecoration:"none",fontWeight:700,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 10px"}}>📱 Comms Group</a>}
                 </div>
               </div>
 
