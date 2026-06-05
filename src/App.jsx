@@ -3770,6 +3770,9 @@ export default function App(){
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
   const[dupPrompt,   setDupPrompt]   = useState(null);   // {newData, matches[]} — duplicate deal detection
+  const[dupScopeTarget,setDupScopeTarget]=useState(null); // {dealId,dealName} — inline scope form inside dup prompt
+  const[dupScopeForm,setDupScopeForm]=useState({title:"",desc:"",value:""});
+  const HAS_ADDENDA_PAGE=["Manager","Operations","ProjectMover"]; // roles with a dedicated addenda workflow
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[showExport, setShowExport] =useState(false);
@@ -7511,21 +7514,62 @@ export default function App(){
         setPriceModal(null);
       }}/>}
       {dupPrompt&&(
-        <div onClick={()=>setDupPrompt(null)} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+        <div onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:"",});}} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:500,padding:"24px 28px",boxShadow:"0 24px 64px rgba(0,0,0,.25)"}}>
-            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>⚠️ Looks like a duplicate</div>
-            <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>We found a similar project already in the pipeline for <strong>{dupPrompt.newData.client}</strong>. Is this a brand-new separate project, or a scope addition to an existing one?</div>
-            {dupPrompt.matches.map(m=>(
-              <div key={m.id} style={{background:"#fffbeb",borderRadius:10,padding:"12px 14px",marginBottom:10,border:"1.5px solid #fbbf24"}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{m.client}{m.product?` — ${m.product}`:""}</div>
-                <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{[m.ceNo,m.stage].filter(Boolean).join(" · ")}</div>
-                <button onClick={()=>{setDupPrompt(null);if(role==="ProjectMover"){setPage("addenda");}else{setSelProj(m.id);setOpsTab("addenda");setPage(role==="Operations"?"home":"ops");}}} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
-              </div>
-            ))}
-            <div style={{display:"flex",gap:10,marginTop:16}}>
-              <button onClick={()=>{const d=dupPrompt.newData;setDupPrompt(null);saveDeal(d,true);}} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✅ Save as New Project</button>
-              <button onClick={()=>setDupPrompt(null)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>↩ Cancel</button>
-            </div>
+            {!dupScopeTarget?(
+              <>
+                <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>⚠️ Looks like a duplicate</div>
+                <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>We found a similar project already in the pipeline for <strong>{dupPrompt.newData.client}</strong>. Is this a brand-new separate project, or a scope addition to an existing one?</div>
+                {dupPrompt.matches.map(m=>(
+                  <div key={m.id} style={{background:"#fffbeb",borderRadius:10,padding:"12px 14px",marginBottom:10,border:"1.5px solid #fbbf24"}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{m.client}{m.product?` — ${m.product}`:""}</div>
+                    <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>{[m.ceNo,m.stage].filter(Boolean).join(" · ")}</div>
+                    <button onClick={()=>{
+                      if(HAS_ADDENDA_PAGE.includes(role)){
+                        setDupPrompt(null);setDupScopeTarget(null);
+                        if(role==="ProjectMover"){setPage("addenda");}
+                        else{setSelProj(m.id);setOpsTab("addenda");setPage(role==="Operations"?"home":"ops");}
+                      } else {
+                        // Roles without an addenda page — expand inline form here
+                        setDupScopeTarget({dealId:m.id,dealName:m.client+(m.product?` — ${m.product}`:"")});
+                        setDupScopeForm({title:dupPrompt.newData.product||dupPrompt.newData.contact||"",desc:"",value:String(dupPrompt.newData.value||"")});
+                      }
+                    }} style={{marginTop:8,background:"#fef3c7",border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#92400e",cursor:"pointer"}}>➕ Add as Scope Change to this project</button>
+                  </div>
+                ))}
+                <div style={{display:"flex",gap:10,marginTop:16}}>
+                  <button onClick={()=>{const d=dupPrompt.newData;setDupPrompt(null);saveDeal(d,true);}} style={{flex:1,background:"#1e293b",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✅ Save as New Project</button>
+                  <button onClick={()=>{setDupPrompt(null);setDupScopeTarget(null);}} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>↩ Cancel</button>
+                </div>
+              </>
+            ):(
+              <>
+                <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:4}}>⚠️ Log Scope Change</div>
+                <div style={{fontSize:".78rem",color:"#64748b",marginBottom:14}}>Adding to: <strong>{dupScopeTarget.dealName}</strong></div>
+                <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                  <div>
+                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Title <span style={{color:"#ef4444"}}>*</span></div>
+                    <input value={dupScopeForm.title} onChange={e=>setDupScopeForm(f=>({...f,title:e.target.value}))} placeholder="Scope change description" style={{width:"100%",border:"1.5px solid #fbbf24",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Description</div>
+                    <textarea value={dupScopeForm.desc} onChange={e=>setDupScopeForm(f=>({...f,desc:e.target.value}))} rows={2} placeholder="What changed, why, impact…" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box",background:"#fffbeb"}}/>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".72rem",fontWeight:700,color:"#92400e",marginBottom:3}}>Value (₱)</div>
+                    <input type="number" value={dupScopeForm.value} onChange={e=>setDupScopeForm(f=>({...f,value:e.target.value}))} placeholder="e.g. 25000" style={{width:"100%",border:"1.5px solid #fed7aa",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box",background:"#fffbeb"}}/>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:10,marginTop:16}}>
+                  <button onClick={()=>{
+                    if(!dupScopeForm.title.trim()) return;
+                    addAddendum2({...dupScopeForm,value:dupScopeForm.value?Number(dupScopeForm.value):0,projectId:dupScopeTarget.dealId,projectName:dupScopeTarget.dealName,status:"Discovered",salesNotified:false,clientApproved:false,receiptType:"OR",withholding:false,discoveredBy:session?.name||""});
+                    setDupPrompt(null);setDupScopeTarget(null);setDupScopeForm({title:"",desc:"",value:""});
+                  }} style={{flex:1,background:"#c2410c",border:"none",borderRadius:9,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Log Scope Change</button>
+                  <button onClick={()=>setDupScopeTarget(null)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"10px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",color:"#64748b",cursor:"pointer"}}>← Back</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
