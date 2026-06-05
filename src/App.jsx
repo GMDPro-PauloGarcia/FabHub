@@ -7013,14 +7013,14 @@ export default function App(){
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
-                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.client}</span>
                       {vvipClients?.has(d.client)&&<span style={{fontSize:".6rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⭐</span>}
                       {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".6rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700}}>₱3M+</span>}
                       {d.awardRequestData&&<span style={{fontSize:".6rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>🏆 Pending</span>}
                     </div>
                     <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
                       {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
-                      {d.contact&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.contact}</span>}
+                      {d.client&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.client}</span>}
                     </div>
                     <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3,display:"flex",gap:6,flexWrap:"wrap"}}>
                       {d.salesOwner&&<span>👤 {d.salesOwner.split(" ")[0]}</span>}
@@ -7048,14 +7048,14 @@ export default function App(){
               onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
+                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
                   {vvipClients?.has(d.client)&&<span style={{fontSize:".58rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⭐</span>}
                   {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".58rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>₱3M+</span>}
                   {d.awardRequestData&&<span style={{fontSize:".58rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>🏆 Pending</span>}
                 </div>
                 <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {d.ceNo&&<span style={{color:"#475569",fontWeight:600}}>{d.ceNo}</span>}
-                  {d.contact&&<span style={{color:"#475569"}}>📋 {d.contact}</span>}
+                  {d.client&&<span style={{color:"#475569"}}>🏢 {d.client}</span>}
                   {d.salesOwner&&<span>👤 {d.salesOwner.split(" ")[0]}</span>}
                   {d.addedBy&&d.addedBy!==d.salesOwner&&<span style={{color:"#6366f1",background:"#eef2ff",borderRadius:4,padding:"0 4px",fontSize:".6rem",fontWeight:700}} title={`Added by ${d.addedBy}`}>+{d.addedBy.split(" ")[0]}</span>}
                   <span style={{color:d.followUp&&d.followUp<today?"#ef4444":daysSince(d.dateAcquired)>15?"#f59e0b":"#94a3b8"}}>
@@ -7151,10 +7151,10 @@ export default function App(){
                     <div style={{padding:"12px 14px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:2}}>{d.client}</div>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:2}}>{d.contact||d.client}</div>
                           <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
                             {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
-                            {d.contact&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.contact}</span>}
+                            {d.client&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.client}</span>}
                             {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
                             {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".65rem"}}>{ae}</span>}
                             {tatLabel&&<span style={{color:"#8b5cf6"}}>📅 {tatLabel}</span>}
@@ -7175,10 +7175,10 @@ export default function App(){
                   return(
                     <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
                         <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2,display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
                           {d.ceNo&&<span style={{fontWeight:600,color:"#64748b"}}>{d.ceNo}</span>}
-                          {d.contact&&<span style={{color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120,whiteSpace:"nowrap"}}>{d.contact}</span>}
+                          {d.client&&<span style={{color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120,whiteSpace:"nowrap"}}>{d.client}</span>}
                           {jo?.pm1&&<span style={{color:"#64748b"}}>👷 {jo.pm1.split(" ")[0]}</span>}
                           {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".6rem"}}>{ae}</span>}
                           {tatLabel&&<span style={{color:"#8b5cf6",fontSize:".62rem"}}>📅 {tatLabel}</span>}
