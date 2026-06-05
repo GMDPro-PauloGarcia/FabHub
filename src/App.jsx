@@ -3743,6 +3743,7 @@ export default function App(){
   const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
   const[isMobile,     setIsMobile]     = useState(()=>window.innerWidth<768);
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
+  const mobileNavRef = React.useRef(null);
   const[blockers,     setBlockers]     = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.blockers)||"[]");}catch{return [];}});
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
@@ -4487,6 +4488,8 @@ export default function App(){
       </>
     );
   };
+  // Always keep ref current so Wrap's stale closure can read the latest nav element
+  mobileNavRef.current = isMobile ? <MobileBottomNav/> : null;
 
   const Wrap=React.useCallback(({children})=>{
     const W=navCollapsed?64:220;
@@ -4604,7 +4607,7 @@ export default function App(){
           <Btn variant="ghost" onClick={()=>setInfModal(false)}>Cancel</Btn>
         </div>
       </Modal>
-      <MobileBottomNav/>
+      {mobileNavRef.current}
     </div>
   );
   },[navCollapsed, isMobile, role, page]);
