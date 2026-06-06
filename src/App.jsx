@@ -4271,12 +4271,12 @@ export default function App(){
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"Design Work", items:[{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"checklist",l:"Checklist"},{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"Design Work", items:[{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"swatchboard",l:"Swatchboard"}]},
     ],
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"}]},
       {group:"Updates",  items:[{id:"pmupdates",l:"📝 PM Updates"},{id:"addenda",l:"⚠️ Scope Changes"}]},
-      {group:"Work",     items:[{id:"checklist",l:"Checklist"}]},
+      {group:"Work",     items:[]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
@@ -5774,7 +5774,6 @@ export default function App(){
         </div>
         <div style={{display:"flex",gap:8}}>
           <button onClick={()=>setPage("projects")} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>📋 Project Cards</button>
-          <button onClick={()=>setPage("joborders")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",cursor:"pointer"}}>📄 Job Orders</button>
         </div>
       </div>
 
