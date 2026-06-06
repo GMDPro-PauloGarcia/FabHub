@@ -8120,9 +8120,6 @@ export default function App(){
         matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm}
         editMat={editMat} setEditMat={setEditMat} saveMat={saveMat}
         addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
-    if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} updateJO={updateJO} delJo={delJo} role={role} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -8213,8 +8210,6 @@ export default function App(){
         ))}
       </Wrap>
     );
-        if(page==="joborders") return <JOView deals={deals} wonDeals={wonDeals} projs={projs} jos={jos} joStep={joStep} setJoStep={setJoStep} joSel={joSel} setJoSel={setJoSel} joExtra={joExtra} setJoExtra={setJoExtra} viewJO={viewJO} setViewJO={setViewJO} issueJO={issueJO} overallProg={overallProg} updateJO={updateJO} delJo={delJo} role={role} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
   }
 
   // ─── FINANCE ──────────────────────────────────────────────────────────────
@@ -8305,7 +8300,6 @@ export default function App(){
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
     if(page==="expenses") return(
       <Wrap>
         <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
@@ -8475,8 +8469,6 @@ export default function App(){
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
-    if(page==="checklist") return <ChecklistView checklist={checklist} projList={projList} deals={deals} clientName={clientName} openAddCl={openAddCl} openEditCl={openEditCl} delCl={delCl} clStatusQ={clStatusQ} clModal={clModal} setClModal={setClModal} clForm={clForm} setClForm={setClForm} editCl={editCl} saveCl={saveCl} clProjF={clProjF} setClProjF={setClProjF} clTypeF={clTypeF} setClTypeF={setClTypeF} clStatF={clStatF} setClStatF={setClStatF} clDeptF={clDeptF} setClDeptF={setClDeptF} role={role} wonDeals={wonDeals} loadChecklistTemplate={loadChecklistTemplate} Wrap={Wrap} users={users}/>;
-    if(page==="joborders") return <JOView wonDeals={wonDeals} projs={projs} jos={jos} upJos={upJos} Wrap={Wrap}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
@@ -8761,7 +8753,18 @@ export default function App(){
         addenda={addenda} billings={billings} mreqs={mreqs} breqs={breqs}
         isMobile={isMobile} createCard={createProjectCard}
         updateJO={updateJO} upPcards={upPcards}
-        addAddendum2={addAddendum2}/>
+        addAddendum2={addAddendum2}
+        checklist={checklist}
+        openAddCl={openAddCl}
+        openEditCl={openEditCl}
+        delCl={delCl}
+        clStatusQ={clStatusQ}
+        clModal={clModal}
+        setClModal={setClModal}
+        clForm={clForm}
+        setClForm={setClForm}
+        editCl={editCl}
+        saveCl={saveCl}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -9307,7 +9310,7 @@ export default function App(){
     <Wrap>
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} budgets={budgets} session={session} role={role}/>
+        wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/>
     </Wrap>
   );
 
@@ -12634,64 +12637,220 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   );
 }
 
-// ─── PROCUREMENT VIEW 2 (Full PR → PO → Delivery) ────────────────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,role}){
-  const[showForm,  setShowForm]  = useState(false);
-  const[editingId, setEditingId] = useState(null);
-  const[filterProj,setFilterProj]= useState("all");
-  const[filterStat,setFilterStat]= useState("all");
-  const[filterCat, setFilterCat] = useState("all");
-  const[form,setForm]=useState(emptyPR());
+// ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
+function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,role,toastEmit}){
+  const today=new Date().toISOString().split("T")[0];
+  const[mode,setMode]=useState("list");
+  const[editingId,setEditingId]=useState(null);
+  const[editForm,setEditForm]=useState(emptyPR());
+  const[filterProj,setFilterProj]=useState("all");
+  const[filterStat,setFilterStat]=useState("all");
+  const[poSupplier,setPoSupplier]=useState("");
+  const[poNumber,setPoNumber]=useState("");
+  const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
+  const[poStatus,setPoStatus]=useState("Draft");
+  const[poItems,setPoItems]=useState([emptyPoItem()]);
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
-  const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2});
-  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
 
-  const openNew=(projId="")=>{
-    const deal=wonDeals.find(d=>d.id===projId);
-    setForm({...emptyPR(),projectId:projId,projectName:deal?.client||"",requestedBy:session?.name||""});
-    setEditingId(null); setShowForm(true);
-  };
-  const openEdit=(pr)=>{setForm({...pr});setEditingId(pr.id);setShowForm(true);};
-  const savePR=()=>{
-    if(!form.itemName||!form.projectId) return;
-    if(editingId) updatePR(editingId,form);
-    else addPR(form);
-    setShowForm(false); setEditingId(null);
+  function emptyPoItem(){
+    return {_id:Math.random().toString(36).slice(2),projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0};
+  }
+
+  const nextPoNo=()=>{
+    const existing=prs.map(p=>p.poNumber).filter(Boolean);
+    const nums=existing.map(n=>{const m=n.match(/PO-(\d+)/);return m?Number(m[1]):0;}).filter(x=>x>0);
+    const next=(nums.length?Math.max(...nums):0)+1;
+    return `PO-${String(next).padStart(4,"0")}`;
   };
 
-  const filtered=prs.filter(p=>{
+  const openNewPO=()=>{
+    setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
+    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]); setMode("newpo");
+  };
+
+  const addPoItem=()=>setPoItems(p=>[...p,emptyPoItem()]);
+  const removePoItem=(id)=>setPoItems(p=>p.filter(i=>i._id!==id));
+  const updatePoItem=(id,k,v)=>setPoItems(p=>p.map(i=>i._id===id?{...i,[k]:v}:i));
+
+  const submitPO=()=>{
+    if(!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
+    const poNo=poNumber.trim();
+    poItems.forEach(item=>{
+      const deal=wonDeals.find(d=>d.id===item.projectId);
+      addPR({
+        ...emptyPR(),
+        itemName:item.itemName, category:item.category, budgetCategory:item.budgetCategory,
+        qty:item.qty, unit:item.unit, estUnitCost:item.estUnitCost,
+        projectId:item.projectId, projectName:deal?.client||item.projectName||"",
+        supplier:poSupplier, poNumber:poNo, poDate:poDate,
+        status:poStatus, requestedBy:session?.name||"",
+        approvedBy:poStatus==="PO Issued"?session?.name||"":""
+      });
+    });
+    toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
+    setMode("list");
+  };
+
+  const filteredAll=prs.filter(p=>{
     if(filterProj!=="all"&&p.projectId!==filterProj) return false;
     if(filterStat!=="all"&&p.status!==filterStat) return false;
-    if(filterCat!=="all"&&p.category!==filterCat) return false;
     return true;
   });
 
-  const STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","PO Issued":"#3b82f6","Partially Delivered":"#8b5cf6","Delivered":"#10b981","Cancelled":"#ef4444"};
-  const totalValue=filtered.reduce((s,p)=>{
-    const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty); return s+cost;
-  },0);
+  const grouped=(()=>{
+    const byPO={};
+    const solo=[];
+    filteredAll.forEach(p=>{
+      if(p.poNumber){
+        if(!byPO[p.poNumber]) byPO[p.poNumber]=[];
+        byPO[p.poNumber].push(p);
+      } else {
+        solo.push(p);
+      }
+    });
+    const poGroups=Object.entries(byPO).map(([poNo,items])=>({type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)}));
+    const soloItems=solo.map(p=>({type:"solo",pr:p}));
+    return [...poGroups,...soloItems].sort((a,b)=>{
+      const aDate=a.type==="po"?a.poDate:a.pr.createdDate||"";
+      const bDate=b.type==="po"?b.poDate:b.pr.createdDate||"";
+      return bDate.localeCompare(aDate);
+    });
+  })();
 
+  const STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","PO Issued":"#3b82f6","Partially Delivered":"#8b5cf6","Delivered":"#10b981","Cancelled":"#ef4444"};
+  const totalValue=filteredAll.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
+
+  // Edit single PR inline
+  if(mode==="editpr"&&editingId){
+    const ef=(k,v)=>setEditForm(p=>({...p,[k]:v}));
+    return(
+      <div>
+        <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>Edit Purchase Request</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+            <Fld label="Project" required>
+              <Sel value={editForm.projectId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);ef("projectId",e.target.value);ef("projectName",d?.client||"");}}>
+                <option value="">— Select Project —</option>
+                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+              </Sel>
+            </Fld>
+            <Fld label="Budget Category">
+              <Sel value={editForm.budgetCategory||"Materials"} onChange={e=>ef("budgetCategory",e.target.value)}>
+                {BUDGET_CATS.map(c=><option key={c}>{c}</option>)}
+              </Sel>
+            </Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={editForm.itemName} onChange={e=>ef("itemName",e.target.value)}/></Fld></div>
+            <Fld label="Category"><Sel value={editForm.category} onChange={e=>ef("category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+            <Fld label="Supplier"><Inp value={editForm.supplier} onChange={e=>ef("supplier",e.target.value)}/></Fld>
+            <Fld label="Qty"><Inp type="number" value={editForm.qty} onChange={e=>ef("qty",e.target.value)}/></Fld>
+            <Fld label="Unit"><Sel value={editForm.unit} onChange={e=>ef("unit",e.target.value)}>{["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}</Sel></Fld>
+            <Fld label="Est Unit Cost (₱)"><Inp type="number" value={editForm.estUnitCost} onChange={e=>ef("estUnitCost",e.target.value)}/></Fld>
+            <Fld label="Actual Unit Cost (₱)"><Inp type="number" value={editForm.actUnitCost} onChange={e=>ef("actUnitCost",e.target.value)}/></Fld>
+            <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
+            <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
+            <Fld label="Requested By"><Inp value={editForm.requestedBy} onChange={e=>ef("requestedBy",e.target.value)}/></Fld>
+            {(editForm.status==="Partially Delivered"||editForm.status==="Delivered")&&(<>
+              <Fld label="Qty Delivered"><Inp type="number" value={editForm.qtyDelivered} onChange={e=>ef("qtyDelivered",e.target.value)}/></Fld>
+              <Fld label="Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
+              <div style={{gridColumn:"1/-1"}}><Fld label="DR / Delivery Note"><Inp value={editForm.deliveryNote} onChange={e=>ef("deliveryNote",e.target.value)}/></Fld></div>
+            </>)}
+            <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={editForm.notes} onChange={e=>ef("notes",e.target.value)}/></Fld></div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:16}}>
+            <button onClick={()=>{updatePR(editingId,editForm);toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
+            <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // New PO form
+  if(mode==="newpo"){
+    const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectId&&i.itemName.trim());
+    const grandTotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
+    return(
+      <div>
+        <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>📦 New Purchase Order</div>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(4,1fr)",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #f1f5f9"}}>
+            <Fld label="Supplier" required><Inp value={poSupplier} onChange={e=>setPoSupplier(e.target.value)} placeholder="e.g. Pacific Hardware Supply"/></Fld>
+            <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
+            <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
+            <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+          </div>
+          <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Line Items</div>
+          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+            {poItems.map((item,idx)=>{
+              const lineTotal=n(item.estUnitCost)*n(item.qty);
+              return(
+                <div key={item._id} style={{background:"#f8fafc",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                    <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Item #{idx+1}</span>
+                    {poItems.length>1&&<button onClick={()=>removePoItem(item._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",fontFamily:"inherit"}}>✕ Remove</button>}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr) 1fr 1fr",gap:10}}>
+                    <Fld label="Project" required>
+                      <Sel value={item.projectId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);updatePoItem(item._id,"projectId",e.target.value);updatePoItem(item._id,"projectName",d?.client||"");}}>
+                        <option value="">— Select Project —</option>
+                        {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+                      </Sel>
+                    </Fld>
+                    <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
+                    <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+                    <Fld label="Budget Line"><Sel value={item.budgetCategory} onChange={e=>updatePoItem(item._id,"budgetCategory",e.target.value)}>{BUDGET_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+                    <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1}/></Fld>
+                    <Fld label="Unit"><Sel value={item.unit} onChange={e=>updatePoItem(item._id,"unit",e.target.value)}>{["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}</Sel></Fld>
+                    <Fld label="Est Unit Cost (₱)"><Inp type="number" value={item.estUnitCost} onChange={e=>updatePoItem(item._id,"estUnitCost",e.target.value)} placeholder="0"/></Fld>
+                    <div style={{display:"flex",alignItems:"flex-end",paddingBottom:2}}>
+                      <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 12px",width:"100%"}}>
+                        <div style={{fontSize:".63rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Line Total</div>
+                        <div style={{fontWeight:700,color:"#3b82f6",fontSize:".9rem"}}>{fmt(lineTotal)}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={addPoItem} style={{background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:700,width:"100%",marginBottom:16}}>+ Add Item</button>
+          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={submitPO} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
+              📦 Submit Purchase Order ({poItems.length} item{poItems.length>1?"s":""})
+            </button>
+            <button onClick={()=>setMode("list")} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // List view
   return(
     <div>
-      {/* Header */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Procurement</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>PR → PO → Delivery — all tagged to projects</div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📦 Purchase Orders</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Issue POs to suppliers — each with multiple project-tagged line items</div>
         </div>
-        <button onClick={()=>openNew()} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
-          + New Purchase Request
-        </button>
+        <button onClick={openNewPO} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
       </div>
 
-      {/* KPI strip */}
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
         {[
-          {l:"Total PRs",       v:prs.length,                                           c:"#0f172a"},
-          {l:"Pending Approval",v:prs.filter(p=>p.status==="Pending Approval").length,  c:"#f59e0b"},
-          {l:"PO Issued",       v:prs.filter(p=>p.status==="PO Issued").length,         c:"#3b82f6"},
-          {l:"Total Value",     v:"₱"+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#10b981"},
+          {l:"Total POs",        v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a"},
+          {l:"Pending Approval", v:prs.filter(p=>p.status==="Pending Approval").length, c:"#f59e0b"},
+          {l:"PO Issued",        v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length, c:"#3b82f6"},
+          {l:"Total Value",      v:"₱"+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#10b981"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
@@ -12700,164 +12859,121 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
         ))}
       </div>
 
-      {/* Filters */}
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-        <select value={filterProj} onChange={e=>setFilterProj(e.target.value)}
-          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+        <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Projects</option>
           {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
         </select>
-        <select value={filterStat} onChange={e=>setFilterStat(e.target.value)}
-          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+        <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Statuses</option>
           {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
-        <select value={filterCat} onChange={e=>setFilterCat(e.target.value)}
-          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-          <option value="all">All Categories</option>
-          {PR_CATS.map(c=><option key={c}>{c}</option>)}
-        </select>
       </div>
 
-      {/* PR Form */}
-      {showForm&&(
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:18,boxShadow:"0 4px 16px rgba(0,0,0,.08)"}}>
-          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>
-            {editingId?"Edit Purchase Request":"New Purchase Request"}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-            <Fld label="Project" required>
-              <Sel value={form.projectId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);f("projectId",e.target.value);f("projectName",d?.client||"");}}>
-                <option value="">— Select Project —</option>
-                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Budget Category" hint="Which budget line does this hit?">
-              <Sel value={form.budgetCategory||"Materials"} onChange={e=>f("budgetCategory",e.target.value)}>
-                {BUDGET_CATS.map(c=><option key={c}>{c}</option>)}
-              </Sel>
-            </Fld>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Item Name / Description" required>
-                <Inp value={form.itemName} onChange={e=>f("itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White 4x8"/>
-              </Fld>
-            </div>
-            <Fld label="Category">
-              <Sel value={form.category} onChange={e=>f("category",e.target.value)}>
-                {PR_CATS.map(c=><option key={c}>{c}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Supplier"><Inp value={form.supplier} onChange={e=>f("supplier",e.target.value)} placeholder="Supplier name"/></Fld>
-            <Fld label="Qty"><Inp type="number" value={form.qty} onChange={e=>f("qty",e.target.value)} min={1}/></Fld>
-            <Fld label="Unit">
-              <Sel value={form.unit} onChange={e=>f("unit",e.target.value)}>
-                {["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="Estimated Unit Cost (₱)"><Inp type="number" value={form.estUnitCost} onChange={e=>f("estUnitCost",e.target.value)} placeholder="0.00"/></Fld>
-            <Fld label="Actual Unit Cost (₱)" hint="Fill in when PO is confirmed"><Inp type="number" value={form.actUnitCost} onChange={e=>f("actUnitCost",e.target.value)} placeholder="0.00"/></Fld>
-            {/* Est vs Actual cost display */}
-            {(n(form.estUnitCost)>0||n(form.actUnitCost)>0)&&(
-              <div style={{gridColumn:"1/-1",background:"#f8fafc",borderRadius:8,padding:"10px 14px",display:"flex",gap:20,flexWrap:"wrap"}}>
-                <div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Est Total</div><div style={{fontWeight:700,color:"#3b82f6"}}>{fmt(n(form.estUnitCost)*n(form.qty))}</div></div>
-                {n(form.actUnitCost)>0&&<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Actual Total</div><div style={{fontWeight:700,color:n(form.actUnitCost)>n(form.estUnitCost)?"#ef4444":"#10b981"}}>{fmt(n(form.actUnitCost)*n(form.qty))}</div></div>}
-                {n(form.actUnitCost)>0&&n(form.estUnitCost)>0&&<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Variance</div><div style={{fontWeight:700,color:n(form.actUnitCost)>n(form.estUnitCost)?"#ef4444":"#059669"}}>{fmt((n(form.actUnitCost)-n(form.estUnitCost))*n(form.qty))}</div></div>}
-              </div>
-            )}
-            <Fld label="Status">
-              <Sel value={form.status} onChange={e=>f("status",e.target.value)}>
-                {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
-              </Sel>
-            </Fld>
-            <Fld label="PO Number"><Inp value={form.poNumber} onChange={e=>f("poNumber",e.target.value)} placeholder="PO-2026-001"/></Fld>
-            <Fld label="PO Date"><Inp type="date" value={form.poDate} onChange={e=>f("poDate",e.target.value)}/></Fld>
-            <Fld label="Requested By"><Inp value={form.requestedBy} onChange={e=>f("requestedBy",e.target.value)} placeholder={session?.name||"Name"}/></Fld>
-            {/* Delivery section */}
-            {(form.status==="Partially Delivered"||form.status==="Delivered")&&(
-              <>
-                <Fld label="Qty Delivered"><Inp type="number" value={form.qtyDelivered} onChange={e=>f("qtyDelivered",e.target.value)} min={0}/></Fld>
-                <Fld label="Delivery Date"><Inp type="date" value={form.deliveryDate} onChange={e=>f("deliveryDate",e.target.value)}/></Fld>
-                <div style={{gridColumn:"1/-1"}}><Fld label="Delivery Note / DR Number"><Inp value={form.deliveryNote} onChange={e=>f("deliveryNote",e.target.value)} placeholder="DR No., remarks…"/></Fld></div>
-              </>
-            )}
-            <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any additional notes…"/></Fld></div>
-          </div>
-          <div style={{display:"flex",gap:10,marginTop:14}}>
-            <button onClick={savePR} disabled={!form.itemName||!form.projectId}
-              style={{background:form.itemName&&form.projectId?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:form.itemName&&form.projectId?"#fff":"#94a3b8",cursor:form.itemName&&form.projectId?"pointer":"not-allowed"}}>
-              {editingId?"Update PR":"Submit PR"}
-            </button>
-            <button onClick={()=>{setShowForm(false);setEditingId(null);}}
-              style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* PR List */}
-      {filtered.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase requests yet. Hit + New Purchase Request to start logging.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.map(pr=>{
-          const estTotal=(n(pr.estUnitCost))*n(pr.qty);
-          const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-          const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
-          const deal=wonDeals.find(d=>d.id===pr.projectId);
-          return(
-            <div key={pr.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <div style={{flex:1,minWidth:180}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{pr.itemName}</span>
-                    <span style={{fontSize:".68rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{pr.status}</span>
-                    <span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{pr.category}</span>
-                    <span style={{fontSize:".68rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 8px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
+      {grouped.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {grouped.map((g,gi)=>{
+          if(g.type==="po"){
+            const {poNo,items,supplier,status,poDate:poD,total}=g;
+            const allSameStatus=items.every(i=>i.status===status);
+            return(
+              <div key={poNo} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f8fafc",flexWrap:"wrap",gap:8}}>
+                  <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                    <span style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>📄 {poNo}</span>
+                    {supplier&&<span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>🏭 {supplier}</span>}
+                    {poD&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>{poD}</span>}
+                    <span style={{fontSize:".68rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{status}</span>
                   </div>
-                  <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                    {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
-                    <span>Qty: {pr.qty} {pr.unit}</span>
-                    {pr.supplier&&<span>🏭 {pr.supplier}</span>}
-                    {pr.poNumber&&<span>PO: {pr.poNumber}</span>}
-                    <span>By: {pr.requestedBy||"—"}</span>
-                    {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ Approved by {pr.approvedBy}{pr.approvedAt?` · ${pr.approvedAt}`:""}</span>}
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#10b981"}}>{fmt(total)}</span>
+                    <span style={{fontSize:".7rem",color:"#94a3b8"}}>{items.length} item{items.length>1?"s":""}</span>
+                    {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
                   </div>
-                  {/* Delivery progress */}
-                  {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&(
-                    <div style={{marginTop:8}}>
-                      <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:3}}>
-                        <span>Delivered: {pr.qtyDelivered||0} of {pr.qty} {pr.unit}</span>
-                        <span style={{fontWeight:700,color:delivPct===100?"#059669":"#f59e0b"}}>{delivPct}%</span>
-                      </div>
-                      <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:delivPct+"%",background:delivPct===100?"#10b981":"#f59e0b",borderRadius:3,transition:"width .5s"}}/>
-                      </div>
-                    </div>
-                  )}
                 </div>
-                <div style={{display:"flex",gap:12,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}}>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{fmt(actTotal)}</div>
-                    {n(pr.actUnitCost)>0&&n(pr.estUnitCost)>0&&n(pr.actUnitCost)!==n(pr.estUnitCost)&&(
-                      <div style={{fontSize:".68rem",color:n(pr.actUnitCost)>n(pr.estUnitCost)?"#ef4444":"#059669",marginTop:2}}>
-                        {n(pr.actUnitCost)>n(pr.estUnitCost)?"▲":"▼"} vs est {fmt(estTotal)}
+                <div>
+                  {items.map((pr,ii)=>{
+                    const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
+                    const deal=wonDeals.find(d=>d.id===pr.projectId);
+                    const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
+                    return(
+                      <div key={pr.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
+                            <span style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</span>
+                            {!allSameStatus&&<span style={{fontSize:".65rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{pr.status}</span>}
+                            <span style={{fontSize:".65rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:20}}>{pr.category}</span>
+                            <span style={{fontSize:".65rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 7px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
+                          </div>
+                          <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
+                            {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                            <span>{pr.qty} {pr.unit}</span>
+                            {pr.deliveryNote&&<span>DR: {pr.deliveryNote}</span>}
+                          </div>
+                          {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&delivPct<100&&(
+                            <div style={{marginTop:4,display:"flex",alignItems:"center",gap:6}}>
+                              <div style={{flex:1,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden",maxWidth:120}}><div style={{height:"100%",width:delivPct+"%",background:"#f59e0b",borderRadius:2}}/></div>
+                              <span style={{fontSize:".65rem",color:"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{fmt(actTotal)}</span>
+                          <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 7px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                            {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                          </select>
+                          <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                          {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          } else {
+            const {pr}=g;
+            const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
+            const deal=wonDeals.find(d=>d.id===pr.projectId);
+            const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
+            return(
+              <div key={pr.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:180}}>
+                    <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{pr.itemName}</span>
+                      <span style={{fontSize:".68rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{pr.status}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{pr.category}</span>
+                      <span style={{fontSize:".68rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 8px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
+                    </div>
+                    <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
+                      {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                      <span>Qty: {pr.qty} {pr.unit}</span>
+                      {pr.supplier&&<span>🏭 {pr.supplier}</span>}
+                      <span>By: {pr.requestedBy||"—"}</span>
+                      {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {pr.approvedBy}</span>}
+                    </div>
+                    {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&(
+                      <div style={{marginTop:6,display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{width:100,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:delivPct+"%",background:delivPct===100?"#10b981":"#f59e0b",borderRadius:2}}/></div>
+                        <span style={{fontSize:".67rem",color:delivPct===100?"#059669":"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
                       </div>
                     )}
                   </div>
-                  <div style={{display:"flex",gap:6}}>
-                    <select value={pr.status} onChange={e=>{
-                      const st=e.target.value;
-                      const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};
-                      updatePR(pr.id,{status:st,...extra});
-                    }} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                      {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
-                    </select>
-                    <button onClick={()=>openEdit(pr)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                    <button onClick={()=>{if(window.confirm("Delete this PR?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+                  <div style={{display:"flex",gap:10,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{fmt(actTotal)}</span>
+                    <div style={{display:"flex",gap:6}}>
+                      <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                        {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                      </select>
+                      <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                      {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this PR?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          );
+            );
+          }
         })}
       </div>
     </div>
@@ -14172,7 +14288,8 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl}){
+  const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(null);
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
@@ -14612,6 +14729,12 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             win.focus();
           };
 
+          const projCl=(checklist||[]).filter(c=>c.projectId===selDeal).sort((a,b)=>{
+            const pri={Urgent:0,High:1,Normal:2};
+            const sta={"To Do":0,"In Progress":1,"Done":2};
+            return (sta[a.status]-sta[b.status])||(pri[a.priority]-pri[b.priority]);
+          });
+
           return(
             <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
@@ -14965,6 +15088,43 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
                 );
               })()}
+
+              {/* ── Project Checklist ── */}
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{padding:isMobile?"12px 14px":"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>
+                    ✅ Checklist
+                    {projCl.filter(c=>c.status!=="Done").length>0&&<span style={{background:"#f59e0b",color:"#fff",borderRadius:20,fontSize:".6rem",padding:"1px 7px",marginLeft:5}}>{projCl.filter(c=>c.status!=="Done").length}</span>}
+                  </div>
+                  <button onClick={()=>openAddCl&&openAddCl(selDeal,role==="Design"?"Design":"Operations")} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:700}}>+ Add Task</button>
+                </div>
+                {projCl.length===0?(
+                  <div style={{padding:"14px 20px",color:"#94a3b8",fontSize:".78rem",textAlign:"center"}}>No checklist tasks yet for this project.</div>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column",gap:0}}>
+                    {projCl.map((c,i)=>(
+                      <div key={c.id} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<projCl.length-1?"1px solid #f8fafc":"none",background:"#fff"}}>
+                        <select value={c.status} onChange={e=>clStatusQ&&clStatusQ(c.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".68rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
+                          {["To Do","In Progress","Done"].map(s=><option key={s}>{s}</option>)}
+                        </select>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:".82rem",color:c.status==="Done"?"#94a3b8":"#0f172a",textDecoration:c.status==="Done"?"line-through":"none",fontWeight:c.status==="Done"?400:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.title}</div>
+                          <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
+                            <span style={{background:"#f1f5f9",borderRadius:4,padding:"0 5px"}}>{c.dept||"Ops"}</span>
+                            {c.priority&&c.priority!=="Normal"&&<span style={{color:c.priority==="Urgent"?"#ef4444":"#f59e0b",fontWeight:700}}>{c.priority}</span>}
+                            {c.dueDate&&<span style={{color:c.dueDate<todayStr?"#ef4444":"#94a3b8"}}>Due {c.dueDate}</span>}
+                            {c.assignedTo&&<span>👤 {c.assignedTo.split(" ")[0]}</span>}
+                          </div>
+                        </div>
+                        <div style={{display:"flex",gap:4,flexShrink:0}}>
+                          {openEditCl&&<button onClick={()=>openEditCl(c)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
+                          {(role==="Manager"||role==="Operations")&&delCl&&<button onClick={()=>delCl(c.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* ── Scope Changes ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
