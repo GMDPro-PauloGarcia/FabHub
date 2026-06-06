@@ -4396,8 +4396,8 @@ export default function App(){
           <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
             {session?.name?.split(" ")[0]} · {session?.title||role}
           </span>
-          <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.2)",border:"none",borderRadius:6,padding:"4px 8px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none"}}>📘</a>
-          <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"4px 8px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>↩</button>
+          <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none",display:"inline-flex",alignItems:"center",minHeight:36}}>📘</a>
+          <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit",minHeight:36,minWidth:36,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>↩</button>
         </div>
       </div>
     );
@@ -7190,10 +7190,10 @@ export default function App(){
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
                     <span style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".9rem"}}>{pipeAmt(d)}</span>
                     <div style={{display:"flex",gap:4}}>
-                      {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
-                      {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>₱</button>}
-                      {(role==="Manager"||role==="Sales")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>🏆</button>}
-                      {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"7px 11px",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}} title="Delete">✕</button>}
+                      {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>✏</button>}
+                      {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
+                      {(role==="Manager"||role==="Sales")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>}
+                      {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Delete">✕</button>}
                     </div>
                   </div>
                 </div>
@@ -7221,16 +7221,16 @@ export default function App(){
                 </div>
               </div>
               <div style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{pipeAmt(d)}</div>
-              <div style={{display:"flex",gap:3,flexShrink:0}}>
-                {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>}
-                {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Set Client Price">₱</button>}
-                {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Update Client Price">₱✏</button>}
+              <div style={{display:"flex",gap:isMobile?4:3,flexShrink:0}}>
+                {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Edit">✏</button>}
+                {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Set Client Price">₱</button>}
+                {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Update Client Price">₱✏</button>}
                 {(role==="Manager"||role==="Sales")
-                  ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award Project">🏆</button>
-                  :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
+                  ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Award Project">🏆</button>
+                  :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Request Award">🏆</button>
                 }
-                {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Delete">✕</button>}
-                {(role==="Manager"||role==="Sales")&&<button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"4px 5px",fontSize:".68rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}} title="Did Not Win">✗</button>}
+                {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Delete">✕</button>}
+                {(role==="Manager"||role==="Sales")&&<button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:isMobile?"8px 9px":"4px 5px",fontSize:".68rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Did Not Win">✗</button>}
               </div>
             </div>
             );
@@ -7650,12 +7650,15 @@ export default function App(){
     if(page==="finance") return(
       <Wrap>
         {/* Finance tab bar */}
-        <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,overflowX:"auto"}}>
-          {[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"],["loans","💳 Loans"]].map(([t,l])=>(
-            <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
-              {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
-            </button>
-          ))}
+        <div style={{position:"relative",marginBottom:24}}>
+          <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"}}>
+            {[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"],["loans","💳 Loans"]].map(([t,l])=>(
+              <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:isMobile?".78rem":".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",flexShrink:0}}>
+                {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
+              </button>
+            ))}
+          </div>
+          {isMobile&&<div style={{position:"absolute",right:0,top:0,bottom:2,width:48,background:"linear-gradient(to right, transparent, #fff)",pointerEvents:"none"}}/>}
         </div>
 
         {/* ── OVERVIEW TAB ── */}
