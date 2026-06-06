@@ -4235,7 +4235,7 @@ export default function App(){
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
-      {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
+      {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
       {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
@@ -4244,7 +4244,7 @@ export default function App(){
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"}]},
-      {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"},{id:"checklist",l:"Checklist"}]},
+      {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
@@ -4265,7 +4265,7 @@ export default function App(){
     Operations:[
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"On-Site",   items:[{id:"projects",l:"📋 Project Cards"},{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
+      {group:"On-Site",   items:[{id:"projects",l:"📋 Project Cards"}]},
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
     ],
     Design:[
@@ -4276,7 +4276,7 @@ export default function App(){
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"}]},
       {group:"Updates",  items:[{id:"pmupdates",l:"📝 PM Updates"},{id:"addenda",l:"⚠️ Scope Changes"}]},
-      {group:"Work",     items:[{id:"joborders",l:"Job Orders"},{id:"checklist",l:"Checklist"}]},
+      {group:"Work",     items:[{id:"checklist",l:"Checklist"}]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
