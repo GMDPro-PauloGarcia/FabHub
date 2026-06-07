@@ -7376,11 +7376,12 @@ export default function App(){
                       Did Not Win ({dnw.length})
                     </div>
                     <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-                      <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>
+                      <div style={{overflowX:"auto"}}>
+                      <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",minWidth:520}}>
                         <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
                       </div>
                       {dnw.map((d,i)=>(
-                        <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"11px 18px",borderBottom:i<dnw.length-1?"1px solid #f1f5f9":"none",alignItems:"center",opacity:.75}}>
+                        <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"11px 18px",borderBottom:i<dnw.length-1?"1px solid #f1f5f9":"none",alignItems:"center",opacity:.75,minWidth:520}}>
                           <div>
                             <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
                             {d.contact&&<div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.contact}</div>}
@@ -7397,6 +7398,7 @@ export default function App(){
                           </div>
                         </div>
                       ))}
+                      </div>
                     </div>
                   </div>
                 );
@@ -7791,14 +7793,15 @@ export default function App(){
               </div>
               {/* Table */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:8}}>
+                <div style={{overflowX:"auto"}}>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:8,minWidth:580}}>
                   {["Project","Contract","Billed","Collected","Direct Costs","Margin"].map(h=>(
                     <div key={h} style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
                   ))}
                 </div>
                 {rows.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No projects yet.</div>}
                 {rows.map(({d,contractVal,billed,collected,directExp,grossProfit,margin,balance},i)=>(
-                  <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:8,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+                  <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:8,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center",minWidth:580}}>
                     <div>
                       <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
                       {d.contact&&<div style={{fontSize:".67rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {d.client}</div>}
@@ -7815,6 +7818,7 @@ export default function App(){
                     </div>
                   </div>
                 ))}
+                </div>
               </div>
             </div>
           );
@@ -10231,8 +10235,9 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
       {shown.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No design requests yet.</div>}
       {shown.length>0&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{overflowX:"auto"}}>
           {/* Table header */}
-          <div style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center"}}>
+          <div style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:640}}>
             {["DRF #","Status","Project","Client","Designer","Due",""].map((h,i)=>(
               <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
             ))}
@@ -10246,7 +10251,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
               <div key={drf.id} style={{borderBottom:idx<shown.length-1?"1px solid #f1f5f9":"none"}}>
                 {/* Summary row — click to expand */}
                 <div onClick={()=>setExpandedId(isExpanded?null:drf.id)}
-                  style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,padding:"10px 16px",alignItems:"center",cursor:"pointer",background:isNew?"#fff5f5":isExpanded?"#fdf4ff":"#fff",transition:"background .12s"}}
+                  style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,padding:"10px 16px",alignItems:"center",cursor:"pointer",background:isNew?"#fff5f5":isExpanded?"#fdf4ff":"#fff",transition:"background .12s",minWidth:640}}
                   onMouseEnter={e=>{if(!isNew&&!isExpanded)e.currentTarget.style.background="#f8fafc";}}
                   onMouseLeave={e=>{e.currentTarget.style.background=isNew?"#fff5f5":isExpanded?"#fdf4ff":"#fff";}}>
                   <div style={{fontWeight:700,color:"#ec4899",fontSize:".72rem"}}>{drf.drfNo}</div>
@@ -10326,6 +10331,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
               </div>
             );
           })}
+          </div>
         </div>
       )}
     </div>
@@ -14734,8 +14740,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             if(list.length===0) return <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>;
             return(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{overflowX:"auto"}}>
                 {/* Table header */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center"}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center",minWidth:660}}>
                   {["Project","Client","AE","PM","Health","Due"].map((h,i)=>(
                     <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
                   ))}
@@ -14751,7 +14758,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
                   return(
                     <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
-                      style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,padding:"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${hc}`,background:"#fff",transition:"background .1s"}}
+                      style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,padding:"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${hc}`,background:"#fff",transition:"background .1s",minWidth:660}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       {/* Project */}
@@ -14776,6 +14783,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     </div>
                   );
                 })}
+                </div>
               </div>
             );
           })()}
@@ -15792,7 +15800,8 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
 
       {stocklog.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No stock movements yet.</div>}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-        <div style={{display:"grid",gridTemplateColumns:"100px 1fr 100px 80px 120px 1fr",background:"#1e293b",padding:"10px 16px",gap:12}}>
+        <div style={{overflowX:"auto"}}>
+        <div style={{display:"grid",gridTemplateColumns:"100px 1fr 100px 80px 120px 1fr",background:"#1e293b",padding:"10px 16px",gap:12,minWidth:620}}>
           {["Date","Item","Qty","Type","Value","Project / Notes"].map(h=>(
             <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
           ))}
@@ -15803,7 +15812,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
           const val=n(mv.qty)*n(mv.unitCost);
           const typeClr=mv.moveType.startsWith("IN")?"#059669":mv.moveType.startsWith("OUT")?"#f97316":mv.moveType.startsWith("ADJUST")?"#3b82f6":"#94a3b8";
           return(
-            <div key={mv.id} style={{display:"grid",gridTemplateColumns:"100px 1fr 100px 80px 120px 1fr",padding:"10px 16px",gap:12,borderTop:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+            <div key={mv.id} style={{display:"grid",gridTemplateColumns:"100px 1fr 100px 80px 120px 1fr",padding:"10px 16px",gap:12,borderTop:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center",minWidth:620}}>
               <div style={{fontSize:".78rem",color:"#64748b"}}>{mv.date}</div>
               <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{item?.name||"Unknown"}<br/><span style={{fontWeight:400,color:"#94a3b8",fontSize:".68rem"}}>{item?.code}</span></div>
               <div style={{fontWeight:700,color:typeClr,fontSize:".88rem"}}>{mv.moveType.startsWith("ADJUST")?"→":mv.moveType.startsWith("OUT")?"-":"+"}{n(mv.qty)} {item?.unit}</div>
@@ -15813,6 +15822,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
