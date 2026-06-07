@@ -6136,36 +6136,40 @@ export default function App(){
             </div>
           ))}
         </div>
-        {escalations.length>0&&(
-          <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",marginBottom:20}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <span style={{fontWeight:800,color:"#dc2626",fontSize:".88rem"}}>⚠️ {escalations.length} Active Escalation{escalations.length!==1?"s":""}</span>
-              <div style={{display:"flex",gap:6}}>
-                {["E-1","E-2","E-3","E-4","E-5","E-6","E-7"].map(t=>{const n=escalations.filter(e=>e.type===t).length;return n>0?(
-                  <span key={t} style={{background:t==="E-2"?"#f59e0b":"#dc2626",color:"#fff",borderRadius:20,padding:"2px 8px",fontSize:".7rem",fontWeight:700}}>{t}: {n}</span>
-                ):null;})}
+        {escalations.length>0&&(()=>{
+          const ESC_META={
+            'E-1':{label:"Outstanding Billing",    dest:"billing",    amber:false},
+            'E-2':{label:"Addendum Needed",         dest:"addenda",    amber:true},
+            'E-3':{label:"Pipeline Action",         dest:"pipeline",   amber:false},
+            'E-4':{label:"DRF Pending",             dest:"drf",        amber:false},
+            'E-5':{label:"Procurement Overdue",     dest:"procurement",amber:false},
+            'E-6':{label:"Budget Request",          dest:"budgetreq",  amber:false},
+            'E-7':{label:"Billing Follow-Up",       dest:"billing",    amber:false},
+          };
+          const grouped=["E-1","E-2","E-3","E-4","E-5","E-6","E-7"]
+            .map(t=>({type:t,...ESC_META[t],items:escalations.filter(e=>e.type===t)}))
+            .filter(g=>g.items.length>0);
+          const highCount=escalations.filter(e=>e.severity==="high").length;
+          return(
+            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,overflow:"hidden",marginBottom:20}}>
+              <div style={{background:"#dc2626",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontWeight:800,color:"#fff",fontSize:".85rem"}}>⚠️ {escalations.length} Active Escalation{escalations.length!==1?"s":""}</span>
+                {highCount>0&&<span style={{fontSize:".72rem",color:"#fecaca",fontWeight:600}}>{highCount} high severity</span>}
               </div>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:5}}>
-              {escalations.slice(0,5).map((e,i)=>{
-                const dest={
-                  'E-1':'billing','E-2':'addenda','E-3':'pipeline',
-                  'E-4':'drf','E-5':'procurement','E-6':'budgetreq','E-7':'billing'
-                }[e.type]||'home';
-                return(
-                <div key={i} onClick={()=>setPage(dest)} style={{display:"flex",gap:8,alignItems:"flex-start",fontSize:".78rem",cursor:"pointer",borderRadius:7,padding:"3px 4px",transition:"background .12s"}}
-                  onMouseEnter={ev=>ev.currentTarget.style.background="#fee2e2"}
-                  onMouseLeave={ev=>ev.currentTarget.style.background="transparent"}>
-                  <span style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,color:e.severity==="high"?"#dc2626":"#92400e",borderRadius:6,padding:"1px 6px",fontWeight:700,flexShrink:0,fontSize:".68rem"}}>{e.type}</span>
-                  <span style={{color:"#64748b",flex:1}}><strong style={{color:"#0f172a"}}>{e.client}</strong> — {e.label}</span>
-                  <span style={{color:"#94a3b8",fontSize:".65rem",whiteSpace:"nowrap",alignSelf:"center"}}>→</span>
+              {grouped.map((g,i)=>(
+                <div key={g.type} onClick={()=>setPage(g.dest)}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<grouped.length-1?"1px solid #fecaca":"",cursor:"pointer",background:"#fff"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#fef2f2"}
+                  onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                  <span style={{background:g.amber?"#f59e0b":"#dc2626",color:"#fff",borderRadius:6,padding:"2px 8px",fontWeight:800,fontSize:".7rem",flexShrink:0,minWidth:36,textAlign:"center"}}>{g.type}</span>
+                  <span style={{flex:1,fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{g.label}</span>
+                  <span style={{fontWeight:800,color:g.amber?"#92400e":"#dc2626",fontSize:".88rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{g.items.length}</span>
+                  <span style={{color:"#94a3b8",fontSize:".72rem"}}>›</span>
                 </div>
-                );
-              })}
-              {escalations.length>5&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>+{escalations.length-5} more escalations</div>}
+              ))}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ── AWARD REQUESTS PANEL ────────────────────────────────────── */}
         {(()=>{
