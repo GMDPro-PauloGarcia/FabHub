@@ -282,6 +282,7 @@ const emptyProjectCard=(dealId,dealData)=>({
   pm3:dealData?.pm3||"",
   designer:dealData?.designer||"",
   coordinator:dealData?.coordinator||"",
+  manualProgress:dealData?.manualProgress??null,
   departments:Object.fromEntries(DEPT_ORDER.map(dept=>([dept,{
     done:false,
     doneAt:null,
@@ -1099,9 +1100,9 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
           📋 This Job Order is the official start signal. Once issued, every department sees a new project in their queue. <strong> QS (Rodney) will set the budget target separately in Cost Analysis.</strong>
         </div>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
-          <Fld label="Project Manager 1" required hint="Primary PM — owns day-to-day execution">
+          <Fld label="Project Manager 1" hint="Optional — OM/GM assigns PM in Project Cards after award">
             <Sel value={form.pm1} onChange={e=>f("pm1",e.target.value)}>
-              <option value="">— Assign PM —</option>
+              <option value="">— Assign later in Project Cards —</option>
               {OPS_TEAM.map(m=><option key={m}>{m}</option>)}
             </Sel>
           </Fld>
@@ -7449,7 +7450,7 @@ export default function App(){
                       if(HAS_ADDENDA_PAGE.includes(role)){
                         setDupPrompt(null);setDupScopeTarget(null);
                         if(role==="ProjectMover"){setPage("addenda");}
-                        else{setSelProj(m.id);setOpsTab("addenda");setPage(role==="Operations"?"home":"ops");}
+                        else{setSelProj(m.id);setOpsTab("addenda");setPage("projects");}
                       } else {
                         // Roles without an addenda page — expand inline form here
                         setDupScopeTarget({dealId:m.id,dealName:m.client+(m.product?` — ${m.product}`:"")});
@@ -8034,7 +8035,6 @@ export default function App(){
         })()}
       </Wrap>
     );
-    if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
@@ -8662,18 +8662,6 @@ export default function App(){
 
   if(page==="projects") return(
     <Wrap>
-      {(role==="Manager"||role==="Operations")&&(
-        <div style={{display:"flex",gap:6,marginBottom:16,background:"#f8fafc",borderRadius:10,padding:4,width:"fit-content"}}>
-          {[["projects","📋 Project Cards"],["ops","🏗 Production View"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setPage(v)}
-              style={{padding:"7px 16px",borderRadius:7,border:"none",fontFamily:"inherit",fontWeight:v==="projects"?700:500,fontSize:".82rem",cursor:"pointer",
-                background:v==="projects"?"#1e293b":"transparent",
-                color:v==="projects"?"#fff":"#64748b"}}>
-              {l}
-            </button>
-          ))}
-        </div>
-      )}
       <ProjectCards
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
@@ -14598,7 +14586,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"]}[role]||[];
-  const projPct=pc=>pc?Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100):0;
+  const projPct=pc=>pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100)):0;
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
     const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
@@ -15023,7 +15011,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   </div>
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:4}}>
-                  <span>{Object.values(card?.departments||{}).filter(d=>d.done).length}/6 departments complete</span>
+                  <span>{card?.manualProgress!=null?"Progress set by PM":Object.values(card?.departments||{}).filter(d=>d.done).length+"/6 departments complete"}</span>
                   {card?.targetDays&&<span style={{color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#94a3b8"}}>{isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d remaining`}</span>}
                 </div>
                 <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
@@ -15064,6 +15052,26 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     }} style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
                       🔒 Move to Close-Out
                     </button>
+                  </div>
+                )}
+                {/* Manual progress control — PM or Manager */}
+                {card&&(role==="Manager"||[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name))&&(
+                  <div style={{marginTop:10,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <span style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px"}}>📊 Progress (set by PM)</span>
+                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</span>
+                    </div>
+                    <input type="range" min={0} max={100} step={5} value={card.manualProgress??0}
+                      onChange={e=>{
+                        const v=Number(e.target.value);
+                        upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:v}}));
+                        const cid=pcards[selDeal]?.id;
+                        if(isSupabaseReady()&&cid&&isUUID(cid)) sbUpdate('project_cards',cid,{manual_progress:v}).catch(()=>{});
+                      }}
+                      style={{width:"100%",accentColor:"#3b82f6",cursor:"pointer"}}/>
+                    <div style={{display:"flex",justifyContent:"space-between",fontSize:".62rem",color:"#94a3b8",marginTop:2}}>
+                      <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+                    </div>
                   </div>
                 )}
                 <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
