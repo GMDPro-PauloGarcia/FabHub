@@ -101,14 +101,16 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="gmd">GMD <span>PROD</span></div>
-    <div class="sub">FabHub Team Handbook v1.4</div>
-    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: June 1, 2026</div>
+    <div class="sub">FabHub Team Handbook v1.5</div>
+    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: June 7, 2026</div>
   </div>
   <nav>
     <div class="nav-group">General</div>
     <a href="#ch1"><span class="nav-num">1</span> Getting Started</a>
     <a href="#ch2"><span class="nav-num">2</span> Login Credentials</a>
-    <a href="#ch23"><span class="nav-num">✦</span> What's New in v1.4</a>
+    <a href="#ch25"><span class="nav-num">✦</span> What's New in v1.5</a>
+    <div class="nav-group">Management</div>
+    <a href="#ch24"><span class="nav-num">0</span> Manager / OM / GM Roles</a>
     <div class="nav-group">Sales</div>
     <a href="#ch3"><span class="nav-num">3</span> Sales Pipeline</a>
     <a href="#ch4"><span class="nav-num">4</span> Job Order Flow</a>
@@ -141,85 +143,156 @@
     <h1>FabHub <span>Handbook</span></h1>
     <p>GMD Productions Inc. — Internal Operations Platform</p>
     <div class="meta">
-      <span class="badge">Version 1.4</span>
-      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: June 1, 2026</span>
+      <span class="badge">Version 1.5</span>
+      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: June 7, 2026</span>
       <span class="badge">fab-hub.vercel.app</span>
       <span class="badge">9 Roles</span>
-      <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">v1.4 — QS Pricing, Role Visibility, Pipeline Improvements</span>
+      <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">v1.5 — PM Assignment Flow, Manual Progress, Telegram Alerts</span>
     </div>
   </div>
 
   <div class="content">
 
-    <!-- CH23 — WHAT'S NEW v1.4 -->
-    <div class="chapter" id="ch23">
+    <!-- CH25 — WHAT'S NEW v1.5 -->
+    <div class="chapter" id="ch25">
       <div class="chapter-header" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
-        <span class="ch-num">✦</span><h2>What's New in v1.4 <span class="new-badge">LATEST</span></h2>
+        <span class="ch-num">✦</span><h2>What's New in v1.5 <span class="new-badge">LATEST</span></h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">All Roles</span>
       </div>
-      <p>Version 1.4 (June 1, 2026) introduces QS pricing ownership, role-based value visibility, pipeline improvements, and several data quality fixes. Below is the complete change log.</p>
+      <p>Version 1.5 (June 7, 2026) restructures how project progress is tracked and how project managers are assigned. Production View is folded into Project Cards. Telegram coverage is expanded across more events.</p>
 
-      <h3>💰 QS Pricing — QS Now Sets the Client Submission Price</h3>
-      <p>QS is now the pricing gatekeeper. After completing a cost study, QS enters the final proposal amount via a <strong>₱ button</strong> in the Sales Pipeline. Sales then quotes that price to the client. This ensures every submission has been validated against a cost study before going out.</p>
+      <h3>🏗 Production View Removed — Everything in Project Cards</h3>
+      <p>The separate "🏗 Production View" tab has been removed. Everything you need to manage a project is now in <strong>Project Cards</strong> — stage changes, team assignment, progress tracking, blockers, updates, billing, and documents are all in one place. No more switching tabs.</p>
+
+      <h3>📊 Manual Progress — PM Sets the %</h3>
+      <p>Progress percentage on a project is no longer automatically calculated from department task completion. <strong>The assigned PM (or Manager) sets the % manually</strong> using a slider on the Project Card. This reflects real-world progress rather than a mechanical task count.</p>
       <ul>
-        <li>Purple <strong>₱</strong> button on each active deal (QS pipeline view) — opens "Set Client Submission Price" modal</li>
-        <li>Enter contract amount + optional costing note</li>
-        <li>Saves to deal history; Sales team receives a Telegram notification automatically</li>
-        <li>Deals with a price show <strong>₱✏</strong> (update) instead of ₱ (set)</li>
+        <li>The slider appears inside the Project Card detail view — only visible to the assigned PM(s) or Manager</li>
+        <li>Moves in 5% increments from 0 to 100%</li>
+        <li>If progress has never been set manually, the display falls back to the old dept-task-based % automatically</li>
+        <li>Setting progress to 100% does NOT auto-close the project — the PM still needs to move the stage to Close-Out</li>
       </ul>
 
-      <h3>👁 Role-Based Value Visibility</h3>
-      <p>Production teams (Operations, Design, ProjectMover) no longer see the client contract price. Instead, they see the <strong>QS production budget total</strong> (Materials + Labor + Overhead + Subcon) shown in purple. If QS has not set a budget yet, they see "Budget Pending".</p>
+      <h3>👤 PM Assignment Moves to Project Cards</h3>
+      <p>PM and Coordinator assignment now happens in <strong>Project Cards → Project Team → Edit</strong> after the project is awarded — not at award time. This is per Mar's process: the OM/GM reviews the project scope first, then deliberately assigns who will own it.</p>
+      <ul>
+        <li><strong>At award:</strong> PM 1 is optional — you can leave it blank and assign later</li>
+        <li><strong>After award:</strong> Manager or Operations opens the Project Card → Project Team section → click Edit → assign PM 1, PM 2, PM 3, Coordinator, Designer, AE</li>
+        <li>When saved, a Telegram notification fires to Ops and Management channels immediately</li>
+      </ul>
+      <div class="note" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;">📌 <strong>Rule:</strong> No project should move past Stage 07 · Briefing without a PM assigned. The OM/GM must open the card and assign the team before fabrication begins.</div>
+
+      <h3>🤖 New Telegram Notification Triggers</h3>
       <table class="data-table">
-        <thead><tr><th>Role</th><th>Pipeline value shown</th><th>ProjectCards value shown</th></tr></thead>
+        <thead><tr><th>New Event</th><th>Channels</th></tr></thead>
         <tbody>
-          <tr><td><b>Manager, Sales, Finance, QS</b></td><td>Contract value (₱)</td><td>Contract value (₱)</td></tr>
-          <tr><td><b>Operations, Design, ProjectMover</b></td><td style="color:#8b5cf6">QS Budget 📊</td><td style="color:#8b5cf6">QS Budget 📊</td></tr>
+          <tr><td><b>👥 Team Assigned / Updated</b> (Project Cards → Save Team)</td><td>Ops · Management</td></tr>
+          <tr><td><b>✅ Blocker Resolved</b> (Project Cards → Resolve Blocker)</td><td>Management · Dept channel</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- CH24 — MANAGER / OM / GM ROLES -->
+    <div class="chapter" id="ch24">
+      <div class="chapter-header" style="background:linear-gradient(135deg,#f59e0b,#d97706)">
+        <span class="ch-num">0</span><h2>Manager / OM / GM — What You Do in FabHub</h2>
+      </div>
+      <div class="roles">
+        <span class="role-badge" style="background:#f59e0b">Manager</span>
+        <span class="role-badge" style="background:#f97316">Operations (OM)</span>
+      </div>
+
+      <p>FabHub has two leadership-level roles: <strong>Manager</strong> (GM / CEO / Partners — Paulo, Mar, Arrius, Paolo) and <strong>Operations</strong> (Operations Manager — Mar, or the designated OM). Both have elevated access compared to department staff. This chapter explains exactly what each role does inside FabHub.</p>
+
+      <h3>🔑 Role Access Summary</h3>
+      <table class="data-table">
+        <thead><tr><th>Feature / Action</th><th>Manager (GM)</th><th>Operations (OM)</th></tr></thead>
+        <tbody>
+          <tr><td>View all departments' Project Cards</td><td>✅ Full edit</td><td>✅ Full edit</td></tr>
+          <tr><td><b>Assign PM / Coordinator / Designer / AE</b></td><td>✅ Yes</td><td>✅ Yes</td></tr>
+          <tr><td>Set manual project progress %</td><td>✅ Yes</td><td>As PM if assigned</td></tr>
+          <tr><td>Move project stage (in Project Card)</td><td>✅ Yes</td><td>❌ Sales / Manager only</td></tr>
+          <tr><td>Award a project (Issue JO)</td><td>✅ Yes</td><td>❌ Sales / Manager only</td></tr>
+          <tr><td>View contract value (₱)</td><td>✅ Full value</td><td>⚠️ QS Budget only</td></tr>
+          <tr><td>Edit any department's tasks</td><td>✅ Yes</td><td>Operations tasks only</td></tr>
+          <tr><td>Flag / Resolve Blockers</td><td>✅ Yes</td><td>✅ Yes</td></tr>
+          <tr><td>Log Scope Changes / Addenda</td><td>✅ Yes</td><td>✅ Yes</td></tr>
+          <tr><td>Manager Dashboard (KPIs + Escalations)</td><td>✅ Yes</td><td>❌ No</td></tr>
+          <tr><td>Telegram Bot Settings</td><td>✅ Yes</td><td>❌ No</td></tr>
+          <tr><td>Data purge / export</td><td>✅ paulo only</td><td>❌ No</td></tr>
+          <tr><td>AI Devil's Advocate</td><td>✅ Yes</td><td>❌ No</td></tr>
+          <tr><td>Smart Import (bulk deals)</td><td>✅ Yes</td><td>❌ No</td></tr>
+          <tr><td>VVIP client tagging</td><td>✅ Yes</td><td>❌ No</td></tr>
+          <tr><td>QS pricing override</td><td>✅ Yes</td><td>❌ No</td></tr>
+          <tr><td>Job Orders — view all</td><td>✅ Yes</td><td>✅ Yes</td></tr>
+          <tr><td>Calendar (construction)</td><td>✅ Yes</td><td>✅ Yes</td></tr>
+          <tr><td>Sales Pipeline — view</td><td>✅ Yes</td><td>✅ View only</td></tr>
+          <tr><td>Billing / Finance</td><td>✅ Yes</td><td>❌ No</td></tr>
+          <tr><td>Cost Analysis (budgets)</td><td>✅ Yes</td><td>✅ Read only</td></tr>
         </tbody>
       </table>
 
-      <h3>🏆 Sales Can Award Directly</h3>
-      <p>Sales team members now see a green 🏆 Award button and can complete the full award flow (Job Order + scope + PM assignment) without requiring Manager approval. This removes the bottleneck when Paulo is on mobile or unavailable.</p>
+      <h3>📋 What the GM Does — Daily Flow</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Check the Dashboard</b><span>Opens to KPI strip (Pipeline, Awarded, Collected, Active JOs, Pending PRs) + Escalations panel. Click any KPI chip to jump directly to that section.</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Clear escalations</b><span>E-1 overdue billing → chase Finance. E-3 punchlist SLA → call the PM. E-7 no billing setup → alert Finance. Each escalation row is a direct link.</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Review Project Cards</b><span>Click any card → check progress %, health status (On Track / At Risk / Overdue), open blockers, recent PM updates.</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Move stages for active projects</b><span>Project Cards → Stage dropdown (visible to Manager and Sales) → select new stage → auto-notifies Telegram.</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Award new projects from pipeline</b><span>Sales Pipeline → 🏆 Award → fill JO trigger, scope, optional PM → Issue JO. Telegram blast to all 6 channels.</span></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Review Finance (Billing + Cash Position)</b><span>Finance tab → check unpaid milestones, outstanding balances, daily cash position logged by Aerwin.</span></div></div>
+      </div>
 
-      <h3>👤 AE Badges &amp; Filter</h3>
+      <h3>🏗 What the OM Does — Daily Flow</h3>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open Project Cards</b><span>Home page defaults here. Shows all active projects filtered to those assigned to you, plus all projects visible for team overview.</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Assign team on new projects</b><span>Newly awarded projects arrive with no PM. Open the card → Project Team → Edit → Assign PM 1, PM 2, Coordinator, Designer → Save. Telegram notifies Management + Ops automatically.</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Update project progress</b><span>If you are assigned as PM: Project Card → Progress slider (appears only for assigned PMs) → drag to reflect actual site status → saves immediately.</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Log PM Updates</b><span>Project Card → PM Updates tab → add text update → notifies Ops Telegram channel.</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Flag and resolve blockers</b><span>Project Card → Blockers section → + Flag Blocker for site issues → Resolve when cleared. Both actions send Telegram to Management + Dept.</span></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Approve / submit Material and Budget Requests</b><span>Requests tab → review open MRs from PMs → coordinate with Procurement. Budget Requests route to Management Telegram.</span></div></div>
+        <div class="step"><div class="step-num">7</div><div class="step-content"><b>Check Calendar for conflicts</b><span>Calendar → Conflicts tab → identifies projects with the same PM assigned to overlapping installation windows.</span></div></div>
+      </div>
+
+      <h3>🎯 Key Decisions Owned by GM / OM</h3>
+      <table class="data-table">
+        <thead><tr><th>Decision</th><th>Who</th><th>Where in FabHub</th></tr></thead>
+        <tbody>
+          <tr><td><b>Award a project</b></td><td>GM / Sales</td><td>Sales Pipeline → 🏆 Award</td></tr>
+          <tr><td><b>Assign PM to a project</b></td><td>GM or OM</td><td>Project Cards → Project Team → Edit</td></tr>
+          <tr><td><b>Move project stage</b></td><td>GM / Sales</td><td>Project Cards → Stage dropdown</td></tr>
+          <tr><td><b>Approve QS pricing</b></td><td>GM</td><td>Sales Pipeline (visible to Manager)</td></tr>
+          <tr><td><b>Resolve escalations</b></td><td>GM (drives action)</td><td>Manager Dashboard → Escalations panel</td></tr>
+          <tr><td><b>Close / complete a project</b></td><td>GM / Sales</td><td>Project Cards → Move to Close-Out banner</td></tr>
+          <tr><td><b>Scope change approval</b></td><td>GM coordinates</td><td>Project Cards → Addenda → Notify Sales</td></tr>
+          <tr><td><b>PM removal / reassignment</b></td><td>GM or OM</td><td>Project Cards → Project Team → Edit</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        💡 <strong>Rule of thumb:</strong> If it affects the client (price, scope, timeline, award) — that's the GM. If it affects the team on the ground (who's doing what, site logistics, materials) — that's the OM. Both see everything; the division is about who is accountable for each type of decision.
+      </div>
+    </div>
+
+    <!-- CH23 — WHAT'S NEW v1.4 (kept for history) -->
+    <div class="chapter" id="ch23">
+      <div class="chapter-header" style="background:linear-gradient(135deg,#475569,#334155)">
+        <span class="ch-num">✦</span><h2>What's New in v1.4</h2>
+      </div>
+      <div class="roles">
+        <span class="role-badge" style="background:#f59e0b">All Roles</span>
+      </div>
+      <p>Version 1.4 (June 1, 2026) introduced QS pricing ownership, role-based value visibility, pipeline improvements, and several data quality fixes.</p>
       <ul>
-        <li><strong>AE badge</strong> appears on every deal row showing the Account Executive's first name</li>
-        <li><strong>AE filter chips</strong> (purple) above the pipeline let Manager filter by salesperson</li>
-        <li>On Sales home cards, a badge shows when viewing a deal owned by a different team member (e.g. 👤 Gail)</li>
-      </ul>
-
-      <h3>📋 Sales → Ops Handoff Improvements</h3>
-      <ul>
-        <li><strong>Sales Repo link</strong> (📁 Sales Repo button) now visible in the OpsView project header and on every ProjectCard — PMs can open the folder directly</li>
-        <li><strong>Project Brief &amp; Handoff panel</strong> added to OpsView Progress tab — shows DRF data (size, designer, deadline, accessories, ref links), JO scope/instructions/location, and links to Approved Files</li>
-        <li><strong>Design Brief panel</strong> auto-appears when DRF or JO scope data exists for a project</li>
-      </ul>
-
-      <h3>🏢 Client Directory Improvements</h3>
-      <ul>
-        <li>"City" column replaced with <strong>Awarded Deals</strong> — shows number of projects won and total contract value per client</li>
-        <li>Contact column now reads from the saved Client Profile (contact person + phone)</li>
-        <li><strong>Add Client</strong> form now includes full profile fields in one step: contact person, email, phone, billing address, TIN, payment terms, notes</li>
-      </ul>
-
-      <h3>🔔 Telegram Notification Fix</h3>
-      <p>Bot settings are now read from <strong>Supabase</strong> across all user devices, not just the device where settings were configured. Sales users on their own devices now correctly receive and send notifications for new deals and project awards.</p>
-
-      <h3>📊 Pipeline Visibility for More Roles</h3>
-      <ul>
-        <li><strong>Operations</strong> now has "Sales Pipeline" in their sidebar — useful for seeing what's coming before it lands in their lap</li>
-        <li><strong>Design</strong> now has "Sales Pipeline" in their sidebar — useful for capacity planning</li>
-        <li>Pipeline actions (Edit, Did Not Win, move-back) are restricted to Manager and Sales only; other roles can only view and request awards</li>
-      </ul>
-
-      <h3>🐛 Data Quality Fixes</h3>
-      <ul>
-        <li>Active deal counts now correctly exclude "Did Not Win" and "Cancelled" everywhere (pipeline header, AE filter chip, Manager KPI)</li>
-        <li>Follow-up "OVERDUE" warnings no longer appear for won or closed deals</li>
-        <li>Checklist project dropdown no longer includes already-won deals in the "pre-award" list</li>
-        <li>E-4 escalation now correctly routes to the DRF view (was routing to a non-existent "drfs" page)</li>
+        <li><strong>QS Pricing:</strong> QS now sets the client submission price via a ₱ button in the Sales Pipeline before Sales quotes the client</li>
+        <li><strong>Role-Based Value Visibility:</strong> Operations, Design, ProjectMover see QS budget total (not contract value)</li>
+        <li><strong>Sales Can Award Directly:</strong> Sales team can complete the full award flow without Manager approval</li>
+        <li><strong>AE Badges &amp; Filter:</strong> AE name on every deal row; Manager can filter pipeline by salesperson</li>
+        <li><strong>Sales → Ops Handoff:</strong> Sales Repo link visible in Project Cards; Design Brief panel auto-appears</li>
+        <li><strong>Client Directory:</strong> "City" replaced with Awarded Deals count + total value per client</li>
+        <li><strong>Bot Settings from Supabase:</strong> Telegram settings sync across all devices automatically</li>
+        <li><strong>Pipeline Visibility:</strong> Operations and Design can now view the Sales Pipeline</li>
       </ul>
     </div>
 
@@ -341,7 +414,6 @@
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">Manager</span>
         <span class="role-badge" style="background:#10b981">Sales</span>
-        <span class="role-badge" style="background:#f97316">Operations</span>
       </div>
       <h3>Step 1 — Confirm Award (Sales fills)</h3>
       <div class="steps">
@@ -350,14 +422,13 @@
         <div class="step"><div class="step-num">3</div><div class="step-content"><b>Date Confirmed + Notes</b><span>PO number, email reference, confirmation details</span></div></div>
         <div class="step"><div class="step-num">4</div><div class="step-content"><b>Click Next</b><span>Payment set to Unpaid automatically — Finance handles billing</span></div></div>
       </div>
-      <h3>Step 2 — Job Order (Ops/Manager/Sales fills)</h3>
+      <h3>Step 2 — Job Order Details</h3>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Assign PM 1 (required)</b><span>Primary Project Manager who owns execution</span></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>PM 2, PM 3, Coordinator (optional)</b><span>For large or multi-site projects</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>AE + Start Date + Comms Link</b><span>AE pre-filled from deal, editable. Paste WhatsApp/Viber group link</span></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Scope of Work (required)</b><span>What exactly is being built — Sales and PM must agree</span></div></div>
-        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Special Instructions</b><span>Venue rules, delivery windows, client contact on site</span></div></div>
-        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Click Confirm Award &amp; Issue Job Order</b><span>JO issued. Telegram sends award alert to ALL 6 department channels immediately</span></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>PM 1 is optional at this stage</b><span>Leave blank — the OM/GM will assign the team in Project Cards after reviewing the project scope</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>AE + Start Date + Comms Link</b><span>AE pre-filled from deal, editable. Paste WhatsApp/Viber group link</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Scope of Work (required)</b><span>What exactly is being built — Sales and PM must agree</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Special Instructions</b><span>Venue rules, delivery windows, client contact on site</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Click Confirm Award &amp; Issue Job Order</b><span>JO issued. Telegram sends award alert to ALL 6 department channels immediately</span></div></div>
       </div>
       <div class="note" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;">
         🏆 <strong>Sales can award directly</strong> — Sales team members see a green 🏆 Award button and can complete the full award flow without needing Manager approval. Other roles (Operations, Design, QS, Procurement) see an orange 🏆 Request Award button that sends a notification to the Manager for review.
@@ -365,7 +436,7 @@
       <div class="note" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;">
         🤖 <strong>Auto-Budget on Award:</strong> FabHub automatically sets a 30% margin target budget for QS when a project is awarded. Budget is split: Materials 50%, Labor 25%, Overhead 15%, Subcon 10% of the 70% cost target. QS should review and adjust this in Cost Analysis.
       </div>
-      <div class="note">After award: Finance must set up billing milestones. Both Finance and QS will see alert banners on their dashboards.</div>
+      <div class="note">After award: OM/GM opens Project Cards to assign the PM team. Finance must set up billing milestones. Both Finance and QS will see alert banners on their dashboards.</div>
     </div>
 
     <!-- CH5 -->
@@ -376,7 +447,34 @@
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">All Roles</span>
       </div>
-      <p>Every awarded project has one Project Card visible to all departments. Each dept has its own task checklist. Only your department's section can be edited by you — Manager can edit all.</p>
+      <p>Every awarded project has one Project Card visible to all departments. Each dept has its own task checklist. Only your department's section can be edited by you — Manager can edit all. Project Cards are the single source of truth for a project's current state.</p>
+
+      <h3>👥 Assigning the Project Team (OM / GM)</h3>
+      <p>After a project is awarded, the OM or GM opens the Project Card and assigns who will own the execution.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open the Project Card</b><span>Click any project from the grid view to open its detail</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Find the "👥 Project Team" section</b><span>Shows current AE, PM, Coordinator, Designer assignments</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Click ✏️ Edit</b><span>Visible to Manager and Operations roles only</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Assign PM 1, PM 2, PM 3, Coordinator, Designer, AE</b><span>Select from the dropdown lists of available team members</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Click ✓ Save Team</b><span>Telegram notification fires to Ops and Management channels immediately: "👥 Project Team Assigned — [client]"</span></div></div>
+      </div>
+      <div class="note" style="background:#eff6ff;border-color:#bfdbfe;color:#1e40af;">📌 <strong>Process rule:</strong> No project should move past Stage 07 · Briefing without a PM assigned. The OM/GM is responsible for making this assignment before the team starts fabrication.</div>
+
+      <h3>📊 Setting Project Progress (PM or Manager)</h3>
+      <p>Progress is set manually by the assigned PM — not automatically calculated from task completion. This gives an honest, real-world status rather than a mechanical percentage.</p>
+      <ul>
+        <li>Open the Project Card → a slider labeled "📊 Progress (set by PM)" appears <strong>only for assigned PMs and Manager</strong></li>
+        <li>Drag the slider (0–100%, steps of 5%) to reflect actual site/fabrication status</li>
+        <li>The % is shown on the card grid view and in all reports</li>
+        <li>If never manually set, it falls back to dept-task completion % automatically</li>
+      </ul>
+
+      <h3>🗺 Stage Changes (Manager / Sales)</h3>
+      <p>Inside the Project Card detail view, Manager and Sales can change the project stage using the <strong>STAGE dropdown</strong>. Every stage change sends a Telegram notification to Sales, Ops, and Management channels.</p>
+
+      <h3>⛔ Blockers</h3>
+      <p>Any team member can flag a blocker — something stopping the project from moving forward. Opening and resolving a blocker both trigger Telegram notifications to Management and the responsible department channel.</p>
+
       <h3>Department Tasks</h3>
       <table class="data-table">
         <thead><tr><th>Dept</th><th>Tasks</th><th>Done When</th></tr></thead>
@@ -389,7 +487,7 @@
           <tr><td><b>Finance</b> (4)</td><td>DP billed+collected, progress billing, final billing, 100% collected</td><td>All milestones Fully Paid (auto)</td></tr>
         </tbody>
       </table>
-      <p>When all 6 departments are done, the project card is stamped <strong>✅ PROJECT DONE</strong> and moves to the Completed section in Operations.</p>
+      <p>When all 6 departments are done, a green banner appears: "🎉 All departments complete! → Move to Close-Out." The project then stamps <strong>✅ PROJECT DONE</strong> and moves to the Completed section.</p>
     </div>
 
     <!-- CH6 -->
@@ -463,7 +561,6 @@
       </table>
 
       <h3>Margin Health Traffic Light</h3>
-      <p>The QS dashboard shows a traffic light for each project based on actual spend vs budget:</p>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0;">
         <div style="background:#d1fae5;border:1.5px solid #6ee7b7;border-radius:10px;padding:14px;text-align:center;">
           <div style="font-size:1.5rem;">🟢</div>
@@ -482,22 +579,21 @@
         </div>
       </div>
 
-      <h3>Setting the Client Submission Price (QS) <span class="new-badge">NEW v1.4</span></h3>
-      <p>QS is now the <strong>pricing gatekeeper</strong>. After completing a cost study for a pre-award deal, QS enters the price that Sales will quote to the client.</p>
+      <h3>Setting the Client Submission Price (QS)</h3>
+      <p>QS is the <strong>pricing gatekeeper</strong>. After completing a cost study for a pre-award deal, QS enters the price that Sales will quote to the client.</p>
       <div class="steps">
         <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open Sales Pipeline (QS)</b><span>Navigate to Sales Pipeline from the QS sidebar</span></div></div>
         <div class="step"><div class="step-num">2</div><div class="step-content"><b>Click ₱ (purple button) on the deal</b><span>Appears next to deals that have no price yet. Deals with an existing price show ₱✏ to update</span></div></div>
         <div class="step"><div class="step-num">3</div><div class="step-content"><b>Enter the Contract / Proposal Amount</b><span>This is the final price being quoted to the client — include all markup</span></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Add a costing note (optional)</b><span>e.g. "Based on cost study June 1. 30% markup applied." This note is saved in deal history</span></div></div>
-        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Click Save Price</b><span>Price is saved to the deal. Sales team receives a Telegram notification automatically</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Add a costing note (optional)</b><span>e.g. "Based on cost study June 1. 30% markup applied."</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Click Save Price</b><span>Sales team receives a Telegram notification automatically</span></div></div>
       </div>
-      <div class="note">Once QS sets the price, Sales can quote the client with confidence. The contract value flows through to billing milestones and reports automatically.</div>
 
       <h3>Setting / Adjusting a Budget (QS)</h3>
       <div class="steps">
         <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open Cost Analysis → select project</b><span>Auto-budget is pre-filled when the project is awarded</span></div></div>
         <div class="step"><div class="step-num">2</div><div class="step-content"><b>Review and adjust each category</b><span>Materials / Labor / Overhead / Subcon — adjust to reflect actual scope</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Save Budget</b><span>Actuals auto-pull from PRs and Expenses. Traffic light updates in real time. Ops/Design teams will see this budget total instead of the contract value</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Save Budget</b><span>Actuals auto-pull from PRs and Expenses. Traffic light updates in real time.</span></div></div>
       </div>
     </div>
 
@@ -531,8 +627,8 @@
       </div>
       <h3>Logging a Scope Change (Addendum)</h3>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open project → ⚠️ Addenda tab</b></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Click + Log Scope Change</b><span>Title, description, estimated value, who discovered it</span></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Open Project Card → ➕ Scope Change button</b></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Fill in Title, Description, Value</b><span>All scope changes — no matter how small — must be logged</span></div></div>
         <div class="step"><div class="step-num">3</div><div class="step-content"><b>Click Notify Sales</b><span>Sales receives an alert banner + Telegram notification to Sales &amp; Management channels</span></div></div>
         <div class="step"><div class="step-num">4</div><div class="step-content"><b>Sales coordinates with client</b><span>Updates status: Approved</span></div></div>
         <div class="step"><div class="step-num">5</div><div class="step-content"><b>Project total updates</b><span>Original CE + Addenda = New Total</span></div></div>
@@ -633,13 +729,13 @@
         .acc-warn { background:#fdf2f8; border:1px solid #f9a8d4; border-radius:6px; padding:8px 12px; font-size:12px; color:#9d174d; margin-top:8px; }
       </style>
 
-      <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#10b981;">1</div><span class="acc-title">Project Awarded</span><span class="acc-dept" style="background:#10b981;">Sales</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>Paulo or Paolo clicks 🏆 <strong>Award</strong>. JO issued. All 6 departments see the Project Card. Telegram notifies ALL channels. QS auto-budget is set.</p><div class="acc-tip">📍 FabHub: Pipeline → Award Modal → JO issued → Project Card + Telegram blast</div></div></div>
+      <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#10b981;">1</div><span class="acc-title">Project Awarded</span><span class="acc-dept" style="background:#10b981;">Sales</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>Sales or GM clicks 🏆 <strong>Award</strong>. JO issued. All 6 departments see the Project Card. Telegram notifies ALL channels. QS auto-budget is set.</p><div class="acc-tip">📍 FabHub: Pipeline → Award Modal → JO issued → Project Card + Telegram blast</div><p><strong>Next step:</strong> OM/GM opens the Project Card and assigns PM + Coordinator in the Project Team section. Telegram notifies Ops + Management.</p></div></div>
       <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#3b82f6;">2</div><span class="acc-title">Design Brief Handed Over</span><span class="acc-dept" style="background:#3b82f6;">Sales → Design</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>The AE uploads references and scope notes. Ticks <strong>"Brief Sent" ✅</strong> on Project Card. Project immediately appears in Design queue.</p><div class="acc-tip">📍 FabHub: Project Cards → Sales dept tasks → mark Brief Sent</div></div></div>
       <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#ec4899;">3</div><span class="acc-title">Design &amp; Shop Drawings</span><span class="acc-dept" style="background:#ec4899;">Design</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>Designer works through all 8 tasks. Populates the Swatchboard with every material. Procurement sees materials in real time.</p><div class="acc-tip">📍 FabHub: Design Home → Project Cards → Design tasks + Swatchboard</div><div class="acc-warn">⚠️ Paste Google Drive link into "Shop Drawings Link" — do not upload files directly to FabHub.</div></div></div>
       <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#f59e0b;">4</div><span class="acc-title">Client Presentation</span><span class="acc-dept" style="background:#f59e0b;">Sales + Design</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>AE shares drawings with client via Comms Group. Scope changes → log an Addendum (Telegram notifies Sales + Management). Approved → AE marks "Client design approved."</p><div class="acc-tip">📍 FabHub: Checklist → Client Approval / Addenda for scope changes</div></div></div>
       <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#f97316;">5</div><span class="acc-title">Approved Drawings to Production</span><span class="acc-dept" style="background:#f97316;">Design → Ops</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>Design marks all tasks Done. Project Movers see the project in their queue. First PM Update logged: "Received approved shop drawings — starting fabrication."</p><div class="acc-tip">📍 FabHub: Project Cards → Design Done → Operations queue updates → PM Updates</div></div></div>
       <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#06b6d4;">6</div><span class="acc-title">Materials Procurement</span><span class="acc-dept" style="background:#06b6d4;">Procurement</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>Marian opens Swatchboard. Raises a PO per item. Updates status To Buy → Ordered → Sourced. Budget Request if over budget.</p><div class="acc-tip">📍 FabHub: Procurement Home → Swatchboard + Purchase Requests + Budget Requests</div></div></div>
-      <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#8b5cf6;">7</div><span class="acc-title">Fabrication → Site Installation</span><span class="acc-dept" style="background:#8b5cf6;">Operations</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>PMs log daily PM Updates. Scope changes → Addendum → AE and Paolo notified. Billing milestones triggered at completion points. Project closes Stage 12 → 13.</p><div class="acc-tip">📍 FabHub: PM Updates + Addenda + Billing Milestones</div></div></div>
+      <div class="acc-item"><div class="acc-header" onclick="toggleAcc(this)"><div class="acc-dot" style="background:#8b5cf6;">7</div><span class="acc-title">Fabrication → Site Installation</span><span class="acc-dept" style="background:#8b5cf6;">Operations</span><span class="acc-arrow">▼</span></div><div class="acc-body"><p>PM sets progress % via the slider on Project Card. PMs log PM Updates. Scope changes → Addendum → AE and Paolo notified. Billing milestones triggered at completion points. Project closes Stage 12 → 13.</p><div class="acc-tip">📍 FabHub: PM Updates + Addenda + Billing Milestones + Progress Slider</div></div></div>
 
       <div style="margin-top:32px;padding-top:24px;border-top:2px solid var(--border);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;"><div style="background:var(--dark);color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;">SOP GMD-WH-FAB-001</div><h3 style="margin:0;font-size:15px;">Warehouse Process</h3></div>
@@ -676,13 +772,13 @@
         <span class="ch-num">13</span><h2>Client Directory</h2>
       </div>
       <p>GMD clients pre-loaded from history. Filters: All · Open Balance · Has Deals · ⭐ VVIP. Click ☆ next to any client to mark them VVIP — they sort to the top everywhere. Only Manager and Sales can tag VVIP.</p>
-      <div class="note">VVIP status is now saved to Supabase — it persists across all devices and browsers.</div>
+      <div class="note">VVIP status is saved to Supabase — it persists across all devices and browsers.</div>
     </div>
 
     <!-- CH14 — TELEGRAM BOT -->
     <div class="chapter" id="ch14">
       <div class="chapter-header" style="background:#2563eb">
-        <span class="ch-num">14</span><h2>🤖 Telegram Bot Notifications <span class="new-badge">NEW</span></h2>
+        <span class="ch-num">14</span><h2>🤖 Telegram Bot Notifications</h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">Manager (setup)</span>
@@ -700,18 +796,23 @@
         <div class="step"><div class="step-num">5</div><div class="step-content"><b>Open FabHub → 🤖 Bot Settings (Admin group in Manager sidebar)</b><span>Paste the Bot Token and all 6 Chat IDs → Save. Use Test buttons to verify each channel.</span></div></div>
       </div>
 
-      <h3>The 13 Notification Triggers</h3>
+      <h3>Complete Notification Trigger List</h3>
       <table class="trigger-table">
         <thead><tr><th>Event</th><th>Channels Notified</th><th>Who Triggers It</th></tr></thead>
         <tbody>
           <tr><td><b>🏆 Project Awarded</b></td><td><span class="channel-tag" style="background:#1e293b">General</span><span class="channel-tag" style="background:#f97316">Ops</span><span class="channel-tag" style="background:#ec4899">Design</span><span class="channel-tag" style="background:#06b6d4">Procurement</span><span class="channel-tag" style="background:#10b981">Sales</span><span class="channel-tag" style="background:#8b5cf6">Management</span></td><td>Manager / Sales</td></tr>
+          <tr><td><b>👥 Team Assigned / Updated</b> <span class="new-badge">NEW v1.5</span></td><td><span class="channel-tag" style="background:#f97316">Ops</span><span class="channel-tag" style="background:#8b5cf6">Management</span></td><td>Manager / Operations (OM)</td></tr>
+          <tr><td><b>📌 Project Stage Changed</b></td><td><span class="channel-tag" style="background:#f97316">Ops</span><span class="channel-tag" style="background:#10b981">Sales</span><span class="channel-tag" style="background:#8b5cf6">Management</span></td><td>Manager / Sales</td></tr>
+          <tr><td><b>⛔ Blocker Flagged</b></td><td><span class="channel-tag" style="background:#8b5cf6">Management</span><span class="channel-tag" style="background:#94a3b8">Dept</span></td><td>Any role</td></tr>
+          <tr><td><b>✅ Blocker Resolved</b> <span class="new-badge">NEW v1.5</span></td><td><span class="channel-tag" style="background:#8b5cf6">Management</span><span class="channel-tag" style="background:#94a3b8">Dept</span></td><td>Manager / assigned dept</td></tr>
+          <tr><td><b>📝 PM Update logged</b></td><td><span class="channel-tag" style="background:#f97316">Ops</span></td><td>ProjectMover / Ops</td></tr>
           <tr><td><b>📝 New Design Request (DRF)</b></td><td><span class="channel-tag" style="background:#ec4899">Design</span></td><td>Any role</td></tr>
-          <tr><td><b>⚙️ PM Update logged</b></td><td><span class="channel-tag" style="background:#f97316">Ops</span></td><td>ProjectMover / Ops</td></tr>
           <tr><td><b>🎨 Swatch Client Approved</b></td><td><span class="channel-tag" style="background:#06b6d4">Procurement</span><span class="channel-tag" style="background:#10b981">Sales</span></td><td>Design</td></tr>
           <tr><td><b>🔧 New Material Request</b></td><td><span class="channel-tag" style="background:#06b6d4">Procurement</span></td><td>Operations</td></tr>
           <tr><td><b>💳 New Budget Request</b></td><td><span class="channel-tag" style="background:#8b5cf6">Management</span></td><td>Operations</td></tr>
           <tr><td><b>⚠️ Scope Change (Addendum)</b></td><td><span class="channel-tag" style="background:#10b981">Sales</span><span class="channel-tag" style="background:#8b5cf6">Management</span></td><td>Operations / Manager</td></tr>
           <tr><td><b>✅ PO Approved</b></td><td><span class="channel-tag" style="background:#06b6d4">Procurement</span></td><td>Manager</td></tr>
+          <tr><td><b>💰 QS Sets Price</b></td><td><span class="channel-tag" style="background:#10b981">Sales</span></td><td>QS</td></tr>
         </tbody>
       </table>
 
@@ -720,11 +821,11 @@
         <thead><tr><th>Channel</th><th>Who's in it</th><th>Gets notified about</th></tr></thead>
         <tbody>
           <tr><td><b>General</b></td><td>Everyone</td><td>Project Awards only</td></tr>
-          <tr><td><b>Operations</b></td><td>Ops team, PMs</td><td>PM Updates</td></tr>
-          <tr><td><b>Design</b></td><td>Design team</td><td>New DRFs</td></tr>
+          <tr><td><b>Operations</b></td><td>Ops team, PMs</td><td>PM Updates, Team Assignments, Stage Changes, Blocker Resolution</td></tr>
+          <tr><td><b>Design</b></td><td>Design team</td><td>New DRFs, Blocker alerts (if Design is responsible dept)</td></tr>
           <tr><td><b>Procurement</b></td><td>Marian + sourcing</td><td>Material Requests, Swatch Approvals, PO Approvals</td></tr>
-          <tr><td><b>Sales</b></td><td>AEs + Paulo/Paolo</td><td>Awards, Swatch Approvals, Scope Changes</td></tr>
-          <tr><td><b>Management</b></td><td>Paulo, Mar, Arrius, Paolo</td><td>Awards, Budget Requests, Scope Changes</td></tr>
+          <tr><td><b>Sales</b></td><td>AEs + Paulo/Paolo</td><td>Awards, Swatch Approvals, Scope Changes, Stage Changes, QS price set</td></tr>
+          <tr><td><b>Management</b></td><td>Paulo, Mar, Arrius, Paolo</td><td>Awards, Budget Requests, Scope Changes, Team Assignments, Blockers, Stage Changes</td></tr>
         </tbody>
       </table>
 
@@ -734,7 +835,7 @@
     <!-- CH15 — CALENDAR -->
     <div class="chapter" id="ch15">
       <div class="chapter-header" style="background:#0891b2">
-        <span class="ch-num">15</span><h2>📅 Construction Calendar <span class="new-badge">NEW</span></h2>
+        <span class="ch-num">15</span><h2>📅 Construction Calendar</h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">Manager</span>
@@ -754,14 +855,6 @@
           <tr><td><b>👥 Team Load</b></td><td>Bar chart of how many active projects each PM is carrying this month</td><td>Resource allocation, avoiding overloading one PM</td></tr>
         </tbody>
       </table>
-
-      <h3>Color Legend (Monthly View)</h3>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 16px;">
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:3px;background:#3b82f6;"></div><span style="font-size:13px;color:#475569;">Project End Date</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:3px;background:#f97316;"></div><span style="font-size:13px;color:#475569;">PO Delivery Due</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:3px;background:#10b981;"></div><span style="font-size:13px;color:#475569;">Billing Due</span></div>
-        <div style="display:flex;align-items:center;gap:6px;"><div style="width:12px;height:12px;border-radius:3px;background:#ec4899;"></div><span style="font-size:13px;color:#475569;">DRF Deadline</span></div>
-      </div>
       <div class="note">The calendar reads live data — no manual input needed. Dates come from Job Orders (start/end), Purchase Orders (delivery), Billing Milestones (due dates), and Design Requests (deadlines).</div>
     </div>
 
@@ -782,7 +875,6 @@
         </tbody>
       </table>
       <h3>Data Safety</h3>
-      <p>All FabHub data is stored in Supabase (cloud). The table below shows every data type and where it lives:</p>
       <table class="data-table">
         <thead><tr><th>Data</th><th>Supabase Table</th><th>Safe from cache clear?</th></tr></thead>
         <tbody>
@@ -812,7 +904,7 @@
     <!-- CH19 — P&L / INCOME STATEMENT -->
     <div class="chapter" id="ch19">
       <div class="chapter-header" style="background:#3b82f6">
-        <span class="ch-num">19</span><h2>P&amp;L / Income Statement <span class="new-badge">NEW</span></h2>
+        <span class="ch-num">19</span><h2>P&amp;L / Income Statement</h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">Manager</span>
@@ -820,9 +912,6 @@
       </div>
 
       <p>The P&amp;L / Income Statement gives management a full profitability picture — revenue billed, cash collected, expenses logged, and gross profit — broken down by month or by project type.</p>
-
-      <h3>How to Access</h3>
-      <p>Go to the <strong>Finance</strong> page → click the <strong>📈 P&amp;L / Income Statement</strong> tab.</p>
 
       <h3>Two Views</h3>
       <table class="data-table">
@@ -832,7 +921,6 @@
           <tr><td><b>By Project Type</b></td><td>Each CE type (Signage, Fit-Out, Kiosk, etc.)</td><td>Revenue Billed, Collected, Expenses, Gross Profit, GP%</td></tr>
         </tbody>
       </table>
-      <p>Both views include a <strong>YTD (Year-to-Date)</strong> totals row at the bottom. Use the <strong>year selector</strong> at the top right to view any past year.</p>
 
       <h3>How the Numbers Are Calculated</h3>
       <table class="data-table">
@@ -845,20 +933,19 @@
           <tr><td><b>GP%</b></td><td>Gross Profit ÷ Revenue Billed × 100</td></tr>
         </tbody>
       </table>
-
-      <div class="note">Expenses must be logged by the accounting team using the <strong>+ Log Expense</strong> button in the Finance page. Expenses that are not logged will not appear in the P&amp;L — the report is only as accurate as the expense entries.</div>
+      <div class="note">Expenses must be logged using the <strong>+ Log Expense</strong> button in the Finance page. Expenses that are not logged will not appear in the P&amp;L.</div>
     </div>
 
     <!-- CH20 — PROCESS COMPLIANCE -->
     <div class="chapter" id="ch20">
       <div class="chapter-header" style="background:#dc2626">
-        <span class="ch-num">20</span><h2>🚨 Process Compliance &amp; Escalations <span class="new-badge">NEW</span></h2>
+        <span class="ch-num">20</span><h2>🚨 Process Compliance &amp; Escalations</h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">Manager</span>
       </div>
 
-      <p>The Process Compliance panel appears on the Manager Dashboard. It automatically scans all active projects and surfaces escalation alerts when process rules are breached — so nothing falls through the cracks.</p>
+      <p>The Process Compliance panel appears on the Manager Dashboard. It automatically scans all active projects and surfaces escalation alerts when process rules are breached.</p>
 
       <h3>Escalation Types</h3>
       <table class="data-table">
@@ -873,64 +960,37 @@
           <tr><td><b>E-7</b></td><td>Won project (Stage 6 or higher) with no billing milestones set — Finance has not been set up yet</td><td><span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;">HIGH</span></td></tr>
         </tbody>
       </table>
-
-      <h3>COC → Finance Link</h3>
-      <p>When the PM issues a Certificate of Completion (COC) in the <strong>Ops Close-Out tab</strong> of a project, a banner automatically appears in the <strong>Billing view</strong> for that project. This notifies Finance that the project is complete and final payment can be collected.</p>
-
-      <h3>Punchlist SLA</h3>
-      <p>The maximum time allowed in the <strong>11 · Punchlist</strong> stage is <strong>5 business days</strong>. The timer starts automatically the moment a project's stage is moved to Punchlist. If the stage has not advanced after 5 business days, an E-3 escalation is raised on the Manager Dashboard.</p>
-
-      <h3>Warranty Tracking</h3>
-      <p>After close-out, the PM can activate a warranty period directly from the <strong>Close-Out tab in Ops</strong>. Three warranty durations are available: <strong>30 days, 60 days, or 90 days</strong>. The warranty clock starts from the COC date. Active warranties appear on the Manager Dashboard so no warranty obligation is forgotten.</p>
     </div>
 
     <!-- CH21 — SMART IMPORT GUIDE -->
     <div class="chapter" id="ch21">
       <div class="chapter-header" style="background:#0891b2">
-        <span class="ch-num">21</span><h2>📥 Smart Import Guide <span class="new-badge">NEW</span></h2>
+        <span class="ch-num">21</span><h2>📥 Smart Import Guide</h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">Manager</span>
       </div>
 
-      <p>Smart Import lets you bulk-load deals into the Sales Pipeline from a spreadsheet file (.xlsx or .csv) — instead of adding deals one by one. Use it to onboard historical data or migrate deals from another system.</p>
+      <p>Smart Import lets you bulk-load deals into the Sales Pipeline from a spreadsheet file (.xlsx or .csv) — instead of adding deals one by one.</p>
 
-      <h3>Step-by-Step Import Process</h3>
       <div class="steps">
         <div class="step"><div class="step-num">1</div><div class="step-content"><b>Go to Sales Pipeline page</b><span>Log in as Manager and navigate to the Sales Pipeline</span></div></div>
         <div class="step"><div class="step-num">2</div><div class="step-content"><b>Click 📥 Smart Import button</b><span>Located at the top right of the pipeline view</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Select your file</b><span>Choose your .xlsx or .csv file from your computer. Use the FabHub SmartImport Template for best results</span></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-content"><b>FabHub analyzes the file</b><span>An analysis screen appears showing: confidence %, number of rows detected, and columns mapped</span></div></div>
-        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Click "Review &amp; Confirm"</b><span>Opens a review table showing all rows mapped to deal fields — Client, CE No, Stage, CE Type, Value</span></div></div>
-        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Review each row</b><span>Check Client, CE No, Stage, CE Type, and Value for accuracy. Use the dropdowns to fix any incorrect stages or CE types</span></div></div>
-        <div class="step"><div class="step-num">7</div><div class="step-content"><b>Click ✅ Confirm Import</b><span>Deals are created instantly in the pipeline. Existing deals matched by CE No are updated, not duplicated</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Select your file</b><span>Choose your .xlsx or .csv file. Use the FabHub SmartImport Template for best results</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>FabHub analyzes the file</b><span>Analysis screen shows confidence %, number of rows detected, and columns mapped</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Click "Review &amp; Confirm"</b><span>Row-by-row review table — fix any incorrect stages or CE types via dropdowns</span></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Click ✅ Confirm Import</b><span>Deals created instantly. Existing deals matched by CE No are updated, not duplicated</span></div></div>
       </div>
-
-      <h3>FabHub SmartImport Template Format</h3>
-      <table class="data-table">
-        <thead><tr><th>Detail</th><th>Specification</th></tr></thead>
-        <tbody>
-          <tr><td><b>Headers row</b></td><td>Row 4 (rows 1–3 are reserved for title/branding)</td></tr>
-          <tr><td><b>Data starts</b></td><td>Row 5 and below</td></tr>
-          <tr><td><b>Sheet 1</b></td><td>Awarded projects — imported as "09 · For Archiving"</td></tr>
-          <tr><td><b>Sheet 2</b></td><td>Pipeline deals — imported with their specified stage</td></tr>
-          <tr><td><b>Duplicate handling</b></td><td>Existing deals matched by CE No are updated, not created again</td></tr>
-        </tbody>
-      </table>
-
-      <div class="note">Download the official CSV template by clicking the <strong>📄 Template</strong> button next to the Smart Import button. Always use this template to ensure correct column mapping.</div>
     </div>
 
     <!-- CH22 — EXAMPLE WALKTHROUGH -->
     <div class="chapter" id="ch22">
       <div class="chapter-header" style="background:#7c3aed">
-        <span class="ch-num">22</span><h2>📖 Example Walkthrough — Full Project Lifecycle <span class="new-badge">NEW</span></h2>
+        <span class="ch-num">22</span><h2>📖 Example Walkthrough — Full Project Lifecycle</h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">All Roles</span>
       </div>
-
-      <p>This walkthrough simulates a complete project from first contact to final payment collection. Follow along to understand how every department connects inside FabHub.</p>
 
       <div style="background:#eff6ff;border-left:4px solid #3b82f6;padding:12px 16px;border-radius:0 8px 8px 0;margin:0 0 20px;">
         <strong>Example Project:</strong> Zara Philippines — SM Megamall Fit-Out<br>
@@ -940,51 +1000,39 @@
       <h3>Phase 1 — Sales</h3>
       <div class="steps">
         <div class="step"><div class="step-num">1</div><div class="step-content"><b>Sales adds the deal to the pipeline</b><span>Client = Zara Philippines, CE No = CE-2025-101, CE Type = Retail Fit-Out, Stage = 01 · BizDev, Value = ₱3.2M</span></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>AE submits a Design Request Form (DRF)</b><span>Fills in client, location, designer, and design deadline so Design can begin concept work</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Stage progresses through early pipeline</b><span>02 · Client Engagement → 03 · Design Request &amp; Folder Setup → 04 · Design &amp; CE in Progress as design and quotation work proceeds</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>AE submits a Design Request Form (DRF)</b><span>Fills in client, location, designer, and design deadline</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Stage progresses through early pipeline</b><span>02 · Client Engagement → 03 → 04 as design and quotation work proceeds</span></div></div>
       </div>
 
-      <h3>Phase 2 — Award Gate (CG-2)</h3>
+      <h3>Phase 2 — Award Gate</h3>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Client approves the CE</b><span>Sales moves the deal to 05 · For Awarding</span></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Award dialog opens</b><span>Manager enters the JO trigger (e.g. PO Received), assigns PM, and sets start and target end dates</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>System auto-creates a 50% Down Payment billing milestone</b><span>₱1.6M milestone (50% of ₱3.2M) is created automatically and assigned to Finance</span></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Project card is created; TAT target is set</b><span>All departments can now see the Zara PH project card. Telegram notifies all 6 channels</span></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Client approves the CE → Sales moves to 05 · For Awarding</b></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Award dialog opens</b><span>GM enters the JO trigger, scope of work. PM 1 can be left blank.</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>JO issued — Telegram blast to all 6 channels</b><span>50% DP billing milestone auto-created. Project Card created.</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>OM opens the Project Card → assigns PM + Coordinator</b><span>Project Team → Edit → assign Mar (OM), Coordinator. Telegram notifies Ops + Management.</span></div></div>
       </div>
 
       <h3>Phase 3 — Execution</h3>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>PM logs progress updates in the Ops view</b><span>Daily PM Updates keep all departments informed of fabrication and installation status</span></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>QS sets the project budget in Cost Analysis</b><span>Materials: ₱800K, Labor: ₱400K, Overhead: ₱240K, Subcon: ₱160K — reviewed from auto-budget baseline</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Procurement logs POs for key materials</b><span>PO delivery dates appear on the Construction Calendar automatically</span></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Calendar shows all critical dates in one view</b><span>Project end date, PO delivery dates, and billing due dates are all visible in the Monthly Calendar tab</span></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>PM sets project progress % via the slider</b><span>Updates to 10% on kick-off, 40% mid-fabrication, 80% at installation, 100% before punchlist</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>PM logs PM Updates regularly</b><span>Ops Telegram channel stays informed</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Procurement logs POs; Finance logs billing payments</b></div></div>
       </div>
 
       <h3>Phase 4 — Close-Out</h3>
       <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Stage moves to 11 · Punchlist; SLA timer starts</b><span>FabHub begins counting the 5-business-day punchlist SLA. An E-3 escalation fires if the stage is not advanced within that window</span></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>Punchlist is resolved; stage moves to 12 · Project Close-Out</b><span>All punchlist items are signed off by the client</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>PM issues COC in Ops → Close-Out tab</b><span>PM enters the COC date and attaches or pastes the COC document link</span></div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Finance sees the COC banner on the Billing view</b><span>The banner signals that the project is complete and the final billing milestone can now be collected</span></div></div>
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Stage moves to 11 · Punchlist; SLA timer starts</b><span>E-3 escalation fires if not advanced within 5 business days</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>All depts done → green banner appears → Move to Close-Out</b><span>GM or Sales clicks the button. Stage moves to 12 · Close-Out.</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Finance collects final payment; project archived</b></div></div>
       </div>
 
-      <h3>Phase 5 — Post-Project</h3>
-      <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-content"><b>PM activates the warranty period</b><span>In the Close-Out tab in Ops, PM selects 30, 60, or 90 days. The warranty clock starts from the COC date and appears on the Manager Dashboard</span></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>P&amp;L Income Statement reflects this project</b><span>Zara PH revenue appears under Retail Fit-Out in the By Project Type view, and under its invoice month in the Monthly view</span></div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Deal is archived in the pipeline</b><span>Stage moves to 09 · For Archiving. The project remains visible in reports and Finance history but no longer clutters the active pipeline</span></div></div>
-      </div>
-
-      <div class="note">This walkthrough covers every major FabHub module: Pipeline → Award → Project Card → Calendar → Cost Analysis → Procurement → Billing → Ops Close-Out → Warranty → P&amp;L. Each phase connects seamlessly — no data needs to be re-entered across departments.</div>
+      <div class="note">This walkthrough covers every major FabHub module: Pipeline → Award → PM Assignment → Project Card → Progress → Calendar → Cost Analysis → Procurement → Billing → Close-Out → P&amp;L.</div>
     </div>
 
-    <!-- CH18 — COMING SOON (updated) -->
+    <!-- CH18 — COMING SOON -->
     <div class="chapter" id="ch18">
       <div class="chapter-header" style="background:#475569">
         <span class="ch-num">18</span><h2>Coming Soon</h2>
-      </div>
-      <div class="note" style="background:#d1fae5;border-color:#6ee7b7;color:#065f46;">
-        ✅ <strong>Smart Import Review Step now live</strong> — The full Smart Import workflow including the file analysis screen, row-by-row review table, and instant import is now available. See Chapter 21 for the complete guide.
       </div>
       <div class="coming-card">
         <h4>📂 Accounting Excel Upload (BIR-Compliant)</h4>
@@ -1002,10 +1050,14 @@
         <h4>🏪 Venue Memory</h4>
         <p>Library of venue requirements: SM Malls, Ayala, Robinsons — delivery windows, permits, contacts. Auto-loads by project venue.</p>
       </div>
+      <div class="coming-card">
+        <h4>🔔 In-App Notifications</h4>
+        <p>Notification bell for each user showing events relevant to them — team assignments, blockers, billing alerts — without leaving FabHub.</p>
+      </div>
     </div>
 
     <div style="text-align:center;padding:40px 0;color:#94a3b8;font-size:13px;border-top:1px solid #e2e8f0;margin-top:20px">
-      GMD Productions Inc. — FabHub Handbook v1.4 — Last Updated: June 1, 2026<br>
+      GMD Productions Inc. — FabHub Handbook v1.5 — Last Updated: June 7, 2026<br>
       Confidential — Internal Use Only — fab-hub.vercel.app
     </div>
 

@@ -3436,9 +3436,17 @@ export default function App(){
     setBlockers(prev=>{
       const n=prev.map(b=>b.id===blockerId?{...b,status:"Resolved",resolvedBy:session?.name,resolvedAt:new Date().toISOString()}:b);
       localStorage.setItem(KEYS.blockers,JSON.stringify(n));
+      const resolved=n.find(b=>b.id===blockerId);
+      if(resolved){
+        const d=deals.find(x=>x.id===resolved.dealId);
+        const msg=`✅ <b>Blocker Resolved</b>\n${d?.client||resolved.dealId}\n<b>${resolved.title}</b>\nResolved by: ${session?.name}`;
+        sendTelegramNotification("management",msg);
+        const dk=(resolved.dept||"").toLowerCase().replace(/[^a-z]/g,"");
+        sendTelegramNotification(dk,msg);
+      }
       return n;
     });
-  },[session]);
+  },[session,deals,sendTelegramNotification]);
 
   const addDRF=(drf)=>upDrfs(ds=>{
     const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;
@@ -15145,6 +15153,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         }
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
                         logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
+                        const pmStr=[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—";
+                        const tgMsg=`👥 <b>Project Team Assigned</b>\n${deal?.client||""}${deal?.ceNo?` · ${deal.ceNo}`:""}\n👷 PM: ${pmStr}\n🤝 AE: ${tf.ae||"—"}${tf.coordinator?`\n📋 Coordinator: ${tf.coordinator}`:""}${tf.designer?`\n🎨 Designer: ${tf.designer}`:""}\nAssigned by: ${session?.name}`;
+                        sendTelegramNotification("ops",tgMsg);
+                        sendTelegramNotification("management",tgMsg);
                         setShowTeamEdit(false);
                       }} style={{flex:1,background:"#1e293b",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Save Team</button>
                       <button onClick={()=>setShowTeamEdit(false)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
