@@ -2357,12 +2357,24 @@ export default function App(){
       out[date]=c.banks?c:{
         ...emptyDayPosition(date),
         banks:{
-          bpi:      {beg:"",book:"",end:String(c.bpi_end||0)},
-          metro:    {beg:"",book:"",end:String(c.metrobank_end||0)},
-          china:    {beg:"",book:"",end:String(c.chinabank_end||0)},
-          bdo:      {beg:"",book:"",end:String(c.bdo_end||0)},
-          security: {beg:"",book:"",end:String(c.secbank_end||0)},
-          union:    {beg:"",book:"",end:String(c.unionbank_end||0)},
+          bpi:      {beg:String(c.bpi_beg||0),      book:String(c.bpi_book||0),      end:String(c.bpi_end||0)},
+          metro:    {beg:String(c.metrobank_beg||0), book:String(c.metrobank_book||0),end:String(c.metrobank_end||0)},
+          china:    {beg:String(c.chinabank_beg||0), book:String(c.chinabank_book||0),end:String(c.chinabank_end||0)},
+          bdo:      {beg:String(c.bdo_beg||0),       book:String(c.bdo_book||0),      end:String(c.bdo_end||0)},
+          security: {beg:String(c.secbank_beg||0),   book:String(c.secbank_book||0),  end:String(c.secbank_end||0)},
+          union:    {beg:String(c.unionbank_beg||0),  book:String(c.unionbank_book||0), end:String(c.unionbank_end||0)},
+        },
+        collections:{
+          fabhubAmt:0,
+          manualAmt: c.manual_collection_amt>0?String(c.manual_collection_amt):"",
+          manualNote:c.manual_collection_note||"",
+        },
+        transactions:typeof c.transactions==='string'?JSON.parse(c.transactions||'[]'):(c.transactions||[]),
+        ytd:{
+          supplierPayable:c.ytd_supplier_payable>0?String(c.ytd_supplier_payable):"",
+          loansPayable:   c.ytd_loans_payable>0?String(c.ytd_loans_payable):"",
+          accountsReceivable:"",
+          expectedCollection:"",
         },
         notes:c.notes||"",
         savedAt:c.updated_at||null,
@@ -2564,7 +2576,7 @@ export default function App(){
       await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
     }
     if(budgets){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
-    if(cashPositions){Object.entries(cashPositions).forEach(([date,c])=>{const payload={date,bpi_end:Number(c.banks?.bpi?.end)||0,metrobank_end:Number(c.banks?.metro?.end)||0,chinabank_end:Number(c.banks?.china?.end)||0,bdo_end:Number(c.banks?.bdo?.end)||0,secbank_end:Number(c.banks?.security?.end)||0,unionbank_end:Number(c.banks?.union?.end)||0,notes:c.notes||""};sbUpsert("cash_positions",payload,"date").catch(()=>{});});}
+    if(cashPositions){Object.entries(cashPositions).forEach(([date,c])=>{const nb=(bk,k)=>Number(c.banks?.[bk]?.[k])||0;const payload={date,bpi_beg:nb("bpi","beg"),bpi_book:nb("bpi","book"),bpi_end:nb("bpi","end"),metrobank_beg:nb("metro","beg"),metrobank_book:nb("metro","book"),metrobank_end:nb("metro","end"),chinabank_beg:nb("china","beg"),chinabank_book:nb("china","book"),chinabank_end:nb("china","end"),bdo_beg:nb("bdo","beg"),bdo_book:nb("bdo","book"),bdo_end:nb("bdo","end"),secbank_beg:nb("security","beg"),secbank_book:nb("security","book"),secbank_end:nb("security","end"),unionbank_beg:nb("union","beg"),unionbank_book:nb("union","book"),unionbank_end:nb("union","end"),manual_collection_amt:Number(c.collections?.manualAmt)||0,manual_collection_note:c.collections?.manualNote||"",transactions:JSON.stringify(c.transactions||[]),ytd_supplier_payable:Number(c.ytd?.supplierPayable)||0,ytd_loans_payable:Number(c.ytd?.loansPayable)||0,notes:c.notes||""};sbUpsert("cash_positions",payload,"date").catch(()=>{});});}
     if(infs?.length){Promise.all(infs.map(r=>sbUpsert("inflows",{id:r.id,deal_id:r.dealId||r.projectId||null,date:r.date||r.month||null,amount:Number(r.amount)||0,source:r.source||"",ref_no:r.refNo||"",note:r.note||""},'id'))).catch(e=>console.error("inflows migrate:",e.message));}
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
   },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
@@ -3366,14 +3378,20 @@ export default function App(){
   const saveDayPos=(date,pos)=>{
     upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
     if(isSupabaseReady()){
+      const nb=(bank,key)=>Number(pos.banks?.[bank]?.[key])||0;
       const payload={
         date,
-        bpi_end:      Number(pos.banks?.bpi?.end)     ||0,
-        metrobank_end:Number(pos.banks?.metro?.end)   ||0,
-        chinabank_end:Number(pos.banks?.china?.end)   ||0,
-        bdo_end:      Number(pos.banks?.bdo?.end)     ||0,
-        secbank_end:  Number(pos.banks?.security?.end)||0,
-        unionbank_end:Number(pos.banks?.union?.end)   ||0,
+        bpi_beg:      nb("bpi","beg"),      bpi_book:      nb("bpi","book"),      bpi_end:      nb("bpi","end"),
+        metrobank_beg:nb("metro","beg"),     metrobank_book:nb("metro","book"),    metrobank_end:nb("metro","end"),
+        chinabank_beg:nb("china","beg"),     chinabank_book:nb("china","book"),    chinabank_end:nb("china","end"),
+        bdo_beg:      nb("bdo","beg"),       bdo_book:      nb("bdo","book"),      bdo_end:      nb("bdo","end"),
+        secbank_beg:  nb("security","beg"),  secbank_book:  nb("security","book"), secbank_end:  nb("security","end"),
+        unionbank_beg:nb("union","beg"),     unionbank_book:nb("union","book"),    unionbank_end:nb("union","end"),
+        manual_collection_amt: Number(pos.collections?.manualAmt)||0,
+        manual_collection_note:pos.collections?.manualNote||"",
+        transactions:  JSON.stringify(pos.transactions||[]),
+        ytd_supplier_payable:Number(pos.ytd?.supplierPayable)||0,
+        ytd_loans_payable:   Number(pos.ytd?.loansPayable)  ||0,
         notes:pos.notes||"",
       };
       sbUpsert("cash_positions",payload,"date").catch(e=>console.error("cash sync:",e.message));
@@ -11958,6 +11976,61 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
           </div>
         ))}
       </div>
+
+      {/* 30-Day Working Capital Trend */}
+      {histDates.length>1&&(()=>{
+        const trendPts=Object.keys(cashPositions).sort().slice(-30).map(d=>{
+          const c=cashPositions[d];
+          const wc=['bpi','metro','china','bdo','security'].reduce((s,bk)=>{
+            const row=c.banks?.[bk]||{};return s+(Number(row.book)||Number(row.end)||0);
+          },0);
+          return{d,wc};
+        });
+        if(trendPts.length<2) return null;
+        const vals=trendPts.map(p=>p.wc);
+        const minV=Math.min(...vals);const maxV=Math.max(...vals);const range=maxV-minV||1;
+        const W=600,H=56,pad=4;
+        const pts=trendPts.map((p,i)=>{
+          const x=pad+(i/(trendPts.length-1))*(W-pad*2);
+          const y=pad+(1-(p.wc-minV)/range)*(H-pad*2);
+          return`${x},${y}`;
+        }).join(" ");
+        const last=trendPts[trendPts.length-1];
+        const prev=trendPts[trendPts.length-2];
+        const trend=last.wc>=prev.wc?"▲":"▼";
+        const trendClr=last.wc>=prev.wc?"#059669":"#ef4444";
+        return(
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:16,flexWrap:"wrap"}}>
+            <div style={{flexShrink:0}}>
+              <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginBottom:2}}>30-Day Working Capital Trend</div>
+              <div style={{fontSize:".82rem",fontWeight:700,color:trendClr}}>{trend} ₱{last.wc.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0})}</div>
+            </div>
+            <div style={{flex:1,minWidth:200,overflow:"hidden"}}>
+              <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:48,display:"block"}} preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="wcGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#1d4ed8" stopOpacity=".15"/>
+                    <stop offset="100%" stopColor="#1d4ed8" stopOpacity="0"/>
+                  </linearGradient>
+                </defs>
+                <polygon points={`${pad},${H} ${pts} ${W-pad},${H}`} fill="url(#wcGrad)"/>
+                <polyline points={pts} fill="none" stroke="#1d4ed8" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+                {trendPts.map((p,i)=>{
+                  const x=pad+(i/(trendPts.length-1))*(W-pad*2);
+                  const y=pad+(1-(p.wc-minV)/range)*(H-pad*2);
+                  return p.d===selDate?<circle key={i} cx={x} cy={y} r="4" fill="#1d4ed8" stroke="#fff" strokeWidth="1.5"/>:null;
+                })}
+              </svg>
+            </div>
+            <div style={{flexShrink:0,textAlign:"right"}}>
+              <div style={{fontSize:".65rem",color:"#94a3b8"}}>Low</div>
+              <div style={{fontWeight:700,color:"#64748b",fontSize:".75rem"}}>₱{minV.toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
+              <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:4}}>High</div>
+              <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".75rem"}}>₱{maxV.toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Main cash position table */}
       <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
