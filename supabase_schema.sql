@@ -31,6 +31,10 @@ CREATE TABLE IF NOT EXISTS deals (
   notes               TEXT,
   probability         INTEGER DEFAULT 0,
   award_request_data  JSONB,
+  location            TEXT DEFAULT '',
+  added_by            TEXT DEFAULT '',
+  added_at            TIMESTAMPTZ,
+  parent_deal_id      UUID REFERENCES deals(id) ON DELETE SET NULL,
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
