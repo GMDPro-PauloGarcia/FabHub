@@ -7243,6 +7243,7 @@ export default function App(){
                 const matchSearch=d=>!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase());
                 const activeWon=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&matchSearch(d));
                 const doneWon  =wonDeals.filter(d=>d.stage==="12 · Close-Out"&&matchSearch(d));
+                const AWARD_GRID="80px 1fr 130px 64px 84px 80px 36px";
                 const AwardRow=({d,list,i})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const paid=Number(d.amountPaid)||0;
@@ -7251,6 +7252,7 @@ export default function App(){
                   const pc=pcards[d.id];
                   const tatLabel=pc?.targetEndDate?new Date(pc.targetEndDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"";
                   const ae=d.salesOwner?(d.salesOwner.split(" ").filter(w=>!["de","del","ng","la","the"].includes(w.toLowerCase())).map(w=>w[0]||"").join("").toUpperCase().slice(0,3)):"";
+                  const [expanded,setExpanded]=React.useState(false);
                   if(isMobile) return(
                     <div style={{padding:"12px 14px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
@@ -7276,29 +7278,36 @@ export default function App(){
                     </div>
                   );
                   return(
-                    <div style={{display:"flex",gap:8,padding:"7px 12px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",alignItems:"center",background:"#fff"}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
-                        <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:2,display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
-                          {d.ceNo&&<span style={{fontWeight:600,color:"#64748b"}}>{d.ceNo}</span>}
-                          {d.client&&<span style={{color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",maxWidth:120,whiteSpace:"nowrap"}}>{d.client}</span>}
-                          {jo?.pm1&&<span style={{color:"#64748b"}}>👷 {jo.pm1.split(" ")[0]}</span>}
-                          {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".6rem"}}>{ae}</span>}
-                          {tatLabel&&<span style={{color:"#8b5cf6",fontSize:".62rem"}}>📅 {tatLabel}</span>}
-                          {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
-                            <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"0px 4px",fontWeight:700,fontSize:".6rem"}}>{e.type}</span>
-                          ))}
+                    <div style={{borderBottom:i<list.length-1?"1px solid #f1f5f9":"none"}}>
+                      <div onClick={()=>setExpanded(x=>!x)}
+                        style={{display:"grid",gridTemplateColumns:AWARD_GRID,gap:0,padding:"10px 16px",alignItems:"center",cursor:"pointer",background:expanded?"#f8fafc":"#fff",transition:"background .12s",minWidth:580}}
+                        onMouseEnter={e=>{if(!expanded)e.currentTarget.style.background="#f8fafc";}}
+                        onMouseLeave={e=>{e.currentTarget.style.background=expanded?"#f8fafc":"#fff";}}>
+                        <div style={{fontWeight:700,color:"#6366f1",fontSize:".72rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{d.ceNo||"—"}</div>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.contact||d.client||"—"}</div>
+                        <div style={{fontSize:".72rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client||"—"}</div>
+                        <div>{ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"2px 6px",fontWeight:700,fontSize:".62rem"}}>{ae}</span>}</div>
+                        <div style={{textAlign:"right",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".78rem",paddingRight:4}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t):"—";}return fmtK(Number(d.value));})()}</div>
+                        <div style={{textAlign:"right",paddingRight:4}}>
+                          <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:700}}>{pct}%</div>
+                          <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
                         </div>
+                        <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{expanded?"▲":"▼"}</div>
                       </div>
-                      <div style={{width:60,textAlign:"right",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".78rem",flexShrink:0}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"Budget Pending";}return fmtK(Number(d.value));})()}</div>
-                      <div style={{width:72,flexShrink:0,textAlign:"right"}}>
-                        <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
-                        <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
-                      </div>
-                      <div style={{width:56,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
-                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
-                      </div>
+                      {expanded&&(
+                        <div style={{padding:"10px 16px 14px",background:"#fafafa",borderTop:"1px solid #f1f5f9",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+                          {jo?.pm1&&<span style={{fontSize:".72rem",color:"#64748b"}}>👷 <strong>PM:</strong> {jo.pm1}</span>}
+                          {tatLabel&&<span style={{fontSize:".72rem",color:"#8b5cf6"}}>📅 <strong>TAT:</strong> {tatLabel}</span>}
+                          {d.product&&<span style={{fontSize:".72rem",color:"#64748b"}}><strong>Product:</strong> {d.product}</span>}
+                          {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
+                            <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"2px 6px",fontWeight:700,fontSize:".65rem"}}>{e.type}</span>
+                          ))}
+                          <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                            <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
+                            {role==="Manager"&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"5px 9px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Delete</button>}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 };
@@ -7348,11 +7357,10 @@ export default function App(){
                   </>);
                 };
                 const ColHeader=()=>isMobile?null:(
-                  <div style={{display:"flex",gap:8,padding:"6px 12px",background:"#f8fafc",borderBottom:"1px solid #e2e8f0",fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px",alignItems:"center"}}>
-                    <span style={{flex:1}}>Client / CE</span>
-                    <span style={{width:60,textAlign:"right",flexShrink:0}}>Value</span>
-                    <span style={{width:72,textAlign:"right",flexShrink:0}}>Payment</span>
-                    <span style={{width:56,textAlign:"right",flexShrink:0}}>Actions</span>
+                  <div style={{display:"grid",gridTemplateColumns:AWARD_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:580}}>
+                    {["CE #","Project","Client","AE","Value","Payment",""].map((h,i)=>(
+                      <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i>=4&&i<=5?"right":"left"}}>{h}</div>
+                    ))}
                   </div>
                 );
                 return(<>
