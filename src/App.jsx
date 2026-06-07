@@ -4575,7 +4575,16 @@ export default function App(){
         <MobileHeader/>
         <Toaster/>
         {SyncBanner}
-        <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?56:undefined,paddingBottom:isMobile?72:undefined}} className="fi">{children}</div>
+        <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?56:undefined,paddingBottom:isMobile?72:undefined}} className="fi">
+          {!isMobile&&(
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #e2e8f0"}}>
+              <img src="/gmd-logo.png" alt="GMD Productions" style={{height:32,objectFit:"contain",display:"block"}}/>
+              <div style={{width:1,height:24,background:"#e2e8f0"}}/>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:".95rem",color:"#94a3b8",letterSpacing:".5px"}}>FabHub</span>
+            </div>
+          )}
+          {children}
+        </div>
       {showExportRef.current&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
