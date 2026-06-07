@@ -711,6 +711,8 @@ const emptyDeal={
   commsGroup:"",commsGroupLink:"",
   // Addenda
   addenda:[],
+  // Parent-child linking
+  parentDealId:null,
   // Feedback
   clientFeedback:"",feedbackDate:"",feedbackScore:"",
 };
@@ -1406,7 +1408,7 @@ function ClientAutocomplete({value:initVal, onChange}){
 }
 
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
-function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId}){
+function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[]}){
   // Local state — prevents App re-render on every keystroke (fixes focus bug)
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1457,6 +1459,16 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="Project Location" hint="e.g. SM North EDSA 3F Activity Area, BGC Taguig, Makati CBD">
             <Inp value={form.location||""} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM North EDSA – 3F Activity Area"/>
+          </Fld>
+        </div>
+        <div style={{gridColumn:"1/-1"}}>
+          <Fld label="🔗 Link to Parent Deal" hint="Set this if the deal is an addendum or extension of an existing project">
+            <Sel value={form.parentDealId||""} onChange={e=>f("parentDealId",e.target.value||null)}>
+              <option value="">— Standalone deal —</option>
+              {deals.filter(d=>!d.parentDealId&&d.id!==editId).map(d=>(
+                <option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?` (${d.ceNo})`:""}</option>
+              ))}
+            </Sel>
           </Fld>
         </div>
         {isWon&&(
@@ -2205,7 +2217,7 @@ export default function App(){
           // Diagnostic — visible in browser console AND stored for the sync banner
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
-            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
+            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null})));
             if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
             if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
             if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
@@ -2295,7 +2307,7 @@ export default function App(){
       lastRefresh=now;
       try{
         const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null})));
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null})));
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
@@ -2375,6 +2387,7 @@ export default function App(){
     location:r.location||"",
     added_by:r.addedBy||"", added_at:r.addedAt||null,
     award_request_data:r.awardRequestData||null,
+    parent_deal_id:r.parentDealId||null,
     updated_at:new Date().toISOString(),
   });
   const toSbJO = r=>({
@@ -4604,7 +4617,7 @@ export default function App(){
         </div>
       )}
       {/* Global Modals */}
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
+      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
@@ -7094,8 +7107,9 @@ export default function App(){
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))&&
             (pipeAE==="all"||d.salesOwner===pipeAE)
           ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
-          const hotDeals=allActive.filter(d=>daysSince(d.dateAcquired)<=15);
-          const coldDeals=allActive.filter(d=>daysSince(d.dateAcquired)>15);
+          const hotDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)<=15);
+          const coldDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)>15);
+          const childPipeDeals=allActive.filter(d=>d.parentDealId);
 
           // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
           const BUDGET_ONLY=["Design","Operations","ProjectMover"];
@@ -7198,7 +7212,10 @@ export default function App(){
                     <PipeTableHeader/>
                     <div style={{maxHeight:300,overflowY:"auto"}}>
                       {hotDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"No new deals this period."}</div>}
-                      {hotDeals.map((d,i)=><PipeRow key={d.id} d={d} list={hotDeals} i={i}/>)}
+                      {hotDeals.map((d,i)=>{
+                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
+                        return(<React.Fragment key={d.id}><PipeRow d={d} list={hotDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
+                      })}
                     </div>
                   </div>
                 </div>
@@ -7212,7 +7229,10 @@ export default function App(){
                     <PipeTableHeader/>
                     <div style={{maxHeight:300,overflowY:"auto"}}>
                       {coldDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"All deals active — great work!"}</div>}
-                      {coldDeals.map((d,i)=><PipeRow key={d.id} d={d} list={coldDeals} i={i}/>)}
+                      {coldDeals.map((d,i)=>{
+                        const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
+                        return(<React.Fragment key={d.id}><PipeRow d={d} list={coldDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
+                      })}
                     </div>
                   </div>
                 </div>
@@ -7435,7 +7455,7 @@ export default function App(){
           );
         })()}
 
-        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal}/>
+        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
       </Wrap>
       {awardReqModal&&<AwardReqModal deal={awardReqModal} session={session} today={today} onClose={()=>setAwardReqModal(null)} onSubmit={formData=>{
           const d=awardReqModal;
@@ -10359,7 +10379,7 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
   const[filter,setFilter]=useState("All");
   const shown=filter==="All"?sw:sw.filter(s=>s.status===filter);
   return(
-    <Wrap>
+    <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,flexWrap:"wrap",gap:10}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🎨 Procurement Swatchboard</h2>
@@ -10443,7 +10463,7 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
         </Card>
       ))}
       {shown.length===0&&<EmptyState icon="🛒" msg={`No ${filter==="All"?"items":filter.toLowerCase()} in the swatchboard yet.`}/>}
-    </Wrap>
+    </div>
   );
 }
 
@@ -14756,7 +14776,39 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               }
               return 0;
             });
-            if(list.length===0) return <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>;
+            // Separate parent deals from child deals for nested display
+            const childDeals=list.filter(d=>d.parentDealId);
+            const parentList=list.filter(d=>!d.parentDealId);
+            const renderPCRow=(d,idx,total,isChild=false)=>{
+              const pc=pcards[d.id];
+              const h=getHealth(d,pc);const[hc,hl]=HC[h];
+              const joR=jos.find(j=>j.dealId===d.id);
+              const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
+              const pct=projPct(pc,d);
+              const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean)[0]||"—";
+              const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
+              const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
+              return(
+                <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
+                  style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":hc}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:660}}
+                  onMouseEnter={e=>e.currentTarget.style.background=isChild?"#fef3c7":"#f8fafc"}
+                  onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":"#fff"}>
+                  <div style={{paddingRight:10,minWidth:0}}>
+                    {isChild&&<div style={{fontSize:".55rem",color:"#f59e0b",fontWeight:700,marginBottom:1}}>↳ ADDENDUM</div>}
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                    <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{d.ceNo||"No CE"}{projB>0&&<span style={{marginLeft:6,color:"#ef4444",fontWeight:700}}>⛔ {projB}</span>}{!pc&&<span style={{marginLeft:6,color:"#f59e0b",fontWeight:700}}>⚠ No card</span>}</div>
+                  </div>
+                  <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client}</div>
+                  <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{ae==="—"?<span style={{color:"#cbd5e1"}}>—</span>:ae}</div>
+                  <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{pm==="—"?<span style={{color:"#cbd5e1"}}>Unassigned</span>:pm}</div>
+                  <div><span style={{fontSize:".64rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 7px",whiteSpace:"nowrap"}}>{pct===100?"✅ Done":hl}</span></div>
+                  <div style={{fontSize:".74rem",fontWeight:dLeft!==null&&dLeft<0?700:400,color:dLeft===null?"#cbd5e1":dLeft<0?"#ef4444":dLeft<=7?"#f59e0b":"#64748b"}}>
+                    {dLeft===null?"—":dLeft<0?`${Math.abs(dLeft)}d over`:`${dLeft}d left`}
+                  </div>
+                </div>
+              );
+            };
+            if(parentList.length===0&&childDeals.length===0) return <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>;
             return(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{overflowX:"auto"}}>
@@ -14766,40 +14818,13 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
                   ))}
                 </div>
-                {list.map((d,idx)=>{
-                  const pc=pcards[d.id];
-                  const h=getHealth(d,pc);const[hc,hl]=HC[h];
-                  const joR=jos.find(j=>j.dealId===d.id);
-                  const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
-                  const pct=projPct(pc,d);
-                  const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean)[0]||"—";
-                  const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
-                  const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
+                {parentList.map((d,idx)=>{
+                  const children=childDeals.filter(c=>c.parentDealId===d.id);
                   return(
-                    <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
-                      style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,padding:"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${hc}`,background:"#fff",transition:"background .1s",minWidth:660}}
-                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                      {/* Project */}
-                      <div style={{paddingRight:10,minWidth:0}}>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
-                        <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{d.ceNo||"No CE"}{projB>0&&<span style={{marginLeft:6,color:"#ef4444",fontWeight:700}}>⛔ {projB}</span>}{!pc&&<span style={{marginLeft:6,color:"#f59e0b",fontWeight:700}}>⚠ No card</span>}</div>
-                      </div>
-                      {/* Client */}
-                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client}</div>
-                      {/* AE */}
-                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{ae==="—"?<span style={{color:"#cbd5e1"}}>—</span>:ae}</div>
-                      {/* PM */}
-                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{pm==="—"?<span style={{color:"#cbd5e1"}}>Unassigned</span>:pm}</div>
-                      {/* Health */}
-                      <div>
-                        <span style={{fontSize:".64rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 7px",whiteSpace:"nowrap"}}>{pct===100?"✅ Done":hl}</span>
-                      </div>
-                      {/* Due */}
-                      <div style={{fontSize:".74rem",fontWeight:dLeft!==null&&dLeft<0?700:400,color:dLeft===null?"#cbd5e1":dLeft<0?"#ef4444":dLeft<=7?"#f59e0b":"#64748b"}}>
-                        {dLeft===null?"—":dLeft<0?`${Math.abs(dLeft)}d over`:`${dLeft}d left`}
-                      </div>
-                    </div>
+                    <React.Fragment key={d.id}>
+                      {renderPCRow(d,idx,parentList.length,false)}
+                      {children.map((c,ci)=>renderPCRow(c,ci,children.length,true))}
+                    </React.Fragment>
                   );
                 })}
                 </div>
