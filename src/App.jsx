@@ -9518,22 +9518,9 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
   const opsAmt=(d)=>{if(BUDGET_ONLY_OPS.includes(role)){const t=qsBudgetTotalOps(d?.id);return t>0?fmt(t)+" (budget)":"Budget Pending";}return fmt(d?.value);};
   const uid2=()=>String(Date.now());
-  const ViewTabs=setPage?(
-    <div style={{display:"flex",gap:6,marginBottom:16,background:"#f8fafc",borderRadius:10,padding:4,width:"fit-content"}}>
-      {[["projects","📋 Project Cards"],["ops","🏗 Production View"]].map(([v,l])=>(
-        <button key={v} onClick={()=>setPage(v)}
-          style={{padding:"7px 16px",borderRadius:7,border:"none",fontFamily:"inherit",fontWeight:v==="ops"?700:500,fontSize:".82rem",cursor:"pointer",
-            background:v==="ops"?"#1e293b":"transparent",
-            color:v==="ops"?"#fff":"#64748b"}}>
-          {l}
-        </button>
-      ))}
-    </div>
-  ):null;
   if(!selProj) return(
     <Wrap>
-      {ViewTabs}
-      <SecHead title="Production View" sub="Click any project to update stages, materials, and team"/>
+      <SecHead title="Active Projects" sub="Click any project to update stages, materials, and team"/>
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr)",gap:12}}>
         {projList.map(d=>{
           const p=projs[d.id]; if(!p) return null; const prog=overallProg(p);
@@ -10321,15 +10308,22 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
   return(
     <Wrap>
       <SecHead title="Procurement Swatchboard" sub="Shared checklist — Design & Ops add, Procurement fulfills"/>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:12,marginBottom:20}}>
-        <KPI label="Total Items"     value={sw.length}         color="#3b82f6"/>
-        <KPI label="To Buy"          value={toBuy.length}      color="#ef4444"/>
-        <KPI label="Ordered"         value={ordered.length}    color="#f59e0b"/>
-        <KPI label="Received"        value={received.length}   color="#10b981"/>
-        <KPI label="Client Approved" value={approved.length}   color="#059669"/>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:10,marginBottom:18}}>
+        {[
+          {l:"Total Items",     v:sw.length,         c:"#3b82f6"},
+          {l:"To Buy",         v:toBuy.length,       c:"#ef4444"},
+          {l:"Ordered",        v:ordered.length,     c:"#f59e0b"},
+          {l:"Received",       v:received.length,    c:"#10b981"},
+          {l:"Client Approved",v:approved.length,    c:"#059669"},
+        ].map(({l,v,c})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:c,lineHeight:1}}>{v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginTop:4}}>{l}</div>
+          </div>
+        ))}
       </div>
-      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",justifyContent:"space-between",alignItems:"center"}}>
-        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {["All","To Buy","Ordered","Received","Client Approved"].map(f=>(
             <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${filter===f?SW_CLR[f]||"#3b82f6":"#e2e8f0"}`,background:filter===f?(SW_CLR[f]||"#3b82f6")+"18":"#fff",color:filter===f?SW_CLR[f]||"#3b82f6":"#64748b",fontWeight:filter===f?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".8rem"}}>{f}</button>
           ))}
@@ -12396,8 +12390,16 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       </div>
 
       {noBudgetCount>0&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:16,fontSize:".8rem",color:"#92400e"}}>
-          ⚠️ <strong>{noBudgetCount} project{noBudgetCount!==1?"s":""} have no budget set</strong> — click them below to add a budget.
+        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginBottom:16,fontSize:".8rem",color:"#92400e"}}>
+          <div style={{fontWeight:700,marginBottom:6}}>⚠️ {noBudgetCount} project{noBudgetCount!==1?"s":""} have no budget set — click to set:</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {allProjectData.filter(p=>!p.hasBudget).map(({d})=>(
+              <button key={d.id} onClick={()=>setSelDeal(d.id)}
+                style={{background:"#fff",border:"1.5px solid #fde68a",borderRadius:8,padding:"4px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#92400e",cursor:"pointer"}}>
+                {d.contact||d.client}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -12799,14 +12801,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
 
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
         {[
-          {l:"Total POs",        v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a"},
-          {l:"Pending Approval", v:prs.filter(p=>p.status==="Pending Approval").length, c:"#f59e0b"},
-          {l:"PO Issued",        v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length, c:"#3b82f6"},
-          {l:"Total Value",      v:"₱"+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#10b981"},
-        ].map(({l,v,c})=>(
+          {l:"Total POs",        v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a", icon:"📄"},
+          {l:"Pending Approval", v:prs.filter(p=>p.status==="Pending Approval").length,                                            c:"#f59e0b", icon:"⏳"},
+          {l:"PO Issued",        v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length,           c:"#3b82f6", icon:"✅"},
+          {l:"Total Value",      v:totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),           c:"#10b981", icon:"₱"},
+        ].map(({l,v,c,icon})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+            <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:4}}>
+              <span style={{fontSize:".8rem",lineHeight:1}}>{icon}</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c,lineHeight:1}}>{v}</span>
+            </div>
+            <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8"}}>{l}</div>
           </div>
         ))}
       </div>
@@ -16682,6 +16687,23 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
 
   const topMat=[...new Set(suppliers.map(s=>s.materials).filter(Boolean))].sort();
 
+  // Group filtered suppliers by company name so duplicates collapse into one row
+  const grouped=useMemo(()=>{
+    const map=new Map();
+    filtered.forEach(s=>{
+      const key=(s.companyName||s.company_name||"").trim().toLowerCase();
+      if(!map.has(key)){
+        map.set(key,{...s,_ids:[s.id],_materials:[...(s.materials?[s.materials]:[])],_allItems:[s]});
+      } else {
+        const g=map.get(key);
+        g._ids.push(s.id);
+        g._allItems.push(s);
+        if(s.materials&&!g._materials.includes(s.materials)) g._materials.push(s.materials);
+      }
+    });
+    return [...map.values()];
+  },[filtered]);
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
@@ -16748,33 +16770,47 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
 
       {suppliers.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No suppliers yet. Add your first supplier above.</div>}
 
-      {/* List */}
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.map(s=>{
-          const clr=ratingClr[s.rating]||"#94a3b8";
+      {/* List — grouped by company */}
+      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+        {grouped.map(g=>{
+          const clr=ratingClr[g.rating]||"#94a3b8";
+          const name=g.companyName||g.company_name||"—";
+          const contact=g.contactPerson||g.contact_person;
+          const phone=g.contactNos||g.contact_nos;
+          const terms=g.paymentTerms||g.payment_terms;
           return(
-            <div key={s.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                    <span style={{fontSize:".68rem",fontWeight:700,color:clr,background:clr+"1a",padding:"2px 8px",borderRadius:20}}>{s.rating||"—"}</span>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".92rem"}}>{s.companyName||s.company_name}</span>
+            <div key={name} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 16px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                <div style={{flex:1,minWidth:0}}>
+                  {/* Company + rating */}
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
+                    <span style={{fontSize:".65rem",fontWeight:700,color:clr,background:clr+"18",padding:"2px 8px",borderRadius:20,whiteSpace:"nowrap"}}>{g.rating||"—"}</span>
+                    <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>{name}</span>
+                    {g._ids.length>1&&<span style={{fontSize:".62rem",background:"#f1f5f9",color:"#64748b",borderRadius:20,padding:"1px 7px"}}>{g._ids.length} entries</span>}
                   </div>
-                  <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem",color:"#64748b",marginBottom:s.address?4:0}}>
-                    {(s.materials)&&<span>📦 {s.materials}</span>}
-                    {(s.contactPerson||s.contact_person)&&<span>👤 {s.contactPerson||s.contact_person}</span>}
-                    {(s.contactNos||s.contact_nos)&&<span>📞 {s.contactNos||s.contact_nos}</span>}
-                    {(s.email)&&<span>✉ {s.email}</span>}
-                    {(s.paymentTerms||s.payment_terms)&&<span style={{background:"#f0fdf4",color:"#166534",padding:"1px 8px",borderRadius:10,fontWeight:600}}>💳 {s.paymentTerms||s.payment_terms}</span>}
-                    {(s.tinNo||s.tin_no)&&<span>TIN: {s.tinNo||s.tin_no}</span>}
+                  {/* Materials as chips */}
+                  {g._materials.length>0&&(
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap",marginBottom:6}}>
+                      {g._materials.map((m,i)=>(
+                        <span key={i} style={{fontSize:".71rem",background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 9px",fontWeight:600}}>📦 {m}</span>
+                      ))}
+                    </div>
+                  )}
+                  {/* Contact info row */}
+                  <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:".76rem",color:"#64748b"}}>
+                    {contact&&<span>👤 {contact}</span>}
+                    {phone&&<span>📞 {phone}</span>}
+                    {g.email&&<span>✉ {g.email}</span>}
+                    {terms&&<span style={{background:"#f0fdf4",color:"#166534",padding:"1px 8px",borderRadius:10,fontWeight:600}}>💳 {terms}</span>}
+                    {(g.tinNo||g.tin_no)&&<span style={{color:"#94a3b8"}}>TIN: {g.tinNo||g.tin_no}</span>}
                   </div>
-                  {(s.address)&&<div style={{fontSize:".75rem",color:"#94a3b8",marginTop:2}}>📍 {s.address}</div>}
-                  {(s.notes)&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"3px 8px",marginTop:4,display:"inline-block"}}>📝 {s.notes}</div>}
+                  {g.address&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:3}}>📍 {g.address}</div>}
+                  {g.notes&&<div style={{fontSize:".72rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"3px 8px",marginTop:4,display:"inline-block"}}>📝 {g.notes}</div>}
                 </div>
                 {canEdit&&(
-                  <div style={{display:"flex",gap:6,flexShrink:0}}>
-                    <button onClick={()=>openEdit(s)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                    <button onClick={()=>{if(window.confirm("Remove this supplier?"))deleteSupplier(s.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+                  <div style={{display:"flex",gap:5,flexShrink:0}}>
+                    <button onClick={()=>openEdit(g._allItems[0])} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                    <button onClick={()=>{if(window.confirm(`Remove all ${g._ids.length} entr${g._ids.length===1?"y":"ies"} for ${name}?`))g._ids.forEach(id=>deleteSupplier(id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
                   </div>
                 )}
               </div>
