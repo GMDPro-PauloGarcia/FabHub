@@ -7260,7 +7260,7 @@ export default function App(){
                           <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:2}}>{d.contact||d.client}</div>
                           <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
                             {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
-                            {d.client&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>{d.client}</span>}
+                            {d.client&&d.contact&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</span>}
                             {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
                             {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".65rem"}}>{ae}</span>}
                             {tatLabel&&<span style={{color:"#8b5cf6"}}>📅 {tatLabel}</span>}
@@ -7334,21 +7334,23 @@ export default function App(){
                           </button>
                           {isOpen&&(
                             <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #e2e8f0",borderTop:"none",overflow:"hidden"}}>
-                              <ColHeader/>
-                              {gd.map((d,i)=>{
-                                const children=allChildren.filter(c=>c.parentDealId===d.id);
-                                return(
-                                  <React.Fragment key={d.id}>
-                                    <AwardRow d={d} list={gd} i={i}/>
-                                    {children.map((c,ci)=>(
-                                      <div key={c.id} style={{borderLeft:"3px solid #f59e0b",marginLeft:isMobile?8:16,background:"#fffbeb"}}>
-                                        <div style={{fontSize:".55rem",color:"#f59e0b",fontWeight:700,padding:"3px 12px 0",letterSpacing:".5px"}}>↳ ADDENDUM</div>
-                                        <AwardRow d={c} list={children} i={ci}/>
-                                      </div>
-                                    ))}
-                                  </React.Fragment>
-                                );
-                              })}
+                              <div style={{overflowX:"auto"}}>
+                                <ColHeader/>
+                                {gd.map((d,i)=>{
+                                  const children=allChildren.filter(c=>c.parentDealId===d.id);
+                                  return(
+                                    <React.Fragment key={d.id}>
+                                      <AwardRow d={d} list={gd} i={i}/>
+                                      {children.map((c,ci)=>(
+                                        <div key={c.id} style={{borderLeft:"3px solid #f59e0b",background:"#fffbeb"}}>
+                                          <div style={{fontSize:".55rem",color:"#f59e0b",fontWeight:700,padding:"3px 12px 0",letterSpacing:".5px"}}>↳ ADDENDUM</div>
+                                          <AwardRow d={c} list={children} i={ci}/>
+                                        </div>
+                                      ))}
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </div>
                             </div>
                           )}
                         </div>
