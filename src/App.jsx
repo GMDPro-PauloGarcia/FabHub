@@ -6121,15 +6121,15 @@ export default function App(){
         {/* ── KPI STRIP ───────────────────────────────────────────────── */}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(7,1fr)",gap:10,marginBottom:20}}>
           {[
-            {l:"Pipeline",      v:fmtK(deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).length+" deals"},
-            {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects"},
-            {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`},
+            {l:"Pipeline",      v:fmtK(deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).length+" deals", click:()=>setPage("pipeline")},
+            {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects",             click:()=>setPage("projects")},
+            {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`,           click:()=>setPage("billing")},
             {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
-            {l:"Active JOs",    v:jos.filter(j=>j.status==="Active").length, c:"#f97316", sub:"job orders issued"},
-            {l:"Pending PRs",   v:prs.filter(p=>p.status==="Pending Approval").length, c:"#8b5cf6", sub:"awaiting approval"},
+            {l:"Active JOs",    v:jos.filter(j=>j.status==="Active").length, c:"#f97316", sub:"job orders issued",  click:()=>setPage("projects")},
+            {l:"Pending PRs",   v:prs.filter(p=>p.status==="Pending Approval").length, c:"#8b5cf6", sub:"awaiting approval", click:()=>setPage("procurement")},
             {l:"Escalations",   v:escalations.length>0?"⚠️ "+escalations.length:escalations.length, c:escalations.length>0?"#ef4444":"#94a3b8", sub:escalations.length>0?escalations.filter(e=>e.severity==="high").length+" high severity":"all clear"},
-          ].map(({l,v,c,sub})=>(
-            <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${l==="Escalations"&&escalations.length>0?"#fecaca":"#e2e8f0"}`}}>
+          ].map(({l,v,c,sub,click})=>(
+            <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${l==="Escalations"&&escalations.length>0?"#fecaca":"#e2e8f0"}`,cursor:click?"pointer":"default"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.35rem",color:c}}>{v}</div>
               <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
               {sub&&<div style={{fontSize:".67rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>}
@@ -6167,29 +6167,6 @@ export default function App(){
           </div>
         )}
 
-        {/* ── DASHBOARD CUSTOMIZE BUTTON ──────────────────────────────── */}
-        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8,gap:8}}>
-          {dashEditMode&&(
-            <div style={{display:"flex",gap:6,alignItems:"center",background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8"}}>
-              {["active","collections","activity","dept"].map(id=>{
-                const labels={"active":"🏗 Active Projects","collections":"💵 Collections","activity":"📋 Recent Activity","dept":"🏢 Dept Status"};
-                const idx=dashOrder.indexOf(id);
-                return(
-                  <div key={id} style={{display:"flex",alignItems:"center",gap:4,background:"#fff",borderRadius:6,padding:"3px 8px",border:"1px solid #bfdbfe"}}>
-                    <span style={{fontWeight:600}}>{labels[id]}</span>
-                    <button onClick={()=>{if(idx>0){const o=[...dashOrder];[o[idx-1],o[idx]]=[o[idx],o[idx-1]];saveDashOrder(o);}}} disabled={idx===0} style={{background:"none",border:"none",cursor:idx===0?"not-allowed":"pointer",color:idx===0?"#cbd5e1":"#3b82f6",fontSize:".8rem",padding:"0 2px"}}>◀</button>
-                    <button onClick={()=>{if(idx<dashOrder.length-1){const o=[...dashOrder];[o[idx],o[idx+1]]=[o[idx+1],o[idx]];saveDashOrder(o);}}} disabled={idx===dashOrder.length-1} style={{background:"none",border:"none",cursor:idx===dashOrder.length-1?"not-allowed":"pointer",color:idx===dashOrder.length-1?"#cbd5e1":"#3b82f6",fontSize:".8rem",padding:"0 2px"}}>▶</button>
-                  </div>
-                );
-              })}
-              <button onClick={()=>saveDashOrder(["active","collections","activity","dept"])} style={{background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".7rem"}}>Reset</button>
-            </div>
-          )}
-          <button onClick={()=>setDashEditMode(m=>!m)} style={{background:dashEditMode?"#1d4ed8":"#f1f5f9",color:dashEditMode?"#fff":"#64748b",border:"1.5px solid "+(dashEditMode?"#1d4ed8":"#e2e8f0"),borderRadius:8,padding:"4px 12px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>
-            ⚙ {dashEditMode?"Done":"Arrange"}
-          </button>
-        </div>
-
         {/* ── AWARD REQUESTS PANEL ────────────────────────────────────── */}
         {(()=>{
           const reqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
@@ -6225,132 +6202,66 @@ export default function App(){
           );
         })()}
 
-        {/* ── 4 REORDERABLE WIDGETS rendered in dashOrder pairs ── */}
+        {/* ── SECTION SUMMARY CARDS ── */}
           {(()=>{
-            const widgetActive=(
-              <div key="active" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>🏗 Active Projects</span>
-                  <button onClick={()=>setPage("projects")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View all</button>
-                </div>
-                <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
-                  {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No active projects</div>}
-                  {wonDeals.slice(0,6).map(d=>{
-                    const pc=pcards[d.id];const jo=jos.find(j=>j.dealId===d.id);
-                    const daysLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date())/(1000*60*60*24)):null;
-                    const isOver=daysLeft!==null&&daysLeft<0;
-                    const deptsDone=pc?DEPT_ORDER.filter(dept=>pc.departments?.[dept]?.done).length:0;
-                    return(
-                      <div key={d.id} onClick={()=>setPage("projects")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}
-                        onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
-                          <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{jo?.pm1||"No PM"} · {deptsDone}/6 depts</div>
-                        </div>
-                        {daysLeft!==null?<span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":daysLeft<=7?"#f59e0b":"#059669",background:isOver?"#fef2f2":daysLeft<=7?"#fffbeb":"#f0fdf4",padding:"2px 8px",borderRadius:20,flexShrink:0}}>{isOver?`${Math.abs(daysLeft)}d over`:`${daysLeft}d left`}</span>:<span style={{fontSize:".68rem",color:"#e2e8f0",flexShrink:0}}>No TAT</span>}
+            const today2=new Date();
+            const pipeDeals=deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage));
+            const pipeVal=pipeDeals.reduce((s,d)=>s+Number(d.value||0),0);
+            const overdueProj=wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&new Date(pcards[d.id].targetEndDate)<today2).length;
+            const allMs2=billings;
+            const totalOut2=allMs2.reduce((s,m)=>s+Number(m.amount||0),0)-allMs2.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+            const overdueMs2=allMs2.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled").length;
+            const pendingMRs2=mreqs.filter(m=>m.status==="Submitted").length;
+            const pendingBRs2=breqs.filter(b=>b.status==="Pending").length;
+            const openPOs2=prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status)).length;
+            const toBuy2=swatches.filter(s=>s.status==="To Buy").length;
+            const sCards=[
+              {icon:"🏗", label:"Projects",        accent:"#f97316", main:`${wonDeals.length} active`,           sub:overdueProj>0?`⚠️ ${overdueProj} overdue`:"All on track",                     subClr:overdueProj>0?"#ef4444":"#10b981", action:()=>setPage("projects")},
+              {icon:"💵", label:"Collections",     accent:"#10b981", main:fmtK(totalOut2)+" out",                sub:overdueMs2>0?`${overdueMs2} overdue invoice${overdueMs2>1?"s":""}`:"No overdue",subClr:overdueMs2>0?"#ef4444":"#10b981", action:()=>setPage("billing")},
+              {icon:"📋", label:"Requests",        accent:"#8b5cf6", main:`${pendingMRs2+pendingBRs2} pending`,  sub:`${pendingMRs2} MR · ${pendingBRs2} Budget`,                                   subClr:"#64748b",                         action:()=>setPage("requests")},
+              {icon:"📦", label:"Purchase Orders", accent:"#06b6d4", main:`${openPOs2} open`,                    sub:openPOs2===0?"Nothing pending":"Awaiting action",                               subClr:openPOs2>0?"#f59e0b":"#10b981",    action:()=>setPage("procurement")},
+              {icon:"🎨", label:"Swatchboard",     accent:"#ec4899", main:`${toBuy2} to source`,                 sub:"Tap to manage",                                                                subClr:"#64748b",                         action:()=>setPage("swatchboard")},
+              {icon:"📊", label:"Pipeline",        accent:"#3b82f6", main:fmtK(pipeVal),                         sub:`${pipeDeals.length} active deals`,                                             subClr:"#64748b",                         action:()=>setPage("pipeline")},
+            ];
+            return(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  {sCards.map(c=>(
+                    <div key={c.label} onClick={c.action}
+                      style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",borderLeft:`4px solid ${c.accent}`,padding:"14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:3,transition:"all .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.boxShadow=`0 4px 14px ${c.accent}28`;e.currentTarget.style.borderColor=c.accent;}}
+                      onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor="#e2e8f0";}}>
+                      <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"flex",justifyContent:"space-between"}}>
+                        <span>{c.icon} {c.label}</span><span style={{color:c.accent}}>›</span>
                       </div>
-                    );
-                  })}
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c.accent}}>{c.main}</div>
+                      <div style={{fontSize:".67rem",color:c.subClr,fontWeight:600}}>{c.sub}</div>
+                    </div>
+                  ))}
                 </div>
-              </div>
-            );
-            const widgetCollections=(
-              <div key="collections" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontWeight:700,color:"#4ade80",fontSize:".85rem"}}>💵 Collections</span>
-                  <button onClick={()=>setPage("billing")} style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"3px 10px",color:"rgba(255,255,255,.7)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>View billing</button>
-                </div>
-                <div style={{padding:"4px 0",maxHeight:230,overflowY:"auto"}}>
-                  {wonDeals.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No awarded projects</div>}
-                  {wonDeals.slice(0,6).map(d=>{
-                    const ms=billings.filter(b=>b.dealId===d.id);
-                    const billed=ms.reduce((s,m)=>s+Number(m.amount||0),0);
-                    const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-                    const balance=billed-collected;
-                    const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
-                    return(
-                      <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:"1px solid #f8fafc"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{hasOverdue&&<span style={{color:"#ef4444",marginRight:4}}>🔴</span>}{d.client}</div>
-                          <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{ms.length} milestone{ms.length!==1?"s":""} · Billed ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                        </div>
-                        <div style={{textAlign:"right",flexShrink:0}}>
-                          <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".82rem"}}>{balance>0?`-₱${balance.toLocaleString("en-PH",{minimumFractionDigits:0})}`:"✓ Clear"}</div>
-                          {balance>0&&<div style={{fontSize:".65rem",color:"#94a3b8"}}>outstanding</div>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-            const widgetActivity=(
-              <div key="activity" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{background:"#1e293b",padding:"10px 16px",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontWeight:700,color:"#a78bfa",fontSize:".85rem",flex:1}}>📋 Recent Activity</span>
-                  <button onClick={()=>{const v=!actCollapsed;setActCollapsed(v);try{localStorage.setItem("gmdv5:actCollapsed",JSON.stringify(v));}catch{}}}
-                    style={{background:"transparent",border:"1px solid rgba(255,255,255,.2)",borderRadius:6,padding:"2px 8px",color:"rgba(255,255,255,.6)",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>
-                    {actCollapsed?"▼ Show":"▲ Hide"}
-                  </button>
-                </div>
-                {!actCollapsed&&(
-                  <div style={{padding:"4px 0",maxHeight:260,overflowY:"auto"}}>
-                    {actLog.length===0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No activity yet</div>}
-                    {actLog.slice(0,15).map(entry=>{
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  <div style={{background:"#1e293b",padding:"10px 16px"}}>
+                    <span style={{fontWeight:700,color:"#a78bfa",fontSize:".82rem"}}>📋 Recent Activity</span>
+                  </div>
+                  {actLog.length===0
+                    ?<div style={{padding:"14px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>No activity yet</div>
+                    :actLog.slice(0,3).map((entry,i)=>{
                       const clr={"New Deal":"#10b981","Project Awarded":"#f59e0b","Stage Change":"#3b82f6","Deal Updated":"#94a3b8","Department Done":"#8b5cf6","TAT Set":"#06b6d4"}[entry.action]||"#94a3b8";
                       return(
-                        <div key={entry.id} style={{display:"flex",gap:10,padding:"6px 14px",borderBottom:"1px solid #f8fafc",alignItems:"flex-start"}}>
+                        <div key={entry.id} style={{display:"flex",gap:10,padding:"8px 14px",borderBottom:i<2?"1px solid #f8fafc":"",alignItems:"flex-start"}}>
                           <div style={{width:6,height:6,borderRadius:"50%",background:clr,flexShrink:0,marginTop:5}}/>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:".75rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.detail}</div>
-                            <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{entry.by} · {entry.date} {entry.time}</div>
+                            <div style={{fontSize:".74rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.detail||entry.action}</div>
+                            <div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>{entry.by} · {entry.date}</div>
                           </div>
-                          <span style={{fontSize:".6rem",color:clr,background:clr+"18",padding:"1px 6px",borderRadius:20,flexShrink:0,fontWeight:600}}>{entry.action}</span>
+                          <span style={{fontSize:".58rem",color:clr,background:clr+"18",padding:"1px 6px",borderRadius:20,flexShrink:0,fontWeight:700}}>{entry.action}</span>
                         </div>
                       );
-                    })}
-                  </div>
-                )}
-                {actCollapsed&&<div style={{padding:"8px 16px",fontSize:".72rem",color:"#94a3b8"}}>{actLog.length} entries — click Show to expand</div>}
-              </div>
-            );
-            const widgetDept=(
-              <div key="dept" style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{background:"#1e293b",padding:"12px 16px"}}>
-                  <span style={{fontWeight:700,color:"#fb923c",fontSize:".85rem"}}>🏢 Dept Status — Active Projects</span>
-                </div>
-                <div style={{padding:"12px 16px"}}>
-                  {DEPT_ORDER.map(dept=>{
-                    const clr=DEPT_CLR[dept];const total=wonDeals.length;
-                    const done=Object.values(pcards).filter(p=>p.departments?.[dept]?.done).length;
-                    const pct=total>0?Math.round(done/total*100):0;
-                    return(
-                      <div key={dept} style={{marginBottom:10}}>
-                        <div style={{display:"flex",justifyContent:"space-between",fontSize:".75rem",marginBottom:3}}>
-                          <span style={{fontWeight:600,color:"#475569"}}>{dept}</span>
-                          <span style={{color:clr,fontWeight:700}}>{done}/{total} done</span>
-                        </div>
-                        <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:pct+"%",background:clr,borderRadius:3,transition:"width .5s"}}/>
-                        </div>
-                      </div>
-                    );
-                  })}
+                    })
+                  }
                 </div>
               </div>
             );
-            const widgetMap={"active":widgetActive,"collections":widgetCollections,"activity":widgetActivity,"dept":widgetDept};
-            const ordered=dashOrder.map(id=>widgetMap[id]).filter(Boolean);
-            // Render as 2-column pairs
-            const rows=[];
-            for(let i=0;i<ordered.length;i+=2){
-              rows.push(
-                <div key={i} style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginBottom:16}}>
-                  {ordered[i]}{ordered[i+1]||null}
-                </div>
-              );
-            }
-            return rows;
           })()}
       </Wrap>
     );
