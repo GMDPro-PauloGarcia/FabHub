@@ -2763,7 +2763,6 @@ export default function App(){
       }
       card.departments={...card.departments,[dept]:deptData};
       if(isSupabaseReady()&&isUUID(taskId)){
-        const nowDone=!prevDone;
         sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
         if(deptData.done&&card.id&&isUUID(card.id)){
           sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done:deptData.done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
@@ -2771,10 +2770,6 @@ export default function App(){
       }
       return{...ps,[dealId]:card};
     });
-    // Persist individual task to Supabase
-    if(isSupabaseReady()&&isUUID(taskId)){
-      sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
-    }
     // logActivity called AFTER setState, not inside it
     if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${existingCard?.client}`,session?.name);
   };
