@@ -11322,7 +11322,15 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
     setEditClient(null); setEditName("");
   };
 
-  const allClients=[...GMD_CLIENTS,...(customClients||[])];
+  const allClients=useMemo(()=>{
+    const map=new Map();
+    GMD_CLIENTS.forEach(c=>map.set(c.name.trim().toLowerCase(),{...c}));
+    (customClients||[]).forEach(c=>{
+      const key=c.name.trim().toLowerCase();
+      map.set(key,map.has(key)?{...map.get(key),...c}:{...c});
+    });
+    return [...map.values()];
+  },[customClients]);
   const filtered = useMemo(()=>{
     let list = allClients;
     if(search) list = list.filter(c=>
