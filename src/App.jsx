@@ -7251,19 +7251,6 @@ export default function App(){
                   const pc=pcards[d.id];
                   const tatLabel=pc?.targetEndDate?new Date(pc.targetEndDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"";
                   const ae=d.salesOwner?(d.salesOwner.split(" ").filter(w=>!["de","del","ng","la","the"].includes(w.toLowerCase())).map(w=>w[0]||"").join("").toUpperCase().slice(0,3)):"";
-                  const stageSelect=(
-                    <select value={d.stage} onChange={e=>{
-                      const st=e.target.value;
-                      upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st}:x));
-                      if(isSupabaseReady()) sbUpdate('deals',d.id,{stage:st}).catch(()=>{});
-                      logActivity(d.id,"Stage Change",`Pipeline stage → ${st}`,session?.name);
-                      const stMsg=`📌 <b>Project Stage Updated</b>\nClient: <b>${d.client}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}${d.contact?`\nProject: ${d.contact}`:""}\nStage: ${st}\nBy: ${session?.name||"Sales"}`;
-                      sendTelegramNotification("ops",stMsg);sendTelegramNotification("sales",stMsg);sendTelegramNotification("management",stMsg);
-                      toastEmit(`Stage updated → ${st}`);
-                    }} style={{fontSize:".75rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 6px",fontFamily:"inherit",color:"#475569",background:"#fff",fontWeight:600,cursor:"pointer",width:"100%"}}>
-                      {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
-                    </select>
-                  );
                   if(isMobile) return(
                     <div style={{padding:"12px 14px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
@@ -7282,8 +7269,7 @@ export default function App(){
                           <span style={{fontSize:".7rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}% paid</span>
                         </div>
                       </div>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <div style={{flex:1}}>{(role==="Manager"||role==="Sales")?stageSelect:<span style={{fontSize:".75rem",color:"#64748b",fontWeight:600}}>{d.stage?.replace(/^0?(\d+) · /,"$1·")||"—"}</span>}</div>
+                      <div style={{display:"flex",gap:6,alignItems:"center",justifyContent:"flex-end"}}>
                         <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"6px 10px",fontSize:".78rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
                         {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"6px 9px",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
                       </div>
@@ -7309,21 +7295,6 @@ export default function App(){
                         <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}%</div>
                         <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
                       </div>
-                      {(role==="Manager"||role==="Sales")?(
-                        <select value={d.stage} onChange={e=>{
-                          const st=e.target.value;
-                          upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:st}:x));
-                          if(isSupabaseReady()) sbUpdate('deals',d.id,{stage:st}).catch(()=>{});
-                          logActivity(d.id,"Stage Change",`Pipeline stage → ${st}`,session?.name);
-                          const stMsg=`📌 <b>Project Stage Updated</b>\nClient: <b>${d.client}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}${d.contact?`\nProject: ${d.contact}`:""}\nStage: ${st}\nBy: ${session?.name||"Sales"}`;
-                          sendTelegramNotification("ops",stMsg);sendTelegramNotification("sales",stMsg);sendTelegramNotification("management",stMsg);
-                          toastEmit(`Stage updated → ${st}`);
-                        }} style={{width:110,fontSize:".63rem",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 4px",fontFamily:"inherit",color:"#475569",background:"#fff",fontWeight:600,cursor:"pointer",flexShrink:0}}>
-                          {WON_STAGES.map(s=><option key={s} value={s}>{s.replace(/^0?(\d+) · /,"$1·")}</option>)}
-                        </select>
-                      ):(
-                        <div style={{width:110,fontSize:".63rem",color:"#94a3b8",textAlign:"right",flexShrink:0}}>{d.stage?.replace(/^0?(\d+) · /,"$1·")||"—"}</div>
-                      )}
                       <div style={{width:56,display:"flex",gap:3,flexShrink:0,justifyContent:"flex-end"}}>
                         <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
                         {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
@@ -7381,7 +7352,6 @@ export default function App(){
                     <span style={{flex:1}}>Client / CE</span>
                     <span style={{width:60,textAlign:"right",flexShrink:0}}>Value</span>
                     <span style={{width:72,textAlign:"right",flexShrink:0}}>Payment</span>
-                    <span style={{width:110,textAlign:"right",flexShrink:0}}>Stage</span>
                     <span style={{width:56,textAlign:"right",flexShrink:0}}>Actions</span>
                   </div>
                 );
