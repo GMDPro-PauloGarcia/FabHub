@@ -10307,28 +10307,35 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
   const shown=filter==="All"?sw:sw.filter(s=>s.status===filter);
   return(
     <Wrap>
-      <SecHead title="Procurement Swatchboard" sub="Shared checklist — Design & Ops add, Procurement fulfills"/>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:10,marginBottom:18}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,flexWrap:"wrap",gap:10}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🎨 Procurement Swatchboard</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Shared checklist — Design & Ops add, Procurement fulfills</div>
+        </div>
+        <Btn onClick={()=>openAddSwatch(null,"Design")}>+ Add Item</Btn>
+      </div>
+
+      {/* Stats bar */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:16,display:"flex",gap:0,flexWrap:"wrap"}}>
         {[
-          {l:"Total Items",     v:sw.length,         c:"#3b82f6"},
-          {l:"To Buy",         v:toBuy.length,       c:"#ef4444"},
-          {l:"Ordered",        v:ordered.length,     c:"#f59e0b"},
-          {l:"Received",       v:received.length,    c:"#10b981"},
-          {l:"Client Approved",v:approved.length,    c:"#059669"},
-        ].map(({l,v,c})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:c,lineHeight:1}}>{v}</div>
-            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginTop:4}}>{l}</div>
+          {l:"Total Items",     v:sw.length,       c:"#3b82f6"},
+          {l:"To Buy",          v:toBuy.length,    c:"#ef4444"},
+          {l:"Ordered",         v:ordered.length,  c:"#f59e0b"},
+          {l:"Received",        v:received.length, c:"#10b981"},
+          {l:"Client Approved", v:approved.length, c:"#059669"},
+        ].map(({l,v,c},i)=>(
+          <div key={l} style={{flex:1,minWidth:100,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
+            <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}</div>
           </div>
         ))}
       </div>
-      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["All","To Buy","Ordered","Received","Client Approved"].map(f=>(
-            <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${filter===f?SW_CLR[f]||"#3b82f6":"#e2e8f0"}`,background:filter===f?(SW_CLR[f]||"#3b82f6")+"18":"#fff",color:filter===f?SW_CLR[f]||"#3b82f6":"#64748b",fontWeight:filter===f?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".8rem"}}>{f}</button>
-          ))}
-        </div>
-        <Btn onClick={()=>openAddSwatch(null,"Design")}>+ Add Item</Btn>
+
+      {/* Filter pills */}
+      <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+        {["All","To Buy","Ordered","Received","Client Approved"].map(f=>(
+          <button key={f} onClick={()=>setFilter(f)} style={{padding:"6px 14px",borderRadius:20,border:`1.5px solid ${filter===f?SW_CLR[f]||"#3b82f6":"#e2e8f0"}`,background:filter===f?(SW_CLR[f]||"#3b82f6")+"18":"#fff",color:filter===f?SW_CLR[f]||"#3b82f6":"#64748b",fontWeight:filter===f?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".8rem"}}>{f}</button>
+        ))}
       </div>
       {shown.map(sw=>(
         <Card key={sw.id} accent={SW_CLR[sw.status]}>
@@ -12799,19 +12806,16 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
         <button onClick={openNewPO} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
         {[
-          {l:"Total POs",        v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a", icon:"📄"},
-          {l:"Pending Approval", v:prs.filter(p=>p.status==="Pending Approval").length,                                            c:"#f59e0b", icon:"⏳"},
-          {l:"PO Issued",        v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length,           c:"#3b82f6", icon:"✅"},
-          {l:"Total Value",      v:totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),           c:"#10b981", icon:"₱"},
-        ].map(({l,v,c,icon})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-            <div style={{display:"flex",alignItems:"baseline",gap:4,marginBottom:4}}>
-              <span style={{fontSize:".8rem",lineHeight:1}}>{icon}</span>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c,lineHeight:1}}>{v}</span>
-            </div>
-            <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8"}}>{l}</div>
+          {l:"Total POs",       v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a"},
+          {l:"Pending Approval",v:prs.filter(p=>p.status==="Pending Approval").length,                                            c:"#f59e0b"},
+          {l:"PO Issued",       v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length,           c:"#3b82f6"},
+          {l:"Total Value",     v:"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),   c:"#10b981"},
+        ].map(({l,v,c},i)=>(
+          <div key={l} style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
+            <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}</div>
           </div>
         ))}
       </div>
