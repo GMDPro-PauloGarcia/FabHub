@@ -14730,24 +14730,23 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             return(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 {/* Table header */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 120px 110px 110px 100px 70px 80px 82px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center"}}>
-                  {["Project","Client","AE","PM","Stage","%","Health","Due"].map((h,i)=>(
+                <div style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center"}}>
+                  {["Project","Client","AE","PM","Health","Due"].map((h,i)=>(
                     <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
                   ))}
                 </div>
                 {list.map((d,idx)=>{
                   const pc=pcards[d.id];
-                  const pct=projPct(pc);
                   const h=getHealth(d,pc);const[hc,hl]=HC[h];
-                  const pi=phaseIdx(d.stage);
                   const joR=jos.find(j=>j.dealId===d.id);
                   const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
+                  const pct=projPct(pc);
                   const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean)[0]||"—";
                   const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
                   const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
                   return(
                     <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
-                      style={{display:"grid",gridTemplateColumns:"1fr 120px 110px 110px 100px 70px 80px 82px",gap:0,padding:"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${hc}`,background:"#fff",transition:"background .1s"}}
+                      style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,padding:"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${hc}`,background:"#fff",transition:"background .1s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                       {/* Project */}
@@ -14756,22 +14755,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{d.ceNo||"No CE"}{projB>0&&<span style={{marginLeft:6,color:"#ef4444",fontWeight:700}}>⛔ {projB}</span>}{!pc&&<span style={{marginLeft:6,color:"#f59e0b",fontWeight:700}}>⚠ No card</span>}</div>
                       </div>
                       {/* Client */}
-                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.contact?d.client:d.client}</div>
+                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client}</div>
                       {/* AE */}
                       <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{ae==="—"?<span style={{color:"#cbd5e1"}}>—</span>:ae}</div>
                       {/* PM */}
                       <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{pm==="—"?<span style={{color:"#cbd5e1"}}>Unassigned</span>:pm}</div>
-                      {/* Stage */}
-                      <div style={{paddingRight:8}}>
-                        {pi>=0?<span style={{fontSize:".65rem",background:"#1e293b",color:"#f59e0b",borderRadius:20,padding:"2px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{PHASES[pi].icon} {PHASES[pi].label}</span>:<span style={{fontSize:".65rem",color:"#94a3b8"}}>—</span>}
-                      </div>
-                      {/* % */}
-                      <div>
-                        <div style={{fontWeight:700,fontSize:".85rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
-                        <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:3,width:48,overflow:"hidden"}}>
-                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:2}}/>
-                        </div>
-                      </div>
                       {/* Health */}
                       <div>
                         <span style={{fontSize:".64rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 7px",whiteSpace:"nowrap"}}>{pct===100?"✅ Done":hl}</span>
