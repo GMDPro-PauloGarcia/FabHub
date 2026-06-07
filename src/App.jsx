@@ -10149,6 +10149,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
   const removeAccessory=(i)=>f("accessories",form.accessories.filter((_,ai)=>ai!==i));
   const setRef=(i,v)=>f("refLinks",form.refLinks.map((r,ri)=>ri===i?v:r));
 
+  const[expandedId,setExpandedId]=useState(null);
   const shown=filterSt==="All"?drfs:drfs.filter(d=>d.status===filterSt);
   const canCreate=["Manager","Sales","Operations"].includes(role);
   const canAcknowledge=["Manager","Design"].includes(role);
@@ -10226,72 +10227,107 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
         </div>
       )}
 
-      {/* DRF List */}
+      {/* DRF Table */}
       {shown.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No design requests yet.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {shown.map(drf=>{
-          const deal=wonDeals.find(d=>d.id===drf.dealId);
-          const isNew=drf.status==="New";
-          return(
-            <div key={drf.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isNew?"#fecaca":"#e2e8f0"}`,padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <div style={{flex:1,minWidth:200}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
-                    <span style={{fontWeight:700,color:"#ec4899",fontSize:".75rem"}}>{drf.drfNo}</span>
-                    <span style={{fontSize:".68rem",background:DRF_CLR[drf.status]+"22",color:DRF_CLR[drf.status],border:`1px solid ${DRF_CLR[drf.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{drf.status}</span>
-                    <span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{drf.type}</span>
-                    {deal&&<span style={{fontSize:".68rem",color:"#3b82f6",background:"#eff6ff",padding:"1px 8px",borderRadius:20}}>📁 {deal.client}</span>}
+      {shown.length>0&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          {/* Table header */}
+          <div style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center"}}>
+            {["DRF #","Status","Project","Client","Designer","Due",""].map((h,i)=>(
+              <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
+            ))}
+          </div>
+          {/* Rows */}
+          {shown.map((drf,idx)=>{
+            const isExpanded=expandedId===drf.id;
+            const isNew=drf.status==="New";
+            const statusClr=DRF_CLR[drf.status]||"#94a3b8";
+            return(
+              <div key={drf.id} style={{borderBottom:idx<shown.length-1?"1px solid #f1f5f9":"none"}}>
+                {/* Summary row — click to expand */}
+                <div onClick={()=>setExpandedId(isExpanded?null:drf.id)}
+                  style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,padding:"10px 16px",alignItems:"center",cursor:"pointer",background:isNew?"#fff5f5":isExpanded?"#fdf4ff":"#fff",transition:"background .12s"}}
+                  onMouseEnter={e=>{if(!isNew&&!isExpanded)e.currentTarget.style.background="#f8fafc";}}
+                  onMouseLeave={e=>{e.currentTarget.style.background=isNew?"#fff5f5":isExpanded?"#fdf4ff":"#fff";}}>
+                  <div style={{fontWeight:700,color:"#ec4899",fontSize:".72rem"}}>{drf.drfNo}</div>
+                  <div>
+                    <span style={{fontSize:".65rem",fontWeight:700,color:statusClr,background:statusClr+"18",border:`1px solid ${statusClr}33`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{drf.status}</span>
                   </div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".98rem"}}>{drf.projectTitle}</div>
-                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:3,display:"flex",gap:12,flexWrap:"wrap"}}>
-                    {drf.client&&<span>👤 {drf.client}</span>}
-                    {drf.location&&<span>📍 {drf.location}</span>}
-                    {drf.designer&&<span>🎨 {drf.designer}</span>}
-                    {drf.designDeadline&&<span>📅 Due: {drf.designDeadline}</span>}
-                    {drf.size&&<span>📐 {drf.size}</span>}
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:12}}>
+                    {drf.projectTitle}
+                    {drf.type&&<span style={{marginLeft:6,fontSize:".65rem",color:"#94a3b8",fontWeight:400}}>{drf.type}</span>}
                   </div>
-                  {drf.description&&<div style={{fontSize:".78rem",color:"#475569",marginTop:8,background:"#f8fafc",borderRadius:8,padding:"8px 10px",whiteSpace:"pre-wrap",lineHeight:1.5}}>{drf.description}</div>}
-                  {drf.accessories?.length>0&&(
-                    <div style={{marginTop:6}}>
-                      <div style={{fontSize:".72rem",color:"#94a3b8",fontWeight:600,marginBottom:3}}>ACCESSORIES / COMPONENTS</div>
-                      {drf.accessories.filter(Boolean).map((a,i)=>(
-                        <div key={i} style={{fontSize:".75rem",color:"#475569",display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                          <span style={{color:"#ec4899",fontWeight:700}}>—</span>{a}
+                  <div style={{fontSize:".78rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{drf.client||"—"}</div>
+                  <div style={{fontSize:".78rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{drf.designer||<span style={{color:"#cbd5e1"}}>Unassigned</span>}</div>
+                  <div style={{fontSize:".75rem",color:drf.designDeadline&&new Date(drf.designDeadline)<new Date()?"#ef4444":"#64748b",fontWeight:drf.designDeadline&&new Date(drf.designDeadline)<new Date()?700:400}}>{drf.designDeadline||"—"}</div>
+                  <div style={{textAlign:"center",color:"#94a3b8",fontSize:".7rem"}}>{isExpanded?"▲":"▼"}</div>
+                </div>
+
+                {/* Expanded detail panel */}
+                {isExpanded&&(
+                  <div style={{background:"#faf5ff",borderTop:"1px solid #e9d5ff",padding:"14px 18px"}}>
+                    <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14,marginBottom:12}}>
+                      {/* Left: brief details */}
+                      <div>
+                        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                          {drf.location&&<span style={{fontSize:".72rem",color:"#64748b"}}>📍 {drf.location}</span>}
+                          {drf.size&&<span style={{fontSize:".72rem",color:"#64748b"}}>📐 {drf.size}</span>}
                         </div>
-                      ))}
+                        {drf.description&&(
+                          <div style={{fontSize:".78rem",color:"#475569",background:"#fff",borderRadius:8,padding:"10px 12px",whiteSpace:"pre-wrap",lineHeight:1.6,border:"1px solid #e9d5ff"}}>{drf.description}</div>
+                        )}
+                        {drf.accessories?.filter(Boolean).length>0&&(
+                          <div style={{marginTop:8}}>
+                            <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Components</div>
+                            {drf.accessories.filter(Boolean).map((a,i)=>(
+                              <div key={i} style={{fontSize:".76rem",color:"#475569",display:"flex",gap:6,alignItems:"center",marginBottom:2}}>
+                                <span style={{color:"#ec4899",fontWeight:700}}>·</span>{a}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {/* Right: links + meta */}
+                      <div>
+                        {drf.refLinks?.filter(Boolean).length>0&&(
+                          <div style={{marginBottom:8}}>
+                            <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>References</div>
+                            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                              {drf.refLinks.filter(Boolean).map((r,i)=>(
+                                <a key={i} href={r} target="_blank" rel="noreferrer" style={{fontSize:".74rem",color:"#6366f1",fontWeight:600,textDecoration:"none"}}>🖼 Ref {i+1}</a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {drf.approvedLink&&(
+                          <div style={{marginBottom:8}}>
+                            <a href={drf.approvedLink} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#059669",fontWeight:700}}>✅ View Approved Files →</a>
+                          </div>
+                        )}
+                        {drf.notes&&<div style={{fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:6,padding:"6px 10px",marginBottom:8}}>📝 {drf.notes}</div>}
+                        <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:4}}>Submitted by {drf.createdBy||"—"} · {drf.createdAt}</div>
+                      </div>
                     </div>
-                  )}
-                  {drf.refLinks?.filter(Boolean).length>0&&(
-                    <div style={{marginTop:6,display:"flex",gap:8,flexWrap:"wrap"}}>
-                      {drf.refLinks.filter(Boolean).map((r,i)=>(
-                        <a key={i} href={r} target="_blank" rel="noreferrer" style={{fontSize:".72rem",color:"#3b82f6",fontWeight:600}}>🖼 Ref {i+1}</a>
-                      ))}
+                    {/* Action buttons */}
+                    <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                      {isNew&&canAcknowledge&&(
+                        <button onClick={e=>{e.stopPropagation();updateDRF(drf.id,{status:"Acknowledged"});setExpandedId(null);}}
+                          style={{background:"#3b82f6",border:"none",borderRadius:8,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer"}}>
+                          ✓ Acknowledge
+                        </button>
+                      )}
+                      <button onClick={e=>{e.stopPropagation();openEdit(drf);}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
+                      {(role==="Manager"||drf.createdBy===session?.name)&&(
+                        <button onClick={e=>{e.stopPropagation();if(window.confirm("Delete this DRF?"))deleteDRF(drf.id);}} style={{background:"#fef2f2",border:"none",borderRadius:8,padding:"6px 14px",fontSize:".75rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>
+                      )}
                     </div>
-                  )}
-                  {drf.approvedLink&&(
-                    <div style={{marginTop:6}}>
-                      <a href={drf.approvedLink} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#059669",fontWeight:700}}>✅ View Approved Files →</a>
-                    </div>
-                  )}
-                </div>
-                <div style={{display:"flex",gap:6,flexShrink:0,flexWrap:"wrap"}}>
-                  {isNew&&canAcknowledge&&(
-                    <button onClick={()=>updateDRF(drf.id,{status:"Acknowledged"})}
-                      style={{background:"#3b82f6",border:"none",borderRadius:8,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer"}}>
-                      ✓ Acknowledge
-                    </button>
-                  )}
-                  <button onClick={()=>openEdit(drf)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 12px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
-                  {(role==="Manager"||drf.createdBy===session?.name)&&(
-                    <button onClick={()=>{if(window.confirm("Delete this DRF?"))deleteDRF(drf.id);}} style={{background:"#fef2f2",border:"none",borderRadius:8,padding:"6px 12px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
-              <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:8}}>Submitted by {drf.createdBy||"—"} · {drf.createdAt}</div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
