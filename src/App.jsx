@@ -4467,7 +4467,7 @@ export default function App(){
             {groups.map((sec,si)=>(
               <div key={si} style={{padding:"6px 0"}}>
                 <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".08em"}}>{sec.group}</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:0}}>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
                   {(sec.items||[]).map(({id,l})=>{
                     const active=page===id;
                     const icon=NAV_ICONS[id]||"•";
@@ -4586,7 +4586,7 @@ export default function App(){
         <div style={{display:"flex",gap:10}}><Btn variant="danger" onClick={()=>delDeal(confirmDel)}>Yes, Delete</Btn><Btn variant="ghost" onClick={()=>setConfirmDel(null)}>Cancel</Btn></div>
       </Modal>
       <Modal open={swModal} onClose={()=>setSwModal(false)} title={editSw?"Edit Swatch Item":"Add to Swatchboard"} wide>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
           <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={swForm.name} onChange={e=>setSwForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Walnut veneer, Brass pulls 96mm"/></Fld></div>
           <Fld label="Category"><Sel value={swForm.category} onChange={e=>setSwForm(p=>({...p,category:e.target.value}))}>{SWATCH_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
           <Fld label="Added By"><Sel value={swForm.addedBy} onChange={e=>setSwForm(p=>({...p,addedBy:e.target.value}))}><option>Design</option><option>Ops</option></Sel></Fld>
@@ -4602,7 +4602,7 @@ export default function App(){
         <div style={{display:"flex",gap:10,marginTop:16}}><Btn full onClick={saveSwatch}>{editSw?"Save Changes":"Add Item"}</Btn><Btn variant="ghost" onClick={()=>setSwModal(false)}>Cancel</Btn></div>
       </Modal>
       <Modal open={designModal&&!!proj} onClose={()=>setDesignModal(false)} title="Edit Design Details" wide>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
           <div style={{gridColumn:"1/-1"}}>
             <Fld label="Design Status">
               <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -5703,7 +5703,7 @@ export default function App(){
             ))}
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16}}>
             {/* Overdue invoices */}
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#dc2626",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -5808,7 +5808,7 @@ export default function App(){
             ))}
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16}}>
             {/* TAT overdue projects */}
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#dc2626",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -5858,7 +5858,7 @@ export default function App(){
           </div>
 
           {/* Scope changes + MRs row */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16}}>
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#f59e0b",padding:"11px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⚠️ Scope Changes Needing Action ({newScope.length})</span></div>
               {newScope.length===0
@@ -5977,7 +5977,7 @@ export default function App(){
             ))}
           </div>
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16}}>
             {/* Scope changes needing AE action */}
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#dc2626",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -6335,7 +6335,7 @@ export default function App(){
             const rows=[];
             for(let i=0;i<ordered.length;i+=2){
               rows.push(
-                <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+                <div key={i} style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginBottom:16}}>
                   {ordered[i]}{ordered[i+1]||null}
                 </div>
               );
@@ -6624,7 +6624,7 @@ export default function App(){
                   </table>
                 </div>
               </Card>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginTop:16}}>
                 <Card>
                   <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>By Sales Owner</div>
                   <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -6671,7 +6671,7 @@ export default function App(){
                 </table>
               </div>
             </Card>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginTop:16}}>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginTop:16}}>
               <Card>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>Expenses by Category — {CY}</div>
                 <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -7646,7 +7646,7 @@ export default function App(){
     </>
     );
 
-    if(page==="finance") return(
+    if(page==="finance"&&(role==="Finance"||role==="Manager")) return(
       <Wrap>
         {/* Finance tab bar */}
         <div style={{position:"relative",marginBottom:24}}>
@@ -7788,7 +7788,7 @@ export default function App(){
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>📤 Payables Summary</div>
                     <button onClick={()=>setFinTab("payables")} style={{fontSize:".72rem",color:"#3b82f6",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>View all →</button>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
                     <div style={{background:"#fef2f2",borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Unpaid</div>
                       <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#ef4444"}}>₱{Math.round(totalPayables/1000)}K</div>
@@ -8094,11 +8094,11 @@ export default function App(){
                 <Fld label="Lender / Source" required><Inp value={loanForm.lender} onChange={e=>setLoanForm(p=>({...p,lender:e.target.value}))} placeholder="e.g. BDO, SSS, Investor name"/></Fld>
                 <Fld label="Type"><Sel value={loanForm.type} onChange={e=>setLoanForm(p=>({...p,type:e.target.value}))}>{["Bank Loan","SSS Loan","Pag-IBIG Loan","GSIS Loan","Personal Loan","Credit Line","Investor Loan","Supplier Credit","Other"].map(t=><option key={t}>{t}</option>)}</Sel></Fld>
                 <Fld label="Principal Amount (₱)" required><Inp type="number" value={loanForm.principal} onChange={e=>setLoanForm(p=>({...p,principal:e.target.value}))} placeholder="0"/></Fld>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
                   <Fld label="Disbursed Date"><Inp type="date" value={loanForm.disbursedDate} onChange={e=>setLoanForm(p=>({...p,disbursedDate:e.target.value}))}/></Fld>
                   <Fld label="Term (months)"><Inp type="number" value={loanForm.termMonths} onChange={e=>setLoanForm(p=>({...p,termMonths:e.target.value}))} placeholder="e.g. 24"/></Fld>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
                   <Fld label="Interest Rate (% p.a.)"><Inp type="number" value={loanForm.interestRate} onChange={e=>setLoanForm(p=>({...p,interestRate:e.target.value}))} placeholder="e.g. 8"/></Fld>
                   <Fld label="Monthly Payment (₱)"><Inp type="number" value={loanForm.monthlyPayment} onChange={e=>setLoanForm(p=>({...p,monthlyPayment:e.target.value}))} placeholder="0"/></Fld>
                 </div>
@@ -8122,8 +8122,8 @@ export default function App(){
         addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
-    if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="clients") return(
       <Wrap>
@@ -8149,7 +8149,7 @@ export default function App(){
       </Wrap>
     );
     const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse'];
-    if(page==="accounts") return(
+    if(page==="accounts"&&role==="Manager") return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
       </Wrap>
@@ -8298,8 +8298,8 @@ export default function App(){
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
-    if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
         <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
@@ -8396,6 +8396,14 @@ export default function App(){
                         <button onClick={()=>{
                           updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:`Received by ${session?.name||"Warehouse"} on ${today}`});
                           sendTelegramNotification("procurement",`📦 <b>Delivery Confirmed</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
+                          // Auto-log stock IN movement if item exists in inventory
+                          const invMatch=inventory.find(i=>i.name?.toLowerCase()===pr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
+                          if(invMatch){
+                            logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Auto-logged from PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});
+                            toastEmit(`Stock updated: +${pr.qty} ${pr.unit||""} of ${invMatch.name}`,"success");
+                          } else {
+                            toastEmit(`Delivery recorded. "${pr.itemName}" not found in inventory — log manually in Stock Movements if needed.`,"info");
+                          }
                         }}
                           style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
                           ✓ Mark Received
@@ -8447,7 +8455,7 @@ export default function App(){
               )}
 
               {/* Quick links */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
                 <div onClick={()=>setPage("inventory")} style={{background:"#fff",borderRadius:10,padding:"16px",border:"1.5px solid #e2e8f0",cursor:"pointer",textAlign:"center"}}>
                   <div style={{fontSize:"1.4rem"}}>📦</div>
                   <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".9rem"}}>Inventory</div>
@@ -8470,8 +8478,8 @@ export default function App(){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
-    if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} today={today} Wrap={Wrap}/>);
   }
 
@@ -8637,7 +8645,7 @@ export default function App(){
         const myAddenda=addenda.filter(a=>myProjects.find(d=>d.id===a.dealId));
 
         return(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:20}}>
             {/* Log new addendum */}
             <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#dc2626",padding:"12px 16px"}}>
@@ -9554,7 +9562,7 @@ function OpsUpdateForm({selProj,session,addPmUpdate,logActivity}){
   return(
     <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:14}}>
       <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:10}}>📝 Log PM Update <span style={{fontSize:".72rem",color:"#94a3b8",fontWeight:400,marginLeft:6}}>Daily/weekly — client-visible progress</span></div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:8}}>
         <div>
           <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:3}}>Current Stage</label>
           <select value={stage} onChange={e=>setStage(e.target.value)}
@@ -9603,7 +9611,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
     <Wrap>
       {ViewTabs}
       <SecHead title="Production View" sub="Click any project to update stages, materials, and team"/>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr)",gap:12}}>
         {projList.map(d=>{
           const p=projs[d.id]; if(!p) return null; const prog=overallProg(p);
           const pending=swatches.filter(s=>s.projectId===d.id&&s.status==="To Buy").length;
@@ -9644,7 +9652,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 <span style={{width:8,height:8,borderRadius:"50%",background:"#10b981",display:"inline-block"}}/>
                 Completed Projects ({completed.length})
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr)",gap:8}}>
                 {completed.map(d=>(
                   <div key={d.id} style={{background:"#f0fdf4",borderRadius:10,border:"1.5px solid #6ee7b7",padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",opacity:.8}}>
                     <div>
@@ -9683,7 +9691,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
       </div>
 
       {opsTab==="progress"&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
           {(()=>{
             const drf=(drfs||[]).find(d=>d.dealId===selProj);
             const jo=(jos||[]).find(j=>j.dealId===selProj);
@@ -9700,7 +9708,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                   </div>
                 </div>
                 {drf&&(
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
                     {drf.size&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Size / Dimensions</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.size}</div></div>)}
                     {drf.designer&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Assigned Designer</div><div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{drf.designer}</div></div>)}
                     {drf.designDeadline&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Design Deadline</div><div style={{fontWeight:600,color:"#dc2626",fontSize:".84rem"}}>{drf.designDeadline}</div></div>)}
@@ -9709,7 +9717,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                     {(drf.refLinks||[]).filter(Boolean).length>0&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:5}}>Reference Links</div><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{drf.refLinks.filter(Boolean).map((r,i)=><a key={i} href={r} target="_blank" rel="noreferrer" style={{color:"#6366f1",fontSize:".76rem",fontWeight:600,textDecoration:"none"}}>🔗 Ref {i+1}</a>)}</div></div>)}
                   </div>
                 )}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,borderTop:drf?"1px solid #e2e8f0":"none",paddingTop:drf?10:0}}>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,borderTop:drf?"1px solid #e2e8f0":"none",paddingTop:drf?10:0}}>
                   {(pcards?.[selProj]?.scopeNotes||jo?.scopeNotes)&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Scope of Work</div><div style={{color:"#334155",fontSize:".83rem",whiteSpace:"pre-wrap",lineHeight:1.5}}>{pcards?.[selProj]?.scopeNotes||jo?.scopeNotes}</div></div>)}
                   {(pcards?.[selProj]?.specialInstructions||jo?.specialInstructions)&&(<div style={{gridColumn:"1/-1"}}><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Special Instructions</div><div style={{color:"#dc2626",fontSize:".83rem",fontWeight:600,whiteSpace:"pre-wrap"}}>{pcards?.[selProj]?.specialInstructions||jo?.specialInstructions}</div></div>)}
                   {jo?.location&&(<div><div style={{fontSize:".68rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:3}}>Site Location</div><div style={{color:"#334155",fontSize:".83rem"}}>{jo.location}</div></div>)}
@@ -9825,7 +9833,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         {proj.materials.length===0&&<EmptyState icon="📦" msg="No materials added yet. Add the first one above."/>}
         <Modal open={matModal} onClose={()=>setMatModal(false)} title={editMat?"Edit Material":"Add Material"}>
           <Fld label="Material Name" required><Inp value={matForm.name} onChange={e=>setMatForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Steel angle bars"/></Fld>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
             <Fld label="Quantity"><Inp type="number" value={matForm.qty} onChange={e=>setMatForm(p=>({...p,qty:e.target.value}))}/></Fld>
             <Fld label="Unit"><Sel value={matForm.unit} onChange={e=>setMatForm(p=>({...p,unit:e.target.value}))}>{MAT_UNITS.map(u=><option key={u}>{u}</option>)}</Sel></Fld>
           </div>
@@ -9892,7 +9900,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         const profit=d.value-totalOps;
         const margin=d.value>0?Math.round(profit/d.value*100):0;
         return(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <div>
               <Card>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Cost Breakdown</div>
@@ -9984,7 +9992,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
             {showAF&&(
               <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:16,marginBottom:14}}>
                 <div style={{fontWeight:700,color:"#92400e",marginBottom:12}}>New Scope Change / Addendum</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
                   <div style={{gridColumn:"1/-1"}}>
                     <Fld label="Title / Scope Change" required>
                       <Inp value={af.title} onChange={e=>faf("title",e.target.value)} placeholder="e.g. Additional glass shelving Unit 3B — client requested during site visit"/>
@@ -10140,14 +10148,14 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 {proj?.cocCreated&&<span style={{background:"#dcfce7",color:"#059669",borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700}}>✓ ISSUED</span>}
               </div>
               {proj?.cocCreated?(
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,fontSize:".82rem"}}>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,fontSize:".82rem"}}>
                   <div><span style={{color:"#94a3b8"}}>Date Issued: </span><strong>{proj.cocDate||"—"}</strong></div>
                   <div><span style={{color:"#94a3b8"}}>Link: </span>{proj.cocLink?<a href={proj.cocLink} target="_blank" rel="noopener noreferrer" style={{color:"#3b82f6"}}>Open COC ↗</a>:<span style={{color:"#94a3b8"}}>—</span>}</div>
                 </div>
               ):(
                 <div>
                   <div style={{fontSize:".78rem",color:"#f59e0b",fontWeight:600,marginBottom:10}}>⚠️ COC not yet issued. Finance cannot finalize billing until COC is confirmed.</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
                     <Fld label="COC Date"><Inp type="date" value={proj?.cocDate||""} onChange={e=>upProj(selProj,p=>({...p,cocDate:e.target.value}))}/></Fld>
                     <Fld label="COC Link (optional)"><Inp type="url" value={proj?.cocLink||""} onChange={e=>upProj(selProj,p=>({...p,cocLink:e.target.value}))} placeholder="Google Drive link"/></Fld>
                   </div>
@@ -10193,7 +10201,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 </div>
               ):(
                 <div style={{fontSize:".82rem",color:"#475569"}}>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
                     <div><span style={{color:"#94a3b8"}}>Period: </span><strong>{warranty.type||"30"} days</strong></div>
                     <div><span style={{color:"#94a3b8"}}>Started: </span><strong>{warranty.startDate}</strong></div>
                     <div><span style={{color:"#94a3b8"}}>Expires: </span><strong>{wEnd}</strong></div>
@@ -10259,7 +10267,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
             <span>{editId?"Edit DRF":"New Design Request Form"}</span>
             {editId&&<span style={{fontSize:".75rem",color:"#94a3b8",fontWeight:400}}>{drfs.find(d=>d.id===editId)?.drfNo}</span>}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Client" required><Inp value={form.client} onChange={e=>f("client",e.target.value)} placeholder="Client name"/></Fld>
             <Fld label="Location"><Inp value={form.location} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM Megamall Unit 3B"/></Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Project Title" required><Inp value={form.projectTitle} onChange={e=>f("projectTitle",e.target.value)} placeholder="e.g. Golf Bag Organizer Rack / Shirts Display"/></Fld></div>
@@ -10456,7 +10464,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
         </div>
         <Btn variant="green" onClick={()=>{updateJO(viewJO.id,editJOForm);setJoStep("select");}}>✓ Save Changes</Btn>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
         <Card>
           <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Team Assignment</div>
           <Fld label="PM 1"><Inp value={editJOForm.pm1??viewJO.pm1??""} onChange={e=>setEditJOForm(p=>({...p,pm1:e.target.value}))} placeholder="Project Manager"/></Fld>
@@ -10545,7 +10553,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
           <div style={{flex:1}}><div style={{fontWeight:800,color:"#0f172a"}}>{d?.client} — Review Job Order</div><div style={{fontSize:".75rem",color:"#64748b"}}>All details auto-filled. Add any missing info below.</div></div>
           <Btn variant="green" onClick={issueJO}>✓ Issue Job Order</Btn>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
           <Card>
             <div style={{fontWeight:700,color:"#0f172a",marginBottom:14}}>Client Details</div>
             {[["Client",d?.client],["Contact",d?.contact],["Product",d?.product],["Value",fmt(d?.value)],["Payment",d?.paymentStatus]].map(([l,v])=>(
@@ -10595,7 +10603,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
         </div>
         <div style={{height:3,background:"linear-gradient(90deg,#f59e0b,#10b981)"}}/>
         <div style={{padding:"22px 28px",fontFamily:"'Segoe UI',sans-serif"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginBottom:18}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:20,marginBottom:18}}>
             {[["CLIENT",["Client",viewJO.deal?.client],["Contact",viewJO.deal?.contact],["Address",viewJO.address||"—"],["Phone",viewJO.phone||"—"]],
               ["PROJECT",["Product",viewJO.deal?.product],["Value",fmt(viewJO.deal?.value)],["Payment",viewJO.deal?.paymentStatus],["Delivery",viewJO.project?.stageDates?.Delivery?.e||"—"]]
             ].map(([head,...fields])=>(
@@ -10848,7 +10856,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
 
         {/* Qty + Unit for Module and Swatch types */}
         {(clForm.type==="Module"||clForm.type==="Swatch"||clForm.type==="Purchase") && (
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:4}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14,marginBottom:4}}>
             <Fld label="Quantity"><Inp type="number" value={clForm.qty||""} onChange={e=>f("qty",e.target.value)} placeholder="e.g. 12"/></Fld>
             <Fld label="Unit"><select value={clForm.unit||"pcs"} onChange={e=>f("unit",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer",outline:"none"}}>
               {["pcs","sheets","meters","sqm","kg","sets","rolls","liters","lots"].map(u=><option key={u}>{u}</option>)}
@@ -10862,7 +10870,7 @@ function ChecklistView({checklist,projList,deals,clientName,openAddCl,openEditCl
           <Inp value={clForm.whatCouldGoWrong||""} onChange={e=>f("whatCouldGoWrong",e.target.value)} placeholder="e.g. Material arrives late, wrong specs ordered, client unavailable for approval…" rows={2}/>
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
           <Fld label="Department">
             <select value={clForm.dept} onChange={e=>f("dept",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
               {CL_DEPT.map(d=><option key={d}>{d}</option>)}
@@ -11072,7 +11080,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
       {showCreate&&(
         <div style={{background:"#f8fafc",border:"1.5px solid #1e293b",borderRadius:12,padding:"18px 20px",marginBottom:20}}>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:14}}>✨ New Account</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
             <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Full Name *</div><input style={inp} value={cf.name} onChange={e=>setCf(p=>({...p,name:e.target.value}))} placeholder="e.g. Juan dela Cruz"/></div>
             <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Username *</div><input style={inp} value={cf.username} onChange={e=>setCf(p=>({...p,username:e.target.value.toLowerCase()}))} placeholder="e.g. juan"/></div>
             <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Password * (min 6 chars)</div><input type="password" style={inp} value={cf.password} onChange={e=>setCf(p=>({...p,password:e.target.value}))} placeholder="Temporary password"/></div>
@@ -12473,7 +12481,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
               {/* Budget bars */}
               {hasBudget?(
                 <>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
                     <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
                       <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".5px"}}>Budget</div>
                       <div style={{fontWeight:700,color:"#3b82f6",fontSize:".85rem",lineHeight:1.2}}>{fmtPHP(tb)}</div>
@@ -12730,7 +12738,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
         <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>Edit Purchase Request</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
               <Sel value={editForm.projectId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);ef("projectId",e.target.value);ef("projectName",d?.client||"");}}>
                 <option value="">— Select Project —</option>
@@ -13215,7 +13223,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 }
 
 // ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role}){
+function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit}){
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -13232,6 +13240,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
   };
 
   const convertToPR=(mr)=>{
+    if(mr.requestedBy===session?.name) return toastEmit("You cannot approve your own material request — another manager or Cost Control must approve it.","error");
     addPR({projectId:mr.projectId,projectName:wonDeals.find(d=>d.id===mr.projectId)?.client||"",itemName:mr.itemName,category:mr.category,description:mr.purpose,qty:mr.qty,unit:mr.unit,estUnitCost:mr.estUnitCost||0,actUnitCost:0,supplier:"",poNumber:"",poDate:"",qtyDelivered:0,deliveryDate:"",deliveryNote:"",status:"Pending Approval",requestedBy:mr.requestedBy,approvedBy:session?.name||"",budgetCategory:"Materials",notes:`Converted from MR by ${session?.name||"Cost Control"}. Original notes: ${mr.notes||"—"}`});
     updateMR(mr.id,{status:"Converted to PR",statusChangedAt:today});
     const deal=wonDeals.find(d=>d.id===mr.projectId);
@@ -13239,7 +13248,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
   };
 
   const canApprove = role==="Cost Control"||role==="Manager";
-  const pending = mreqs.filter(m=>m.status==="Submitted");
+  const pending = mreqs.filter(m=>m.status==="Submitted"||m.status==="Reviewed");
 
   return(
     <div>
@@ -13279,7 +13288,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
       {showForm&&(
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:18}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Material Request</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
               <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
                 <option value="">— Select Project —</option>
@@ -13361,8 +13370,11 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                   </div>
                   {mr.purpose&&<div style={{fontSize:".75rem",color:"#475569",marginTop:5,fontStyle:"italic"}}>"{mr.purpose}"</div>}
                 </div>
-                {canApprove&&mr.status==="Submitted"&&(
-                  <div style={{display:"flex",gap:7,flexShrink:0}}>
+                {canApprove&&(mr.status==="Submitted"||mr.status==="Reviewed")&&(
+                  <div style={{display:"flex",gap:7,flexShrink:0,flexWrap:"wrap"}}>
+                    {mr.status==="Submitted"&&<button onClick={()=>updateMR(mr.id,{status:"Reviewed",statusChangedAt:today})} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 11px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
+                      👁 Mark Reviewed
+                    </button>}
                     <button onClick={()=>convertToPR(mr)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>
                       ✓ Convert to PO
                     </button>
@@ -13387,7 +13399,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
 }
 
 // ─── BUDGET REQUEST VIEW ──────────────────────────────────────────────────────
-function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
+function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit}){
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState({projectId:"",purpose:"Installation",amount:"",urgency:"Normal",description:"",requestedBy:session?.name||"",dateNeeded:"",notes:""});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -13442,7 +13454,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
       {showForm&&(
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:18}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Budget Request</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
               <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
                 <option value="">— Select Project —</option>
@@ -13516,18 +13528,12 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role}){
                 {canApprove&&(br.status==="Submitted"||br.status==="Under Review")&&(
                   <div style={{display:"flex",gap:7,flexShrink:0,flexWrap:"wrap"}}>
                     <button onClick={()=>{
+                      if(br.requestedBy===session?.name){toastEmit&&toastEmit("You cannot approve your own budget request.","error");return;}
                       updateBR(br.id,{status:"Approved",approvedBy:session?.name,approvedDate:today,statusChangedAt:today});
                       const deal=wonDeals.find(d=>d.id===br.projectId);
                       sendTelegramNotification("operations",`✅ <b>Budget Request Approved</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nApproved by: ${session?.name}`);
                     }} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>
                       ✓ Approve
-                    </button>
-                    <button onClick={()=>{
-                      updateBR(br.id,{status:"Released",releasedBy:session?.name,releasedDate:today,statusChangedAt:today});
-                      const deal=wonDeals.find(d=>d.id===br.projectId);
-                      sendTelegramNotification("operations",`💵 <b>Budget Released</b>\n${br.purpose}\n₱${n(br.amount).toLocaleString("en-PH",{maximumFractionDigits:0})}\nProject: ${deal?.client||"?"}${deal?.contact?" — "+deal.contact:""}\nReleased by: ${session?.name}`);
-                    }} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
-                      💵 Release
                     </button>
                     <button onClick={()=>{
                       updateBR(br.id,{status:"Rejected",statusChangedAt:today});
@@ -14019,7 +14025,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               ):(
                 <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:8}}>
                   <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".88rem"}}>New Billing Milestone</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
                     <Fld label="Milestone Name" required hint="e.g. 50% Downpayment, Progress Billing, Final Billing">
                       <Inp value={msForm.name} onChange={e=>fm("name",e.target.value)} placeholder="e.g. 50% Downpayment upon PO"/>
                     </Fld>
@@ -14114,7 +14120,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                               {editPay?.msId===ms.id&&editPay?.payId===p.id&&canEdit?(
                                 <div style={{background:"#fff",borderRadius:7,padding:"8px",border:"1.5px solid #93c5fd",marginBottom:4}}>
                                   <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:6,fontSize:".78rem"}}>Edit Payment</div>
-                                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
@@ -14156,7 +14162,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                       {editMs===ms.id&&canEdit&&(
                         <div style={{background:"#eff6ff",borderRadius:8,padding:"10px 12px",border:"1.5px solid #93c5fd",marginTop:8}}>
                           <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Edit Milestone</div>
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
                             <Fld label="Milestone Name"><Inp value={editMsForm.name||""} onChange={e=>fme("name",e.target.value)} placeholder="e.g. 30% Down Payment"/></Fld>
                             <Fld label="Amount (₱)"><Inp type="number" value={editMsForm.amount||""} onChange={e=>fme("amount",e.target.value)} placeholder="0.00"/></Fld>
                             <Fld label="Invoice No"><Inp value={editMsForm.invoiceNo||""} onChange={e=>fme("invoiceNo",e.target.value)} placeholder="INV-0001"/></Fld>
@@ -14174,7 +14180,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                       {showPay===ms.id&&canEdit&&(
                         <div style={{background:"#eff6ff",borderRadius:8,padding:"10px 12px",border:"1.5px solid #93c5fd",marginTop:8}}>
                           <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:8,fontSize:".82rem"}}>Log Payment</div>
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
                             <Fld label="Amount (₱)"><Inp type="number" value={payForm.amount} onChange={e=>fp("amount",e.target.value)} placeholder="0.00"/></Fld>
                             <Fld label="Bank Deposited To">
                               <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
@@ -14838,7 +14844,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     </div>
                   </div>
                 ):(
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
                     {[
                       {l:"AE",v:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"},
                       {l:"Designer",v:card?.designer||jo?.designer||"—"},
@@ -15440,7 +15446,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
       {showForm&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>Log Stock Movement</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Item" required><Sel value={form.itemId} onChange={e=>f("itemId",e.target.value)}><option value="">— Select Item —</option>{inventory.map(i=><option key={i.id} value={i.id}>{i.name} ({i.code}) — {n(i.qtyOnHand)} {i.unit} on hand</option>)}</Sel></Fld>
             <Fld label="Movement Type"><Sel value={form.moveType} onChange={e=>f("moveType",e.target.value)}>{STOCK_MOVE_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
             <Fld label={form.moveType.startsWith("ADJUST")?"New Total Qty (absolute count)":"Quantity"}><Inp type="number" value={form.qty} onChange={e=>f("qty",e.target.value)} min={0} placeholder="0"/></Fld>
@@ -15687,7 +15693,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
               <button onClick={()=>setEventModal(null)} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:8,padding:"4px 10px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:".85rem"}}>✕</button>
             </div>
             <div style={{padding:"16px 20px"}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,marginBottom:16}}>
                 <div style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                   <div style={{fontSize:".7rem",color:"#64748b",fontWeight:600}}>TYPE</div>
                   <div style={{fontWeight:700,color:"#0f172a",marginTop:2}}>{eventModal.type==="end"?"Turnover":eventModal.type==="delivery"?"PO Delivery":eventModal.type==="billing"?"Billing Due":"DRF Deadline"}</div>
@@ -16402,7 +16408,7 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
       {showForm&&canEdit&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>{editId?"Edit Supplier":"Add Supplier"}</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <div style={{gridColumn:"1/-1"}}><Fld label="Company Name" required><Inp value={form.companyName} onChange={e=>f("companyName",e.target.value)} placeholder="Company name"/></Fld></div>
             <Fld label="Rating"><Sel value={form.rating} onChange={e=>f("rating",e.target.value)}>{SUPPLIER_RATINGS.map(r=><option key={r}>{r}</option>)}</Sel></Fld>
             <Fld label="Materials Supplied"><Inp value={form.materials} onChange={e=>f("materials",e.target.value)} placeholder="e.g. Assorted Construction Supply"/></Fld>
@@ -16540,7 +16546,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
       {showForm&&canEdit&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>{editId?"Edit Subcontractor":"Add Subcontractor"}</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <div style={{gridColumn:"1/-1"}}><Fld label="Company Name / Contact Person" required><Inp value={form.companyName} onChange={e=>f("companyName",e.target.value)} placeholder="e.g. Juan dela Cruz / ABC Construction"/></Fld></div>
             <Fld label="Rating"><Sel value={form.rating} onChange={e=>f("rating",e.target.value)}>{SUBCON_RATINGS.map(r=><option key={r}>{r}</option>)}</Sel></Fld>
             <Fld label="Specialty / Trade"><Inp value={form.specialty} onChange={e=>f("specialty",e.target.value)} placeholder="e.g. General Works"/></Fld>
