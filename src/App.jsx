@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
+const WrapCtx = createContext(false);
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles} from './supabaseClient';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -4552,7 +4553,9 @@ export default function App(){
 
   const Wrap=React.useCallback(({children})=>{
     const W=navCollapsed?64:220;
+    const alreadyWrapped=useContext(WrapCtx);
     return(
+      <WrapCtx.Provider value={true}>
       <div style={{minHeight:"100vh",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif",marginLeft:isMobile?0:W,transition:isMobile?"none":"margin-left .2s",overflowX:"hidden",width:isMobile?"100%":undefined}}>
         <style>{`
           @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap');
@@ -4576,11 +4579,9 @@ export default function App(){
         <Toaster/>
         {SyncBanner}
         <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?56:undefined,paddingBottom:isMobile?72:undefined}} className="fi">
-          {!isMobile&&(
-            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #e2e8f0"}}>
-              <img src="/gmd-logo.png" alt="GMD Productions" style={{height:32,objectFit:"contain",display:"block"}}/>
-              <div style={{width:1,height:24,background:"#e2e8f0"}}/>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:".95rem",color:"#94a3b8",letterSpacing:".5px"}}>FabHub</span>
+          {!isMobile&&!alreadyWrapped&&(
+            <div style={{display:"flex",justifyContent:"flex-end",marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #e2e8f0"}}>
+              <img src="/gmd-logo.png" alt="GMD Productions" style={{height:56,objectFit:"contain",display:"block"}}/>
             </div>
           )}
           {children}
@@ -4677,6 +4678,7 @@ export default function App(){
       </Modal>
       {mobileNavRef.current}
     </div>
+    </WrapCtx.Provider>
   );
   },[navCollapsed, isMobile, role, page]);
   // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
@@ -16860,13 +16862,29 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Procurement"||role==="Operations";
 
+  const grouped=useMemo(()=>{
+    const map=new Map();
+    subcons.forEach(s=>{
+      const key=(s.companyName||s.company_name||"").trim().toLowerCase();
+      if(!map.has(key)){
+        map.set(key,{...s,_ids:[s.id],_specialties:[...(s.specialty?[s.specialty]:[])],_allItems:[s]});
+      } else {
+        const g=map.get(key);
+        g._ids.push(s.id);
+        g._allItems.push(s);
+        if(s.specialty&&!g._specialties.includes(s.specialty)) g._specialties.push(s.specialty);
+      }
+    });
+    return [...map.values()];
+  },[subcons]);
+
   const filtered=useMemo(()=>{
-    let list=subcons;
+    let list=grouped;
     if(filterRating!=="all") list=list.filter(s=>s.rating===filterRating);
-    if(filterSpecialty!=="all") list=list.filter(s=>s.specialty===filterSpecialty);
-    if(search){const q=search.toLowerCase();list=list.filter(s=>(s.companyName||"").toLowerCase().includes(q)||(s.specialty||"").toLowerCase().includes(q)||(s.contactNo||"").toLowerCase().includes(q));}
+    if(filterSpecialty!=="all") list=list.filter(s=>s._specialties.includes(filterSpecialty));
+    if(search){const q=search.toLowerCase();list=list.filter(s=>(s.companyName||"").toLowerCase().includes(q)||s._specialties.join(" ").toLowerCase().includes(q)||(s.contactNo||"").toLowerCase().includes(q));}
     return list;
-  },[subcons,filterRating,filterSpecialty,search]);
+  },[grouped,filterRating,filterSpecialty,search]);
 
   const openEdit=(s)=>{setForm({...s,companyName:s.companyName||s.company_name||"",strengthsWeaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contactNo:s.contactNo||s.contact_no||"",paymentTerms:s.paymentTerms||s.payment_terms||"Cash Basis",rateStructure:s.rateStructure||s.rate_structure||"Project Rate",paymentStructure:s.paymentStructure||s.payment_structure||"50% Start/50% Completion",locationNote:s.locationNote||s.location_note||""});setEditId(s.id);setShowForm(true);};
   const openNew=()=>{setForm(emptySubcon());setEditId(null);setShowForm(true);};
@@ -16892,9 +16910,9 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
       {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10,marginBottom:16}}>
         {[
-          {l:"Total Subcontractors",v:subcons.length,c:"#3b82f6"},
-          {l:"Acceptable",v:subcons.filter(s=>s.rating==="YES - ACCEPTABLE").length,c:"#059669"},
-          {l:"Not Approved",v:subcons.filter(s=>s.rating==="NO").length,c:"#ef4444"},
+          {l:"Total Subcontractors",v:grouped.length,c:"#3b82f6"},
+          {l:"Acceptable",v:grouped.filter(s=>s.rating==="YES - ACCEPTABLE").length,c:"#059669"},
+          {l:"Not Approved",v:grouped.filter(s=>s.rating==="NO").length,c:"#ef4444"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
@@ -16943,22 +16961,26 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
         </div>
       )}
 
-      {subcons.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No subcontractors yet. Add your first subcon above.</div>}
+      {grouped.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No subcontractors yet. Add your first subcon above.</div>}
 
       {/* List */}
       <div style={{display:"flex",flexDirection:"column",gap:8}}>
         {filtered.map(s=>{
           const isNo=s.rating==="NO";
           return(
-            <div key={s.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isNo?"#fecaca":"#e2e8f0"}`,padding:"14px 18px"}}>
+            <div key={s._ids[0]} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isNo?"#fecaca":"#e2e8f0"}`,padding:"14px 18px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
                 <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:6}}>
                     <span style={{fontSize:".68rem",fontWeight:700,color:isNo?"#ef4444":"#059669",background:isNo?"#fef2f2":"#f0fdf4",padding:"2px 8px",borderRadius:20}}>{s.rating||"—"}</span>
                     <span style={{fontWeight:700,color:"#0f172a",fontSize:".92rem"}}>{s.companyName||s.company_name}</span>
-                    {(s.specialty)&&<span style={{fontSize:".72rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{s.specialty}</span>}
                     {(s.locationNote||s.location_note)&&<span style={{fontSize:".72rem",color:"#7c3aed",background:"#f5f3ff",padding:"1px 8px",borderRadius:20}}>📍 {s.locationNote||s.location_note}</span>}
                   </div>
+                  {s._specialties.length>0&&(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
+                      {s._specialties.map(sp=><span key={sp} style={{fontSize:".7rem",color:"#3b82f6",background:"#eff6ff",border:"1px solid #bfdbfe",padding:"2px 8px",borderRadius:20}}>{sp}</span>)}
+                    </div>
+                  )}
                   <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem",color:"#64748b"}}>
                     {(s.contactNo||s.contact_no)&&<span>📞 {s.contactNo||s.contact_no}</span>}
                     {(s.paymentTerms||s.payment_terms)&&<span style={{background:"#f0fdf4",color:"#166534",padding:"1px 8px",borderRadius:10,fontWeight:600}}>💳 {s.paymentTerms||s.payment_terms}</span>}
@@ -16972,7 +16994,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
                 {canEdit&&(
                   <div style={{display:"flex",gap:6,flexShrink:0}}>
                     <button onClick={()=>openEdit(s)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                    <button onClick={()=>{if(window.confirm("Remove this subcontractor?"))deleteSubcon(s.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+                    <button onClick={()=>{if(window.confirm(`Remove all ${s._ids.length} entr${s._ids.length>1?"ies":"y"} for ${s.companyName}?`))s._ids.forEach(id=>deleteSubcon(id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
                   </div>
                 )}
               </div>
