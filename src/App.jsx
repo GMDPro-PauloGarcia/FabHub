@@ -14659,7 +14659,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 
   const totalCards=Object.keys(pcards).length;
   const fullyDone=Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length;
-  const needsAttn=wonDeals.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dep=>!pcards[d.id]?.departments?.[dep]?.done)).length;
+  const needsAttn=wonDeals.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";}).length;
   const openBCount=(blockers||[]).filter(b=>b.status==="Open").length;
 
   return(
@@ -14723,7 +14723,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 ?wonDeals
                 :wonDeals.filter(d=>d.stage!=="12 · Close-Out");
             if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
-            if(pcFilter==="attention") list=list.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dep=>!pcards[d.id]?.departments?.[dep]?.done));
+            if(pcFilter==="attention") list=list.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";});
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
             if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
             list=[...list].sort((a,b)=>{
