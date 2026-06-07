@@ -3268,12 +3268,12 @@ export default function App(){
   const updateJO     =(id,changes)=>{upJos(js=>js.map(j=>{if(j.id!==id)return j;const u={...j,...changes};if(isSupabaseReady())sbSyncOne("job_orders",u,toSbJO);return u;}));}
   const delMR        =(id)=>{
     const mr=mreqs.find(m=>m.id===id);
-    if(mr&&role!=="Manager"&&role!=="Procurement"&&mr.submittedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the submitter can delete material requests.","error");
+    if(mr&&role!=="Manager"&&role!=="Procurement"&&mr.requestedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the submitter can delete material requests.","error");
     upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});
   };
   const delBR        =(id)=>{
     const br=breqs.find(b=>b.id===id);
-    if(br&&role!=="Manager"&&br.submittedBy!==session?.name) return toastEmit("Only Managers or the submitter can delete budget requests.","error");
+    if(br&&role!=="Manager"&&br.requestedBy!==session?.name) return toastEmit("Only Managers or the submitter can delete budget requests.","error");
     upBreqs(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('budget_requests',id).catch(()=>{});
   };
   const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_cards').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
@@ -3285,8 +3285,8 @@ export default function App(){
     const rec={...mr,id:uid(),createdDate:today};
     upMreqs(ms=>[rec,...ms]);
     if(isSupabaseReady()) sbSyncOne("material_requests",rec,toSbMR);
-    const deal=deals.find(d=>d.id===mr.dealId);
-    sendTelegramNotification("procurement",`🔧 <b>New Material Request</b>\n${mr.item||"?"}\nProject: ${deal?.client||mr.dealId||"?"}\nQty: ${mr.qty||"?"} ${mr.unit||""}\nUrgency: ${mr.urgency||"Normal"}\nBy: ${mr.submittedBy||"?"}`);
+    const deal=deals.find(d=>d.id===mr.projectId);
+    sendTelegramNotification("procurement",`🔧 <b>New Material Request</b>\n${mr.itemName||"?"}\nProject: ${deal?.client||mr.projectId||"?"}\nQty: ${mr.qty||"?"} ${mr.unit||""}\nUrgency: ${mr.urgency||"Normal"}\nBy: ${mr.requestedBy||"?"}`);
   };
   const updateMR=(id,ch)=>{
     upMreqs(ms=>ms.map(m=>{
@@ -3300,8 +3300,8 @@ export default function App(){
     const rec={...br,id:uid(),createdDate:today};
     upBreqs(bs=>[rec,...bs]);
     if(isSupabaseReady()) sbSyncOne("budget_requests",rec,toSbBR);
-    const deal=deals.find(d=>d.id===br.dealId);
-    sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.dealId||"?"}${botSettings.hideValueInBots?"":"\nAmount: ₱"+Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.submittedBy||"?"}`);
+    const deal=deals.find(d=>d.id===br.projectId);
+    sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.projectId||"?"}${botSettings.hideValueInBots?"":"\nAmount: ₱"+Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.requestedBy||"?"}`);
   };
   const updateBR=(id,ch)=>{
     upBreqs(bs=>bs.map(b=>{
@@ -4237,7 +4237,7 @@ export default function App(){
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Procurement"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
+      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
@@ -4253,8 +4253,7 @@ export default function App(){
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"},{id:"suppliers",l:"Supplier Master"},{id:"subcontractors",l:"Subcon Master"}]},
-      {group:"Materials",  items:[{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     QS:[
@@ -4266,7 +4265,7 @@ export default function App(){
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"📋 Project Cards"}]},
-      {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"materialreq",l:"Material Requests"},{id:"budgetreq",l:"Budget Requests"}]},
+      {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"requests",l:"Requests"}]},
     ],
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"}]},
@@ -4290,7 +4289,7 @@ export default function App(){
       procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
       collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
       drf:"📝",deliveries:"🚚",stockmove:"📦",reports:"📊",
-      suppliers:"🏭",subcontractors:"👷",
+      suppliers:"🏭",subcontractors:"👷",requests:"📋",masters:"🗂",
       "Sales Pipeline":"📊","My Pipeline":"📊",
     };
     const groups=navMap[role]||[];
@@ -4415,7 +4414,7 @@ export default function App(){
       materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",drf:"📝",
       deliveries:"🚚",stockmove:"📦",reports:"📊",suppliers:"🏭",
       subcontractors:"👷",calendar:"📅",inventory:"📦",pmupdates:"📝",addenda:"⚠️",
-      activity:"🏆",
+      activity:"🏆",requests:"📋",masters:"🗂️",
     };
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",
@@ -4426,6 +4425,7 @@ export default function App(){
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
       pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",activity:"Activity",
+      requests:"Requests",masters:"Masters",
     };
     // Notification badge counts per tab
     const openBlockersAll=(blockers||[]).filter(b=>b.status==="Open").length;
@@ -4436,6 +4436,7 @@ export default function App(){
       projects:openBlockersAll||0,
       materialreq:pendingMRs||0,
       budgetreq:pendingBRs||0,
+      requests:(pendingMRs||0)+(pendingBRs||0),
       drf:pendingDRFs||0,
     };
     const BadgeDot=({count})=>count>0?(
@@ -4994,8 +4995,8 @@ export default function App(){
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
             {[
               {l:"Open Purchase Orders", v:pendingPRs.length, c:"#06b6d4", icon:"📦", click:()=>setPage("procurement")},
-              {l:"Material Requests",    v:pendingMRs.length, c:"#f97316", icon:"🔧", click:()=>setPage("materialreq")},
-              {l:"Budget Requests",      v:pendingBRs.length, c:"#8b5cf6", icon:"💳", click:()=>setPage("budgetreq")},
+              {l:"Material Requests",    v:pendingMRs.length, c:"#f97316", icon:"🔧", click:()=>setPage("requests")},
+              {l:"Budget Requests",      v:pendingBRs.length, c:"#8b5cf6", icon:"💳", click:()=>setPage("requests")},
               {l:"Arriving Today",       v:deliveredToday.length, c:"#059669", icon:"🚚"},
             ].map(({l,v,c,icon,click})=>(
               <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:click?"pointer":"default"}}>
@@ -5020,7 +5021,7 @@ export default function App(){
             {pending.map((m,i)=>{
               const d=wonDeals.find(x=>x.id===m.dealId);
               return(
-                <div key={m.id} onClick={()=>setPage("materialreq")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<pending.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
+                <div key={m.id} onClick={()=>setPage("requests")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<pending.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}
                   onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <div>
@@ -5161,7 +5162,7 @@ export default function App(){
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={()=>setPage("projects")} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 My Projects</button>
-          <button onClick={()=>setPage("materialreq")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🔧 Material Request</button>
+          <button onClick={()=>setPage("requests")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🔧 Material Request</button>
         </div>
       </div>
 
@@ -5292,8 +5293,8 @@ export default function App(){
             {/* Quick action tiles */}
             <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10}}>
               {[
-                {l:"Pending MRs",     v:mreqs.filter(m=>m.status==="Submitted").length,                                      icon:"🔧", page:"materialreq", c:"#f97316"},
-                {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length,                                        icon:"💳", page:"budgetreq",   c:"#8b5cf6"},
+                {l:"Pending MRs",     v:mreqs.filter(m=>m.status==="Submitted").length,                                      icon:"🔧", page:"requests", c:"#f97316"},
+                {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length,                                        icon:"💳", page:"requests",   c:"#8b5cf6"},
                 {l:"Open Tasks",      v:myOpenTasks.length,                                                                   icon:"✅", page:"checklist",   c:"#3b82f6"},
               ].map(({l,v,icon,page:pg,c})=>(
                 <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:10,padding:"14px",border:`1.5px solid ${c}22`,textAlign:"center",cursor:"pointer"}}>
@@ -5875,7 +5876,7 @@ export default function App(){
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
               <div style={{background:"#f97316",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🔧 Pending Material Requests ({pendingMRs.length})</span>
-                <button onClick={()=>setPage("materialreq")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View →</button>
+                <button onClick={()=>setPage("requests")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View →</button>
               </div>
               {pendingMRs.length===0
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No pending MRs</div>
@@ -8124,6 +8125,10 @@ export default function App(){
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
+    if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
+    if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="clients") return(
       <Wrap>
@@ -8247,8 +8252,8 @@ export default function App(){
         <SecHead title="Procurement Overview"/>
         <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
           {[
-            {l:"Pending Material Requests", v:mreqs.filter(m=>m.status==="Submitted").length, c:"#f59e0b", action:()=>setPage("materialreq")},
-            {l:"Pending Budget Requests",   v:breqs.filter(b=>b.status==="Submitted").length, c:"#ef4444", action:()=>setPage("budgetreq")},
+            {l:"Pending Material Requests", v:mreqs.filter(m=>m.status==="Submitted").length, c:"#f59e0b", action:()=>setPage("requests")},
+            {l:"Pending Budget Requests",   v:breqs.filter(b=>b.status==="Submitted").length, c:"#ef4444", action:()=>setPage("requests")},
             {l:"Active POs",               v:prs.filter(p=>p.status==="PO Issued").length,    c:"#3b82f6", action:()=>setPage("procurement")},
           ].map(({l,v,c,action})=>(
             <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"18px",border:"1.5px solid #e2e8f0",cursor:"pointer",transition:"all .15s"}}
@@ -8300,6 +8305,8 @@ export default function App(){
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
         <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
@@ -8480,6 +8487,7 @@ export default function App(){
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} today={today} Wrap={Wrap}/>);
   }
 
