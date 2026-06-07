@@ -130,39 +130,51 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
   dr_no            TEXT,
   notes            TEXT,
   created_by       TEXT,
-  created_at       TIMESTAMPTZ DEFAULT NOW()
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  po_number        TEXT DEFAULT '',
+  po_date          DATE,
+  delivery_note    TEXT DEFAULT '',
+  requested_by     TEXT DEFAULT '',
+  approved_by      TEXT DEFAULT '',
+  project_name     TEXT DEFAULT ''
 );
 
 -- ── 8. MATERIAL REQUESTS ──────────────────────────────────
 CREATE TABLE IF NOT EXISTS material_requests (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id         UUID REFERENCES deals(id) ON DELETE SET NULL,
-  item            TEXT,
-  category        TEXT,
-  qty             NUMERIC DEFAULT 0,
-  unit            TEXT,
-  estimated_cost  NUMERIC DEFAULT 0,
-  urgency         TEXT DEFAULT 'Normal',
-  purpose         TEXT,
-  status          TEXT DEFAULT 'Submitted',
-  submitted_by    TEXT,
-  created_at      TIMESTAMPTZ DEFAULT NOW()
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id          UUID REFERENCES deals(id) ON DELETE SET NULL,
+  item             TEXT,
+  category         TEXT,
+  qty              NUMERIC DEFAULT 0,
+  unit             TEXT,
+  estimated_cost   NUMERIC DEFAULT 0,
+  urgency          TEXT DEFAULT 'Normal',
+  purpose          TEXT,
+  notes            TEXT DEFAULT '',
+  status           TEXT DEFAULT 'Submitted',
+  submitted_by     TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  status_changed_at DATE
 );
 
 -- ── 9. BUDGET REQUESTS ────────────────────────────────────
 CREATE TABLE IF NOT EXISTS budget_requests (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id       UUID REFERENCES deals(id) ON DELETE SET NULL,
-  title         TEXT,
-  purpose       TEXT,
-  amount        NUMERIC DEFAULT 0,
-  urgency       TEXT DEFAULT 'Normal',
-  date_needed   DATE,
-  status        TEXT DEFAULT 'Pending',
-  approved_by   TEXT,
-  submitted_by  TEXT,
-  category      TEXT,
-  created_at    TIMESTAMPTZ DEFAULT NOW()
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id           UUID REFERENCES deals(id) ON DELETE SET NULL,
+  title             TEXT,
+  purpose           TEXT,
+  amount            NUMERIC DEFAULT 0,
+  urgency           TEXT DEFAULT 'Normal',
+  date_needed       DATE,
+  status            TEXT DEFAULT 'Pending',
+  approved_by       TEXT,
+  submitted_by      TEXT,
+  category          TEXT,
+  notes             TEXT DEFAULT '',
+  released_by       TEXT DEFAULT '',
+  released_at       DATE,
+  status_changed_at DATE,
+  created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 10. ADDENDA (CHANGE ORDERS) ───────────────────────────

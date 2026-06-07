@@ -2208,9 +2208,9 @@ export default function App(){
             if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
             if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
             if(data.exps?.length)   setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
-            if(data.prs?.length)    setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
-            if(data.mreqs?.length)  setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
-            if(data.breqs?.length)  setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
+            if(data.prs?.length)    setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})));
+            if(data.mreqs?.length)  setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})));
+            if(data.breqs?.length)  setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})));
             if(data.addenda?.length) setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
             if(data.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})));
             if(data.swatches?.length) setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
@@ -2321,9 +2321,9 @@ export default function App(){
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
     if(data.exps?.length)        setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
     if(data.inflows?.length)     setInfs(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
-    if(data.prs?.length)         setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,estimatedCost:p.estimated_cost,actualCost:p.actual_cost,budgetCategory:p.budget_category,qtyDelivered:p.qty_delivered,deliveryDate:p.delivery_date,drNo:p.dr_no,createdBy:p.created_by})));
-    if(data.mreqs?.length)       setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,estimatedCost:m.estimated_cost,submittedBy:m.submitted_by})));
-    if(data.breqs?.length)       setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by})));
+    if(data.prs?.length)         setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})));
+    if(data.mreqs?.length)       setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})));
+    if(data.breqs?.length)       setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})));
     if(data.addenda?.length)     setAddenda(data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})));
     if(data.checklist?.length)   setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})));
     if(data.swatches?.length)    setSwatches(data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})));
@@ -2409,27 +2409,36 @@ export default function App(){
       amount:Number(r.amount)||0,supplier:r.supplier||"",receipt_no:r.receiptNo||""};
   };
   const toSbPR = r=>({
-    id:r.id, deal_id:r.dealId||null, item:r.item||"",
+    id:r.id, deal_id:r.projectId||r.dealId||null, item:r.itemName||r.item||"",
     supplier:r.supplier||"", qty:Number(r.qty)||0, unit:r.unit||"",
-    estimated_cost:Number(r.estimatedCost)||0, actual_cost:Number(r.actualCost)||0,
+    estimated_cost:Number(r.estUnitCost||r.estimatedCost)||0,
+    actual_cost:Number(r.actUnitCost||r.actualCost)||0,
     budget_category:r.budgetCategory||"", status:r.status||"Pending Approval",
     qty_delivered:Number(r.qtyDelivered)||0, delivery_date:r.deliveryDate||null,
-    dr_no:r.drNo||"", notes:r.notes||"", created_by:r.createdBy||"",
+    dr_no:r.drNo||"", notes:r.notes||"", created_by:r.createdBy||r.requestedBy||"",
+    po_number:r.poNumber||"", po_date:r.poDate||null,
+    delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
+    approved_by:r.approvedBy||"", project_name:r.projectName||"",
   });
   const toSbMR = r=>({
-    id:r.id, deal_id:r.dealId||null, item:r.item||"", category:r.category||"",
-    qty:Number(r.qty)||0, unit:r.unit||"", estimated_cost:Number(r.estimatedCost)||0,
-    urgency:r.urgency||"Normal", purpose:r.purpose||"",
-    status:r.status||"Submitted", submitted_by:r.submittedBy||"",
-    created_by:r.createdBy||r.submittedBy||"",
+    id:r.id, deal_id:r.projectId||r.dealId||null,
+    item:r.itemName||r.item||"", category:r.category||"",
+    qty:Number(r.qty)||0, unit:r.unit||"",
+    estimated_cost:Number(r.estUnitCost||r.estimatedCost)||0,
+    urgency:r.urgency||"Normal", purpose:r.purpose||"", notes:r.notes||"",
+    status:r.status||"Submitted", submitted_by:r.requestedBy||r.submittedBy||"",
+    created_by:r.createdBy||r.requestedBy||r.submittedBy||"",
+    status_changed_at:r.statusChangedAt||null,
   });
   const toSbBR = r=>({
-    id:r.id, deal_id:r.dealId||null, purpose:r.purpose||"",
+    id:r.id, deal_id:r.projectId||r.dealId||null, purpose:r.purpose||"",
     title:r.title||r.purpose||"",
     amount:Number(r.amount)||0, urgency:r.urgency||"Normal",
     date_needed:r.dateNeeded||null, status:r.status||"Pending",
-    approved_by:r.approvedBy||"", submitted_by:r.submittedBy||"",
-    category:r.category||"",
+    approved_by:r.approvedBy||"", submitted_by:r.requestedBy||r.submittedBy||"",
+    category:r.category||"", notes:r.notes||"",
+    released_by:r.releasedBy||"", released_at:r.releasedAt||null,
+    status_changed_at:r.statusChangedAt||null,
   });
   const toSbAddendum = r=>({
     id:r.id, deal_id:r.dealId||r.projectId, title:r.title||"", description:r.description||r.desc||"",

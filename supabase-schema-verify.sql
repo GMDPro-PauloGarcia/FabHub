@@ -200,39 +200,61 @@ ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS qty_delivered   nu
 ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS delivery_date   date;
 ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS dr_no           text    DEFAULT '';
 ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS created_by      text    DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS po_number       text    DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS po_date         date;
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS delivery_note   text    DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS requested_by    text    DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS approved_by     text    DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS project_name    text    DEFAULT '';
 
 -- ── 11. MATERIAL REQUESTS ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.material_requests (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id         uuid REFERENCES public.deals(id) ON DELETE SET NULL,
-  item            text DEFAULT '',
-  category        text DEFAULT '',
-  qty             numeric DEFAULT 0,
-  unit            text DEFAULT '',
-  estimated_cost  numeric DEFAULT 0,
-  urgency         text DEFAULT 'Normal',
-  purpose         text DEFAULT '',
-  status          text DEFAULT 'Submitted',
-  submitted_by    text DEFAULT '',
-  created_at      timestamptz DEFAULT now()
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id           uuid REFERENCES public.deals(id) ON DELETE SET NULL,
+  item              text DEFAULT '',
+  category          text DEFAULT '',
+  qty               numeric DEFAULT 0,
+  unit              text DEFAULT '',
+  estimated_cost    numeric DEFAULT 0,
+  urgency           text DEFAULT 'Normal',
+  purpose           text DEFAULT '',
+  notes             text DEFAULT '',
+  status            text DEFAULT 'Submitted',
+  submitted_by      text DEFAULT '',
+  created_at        timestamptz DEFAULT now(),
+  status_changed_at date
 );
-ALTER TABLE public.material_requests ADD COLUMN IF NOT EXISTS submitted_by text DEFAULT '';
+ALTER TABLE public.material_requests ADD COLUMN IF NOT EXISTS submitted_by      text DEFAULT '';
+ALTER TABLE public.material_requests ADD COLUMN IF NOT EXISTS notes             text DEFAULT '';
+ALTER TABLE public.material_requests ADD COLUMN IF NOT EXISTS status_changed_at date;
 
 -- ── 12. BUDGET REQUESTS ───────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.budget_requests (
-  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id       uuid REFERENCES public.deals(id) ON DELETE SET NULL,
-  purpose       text DEFAULT '',
-  amount        numeric DEFAULT 0,
-  urgency       text DEFAULT 'Normal',
-  date_needed   date,
-  status        text DEFAULT 'Pending',
-  approved_by   text DEFAULT '',
-  submitted_by  text DEFAULT '',
-  created_at    timestamptz DEFAULT now()
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id           uuid REFERENCES public.deals(id) ON DELETE SET NULL,
+  title             text DEFAULT '',
+  purpose           text DEFAULT '',
+  amount            numeric DEFAULT 0,
+  urgency           text DEFAULT 'Normal',
+  date_needed       date,
+  status            text DEFAULT 'Pending',
+  approved_by       text DEFAULT '',
+  submitted_by      text DEFAULT '',
+  category          text DEFAULT '',
+  notes             text DEFAULT '',
+  released_by       text DEFAULT '',
+  released_at       date,
+  status_changed_at date,
+  created_at        timestamptz DEFAULT now()
 );
-ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS approved_by  text DEFAULT '';
-ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS submitted_by text DEFAULT '';
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS approved_by       text DEFAULT '';
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS submitted_by      text DEFAULT '';
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS title             text DEFAULT '';
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS category          text DEFAULT '';
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS notes             text DEFAULT '';
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS released_by       text DEFAULT '';
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS released_at       date;
+ALTER TABLE public.budget_requests ADD COLUMN IF NOT EXISTS status_changed_at date;
 
 -- ── 13. ADDENDA ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.addenda (
