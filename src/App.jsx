@@ -8124,12 +8124,7 @@ export default function App(){
       </Wrap>
     );
     if(page==="ops") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} setPage={setPage} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}
-        addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum}
-        openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName}
-        matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm}
-        editMat={editMat} setEditMat={setEditMat} saveMat={saveMat}
-        addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus}/>;
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -8311,6 +8306,7 @@ export default function App(){
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -8492,7 +8488,7 @@ export default function App(){
 
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap}/>;
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -16620,6 +16616,38 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit}){
+  const[tab,setTab]=useState("Material Request");
+  const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
+  return(
+    <div>
+      <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,overflowX:"auto"}}>
+        {["Material Request","Budget Request"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
+        ))}
+      </div>
+      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
+      {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
+    </div>
+  );
+}
+
+function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,subcons,addSubcon,updateSubcon,deleteSubcon,session,role}){
+  const[tab,setTab]=useState("Suppliers");
+  const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
+  return(
+    <div>
+      <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,overflowX:"auto"}}>
+        {["Suppliers","Subcontractors"].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
+        ))}
+      </div>
+      {tab==="Suppliers"&&<SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/>}
+      {tab==="Subcontractors"&&<SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/>}
     </div>
   );
 }
