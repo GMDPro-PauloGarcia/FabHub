@@ -8701,7 +8701,10 @@ export default function App(){
         clForm={clForm}
         setClForm={setClForm}
         editCl={editCl}
-        saveCl={saveCl}/>
+        saveCl={saveCl}
+        upDeals={upDeals}
+        toastEmit={toastEmit}
+        sendTelegramNotification={sendTelegramNotification}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
@@ -14558,7 +14561,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(null);
   const[pcFilter,setPcFilter]=useState(null);
@@ -15031,6 +15034,43 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
                   <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:4,transition:"width .5s"}}/>
                 </div>
+                {/* Stage selector */}
+                {(role==="Manager"||role==="Sales")&&deal&&upDeals&&(()=>{
+                  const changeStage=st=>{
+                    upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
+                    if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
+                    logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
+                    const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
+                    ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
+                    toastEmit(`Stage → ${st}`,"success");
+                  };
+                  const stageOpts=[...WON_STAGES,"14 · Completed"];
+                  return(
+                    <div style={{marginTop:10,display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",flexShrink:0}}>STAGE</span>
+                      <select value={deal.stage||""} onChange={e=>changeStage(e.target.value)}
+                        style={{flex:1,fontSize:".78rem",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",color:"#0f172a",background:"#f8fafc",fontWeight:600,cursor:"pointer"}}>
+                        {stageOpts.map(s=><option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  );
+                })()}
+                {/* All-depts-done close banner */}
+                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&upDeals&&(
+                  <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+                    <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete!</span>
+                    <button onClick={()=>{
+                      upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:"12 · Close-Out"}:d));
+                      if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:"12 · Close-Out"}).catch(()=>{});
+                      logActivity(selDeal,"Stage Change","Stage → 12 · Close-Out (all depts done)",session?.name);
+                      const msg=`✅ <b>Project Close-Out</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nAll departments complete.\nBy: ${session?.name}`;
+                      ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
+                      toastEmit("Project moved to Close-Out ✅","success");
+                    }} style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
+                      🔒 Move to Close-Out
+                    </button>
+                  </div>
+                )}
                 <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
                   {addAddendum2&&<button onClick={()=>{setScopeForm({title:"",desc:"",value:"",ceNo:""});setShowScopeForm(true);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
                   <button onClick={generateClientReport} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>📄 Client Report</button>
