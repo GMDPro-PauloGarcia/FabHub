@@ -3666,21 +3666,25 @@ export default function App(){
     const todayD = today;
     const in7days = new Date(); in7days.setDate(in7days.getDate()+7);
     const in7str = in7days.toISOString().slice(0,10);
-    // E-1: billing milestones overdue (past due date, not fully paid)
+    // O(1) Map lookups instead of O(n) find() on every iteration
+    const wonMap  = new Map(wonDeals.map(d=>[d.id,d]));
+    const dealMap = new Map(deals.map(d=>[d.id,d]));
+    const billedDealIds = new Set(billings.filter(b=>b.status!=='Cancelled').map(b=>b.dealId));
+    // E-1: billing milestones overdue
     billings.forEach(b=>{
       if(b.dueDate && b.dueDate < todayD && b.status !== 'Fully Paid' && b.status !== 'Cancelled'){
-        const deal = wonDeals.find(d=>d.id===b.dealId);
+        const deal = wonMap.get(b.dealId);
         if(deal) list.push({type:'E-1',dealId:b.dealId,client:deal.client,label:`Overdue: ${b.name||b.label||'Invoice'} (due ${b.dueDate})`,severity:'high'});
       }
     });
-    // E-2: addenda in Discovered status on active fabrication projects
+    // E-2: addenda in Discovered status
     addenda.forEach(a=>{
       if(a.status==='Discovered'){
-        const deal = wonDeals.find(d=>d.id===a.dealId);
+        const deal = wonMap.get(a.dealId);
         if(deal) list.push({type:'E-2',dealId:a.dealId,client:deal.client,label:`Unresolved scope change: ${a.title||'Addendum'}`,severity:'medium'});
       }
     });
-    // E-3: punchlist SLA breach (>5 business days since punchlist started)
+    // E-3: punchlist SLA breach
     wonDeals.forEach(d=>{
       if(d.stage==='11 · Punchlist'){
         const proj = projs[d.id];
@@ -3693,15 +3697,15 @@ export default function App(){
     // E-4: DRF deadline within 7 days
     drfs.forEach(drf=>{
       if(drf.designDeadline && drf.status!=='Done' && drf.status!=='Cancelled' && drf.designDeadline>=todayD && drf.designDeadline<=in7str){
-        const deal = wonDeals.find(d=>d.id===drf.dealId)||deals.find(d=>d.id===drf.dealId);
+        const deal = wonMap.get(drf.dealId)||dealMap.get(drf.dealId);
         const daysLeft = Math.ceil((new Date(drf.designDeadline)-new Date(todayD))/(1000*60*60*24));
         list.push({type:'E-4',dealId:drf.dealId,client:deal?.client||drf.client||'?',label:`DRF ${drf.drfNo||''} deadline in ${daysLeft}d (${drf.designDeadline})`,severity:'medium'});
       }
     });
-    // E-5: PO delivery overdue (delivery date passed, not yet delivered)
+    // E-5: PO delivery overdue
     prs.forEach(pr=>{
       if(pr.deliveryDate && pr.deliveryDate < todayD && !['Delivered','Cancelled'].includes(pr.status)){
-        const deal = wonDeals.find(d=>d.id===(pr.dealId||pr.projectId));
+        const deal = wonMap.get(pr.dealId||pr.projectId);
         list.push({type:'E-5',dealId:pr.dealId||pr.projectId,client:deal?.client||'?',label:`PO overdue: ${pr.item||'Item'} (due ${pr.deliveryDate})`,severity:'high'});
       }
     });
@@ -3710,20 +3714,37 @@ export default function App(){
       if(br.status==='Pending' && br.createdAt){
         const created = new Date(br.createdAt); const diff = Math.floor((new Date()-created)/(1000*60*60*24));
         if(diff>3){
-          const deal = wonDeals.find(d=>d.id===br.dealId);
+          const deal = wonMap.get(br.dealId);
           list.push({type:'E-6',dealId:br.dealId,client:deal?.client||br.title||'?',label:`Budget request pending ${diff}d: ${br.title||'Request'}`,severity:'low'});
         }
       }
     });
-    // E-7: Won projects (stage 6+) with no billing milestones set
-    wonDeals.filter(d=>WON_STAGES.indexOf(d.stage)>=0).forEach(d=>{
-      const hasBilling = billings.some(b=>b.dealId===d.id && b.status!=='Cancelled');
-      if(!hasBilling) list.push({type:'E-7',dealId:d.id,client:d.client,label:`No billing milestone set for active project`,severity:'high'});
+    // E-7: Won projects with no billing milestones (O(1) Set lookup)
+    wonDeals.forEach(d=>{
+      if(!billedDealIds.has(d.id)) list.push({type:'E-7',dealId:d.id,client:d.client,label:`No billing milestone set for active project`,severity:'high'});
     });
     return list;
   },[billings,addenda,wonDeals,projs,drfs,prs,breqs,deals,today]);
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
+
+  // ── Dashboard KPI memos — pre-computed so render is instant ──────────────
+  const pipeDeals      =useMemo(()=>deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)),[deals]);
+  const pipeVal        =useMemo(()=>pipeDeals.reduce((s,d)=>s+Number(d.value||0),0),[pipeDeals]);
+  const awardReqCnt    =useMemo(()=>deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST")).length,[deals]);
+  const overdueInvCnt  =useMemo(()=>billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled").length,[billings]);
+  const overdueTATCnt  =useMemo(()=>Object.values(pcards).filter(p=>p.targetEndDate&&p.targetEndDate<today&&!DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length,[pcards]);
+  const qsPendingCnt   =useMemo(()=>jos.filter(j=>j.budgetStatus==="QS Budget Pending"&&!Object.values(budgets[j.dealId]||{}).some(v=>Number(v)>0)).length,[jos,budgets]);
+  const mrPendingCnt   =useMemo(()=>mreqs.filter(m=>m.status==="Submitted").length,[mreqs]);
+  const addendaAlertCnt=useMemo(()=>addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected").length,[addenda]);
+  const activeJOCnt    =useMemo(()=>jos.filter(j=>j.status==="Active").length,[jos]);
+  const pendingPRCnt   =useMemo(()=>prs.filter(p=>p.status==="Pending Approval").length,[prs]);
+  const billOutstanding=useMemo(()=>Math.max(0,billings.reduce((s,m)=>s+Number(m.amount||0)-(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0)),[billings]);
+  const overdueInvMs   =useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled").length,[billings]);
+  const breqPendingCnt =useMemo(()=>breqs.filter(b=>b.status==="Pending").length,[breqs]);
+  const openPOCnt      =useMemo(()=>prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status)).length,[prs]);
+  const toBuyCnt       =useMemo(()=>swatches.filter(s=>s.status==="To Buy").length,[swatches]);
+  const overdueProjectCnt=useMemo(()=>wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today).length,[wonDeals,pcards]);
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
@@ -6133,24 +6154,12 @@ export default function App(){
         {/* ── ALERT BANNER ROW ────────────────────────────────────────── */}
         {(()=>{
           const alerts=[];
-          // Award requests — highest priority
-          const awardReqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
-          if(awardReqs.length) alerts.push({icon:"🏆",msg:`${awardReqs.length} deal${awardReqs.length>1?"s":""} flagged for award`,color:"#f59e0b",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
-          // Overdue invoices
-          const overdueInv=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
-          if(overdueInv.length) alerts.push({icon:"🚨",msg:`${overdueInv.length} overdue invoice${overdueInv.length>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
-          // Projects past TAT
-          const overdueTAT=Object.values(pcards).filter(p=>p.targetEndDate&&p.targetEndDate<today&&!DEPT_ORDER.every(d=>p.departments?.[d]?.done));
-          if(overdueTAT.length) alerts.push({icon:"⏰",msg:`${overdueTAT.length} project${overdueTAT.length>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>setPage("projects")});
-          // QS budget pending — only show if no budget has actually been saved yet
-          const qsPending=jos.filter(j=>j.budgetStatus==="QS Budget Pending"&&!Object.values(budgets[j.dealId]||{}).some(v=>Number(v)>0));
-          if(qsPending.length) alerts.push({icon:"⚠️",msg:`${qsPending.length} project${qsPending.length>1?"s":""} need QS budget`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("costanalysis")});
-          // MRs pending
-          const mrPending=mreqs.filter(m=>m.status==="Submitted");
-          if(mrPending.length) alerts.push({icon:"📋",msg:`${mrPending.length} material request${mrPending.length>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("procurement")});
-          // Addenda needing Sales
-          const addendaAlert=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");
-          if(addendaAlert.length) alerts.push({icon:"⚠️",msg:`${addendaAlert.length} scope change${addendaAlert.length>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
+          if(awardReqCnt)     alerts.push({icon:"🏆",msg:`${awardReqCnt} deal${awardReqCnt>1?"s":""} flagged for award`,color:"#f59e0b",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
+          if(overdueInvCnt)   alerts.push({icon:"🚨",msg:`${overdueInvCnt} overdue invoice${overdueInvCnt>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
+          if(overdueTATCnt)   alerts.push({icon:"⏰",msg:`${overdueTATCnt} project${overdueTATCnt>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>setPage("projects")});
+          if(qsPendingCnt)    alerts.push({icon:"⚠️",msg:`${qsPendingCnt} project${qsPendingCnt>1?"s":""} need QS budget`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("costanalysis")});
+          if(mrPendingCnt)    alerts.push({icon:"📋",msg:`${mrPendingCnt} material request${mrPendingCnt>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("procurement")});
+          if(addendaAlertCnt) alerts.push({icon:"⚠️",msg:`${addendaAlertCnt} scope change${addendaAlertCnt>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
           if(!alerts.length) return null;
           return(
             <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(alerts.length,3)},1fr)`,gap:8,marginBottom:16}}>
@@ -6168,12 +6177,12 @@ export default function App(){
         {/* ── KPI STRIP ───────────────────────────────────────────────── */}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(7,1fr)",gap:10,marginBottom:20}}>
           {[
-            {l:"Pipeline",      v:fmtK(deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", sub:deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).length+" deals", click:()=>setPage("pipeline")},
+            {l:"Pipeline",      v:fmtK(pipeVal),     c:"#3b82f6", sub:pipeDeals.length+" deals",              click:()=>setPage("pipeline")},
             {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects",             click:()=>setPage("projects")},
             {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`,           click:()=>setPage("billing")},
             {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
-            {l:"Active JOs",    v:jos.filter(j=>j.status==="Active").length, c:"#f97316", sub:"job orders issued",  click:()=>setPage("projects")},
-            {l:"Pending PRs",   v:prs.filter(p=>p.status==="Pending Approval").length, c:"#8b5cf6", sub:"awaiting approval", click:()=>setPage("procurement")},
+            {l:"Active JOs",    v:activeJOCnt,       c:"#f97316", sub:"job orders issued",                    click:()=>setPage("projects")},
+            {l:"Pending PRs",   v:pendingPRCnt,      c:"#8b5cf6", sub:"awaiting approval",                    click:()=>setPage("procurement")},
             {l:"Escalations",   v:escalations.length>0?"⚠️ "+escalations.length:escalations.length, c:escalations.length>0?"#ef4444":"#94a3b8", sub:escalations.length>0?escalations.filter(e=>e.severity==="high").length+" high severity":"all clear"},
           ].map(({l,v,c,sub,click})=>(
             <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${l==="Escalations"&&escalations.length>0?"#fecaca":"#e2e8f0"}`,cursor:click?"pointer":"default"}}>
@@ -6255,24 +6264,13 @@ export default function App(){
 
         {/* ── SECTION SUMMARY CARDS ── */}
           {(()=>{
-            const today2=new Date();
-            const pipeDeals=deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage));
-            const pipeVal=pipeDeals.reduce((s,d)=>s+Number(d.value||0),0);
-            const overdueProj=wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&new Date(pcards[d.id].targetEndDate)<today2).length;
-            const allMs2=billings;
-            const totalOut2=allMs2.reduce((s,m)=>s+Number(m.amount||0),0)-allMs2.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
-            const overdueMs2=allMs2.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled").length;
-            const pendingMRs2=mreqs.filter(m=>m.status==="Submitted").length;
-            const pendingBRs2=breqs.filter(b=>b.status==="Pending").length;
-            const openPOs2=prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status)).length;
-            const toBuy2=swatches.filter(s=>s.status==="To Buy").length;
             const sCards=[
-              {icon:"🏗", label:"Projects",        accent:"#f97316", main:`${wonDeals.length} active`,           sub:overdueProj>0?`⚠️ ${overdueProj} overdue`:"All on track",                     subClr:overdueProj>0?"#ef4444":"#10b981", action:()=>setPage("projects")},
-              {icon:"💵", label:"Collections",     accent:"#10b981", main:fmtK(totalOut2)+" out",                sub:overdueMs2>0?`${overdueMs2} overdue invoice${overdueMs2>1?"s":""}`:"No overdue",subClr:overdueMs2>0?"#ef4444":"#10b981", action:()=>setPage("billing")},
-              {icon:"📋", label:"Requests",        accent:"#8b5cf6", main:`${pendingMRs2+pendingBRs2} pending`,  sub:`${pendingMRs2} MR · ${pendingBRs2} Budget`,                                   subClr:"#64748b",                         action:()=>setPage("requests")},
-              {icon:"📦", label:"Purchase Orders", accent:"#06b6d4", main:`${openPOs2} open`,                    sub:openPOs2===0?"Nothing pending":"Awaiting action",                               subClr:openPOs2>0?"#f59e0b":"#10b981",    action:()=>setPage("procurement")},
-              {icon:"🎨", label:"Swatchboard",     accent:"#ec4899", main:`${toBuy2} to source`,                 sub:"Tap to manage",                                                                subClr:"#64748b",                         action:()=>setPage("swatchboard")},
-              {icon:"📊", label:"Pipeline",        accent:"#3b82f6", main:fmtK(pipeVal),                         sub:`${pipeDeals.length} active deals`,                                             subClr:"#64748b",                         action:()=>setPage("pipeline")},
+              {icon:"🏗", label:"Projects",        accent:"#f97316", main:`${wonDeals.length} active`,              sub:overdueProjectCnt>0?`⚠️ ${overdueProjectCnt} overdue`:"All on track",                     subClr:overdueProjectCnt>0?"#ef4444":"#10b981", action:()=>setPage("projects")},
+              {icon:"💵", label:"Collections",     accent:"#10b981", main:fmtK(billOutstanding)+" out",             sub:overdueInvMs>0?`${overdueInvMs} overdue invoice${overdueInvMs>1?"s":""}`:"No overdue",    subClr:overdueInvMs>0?"#ef4444":"#10b981",      action:()=>setPage("billing")},
+              {icon:"📋", label:"Requests",        accent:"#8b5cf6", main:`${mrPendingCnt+breqPendingCnt} pending`, sub:`${mrPendingCnt} MR · ${breqPendingCnt} Budget`,                                          subClr:"#64748b",                               action:()=>setPage("requests")},
+              {icon:"📦", label:"Purchase Orders", accent:"#06b6d4", main:`${openPOCnt} open`,                      sub:openPOCnt===0?"Nothing pending":"Awaiting action",                                         subClr:openPOCnt>0?"#f59e0b":"#10b981",         action:()=>setPage("procurement")},
+              {icon:"🎨", label:"Swatchboard",     accent:"#ec4899", main:`${toBuyCnt} to source`,                  sub:"Tap to manage",                                                                           subClr:"#64748b",                               action:()=>setPage("swatchboard")},
+              {icon:"📊", label:"Pipeline",        accent:"#3b82f6", main:fmtK(pipeVal),                            sub:`${pipeDeals.length} active deals`,                                                        subClr:"#64748b",                               action:()=>setPage("pipeline")},
             ];
             return(
               <div style={{display:"flex",flexDirection:"column",gap:10}}>
