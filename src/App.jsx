@@ -14726,59 +14726,60 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               }
               return 0;
             });
+            if(list.length===0) return <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>;
             return(
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2,1fr)",gap:12}}>
-                {list.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>}
-                {list.map(d=>{
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                {/* Table header */}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 120px 110px 110px 100px 70px 80px 82px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center"}}>
+                  {["Project","Client","AE","PM","Stage","%","Health","Due"].map((h,i)=>(
+                    <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
+                  ))}
+                </div>
+                {list.map((d,idx)=>{
                   const pc=pcards[d.id];
                   const pct=projPct(pc);
                   const h=getHealth(d,pc);const[hc,hl]=HC[h];
                   const pi=phaseIdx(d.stage);
                   const joR=jos.find(j=>j.dealId===d.id);
-                  const lastUpd=(actLog||[]).filter(a=>a.dealId===d.id&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date))[0];
                   const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
-                  const hasDupe=wonDeals.filter(x=>x.ceNo&&x.ceNo===d.ceNo&&x.ceNo!=="No CE").length>1;
+                  const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean)[0]||"—";
+                  const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
+                  const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
                   return(
                     <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
-                      style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",borderLeft:`4px solid ${hc}`,padding:"14px 16px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
-                      onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)"}
-                      onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
-                          {d.contact&&<div style={{fontSize:".68rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:1}}>📁 {d.client}</div>}
-                          <div style={{fontSize:".7rem",color:"#64748b",marginTop:d.contact?1:0}}>{d.ceNo||"No CE"} · {pcAmt(d)}</div>
-                          {(()=>{
-                            const pc=pcards[d.id];
-                            const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean).join(", ")||"No PM";
-                            const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
-                            const coord=pc?.coordinator||joR?.coordinator;
-                            return(<>
-                              {(joR||pc?.pm1)&&<div style={{fontSize:".67rem",color:"#3b82f6",marginTop:1}}>{joR&&`📋 ${joR.joNo} · `}👷 {pm}</div>}
-                              {(ae&&ae!=="—")&&<div style={{fontSize:".67rem",color:"#64748b",marginTop:1}}>🤝 AE: {ae}{coord&&` · Coord: ${coord}`}</div>}
-                            </>);
-                          })()}
-                        </div>
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2,flexShrink:0,marginLeft:10}}>
-                          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
-                          <span style={{fontSize:".6rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"1px 7px"}}>{pct===100?"✅ DONE":hl}</span>
-                          {projB>0&&<span style={{fontSize:".6rem",fontWeight:700,color:"#ef4444",background:"#fef2f2",borderRadius:20,padding:"1px 7px"}}>⛔ {projB} blocker{projB>1?"s":""}</span>}
-                          {hasDupe&&<span style={{fontSize:".6rem",fontWeight:700,color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 7px"}}>DUPE</span>}
-                          {role==="Manager"&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+"? Removes deal, card, JO.")){delDeal(d.id);delPcard(d.id);}}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",fontWeight:700,fontFamily:"inherit"}}>✕</button>}
+                      style={{display:"grid",gridTemplateColumns:"1fr 120px 110px 110px 100px 70px 80px 82px",gap:0,padding:"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${hc}`,background:"#fff",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                      onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                      {/* Project */}
+                      <div style={{paddingRight:10,minWidth:0}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                        <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{d.ceNo||"No CE"}{projB>0&&<span style={{marginLeft:6,color:"#ef4444",fontWeight:700}}>⛔ {projB}</span>}{!pc&&<span style={{marginLeft:6,color:"#f59e0b",fontWeight:700}}>⚠ No card</span>}</div>
+                      </div>
+                      {/* Client */}
+                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.contact?d.client:d.client}</div>
+                      {/* AE */}
+                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{ae==="—"?<span style={{color:"#cbd5e1"}}>—</span>:ae}</div>
+                      {/* PM */}
+                      <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{pm==="—"?<span style={{color:"#cbd5e1"}}>Unassigned</span>:pm}</div>
+                      {/* Stage */}
+                      <div style={{paddingRight:8}}>
+                        {pi>=0?<span style={{fontSize:".65rem",background:"#1e293b",color:"#f59e0b",borderRadius:20,padding:"2px 7px",fontWeight:700,whiteSpace:"nowrap"}}>{PHASES[pi].icon} {PHASES[pi].label}</span>:<span style={{fontSize:".65rem",color:"#94a3b8"}}>—</span>}
+                      </div>
+                      {/* % */}
+                      <div>
+                        <div style={{fontWeight:700,fontSize:".85rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</div>
+                        <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:3,width:48,overflow:"hidden"}}>
+                          <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:2}}/>
                         </div>
                       </div>
-                      <div style={{display:"flex",gap:5,alignItems:"center",marginBottom:7,flexWrap:"wrap"}}>
-                        {pi>=0&&<span style={{fontSize:".62rem",background:"#1e293b",color:"#f59e0b",borderRadius:20,padding:"1px 8px",fontWeight:700}}>{PHASES[pi].icon} {PHASES[pi].label}</span>}
-                        <span style={{fontSize:".62rem",color:lastUpd?"#94a3b8":"#f59e0b"}}>{lastUpd?"Updated "+lastUpd.date:"No PM updates yet"}</span>
+                      {/* Health */}
+                      <div>
+                        <span style={{fontSize:".64rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 7px",whiteSpace:"nowrap"}}>{pct===100?"✅ Done":hl}</span>
                       </div>
-                      <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:7}}>
-                        {DEPT_ORDER.map(dep=>{const dn=pc?.departments?.[dep]?.done;const dk=pc?.departments?.[dep]?.tasks?.filter(t=>t.done).length||0;const dt=pc?.departments?.[dep]?.tasks?.length||DEFAULT_DEPT_TASKS[dep].length;return <div key={dep} style={{fontSize:".58rem",padding:"1px 6px",borderRadius:20,fontWeight:600,background:dn?(DEPT_CLR[dep]+"22"):"#f8fafc",color:dn?DEPT_CLR[dep]:"#94a3b8",border:`1px solid ${dn?(DEPT_CLR[dep]+"44"):"#e2e8f0"}`}} title={`${dep}: ${dk}/${dt}`}>{dn?"✓ ":""}{dep}</div>;})}
+                      {/* Due */}
+                      <div style={{fontSize:".74rem",fontWeight:dLeft!==null&&dLeft<0?700:400,color:dLeft===null?"#cbd5e1":dLeft<0?"#ef4444":dLeft<=7?"#f59e0b":"#64748b"}}>
+                        {dLeft===null?"—":dLeft<0?`${Math.abs(dLeft)}d over`:`${dLeft}d left`}
                       </div>
-                      <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
-                        <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:3,transition:"width .5s"}}/>
-                      </div>
-                      {pc?.targetDays?(()=>{const end=new Date(pc.targetEndDate);const dl=Math.ceil((end-today2)/86400000);return <div style={{marginTop:5,fontSize:".68rem",color:dl<0?"#ef4444":dl<=7?"#f59e0b":"#94a3b8"}}>{dl<0?`⚠ ${Math.abs(dl)}d overdue`:`🕐 ${dl}d left`} · Due {pc.targetEndDate}</div>;})():null}
-                      {!pc&&<div style={{marginTop:5,fontSize:".7rem",color:"#f59e0b",fontWeight:600}}>⚠ No project card yet {role==="Manager"&&<button onClick={e=>{e.stopPropagation();createCard(d.id,d);}} style={{marginLeft:6,background:"#f59e0b",border:"none",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700}}>+ Create</button>}</div>}
                     </div>
                   );
                 })}
