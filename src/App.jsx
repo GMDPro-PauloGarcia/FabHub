@@ -14639,7 +14639,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"]}[role]||[];
-  const projPct=pc=>pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100)):0;
+  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100)):0;};
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
     const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
@@ -14667,17 +14667,18 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setShowScopeForm(false);setScopeForm({title:"",desc:"",value:"",ceNo:""});setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
       </div>
 
-      {/* KPI bar — only on grid view */}
+      {/* KPI bar — only on list view */}
       {!selDeal&&(
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
           {[
-            {l:"Active Projects",v:wonDeals.length,c:"#0f172a",f:null},
-            {l:"Fully Complete",v:fullyDone,c:"#059669",f:"done"},
+            {l:"Active",       v:wonDeals.filter(d=>d.stage!=="12 · Close-Out").length, c:"#0f172a",    f:null},
+            {l:"Completed",    v:wonDeals.filter(d=>d.stage==="12 · Close-Out").length+completedDeals.length, c:"#059669", f:"completed"},
             {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
+            {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
-            <div key={l} onClick={()=>f&&setPcFilter(x=>x===f?null:f)}
-              style={{background:pcFilter===f?"#1e293b":"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${pcFilter===f?c:"#e2e8f0"}`,cursor:f?"pointer":"default",transition:"all .15s"}}>
+            <div key={l} onClick={()=>setPcFilter(x=>x===f?null:f)}
+              style={{background:pcFilter===f?"#1e293b":"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${pcFilter===f?c:"#e2e8f0"}`,cursor:"pointer",transition:"all .15s"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pcFilter===f?"#fff":c}}>{v}</div>
               <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:pcFilter===f?"rgba(255,255,255,.6)":"#94a3b8",marginTop:5}}>{l}</div>
             </div>
@@ -14709,9 +14710,13 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             {(pcFilter||pcDeptFilter!=="All"||pcSearch)&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");setPcSearch("");}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
           {(()=>{
-            let list=wonDeals;
+            // "completed" tab = Close-Out wonDeals + completedDeals; default = active (exclude Close-Out)
+            let list=pcFilter==="completed"
+              ?[...wonDeals.filter(d=>d.stage==="12 · Close-Out"),...completedDeals]
+              :pcFilter==="all"
+                ?wonDeals
+                :wonDeals.filter(d=>d.stage!=="12 · Close-Out");
             if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
-            if(pcFilter==="done") list=list.filter(d=>pcards[d.id]&&DEPT_ORDER.every(dep=>pcards[d.id]?.departments?.[dep]?.done));
             if(pcFilter==="attention") list=list.filter(d=>!pcards[d.id]||DEPT_ORDER.some(dep=>!pcards[d.id]?.departments?.[dep]?.done));
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
             if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
@@ -14740,7 +14745,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   const h=getHealth(d,pc);const[hc,hl]=HC[h];
                   const joR=jos.find(j=>j.dealId===d.id);
                   const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
-                  const pct=projPct(pc);
+                  const pct=projPct(pc,d);
                   const pm=[pc?.pm1||joR?.pm1,pc?.pm2||joR?.pm2,pc?.pm3||joR?.pm3].filter(Boolean)[0]||"—";
                   const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
                   const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
@@ -14775,50 +14780,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             );
           })()}
 
-          {/* ── Closed / Completed Projects ── */}
-          {completedDeals.length>0&&(
-            <div style={{marginTop:16}}>
-              <button onClick={()=>setPcShowClosed(x=>!x)}
-                style={{display:"flex",alignItems:"center",gap:8,width:"100%",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 16px",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
-                <span style={{fontSize:".82rem",fontWeight:700,color:"#64748b"}}>✅ Completed Projects ({completedDeals.length})</span>
-                <span style={{marginLeft:"auto",color:"#94a3b8",fontSize:".75rem"}}>{pcShowClosed?"▲ Hide":"▼ Show"}</span>
-              </button>
-              {pcShowClosed&&(
-                <div style={{marginTop:8,display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2,1fr)",gap:10}}>
-                  {completedDeals.map(d=>{
-                    const val=Number(d.value||0);
-                    const paid=Number(d.amountPaid||0);
-                    const outstanding=Math.max(0,val-paid);
-                    return(
-                      <div key={d.id} style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",borderLeft:"4px solid #10b981",padding:"12px 14px"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
-                            {d.contact&&<div style={{fontSize:".67rem",color:"#8b5cf6",marginTop:1}}>📁 {d.client}</div>}
-                            <div style={{fontSize:".7rem",color:"#64748b",marginTop:2}}>{d.ceNo||"No CE"} · {d.ceType||"—"}</div>
-                          </div>
-                          <span style={{fontSize:".62rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 8px",flexShrink:0,marginLeft:8}}>✅ Completed</span>
-                        </div>
-                        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr",gap:6,marginTop:10}}>
-                          {[{l:"Contract Value",v:val?`₱${val.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"⚠ Not set",w:!val},{l:"Amount Paid",v:paid?`₱${paid.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"⚠ Not set",w:!paid},{l:"Outstanding",v:outstanding>0?`₱${outstanding.toLocaleString("en-PH",{maximumFractionDigits:0})}`:"✓ Settled",w:outstanding>0&&!val}].map(({l,v,w})=>(
-                            <div key={l} style={{background:w?"#fff7ed":"#fff",border:`1px solid ${w?"#fed7aa":"#e2e8f0"}`,borderRadius:7,padding:"6px 8px"}}>
-                              <div style={{fontSize:".58rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
-                              <div style={{fontSize:".75rem",fontWeight:700,color:w?"#f97316":"#0f172a",marginTop:2}}>{v}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       ):(
         // ── PROJECT HQ ─────────────────────────────────────────────────────
         (()=>{
-          const pct=projPct(card);
+          const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
           const pi=phaseIdx(deal?.stage);
           const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
