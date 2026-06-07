@@ -7332,19 +7332,22 @@ export default function App(){
                   );
                 };
                 const AwardGroups=({deals:list})=>{
-                  const groups=[...new Set(list.map(d=>d.ceType||"Other"))].sort();
+                  const allChildren=list.filter(d=>d.parentDealId);
+                  const parentList=list.filter(d=>!d.parentDealId);
+                  const groups=[...new Set(parentList.map(d=>d.ceType||"Other"))].sort();
                   return(<>
                     {groups.map(grp=>{
-                      const gd=list.filter(d=>(d.ceType||"Other")===grp);
-                      const total=gd.reduce((s,d)=>s+Number(d.value||0),0);
-                      const paid=gd.reduce((s,d)=>s+Number(d.amountPaid||0),0);
+                      const gd=parentList.filter(d=>(d.ceType||"Other")===grp);
+                      const gdChildren=allChildren.filter(c=>gd.some(p=>p.id===c.parentDealId));
+                      const total=[...gd,...gdChildren].reduce((s,d)=>s+Number(d.value||0),0);
+                      const paid=[...gd,...gdChildren].reduce((s,d)=>s+Number(d.amountPaid||0),0);
                       const isOpen=openGroups[grp]!==false;
                       return(
                         <div key={grp} style={{marginBottom:10}}>
                           <button onClick={()=>setOpenGroups(g=>({...g,[grp]:!isOpen}))}
                             style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:isOpen?"#1e293b":"#f8fafc",border:`1.5px solid ${isOpen?"#334155":"#e2e8f0"}`,borderRadius:isOpen?"10px 10px 0 0":"10px",padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
                             <span style={{fontWeight:800,color:isOpen?"#f59e0b":"#0f172a",fontSize:".85rem"}}>{grp}</span>
-                            <span style={{background:isOpen?"rgba(255,255,255,.12)":"#e2e8f0",color:isOpen?"#fff":"#64748b",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700}}>{gd.length}</span>
+                            <span style={{background:isOpen?"rgba(255,255,255,.12)":"#e2e8f0",color:isOpen?"#fff":"#64748b",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700}}>{gd.length}{gdChildren.length>0&&`+${gdChildren.length}`}</span>
                             <span style={{marginLeft:"auto",fontWeight:700,color:isOpen?"#4ade80":"#10b981",fontSize:".82rem"}}>{fmtK(total)}</span>
                             {paid>0&&!isMobile&&<span style={{fontSize:".68rem",color:isOpen?"rgba(255,255,255,.5)":"#94a3b8",fontWeight:600}}>{Math.round(paid/total*100)}% collected</span>}
                             <span style={{fontSize:".65rem",color:isOpen?"rgba(255,255,255,.4)":"#94a3b8",marginLeft:4}}>{isOpen?"▲":"▼"}</span>
@@ -7352,7 +7355,20 @@ export default function App(){
                           {isOpen&&(
                             <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #e2e8f0",borderTop:"none",overflow:"hidden"}}>
                               <ColHeader/>
-                              {gd.map((d,i)=><AwardRow key={d.id} d={d} list={gd} i={i}/>)}
+                              {gd.map((d,i)=>{
+                                const children=allChildren.filter(c=>c.parentDealId===d.id);
+                                return(
+                                  <React.Fragment key={d.id}>
+                                    <AwardRow d={d} list={gd} i={i}/>
+                                    {children.map((c,ci)=>(
+                                      <div key={c.id} style={{borderLeft:"3px solid #f59e0b",marginLeft:isMobile?8:16,background:"#fffbeb"}}>
+                                        <div style={{fontSize:".55rem",color:"#f59e0b",fontWeight:700,padding:"3px 12px 0",letterSpacing:".5px"}}>↳ ADDENDUM</div>
+                                        <AwardRow d={c} list={children} i={ci}/>
+                                      </div>
+                                    ))}
+                                  </React.Fragment>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
