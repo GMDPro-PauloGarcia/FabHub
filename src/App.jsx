@@ -14786,7 +14786,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
               return(
                 <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
-                  style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":hc}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:660}}
+                  style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":hc}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:720}}
                   onMouseEnter={e=>e.currentTarget.style.background=isChild?"#fef3c7":"#f8fafc"}
                   onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":"#fff"}>
                   <div style={{paddingRight:10,minWidth:0}}>
@@ -14809,7 +14809,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{overflowX:"auto"}}>
                 {/* Table header */}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 150px 130px 150px 90px 90px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center",minWidth:660}}>
+                <div style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center",minWidth:720}}>
                   {["Project","Client","AE","PM","Health","Due"].map((h,i)=>(
                     <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
                   ))}
