@@ -103,6 +103,12 @@ export const sbLoadAll = async () => {
         pm3: card.pm3 || '',
         designer: card.designer || '',
         coordinator: card.coordinator || '',
+        awardDate: card.award_date || null,
+        targetDays: card.target_days || null,
+        targetEndDate: card.target_end_date || null,
+        tatCategory: card.tat_category || '',
+        tatSetBy: card.tat_set_by || null,
+        tatSetAt: card.tat_set_at || null,
         departments: Object.fromEntries(DEPT_ORDER.map(d => [d, { done: false, doneAt: null, doneBy: null, tasks: [] }]))
       }
     })
