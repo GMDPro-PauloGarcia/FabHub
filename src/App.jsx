@@ -2813,9 +2813,10 @@ export default function App(){
       tatSetBy:session?.name,
       tatSetAt:new Date().toISOString(),
     }}));
-    if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-      sbUpdate('project_cards',card.id,{target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()}).catch(()=>{});
+    if(isSupabaseReady()){
+      sbUpsert('project_cards',{deal_id:dealId,target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()},'deal_id').catch(()=>{});
     }
+    toastEmit("Turnover date set — Due "+dateStr,"success");
     logActivity(dealId,"TAT Set",`Target: ${targetDays} days → Due ${dateStr}`,session?.name);
     const deal=deals.find(d=>d.id===dealId);
     const tgMsg=`📅 <b>Turnover Date Set</b>\nProject: <b>${deal?.client||card.client||"?"}</b> — ${deal?.ceNo||card.ceNo||"(no CE)"}\nTarget: ${targetDays} days from award (${award})\n🏁 Turnover Date: <b>${dateStr}</b>${category?`\nCategory: ${category}`:""}\nSet by: ${session?.name||"?"}`;
@@ -14790,9 +14791,8 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
   const refEntries=Object.entries(refTable||{});
 
   const awardPlusDays=days=>{
-    if(!card?.awardDate) return "";
-    const d=new Date(card.awardDate);
-    d.setDate(d.getDate()+Number(days));
+    const base=card?.awardDate||new Date().toISOString().split("T")[0];
+    const d=new Date(base); d.setDate(d.getDate()+Number(days));
     return d.toISOString().split("T")[0];
   };
 
@@ -14813,7 +14813,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
     <div style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",minWidth:280}}>
       <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Set Turnover Date</div>
 
-      {/* Reference table — clicking pre-fills the date */}
+      {/* Reference table — click to pre-fill date */}
       <div style={{marginBottom:10}}>
         <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>
           {ceType} — Reference (click to apply)
@@ -14834,12 +14834,8 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
       {/* Date picker */}
       <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>
         <span style={{fontSize:".72rem",color:"#64748b"}}>Turnover date</span>
-        <input
-          type="date"
-          value={date}
-          onChange={e=>{setDate(e.target.value);setCategory("");}}
-          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none"}}
-        />
+        <input type="date" value={date} onChange={e=>{setDate(e.target.value);setCategory("");}}
+          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none"}}/>
       </div>
 
       {computedDays!==null&&(
@@ -15421,9 +15417,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       <button onClick={()=>{
                         const tf=teamForm;
                         if(upPcards&&pcards[selDeal]) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}}));
-                        const cardId=pcards[selDeal]?.id;
-                        if(isSupabaseReady()&&cardId&&isUUID(cardId)){
-                          sbUpdate('project_cards',cardId,{ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}).catch(()=>{});
+                        if(isSupabaseReady()){
+                          sbUpsert('project_cards',{deal_id:selDeal,ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator},'deal_id').catch(()=>{});
                         }
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
                         logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
