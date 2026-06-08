@@ -2821,6 +2821,7 @@ export default function App(){
     const tgMsg=`📅 <b>Turnover Date Set</b>\nProject: <b>${deal?.client||card.client||"?"}</b> — ${deal?.ceNo||card.ceNo||"(no CE)"}\nTarget: ${targetDays} days from award (${award})\n🏁 Turnover Date: <b>${dateStr}</b>${category?`\nCategory: ${category}`:""}\nSet by: ${session?.name||"?"}`;
     sendTelegramNotification("ops",tgMsg);
     sendTelegramNotification("management",tgMsg);
+    toastEmit("Turnover date set — Due "+dateStr,"success");
   };
 
   const markDeptDone=(dealId,dept,done)=>{
@@ -8164,7 +8165,7 @@ export default function App(){
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -8340,7 +8341,7 @@ export default function App(){
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -8522,7 +8523,7 @@ export default function App(){
 
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -9356,7 +9357,7 @@ export default function App(){
     <Wrap>
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit}/>
+        wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>
     </Wrap>
   );
 
@@ -12815,7 +12816,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,role,toastEmit}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,role,toastEmit,suppliers}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -12845,6 +12846,60 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   const openNewPO=()=>{
     setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoItems([emptyPoItem()]); setMode("newpo");
+  };
+
+  const printPO=(poNo,supplierName,poD,items)=>{
+    const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
+    const grandTotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
+    const rows=items.map((i,idx)=>{
+      const deal=wonDeals.find(d=>d.id===i.projectId);
+      const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
+      const lineTotal=unitCost*Number(i.qty||1);
+      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?deal.client+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineTotal)}</td></tr>`;
+    }).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
+  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
+  .po-title{font-size:20px;font-weight:800;color:#1e293b}
+  .po-sub{font-size:11px;color:#64748b;margin-top:3px}
+  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid #e2e8f0}
+  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
+  .meta-item span{font-weight:700;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+  td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:nth-child(even) td{background:#f8fafc}
+  .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:40px}
+  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
+  @media print{body{padding:20px}}
+</style></head><body>
+<div class="hdr">
+  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication & Project Management</div></div>
+  <div style="text-align:right"><div class="po-title">PURCHASE ORDER</div><div class="po-sub">${poNo} · ${poD||""}</div></div>
+</div>
+<div class="meta">
+  <div class="meta-item"><label>Supplier</label><span>${supplierName||"—"}</span></div>
+  <div class="meta-item"><label>PO Number</label><span>${poNo}</span></div>
+  <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Line Total</th></tr></thead>
+  <tbody>${rows}</tbody>
+  <tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>
+</table>
+<div class="sig">
+  <div class="sig-box">Prepared by<br><br><br>_______________________</div>
+  <div class="sig-box">Approved by<br><br><br>_______________________</div>
+  <div class="sig-box">Received by<br><br><br>_______________________</div>
+</div>
+</body></html>`;
+    const w=window.open("","_blank","width=900,height=700");
+    if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),600);}
   };
 
   const addPoItem=()=>setPoItems(p=>[...p,emptyPoItem()]);
@@ -12956,7 +13011,13 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>📦 New Purchase Order</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(4,1fr)",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #f1f5f9"}}>
-            <Fld label="Supplier" required><Inp value={poSupplier} onChange={e=>setPoSupplier(e.target.value)} placeholder="e.g. Pacific Hardware Supply"/></Fld>
+            <Fld label="Supplier" required>
+              <input list="po-supplier-list" value={poSupplier} onChange={e=>setPoSupplier(e.target.value)} placeholder="Type or select supplier…"
+                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
+              <datalist id="po-supplier-list">
+                {(suppliers||[]).map(s=><option key={s.id} value={s.company_name||s.companyName||""}/>)}
+              </datalist>
+            </Fld>
             <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
             <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
@@ -12973,10 +13034,23 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr) 1fr 1fr",gap:10}}>
                     <Fld label="Project" required>
-                      <Sel value={item.projectId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);updatePoItem(item._id,"projectId",e.target.value);updatePoItem(item._id,"projectName",d?.client||"");}}>
-                        <option value="">— Select Project —</option>
-                        {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-                      </Sel>
+                      <input
+                        list={`proj-list-${item._id}`}
+                        value={item.projectName}
+                        onChange={e=>{
+                          const name=e.target.value;
+                          const deal=wonDeals.find(d=>`${d.client}${d.ceNo?` · ${d.ceNo}`:""}` === name);
+                          updatePoItem(item._id,"projectName",name);
+                          if(deal) updatePoItem(item._id,"projectId",deal.id);
+                          else if(!name) updatePoItem(item._id,"projectId","");
+                        }}
+                        placeholder="Search project…"
+                        style={{width:"100%",border:`1.5px solid ${item.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
+                      />
+                      <datalist id={`proj-list-${item._id}`}>
+                        {wonDeals.map(d=><option key={d.id} value={`${d.client}${d.ceNo?` · ${d.ceNo}`:""}`}/>)}
+                      </datalist>
+                      {item.projectName&&!item.projectId&&<div style={{fontSize:".68rem",color:"#ef4444",marginTop:3}}>No matching project — select from the list</div>}
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
@@ -13065,6 +13139,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#10b981"}}>{fmt(total)}</span>
                     <span style={{fontSize:".7rem",color:"#94a3b8"}}>{items.length} item{items.length>1?"s":""}</span>
+                    <button onClick={()=>printPO(poNo,supplier,poD,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
                     {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
                   </div>
                 </div>
@@ -15356,6 +15431,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         const tgMsg=`👥 <b>Project Team Assigned</b>\n${deal?.client||""}${deal?.ceNo?` · ${deal.ceNo}`:""}\n👷 PM: ${pmStr}\n🤝 AE: ${tf.ae||"—"}${tf.coordinator?`\n📋 Coordinator: ${tf.coordinator}`:""}${tf.designer?`\n🎨 Designer: ${tf.designer}`:""}\nAssigned by: ${session?.name}`;
                         sendTelegramNotification("ops",tgMsg);
                         sendTelegramNotification("management",tgMsg);
+                        toastEmit&&toastEmit("Team saved","success");
                         setShowTeamEdit(false);
                       }} style={{flex:1,background:"#1e293b",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✓ Save Team</button>
                       <button onClick={()=>setShowTeamEdit(false)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
