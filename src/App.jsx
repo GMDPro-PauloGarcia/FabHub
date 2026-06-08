@@ -1177,9 +1177,9 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
         )}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
           <button onClick={()=>setStep(1)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
-          <button onClick={()=>onConfirm(form)} disabled={!form.pm1||!form.scopeNotes}
-            style={{background:form.pm1&&form.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:form.pm1&&form.scopeNotes?"#fff":"#94a3b8",cursor:form.pm1&&form.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
-            🏆 Confirm Award & Issue Job Order
+          <button onClick={()=>onConfirm(form)} disabled={!form.scopeNotes}
+            style={{background:form.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:form.scopeNotes?"#fff":"#94a3b8",cursor:form.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
+            🏆 Confirm Award Deal
           </button>
         </div>
       </div>)}
