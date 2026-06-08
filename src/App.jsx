@@ -2800,27 +2800,25 @@ export default function App(){
     // logActivity called AFTER setState, not inside it
     if(deptJustCompleted) logActivity(dealId,"Department Done",`${dept} completed all tasks for ${existingCard?.client}`,session?.name);
   };
-  const setProjectTAT=(dealId,days,category)=>{
-    if(!days||isNaN(days)) return;
+  const setProjectTAT=(dealId,dateStr,category)=>{
+    if(!dateStr) return;
     const card=pcards[dealId];
     if(!card) return;
     const award=card.awardDate||today;
-    const end=new Date(award);
-    end.setDate(end.getDate()+Number(days));
-    const endStr=end.toISOString().split("T")[0];
+    const targetDays=Math.max(1,Math.ceil((new Date(dateStr)-new Date(award))/86400000));
     upPcards(ps=>({...ps,[dealId]:{...ps[dealId],
-      targetDays:Number(days),
-      targetEndDate:endStr,
+      targetDays,
+      targetEndDate:dateStr,
       tatCategory:category||"",
       tatSetBy:session?.name,
       tatSetAt:new Date().toISOString(),
     }}));
     if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-      sbUpdate('project_cards',card.id,{target_days:Number(days),target_end_date:endStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()}).catch(()=>{});
+      sbUpdate('project_cards',card.id,{target_days:targetDays,target_end_date:dateStr,tat_category:category||"",tat_set_by:session?.name,tat_set_at:new Date().toISOString()}).catch(()=>{});
     }
-    logActivity(dealId,"TAT Set",`Target: ${days} days → Due ${endStr}`,session?.name);
+    logActivity(dealId,"TAT Set",`Target: ${targetDays} days → Due ${dateStr}`,session?.name);
     const deal=deals.find(d=>d.id===dealId);
-    const tgMsg=`📅 <b>Turnover Date Set</b>\nProject: <b>${deal?.client||card.client||"?"}</b> — ${deal?.ceNo||card.ceNo||"(no CE)"}\nTarget: ${days} days from award (${award})\n🏁 Turnover Date: <b>${endStr}</b>${category?`\nCategory: ${category}`:""}\nSet by: ${session?.name||"?"}`;
+    const tgMsg=`📅 <b>Turnover Date Set</b>\nProject: <b>${deal?.client||card.client||"?"}</b> — ${deal?.ceNo||card.ceNo||"(no CE)"}\nTarget: ${targetDays} days from award (${award})\n🏁 Turnover Date: <b>${dateStr}</b>${category?`\nCategory: ${category}`:""}\nSet by: ${session?.name||"?"}`;
     sendTelegramNotification("ops",tgMsg);
     sendTelegramNotification("management",tgMsg);
   };
@@ -14710,11 +14708,22 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
 
 // ─── PROJECT CARDS ────────────────────────────────────────────────────────────
 function TATSetter({deal,card,onSet,refTable,ceType}){
-  const[open,setOpen]     =useState(!card?.targetDays);
-  const[days,setDays]     =useState(card?.targetDays||"");
+  const[open,setOpen]    =useState(!card?.targetDays);
+  const[date,setDate]    =useState(card?.targetEndDate||"");
   const[category,setCategory]=useState(card?.tatCategory||"");
 
   const refEntries=Object.entries(refTable||{});
+
+  const awardPlusDays=days=>{
+    if(!card?.awardDate) return "";
+    const d=new Date(card.awardDate);
+    d.setDate(d.getDate()+Number(days));
+    return d.toISOString().split("T")[0];
+  };
+
+  const computedDays=date&&card?.awardDate
+    ?Math.ceil((new Date(date)-new Date(card.awardDate))/86400000)
+    :null;
 
   if(!open) return(
     <button onClick={()=>setOpen(true)}
@@ -14723,18 +14732,20 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
     </button>
   );
 
+  const canSave=date&&(computedDays===null||computedDays>=0);
+
   return(
     <div style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"12px 14px",minWidth:280}}>
-      <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Set Turnaround Time</div>
+      <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Set Turnover Date</div>
 
-      {/* Reference table */}
+      {/* Reference table — clicking pre-fills the date */}
       <div style={{marginBottom:10}}>
         <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:6}}>
-          {ceType} — Reference
+          {ceType} — Reference (click to apply)
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:160,overflowY:"auto"}}>
           {refEntries.map(([cat,ref])=>(
-            <div key={cat} onClick={()=>{setCategory(cat);setDays(String(ref.days));}}
+            <div key={cat} onClick={()=>{setCategory(cat);setDate(awardPlusDays(ref.days));}}
               style={{display:"flex",justifyContent:"space-between",padding:"5px 8px",borderRadius:6,cursor:"pointer",background:category===cat?"#eff6ff":"#f8fafc",border:`1px solid ${category===cat?"#93c5fd":"#f1f5f9"}`,transition:"all .1s"}}
               onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
               onMouseLeave={e=>e.currentTarget.style.background=category===cat?"#eff6ff":"#f8fafc"}>
@@ -14745,28 +14756,27 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
         </div>
       </div>
 
-      {/* Manual input */}
-      <div style={{display:"flex",gap:8,alignItems:"center",marginTop:8}}>
+      {/* Date picker */}
+      <div style={{display:"flex",flexDirection:"column",gap:4,marginTop:8}}>
+        <span style={{fontSize:".72rem",color:"#64748b"}}>Turnover date</span>
         <input
-          type="number" min={1} max={365}
-          value={days}
-          onChange={e=>setDays(e.target.value)}
-          placeholder="Days"
-          style={{width:70,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",textAlign:"center",outline:"none"}}
+          type="date"
+          value={date}
+          onChange={e=>{setDate(e.target.value);setCategory("");}}
+          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".88rem",color:"#0f172a",outline:"none"}}
         />
-        <span style={{fontSize:".78rem",color:"#64748b"}}>working days from award</span>
       </div>
 
-      {days&&card?.awardDate&&(
-        <div style={{fontSize:".73rem",color:"#059669",marginTop:6,fontWeight:600}}>
-          → Due: {(()=>{const d=new Date(card.awardDate);d.setDate(d.getDate()+Number(days));return d.toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"});})()}
+      {computedDays!==null&&(
+        <div style={{fontSize:".73rem",color:computedDays<0?"#ef4444":"#059669",marginTop:6,fontWeight:600}}>
+          {computedDays<0?"⚠ Date is before award date":`→ ${computedDays} days from award date`}
         </div>
       )}
 
       <div style={{display:"flex",gap:8,marginTop:10}}>
-        <button onClick={()=>{if(days)onSet(card.dealId,days,category);setOpen(false);}}
-          disabled={!days}
-          style={{background:days?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:days?"#fff":"#94a3b8",cursor:days?"pointer":"not-allowed"}}>
+        <button onClick={()=>{if(canSave)onSet(card.dealId,date,category);setOpen(false);}}
+          disabled={!canSave}
+          style={{background:canSave?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:canSave?"#fff":"#94a3b8",cursor:canSave?"pointer":"not-allowed"}}>
           Set Target
         </button>
         <button onClick={()=>setOpen(false)}
@@ -15521,7 +15531,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           ))}
                         </div>
                       )}
-                      {!card.targetDays&&<div style={{fontSize:".8rem",color:"#94a3b8",marginBottom:10}}>TAT not set — QS or Operations should set the target days.</div>}
+                      {!card.targetDays&&<div style={{fontSize:".8rem",color:"#94a3b8",marginBottom:10}}>Turnover date not set — QS or Operations should set the target date.</div>}
                       {card.targetDays&&(
                         <div style={{marginBottom:12}}>
                           <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:3}}>
