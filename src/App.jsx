@@ -76,6 +76,143 @@ const STAGE_DURATION = {
   "04 · CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
   "08 · Fabrication":   "Fab: 45 days · Construction: 45–60 days",
 };
+// ─── STAGE PROCESS REMINDERS ─────────────────────────────────────────────────
+// Shown as a modal when a deal moves to a new stage.
+// Reminds the responsible team of immediate actions and watch-outs.
+const STAGE_PROCESS_REMINDERS = {
+  "02 · Engagement":{
+    icon:"🤝",color:"#60a5fa",owner:"Account Executive",
+    summary:"Qualify the opportunity and engage the actual decision-maker.",
+    actions:[
+      "Schedule a meeting or call with the decision-maker — not just a coordinator",
+      "Confirm scope ballpark, budget range, and target completion date",
+      "Add client to GMD Client Directory if new",
+      "Log first contact details in deal notes",
+    ],
+    watchOut:"Don't send a quotation yet — confirm scope and budget first, or you'll be repricing later.",
+    sla:"Qualify within 3–5 business days",
+  },
+  "03 · Design & Folder":{
+    icon:"📁",color:"#a78bfa",owner:"Account Executive + Design",
+    summary:"Create project folder and brief Design via DRF. No verbal briefs.",
+    actions:[
+      "Create Google Drive project folder (use standard GMD folder template)",
+      "Submit a Design Request Form (DRF) — do not brief Design verbally",
+      "Upload all client references, mood boards, and floor plans to folder",
+      "Confirm design deadline with client and log it",
+    ],
+    watchOut:"Design starts without a proper DRF — no DRF = no start date. Always submit before expecting output.",
+    sla:"DRF within 1 business day of moving to this stage",
+  },
+  "04 · CE in Progress":{
+    icon:"📐",color:"#f59e0b",owner:"Design + QS (Cost Estimator)",
+    summary:"Design and CE run in parallel. Track both deadlines actively.",
+    actions:[
+      "Design target: 5–15 days for renderings. CE: 5–7 days after design approval",
+      "QS (Rodney) prepares CE — Sales presents but does NOT alter numbers",
+      "Flag any client scope changes immediately — every change affects CE",
+      "Check STAGE DURATION reference for timeline expectations",
+    ],
+    watchOut:"Sales quoting without QS sign-off = wrong number reaches client. CE is final only after Rodney / Paulo confirms.",
+    sla:"Design: 5–15 days · CE: 5–7 days",
+  },
+  "05 · For Approval":{
+    icon:"✍️",color:"#f97316",owner:"Account Executive + Paulo Garcia",
+    summary:"Present CE formally and get written client approval before moving forward.",
+    actions:[
+      "Loop Paulo Garcia in if project value is ₱3M or above — MANDATORY",
+      "Send formal CE document to client (PDF, not verbal or chat)",
+      "Log all revision requests in deal notes with dates",
+      "Set a follow-up date — do not leave this stage open-ended",
+    ],
+    watchOut:"Client says 'yes' verbally but won't sign — do not proceed to Kickoff without written approval (email or signed CE).",
+    sla:"Follow up within 2 business days if no client response",
+  },
+  "06 · Kickoff":{
+    icon:"🚀",color:"#10b981",owner:"Sales + Finance + Operations",
+    summary:"Project awarded. All teams brief today. Billing starts now.",
+    actions:[
+      "Sales: Create client WhatsApp/Viber comms group — add all stakeholders",
+      "Finance: Issue 50% downpayment billing immediately — same day",
+      "Operations: PM and coordinators receive full written project brief",
+      "Procurement: Begin swatch sourcing and flag any long-lead items",
+    ],
+    watchOut:"Kickoff happens but billing is delayed — billing delay = cash flow problem. Issue the DP invoice on Day 1.",
+    sla:"All kickoff tasks must be initiated within 1 business day",
+  },
+  "07 · Briefing":{
+    icon:"📋",color:"#06b6d4",owner:"Cost Control + Project Manager",
+    summary:"Lock budget before any procurement begins. No orders before budget approval.",
+    actions:[
+      "Cost Control creates and locks the project budget — nothing moves without this",
+      "PM reviews full approved plans — confirm revision number before briefing production",
+      "Assign production lead and site coordinator in project card",
+      "Set target completion date (TAT) in the system now",
+    ],
+    watchOut:"Procurement buying before budget is approved — lock budget first, order second. No exceptions.",
+    sla:"Budget must be set before fabrication Day 1",
+  },
+  "08 · Fabrication":{
+    icon:"🏗",color:"#3b82f6",owner:"Operations + Procurement",
+    summary:"Production running. PM updates client daily. Scope changes go through addenda.",
+    actions:[
+      "Procurement: Identify and order ALL long-lead items on Day 1 (glass, imported hardware, custom metal)",
+      "PM: Log daily or weekly client update — never let client ask 'any update?' first",
+      "Flag ANY scope change as an addendum — coordinate with Sales before telling client",
+      "All material swatches must be client-approved before fabrication of that item begins",
+    ],
+    watchOut:"Long-lead items ordered too late = production stalls. Check every lead time on Day 1, not Day 30.",
+    sla:"Fabrication: 45 days · Construction: 45–60 days",
+  },
+  "09 · Site & Billing":{
+    icon:"🔧",color:"#8b5cf6",owner:"Project Manager + Finance",
+    summary:"Progress billing and on-site supervision. Bill per agreed schedule — not when client asks.",
+    actions:[
+      "Finance: Issue progress billing per payment terms — don't wait for client to request",
+      "Operations: Schedule a mid-project client site visit",
+      "Confirm all permits are secured before installation day",
+      "Update project completion percentage in project card",
+    ],
+    watchOut:"Billing delayed = cash flow pressure. Set your billing trigger date at project start and honor it.",
+    sla:"Bill per payment schedule in signed CE",
+  },
+  "10 · Installation":{
+    icon:"📦",color:"#ec4899",owner:"Operations",
+    summary:"On-site installation. Logistics, site access, and delivery all pre-confirmed.",
+    actions:[
+      "Confirm site access and contact person the night before — not the morning of",
+      "Verify module count, sizes, and specs against PO and drawings before accepting delivery",
+      "All permits must be in hand before installation begins",
+      "PM must be on-site or reachable at all times",
+    ],
+    watchOut:"Truck arrives and site is locked — always confirm building admin access and loading dock schedule 24h in advance.",
+    sla:"All logistics confirmed 24–48 hours before installation",
+  },
+  "11 · Punchlist":{
+    icon:"✅",color:"#eab308",owner:"Project Manager",
+    summary:"Punchlist documented on-site, signed, and resolved within 5 business days.",
+    actions:[
+      "Document ALL punchlist items in writing before leaving the site — no verbal lists",
+      "Get client signature on punchlist document before departing",
+      "Assign each item to a person with a specific resolution date",
+      "Escalate to Paolo/Paulo immediately if client refuses to sign",
+    ],
+    watchOut:"Verbal punchlist is forgotten — always get a written, signed punchlist on-site. No exceptions.",
+    sla:"5 business day SLA from punch to full resolution",
+  },
+  "12 · Close-Out":{
+    icon:"🔒",color:"#059669",owner:"Project Manager + Finance",
+    summary:"Close the project cleanly. COC, final billing, and as-builts all submitted.",
+    actions:[
+      "PM submits Certificate of Completion (COC) with all addenda and resolved punchlist",
+      "Finance issues final billing for the remaining balance",
+      "Upload as-built plans to project folder (4 sets: Owner, Mall, PDF, CAD)",
+      "Mark all checklist items as Done before moving to 14 · Completed",
+    ],
+    watchOut:"Balance unpaid before closing — escalate if not paid within agreed terms. No project is 'done' with outstanding balance.",
+    sla:"All close-out tasks within 5 business days of client handover",
+  },
+};
 const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
 const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
@@ -3843,6 +3980,7 @@ export default function App(){
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[fromHome,   setFromHome]   =useState(false);
+  const[stageReminderModal,setStageReminderModal]=useState(null); // {dealId,stage,client}
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
   const smartImportInputRef=useRef(null);
@@ -3994,6 +4132,10 @@ export default function App(){
   const stageQ=(id,st)=>{
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="06 · Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
+    if(STAGE_PROCESS_REMINDERS[st]){
+      const dealForReminder=deals.find(d=>d.id===id);
+      setTimeout(()=>setStageReminderModal({dealId:id,stage:st,client:dealForReminder?.client||""}),200);
+    }
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
       const missing=[];
@@ -4664,6 +4806,72 @@ export default function App(){
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
+      {/* ── Stage Process Reminder Modal ── */}
+      {stageReminderModal&&STAGE_PROCESS_REMINDERS[stageReminderModal.stage]&&(()=>{
+        const rem=STAGE_PROCESS_REMINDERS[stageReminderModal.stage];
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setStageReminderModal(null)}>
+            <div style={{background:"#fff",borderRadius:20,padding:0,width:"100%",maxWidth:540,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 32px 96px rgba(0,0,0,.25)"}} onClick={e=>e.stopPropagation()}>
+              {/* Header */}
+              <div style={{background:"#1a1a2e",borderRadius:"20px 20px 0 0",padding:"20px 24px 16px",position:"relative"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
+                  <span style={{fontSize:"1.5rem"}}>{rem.icon}</span>
+                  <div>
+                    <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1.5px",color:"rgba(255,255,255,.45)",marginBottom:3}}>Stage Process Reminder</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#fff",lineHeight:1.1}}>{stageReminderModal.stage}</div>
+                  </div>
+                  <button onClick={()=>setStageReminderModal(null)} style={{position:"absolute",top:16,right:16,background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#94a3b8",fontSize:".95rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                </div>
+                {stageReminderModal.client&&<div style={{fontSize:".72rem",color:"rgba(255,255,255,.45)",marginTop:4}}>📌 {stageReminderModal.client}</div>}
+                <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:6,background:rem.color+"22",border:`1px solid ${rem.color}44`,borderRadius:20,padding:"4px 12px"}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:rem.color,display:"inline-block",flexShrink:0}}/>
+                  <span style={{fontSize:".72rem",fontWeight:700,color:rem.color}}>Owner: {rem.owner}</span>
+                </div>
+              </div>
+              <div style={{height:3,background:`linear-gradient(90deg,${rem.color},#f59e0b)`}}/>
+              {/* Body */}
+              <div style={{padding:"20px 24px"}}>
+                <div style={{fontSize:".85rem",color:"#475569",lineHeight:1.6,marginBottom:18,fontWeight:500}}>{rem.summary}</div>
+                {/* Immediate Actions */}
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:".65rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",marginBottom:10}}>Immediate Actions</div>
+                  {rem.actions.map((a,i)=>(
+                    <div key={i} style={{display:"flex",gap:10,marginBottom:9,alignItems:"flex-start"}}>
+                      <div style={{width:22,height:22,borderRadius:"50%",background:rem.color+"18",border:`1.5px solid ${rem.color}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                        <span style={{fontSize:".65rem",fontWeight:800,color:rem.color}}>{i+1}</span>
+                      </div>
+                      <div style={{fontSize:".82rem",color:"#1e293b",lineHeight:1.5,fontWeight:500}}>{a}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* SLA */}
+                {rem.sla&&(
+                  <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",gap:8,alignItems:"flex-start"}}>
+                    <span style={{fontSize:".95rem",flexShrink:0}}>⏱</span>
+                    <div>
+                      <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"#059669",marginBottom:2}}>Timeline / SLA</div>
+                      <div style={{fontSize:".8rem",color:"#064e3b",fontWeight:600}}>{rem.sla}</div>
+                    </div>
+                  </div>
+                )}
+                {/* Watch Out */}
+                <div style={{background:"#fef9c3",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:20,display:"flex",gap:8,alignItems:"flex-start"}}>
+                  <span style={{fontSize:"1rem",flexShrink:0}}>⚠️</span>
+                  <div>
+                    <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"#92400e",marginBottom:2}}>Watch Out</div>
+                    <div style={{fontSize:".8rem",color:"#78350f",lineHeight:1.5}}>{rem.watchOut}</div>
+                  </div>
+                </div>
+                {/* Buttons */}
+                <div style={{display:"flex",gap:10}}>
+                  <button onClick={()=>setStageReminderModal(null)} style={{flex:1,background:"#1a1a2e",border:"none",borderRadius:10,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Got it</button>
+                  <button onClick={()=>{setPage("checklist");setStageReminderModal(null);}} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:"pointer",whiteSpace:"nowrap"}}>📋 Open Checklist</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
@@ -15304,6 +15512,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
                     toastEmit(`Stage → ${st}`,"success");
+                    if(STAGE_PROCESS_REMINDERS[st]) setTimeout(()=>setStageReminderModal({dealId:selDeal,stage:st,client:deal.client}),200);
                   };
                   const stageOpts=[...WON_STAGES,"14 · Completed"];
                   return(
