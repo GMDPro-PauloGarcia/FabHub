@@ -7122,6 +7122,71 @@ export default function App(){
           </div>
         )}
 
+        {/* ── ORPHANED DEALS — parentDealId set but parent doesn't exist ── */}
+        {(()=>{
+          const dealIds=new Set(deals.map(d=>d.id));
+          const orphaned=deals.filter(d=>d.parentDealId&&!dealIds.has(d.parentDealId));
+          if(!orphaned.length) return null;
+          return(
+            <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:16}}>
+              <div style={{fontWeight:700,color:"#c2410c",fontSize:".85rem",marginBottom:6}}>
+                ⚠️ {orphaned.length} deal{orphaned.length>1?"s":""} with a broken parent link — hidden from pipeline
+              </div>
+              <div style={{fontSize:".75rem",color:"#92400e",marginBottom:10}}>
+                These deals are linked to a project that no longer exists. Edit each deal, clear the "Link to Parent" field, and save to restore them to the pipeline.
+              </div>
+              {orphaned.map(d=>(
+                <div key={d.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#fff",borderRadius:8,marginBottom:6,border:"1px solid #fed7aa",flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.contact||d.client||"—"}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>{d.ceNo&&<span style={{fontWeight:600,color:"#6366f1",marginRight:6}}>{d.ceNo}</span>}{d.client}</div>
+                  </div>
+                  <Badge label={d.stage?.replace(/^\d+ · /,"")||"Unknown"} color={STAGE_CLR[d.stage]||"#94a3b8"}/>
+                  {(role==="Manager"||role==="Sales")&&(
+                    <button onClick={()=>openEditDeal(d)} style={{background:"#f97316",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✏ Fix Link</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* ── SEARCH ALL DEALS — shows hidden matches (won/closed/child) ── */}
+        {pipeSearch&&pipeSearch.length>=2&&(()=>{
+          const q=pipeSearch.toLowerCase();
+          const matches=d=>[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(q);
+          const visibleInPipe=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!d.parentDealId&&matches(d));
+          const hidden=deals.filter(d=>matches(d)&&!visibleInPipe.find(v=>v.id===d.id));
+          if(!hidden.length) return null;
+          const locationOf=d=>{
+            if(d.parentDealId){const par=deals.find(x=>x.id===d.parentDealId);return par?`Addendum of ${par.contact||par.client} (${par.ceNo||""})`:"Orphaned addendum";}
+            if(d.stage==="12 · Close-Out") return "Closed Out";
+            if(d.stage==="Cancelled") return "Cancelled";
+            if(d.stage==="Did Not Win") return "Did Not Win";
+            if(WON_STAGES.includes(d.stage)) return "Awarded Projects";
+            return d.stage||"Unknown";
+          };
+          return(
+            <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"12px 16px",marginBottom:16}}>
+              <div style={{fontWeight:700,color:"#059669",fontSize:".85rem",marginBottom:8}}>
+                🔍 Also found in other sections ({hidden.length})
+              </div>
+              {hidden.map(d=>(
+                <div key={d.id} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:"#fff",borderRadius:8,marginBottom:6,border:"1px solid #d1fae5",flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.contact||d.client||"—"}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>{d.ceNo&&<span style={{fontWeight:600,color:"#6366f1",marginRight:6}}>{d.ceNo}</span>}{d.client}</div>
+                  </div>
+                  <span style={{fontSize:".68rem",color:"#059669",background:"#dcfce7",borderRadius:20,padding:"2px 8px",fontWeight:600,whiteSpace:"nowrap"}}>{locationOf(d)}</span>
+                  {(role==="Manager"||role==="Sales")&&(
+                    <button onClick={()=>openEditDeal(d)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 14px",fontSize:".78rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,flexShrink:0}}>✏ Edit</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* Active Pipeline — Hot / Cold split */}
         {(()=>{
           const daysSince=dt=>dt?Math.floor((new Date(today)-new Date(dt))/(864e5)):0;
@@ -7264,8 +7329,13 @@ export default function App(){
               {/* Awarded Projects — active only (stages 06–11) */}
               {(()=>{
                 const matchSearch=d=>!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase());
-                const activeWon=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&matchSearch(d));
-                const doneWon  =wonDeals.filter(d=>d.stage==="12 · Close-Out"&&matchSearch(d));
+                const activeWonBase=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&matchSearch(d));
+                const doneWonBase  =wonDeals.filter(d=>d.stage==="12 · Close-Out"&&matchSearch(d));
+                // Include addenda linked to won parents even if the addendum itself is in a pipeline stage
+                const wonIds=new Set(wonDeals.map(d=>d.id));
+                const addendaOfWon=deals.filter(d=>d.parentDealId&&wonIds.has(d.parentDealId)&&!wonIds.has(d.id));
+                const activeWon=[...activeWonBase,...addendaOfWon.filter(d=>activeWonBase.find(p=>p.id===d.parentDealId))];
+                const doneWon  =[...doneWonBase, ...addendaOfWon.filter(d=>doneWonBase.find(p=>p.id===d.parentDealId))];
                 const AWARD_GRID="80px 1fr 130px 64px 84px 80px 36px";
                 const AwardRow=({d,list,i})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
