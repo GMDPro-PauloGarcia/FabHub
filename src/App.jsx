@@ -3842,6 +3842,7 @@ export default function App(){
   const[dupScopeForm,setDupScopeForm]=useState({title:"",desc:"",value:""});
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
+  const[fromHome,   setFromHome]   =useState(false);
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
   const smartImportInputRef=useRef(null);
@@ -4509,7 +4510,7 @@ export default function App(){
     const BadgeDot=({count})=>count>0?(
       <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(18px)",background:"#ef4444",color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:".6rem",fontWeight:800,lineHeight:1.2,minWidth:14,textAlign:"center"}}>{count>9?"9+":count}</span>
     ):null;
-    const navigate=(id)=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);};
+    const navigate=(id)=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);if(id==="home")setFromHome(false);};
     // For Manager show fixed key tabs + More; others show first 4 + Me
     const primaryIds=role==="Manager"
       ? ["home","pipeline","projects","finance"]
@@ -4636,6 +4637,12 @@ export default function App(){
               <img src="/gmd-logo.png" alt="GMD Productions" style={{height:56,objectFit:"contain",display:"block"}}/>
             </div>
           )}
+          {fromHome&&page!=="home"&&(
+            <button onClick={()=>{setPage("home");setFromHome(false);}}
+              style={{display:"inline-flex",alignItems:"center",gap:6,background:"#1e293b",color:"#fff",border:"none",borderRadius:20,padding:"7px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer",marginBottom:14,boxShadow:"0 2px 8px rgba(0,0,0,.18)"}}>
+              ← Dashboard
+            </button>
+          )}
           {children}
         </div>
       {showExportRef.current&&(
@@ -4732,7 +4739,7 @@ export default function App(){
     </div>
     </WrapCtx.Provider>
   );
-  },[navCollapsed, isMobile, role, page]);
+  },[navCollapsed, isMobile, role, page, fromHome]);
   // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
   if(!ready) return(
     <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -6136,12 +6143,12 @@ export default function App(){
           {/* Quick Actions */}
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {[
-              {l:"+ Add Deal",       icon:"🤝", action:()=>openAddDeal(),              bg:"#1e293b", fg:"#fff"},
-              {l:"+ Award Project",  icon:"🏆", action:()=>setPage("pipeline"),         bg:"#059669", fg:"#fff"},
-              {l:"+ Log Expense",    icon:"💸", action:()=>openAddExp(),                bg:"#3b82f6", fg:"#fff"},
-              {l:"+ Log Payment",    icon:"💵", action:()=>setPage("billing"),           bg:"#8b5cf6", fg:"#fff"},
-              {l:"+ New PO",         icon:"📦", action:()=>setPage("procurement"),       bg:"#f59e0b", fg:"#fff"},
-              {l:"📅 Calendar",      icon:"",   action:()=>setPage("calendar"),          bg:"#0ea5e9", fg:"#fff"},
+              {l:"+ Add Deal",       icon:"🤝", action:()=>openAddDeal(),                                         bg:"#1e293b", fg:"#fff"},
+              {l:"+ Award Project",  icon:"🏆", action:()=>{setFromHome(true);setPage("pipeline");},             bg:"#059669", fg:"#fff"},
+              {l:"+ Log Expense",    icon:"💸", action:()=>openAddExp(),                                         bg:"#3b82f6", fg:"#fff"},
+              {l:"+ Log Payment",    icon:"💵", action:()=>{setFromHome(true);setPage("billing");},              bg:"#8b5cf6", fg:"#fff"},
+              {l:"+ New PO",         icon:"📦", action:()=>{setFromHome(true);setPage("procurement");},          bg:"#f59e0b", fg:"#fff"},
+              {l:"📅 Calendar",      icon:"",   action:()=>{setFromHome(true);setPage("calendar");},             bg:"#0ea5e9", fg:"#fff"},
             ].map(({l,icon,action,bg,fg})=>(
               <button key={l} onClick={action}
                 style={{background:bg,border:"none",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:fg,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
