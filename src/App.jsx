@@ -7226,7 +7226,6 @@ export default function App(){
                       <span style={{color:d.followUp&&d.followUp<today?"#ef4444":daysSince(d.dateAcquired)>15?"#f59e0b":"#94a3b8"}}>
                         {d.followUp&&d.followUp<today?"⚠ "+d.followUp:daysSince(d.dateAcquired)+"d ago"}
                       </span>
-                      <Badge label={d.stage?.replace(/^\d+ · /,"")} color={STAGE_CLR[d.stage]}/>
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
@@ -8226,7 +8225,7 @@ export default function App(){
               <div style={{flex:1}}>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
                   <span style={{fontWeight:700,fontSize:"1rem",color:"#0f172a"}}>{d.client}</span>
-                  <Badge label={d.stage} color={STAGE_CLR[d.stage]}/>
+                  {WON_STAGES.includes(d.stage)&&<Badge label="Awarded" color="#059669"/>}
                   {WON_STAGES.includes(d.stage)&&<Badge label={d.paymentStatus} color={PAY_CLR[d.paymentStatus]}/>}
                   {d.salesOwner&&d.salesOwner!==session?.name&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#6366f1",borderRadius:20,padding:"1px 6px",fontWeight:700}}>👤 {d.salesOwner.split(" ")[0]}</span>}
                 </div>
@@ -8249,12 +8248,6 @@ export default function App(){
                   <Btn small variant="ghost" onClick={()=>openEditDeal(d)}>✏ Edit</Btn>
                   {!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"&&<Btn small onClick={()=>openAward(d)} style={{background:"#059669",color:"#fff",border:"none"}}>🏆 Award</Btn>}
                   {role==="Manager"&&<Btn small variant="danger" onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}}>✕</Btn>}
-                </div>
-                <div style={{marginTop:8,minWidth:160}}>
-                  <select value={d.stage} onChange={e=>stageQ(d.id,e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                    {DEAL_STAGES.map(s=><option key={s}>{s}</option>)}
-                  </select>
-                  {STAGE_OWNER[d.stage]&&<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:3}}>📌 {STAGE_OWNER[d.stage]}</div>}
                 </div>
               </div>
             </div>
