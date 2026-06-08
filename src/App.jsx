@@ -14878,6 +14878,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[showScopeForm,setShowScopeForm]=useState(false);
   const[scopeForm,setScopeForm]=useState({title:"",desc:"",value:"",ceNo:""});
   const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
+  const[showDateEdit,setShowDateEdit]=useState(false);
+  const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
+  const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
@@ -15451,19 +15454,64 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 
               {/* ── Vitals ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>📌 Project Vitals</div>
-                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:8,marginBottom:10}}>
-                  {[{l:"Location",v:deal?.location||"—"},{l:"Award Date",v:card?.awardDate||"—"},{l:"Target Due",v:card?.targetEndDate||"Not set"},{l:"CE Type",v:deal?.ceType||"—"},{l:"Elapsed",v:card?.awardDate?elapsed+"d":"—"},{l:"TAT",v:card?.targetDays?card.targetDays+"d target":"Not set"}].map(({l,v})=>(
-                    <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                      <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
-                      <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
-                    </div>
-                  ))}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
+                  {(role==="Manager"||role==="Operations"||role==="QS")&&card&&!showDateEdit&&(
+                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||""});setShowDateEdit(true);}}
+                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit Dates</button>
+                  )}
                 </div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {showDateEdit?(
+                  <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"14px",marginBottom:10}}>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>Award / Start Date</div>
+                        <input type="date" value={dateForm.awardDate} onChange={e=>fdt("awardDate",e.target.value)}
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>Turnover / Target Due</div>
+                        <input type="date" value={dateForm.targetEndDate} onChange={e=>fdt("targetEndDate",e.target.value)}
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
+                        {dateForm.awardDate&&dateForm.targetEndDate&&(()=>{
+                          const days=Math.ceil((new Date(dateForm.targetEndDate)-new Date(dateForm.awardDate))/86400000);
+                          return days<0
+                            ?<div style={{fontSize:".71rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Turnover date is before award date</div>
+                            :<div style={{fontSize:".71rem",color:"#059669",marginTop:3,fontWeight:600}}>→ {days} days from award date</div>;
+                        })()}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>{
+                        if(!dateForm.awardDate) return;
+                        const newDays=dateForm.targetEndDate?Math.max(1,Math.ceil((new Date(dateForm.targetEndDate)-new Date(dateForm.awardDate))/86400000)):card?.targetDays;
+                        upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
+                        if(isSupabaseReady()){
+                          sbUpsert('project_cards',{deal_id:selDeal,award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})},'deal_id').catch(()=>{});
+                        }
+                        logActivity(selDeal,"Dates Updated",`Award: ${dateForm.awardDate}${dateForm.targetEndDate?` → Turnover: ${dateForm.targetEndDate}`:""}`,session?.name);
+                        toastEmit&&toastEmit("Dates saved ✓","success");
+                        setShowDateEdit(false);
+                      }} disabled={!dateForm.awardDate||(dateForm.targetEndDate&&dateForm.awardDate>dateForm.targetEndDate)}
+                        style={{flex:1,background:(dateForm.awardDate&&(!dateForm.targetEndDate||dateForm.awardDate<=dateForm.targetEndDate))?"#1e293b":"#e2e8f0",border:"none",borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".82rem",color:(dateForm.awardDate&&(!dateForm.targetEndDate||dateForm.awardDate<=dateForm.targetEndDate))?"#fff":"#94a3b8",cursor:(dateForm.awardDate&&(!dateForm.targetEndDate||dateForm.awardDate<=dateForm.targetEndDate))?"pointer":"not-allowed",fontWeight:700}}>✓ Save Dates</button>
+                      <button onClick={()=>setShowDateEdit(false)}
+                        style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
+                    </div>
+                  </div>
+                ):(
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(3,1fr)",gap:8,marginBottom:10}}>
+                    {[{l:"Location",v:deal?.location||"—"},{l:"Award Date",v:card?.awardDate||"—"},{l:"Target Due",v:card?.targetEndDate||"Not set"},{l:"CE Type",v:deal?.ceType||"—"},{l:"Elapsed",v:card?.awardDate?elapsed+"d":"—"},{l:"TAT",v:card?.targetDays?card.targetDays+"d target":"Not set"}].map(({l,v})=>(
+                      <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
+                        <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {!showDateEdit&&<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {deal?.salesRepoLink&&<a href={deal.salesRepoLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#3b82f6",textDecoration:"none",fontWeight:700,background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px"}}>📁 Sales Repo</a>}
                   {(card?.commsLink||jo?.commsLink)&&<a href={card?.commsLink||jo?.commsLink} target="_blank" rel="noreferrer" style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#059669",textDecoration:"none",fontWeight:700,background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 10px"}}>📱 Comms Group</a>}
-                </div>
+                </div>}
               </div>
 
               {/* ── Phase Timeline ── */}
