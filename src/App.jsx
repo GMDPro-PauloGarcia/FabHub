@@ -12614,7 +12614,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
   // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
-    return wonDeals.filter(d=>d.stage!=="12 · Close-Out").map(d=>{
+    return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&!d.parentDealId).map(d=>{
       const b=budgets[d.id]||emptyBudget();
       const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
       prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
@@ -12628,7 +12628,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       });
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(b[c]),0);
       const totalActual=BUDGET_CATS.reduce((s,c)=>s+result[c],0);
-      const contractVal=n(d.value)||0;
+      const contractVal=n(d.value)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((s,cd)=>s+n(cd.value),0);
       const pctUsed=totalBudget>0?Math.round(totalActual/totalBudget*100):0;
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
       const isOver=totalBudget>0&&totalActual>totalBudget;
@@ -12654,7 +12654,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
   const totalBudget = BUDGET_CATS.reduce((s,c)=>s+n(form[c]),0);
   const totalActual = BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-  const contractVal = n(deal?.value)||0;
+  const contractVal = n(deal?.value)+wonDeals.filter(cd=>cd.parentDealId===deal?.id).reduce((s,cd)=>s+n(cd.value),0);
   const grossMargin = contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):0;
   const budgetUsed  = totalBudget>0?Math.round(totalActual/totalBudget*100):0;
   const linkedPRs   = prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").length;
@@ -13319,7 +13319,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
   // Build per-project costing data
   const projectData = useMemo(()=>{
-    return wonDeals.map(deal=>{
+    return wonDeals.filter(deal=>!deal.parentDealId).map(deal=>{
       const budget = budgets[deal.id]||emptyBudget();
       const dealPRs = prs.filter(p=>p.projectId===deal.id&&p.status!=="Cancelled");
       const dealExps= exps.filter(e=>e.projectId===deal.id);
@@ -13337,7 +13337,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(budget[c]),0);
       const totalActual=BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-      const contractVal=n(deal.value)||0;
+      const contractVal=n(deal.value)+wonDeals.filter(cd=>cd.parentDealId===deal.id).reduce((s,cd)=>s+n(cd.value),0);
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
       const budgetVariance=totalBudget-totalActual;
       const isOverBudget=totalBudget>0&&totalActual>totalBudget;
