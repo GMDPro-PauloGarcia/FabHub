@@ -303,15 +303,31 @@ CREATE TABLE IF NOT EXISTS project_budgets (
 
 -- ── 19. CASH POSITIONS (Daily Cash Tracker) ───────────────
 CREATE TABLE IF NOT EXISTS cash_positions (
-  date             DATE PRIMARY KEY,
-  bpi_end          NUMERIC DEFAULT 0,
-  metrobank_end    NUMERIC DEFAULT 0,
-  chinabank_end    NUMERIC DEFAULT 0,
-  bdo_end          NUMERIC DEFAULT 0,
-  secbank_end      NUMERIC DEFAULT 0,
-  unionbank_end    NUMERIC DEFAULT 0,
-  notes            TEXT,
-  updated_at       TIMESTAMPTZ DEFAULT NOW()
+  date                   DATE PRIMARY KEY,
+  bpi_beg                NUMERIC DEFAULT 0,
+  bpi_book               NUMERIC DEFAULT 0,
+  bpi_end                NUMERIC DEFAULT 0,
+  metrobank_beg          NUMERIC DEFAULT 0,
+  metrobank_book         NUMERIC DEFAULT 0,
+  metrobank_end          NUMERIC DEFAULT 0,
+  chinabank_beg          NUMERIC DEFAULT 0,
+  chinabank_book         NUMERIC DEFAULT 0,
+  chinabank_end          NUMERIC DEFAULT 0,
+  bdo_beg                NUMERIC DEFAULT 0,
+  bdo_book               NUMERIC DEFAULT 0,
+  bdo_end                NUMERIC DEFAULT 0,
+  secbank_beg            NUMERIC DEFAULT 0,
+  secbank_book           NUMERIC DEFAULT 0,
+  secbank_end            NUMERIC DEFAULT 0,
+  unionbank_beg          NUMERIC DEFAULT 0,
+  unionbank_book         NUMERIC DEFAULT 0,
+  unionbank_end          NUMERIC DEFAULT 0,
+  manual_collection_amt  NUMERIC DEFAULT 0,
+  manual_collection_note TEXT,
+  ytd_supplier_payable   NUMERIC DEFAULT 0,
+  ytd_loans_payable      NUMERIC DEFAULT 0,
+  notes                  TEXT,
+  updated_at             TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 20. DESIGN REQUEST FORMS (DRF) ───────────────────────

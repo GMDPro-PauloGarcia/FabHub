@@ -3390,7 +3390,6 @@ export default function App(){
         unionbank_beg:nb("union","beg"),     unionbank_book:nb("union","book"),    unionbank_end:nb("union","end"),
         manual_collection_amt: Number(pos.collections?.manualAmt)||0,
         manual_collection_note:pos.collections?.manualNote||"",
-        transactions:  JSON.stringify(pos.transactions||[]),
         ytd_supplier_payable:Number(pos.ytd?.supplierPayable)||0,
         ytd_loans_payable:   Number(pos.ytd?.loansPayable)  ||0,
         notes:pos.notes||"",
@@ -12449,12 +12448,12 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
             <div style={{display:"flex",gap:24,alignItems:"center"}}>
               <div style={{textAlign:"center"}}>
                 <div style={{fontSize:".65rem",color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>Beginning</div>
-                <input type="number" value={unionRow.beg||""} onChange={e=>setPos(p=>({...p,banks:{...p.banks,union:{...(p.banks.union||emptyBankRow()),beg:e.target.value}}}))}
+                <input type="number" value={unionRow.beg||""} onChange={e=>{f("banks.union.beg",e.target.value);}}
                   style={{textAlign:"right",border:"1px solid rgba(255,255,255,.3)",borderRadius:6,padding:"5px 8px",background:"rgba(255,255,255,.1)",color:"#fff",fontFamily:"inherit",fontSize:".85rem",width:140}}/>
               </div>
               <div style={{textAlign:"center"}}>
                 <div style={{fontSize:".65rem",color:"rgba(255,255,255,.5)",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>Ending Balance</div>
-                <input type="number" value={unionRow.end||""} onChange={e=>setPos(p=>({...p,banks:{...p.banks,union:{...(p.banks.union||emptyBankRow()),end:e.target.value}}}))}
+                <input type="number" value={unionRow.end||""} onChange={e=>{f("banks.union.end",e.target.value);}}
                   style={{textAlign:"right",border:"1px solid rgba(255,255,255,.3)",borderRadius:6,padding:"5px 8px",background:"rgba(255,255,255,.15)",color:"#fff",fontFamily:"inherit",fontSize:".9rem",fontWeight:700,width:140}}/>
               </div>
               <div style={{textAlign:"center",minWidth:120}}>
