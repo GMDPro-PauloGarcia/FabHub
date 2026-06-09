@@ -3759,6 +3759,7 @@ export default function App(){
   const[infModal,  setInfModal] =useState(false);
   const[infForm,   setInfForm]  =useState({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
   const[selProj,   setSelProj]  =useState(null);
+  const[jumpDeal,  setJumpDeal] =useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("overview");
   const[payables,  setPayables] =useState(()=>{try{const v=localStorage.getItem("gmdv5:payables");return v?JSON.parse(v):[];}catch{return[];}});
@@ -6330,7 +6331,7 @@ export default function App(){
     <ConstructionCalendar
       wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
       prs={prs} billings={billings} drfs={drfs}
-      setPage={setPage} today={today} Wrap={Wrap}
+      setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
     />
   );
 
@@ -8529,7 +8530,7 @@ export default function App(){
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
-    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} today={today} Wrap={Wrap}/>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -8799,6 +8800,7 @@ export default function App(){
         isMobile={isMobile} createCard={createProjectCard}
         updateJO={updateJO} upPcards={upPcards}
         addAddendum2={addAddendum2}
+        initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}
         checklist={checklist}
         openAddCl={openAddCl}
         openEditCl={openEditCl}
@@ -14933,9 +14935,10 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification,initialDeal,clearJump}){
   const todayStr=new Date().toISOString().split("T")[0];
-  const[selDeal,setSelDeal]=useState(null);
+  const[selDeal,setSelDeal]=useState(initialDeal||null);
+  useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
@@ -16212,7 +16215,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
 }
 
 // ─── CONSTRUCTION CALENDAR ────────────────────────────────────────────────────
-function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPage,today,Wrap}){
+function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPage,setJumpDeal,today,Wrap}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
@@ -16418,7 +16421,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
               {eventModal.detail&&<div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:".82rem",color:"#065f46"}}>{eventModal.detail}</div>}
               <div style={{display:"flex",gap:8}}>
                 {eventModal.dealId&&eventModal.type==="billing"&&<button onClick={()=>{setEventModal(null);setPage("billing");}} style={{flex:1,padding:"9px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>💵 View Billing</button>}
-                {eventModal.dealId&&eventModal.type==="end"&&<button onClick={()=>{setEventModal(null);setPage("calendar");}} style={{flex:1,padding:"9px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🏗 View Project</button>}
+                {eventModal.dealId&&eventModal.type==="end"&&<button onClick={()=>{setJumpDeal&&setJumpDeal(eventModal.dealId);setEventModal(null);setPage("projects");}} style={{flex:1,padding:"9px",background:"#3b82f6",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🏗 View Project</button>}
                 {eventModal.dealId&&eventModal.type==="drf"&&<button onClick={()=>{setEventModal(null);setPage("drf");}} style={{flex:1,padding:"9px",background:"#ec4899",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>📝 View DRF</button>}
                 {eventModal.dealId&&eventModal.type==="delivery"&&<button onClick={()=>{setEventModal(null);setPage("budget");}} style={{flex:1,padding:"9px",background:"#f97316",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>📦 View PO</button>}
                 <button onClick={()=>setEventModal(null)} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".82rem",cursor:"pointer"}}>Close</button>
