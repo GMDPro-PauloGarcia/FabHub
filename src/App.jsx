@@ -6325,7 +6325,7 @@ export default function App(){
 
   // ── CALENDAR — Sales gets follow-up view; all other roles get ConstructionCalendar
   if(page==="calendar") return role==="Sales"?(
-    <Wrap><SalesCalendarView deals={deals} session={session} role={role} pcards={pcards} jos={jos}/></Wrap>
+    <Wrap><SalesCalendarView deals={deals} session={session} role={role} pcards={pcards} jos={jos} billings={billings}/></Wrap>
   ):(
     <ConstructionCalendar
       wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
@@ -11279,14 +11279,15 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
 }
 
 // ─── SALES CALENDAR VIEW ─────────────────────────────────────────────────────
-function SalesCalendarView({deals, session, role, pcards, jos}){
+function SalesCalendarView({deals, session, role, pcards, jos, billings}){
   const todayStr=new Date().toISOString().slice(0,10);
   const[calDate,setCalDate]=useState(()=>{const n=new Date();return{y:n.getFullYear(),m:n.getMonth()};});
+  const[selectedDay,setSelectedDay]=useState(null);
   const AE_COLORS={"Paulo Garcia":"#3b82f6","Paolo Gomez":"#8b5cf6","April Gail De Ello":"#ec4899","Jena De Asis":"#f59e0b","Don Wyn Celmar":"#10b981"};
   const aeColor=ae=>AE_COLORS[ae]||"#94a3b8";
 
-  const prevMonth=()=>setCalDate(({y,m})=>m===0?{y:y-1,m:11}:{y,m:m-1});
-  const nextMonth=()=>setCalDate(({y,m})=>m===11?{y:y+1,m:0}:{y,m:m+1});
+  const prevMonth=()=>{setCalDate(({y,m})=>m===0?{y:y-1,m:11}:{y,m:m-1});setSelectedDay(null);};
+  const nextMonth=()=>{setCalDate(({y,m})=>m===11?{y:y+1,m:0}:{y,m:m+1});setSelectedDay(null);};
 
   const{y,m}=calDate;
   const firstDay=new Date(y,m,1).getDay();
@@ -11294,28 +11295,44 @@ function SalesCalendarView({deals, session, role, pcards, jos}){
   const monthStr=`${y}-${String(m+1).padStart(2,"0")}`;
   const MONTHS_PH=["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-  // Build event map: date → [{client, type, ae}]
-  const events={};
-  deals.forEach(d=>{
-    if(d.followUp?.startsWith(monthStr)){
-      const day=d.followUp.slice(8,10);
-      if(!events[day]) events[day]=[];
-      events[day].push({label:d.client,type:"followup",ae:d.salesOwner,ceNo:d.ceNo});
-    }
-    if(d.dateAcquired?.startsWith(monthStr)){
-      const day=d.dateAcquired.slice(8,10);
-      if(!events[day]) events[day]=[];
-      events[day].push({label:d.client,type:"acquired",ae:d.salesOwner});
-    }
-    // Project target turnover date (from project card)
-    const pc=pcards?.[d.id];
-    if(pc?.targetEndDate?.startsWith(monthStr)){
-      const day=pc.targetEndDate.slice(8,10);
-      if(!events[day]) events[day]=[];
-      const jo=(jos||[]).find(j=>j.dealId===d.id);
-      events[day].push({label:d.client,type:"turnover",ceNo:d.ceNo,color:"#3b82f6",icon:"🏗",pm:jo?.pm1||pc?.pm1});
-    }
-  });
+  // Build full event list for this month
+  const allEvents=useMemo(()=>{
+    const list=[];
+    deals.forEach(d=>{
+      if(d.followUp) list.push({date:d.followUp,label:d.client,type:"followup",ae:d.salesOwner,ceNo:d.ceNo,color:aeColor(d.salesOwner),icon:"📅"});
+      if(d.dateAcquired) list.push({date:d.dateAcquired,label:d.client,type:"acquired",ae:d.salesOwner,color:aeColor(d.salesOwner),icon:"🆕"});
+      const pc=pcards?.[d.id];
+      if(pc?.targetEndDate){
+        const jo=(jos||[]).find(j=>j.dealId===d.id);
+        list.push({date:pc.targetEndDate,label:d.client,type:"turnover",ceNo:d.ceNo,color:"#3b82f6",icon:"🏗",detail:"PM: "+(jo?.pm1||pc?.pm1||"—")});
+      }
+    });
+    (billings||[]).filter(b=>b.dueDate&&b.status!=="Fully Paid"&&b.status!=="Cancelled").forEach(b=>{
+      const deal=deals.find(d=>d.id===b.dealId);
+      if(!deal) return;
+      list.push({date:b.dueDate,label:deal.client,type:"billing",ceNo:deal.ceNo||"",color:"#10b981",icon:"💵",sub:b.name||"Invoice",detail:"₱"+Number(b.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})});
+    });
+    return list;
+  },[deals,pcards,jos,billings]);
+
+  // Events keyed by 2-digit day string for this month only
+  const events=useMemo(()=>{
+    const map={};
+    allEvents.filter(e=>e.date?.startsWith(monthStr)).forEach(e=>{
+      const day=e.date.slice(8,10);
+      if(!map[day]) map[day]=[];
+      map[day].push(e);
+    });
+    return map;
+  },[allEvents,monthStr]);
+
+  // Upcoming 14 days across all months
+  const todayD=new Date(todayStr+"T00:00:00");
+  const in14=new Date(todayD);in14.setDate(in14.getDate()+14);
+  const upcoming=useMemo(()=>
+    allEvents.filter(e=>{const d=new Date(e.date+"T00:00:00");return d>=todayD&&d<=in14;})
+      .sort((a,b)=>a.date.localeCompare(b.date))
+  ,[allEvents,todayStr]);
 
   const cells=[];
   for(let i=0;i<firstDay;i++) cells.push(null);
@@ -11325,80 +11342,124 @@ function SalesCalendarView({deals, session, role, pcards, jos}){
   const followUps=deals.filter(d=>d.followUp?.startsWith(monthStr));
   const byAE=[...new Set(followUps.map(d=>d.salesOwner||"Unassigned"))].map(ae=>({ae,count:followUps.filter(d=>(d.salesOwner||"Unassigned")===ae).length})).sort((a,b)=>b.count-a.count);
 
+  const TYPE_LABEL={followup:"Follow-up",acquired:"Date Acquired",turnover:"Turnover",billing:"Collection Due"};
+
   return(
     <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
         <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📅 Sales Calendar</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Follow-ups, deal activity, and project turnover dates</div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📅 Project Calendar</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Follow-ups · turnover dates · collection due dates</div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <button onClick={prevMonth} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".85rem",color:"#475569"}}>←</button>
           <span style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",minWidth:160,textAlign:"center"}}>{MONTHS_PH[m]} {y}</span>
           <button onClick={nextMonth} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".85rem",color:"#475569"}}>→</button>
-          <button onClick={()=>{const n=new Date();setCalDate({y:n.getFullYear(),m:n.getMonth()});}} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".82rem",color:"#fff"}}>Today</button>
+          <button onClick={()=>{const n=new Date();setCalDate({y:n.getFullYear(),m:n.getMonth()});setSelectedDay(null);}} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".82rem",color:"#fff"}}>Today</button>
         </div>
       </div>
 
-      {/* AE summary strip */}
-      {byAE.length>0&&(
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 18px",marginBottom:16,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-          <span style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Follow-ups this month:</span>
-          {byAE.map(({ae,count})=>(
-            <span key={ae} style={{display:"flex",alignItems:"center",gap:5,fontSize:".78rem",fontWeight:600,color:"#0f172a"}}>
-              <span style={{width:8,height:8,borderRadius:"50%",background:aeColor(ae),display:"inline-block"}}/>
-              {ae} <span style={{color:aeColor(ae)}}>{count}</span>
+      {/* Legend strip */}
+      <div style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",padding:"8px 14px",marginBottom:12,display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
+        {[{c:"#94a3b8",l:"Follow-up 📅"},{c:"#94a3b8",l:"Acquired 🆕"},{c:"#3b82f6",l:"Turnover 🏗"},{c:"#10b981",l:"Collection Due 💵"}].map(({c,l})=>(
+          <div key={l} style={{display:"flex",alignItems:"center",gap:5,fontSize:".72rem",color:"#475569"}}>
+            <div style={{width:9,height:9,borderRadius:"50%",background:c,flexShrink:0}}/>{l}
+          </div>
+        ))}
+        {byAE.length>0&&<>
+          <div style={{width:1,height:16,background:"#e2e8f0",flexShrink:0}}/>
+          {Object.entries(AE_COLORS).map(([ae,clr])=>(
+            <span key={ae} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#64748b"}}>
+              <span style={{width:9,height:9,borderRadius:2,background:clr,display:"inline-block"}}/>{ae.split(" ")[0]}
             </span>
+          ))}
+        </>}
+      </div>
+
+      {/* Calendar grid */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",background:"#1e293b"}}>
+          {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>(
+            <div key={d} style={{padding:"8px 4px",textAlign:"center",fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>
+          ))}
+        </div>
+        {Array.from({length:Math.ceil(cells.length/7)},(_,wi)=>(
+          <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:wi<Math.ceil(cells.length/7)-1?"1px solid #f1f5f9":""}}>
+            {cells.slice(wi*7,(wi+1)*7).map((day,di)=>{
+              if(!day) return <div key={di} style={{minHeight:72,background:"#fafafa",borderRight:"1px solid #f1f5f9"}}/>;
+              const dayStr=String(day).padStart(2,"0");
+              const fullDate=`${monthStr}-${dayStr}`;
+              const isToday=fullDate===todayStr;
+              const isSel=selectedDay===fullDate;
+              const evts=events[dayStr]||[];
+              const isPast=fullDate<todayStr;
+              return(
+                <div key={day} onClick={()=>setSelectedDay(isSel?null:fullDate)}
+                  style={{minHeight:72,padding:"4px 6px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":isPast?"#fafafa":"#fff",cursor:"pointer"}}>
+                  <div style={{fontWeight:isToday?800:500,fontSize:".75rem",marginBottom:2,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined,color:isToday?"#92400e":"#0f172a"}}>{day}</div>
+                  {evts.slice(0,3).map((ev,i)=>{
+                    const clr=ev.color||aeColor(ev.ae);
+                    return(
+                      <div key={i} title={ev.label+(ev.ceNo?" · "+ev.ceNo:"")+(ev.detail?" · "+ev.detail:"")}
+                        style={{background:clr+"22",border:`1px solid ${clr}44`,borderRadius:4,padding:"2px 4px",marginBottom:1,fontSize:".6rem",color:clr,fontWeight:600,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>
+                        {ev.icon} {ev.label}
+                      </div>
+                    );
+                  })}
+                  {evts.length>3&&<div style={{fontSize:".58rem",color:"#94a3b8",paddingLeft:2}}>+{evts.length-3}</div>}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Day detail panel */}
+      {selectedDay&&(events[selectedDay.slice(8,10)]||[]).length>0&&(
+        <div style={{marginTop:12,background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#1e293b",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>
+              {new Date(selectedDay+"T00:00:00").toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}
+            </span>
+            <button onClick={()=>setSelectedDay(null)} style={{background:"rgba(255,255,255,.15)",border:"none",borderRadius:6,padding:"3px 10px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontSize:".8rem"}}>✕</button>
+          </div>
+          {(events[selectedDay.slice(8,10)]||[]).map((ev,i,arr)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",borderBottom:i<arr.length-1?"1px solid #f8fafc":""}}>
+              <div style={{width:32,height:32,borderRadius:8,background:(ev.color||aeColor(ev.ae))+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:"1rem",flexShrink:0}}>{ev.icon}</div>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{ev.label}{ev.ceNo?<span style={{fontWeight:400,color:"#94a3b8",fontSize:".75rem"}}> · {ev.ceNo}</span>:""}</div>
+                <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{ev.sub||""}{ev.detail?" · "+ev.detail:""}</div>
+              </div>
+              <span style={{fontSize:".68rem",fontWeight:700,color:ev.color||aeColor(ev.ae),background:(ev.color||aeColor(ev.ae))+"18",border:`1px solid ${(ev.color||aeColor(ev.ae))}44`,borderRadius:20,padding:"2px 8px",flexShrink:0}}>
+                {TYPE_LABEL[ev.type]||ev.type}
+              </span>
+            </div>
           ))}
         </div>
       )}
 
-      {/* Calendar grid */}
-      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-        {/* Day headers */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:"1.5px solid #e2e8f0"}}>
-          {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d=>(
-            <div key={d} style={{padding:"10px 0",textAlign:"center",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{d}</div>
-          ))}
-        </div>
-        {/* Cells */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)"}}>
-          {cells.map((day,idx)=>{
-            if(!day) return <div key={"e"+idx} style={{minHeight:90,borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",background:"#fafafa"}}/>;
-            const dayStr=String(day).padStart(2,"0");
-            const dateStr=`${monthStr}-${dayStr}`;
-            const isToday=dateStr===todayStr;
-            const evts=events[dayStr]||[];
-            const isPast=dateStr<todayStr;
+      {/* Upcoming 14 days */}
+      {upcoming.length>0&&(
+        <div style={{marginTop:16}}>
+          <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:8}}>⚡ Next 14 Days</div>
+          {upcoming.map((ev,i)=>{
+            const daysUntil=Math.ceil((new Date(ev.date+"T00:00:00")-todayD)/(1000*60*60*24));
             return(
-              <div key={day} style={{minHeight:90,padding:"6px 8px",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",background:isToday?"#eff6ff":isPast?"#fafafa":"#fff",position:"relative"}}>
-                <div style={{fontWeight:isToday?800:500,fontSize:".8rem",color:isToday?"#1d4ed8":"#475569",marginBottom:4,width:24,height:24,borderRadius:"50%",background:isToday?"#1d4ed8":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:isToday?"#fff":"#475569"}}>{day}</div>
-                {evts.slice(0,3).map((ev,i)=>{
-                  const clr=ev.color||aeColor(ev.ae);
-                  const icon=ev.icon||(ev.type==="followup"?"📅":"🆕");
-                  return(
-                  <div key={i} title={ev.label+(ev.ceNo?" · "+ev.ceNo:"")+(ev.pm?" · PM: "+ev.pm:"")+(ev.type==="turnover"?" · Turnover":"")} style={{background:clr+"22",borderLeft:`3px solid ${clr}`,borderRadius:"0 4px 4px 0",padding:"2px 5px",marginBottom:2,fontSize:".62rem",fontWeight:600,color:"#0f172a",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"default"}}>
-                    {icon} {ev.label}
-                  </div>
-                  );
-                })}
-                {evts.length>3&&<div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>+{evts.length-3} more</div>}
+              <div key={i} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${(ev.color||"#94a3b8")}33`,padding:"10px 14px",marginBottom:7,display:"flex",alignItems:"center",gap:10}}>
+                <div style={{width:34,height:34,borderRadius:8,background:(ev.color||"#94a3b8")+"18",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem",flexShrink:0}}>{ev.icon}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{ev.label}{ev.ceNo?<span style={{fontWeight:400,color:"#94a3b8",fontSize:".75rem"}}> · {ev.ceNo}</span>:""}</div>
+                  <div style={{fontSize:".7rem",color:"#64748b",marginTop:1}}>{TYPE_LABEL[ev.type]||ev.type}{ev.detail?" · "+ev.detail:""}</div>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{new Date(ev.date+"T00:00:00").toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</div>
+                </div>
+                <div style={{fontSize:".72rem",fontWeight:700,flexShrink:0,color:daysUntil===0?"#dc2626":daysUntil<=3?"#f59e0b":"#059669",background:daysUntil===0?"#fef2f2":daysUntil<=3?"#fffbeb":"#f0fdf4",border:`1px solid ${daysUntil===0?"#fecaca":daysUntil<=3?"#fde68a":"#6ee7b7"}`,borderRadius:20,padding:"3px 10px"}}>
+                  {daysUntil===0?"TODAY":daysUntil===1?"Tomorrow":daysUntil+"d away"}
+                </div>
               </div>
             );
           })}
         </div>
-      </div>
-
-      {/* Legend */}
-      <div style={{marginTop:12,display:"flex",gap:16,flexWrap:"wrap"}}>
-        <span style={{fontSize:".72rem",color:"#64748b"}}>📅 Follow-up date &nbsp; 🆕 Date acquired &nbsp; 🏗 Target turnover</span>
-        {Object.entries(AE_COLORS).map(([ae,clr])=>(
-          <span key={ae} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#64748b"}}>
-            <span style={{width:10,height:10,borderRadius:2,background:clr,display:"inline-block"}}/>
-            {ae.split(" ")[0]}
-          </span>
-        ))}
-      </div>
+      )}
     </div>
   );
 }
