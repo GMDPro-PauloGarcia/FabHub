@@ -6029,7 +6029,9 @@ export default function App(){
         const today2=new Date();
         const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
-        const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
+        const awardedVal=wonDeals.filter(d=>!d.parentDealId).reduce((s,d)=>
+          s+Number(d.value||0)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((cs,cd)=>cs+Number(cd.value||0),0)
+        ,0);
         const thisMonth=new Date().toISOString().slice(0,7);
         const newThisMonth=deals.filter(d=>d.dateAcquired?.slice(0,7)===thisMonth);
         const allMs=billings;
