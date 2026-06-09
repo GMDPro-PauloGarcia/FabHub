@@ -372,18 +372,11 @@ const emptyBankRow = () => ({ beg:"", book:"", end:"" });
 const emptyDayPosition = (date) => ({
   date,
   banks: Object.fromEntries(BANKS.map(b=>[b.id, emptyBankRow()])),
-  collections: {         // auto-pulled + manual
-    fabhubAmt: 0,        // auto from FabHub inflows
-    manualAmt: "",       // manual adjustment
+  collections: {
+    fabhubAmt: 0,
+    manualAmt: "",
     manualNote: "",
   },
-  less: {
-    bizlink: "",
-    checkFloat: "",
-    otherNote: "",
-    otherAmt: "",
-  },
-  transactions: [],  // [{id, category, description, amount}]
   ytd: {
     supplierPayable: "",
     loansPayable: "",
@@ -7873,7 +7866,7 @@ export default function App(){
         {/* ── CASH POSITION TAB ── */}
         {finTab==="cash"&&(
           <>
-            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} infs={infs} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps}/>
+            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps}/>
           </>
         )}
 
@@ -8339,7 +8332,6 @@ export default function App(){
         <DailyCashPosition
           cashPositions={cashPositions}
           saveDayPos={saveDayPos}
-          infs={infs}
           wonDeals={wonDeals}
           billings={billings}
           totRev={totRev}
@@ -11786,7 +11778,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
 
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
-function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[]}){
+function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[]}){
   const[selDate,setSelDate]=useState(today);
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
@@ -11928,7 +11920,16 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
   },[todayInflows,pos.collections.manualAmt]);
 
   // Accounting expenses for the selected date (drives Today's Transactions)
-  const dateExps=useMemo(()=>exps.filter(e=>e.expDate===selDate),[exps,selDate]);
+  // Legacy expenses (pre-migration) have no expDate — match by month/year on the 1st of that month only
+  const dateExps=useMemo(()=>exps.filter(e=>{
+    if(e.expDate) return e.expDate===selDate;
+    if(e.month!=null){
+      const d=new Date(selDate);
+      const isFirstOfMonth=selDate.endsWith("-01");
+      return isFirstOfMonth&&e.month===d.getMonth()&&(e.year==null||e.year===d.getFullYear());
+    }
+    return false;
+  }),[exps,selDate]);
 
   // Transactions total — sum of accounting expenses for the day
   const totalLess=useMemo(()=>{
@@ -11936,7 +11937,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
   },[dateExps]);
 
   // Total Cash Available = Total Book Balance - Less
-  // Book balance = what bank confirms; if not filled, use ending balance
+  // Book balance = what bank confirms; if not filled, fall back to ending balance
+  const bookUnreconciled=bankTotals.book===0&&bankTotals.end>0; // warn user when BOOK is blank but END is filled
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
   const totalCashAvailable=workingBook+totalCollections-totalLess; // Working capital only — Unionbank (capital) excluded
 
@@ -12224,7 +12226,7 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
           </div>
           {dateExps.length>0&&<span style={{fontWeight:800,color:"#f87171",fontSize:".9rem"}}>−₱{fmt2(totalLess)}</span>}
         </div>
-        {dateExps.length===0&&<div style={{padding:"18px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No expenses logged in Accounting for {selDate}. Log expenses in the Accounting tab to see them here.</div>}
+        {dateExps.length===0&&<div style={{padding:"18px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No expenses logged in Accounting for {selDate}. Go to the <b>Accounting</b> tab and log an expense with this date to see it here. <span style={{fontSize:".75rem",display:"block",marginTop:4,color:"#cbd5e1"}}>Legacy expenses (saved without a specific date) appear only on the 1st of their recorded month.</span></div>}
         {dateExps.map((e,i)=>{
           const bank=e.bankAccount?BANKS.find(b=>b.id===e.bankAccount):null;
           return(
@@ -12241,6 +12243,14 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
           );
         })}
       </div>
+
+      {/* Reconciliation warning */}
+      {bookUnreconciled&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:10,padding:"10px 16px",marginBottom:12,fontSize:".82rem",color:"#92400e",display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:"1rem"}}>⚠️</span>
+          <span><b>Book Balance not filled.</b> Working capital is using Ending Balance as a fallback — fill in the <b>BOOK BALANCE</b> row above to confirm today's reconciled position.</span>
+        </div>
+      )}
 
       {/* Position Summary */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
