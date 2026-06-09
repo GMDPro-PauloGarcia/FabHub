@@ -372,18 +372,11 @@ const emptyBankRow = () => ({ beg:"", book:"", end:"" });
 const emptyDayPosition = (date) => ({
   date,
   banks: Object.fromEntries(BANKS.map(b=>[b.id, emptyBankRow()])),
-  collections: {         // auto-pulled + manual
-    fabhubAmt: 0,        // auto from FabHub inflows
-    manualAmt: "",       // manual adjustment
+  collections: {
+    fabhubAmt: 0,
+    manualAmt: "",
     manualNote: "",
   },
-  less: {
-    bizlink: "",
-    checkFloat: "",
-    otherNote: "",
-    otherAmt: "",
-  },
-  transactions: [],  // [{id, category, description, amount}]
   ytd: {
     supplierPayable: "",
     loansPayable: "",
@@ -1649,12 +1642,13 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
   useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});}},[open,editId]);
   const handleExpSave=()=>{_setExpForm(()=>form);onSave(form);};
   const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
+  const bankName=form.bankAccount?BANKS.find(b=>b.id===form.bankAccount)?.short||form.bankAccount:"Not specified";
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"} key={expFormKey}>
       {step===1?(
         <>
-          <Fld label="Month">
-            <Sel value={form.month} onChange={e=>f("month",Number(e.target.value))}>{MONTHS.map((m,i)=><option key={m} value={i}>{m}</option>)}</Sel>
+          <Fld label="Date">
+            <Inp type="date" value={form.expDate||""} onChange={e=>f("expDate",e.target.value)}/>
           </Fld>
           <Fld label="Category">
             <Sel value={form.category} onChange={e=>f("category",e.target.value)}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</Sel>
@@ -1664,6 +1658,12 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
           </Fld>
           <Fld label="Description" required hint="Be specific — e.g. 'Steel tubes for TechZone kiosks'">
             <Inp value={form.note} onChange={e=>f("note",e.target.value)} placeholder="What was this expense for?"/>
+          </Fld>
+          <Fld label="Bank Account" hint="Which bank account was this expense paid from?">
+            <Sel value={form.bankAccount||""} onChange={e=>f("bankAccount",e.target.value||null)}>
+              <option value="">— No bank (cash / untagged) —</option>
+              {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
+            </Sel>
           </Fld>
           <Fld label="Link to Project" hint="Choose the project this expense belongs to, or leave as Company-wide">
             <Sel value={form.projectId||"company"} onChange={e=>f("projectId",e.target.value==="company"?null:e.target.value)}>
@@ -1684,10 +1684,11 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
           <div style={{background:"#f8fafc",borderRadius:12,padding:"18px 20px",marginBottom:20}}>
             <div style={{fontSize:".75rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:14}}>Confirm Expense Details</div>
             {[
-              ["Month",MONTHS[form.month]],
+              ["Date",form.expDate||"(not set)"],
               ["Category",form.category],
               ["Amount",fmt(Number(form.amount))],
               ["Description",form.note],
+              ["Bank Account",bankName],
               ["Project",projName],
               form.receipt?["Receipt","Linked ✓"]:null,
             ].filter(Boolean).map(([l,v])=>(
@@ -2221,7 +2222,7 @@ export default function App(){
             if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
             if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
             if(data.billings?.length) setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
-            if(data.exps?.length)   setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
+            if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);try{localStorage.setItem(KEYS.expenses,JSON.stringify(mappedExps));}catch{}}
             if(data.prs?.length)    setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})));
             if(data.mreqs?.length)  setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})));
             if(data.breqs?.length)  setBreqs(data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})));
@@ -2333,7 +2334,7 @@ export default function App(){
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);try{localStorage.setItem(KEYS.jos,JSON.stringify(js));}catch{}}
     if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
     if(data.billings?.length)    setBillings(data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})));
-    if(data.exps?.length)        setExps(data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}));
+    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);try{localStorage.setItem(KEYS.expenses,JSON.stringify(mappedExps));}catch{}}
     if(data.inflows?.length)     setInfs(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
     if(data.prs?.length)         setPrs(data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})));
     if(data.mreqs?.length)       setMreqs(data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})));
@@ -2428,12 +2429,12 @@ export default function App(){
     recorded_by:r.recordedBy||"",
   });
   const toSbExpense = r=>{
-    const yr=r.year||new Date().getFullYear();
-    const mo=r.month!=null?Number(r.month):new Date().getMonth();
-    const date=`${yr}-${String(mo+1).padStart(2,'0')}-01`;
+    let date=r.expDate||null;
+    if(!date){const yr=r.year||new Date().getFullYear();const mo=r.month!=null?Number(r.month):new Date().getMonth();date=`${yr}-${String(mo+1).padStart(2,'0')}-01`;}
     return{id:r.id,deal_id:r.dealId||r.projectId||null,date,
       category:r.category||"",description:r.note||r.description||"",
-      amount:Number(r.amount)||0,supplier:r.supplier||"",receipt_no:r.receiptNo||""};
+      amount:Number(r.amount)||0,supplier:r.supplier||"",receipt_no:r.receiptNo||"",
+      bank_account:r.bankAccount||null};
   };
   const toSbPR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null, item:r.itemName||r.item||"",
@@ -3754,7 +3755,7 @@ export default function App(){
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
   const[expModal,  setExpModal] =useState(false);
-  const[expForm,   setExpForm]  =useState({month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",projectId:null,receipt:""});
+  const[expForm,   setExpForm]  =useState({expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",projectId:null,bankAccount:"",receipt:""});
   const[editExpId, setEditExpId]=useState(null);
   const[infModal,  setInfModal] =useState(false);
   const[infForm,   setInfForm]  =useState({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
@@ -4194,14 +4195,14 @@ export default function App(){
   const proj=selProj?{...emptyProject(),...(projs[selProj]||{})}:null;
   const projDeal=selProj?deals.find(d=>d.id===selProj):null;
 
-  const openAddExp=(projId=null)=>{setExpForm({month:new Date().getMonth(),category:"Materials",amount:"",note:"",projectId:projId,receipt:""});setEditExpId(null);setExpModal(true);};
+  const openAddExp=(projId=null,date=null)=>{setExpForm({expDate:date||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",projectId:projId,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
   const saveExp=(overrideData)=>{
     const data=overrideData||expForm;
     if(!data.amount||!data.note) return;
     const rec={...data,amount:Number(data.amount),id:editExpId||uid()};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
-    if(isSupabaseReady()) sbSyncOne("expenses",rec,toSbExpense);
+    if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>console.error("FabHub expense save:",e.message));
     setEditExpId(null);
     setExpModal(false);
   };
@@ -7866,7 +7867,7 @@ export default function App(){
         {/* ── CASH POSITION TAB ── */}
         {finTab==="cash"&&(
           <>
-            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} infs={infs} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut}/>
+            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps}/>
           </>
         )}
 
@@ -8332,13 +8333,13 @@ export default function App(){
         <DailyCashPosition
           cashPositions={cashPositions}
           saveDayPos={saveDayPos}
-          infs={infs}
           wonDeals={wonDeals}
           billings={billings}
           totRev={totRev}
           totExp={totExp}
           totColl={totColl}
           totOut={totOut}
+          exps={exps}
         />
       </Wrap>
     );
@@ -9290,7 +9291,8 @@ export default function App(){
                       <div style={{fontSize:".75rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
                         <span style={{background:"#f1f5f9",borderRadius:20,padding:"1px 8px",fontWeight:600}}>{e.category}</span>
                         {proj?<span style={{color:"#8b5cf6"}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</span>:<span style={{color:"#94a3b8"}}>Company-wide</span>}
-                        <span>{e.date||MONTHS[e.month]}</span>
+                        <span>{e.expDate||MONTHS[e.month]}</span>
+                        {e.bankAccount&&(()=>{const bk=BANKS.find(b=>b.id===e.bankAccount);return bk?<span style={{color:bk.color,fontWeight:600}}>🏦 {bk.short}</span>:null;})()}
                         {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{color:"#3b82f6",textDecoration:"none",fontWeight:600}}>📎 Receipt</a>}
                       </div>
                     </div>
@@ -11851,13 +11853,11 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
 
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
-function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totRev,totExp,totColl,totOut}){
+function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[]}){
   const[selDate,setSelDate]=useState(today);
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
   const[histOpen,setHistOpen]=useState(false);
-  const[txForm,setTxForm]=useState({description:"",amount:"",category:"Online Transaction (Bizlink)"});
-  const TX_CATS=["Online Transaction (Bizlink)","Check Float","Supplier Payment","Loan Payment","Payroll","Utilities","Fund Transfer","Other"];
   const mob=window.innerWidth<768;
 
   // Billing-derived metrics
@@ -11953,12 +11953,12 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
     }
   };
 
-  // Auto-pull today's FabHub collections
+  // Auto-pull today's FabHub collections — billing payments received on selDate
   const todayInflows=useMemo(()=>{
-    const mo=new Date(selDate).getMonth();
-    // Simple: sum inflows for the selected month (daily breakdown not available)
-    return infs.filter(i=>i.month===mo).reduce((s,i)=>s+i.amount,0);
-  },[infs,selDate]);
+    let total=0;
+    (billings||[]).forEach(b=>{(b.payments||[]).forEach(p=>{if(p.date===selDate) total+=Number(p.amount||0);});});
+    return total;
+  },[billings,selDate]);
 
   const f=(path,val)=>{
     setSaved(false);
@@ -11994,13 +11994,26 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
     return todayInflows+n(pos.collections.manualAmt);
   },[todayInflows,pos.collections.manualAmt]);
 
-  // Transactions total (deductions / outflows)
+  // Accounting expenses for the selected date (drives Today's Transactions)
+  // Legacy expenses (pre-migration) have no expDate — match by month/year on the 1st of that month only
+  const dateExps=useMemo(()=>exps.filter(e=>{
+    if(e.expDate) return e.expDate===selDate;
+    if(e.month!=null){
+      const d=new Date(selDate);
+      const isFirstOfMonth=selDate.endsWith("-01");
+      return isFirstOfMonth&&e.month===d.getMonth()&&(e.year==null||e.year===d.getFullYear());
+    }
+    return false;
+  }),[exps,selDate]);
+
+  // Transactions total — sum of accounting expenses for the day
   const totalLess=useMemo(()=>{
-    return (pos.transactions||[]).reduce((s,t)=>s+n(t.amount),0);
-  },[pos.transactions]);
+    return dateExps.reduce((s,e)=>s+Number(e.amount||0),0);
+  },[dateExps]);
 
   // Total Cash Available = Total Book Balance - Less
-  // Book balance = what bank confirms; if not filled, use ending balance
+  // Book balance = what bank confirms; if not filled, fall back to ending balance
+  const bookUnreconciled=bankTotals.book===0&&bankTotals.end>0; // warn user when BOOK is blank but END is filled
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
   const totalCashAvailable=workingBook+totalCollections-totalLess; // Working capital only — Unionbank (capital) excluded
 
@@ -12014,19 +12027,22 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
 
   const exportDCPCSV=()=>{
     const dates=Object.keys(cashPositions).sort();
-    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Collections","Less Total","Cash Available","Notes"]];
+    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Billing Collections","Manual Collections","Total Collections","Expenses (Accounting)","Cash Available","Notes"]];
     dates.forEach(date=>{
       const pos=cashPositions[date];if(!pos)return;
-      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.end||0),0);
-      const less=Number(pos.less?.bizlink||0)+Number(pos.less?.checkFloat||0)+Number(pos.less?.otherAmt||0);
-      const coll=Number(pos.collections?.manualAmt||0);
+      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.book||pos.banks?.[b]?.end||0),0);
+      let billingColl=0;
+      (billings||[]).forEach(b=>{(b.payments||[]).forEach(p=>{if(p.date===date) billingColl+=Number(p.amount||0);});});
+      const manualColl=Number(pos.collections?.manualAmt||0);
+      const totalColl=billingColl+manualColl;
+      const lessTotal=exps.filter(e=>e.expDate===date).reduce((s,e)=>s+Number(e.amount||0),0);
       rows.push([date,
         pos.banks?.bpi?.beg||0,pos.banks?.bpi?.end||0,
         pos.banks?.metro?.beg||0,pos.banks?.metro?.end||0,
         pos.banks?.china?.beg||0,pos.banks?.china?.end||0,
         pos.banks?.bdo?.beg||0,pos.banks?.bdo?.end||0,
         pos.banks?.security?.beg||0,pos.banks?.security?.end||0,
-        wc.toFixed(2),coll.toFixed(2),less.toFixed(2),(wc+coll-less).toFixed(2),
+        wc.toFixed(2),billingColl.toFixed(2),manualColl.toFixed(2),totalColl.toFixed(2),lessTotal.toFixed(2),(wc+totalColl-lessTotal).toFixed(2),
         pos.notes||""
       ]);
     });
@@ -12222,8 +12238,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
             <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center",borderRight:"2px solid #6ee7b7",position:"sticky",left:0,zIndex:2}}>COLLECTIONS</div>
             <div style={{padding:"8px 12px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:".75rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>
-                🔗 FabHub Auto: ₱{fmt2(todayInflows)}
-                <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
+                🔗 Billing Payments: ₱{fmt2(todayInflows)}
+                <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(payments received on {selDate})</span>
               </span>
               <CurrInp
                 value={pos.collections.manualAmt||""}
@@ -12276,41 +12292,40 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
         </div>
       </div>
 
-      {/* Today's Transactions — outflows / deductions */}
+      {/* Today's Transactions — from Accounting tab expenses */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
         <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <div>
             <span style={{fontWeight:700,color:"#f87171",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📤 Today's Transactions</span>
-            <span style={{fontSize:".72rem",color:"rgba(255,255,255,.4)",marginLeft:8}}>Outflows, deductions & fund movements</span>
+            <span style={{fontSize:".72rem",color:"rgba(255,255,255,.4)",marginLeft:8}}>Expenses logged in Accounting for this date</span>
           </div>
-          {(pos.transactions||[]).length>0&&<span style={{fontWeight:800,color:"#f87171",fontSize:".9rem"}}>−₱{fmt2(totalLess)}</span>}
+          {dateExps.length>0&&<span style={{fontWeight:800,color:"#f87171",fontSize:".9rem"}}>−₱{fmt2(totalLess)}</span>}
         </div>
-        {(pos.transactions||[]).length===0&&<div style={{padding:"18px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No transactions recorded yet. Add outflows below.</div>}
-        {(pos.transactions||[]).map((tx,i)=>(
-          <div key={tx.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff"}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{tx.description&&tx.description!==tx.category?tx.description:tx.category}</div>
-              {tx.description&&tx.description!==tx.category&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{tx.category}</div>}
+        {dateExps.length===0&&<div style={{padding:"18px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No expenses logged in Accounting for {selDate}. Go to the <b>Accounting</b> tab and log an expense with this date to see it here. <span style={{fontSize:".75rem",display:"block",marginTop:4,color:"#cbd5e1"}}>Legacy expenses (saved without a specific date) appear only on the 1st of their recorded month.</span></div>}
+        {dateExps.map((e,i)=>{
+          const bank=e.bankAccount?BANKS.find(b=>b.id===e.bankAccount):null;
+          return(
+            <div key={e.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff"}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{e.note||e.description||e.category}</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1,display:"flex",gap:8}}>
+                  <span>{e.category}</span>
+                  {bank&&<span style={{color:bank.color,fontWeight:600}}>· {bank.short}</span>}
+                </div>
+              </div>
+              <div style={{fontWeight:700,color:"#dc2626",fontSize:".88rem",minWidth:110,textAlign:"right"}}>₱{fmt2(e.amount)}</div>
             </div>
-            <div style={{fontWeight:700,color:"#dc2626",fontSize:".88rem",minWidth:110,textAlign:"right"}}>₱{fmt2(tx.amount)}</div>
-            <button onClick={()=>{setPos(p=>({...p,transactions:(p.transactions||[]).filter((_,j)=>j!==i)}));setSaved(false);}}
-              style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,cursor:"pointer",color:"#dc2626",fontSize:".75rem",padding:"3px 9px",flexShrink:0,fontFamily:"inherit",lineHeight:1.4}}>✕</button>
-          </div>
-        ))}
-        <div style={{padding:"12px 16px",background:"#fef2f2",borderTop:"1.5px solid #fee2e2",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          <select value={txForm.category} onChange={e=>setTxForm(f=>({...f,category:e.target.value}))}
-            style={{border:"1.5px solid #fca5a5",borderRadius:6,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",flexShrink:0}}>
-            {TX_CATS.map(c=><option key={c}>{c}</option>)}
-          </select>
-          <input type="text" value={txForm.description} onChange={e=>setTxForm(f=>({...f,description:e.target.value}))}
-            placeholder="Description (optional)"
-            style={{...inpStyle,flex:1,minWidth:120,textAlign:"left",borderColor:"#fca5a5"}}/>
-          <CurrInp value={txForm.amount} onChange={e=>setTxForm(f=>({...f,amount:e.target.value}))}
-            style={{...inpStyle,width:130,borderColor:"#fca5a5",flexShrink:0}}/>
-          <button onClick={()=>{if(!n(txForm.amount))return;const nt={id:String(Date.now()),category:txForm.category,description:txForm.description||txForm.category,amount:txForm.amount};setPos(p=>({...p,transactions:[...(p.transactions||[]),nt]}));setSaved(false);setTxForm(f=>({...f,description:"",amount:""}));}}
-            style={{background:"#dc2626",border:"none",borderRadius:6,padding:"7px 16px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700,flexShrink:0}}>+ Add</button>
-        </div>
+          );
+        })}
       </div>
+
+      {/* Reconciliation warning */}
+      {bookUnreconciled&&(
+        <div style={{background:"#fffbeb",border:"1.5px solid #fcd34d",borderRadius:10,padding:"10px 16px",marginBottom:12,fontSize:".82rem",color:"#92400e",display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:"1rem"}}>⚠️</span>
+          <span><b>Book Balance not filled.</b> Working capital is using Ending Balance as a fallback — fill in the <b>BOOK BALANCE</b> row above to confirm today's reconciled position.</span>
+        </div>
+      )}
 
       {/* Position Summary */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
