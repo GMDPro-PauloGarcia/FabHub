@@ -11886,12 +11886,12 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
     }
   };
 
-  // Auto-pull today's FabHub collections
+  // Auto-pull today's FabHub collections — billing payments received on selDate
   const todayInflows=useMemo(()=>{
-    const mo=new Date(selDate).getMonth();
-    // Simple: sum inflows for the selected month (daily breakdown not available)
-    return infs.filter(i=>i.month===mo).reduce((s,i)=>s+i.amount,0);
-  },[infs,selDate]);
+    let total=0;
+    (billings||[]).forEach(b=>{(b.payments||[]).forEach(p=>{if(p.date===selDate) total+=Number(p.amount||0);});});
+    return total;
+  },[billings,selDate]);
 
   const f=(path,val)=>{
     setSaved(false);
@@ -11950,19 +11950,22 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
 
   const exportDCPCSV=()=>{
     const dates=Object.keys(cashPositions).sort();
-    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Collections","Less Total","Cash Available","Notes"]];
+    const rows=[["Date","BPI Beg","BPI End","Metrobank Beg","Metrobank End","Chinabank Beg","Chinabank End","BDO Beg","BDO End","Security Beg","Security End","Working Capital","Billing Collections","Manual Collections","Total Collections","Expenses (Accounting)","Cash Available","Notes"]];
     dates.forEach(date=>{
       const pos=cashPositions[date];if(!pos)return;
-      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.end||0),0);
-      const less=Number(pos.less?.bizlink||0)+Number(pos.less?.checkFloat||0)+Number(pos.less?.otherAmt||0);
-      const coll=Number(pos.collections?.manualAmt||0);
+      const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.book||pos.banks?.[b]?.end||0),0);
+      let billingColl=0;
+      (billings||[]).forEach(b=>{(b.payments||[]).forEach(p=>{if(p.date===date) billingColl+=Number(p.amount||0);});});
+      const manualColl=Number(pos.collections?.manualAmt||0);
+      const totalColl=billingColl+manualColl;
+      const lessTotal=exps.filter(e=>e.expDate===date).reduce((s,e)=>s+Number(e.amount||0),0);
       rows.push([date,
         pos.banks?.bpi?.beg||0,pos.banks?.bpi?.end||0,
         pos.banks?.metro?.beg||0,pos.banks?.metro?.end||0,
         pos.banks?.china?.beg||0,pos.banks?.china?.end||0,
         pos.banks?.bdo?.beg||0,pos.banks?.bdo?.end||0,
         pos.banks?.security?.beg||0,pos.banks?.security?.end||0,
-        wc.toFixed(2),coll.toFixed(2),less.toFixed(2),(wc+coll-less).toFixed(2),
+        wc.toFixed(2),billingColl.toFixed(2),manualColl.toFixed(2),totalColl.toFixed(2),lessTotal.toFixed(2),(wc+totalColl-lessTotal).toFixed(2),
         pos.notes||""
       ]);
     });
@@ -12158,8 +12161,8 @@ function DailyCashPosition({cashPositions,saveDayPos,infs,wonDeals,billings,totR
             <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center",borderRight:"2px solid #6ee7b7",position:"sticky",left:0,zIndex:2}}>COLLECTIONS</div>
             <div style={{padding:"8px 12px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:".75rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>
-                🔗 FabHub Auto: ₱{fmt2(todayInflows)}
-                <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(from logged inflows this month)</span>
+                🔗 Billing Payments: ₱{fmt2(todayInflows)}
+                <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(payments received on {selDate})</span>
               </span>
               <CurrInp
                 value={pos.collections.manualAmt||""}
