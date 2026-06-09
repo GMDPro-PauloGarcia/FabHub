@@ -6325,7 +6325,7 @@ export default function App(){
 
   // ── CALENDAR — Sales gets follow-up view; all other roles get ConstructionCalendar
   if(page==="calendar") return role==="Sales"?(
-    <Wrap><SalesCalendarView deals={deals} session={session} role={role}/></Wrap>
+    <Wrap><SalesCalendarView deals={deals} session={session} role={role} pcards={pcards} jos={jos}/></Wrap>
   ):(
     <ConstructionCalendar
       wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
@@ -11279,7 +11279,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
 }
 
 // ─── SALES CALENDAR VIEW ─────────────────────────────────────────────────────
-function SalesCalendarView({deals, session, role}){
+function SalesCalendarView({deals, session, role, pcards, jos}){
   const todayStr=new Date().toISOString().slice(0,10);
   const[calDate,setCalDate]=useState(()=>{const n=new Date();return{y:n.getFullYear(),m:n.getMonth()};});
   const AE_COLORS={"Paulo Garcia":"#3b82f6","Paolo Gomez":"#8b5cf6","April Gail De Ello":"#ec4899","Jena De Asis":"#f59e0b","Don Wyn Celmar":"#10b981"};
@@ -11307,6 +11307,14 @@ function SalesCalendarView({deals, session, role}){
       if(!events[day]) events[day]=[];
       events[day].push({label:d.client,type:"acquired",ae:d.salesOwner});
     }
+    // Project target turnover date (from project card)
+    const pc=pcards?.[d.id];
+    if(pc?.targetEndDate?.startsWith(monthStr)){
+      const day=pc.targetEndDate.slice(8,10);
+      if(!events[day]) events[day]=[];
+      const jo=(jos||[]).find(j=>j.dealId===d.id);
+      events[day].push({label:d.client,type:"turnover",ceNo:d.ceNo,color:"#3b82f6",icon:"🏗",pm:jo?.pm1||pc?.pm1});
+    }
   });
 
   const cells=[];
@@ -11322,7 +11330,7 @@ function SalesCalendarView({deals, session, role}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📅 Sales Calendar</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Follow-up dates and deal activity for the team</div>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Follow-ups, deal activity, and project turnover dates</div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           <button onClick={prevMonth} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",cursor:"pointer",fontWeight:700,fontFamily:"inherit",fontSize:".85rem",color:"#475569"}}>←</button>
@@ -11365,11 +11373,15 @@ function SalesCalendarView({deals, session, role}){
             return(
               <div key={day} style={{minHeight:90,padding:"6px 8px",borderRight:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9",background:isToday?"#eff6ff":isPast?"#fafafa":"#fff",position:"relative"}}>
                 <div style={{fontWeight:isToday?800:500,fontSize:".8rem",color:isToday?"#1d4ed8":"#475569",marginBottom:4,width:24,height:24,borderRadius:"50%",background:isToday?"#1d4ed8":"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:isToday?"#fff":"#475569"}}>{day}</div>
-                {evts.slice(0,3).map((ev,i)=>(
-                  <div key={i} title={ev.label+(ev.ceNo?" · "+ev.ceNo:"")} style={{background:aeColor(ev.ae)+"22",borderLeft:`3px solid ${aeColor(ev.ae)}`,borderRadius:"0 4px 4px 0",padding:"2px 5px",marginBottom:2,fontSize:".62rem",fontWeight:600,color:"#0f172a",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"default"}}>
-                    {ev.type==="followup"?"📅 ":"🆕 "}{ev.label}
+                {evts.slice(0,3).map((ev,i)=>{
+                  const clr=ev.color||aeColor(ev.ae);
+                  const icon=ev.icon||(ev.type==="followup"?"📅":"🆕");
+                  return(
+                  <div key={i} title={ev.label+(ev.ceNo?" · "+ev.ceNo:"")+(ev.pm?" · PM: "+ev.pm:"")+(ev.type==="turnover"?" · Turnover":"")} style={{background:clr+"22",borderLeft:`3px solid ${clr}`,borderRadius:"0 4px 4px 0",padding:"2px 5px",marginBottom:2,fontSize:".62rem",fontWeight:600,color:"#0f172a",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"default"}}>
+                    {icon} {ev.label}
                   </div>
-                ))}
+                  );
+                })}
                 {evts.length>3&&<div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>+{evts.length-3} more</div>}
               </div>
             );
@@ -11379,7 +11391,7 @@ function SalesCalendarView({deals, session, role}){
 
       {/* Legend */}
       <div style={{marginTop:12,display:"flex",gap:16,flexWrap:"wrap"}}>
-        <span style={{fontSize:".72rem",color:"#64748b"}}>📅 Follow-up date &nbsp; 🆕 Date acquired</span>
+        <span style={{fontSize:".72rem",color:"#64748b"}}>📅 Follow-up date &nbsp; 🆕 Date acquired &nbsp; 🏗 Target turnover</span>
         {Object.entries(AE_COLORS).map(([ae,clr])=>(
           <span key={ae} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#64748b"}}>
             <span style={{width:10,height:10,borderRadius:2,background:clr,display:"inline-block"}}/>
