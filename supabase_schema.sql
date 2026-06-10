@@ -59,6 +59,8 @@ CREATE TABLE IF NOT EXISTS job_orders (
   comms_link            TEXT,
   scope_notes           TEXT,
   special_instructions  TEXT,
+  designer              TEXT,
+  location              TEXT,
   budget_status         TEXT DEFAULT 'QS Budget Pending',
   status                TEXT DEFAULT 'Active',
   issued_date           DATE,
@@ -101,8 +103,9 @@ CREATE TABLE IF NOT EXISTS expenses (
   description TEXT,
   amount      NUMERIC DEFAULT 0,
   supplier    TEXT,
-  receipt_no  TEXT,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  receipt_no   TEXT,
+  bank_account TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 6. INFLOWS ────────────────────────────────────────────
@@ -199,35 +202,45 @@ CREATE TABLE IF NOT EXISTS addenda (
 
 -- ── 11. SWATCHES ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS swatches (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id     UUID REFERENCES deals(id) ON DELETE SET NULL,
-  name        TEXT,
-  category    TEXT,
-  qty         NUMERIC DEFAULT 0,
-  unit        TEXT,
-  supplier    TEXT,
-  ref_link    TEXT,
-  swatch_link TEXT,
-  status      TEXT DEFAULT 'To Buy',
-  notes       TEXT,
-  est_cost    NUMERIC DEFAULT 0,
-  added_by    TEXT,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id             UUID REFERENCES deals(id) ON DELETE SET NULL,
+  name                TEXT,
+  category            TEXT,
+  qty                 NUMERIC DEFAULT 0,
+  unit                TEXT,
+  supplier            TEXT,
+  ref_link            TEXT,
+  swatch_link         TEXT,
+  status              TEXT DEFAULT 'To Buy',
+  notes               TEXT,
+  est_cost            NUMERIC DEFAULT 0,
+  added_by            TEXT,
+  client_approved_by  TEXT,
+  client_approved_at  TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 12. CHECKLISTS ────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS checklists (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  deal_id     UUID REFERENCES deals(id) ON DELETE CASCADE,
-  type        TEXT DEFAULT 'Task',
-  title       TEXT,
-  description TEXT,
-  status      TEXT DEFAULT 'Pending',
-  assigned_to TEXT,
-  due_date    DATE,
-  risk_note   TEXT,
-  sort_order  INTEGER DEFAULT 0,
-  created_at  TIMESTAMPTZ DEFAULT NOW()
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id             UUID REFERENCES deals(id) ON DELETE CASCADE,
+  type                TEXT DEFAULT 'Task',
+  title               TEXT,
+  description         TEXT,
+  status              TEXT DEFAULT 'Pending',
+  assigned_to         TEXT,
+  due_date            DATE,
+  risk_note           TEXT,
+  sort_order          INTEGER DEFAULT 0,
+  dept                TEXT,
+  priority            TEXT DEFAULT 'Normal',
+  notes               TEXT,
+  supplier            TEXT,
+  created_by          TEXT,
+  what_could_go_wrong TEXT,
+  qty                 NUMERIC DEFAULT 0,
+  unit                TEXT DEFAULT 'pcs',
+  created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 13. ACTIVITY LOG ──────────────────────────────────────
@@ -415,12 +428,16 @@ CREATE TABLE IF NOT EXISTS subcontractors (
 
 -- ── 24. USER PROFILES ─────────────────────────────────────
 CREATE TABLE IF NOT EXISTS user_profiles (
-  id         UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  name       TEXT,
-  username   TEXT UNIQUE,
-  role       TEXT DEFAULT 'Sales',
-  email      TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  id            UUID PRIMARY KEY,
+  name          TEXT,
+  full_name     TEXT,
+  username      TEXT UNIQUE,
+  role          TEXT DEFAULT 'Sales',
+  title         TEXT,
+  status        TEXT DEFAULT 'active',
+  password_hash TEXT,
+  email         TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 25. APP SETTINGS ──────────────────────────────────────
@@ -428,6 +445,71 @@ CREATE TABLE IF NOT EXISTS app_settings (
   key        TEXT PRIMARY KEY,
   value      JSONB,
   updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── 26. PAYABLES ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS payables (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  vendor      TEXT,
+  amount      NUMERIC DEFAULT 0,
+  due_date    DATE,
+  project_id  UUID REFERENCES deals(id) ON DELETE SET NULL,
+  category    TEXT DEFAULT 'Supplier',
+  invoice_ref TEXT,
+  notes       TEXT,
+  status      TEXT DEFAULT 'Unpaid',
+  paid_date   DATE,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  created_by  TEXT
+);
+
+-- ── 27. LOANS ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS loans (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lender           TEXT,
+  type             TEXT DEFAULT 'Bank Loan',
+  principal        NUMERIC DEFAULT 0,
+  disbursed_date   DATE,
+  term_months      INTEGER,
+  interest_rate    NUMERIC DEFAULT 0,
+  monthly_payment  NUMERIC DEFAULT 0,
+  notes            TEXT,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── 28. LOAN PAYMENTS ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS loan_payments (
+  id       UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  loan_id  UUID REFERENCES loans(id) ON DELETE CASCADE,
+  amount   NUMERIC DEFAULT 0,
+  date     DATE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── 29. STOCK MOVEMENTS ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS stock_movements (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  item_id     UUID REFERENCES inventory_items(id) ON DELETE SET NULL,
+  move_type   TEXT,
+  qty         NUMERIC DEFAULT 0,
+  unit_cost   NUMERIC DEFAULT 0,
+  deal_id     UUID REFERENCES deals(id) ON DELETE SET NULL,
+  notes       TEXT,
+  date        DATE,
+  recorded_by TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ── 30. AE UPDATES (Sales daily updates) ──────────────────
+CREATE TABLE IF NOT EXISTS ae_updates (
+  id       TEXT PRIMARY KEY,
+  by       TEXT,
+  role     TEXT,
+  date     DATE,
+  time     TEXT,
+  text     TEXT,
+  deal_id  UUID REFERENCES deals(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ============================================================
@@ -446,7 +528,8 @@ DECLARE
     'projects','project_cards','project_card_dept_tasks',
     'project_card_dept_status','project_budgets','cash_positions',
     'design_request_forms','inventory_items','suppliers',
-    'subcontractors','user_profiles','app_settings'
+    'subcontractors','user_profiles','app_settings',
+    'payables','loans','loan_payments','stock_movements','ae_updates'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
