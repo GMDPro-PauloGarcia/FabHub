@@ -4743,6 +4743,24 @@ export default function App(){
   // Always keep ref current so Wrap's stale closure can read the latest nav element
   mobileNavRef.current = isMobile ? <MobileBottomNav/> : null;
 
+  // ── SYNC FAILURE BANNER — must be declared BEFORE Wrap so the closure captures it initialized ─
+  const SyncBanner=sbReady&&deals.length===0&&isSupabaseReady()?(
+    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#fef2f2",borderBottom:"2px solid #fca5a5",padding:"10px 20px",display:"flex",alignItems:"center",gap:12,justifyContent:"center",fontSize:".82rem",fontFamily:"'Segoe UI',sans-serif"}}>
+      <span style={{color:"#991b1b",fontWeight:700}}>⚠ Data not loaded from server.</span>
+      <span style={{color:"#b91c1c"}}>Supabase returned 0 deals. This is usually an RLS or session issue.</span>
+      <button disabled={syncRetry} onClick={async()=>{
+        setSyncRetry(true);
+        const {data:{session:s}}=await supabase.auth.getSession();
+        console.info("[FabHub] Manual sync — Supabase session:",s?.user?.id||"none");
+        await loadAllFromSupabase();
+        setSyncRetry(false);
+        toastEmit("Sync complete — deals: "+deals.length);
+      }} style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:syncRetry?"not-allowed":"pointer"}}>
+        {syncRetry?"Syncing…":"↺ Retry Sync"}
+      </button>
+    </div>
+  ):null;
+
   const Wrap=React.useCallback(({children})=>{
     const W=navCollapsed?64:220;
     const alreadyWrapped=useContext(WrapCtx);
@@ -4892,23 +4910,6 @@ export default function App(){
   // ── AUTH GATE ─────────────────────────────────────────────────────────────
   if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register} sbReady={sbReady}/><Toaster/></>;
 
-  // ── SYNC FAILURE BANNER — shown when logged in but Supabase returned no deals ─
-  const SyncBanner=sbReady&&deals.length===0&&isSupabaseReady()?(
-    <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#fef2f2",borderBottom:"2px solid #fca5a5",padding:"10px 20px",display:"flex",alignItems:"center",gap:12,justifyContent:"center",fontSize:".82rem",fontFamily:"'Segoe UI',sans-serif"}}>
-      <span style={{color:"#991b1b",fontWeight:700}}>⚠ Data not loaded from server.</span>
-      <span style={{color:"#b91c1c"}}>Supabase returned 0 deals. This is usually an RLS or session issue.</span>
-      <button disabled={syncRetry} onClick={async()=>{
-        setSyncRetry(true);
-        const {data:{session:s}}=await supabase.auth.getSession();
-        console.info("[FabHub] Manual sync — Supabase session:",s?.user?.id||"none");
-        await loadAllFromSupabase();
-        setSyncRetry(false);
-        toastEmit("Sync complete — deals: "+deals.length);
-      }} style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:syncRetry?"not-allowed":"pointer"}}>
-        {syncRetry?"Syncing…":"↺ Retry Sync"}
-      </button>
-    </div>
-  ):null;
 
 
   if(page==="home"){
