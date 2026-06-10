@@ -3733,11 +3733,11 @@ export default function App(){
     upUsers(us=>[...us,newUser]);
     if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
   };
-  const changePw    =(oldPw,newPw)=>{
+  const changePw    =async(oldPw,newPw)=>{
     const u=users.find(x=>x.id===session?.userId);
-    if(!u||!checkPw(oldPw,u.passwordHash)) return "Current password is incorrect.";
+    if(!u||!(await checkPw(oldPw,u.passwordHash,u.username))) return "Current password is incorrect.";
     if(newPw.length<6) return "New password must be at least 6 characters.";
-    const n={...u,passwordHash:hashPw(newPw)};
+    const n={...u,passwordHash:await sha256Hash(newPw,u.username)};
     upUsers(us=>us.map(x=>x.id===u.id?n:x));
     if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});
     return null;
