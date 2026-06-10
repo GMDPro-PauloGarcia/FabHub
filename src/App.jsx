@@ -375,8 +375,7 @@ const emptyDayPosition = (date) => ({
   banks: Object.fromEntries(BANKS.map(b=>[b.id, emptyBankRow()])),
   collections: {
     fabhubAmt: 0,
-    manualAmt: "",
-    manualNote: "",
+    manualCollections: [],
   },
   ytd: {
     supplierPayable: "",
@@ -2420,8 +2419,7 @@ export default function App(){
         },
         collections:{
           fabhubAmt:0,
-          manualAmt: c.manual_collection_amt>0?String(c.manual_collection_amt):"",
-          manualNote:c.manual_collection_note||"",
+          manualCollections: typeof c.manual_collections==="string"?JSON.parse(c.manual_collections||"[]"):(c.manual_collections||[]),
         },
         transactions:typeof c.transactions==='string'?JSON.parse(c.transactions||'[]'):(c.transactions||[]),
         ytd:{
@@ -2628,8 +2626,7 @@ export default function App(){
       await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
     }
     if(budgets){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
-    if(cashPositions){Object.entries(cashPositions).forEach(([date,c])=>{const nb=(bk,k)=>Number(c.banks?.[bk]?.[k])||0;const payload={date,bpi_beg:nb("bpi","beg"),bpi_book:nb("bpi","book"),bpi_end:nb("bpi","end"),metrobank_beg:nb("metro","beg"),metrobank_book:nb("metro","book"),metrobank_end:nb("metro","end"),chinabank_beg:nb("china","beg"),chinabank_book:nb("china","book"),chinabank_end:nb("china","end"),bdo_beg:nb("bdo","beg"),bdo_book:nb("bdo","book"),bdo_end:nb("bdo","end"),secbank_beg:nb("security","beg"),secbank_book:nb("security","book"),secbank_end:nb("security","end"),unionbank_beg:nb("union","beg"),unionbank_book:nb("union","book"),unionbank_end:nb("union","end"),manual_collection_amt:Number(c.collections?.manualAmt)||0,manual_collection_note:c.collections?.manualNote||"",transactions:JSON.stringify(c.transactions||[]),ytd_supplier_payable:Number(c.ytd?.supplierPayable)||0,ytd_loans_payable:Number(c.ytd?.loansPayable)||0,notes:c.notes||""};sbUpsert("cash_positions",payload,"date").catch(()=>{});});}
-    if(infs?.length){Promise.all(infs.map(r=>sbUpsert("inflows",{id:r.id,deal_id:r.dealId||r.projectId||null,date:r.date||r.month||null,amount:Number(r.amount)||0,source:r.source||"",ref_no:r.refNo||"",note:r.note||""},'id'))).catch(e=>console.error("inflows migrate:",e.message));}
+        manual_collections: JSON.stringify(pos.collections?.manualCollections||[]),
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
   },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
@@ -3450,8 +3447,7 @@ export default function App(){
         bdo_beg:      nb("bdo","beg"),       bdo_book:      nb("bdo","book"),      bdo_end:      nb("bdo","end"),
         secbank_beg:  nb("security","beg"),  secbank_book:  nb("security","book"), secbank_end:  nb("security","end"),
         unionbank_beg:nb("union","beg"),     unionbank_book:nb("union","book"),    unionbank_end:nb("union","end"),
-        manual_collection_amt: Number(pos.collections?.manualAmt)||0,
-        manual_collection_note:pos.collections?.manualNote||"",
+        manual_collections: JSON.stringify(pos.collections?.manualCollections||[]),
         ytd_supplier_payable:Number(pos.ytd?.supplierPayable)||0,
         ytd_loans_payable:   Number(pos.ytd?.loansPayable)  ||0,
         notes:pos.notes||"",
@@ -12135,8 +12131,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
   // Collections total
   const totalCollections=useMemo(()=>{
-    return todayInflows+n(pos.collections.manualAmt);
-  },[todayInflows,pos.collections.manualAmt]);
+    return todayInflows+(pos.collections.manualCollections||[]).reduce((s,r)=>s+Number(r.amount||0),0);
+  },[todayInflows,pos.collections.manualCollections]);
 
   // Accounting expenses for the selected date (drives Today's Transactions)
   // Legacy expenses (pre-migration) have no expDate — match by month/year on the 1st of that month only
@@ -12177,7 +12173,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       const wc=['bpi','metro','china','bdo','security'].reduce((s,b)=>s+Number(pos.banks?.[b]?.book||pos.banks?.[b]?.end||0),0);
       let billingColl=0;
       (billings||[]).forEach(b=>{(b.payments||[]).forEach(p=>{if(p.date===date) billingColl+=Number(p.amount||0);});});
-      const manualColl=Number(pos.collections?.manualAmt||0);
+      const manualColl=(pos.collections?.manualCollections||[]).reduce((s,r)=>s+Number(r.amount||0),0);
       const totalColl=billingColl+manualColl;
       const lessTotal=exps.filter(e=>e.expDate===date).reduce((s,e)=>s+Number(e.amount||0),0);
       rows.push([date,
@@ -12378,27 +12374,47 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
         {/* Collections section */}
         <div style={{background:"#f0fdf4",borderBottom:"1px solid #d1fae5",borderTop:"2px solid #6ee7b7"}}>
+          {/* Header row */}
           <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px"}}>
             <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center",borderRight:"2px solid #6ee7b7",position:"sticky",left:0,zIndex:2}}>COLLECTIONS</div>
-            <div style={{padding:"8px 12px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:".75rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>
-                🔗 Billing Payments: ₱{fmt2(todayInflows)}
-                <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:4}}>(payments received on {selDate})</span>
-              </span>
-              <CurrInp
-                value={pos.collections.manualAmt||""}
-                onChange={e=>f("collections.manualAmt",e.target.value)}
-                style={{...inpStyle,width:150,borderColor:"#6ee7b7"}}/>
-              <input type="text"
-                key={`coll-note-${selDate}`}
-                value={pos.collections.manualNote||""}
-                onChange={e=>f("collections.manualNote",e.target.value)}
-                placeholder="Note (e.g. cash deposit, cheque)"
-                style={{...inpStyle,flex:1,minWidth:120,textAlign:"left",borderColor:"#6ee7b7"}}/>
+            <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:".75rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>🔗 Billing Payments: ₱{fmt2(todayInflows)}</span>
+              <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400}}>(payments received on {selDate})</span>
             </div>
-            <div style={{padding:"8px 12px",textAlign:"right",fontWeight:800,color:"#059669",fontSize:".88rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-              {fmt2(totalCollections)}
+            <div style={{padding:"8px 12px",textAlign:"right",fontWeight:800,color:"#059669",fontSize:".88rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>{fmt2(totalCollections)}</div>
+          </div>
+          {/* Manual collection rows */}
+          {(pos.collections.manualCollections||[]).map((row,ri)=>(
+            <div key={row.id||ri} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #d1fae5"}}>
+              <div style={{...labelCell,background:"#f0fdf4",borderRight:"1px solid #d1fae5",position:"sticky",left:0,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <button onClick={()=>f("collections.manualCollections",(pos.collections.manualCollections||[]).filter((_,j)=>j!==ri))} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"2px 8px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".78rem",fontFamily:"inherit"}}>✕</button>
+              </div>
+              <div style={{padding:"6px 12px",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                <input
+                  type="text"
+                  value={row.note||""}
+                  onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],note:e.target.value};f("collections.manualCollections",mc);}}
+                  placeholder="Source / note (e.g. Paolo Reyes cheque)"
+                  style={{...inpStyle,flex:1,minWidth:140,textAlign:"left",borderColor:"#6ee7b7"}}/>
+                <select
+                  value={row.bank||""}
+                  onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],bank:e.target.value};f("collections.manualCollections",mc);}}
+                  style={{...inpStyle,width:110,textAlign:"left",borderColor:"#6ee7b7",paddingRight:4}}>
+                  <option value="">Bank…</option>
+                  {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
+                </select>
+              </div>
+              <div style={{padding:"6px 8px",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+                <CurrInp
+                  value={row.amount||""}
+                  onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],amount:e.target.value};f("collections.manualCollections",mc);}}
+                  style={{...inpStyle,width:110,borderColor:"#6ee7b7"}}/>
+              </div>
             </div>
+          ))}
+          {/* Add row button */}
+          <div style={{borderTop:"1px dashed #bbf7d0",padding:"6px 12px 6px 212px"}}>
+            <button onClick={()=>{const mc=[...(pos.collections.manualCollections||[]),{id:uid(),note:"",bank:"",amount:""}];f("collections.manualCollections",mc);}} style={{background:"#dcfce7",border:"1.5px dashed #6ee7b7",borderRadius:8,padding:"4px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#059669",cursor:"pointer"}}>+ Add collection</button>
           </div>
         </div>
 
