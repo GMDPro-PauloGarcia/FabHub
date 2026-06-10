@@ -3630,6 +3630,8 @@ export default function App(){
   const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"),[deals]);
   const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
+  // Depends on both wonDeals.length AND projs key count so it re-runs after Supabase loads projs
+  const projsKeyCount=Object.keys(projs).length;
   useEffect(()=>{
     const missing=wonDeals.filter(d=>!projs[d.id]);
     if(missing.length>0){
@@ -3638,7 +3640,7 @@ export default function App(){
       upProjs(ps=>({...ps,...patch}));
     }
   // eslint-disable-next-line
-  },[wonDeals.length]);
+  },[wonDeals.length,projsKeyCount]);
 
   // Auto-mark Finance DONE when project is fully paid
   useEffect(()=>{
