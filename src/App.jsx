@@ -635,42 +635,58 @@ const GMD_CLIENTS = [
 ];
 
 // ─── DEFAULT ACCOUNTS ─────────────────────────────────────────────────────────
-// Simple hash — not cryptographic, just obfuscation for an internal tool
-const hashPw = pw => btoa(pw + ":gmd-salt-2026").split("").reverse().join("");
-const checkPw = (pw, hash) => hashPw(pw) === hash;
+// Password hashing — SHA-256 via Web Crypto API (async)
+// Legacy btoa hashes (pre-migration) are detected by the absence of the "sha256:" prefix
+// and auto-upgraded to SHA-256 on first successful login.
+const legacyHashPw = pw => btoa(pw + ":gmd-salt-2026").split("").reverse().join("");
+const sha256Hash = async (pw, username="") => {
+  const raw = pw + username.toLowerCase() + ":gmd-fabhub-2026";
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+  return "sha256:" + Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+};
+// hashPw is async — use await everywhere it's called
+const hashPw = (pw, username="") => sha256Hash(pw, username);
+// checkPw handles both new SHA-256 and legacy btoa hashes transparently
+const checkPw = async (pw, hash, username="") => {
+  if(!hash) return false;
+  if(hash.startsWith("sha256:")) return (await sha256Hash(pw, username)) === hash;
+  return legacyHashPw(pw) === hash; // legacy path for migration
+};
+// Synchronous legacy hash still used for DEFAULT_USERS seed data only
+const legacyHashPwSync = pw => legacyHashPw(pw);
 
 const DEFAULT_USERS = [
   // ── Owners / Management ──────────────────────────────────────────────────
-  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u01", name:"Paulo Garcia", title:"CEO",       username:"paulo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u02", name:"Mar Mungcal", title:"COO",        username:"mar",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
   // ── Operations ───────────────────────────────────────────────────────────
-  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
-  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:hashPw("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u03", name:"Arrius Catubay", title:"Operations Director",     username:"arrius",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u04", name:"Ryon Santiago",      username:"ryon",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u05", name:"David Melendez",     username:"david",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u06", name:"Jay Bernardo",       username:"jay",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u07", name:"Angelo Nogra",       username:"angelo",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u08", name:"Arvin Jaca",         username:"arvin",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u09", name:"Jessie Singun",      username:"jessie",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u10", name:"Anthony Nogra",      username:"thony",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
+  { id:"u11", name:"Steve Jazmin",       username:"steve",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"ProjectMover",   status:"active", createdAt:today },
   // ── Sales ─────────────────────────────────────────────────────────────────
-  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:hashPw("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
-  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
-  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:hashPw("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u12", name:"Paolo Gomez", title:"Sales Manager",        username:"paolo",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",      status:"active", createdAt:today },
+  { id:"u13", name:"Jena De Asis",       username:"jena",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u14", name:"Don Wyn Celmar",     username:"wyn",      passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
+  { id:"u15", name:"April Gail De Ello", username:"gail",     passwordHash:legacyHashPwSync("Sales2026!"), role:"Sales",        status:"active", createdAt:today },
   // ── Cost Control ──────────────────────────────────────────────────────────
-  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:hashPw("GMD2026!"),   role:"Finance",      status:"active", createdAt:today },
-  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:hashPw("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
+  { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Finance",      status:"active", createdAt:today },
+  { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
   // ── QS / Cost Estimator ───────────────────────────────────────────────────
-  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:hashPw("GMD2026!"),   role:"QS",           status:"active", createdAt:today },
+  { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"QS",           status:"active", createdAt:today },
   // ── Warehouse ─────────────────────────────────────────────────────────────
-  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:hashPw("GMD2026!"),   role:"Warehouse",    status:"active", createdAt:today },
+  { id:"u24", name:"Warehouse",          username:"warehouse",passwordHash:legacyHashPwSync("GMD2026!"),   role:"Warehouse",    status:"active", createdAt:today },
   // ── Design ────────────────────────────────────────────────────────────────
-  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
-  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:hashPw("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u18", name:"Gab Florita",        username:"gab",      passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u19", name:"Miaa Villoria",      username:"miaa",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u20", name:"Miel Vidallo",       username:"miel",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u21", name:"Adrian Adriano",     username:"adrian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
+  { id:"u22", name:"Tisha Leyva",        username:"tisha",    passwordHash:legacyHashPwSync("GMD2026!"),   role:"Design",       status:"active", createdAt:today },
 ];
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
@@ -1903,14 +1919,15 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
           const[showCur,setShowCur]=useState(false);
           const[showNew,setShowNew]=useState(false);
 
-          const savePassword=()=>{
+          const savePassword=async()=>{
             const u=users.find(x=>x.id===session?.userId);
             if(!u){setMsg({type:"error",text:"Session error. Please log out and log back in."});return;}
-            if(!checkPw(curPw,u.passwordHash)){setMsg({type:"error",text:"Current password is incorrect."});return;}
+            if(!(await checkPw(curPw,u.passwordHash,u.username))){setMsg({type:"error",text:"Current password is incorrect."});return;}
             if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
             if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
             if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
-            (upUsersExt||setUsers)(us=>us.map(x=>x.id===u.id?{...x,passwordHash:hashPw(newPw)}:x));
+            const newHash=await sha256Hash(newPw,u.username);
+            (upUsersExt||setUsers)(us=>us.map(x=>x.id===u.id?{...x,passwordHash:newHash}:x));
             setCurPw(""); setNewPw(""); setConfPw("");
             setMsg({type:"success",text:"✅ Password changed successfully! Use your new password next time you log in."});
             logActivityExt&&logActivityExt(null,"Password Changed","User changed their password");
@@ -3463,7 +3480,9 @@ export default function App(){
   const saveBotSettings=async(data)=>{
     const n={...data};
     setBotSettings(n);
-    localStorage.setItem(KEYS.botsettings,JSON.stringify(n));
+    // Store only chatIds in localStorage — never the bot token
+    const localSafe={chatIds:n.chatIds,hideValueInBots:n.hideValueInBots};
+    localStorage.setItem(KEYS.botsettings,JSON.stringify(localSafe));
     if(isSupabaseReady()) await sbUpsert('app_settings',{key:'botsettings',value:n,updated_at:new Date().toISOString()},'key');
   };
 
@@ -3479,7 +3498,8 @@ export default function App(){
           token=row.value.token;
           ids=row.value.chatIds;
           setBotSettings(row.value);
-          localStorage.setItem(KEYS.botsettings,JSON.stringify(row.value));
+          // Only cache chatIds locally — never the token
+          localStorage.setItem(KEYS.botsettings,JSON.stringify({chatIds:row.value.chatIds,hideValueInBots:row.value.hideValueInBots}));
         }
       }catch{}
     }
@@ -3621,23 +3641,29 @@ export default function App(){
 
 
   // ── Auth helpers ───────────────────────────────────────────────────────────
-  const login=(username,password)=>{
+  const login=async(username,password)=>{
     const u=users.find(x=>x.username.toLowerCase()===username.toLowerCase().trim());
     if(!u) return "Username not found.";
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
     if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-    if(!checkPw(password,u.passwordHash)) return "Incorrect password.";
+    const valid=await checkPw(password,u.passwordHash,u.username);
+    if(!valid) return "Incorrect password.";
+    // Auto-upgrade legacy btoa hash to SHA-256 on successful login
+    if(!u.passwordHash.startsWith("sha256:")){
+      const newHash=await sha256Hash(password,u.username);
+      const upgraded={...u,passwordHash:newHash};
+      upUsers(us=>us.map(x=>x.id===u.id?upgraded:x));
+      if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(upgraded),'id').catch(()=>{});
+    }
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
     logActivity(null,"Login",u.role,sess.name);
-    // Set default landing page per role
     const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home"};
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
-    // Force a fresh Supabase load after login — critical on new devices with empty localStorage
     loadAllFromSupabase();
-    return null; // null = success
+    return null;
   };
   const logout=async()=>{
     // Sign out of Supabase if connected
@@ -3649,21 +3675,23 @@ export default function App(){
     localStorage.removeItem(KEYS.session);
     localStorage.removeItem(KEYS.role);
   };
-  const register=(name,username,password,requestedRole)=>{
+  const register=async(name,username,password,requestedRole)=>{
     if(!name||!username||!password) return "All fields are required.";
     if(users.find(u=>u.username.toLowerCase()===username.toLowerCase())) return "Username already taken.";
     if(password.length<6) return "Password must be at least 6 characters.";
-    const newUser={id:"u"+Date.now(),name,username:username.toLowerCase(),passwordHash:hashPw(password),role:requestedRole,status:"pending",createdAt:today};
+    const uname=username.toLowerCase();
+    const newUser={id:"u"+Date.now(),name,username:uname,passwordHash:await sha256Hash(password,uname),role:requestedRole,status:"pending",createdAt:today};
     upUsers(us=>[...us,newUser]);
-    return null; // null = success
+    return null;
   };
   const approveUser =(id,role)=>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"active",role};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const rejectUser  =(id)    =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"rejected"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deactivateUser=(id)  =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,status:"inactive"};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
   const deleteUser  =(id)    =>{upUsers(us=>us.filter(u=>u.id!==id));if(isSupabaseReady())sbDelete('user_profiles',id).catch(()=>{});};
-  const resetPw     =(id,pw) =>upUsers(us=>us.map(u=>{if(u.id!==id)return u;const n={...u,passwordHash:hashPw(pw)};if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});return n;}));
-  const createUser  =(name,username,password,role,title)=>{
-    const newUser={id:"u"+Date.now(),name:name.trim(),username:username.toLowerCase().trim(),passwordHash:hashPw(password),role,title:title.trim()||role,status:"active",createdAt:today};
+  const resetPw     =async(id,pw)=>{const u=users.find(x=>x.id===id);if(!u)return;const n={...u,passwordHash:await sha256Hash(pw,u.username)};upUsers(us=>us.map(x=>x.id===id?n:x));if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});};
+  const createUser  =async(name,username,password,role,title)=>{
+    const uname=username.toLowerCase().trim();
+    const newUser={id:"u"+Date.now(),name:name.trim(),username:uname,passwordHash:await sha256Hash(password,uname),role,title:title.trim()||role,status:"active",createdAt:today};
     upUsers(us=>[...us,newUser]);
     if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
   };
@@ -11144,15 +11172,15 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
   const[ok,     setOk]     = useState("");
   const[showPw, setShowPw] = useState(false);
 
-  const doLogin = () => {
+  const doLogin = async () => {
     setErr("");
-    const e = onLogin(uname, pw);
+    const e = await onLogin(uname, pw);
     if(e) setErr(e);
   };
-  const doRegister = () => {
+  const doRegister = async () => {
     setErr(""); setOk("");
     if(pw !== pw2){ setErr("Passwords do not match."); return; }
-    const e = onRegister(name, uname, pw, reqRole);
+    const e = await onRegister(name, uname, pw, reqRole);
     if(e){ setErr(e); return; }
     setOk("✅ Account created! A Manager will approve your access shortly.");
     setName(""); setUname(""); setPw(""); setPw2("");
