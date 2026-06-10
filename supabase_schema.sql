@@ -513,8 +513,9 @@ CREATE TABLE IF NOT EXISTS ae_updates (
 
 -- ============================================================
 --  ROW LEVEL SECURITY
---  Enable RLS on all tables, then allow authenticated users
---  full access. Adjust per-role policies as needed.
+--  Enable RLS on all tables, then allow both anon + authenticated roles
+--  full access. FabHub uses its own username/password auth, not Supabase
+--  Auth — the anon key is sufficient since the app is internal.
 -- ============================================================
 
 DO $$
@@ -526,18 +527,19 @@ DECLARE
     'budget_requests','addenda','swatches','checklists','activity_log',
     'projects','project_cards','project_card_dept_tasks',
     'project_card_dept_status','project_budgets','cash_positions',
-    'design_request_forms','inventory_items','suppliers',
+    'design_request_forms','design_requests','inventory_items','suppliers',
     'subcontractors','user_profiles','app_settings',
     'payables','loans','loan_payments','stock_movements','ae_updates'
   ];
 BEGIN
   FOREACH t IN ARRAY tables LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
-    -- Drop policy first if it exists, then recreate
+    -- Drop old policy first if it exists, then recreate for both anon + authenticated
     EXECUTE format('DROP POLICY IF EXISTS "authenticated_full_access" ON %I', t);
+    EXECUTE format('DROP POLICY IF EXISTS "fabhub_full_access" ON %I', t);
     EXECUTE format(
-      'CREATE POLICY "authenticated_full_access" ON %I
-       FOR ALL TO authenticated USING (true) WITH CHECK (true)', t
+      'CREATE POLICY "fabhub_full_access" ON %I
+       FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)', t
     );
   END LOOP;
 END $$;

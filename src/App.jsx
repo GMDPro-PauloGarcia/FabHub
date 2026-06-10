@@ -3679,6 +3679,7 @@ export default function App(){
 
   // ── Auth helpers ───────────────────────────────────────────────────────────
   const login=async(username,password)=>{
+    if(users.length===0&&!sbReady) return "Still connecting to server — please wait a moment and try again.";
     const u=users.find(x=>x.username.toLowerCase()===username.toLowerCase().trim());
     if(!u) return "Username not found.";
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
@@ -12172,8 +12173,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
   // Collections total
   const totalCollections=useMemo(()=>{
-    return todayInflows+(pos.collections.manualCollections||[]).reduce((s,r)=>s+Number(r.amount||0),0);
-  },[todayInflows,pos.collections.manualCollections]);
+    return todayInflows+((pos.collections?.manualCollections)||[]).reduce((s,r)=>s+Number(r.amount||0),0);
+  },[todayInflows,pos.collections?.manualCollections]);
 
   // Accounting expenses for the selected date (drives Today's Transactions)
   // Legacy expenses (pre-migration) have no expDate — match by month/year on the 1st of that month only
