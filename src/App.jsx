@@ -14878,16 +14878,18 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           {/* Project billing summary */}
           {(()=>{
             const ms=billings.filter(b=>b.dealId===selDeal);
-            const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+            const rt=deal?.receiptType||"OR", wh=deal?.withholding||false;
+            // Net receivable per milestone (base + VAT − EWT), so summary matches each milestone's Net Due
+            const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,rt,wh).netReceivable,0);
             const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
-            const tx=calcTax(deal?.value||0,deal?.receiptType||"OR",deal?.withholding||false);
+            const tx=calcTax(deal?.value||0,rt,wh);
             return(
               <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
                 {[
                   {l:"Contract Value",v:fmt(deal?.value||0),    c:"#0f172a"},
-                  {l:"Total Billed",  v:fmt(billed),            c:"#3b82f6"},
+                  {l:"Total Billed (net)",v:fmt(billedNet),     c:"#3b82f6"},
                   {l:"Collected",     v:fmt(collected),          c:"#059669"},
-                  {l:"Outstanding",   v:fmt(Math.max(0,billed-collected)), c:billed>collected?"#ef4444":"#059669"},
+                  {l:"Outstanding",   v:fmt(Math.max(0,billedNet-collected)), c:billedNet>collected?"#ef4444":"#059669"},
                 ].map(({l,v,c})=>(
                   <div key={l} style={{textAlign:"center",padding:"10px",background:"#f8fafc",borderRadius:8}}>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
@@ -14901,7 +14903,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           {/* COC-to-Finance notification banner */}
           {(()=>{
             const ms=billings.filter(b=>b.dealId===selDeal);
-            const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+            const rt=deal?.receiptType||"OR", wh=deal?.withholding||false;
+            const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,rt,wh).netReceivable,0);
             const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
             const outstanding=Math.max(0,billed-collected);
             if(cocDeals&&cocDeals.includes(selDeal)&&outstanding>0){
@@ -15000,6 +15003,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                       </div>
                       <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:".78rem",marginBottom:8}}>
                         <span><span style={{color:"#94a3b8"}}>Base: </span>₱{n(ms.amount).toLocaleString("en-PH")}</span>
+                        {tx.vat>0&&<span><span style={{color:"#94a3b8"}}>VAT 12%: </span><strong style={{color:"#f59e0b"}}>+₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
+                        {tx.ewt>0&&<span><span style={{color:"#94a3b8"}}>EWT 2%: </span><strong style={{color:"#ef4444"}}>−₱{tx.ewt.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
                         <span><span style={{color:"#94a3b8"}}>Net Due: </span><strong style={{color:"#3b82f6"}}>₱{tx.netReceivable.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         <span><span style={{color:"#94a3b8"}}>Paid: </span><strong style={{color:"#059669"}}>₱{paidTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>
                         {balance>0&&<span><span style={{color:"#94a3b8"}}>Balance: </span><strong style={{color:"#ef4444"}}>₱{balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
