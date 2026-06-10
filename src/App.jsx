@@ -7589,13 +7589,13 @@ export default function App(){
                     })}
                   </>);
                 };
-                const ColHeader=()=>isMobile?null:(
+                function ColHeader(){return isMobile?null:(
                   <div style={{display:"grid",gridTemplateColumns:AWARD_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:580}}>
                     {["CE #","Project","Client","AE","Value","Payment",""].map((h,i)=>(
                       <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i>=4&&i<=5?"right":"left"}}>{h}</div>
                     ))}
                   </div>
-                );
+                );}
                 return(<>
                   {/* Active Awarded — one collapsible card per project type */}
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
