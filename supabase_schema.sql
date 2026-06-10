@@ -567,11 +567,12 @@ UPDATE expenses SET note = description WHERE note IS NULL AND description IS NOT
 -- 2026-06: Fix RLS — update policy to allow anon + authenticated
 -- (run the DO $$ block above to recreate all policies)
 
--- 2026-06: manual_collections in cash_positions (replaces scalar fields)
+-- 2026-06: manual_collections + approved_payments in cash_positions
 ALTER TABLE cash_positions
   DROP COLUMN IF EXISTS manual_collection_amt,
   DROP COLUMN IF EXISTS manual_collection_note,
-  ADD COLUMN IF NOT EXISTS manual_collections JSONB DEFAULT '[]';
+  ADD COLUMN IF NOT EXISTS manual_collections JSONB DEFAULT '[]',
+  ADD COLUMN IF NOT EXISTS approved_payments  JSONB DEFAULT '[]';
 
 -- ============================================================
 --  DONE.

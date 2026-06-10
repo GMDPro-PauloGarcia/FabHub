@@ -375,6 +375,7 @@ const emptyDayPosition = (date) => ({
   banks: Object.fromEntries(BANKS.map(b=>[b.id, emptyBankRow()])),
   collections: {
     fabhubAmt: 0,
+    approvedPayments: [],   // billing payment IDs Finance has approved for this day
     manualCollections: [],
   },
   ytd: {
@@ -2465,6 +2466,7 @@ export default function App(){
         },
         collections:{
           fabhubAmt:0,
+          approvedPayments: typeof c.approved_payments==="string"?JSON.parse(c.approved_payments||"[]"):(c.approved_payments||[]),
           manualCollections: typeof c.manual_collections==="string"?JSON.parse(c.manual_collections||"[]"):(c.manual_collections||[]),
         },
         transactions:typeof c.transactions==='string'?JSON.parse(c.transactions||'[]'):(c.transactions||[]),
@@ -3494,7 +3496,8 @@ export default function App(){
         bdo_beg:      nb("bdo","beg"),       bdo_book:      nb("bdo","book"),      bdo_end:      nb("bdo","end"),
         secbank_beg:  nb("security","beg"),  secbank_book:  nb("security","book"), secbank_end:  nb("security","end"),
         unionbank_beg:nb("union","beg"),     unionbank_book:nb("union","book"),    unionbank_end:nb("union","end"),
-        manual_collections: JSON.stringify(pos.collections?.manualCollections||[]),
+        manual_collections:  JSON.stringify(pos.collections?.manualCollections||[]),
+        approved_payments:   JSON.stringify(pos.collections?.approvedPayments||[]),
         ytd_supplier_payable:Number(pos.ytd?.supplierPayable)||0,
         ytd_loans_payable:   Number(pos.ytd?.loansPayable)  ||0,
         notes:pos.notes||"",
@@ -12150,12 +12153,22 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     }
   };
 
-  // Auto-pull today's FabHub collections — billing payments received on selDate
+  // All billing payments on selDate — shown for Finance to review (pending)
+  const todayPayments=useMemo(()=>{
+    const payments=[];
+    (billings||[]).forEach(b=>{
+      (b.payments||[]).forEach(p=>{
+        if(p.date===selDate) payments.push({...p, dealId:b.dealId, clientName:(wonDeals.find(d=>d.id===b.dealId)||{}).client||b.name||"Unknown"});
+      });
+    });
+    return payments;
+  },[billings,selDate,wonDeals]);
+
+  // Only payments Finance has explicitly approved count toward the balance
+  const approvedPaymentIds=useMemo(()=>new Set(pos.collections?.approvedPayments||[]),[pos.collections?.approvedPayments]);
   const todayInflows=useMemo(()=>{
-    let total=0;
-    (billings||[]).forEach(b=>{(b.payments||[]).forEach(p=>{if(p.date===selDate) total+=Number(p.amount||0);});});
-    return total;
-  },[billings,selDate]);
+    return todayPayments.filter(p=>approvedPaymentIds.has(p.id)).reduce((s,p)=>s+Number(p.amount||0),0);
+  },[todayPayments,approvedPaymentIds]);
 
   const f=(path,val)=>{
     setSaved(false);
@@ -12192,16 +12205,19 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   },[todayInflows,pos.collections?.manualCollections]);
 
   // Accounting expenses for the selected date (drives Today's Transactions)
-  // Legacy expenses (pre-migration) have no expDate — match by month/year on the 1st of that month only
-  const dateExps=useMemo(()=>exps.filter(e=>{
-    if(e.expDate) return e.expDate===selDate;
-    if(e.month!=null){
-      const d=new Date(selDate);
-      const isFirstOfMonth=selDate.endsWith("-01");
-      return isFirstOfMonth&&e.month===d.getMonth()&&(e.year==null||e.year===d.getFullYear());
-    }
-    return false;
-  }),[exps,selDate]);
+  // Exact date match preferred; fall back to month/year match for expenses without a precise date
+  const dateExps=useMemo(()=>{
+    const d=new Date(selDate);
+    const selMonth=d.getMonth();
+    const selYear=d.getFullYear();
+    return exps.filter(e=>{
+      if(e.expDate) return e.expDate===selDate;
+      if(e.month!=null){
+        return e.month===selMonth&&(e.year==null||e.year===selYear);
+      }
+      return false;
+    });
+  },[exps,selDate]);
 
   // Transactions total — sum of accounting expenses for the day
   const totalLess=useMemo(()=>{
@@ -12434,44 +12450,64 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
           {/* Header row */}
           <div style={{display:"grid",gridTemplateColumns:"200px 1fr 130px"}}>
             <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontSize:".82rem",display:"flex",alignItems:"center",borderRight:"2px solid #6ee7b7",position:"sticky",left:0,zIndex:2}}>COLLECTIONS</div>
-            <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:".75rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>🔗 Billing Payments: ₱{fmt2(todayInflows)}</span>
-              <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400}}>(payments received on {selDate})</span>
+            <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+              <span style={{fontSize:".75rem",color:"#059669",fontWeight:600}}>Finance-approved only</span>
+              {todayPayments.length>0&&<span style={{fontSize:".68rem",color:"#f59e0b",fontWeight:600,background:"#fef3c7",borderRadius:20,padding:"1px 8px"}}>{todayPayments.filter(p=>!approvedPaymentIds.has(p.id)).length} pending approval</span>}
             </div>
             <div style={{padding:"8px 12px",textAlign:"right",fontWeight:800,color:"#059669",fontSize:".88rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>{fmt2(totalCollections)}</div>
           </div>
-          {/* Manual collection rows */}
-          {(pos.collections.manualCollections||[]).map((row,ri)=>(
-            <div key={row.id||ri} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #d1fae5"}}>
-              <div style={{...labelCell,background:"#f0fdf4",borderRight:"1px solid #d1fae5",position:"sticky",left:0,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                <button onClick={()=>f("collections.manualCollections",(pos.collections.manualCollections||[]).filter((_,j)=>j!==ri))} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"2px 8px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".78rem",fontFamily:"inherit"}}>✕</button>
+
+          {/* FabHub billing payments — Finance approval gate */}
+          {todayPayments.length===0?(
+            <div style={{padding:"10px 16px",fontSize:".78rem",color:"#94a3b8",borderTop:"1px solid #d1fae5"}}>No billing payments recorded for {selDate}.</div>
+          ):todayPayments.map(p=>{
+            const approved=approvedPaymentIds.has(p.id);
+            const toggle=()=>{
+              const cur=pos.collections?.approvedPayments||[];
+              const next=approved?cur.filter(id=>id!==p.id):[...cur,p.id];
+              f("collections.approvedPayments",next);
+            };
+            return(
+              <div key={p.id} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #d1fae5",background:approved?"#f0fdf4":"#fffbeb"}}>
+                <div style={{...labelCell,background:approved?"#dcfce7":"#fef9c3",borderRight:"1px solid #d1fae5",position:"sticky",left:0,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <button onClick={toggle} style={{background:approved?"#059669":"#f59e0b",border:"none",borderRadius:6,padding:"3px 10px",cursor:"pointer",color:"#fff",fontWeight:700,fontSize:".72rem",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                    {approved?"✓ Approved":"Pending"}
+                  </button>
+                </div>
+                <div style={{padding:"7px 12px",fontSize:".82rem",color:"#1e293b"}}>
+                  <div style={{fontWeight:600}}>{p.clientName}</div>
+                  <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>Billing payment · {p.refNo||p.id?.slice(0,8)||"—"}</div>
+                </div>
+                <div style={{padding:"7px 12px",textAlign:"right",fontWeight:700,color:approved?"#059669":"#94a3b8",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+                  {fmt2(Number(p.amount||0))}
+                </div>
               </div>
-              <div style={{padding:"6px 12px",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <input
-                  type="text"
-                  value={row.note||""}
-                  onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],note:e.target.value};f("collections.manualCollections",mc);}}
-                  placeholder="Source / note (e.g. Paolo Reyes cheque)"
-                  style={{...inpStyle,flex:1,minWidth:140,textAlign:"left",borderColor:"#6ee7b7"}}/>
-                <select
-                  value={row.bank||""}
-                  onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],bank:e.target.value};f("collections.manualCollections",mc);}}
-                  style={{...inpStyle,width:110,textAlign:"left",borderColor:"#6ee7b7",paddingRight:4}}>
-                  <option value="">Bank…</option>
-                  {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
-                </select>
+            );
+          })}
+
+          {/* Manual collections — non-project cash (below FabHub payments) */}
+          <div style={{borderTop:"2px solid #6ee7b7",background:"#f8fffe"}}>
+            <div style={{padding:"6px 16px 4px",fontSize:".68rem",fontWeight:700,color:"#059669",textTransform:"uppercase",letterSpacing:".8px"}}>Other Collections (non-project)</div>
+            {(pos.collections.manualCollections||[]).map((row,ri)=>(
+              <div key={row.id||ri} style={{display:"grid",gridTemplateColumns:"200px 1fr 130px",borderTop:"1px solid #d1fae5"}}>
+                <div style={{...labelCell,background:"#f0fdf4",borderRight:"1px solid #d1fae5",position:"sticky",left:0,zIndex:2,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                  <button onClick={()=>f("collections.manualCollections",(pos.collections.manualCollections||[]).filter((_,j)=>j!==ri))} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"2px 8px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".78rem",fontFamily:"inherit"}}>✕</button>
+                </div>
+                <div style={{padding:"6px 12px",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <input type="text" value={row.note||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],note:e.target.value};f("collections.manualCollections",mc);}} placeholder="Source / note (e.g. Junk shop sale, excess materials)" style={{...inpStyle,flex:1,minWidth:140,textAlign:"left",borderColor:"#6ee7b7"}}/>
+                  <select value={row.bank||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],bank:e.target.value};f("collections.manualCollections",mc);}} style={{...inpStyle,width:110,textAlign:"left",borderColor:"#6ee7b7",paddingRight:4}}>
+                    <option value="">Bank…</option>
+                    {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
+                  </select>
+                </div>
+                <div style={{padding:"6px 8px",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+                  <CurrInp value={row.amount||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],amount:e.target.value};f("collections.manualCollections",mc);}} style={{...inpStyle,width:110,borderColor:"#6ee7b7"}}/>
+                </div>
               </div>
-              <div style={{padding:"6px 8px",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-                <CurrInp
-                  value={row.amount||""}
-                  onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],amount:e.target.value};f("collections.manualCollections",mc);}}
-                  style={{...inpStyle,width:110,borderColor:"#6ee7b7"}}/>
-              </div>
+            ))}
+            <div style={{borderTop:"1px dashed #bbf7d0",padding:"6px 12px 6px 212px"}}>
+              <button onClick={()=>{const mc=[...(pos.collections.manualCollections||[]),{id:uid(),note:"",bank:"",amount:""}];f("collections.manualCollections",mc);}} style={{background:"#dcfce7",border:"1.5px dashed #6ee7b7",borderRadius:8,padding:"4px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#059669",cursor:"pointer"}}>+ Add collection</button>
             </div>
-          ))}
-          {/* Add row button */}
-          <div style={{borderTop:"1px dashed #bbf7d0",padding:"6px 12px 6px 212px"}}>
-            <button onClick={()=>{const mc=[...(pos.collections.manualCollections||[]),{id:uid(),note:"",bank:"",amount:""}];f("collections.manualCollections",mc);}} style={{background:"#dcfce7",border:"1.5px dashed #6ee7b7",borderRadius:8,padding:"4px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#059669",cursor:"pointer"}}>+ Add collection</button>
           </div>
         </div>
 
