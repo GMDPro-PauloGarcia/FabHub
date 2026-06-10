@@ -2301,7 +2301,7 @@ export default function App(){
             if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
             const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})):null;
             if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
-            const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
+            const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
             const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})):null;
             if(_prs){setPrs(_prs);idbE.push([KEYS.prs,_prs]);}
@@ -2528,8 +2528,9 @@ export default function App(){
   const toSbExpense = r=>{
     let date=r.expDate||null;
     if(!date){const yr=r.year||new Date().getFullYear();const mo=r.month!=null?Number(r.month):new Date().getMonth();date=`${yr}-${String(mo+1).padStart(2,'0')}-01`;}
+    const desc=r.note||r.description||"";
     return{id:r.id,deal_id:r.dealId||r.projectId||null,date,
-      category:r.category||"",description:r.note||r.description||"",
+      category:r.category||"",description:desc,note:desc,
       amount:Number(r.amount)||0,supplier:r.supplier||"",receipt_no:r.receiptNo||"",
       bank_account:r.bankAccount||null};
   };

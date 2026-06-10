@@ -555,5 +555,24 @@ ALTER PUBLICATION supabase_realtime ADD TABLE
   project_card_dept_status;
 
 -- ============================================================
---  DONE. All 25 tables created.
+--  MIGRATIONS — run these if you have an existing database
+-- ============================================================
+
+-- 2026-06: Add note column to expenses (app uses note internally,
+--          description is kept for backward compat)
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS note TEXT;
+-- Backfill: copy existing description into note
+UPDATE expenses SET note = description WHERE note IS NULL AND description IS NOT NULL;
+
+-- 2026-06: Fix RLS — update policy to allow anon + authenticated
+-- (run the DO $$ block above to recreate all policies)
+
+-- 2026-06: manual_collections in cash_positions (replaces scalar fields)
+ALTER TABLE cash_positions
+  DROP COLUMN IF EXISTS manual_collection_amt,
+  DROP COLUMN IF EXISTS manual_collection_note,
+  ADD COLUMN IF NOT EXISTS manual_collections JSONB DEFAULT '[]';
+
+-- ============================================================
+--  DONE.
 -- ============================================================
