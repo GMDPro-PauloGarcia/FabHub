@@ -807,6 +807,43 @@ const Sel=({value,onChange,children})=>(
     {children}
   </select>
 );
+
+// Searchable project picker — replaces the long <select> for project linking
+const SearchSelect=({value,onChange,options,placeholder="Search…",noneLabel="— None —",noneValue=null})=>{
+  const [query,setQuery]=useState("");
+  const [open,setOpen]=useState(false);
+  const ref=useRef(null);
+  const selected=options.find(o=>o.value===value);
+  const filtered=query.trim()===""?options:options.filter(o=>o.label.toLowerCase().includes(query.toLowerCase()));
+  useEffect(()=>{
+    const handler=e=>{if(ref.current&&!ref.current.contains(e.target)) setOpen(false);};
+    document.addEventListener("mousedown",handler);
+    return()=>document.removeEventListener("mousedown",handler);
+  },[]);
+  const choose=v=>{onChange(v);setOpen(false);setQuery("");};
+  return(
+    <div ref={ref} style={{position:"relative"}}>
+      <div style={{display:"flex",alignItems:"center",border:"1.5px solid "+(open?"#6366f1":"#e2e8f0"),borderRadius:8,background:"#fff",cursor:"pointer",transition:"border-color .15s"}} onClick={()=>{setOpen(o=>!o);setQuery("");}}>
+        {open?(
+          <input autoFocus value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={e=>{if(e.key==="Escape"){setOpen(false);setQuery("");}if(e.key==="Enter"&&filtered.length>0) choose(filtered[0].value);}} placeholder={placeholder} style={{flex:1,border:"none",outline:"none",padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"transparent",borderRadius:8}} onClick={e=>e.stopPropagation()}/>
+        ):(
+          <div style={{flex:1,padding:"10px 13px",fontSize:".87rem",color:selected?"#1e293b":"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{selected?selected.label:noneLabel}</div>
+        )}
+        <span style={{padding:"0 10px",color:"#94a3b8",fontSize:".75rem",flexShrink:0}}>{open?"▲":"▼"}</span>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:999,maxHeight:240,overflowY:"auto"}}>
+          <div onClick={()=>choose(noneValue)} style={{padding:"10px 13px",fontSize:".85rem",color:"#94a3b8",cursor:"pointer",borderBottom:"1px solid #f1f5f9",fontStyle:"italic"}} onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>{noneLabel}</div>
+          {filtered.length===0?(
+            <div style={{padding:"10px 13px",fontSize:".82rem",color:"#94a3b8",textAlign:"center"}}>No projects match "{query}"</div>
+          ):filtered.map(o=>(
+            <div key={o.value} onClick={()=>choose(o.value)} style={{padding:"9px 13px",fontSize:".85rem",color:o.value===value?"#6366f1":"#1e293b",fontWeight:o.value===value?700:400,cursor:"pointer",background:o.value===value?"#f0f0ff":"transparent",borderBottom:"1px solid #f8fafc"}} onMouseEnter={e=>{if(o.value!==value)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=o.value===value?"#f0f0ff":"transparent";}}>{o.label}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 // Focus-safe raw input — use this instead of bare <input> inside forms
 const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max,rows})=>{
   const base={...sx};
@@ -1681,11 +1718,15 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
               {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
             </Sel>
           </Fld>
-          <Fld label="Link to Project" hint="Choose the project this expense belongs to, or leave as Company-wide">
-            <Sel value={form.projectId||"company"} onChange={e=>f("projectId",e.target.value==="company"?null:e.target.value)}>
-              <option value="company">Company-wide (salaries, rent, overhead)</option>
-              {projList.map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)}
-            </Sel>
+          <Fld label="Link to Project" hint="Type to search by project name or CE number">
+            <SearchSelect
+              value={form.projectId||null}
+              onChange={v=>f("projectId",v)}
+              options={projList.map(d=>({value:d.id,label:(d.contact||d.client)+(d.ceNo?" · "+d.ceNo:"")}))}
+              placeholder="Search project or CE number…"
+              noneLabel="Company-wide (salaries, rent, overhead)"
+              noneValue={null}
+            />
           </Fld>
           <Fld label="Receipt / Invoice Link" hint="Paste a Google Drive, email, or any URL link to the receipt">
             <Inp type="url" value={form.receipt||""} onChange={e=>f("receipt",e.target.value)} placeholder="https://drive.google.com/… (optional)"/>
