@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles} from './supabaseClient';
+import{idbGetMany,idbSetMany}from'./idb.js';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 // GMD Real 13-Stage Workflow
@@ -2171,36 +2172,53 @@ export default function App(){
   // ── SUPABASE: Initialize auth + load all data ──────────────────────────────
   useEffect(()=>{
     const init = async () => {
-      // Step 1: Load localStorage instantly so app is usable immediately
+      // Step 1: Session/role from localStorage (sync, tiny)
       try {
         const s=localStorage.getItem(KEYS.session);
         if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); }
         const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
-        const d=localStorage.getItem(KEYS.deals); if(d){const parsed=JSON.parse(d);setDeals(parsed.map(x=>({...x,stage:normalizeStage(x.stage)})));}
-        const p=localStorage.getItem(KEYS.projects); if(p) setProjs(JSON.parse(p));
-        const e=localStorage.getItem(KEYS.expenses); if(e) setExps(JSON.parse(e));
-        const i=localStorage.getItem(KEYS.inflows); if(i) setInfs(JSON.parse(i));
-        const j=localStorage.getItem(KEYS.jos); if(j) setJos(JSON.parse(j));
-        const sw=localStorage.getItem(KEYS.swatches); if(sw) setSwatches(JSON.parse(sw));
-        const cl=localStorage.getItem(KEYS.checklist); if(cl) setChecklist(JSON.parse(cl));
-        const u=localStorage.getItem(KEYS.users); if(u) setUsers(JSON.parse(u));
-        const cp=localStorage.getItem(KEYS.cashPos); if(cp) setCashPos(JSON.parse(cp));
-        const pr=localStorage.getItem(KEYS.prs); if(pr) setPrs(JSON.parse(pr));
-        const mr=localStorage.getItem(KEYS.mreqs); if(mr) setMreqs(JSON.parse(mr));
-        const br=localStorage.getItem(KEYS.breqs); if(br) setBreqs(JSON.parse(br));
-        const drf=localStorage.getItem(KEYS.drfs); if(drf) setDrfs(JSON.parse(drf));
-        const sup=localStorage.getItem(KEYS.suppliers); if(sup) setSuppliers(JSON.parse(sup));
-        const sc=localStorage.getItem(KEYS.subcons); if(sc) setSubcons(JSON.parse(sc));
-        const bs=localStorage.getItem(KEYS.botsettings); if(bs) setBotSettings(JSON.parse(bs));
-        const cc=localStorage.getItem(KEYS.customclients); if(cc) setCustomClients(JSON.parse(cc));
-        const cpData=localStorage.getItem("gmdv5:clientprofiles"); if(cpData) setClientProfiles(JSON.parse(cpData));
-        const ad=localStorage.getItem(KEYS.addenda); if(ad) setAddenda(JSON.parse(ad));
-        const bg=localStorage.getItem(KEYS.budgets); if(bg) setBudgets(JSON.parse(bg));
-        const bl=localStorage.getItem(KEYS.billings); if(bl) setBillings(JSON.parse(bl));
-        const vv=localStorage.getItem(KEYS.vvip); if(vv) setVvip(JSON.parse(vv));
-        const al=localStorage.getItem(KEYS.actlog); if(al) setActLog(JSON.parse(al));
-        const pc=localStorage.getItem(KEYS.pcards); if(pc) setPcards(JSON.parse(pc));
-      } catch(err){ console.error("localStorage load error:", err); }
+      } catch {}
+      // Step 1b: Data from IndexedDB — async, no 5 MB limit
+      try {
+        const idb=await idbGetMany([
+          KEYS.deals,KEYS.projects,KEYS.expenses,KEYS.inflows,KEYS.jos,
+          KEYS.swatches,KEYS.checklist,KEYS.users,KEYS.cashPos,KEYS.prs,
+          KEYS.mreqs,KEYS.breqs,KEYS.drfs,KEYS.suppliers,KEYS.subcons,
+          KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
+          KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
+          KEYS.stocklog,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
+          "gmdv5:aeUpdates"
+        ]);
+        if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
+        if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
+        if(idb[KEYS.expenses])    setExps(idb[KEYS.expenses]);
+        if(idb[KEYS.inflows])     setInfs(idb[KEYS.inflows]);
+        if(idb[KEYS.jos])         setJos(idb[KEYS.jos]);
+        if(idb[KEYS.swatches])    setSwatches(idb[KEYS.swatches]);
+        if(idb[KEYS.checklist])   setChecklist(idb[KEYS.checklist]);
+        if(idb[KEYS.users])       setUsers(idb[KEYS.users]);
+        if(idb[KEYS.cashPos])     setCashPos(idb[KEYS.cashPos]);
+        if(idb[KEYS.prs])         setPrs(idb[KEYS.prs]);
+        if(idb[KEYS.mreqs])       setMreqs(idb[KEYS.mreqs]);
+        if(idb[KEYS.breqs])       setBreqs(idb[KEYS.breqs]);
+        if(idb[KEYS.drfs])        setDrfs(idb[KEYS.drfs]);
+        if(idb[KEYS.suppliers])   setSuppliers(idb[KEYS.suppliers]);
+        if(idb[KEYS.subcons])     setSubcons(idb[KEYS.subcons]);
+        if(idb[KEYS.botsettings]) setBotSettings(idb[KEYS.botsettings]);
+        if(idb[KEYS.customclients]){const cc=idb[KEYS.customclients];setCustomClients(cc);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
+        if(idb["gmdv5:clientprofiles"]) setClientProfiles(idb["gmdv5:clientprofiles"]);
+        if(idb[KEYS.addenda])     setAddenda(idb[KEYS.addenda]);
+        if(idb[KEYS.budgets])     setBudgets(idb[KEYS.budgets]);
+        if(idb[KEYS.billings])    setBillings(idb[KEYS.billings]);
+        if(idb[KEYS.vvip]){const sv=new Set(idb[KEYS.vvip]);setVvip(sv);}
+        if(idb[KEYS.actlog])      setActLog(idb[KEYS.actlog]);
+        if(idb[KEYS.pcards])      setPcards(idb[KEYS.pcards]);
+        if(idb[KEYS.inventory])   setInventory(idb[KEYS.inventory]);
+        if(idb[KEYS.stocklog])    setStocklog(idb[KEYS.stocklog]);
+        if(idb["gmdv5:payables"]) setPayables(idb["gmdv5:payables"]);
+        if(idb["gmdv5:loans"])    setLoans(idb["gmdv5:loans"]);
+        if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
+      } catch(err){ console.error("IDB load error:", err); }
       setReady(true);
 
       // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
@@ -2218,50 +2236,66 @@ export default function App(){
           // Diagnostic — visible in browser console AND stored for the sync banner
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
-            if(data.deals?.length)  setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null})));
-            if(data.jos?.length)    setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
-            if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
-            if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);try{localStorage.setItem(KEYS.billings,JSON.stringify(bs));}catch{}}
-            if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);try{localStorage.setItem(KEYS.expenses,JSON.stringify(mappedExps));}catch{}}
-            if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);try{localStorage.setItem(KEYS.prs,JSON.stringify(ps));}catch{}}
-            if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);try{localStorage.setItem(KEYS.mreqs,JSON.stringify(ms));}catch{}}
-            if(data.breqs?.length){const bs=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(bs);try{localStorage.setItem(KEYS.breqs,JSON.stringify(bs));}catch{}}
-            if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(as);try{localStorage.setItem(KEYS.addenda,JSON.stringify(as));}catch{}}
-            if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note}));setChecklist(cs);try{localStorage.setItem(KEYS.checklist,JSON.stringify(cs));}catch{}}
-            if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(ss);try{localStorage.setItem(KEYS.swatches,JSON.stringify(ss));}catch{}}
-            if(data.actLog?.length)  setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
+            const idbE=[];
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null})):null;
+            if(_deals){setDeals(_deals);idbE.push([KEYS.deals,_deals]);}
+            const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
+            if(_jos){setJos(_jos);idbE.push([KEYS.jos,_jos]);}
+            if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
+            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})):null;
+            if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
+            const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
+            if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})):null;
+            if(_prs){setPrs(_prs);idbE.push([KEYS.prs,_prs]);}
+            const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})):null;
+            if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
+            const _breqs=data.breqs?.length?data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})):null;
+            if(_breqs){setBreqs(_breqs);idbE.push([KEYS.breqs,_breqs]);}
+            const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})):null;
+            if(_addenda){setAddenda(_addenda);idbE.push([KEYS.addenda,_addenda]);}
+            const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})):null;
+            if(_checklist){setChecklist(_checklist);idbE.push([KEYS.checklist,_checklist]);}
+            const _swatches=data.swatches?.length?data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})):null;
+            if(_swatches){setSwatches(_swatches);idbE.push([KEYS.swatches,_swatches]);}
+            if(data.actLog?.length) setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
             if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
-            if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
-            if(data.inflows?.length) setInfs(data.inflows);
-            if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);try{localStorage.setItem("gmdv5:payables",JSON.stringify(ps));}catch{}}
-            if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);try{localStorage.setItem("gmdv5:loans",JSON.stringify(ls));}catch{}}
-            if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);localStorage.setItem(KEYS.botsettings,JSON.stringify(bs));}
-            if(data.drfs?.length){const d=data.drfs.map(drfFromSb);setDrfs(d);localStorage.setItem(KEYS.drfs,JSON.stringify(d));}
-            if(data.inventory?.length){const d=data.inventory.map(invFromSb);setInventory(d);localStorage.setItem(KEYS.inventory,JSON.stringify(d));}
-            if(data.stocklog?.length){const d=data.stocklog.map(moveFromSb);setStocklog(d);localStorage.setItem(KEYS.stocklog,JSON.stringify(d));}
-            if(data.suppliers?.length){const d=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(d);localStorage.setItem(KEYS.suppliers,JSON.stringify(d));}
-            if(data.subcontractors?.length){const d=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(d);localStorage.setItem(KEYS.subcons,JSON.stringify(d));}
-            if(data.settings?.vvip){const s=new Set(data.settings.vvip);setVvip(s);localStorage.setItem(KEYS.vvip,JSON.stringify([...s]));}
-            if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);localStorage.setItem(KEYS.customclients,JSON.stringify(cc));cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
-            if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(cp));}catch{}}
-            if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);localStorage.setItem(KEYS.projects,JSON.stringify(data.projs));}
-            // Sync to localStorage as cache
-            const ls=localStorage.setItem.bind(localStorage);
-            if(data.deals?.length)   ls(KEYS.deals,   JSON.stringify(data.deals));
-            if(data.billings?.length)ls(KEYS.billings, JSON.stringify(data.billings));
-            console.log("✅ FabHub: Loaded from Supabase — "+( data.deals?.length||0)+" deals");
-            // Load AE updates from Supabase (cross-device sync)
+            const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
+            if(_budgets){setBudgets(_budgets);idbE.push([KEYS.budgets,_budgets]);}
+            if(data.inflows?.length){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
+            const _payables=data.payables?.length?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""})):null;
+            if(_payables){setPayables(_payables);idbE.push(["gmdv5:payables",_payables]);}
+            const _loans=data.loans?.length?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
+            if(_loans){setLoans(_loans);idbE.push(["gmdv5:loans",_loans]);}
+            if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);idbE.push([KEYS.botsettings,bs]);}
+            const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
+            if(_drfs){setDrfs(_drfs);idbE.push([KEYS.drfs,_drfs]);}
+            const _inv=data.inventory?.length?data.inventory.map(invFromSb):null;
+            if(_inv){setInventory(_inv);idbE.push([KEYS.inventory,_inv]);}
+            const _stock=data.stocklog?.length?data.stocklog.map(moveFromSb):null;
+            if(_stock){setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
+            const _suppliers=data.suppliers?.length?data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by})):null;
+            if(_suppliers){setSuppliers(_suppliers);idbE.push([KEYS.suppliers,_suppliers]);}
+            const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
+            if(_subcons){setSubcons(_subcons);idbE.push([KEYS.subcons,_subcons]);}
+            const _users=data.users?.length?data.users.map(u=>({id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||"",createdAt:u.created_at||""})):null;
+            if(_users){setUsers(_users);idbE.push([KEYS.users,_users]);}
+            if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
+            if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
+            if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
+            if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);idbE.push([KEYS.projects,data.projs]);}
+            console.log("\u2705 FabHub: Loaded from Supabase \u2014 "+(data.deals?.length||0)+" deals");
             try{
               const{data:aeRows,error:aeErr}=await supabase.from('ae_updates').select('*').order('created_at',{ascending:false}).limit(300);
               if(!aeErr&&aeRows?.length){
                 const mapped=aeRows.map(r=>({id:r.id,by:r.by,role:r.role,date:r.date,time:r.time,text:r.text,dealId:r.deal_id||null}));
-                setAeUpdates(mapped);
-                try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(mapped));}catch{}
+                setAeUpdates(mapped);idbE.push(["gmdv5:aeUpdates",mapped]);
               }
             }catch{}
+            if(idbE.length) idbSetMany(idbE).catch(()=>{});
           }
         }catch(sbErr){
-          console.warn("Supabase load failed — using localStorage cache:", sbErr.message);
+          console.warn("Supabase load failed — using IDB cache:", sbErr.message);
         }finally{
           setSbReady(true);
         }
@@ -2330,24 +2364,26 @@ export default function App(){
     if(!isSupabaseReady()) return;
     const data = await sbLoadAll();
     if(!data) return;
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null}));setDeals(ds);try{localStorage.setItem(KEYS.deals,JSON.stringify(ds));}catch{}}
-    if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);try{localStorage.setItem(KEYS.jos,JSON.stringify(js));}catch{}}
-    if(Object.keys(data.pcards||{}).length) setPcards(data.pcards);
-    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);try{localStorage.setItem(KEYS.billings,JSON.stringify(bs));}catch{}}
-    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);try{localStorage.setItem(KEYS.expenses,JSON.stringify(mappedExps));}catch{}}
-    if(data.inflows?.length)     setInfs(data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no})));
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);try{localStorage.setItem(KEYS.prs,JSON.stringify(ps));}catch{}}
-    if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);try{localStorage.setItem(KEYS.mreqs,JSON.stringify(ms));}catch{}}
-    if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(bs2);try{localStorage.setItem(KEYS.breqs,JSON.stringify(bs2));}catch{}}
-    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(as);try{localStorage.setItem(KEYS.addenda,JSON.stringify(as));}catch{}}
-    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(cs);try{localStorage.setItem(KEYS.checklist,JSON.stringify(cs));}catch{}}
-    if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(ss);try{localStorage.setItem(KEYS.swatches,JSON.stringify(ss));}catch{}}
+    const idbE=[];
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null}));setDeals(ds);idbE.push([KEYS.deals,ds]);}
+    if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
+    if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
+    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
+    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
+    if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
+    if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);idbE.push([KEYS.mreqs,ms]);}
+    if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(bs2);idbE.push([KEYS.breqs,bs2]);}
+    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(as);idbE.push([KEYS.addenda,as]);}
+    if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(cs);idbE.push([KEYS.checklist,cs]);}
+    if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(ss);idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
-    if(Object.keys(data.budgets||{}).length)       setBudgets(Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])));
-    if(data.users?.length)       setUsers(data.users.map(u=>({id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||"",createdAt:u.created_at||""})));
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);try{localStorage.setItem("gmdv5:payables",JSON.stringify(ps));}catch{}}
-    if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);try{localStorage.setItem("gmdv5:loans",JSON.stringify(ls));}catch{}}
+    if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
+    if(data.users?.length){const us=data.users.map(u=>({id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||"",createdAt:u.created_at||""}));setUsers(us);idbE.push([KEYS.users,us]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);idbE.push(["gmdv5:payables",ps]);}
+    if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);idbE.push(["gmdv5:loans",ls]);}
+    if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
 
 
@@ -2535,13 +2571,11 @@ export default function App(){
     sbDelete(table,id).catch(e=>console.error("FabHub sbDelete "+table+":",e.message));
   };
 
-  // ── PERSIST (localStorage-only — Supabase writes are done per-mutation) ──
-  const persist=useCallback((key,val)=>{
+  // ── PERSIST — updates the save indicator; Supabase is the write target ──
+  // ── PERSIST — updates save indicator; Supabase is the write target ──
+  const persist=useCallback((_key,_val)=>{
     setSync("saving");
-    try{
-      localStorage.setItem(key,JSON.stringify(val));
-      setTimeout(()=>setSync("saved"),300);
-    }catch{setSync("error");}
+    setTimeout(()=>setSync("saved"),300);
   },[]);
 
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
@@ -2549,7 +2583,7 @@ export default function App(){
   // Activity log helper — called whenever something meaningful happens
   const logActivity=(dealId,action,detail,by)=>{
     const entry={id:uid(),dealId,action,detail,by:by||session?.name||"System",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
-    setActLog(prev=>{const next=[entry,...prev].slice(0,500);localStorage.setItem(KEYS.actlog,JSON.stringify(next));return next;});
+    setActLog(prev=>{const next=[entry,...prev].slice(0,500);return next;});
     if(isSupabaseReady()) sbInsert('activity_log',toSbActivity(entry)).catch(()=>{});
     if(action==="PM Update"){
       const deal=deals.find(d=>d.id===dealId);
@@ -2558,7 +2592,7 @@ export default function App(){
   };
   const upPcards    =useCallback(fn=>setPcards(p=>{const n=fn(p);persist(KEYS.pcards,n);return n;}),[persist]);
 
-  // One-time migration: push all localStorage data to Supabase
+  // One-time migration: push all IDB-cached data to Supabase on new devices
   const migrateToCloud=useCallback(async()=>{
     if(!isSupabaseReady()){toastEmit("Supabase is not connected — check environment variables","error",5000);return;}
     toastEmit("Pushing all data to cloud…","info",2500);
@@ -3764,11 +3798,11 @@ export default function App(){
   const[jumpDeal,  setJumpDeal] =useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("overview");
-  const[payables,  setPayables] =useState(()=>{try{const v=localStorage.getItem("gmdv5:payables");return v?JSON.parse(v):[];}catch{return[];}});
+  const[payables,  setPayables] =useState([]);
   const[payModal,  setPayModal] =useState(false);
   const[payForm,   setPayForm]  =useState({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
   const[editPayId, setEditPayId]=useState(null);
-  const[loans,     setLoans]    =useState(()=>{try{const v=localStorage.getItem("gmdv5:loans");return v?JSON.parse(v):[];}catch{return[];}});
+  const[loans,     setLoans]    =useState([]);
   const[loanModal, setLoanModal]=useState(false);
   const[editLoanId,setEditLoanId]=useState(null);
   const[loanPay,   setLoanPay]  =useState({});
@@ -3813,7 +3847,7 @@ export default function App(){
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "updates"
-  const[aeUpdates,    setAeUpdates]    = useState(()=>{try{const v=localStorage.getItem("gmdv5:aeUpdates");return v?JSON.parse(v):[];}catch{return[];}});
+  const[aeUpdates,    setAeUpdates]    = useState([]);
   const[aeUpdateText, setAeUpdateText] = useState("");
   const[aeUpdateDealId, setAeUpdateDealId] = useState("");
   const[aeUpdateDealType, setAeUpdateDealType] = useState("active");
@@ -4025,7 +4059,7 @@ export default function App(){
     setAeUpdates(next);
     setAeUpdateText("");
     setAeUpdateDealId("");
-    try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
+    
     if(isSupabaseReady()) sbInsert('ae_updates',{id:entry.id,by:entry.by,role:entry.role,date:entry.date,time:entry.time,text:entry.text,deal_id:entry.dealId||null}).catch(()=>{});
     logActivity(dealId||null,"AE Update",text.trim(),session?.name);
     const taggedDeal=dealId?[...wonDeals,...deals].find(d=>d.id===dealId):null;
@@ -4038,7 +4072,7 @@ export default function App(){
   const delAeUpdate=(id)=>{
     const next=aeUpdates.filter(u=>u.id!==id);
     setAeUpdates(next);
-    try{localStorage.setItem("gmdv5:aeUpdates",JSON.stringify(next));}catch{}
+    
     if(isSupabaseReady()) sbDelete('ae_updates',id).catch(()=>{});
   };
 
@@ -4209,7 +4243,7 @@ export default function App(){
   };
   const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
 
-  const upPayables=fn=>{const next=fn(payables);setPayables(next);try{localStorage.setItem("gmdv5:payables",JSON.stringify(next));}catch{}};
+  const upPayables=fn=>{const next=fn(payables);setPayables(next)};
   const savePayable=(data)=>{
     if(!data.vendor||!data.amount) return;
     const rec={...data,amount:Number(data.amount),id:editPayId||uid(),status:editPayId?(data.status||"Unpaid"):"Unpaid",createdAt:editPayId?data.createdAt:today,createdBy:session?.name||""};
@@ -4226,7 +4260,7 @@ export default function App(){
     if(isSupabaseReady()) sbDelete("payables",id).catch(()=>{});
   };
 
-  const upLoans=fn=>{const next=fn(loans);setLoans(next);try{localStorage.setItem("gmdv5:loans",JSON.stringify(next));}catch{}};
+  const upLoans=fn=>{const next=fn(loans);setLoans(next)};
   const saveLoan=(data)=>{
     if(!data.lender||!data.principal) return;
     const rec={...data,principal:Number(data.principal),monthlyPayment:Number(data.monthlyPayment||0),termMonths:Number(data.termMonths||0),interestRate:Number(data.interestRate||0),id:editLoanId||uid(),createdAt:editLoanId?data.createdAt:today,payments:editLoanId?(data.payments||[]):[]};
@@ -7639,7 +7673,7 @@ export default function App(){
             </div>
             <div style={{background:"#f0fdf4",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1.5px solid #6ee7b7"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#059669",marginBottom:8}}>Company / Client Name <span style={{color:"#ef4444"}}>*</span></div>
-              <Inp autoFocus value={quickAddClientForm.name} onChange={e=>fqac("name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const n=quickAddClientForm.name.trim();if(!n)return;const allC=[...GMD_CLIENTS,...customClients];if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};GMD_CLIENTS.push(nc);const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};const next=[...customClients,nc];setCustomClients(next);try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});if(Object.values(prof).some(v=>v)){const np={...clientProfiles,[n]:prof};setClientProfiles(np);try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(np));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});}toastEmit(`Client "${n}" added to directory.`,"success");setQuickAddClientOpen(false);resetQAC();}}} placeholder="Full company or client name…"/>
+              <Inp autoFocus value={quickAddClientForm.name} onChange={e=>fqac("name",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const n=quickAddClientForm.name.trim();if(!n)return;const allC=[...GMD_CLIENTS,...customClients];if(allC.find(c=>c.name.toLowerCase()===n.toLowerCase())){toastEmit("Client already exists.","warning");return;}const nc={name:n,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};GMD_CLIENTS.push(nc);const prof={contactPerson:quickAddClientForm.contactPerson,email:quickAddClientForm.email,phone:quickAddClientForm.phone,mobile:quickAddClientForm.mobile,website:quickAddClientForm.website,billingAddress:quickAddClientForm.billingAddress,city:quickAddClientForm.city,province:quickAddClientForm.province,zipCode:quickAddClientForm.zipCode,country:quickAddClientForm.country,tin:quickAddClientForm.tin,paymentTerms:quickAddClientForm.paymentTerms,notes:quickAddClientForm.notes};const next=[...customClients,nc];setCustomClients(next);try{localStorage.setItem(KEYS.customclients,JSON.stringify(next));}catch{}if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});if(Object.values(prof).some(v=>v)){const np={...clientProfiles,[n]:prof};setClientProfiles(np)if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});}toastEmit(`Client "${n}" added to directory.`,"success");setQuickAddClientOpen(false);resetQAC();}}} placeholder="Full company or client name…"/>
             </div>
             <div style={{background:"#f8fafc",borderRadius:10,padding:"14px 16px",marginBottom:12,border:"1px solid #e2e8f0"}}>
               <div style={{fontWeight:700,fontSize:".8rem",color:"#475569",marginBottom:10}}>📇 Name & Contact</div>
@@ -7685,7 +7719,6 @@ export default function App(){
                 if(Object.values(prof).some(v=>v)){
                   const np={...clientProfiles,[n]:prof};
                   setClientProfiles(np);
-                  try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(np));}catch{}
                   if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:np,updated_at:new Date().toISOString()},'key').catch(()=>{});
                 }
                 toastEmit(`Client "${n}" added to directory.`,"success");
@@ -8186,7 +8219,6 @@ export default function App(){
           saveClientProfile={(name,profile)=>{
             const next={...clientProfiles,[name]:profile};
             setClientProfiles(next);
-            try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(next));}catch{}
             if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
           }}
           addNewClient={(name)=>{
@@ -9432,7 +9464,6 @@ First few:
         saveClientProfile={(name,profile)=>{
           const next={...clientProfiles,[name]:profile};
           setClientProfiles(next);
-          try{localStorage.setItem("gmdv5:clientprofiles",JSON.stringify(next));}catch{}
           if(isSupabaseReady()) sbUpsert('app_settings',{key:'clientprofiles',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
         }}
         addNewClient={(name)=>{
