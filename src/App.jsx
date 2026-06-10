@@ -3685,15 +3685,23 @@ export default function App(){
 
   // ── Auth helpers ───────────────────────────────────────────────────────────
   const login=async(username,password)=>{
-    if(users.length===0&&!sbReady) return "Still connecting to server — please wait a moment and try again.";
-    const u=users.find(x=>x.username.toLowerCase()===username.toLowerCase().trim());
+    const unameLower=username.toLowerCase().trim();
+    // Always check DEFAULT_USERS first as guaranteed fallback (works before Supabase loads)
+    const defUser=DEFAULT_USERS.find(x=>x.username===unameLower);
+    let u=users.find(x=>x.username.toLowerCase()===unameLower);
+    // If Supabase hasn't loaded yet or user not in DB, fall back to DEFAULT_USERS
+    if(!u&&defUser) u={...defUser,status:"active"};
     if(!u) return "Username not found.";
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
     if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-    const valid=await checkPw(password,u.passwordHash,u.username);
+    // Try password; if DB hash is missing, fall back to DEFAULT_USERS hash
+    const hashToCheck=u.passwordHash||(defUser?.passwordHash||"");
+    let valid=hashToCheck?await checkPw(password,hashToCheck,u.username):false;
+    // Secondary check using DEFAULT_USERS hash (handles empty password_hash in Supabase)
+    if(!valid&&defUser) valid=await checkPw(password,defUser.passwordHash,u.username);
     if(!valid) return "Incorrect password.";
     // Auto-upgrade legacy btoa hash to SHA-256 on successful login
-    if(!u.passwordHash.startsWith("sha256:")){
+    if(!hashToCheck.startsWith("sha256:")){
       const newHash=await sha256Hash(password,u.username);
       const upgraded={...u,passwordHash:newHash};
       upUsers(us=>us.map(x=>x.id===u.id?upgraded:x));
