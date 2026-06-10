@@ -3630,6 +3630,8 @@ export default function App(){
   const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"),[deals]);
   const closedDeals=useMemo(()=>deals.filter(d=>d.stage==="12 · Close-Out"),[deals]);
   // Auto-create project entries for any won deal that doesn't have one yet
+  // Depends on both wonDeals.length AND projs key count so it re-runs after Supabase loads projs
+  const projsKeyCount=Object.keys(projs).length;
   useEffect(()=>{
     const missing=wonDeals.filter(d=>!projs[d.id]);
     if(missing.length>0){
@@ -3638,7 +3640,7 @@ export default function App(){
       upProjs(ps=>({...ps,...patch}));
     }
   // eslint-disable-next-line
-  },[wonDeals.length]);
+  },[wonDeals.length,projsKeyCount]);
 
   // Auto-mark Finance DONE when project is fully paid
   useEffect(()=>{
@@ -16381,7 +16383,39 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
     return Object.values(pmMap).sort((a,b)=>b.projects.length-a.projects.length);
   },[wonDeals,jos,pcards,today]);
 
-  const TABS=[{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"}];
+  // ── Calendar data-gap audit ──────────────────────────────────────────────
+  const calendarGaps=React.useMemo(()=>{
+    const gaps=[];
+    // Projects missing turnover date
+    wonDeals.forEach(d=>{
+      const pc=pcards[d.id];
+      if(!pc?.targetEndDate) gaps.push({type:"project",icon:"🏗",label:d.client||d.ceNo||"Unknown",sub:d.ceNo||"",issue:"No turnover date set",severity:"high",dealId:d.id});
+    });
+    // Projects missing PM assignment
+    wonDeals.forEach(d=>{
+      const jo=jos.find(j=>j.dealId===d.id);
+      if(!jo?.pm1) gaps.push({type:"project",icon:"👷",label:d.client||d.ceNo||"Unknown",sub:d.ceNo||"",issue:"No PM assigned",severity:"medium",dealId:d.id});
+    });
+    // Active DRFs missing design deadline
+    drfs.filter(d=>d.status!=="Done"&&!d.designDeadline).forEach(d=>{
+      const deal=wonDeals.find(x=>x.id===d.dealId);
+      gaps.push({type:"drf",icon:"📝",label:deal?.client||d.client||"Unknown",sub:d.drfNo||"DRF",issue:"No design deadline",severity:"high",dealId:d.dealId});
+    });
+    // Open POs missing delivery date
+    prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)&&!p.deliveryDate).forEach(p=>{
+      const d=wonDeals.find(x=>x.id===(p.projectId||p.dealId));
+      gaps.push({type:"po",icon:"📦",label:d?.client||"Unknown",sub:p.itemName||"PO",issue:"No delivery date",severity:"medium",dealId:d?.id});
+    });
+    // Open billings missing due date
+    billings.filter(b=>b.status!=="Fully Paid"&&b.status!=="Cancelled"&&!b.dueDate).forEach(b=>{
+      const d=wonDeals.find(x=>x.id===b.dealId);
+      gaps.push({type:"billing",icon:"💵",label:d?.client||"Unknown",sub:b.name||"Invoice",issue:"No due date",severity:"medium",dealId:d?.id});
+    });
+    return gaps;
+  },[wonDeals,pcards,jos,drfs,prs,billings]);
+  const[gapOpen,setGapOpen]=React.useState(false);
+
+  const TABS=[{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"},{id:"gaps",l:`🔍 Data Gaps${calendarGaps.length>0?" ("+calendarGaps.length+")":""}`}];
   const BTN=(p)=><button onClick={p.onClick} style={{...{background:p.active?"#1e293b":"#f8fafc",color:p.active?"#fff":"#64748b",border:`1.5px solid ${p.active?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"},...(p.style||{})}}>{p.children}</button>;
 
   return(
@@ -16393,6 +16427,39 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
         </div>
         <button onClick={()=>setPage("home")} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:"#475569",cursor:"pointer"}}>← Dashboard</button>
       </div>
+
+      {calendarGaps.length>0&&(
+        <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"10px 16px",marginBottom:14}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setGapOpen(o=>!o)}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{background:"#ef4444",color:"#fff",fontWeight:800,fontSize:".72rem",borderRadius:20,padding:"2px 8px",minWidth:24,textAlign:"center"}}>{calendarGaps.length}</span>
+              <span style={{fontWeight:700,color:"#c2410c",fontSize:".85rem"}}>Calendar data gaps — some events won't appear on the calendar</span>
+            </div>
+            <span style={{color:"#c2410c",fontSize:".78rem",fontWeight:600}}>{gapOpen?"▲ Hide":"▼ Show"}</span>
+          </div>
+          {gapOpen&&(
+            <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:4}}>
+              {[{key:"project",label:"Projects",color:"#3b82f6"},{key:"drf",label:"DRFs",color:"#ec4899"},{key:"po",label:"Purchase Orders",color:"#f97316"},{key:"billing",label:"Billings",color:"#10b981"}].map(({key,label,color})=>{
+                const items=calendarGaps.filter(g=>g.type===key);
+                if(!items.length)return null;
+                return(
+                  <div key={key}>
+                    <div style={{fontWeight:700,fontSize:".7rem",color:color,textTransform:"uppercase",letterSpacing:".5px",marginBottom:2,marginTop:4}}>{label} ({items.length})</div>
+                    {items.map((g,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",background:"#fff",borderRadius:7,border:"1px solid #fed7aa",marginBottom:3}}>
+                        <span style={{fontSize:".82rem"}}>{g.icon}</span>
+                        <span style={{fontWeight:700,color:"#0f172a",fontSize:".78rem",flex:1}}>{g.label}</span>
+                        <span style={{fontSize:".72rem",color:"#64748b"}}>{g.sub}</span>
+                        <span style={{fontSize:".7rem",fontWeight:700,color:g.severity==="high"?"#ef4444":"#f59e0b",background:g.severity==="high"?"#fef2f2":"#fefce8",border:`1px solid ${g.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:20,padding:"1px 7px"}}>{g.issue}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{display:"flex",gap:4,marginBottom:16,flexWrap:"wrap"}}>
         {TABS.map(t=><BTN key={t.id} active={calTab===t.id} onClick={()=>setCalTab(t.id)}>{t.l}</BTN>)}
@@ -16644,6 +16711,44 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
                       }
                     </div>
                   ))}
+                </div>
+              );
+            })
+          }
+        </div>
+      )}
+
+      {calTab==="gaps"&&(
+        <div>
+          <div style={{fontWeight:700,color:"#0f172a",marginBottom:4,fontSize:"1rem"}}>🔍 Calendar Data Gaps</div>
+          <div style={{fontSize:".75rem",color:"#64748b",marginBottom:14}}>These records are missing dates and won't appear on the calendar. Fill them in to keep the timeline accurate.</div>
+          {calendarGaps.length===0
+            ?<div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:12,padding:"24px",textAlign:"center",color:"#059669",fontWeight:700,fontSize:".9rem"}}>✅ No gaps found — all records have the required dates.</div>
+            :[{key:"project",label:"Projects",color:"#3b82f6",desc:"Missing turnover date or PM assignment — project won't show on the Monthly calendar or conflict/capacity tabs."},{key:"drf",label:"Design Requests (DRF)",color:"#ec4899",desc:"Active DRFs without a design deadline won't appear on the calendar."},{key:"po",label:"Purchase Orders",color:"#f97316",desc:"Open POs without a delivery date won't show on the calendar and won't trigger delivery warnings."},{key:"billing",label:"Billing Milestones",color:"#10b981",desc:"Invoices without a due date won't appear on the cash flow or billing calendar."}].map(({key,label,color,desc})=>{
+              const items=calendarGaps.filter(g=>g.type===key);
+              if(!items.length)return null;
+              return(
+                <div key={key} style={{marginBottom:16}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                    <div style={{width:10,height:10,borderRadius:"50%",background:color}}/>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{label}</span>
+                    <span style={{background:color+"22",color:color,fontSize:".7rem",fontWeight:700,borderRadius:20,padding:"1px 8px",border:`1px solid ${color}44`}}>{items.length} gap{items.length!==1?"s":""}</span>
+                  </div>
+                  <div style={{fontSize:".72rem",color:"#64748b",marginBottom:6,paddingLeft:18}}>{desc}</div>
+                  <div style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                    {items.map((g,i)=>(
+                      <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",borderBottom:i<items.length-1?"1px solid #f1f5f9":"",background:i%2===0?"#fff":"#fafafa"}}>
+                        <span style={{fontSize:".85rem",flexShrink:0}}>{g.icon}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.label}</div>
+                          {g.sub&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>{g.sub}</div>}
+                        </div>
+                        <span style={{fontSize:".7rem",fontWeight:700,flexShrink:0,color:g.severity==="high"?"#dc2626":"#d97706",background:g.severity==="high"?"#fef2f2":"#fffbeb",border:`1px solid ${g.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:20,padding:"2px 10px"}}>
+                          {g.severity==="high"?"⚠ ":"· "}{g.issue}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })
