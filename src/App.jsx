@@ -132,7 +132,7 @@ const CS_CLR    = { "To Do":"#94a3b8","In Progress":"#f59e0b",Done:"#10b981" };
 const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
 const fmtK  = n => n>=1000000?"₱"+(n/1000000).toFixed(1)+"M":n>=1000?"₱"+(n/1000).toFixed(0)+"k":"₱"+(n||0);
 const fmtPHP= n => "Php "+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-const today = new Date().toISOString().split("T")[0];
+const today=(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
 const BUSINESS_DAYS_SLA = 5;
 function bizDaysElapsed(startDateStr){
   if(!startDateStr) return 0;
@@ -9423,7 +9423,7 @@ export default function App(){
                   const rawAmt=(vals[iAmt]||"").replace(/^"|"$/g,"").trim().replace(/[\u20b1,\s]/g,"");
                   const amt=parseFloat(rawAmt);
                   if(!rawDate||isNaN(amt)||amt<=0){skipped.push(i+1);continue;}
-                  const dateVal=/^\d{4}-\d{2}-\d{2}$/.test(rawDate)?rawDate:(()=>{const d=new Date(rawDate);return isNaN(d.getTime())?null:d.toISOString().slice(0,10);})();
+                  const dateVal=/^\d{4}-\d{2}-\d{2}$/.test(rawDate)?rawDate:(()=>{const d=new Date(rawDate);if(isNaN(d.getTime()))return null;return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
                   if(!dateVal){skipped.push(i+1);continue;}
                   const catRaw=(iCat!==-1?vals[iCat]||"":"").replace(/^"|"$/g,"").trim();
                   const cat=EXP_CATS.find(c=>c.toLowerCase()===catRaw.toLowerCase())||"Other";
