@@ -9243,11 +9243,68 @@ export default function App(){
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <Btn onClick={openAddExp}>+ Log Expense</Btn>
           <button onClick={()=>{
-            const rows=[["Date","Category","Description","Amount","Project","Receipt"]];
-            exps.forEach(e=>rows.push([e.date||MONTHS[e.month]||"",e.category||"",e.note||"",Number(e.amount||0).toFixed(2),(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId))?.client||"Company-wide",e.receipt||""]));
+            const rows=[["Date","Category","Description","Amount","Bank Account","Receipt No","Project"]];
+            exps.forEach(e=>{const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));rows.push([e.expDate||`${e.year||new Date().getFullYear()}-${String((e.month||0)+1).padStart(2,"0")}-01`,e.category||"",e.note||"",Number(e.amount||0).toFixed(2),e.bankAccount||"",e.receipt||"",proj?.client||""]);});
             const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
             const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);a.download=`GMD_Expenses_${today}.csv`;a.click();
           }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
+          <label style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#166534",cursor:"pointer",display:"inline-block"}}>
+            ⬆ Import CSV
+            <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
+              const file=e.target.files?.[0];
+              e.target.value="";
+              if(!file) return;
+              const reader=new FileReader();
+              reader.onload=ev=>{
+                const text=ev.target.result;
+                const lines=text.split(/\r?\n/).filter(l=>l.trim());
+                if(lines.length<2){alert("CSV must have a header row and at least one data row.");return;}
+                const header=lines[0].split(",").map(h=>h.replace(/^"|"$/g,"").trim().toLowerCase());
+                const colIdx=(names)=>{for(const n of names){const i=header.indexOf(n);if(i!==-1)return i;}return -1;};
+                const iDate=colIdx(["date"]);
+                const iCat=colIdx(["category"]);
+                const iDesc=colIdx(["description","note","notes","desc"]);
+                const iAmt=colIdx(["amount"]);
+                const iBank=colIdx(["bank account","bank_account","bank"]);
+                const iReceipt=colIdx(["receipt no","receipt_no","receipt"]);
+                const iProj=colIdx(["project","client","project name","client name"]);
+                if(iDate===-1||iAmt===-1){alert("CSV must have at least 'Date' and 'Amount' columns.");return;}
+                const parseCSVRow=row=>{
+                  const vals=[];let cur="",inQ=false;
+                  for(let i=0;i<row.length;i++){const c=row[i];if(c==='"'){if(inQ&&row[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(c===","&&!inQ){vals.push(cur.trim());cur="";}else cur+=c;}
+                  vals.push(cur.trim());return vals;
+                };
+                const imported=[];const skipped=[];
+                for(let i=1;i<lines.length;i++){
+                  const vals=parseCSVRow(lines[i]);
+                  const rawDate=(vals[iDate]||"").replace(/^"|"$/g,"").trim();
+                  const rawAmt=(vals[iAmt]||"").replace(/^"|"$/g,"").trim().replace(/[\u20b1,\s]/g,"");
+                  const amt=parseFloat(rawAmt);
+                  if(!rawDate||isNaN(amt)||amt<=0){skipped.push(i+1);continue;}
+                  const dateVal=/^\d{4}-\d{2}-\d{2}$/.test(rawDate)?rawDate:(()=>{const d=new Date(rawDate);return isNaN(d.getTime())?null:d.toISOString().slice(0,10);})();
+                  if(!dateVal){skipped.push(i+1);continue;}
+                  const catRaw=(iCat!==-1?vals[iCat]||"":"").replace(/^"|"$/g,"").trim();
+                  const cat=EXP_CATS.find(c=>c.toLowerCase()===catRaw.toLowerCase())||"Other";
+                  const desc=(iDesc!==-1?vals[iDesc]||"":"").replace(/^"|"$/g,"").trim()||catRaw||"Imported";
+                  const bankRaw=(iBank!==-1?vals[iBank]||"":"").replace(/^"|"$/g,"").trim().toLowerCase();
+                  const bank=BANKS.find(b=>b.id===bankRaw||b.short.toLowerCase()===bankRaw||b.name.toLowerCase()===bankRaw);
+                  const projRaw=(iProj!==-1?vals[iProj]||"":"").replace(/^"|"$/g,"").trim();
+                  const projMatch=[...wonDeals,...completedDeals].find(d=>(d.client||"").toLowerCase()===projRaw.toLowerCase());
+                  imported.push({expDate:dateVal,category:cat,note:desc,amount:amt,bankAccount:bank?.id||"",receipt:(iReceipt!==-1?vals[iReceipt]||"":"").replace(/^"|"$/g,"").trim(),projectId:projMatch?.id||null});
+                }
+                if(imported.length===0){alert(`No valid rows found.${skipped.length?" Skipped rows: "+skipped.join(", "):""}`);return;}
+                const msg=`Import ${imported.length} expense${imported.length!==1?"s":""}?${skipped.length?" ("+skipped.length+" row"+(skipped.length!==1?"s":"")+" skipped)":""}
+
+First few:
+`+imported.slice(0,3).map(r=>`• ${r.expDate} | ${r.category} | ${r.note} | ₱${r.amount.toLocaleString()}`).join("\n");
+                if(!window.confirm(msg)) return;
+                const recs=imported.map(r=>({...r,amount:Number(r.amount),id:uid()}));
+                upExps(es=>[...es,...recs]);
+                if(isSupabaseReady()) recs.forEach(rec=>sbUpsert("expenses",toSbExpense(rec),"id").catch(err=>console.error("FabHub import:",err.message)));
+              };
+              reader.readAsText(file);
+            }}/>
+          </label>
         </div>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
