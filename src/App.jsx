@@ -2335,7 +2335,12 @@ export default function App(){
             if(_suppliers){setSuppliers(_suppliers);idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
             if(_subcons){setSubcons(_subcons);idbE.push([KEYS.subcons,_subcons]);}
-            const _users=data.users?.length?data.users.map(u=>({id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||"",createdAt:u.created_at||""})):null;
+            const _users=data.users?.length?data.users.map(u=>{
+              // If Supabase row has no password_hash, fall back to the DEFAULT_USERS hash
+              // so existing users can still log in while hashes are being migrated
+              const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";
+              return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};
+            }):null;
             if(_users){setUsers(_users);idbE.push([KEYS.users,_users]);}
             if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
@@ -2437,7 +2442,7 @@ export default function App(){
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
-    if(data.users?.length){const us=data.users.map(u=>({id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||"",createdAt:u.created_at||""}));setUsers(us);idbE.push([KEYS.users,us]);}
+    if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(us);idbE.push([KEYS.users,us]);}
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);idbE.push(["gmdv5:loans",ls]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
