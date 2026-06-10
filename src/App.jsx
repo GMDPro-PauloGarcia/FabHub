@@ -1435,7 +1435,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" value={form.value} onChange={e=>f("value",e.target.value)} placeholder="To be confirmed"/></Fld>
+        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" min={0} value={form.value} onChange={e=>f("value",Math.max(0,e.target.value))} placeholder="To be confirmed"/></Fld>
         <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
         <Fld label="CE Type">
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
@@ -1494,7 +1494,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
               <option>AE Referred</option>
             </Sel>
           </Fld>
-          <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)}/></Fld>
+          <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)} min={today}/></Fld>
           <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
           <Fld label="Discount %" hint="Paulo sets this only"><Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/></Fld>
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
@@ -2768,6 +2768,10 @@ export default function App(){
   },[/* one-time seed */]);
 
   const logStockMove=(move)=>{
+    if(move.moveType?.startsWith("OUT")){
+      const item=inventory.find(i=>i.id===move.itemId);
+      if(item&&Number(item.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${item.qtyOnHand} ${item.unit||""} on hand.`,"error");return;}
+    }
     const entry={...move,id:uid(),date:move.date||today,recordedBy:session?.name||role};
     upStocklog(sl=>[entry,...sl]);
     if(isSupabaseReady()) sbInsert('stock_movements',moveToSb(entry)).catch(()=>{});
@@ -3226,7 +3230,7 @@ export default function App(){
       const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':b.status;
       if(isSupabaseReady()){
         sbSyncOne("billing_payments",{...payment,id:payId,milestoneId:msId},toSbPayment);
-        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(()=>{});
+        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(e=>{toastEmit("Payment recorded locally — Supabase sync failed. Check connection.","warning");console.error("billing sync:",e);});
       }
       return{...b,payments,status};
     }));
@@ -3334,7 +3338,9 @@ export default function App(){
   const updateJO     =(id,changes)=>{upJos(js=>js.map(j=>{if(j.id!==id)return j;const u={...j,...changes};if(isSupabaseReady())sbSyncOne("job_orders",u,toSbJO);return u;}));}
   const delMR        =(id)=>{
     const mr=mreqs.find(m=>m.id===id);
-    if(mr&&role!=="Manager"&&role!=="Procurement"&&mr.requestedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the submitter can delete material requests.","error");
+    if(!mr) return;
+    const isOwner=mr.requestedBy&&session?.name&&mr.requestedBy===session.name;
+    if(role!=="Manager"&&role!=="Procurement"&&!isOwner) return toastEmit("Only Managers, Procurement, or the submitter can delete material requests.","error");
     upMreqs(ms=>ms.filter(m=>m.id!==id));if(isSupabaseReady()) sbDelete('material_requests',id).catch(()=>{});
   };
   const delBR        =(id)=>{
@@ -3359,6 +3365,11 @@ export default function App(){
       if(m.id!==id) return m;
       const n={...m,...ch};
       if(isSupabaseReady()) sbSyncOne("material_requests",n,toSbMR);
+      if(ch.status==="Approved"){
+        const deal=deals.find(d=>d.id===(m.projectId||m.dealId));
+        sendTelegramNotification("procurement",`✅ <b>MR Approved</b>\n${m.itemName||"?"}\nProject: ${deal?.client||m.projectId||"?"}\nApproved by: ${session?.name||"Manager"}`);
+        sendTelegramNotification("ops",`✅ <b>MR Approved</b>\n${m.itemName||"?"}\nProject: ${deal?.client||m.projectId||"?"}\nApproved by: ${session?.name||"Manager"}`);
+      }
       return n;
     }));
   };
@@ -3493,7 +3504,8 @@ export default function App(){
     logActivity(dealId,"Blocker Flagged",`${title} — needs ${dept}`,session?.name);
     const d=deals.find(x=>x.id===dealId);
     const msg=`⛔ <b>Blocker Flagged</b>\n${d?.client||dealId}\n<b>${title}</b>${detail?"\n"+detail:""}\nFlagged by: ${session?.name} · Dept: ${dept}`;
-    const deptKey=(dept||"").toLowerCase().replace(/[^a-z]/g,"");
+    const DEPT_CHANNEL={Operations:"ops",Design:"design",Procurement:"procurement","Cost Control":"finance",QS:"management",Sales:"sales",Finance:"finance"};
+    const deptKey=DEPT_CHANNEL[dept]||(dept||"").toLowerCase().replace(/[^a-z]/g,"");
     sendTelegramNotification(deptKey,msg);
     sendTelegramNotification("management",msg);
   },[session,deals,logActivity,sendTelegramNotification]);
@@ -3507,7 +3519,8 @@ export default function App(){
         const d=deals.find(x=>x.id===resolved.dealId);
         const msg=`✅ <b>Blocker Resolved</b>\n${d?.client||resolved.dealId}\n<b>${resolved.title}</b>\nResolved by: ${session?.name}`;
         sendTelegramNotification("management",msg);
-        const dk=(resolved.dept||"").toLowerCase().replace(/[^a-z]/g,"");
+        const DEPT_CHANNEL={Operations:"ops",Design:"design",Procurement:"procurement","Cost Control":"finance",QS:"management",Sales:"sales",Finance:"finance"};
+        const dk=DEPT_CHANNEL[resolved.dept]||(resolved.dept||"").toLowerCase().replace(/[^a-z]/g,"");
         sendTelegramNotification(dk,msg);
       }
       return n;
@@ -3516,7 +3529,7 @@ export default function App(){
 
   const addDRF=(drf)=>upDrfs(ds=>{
     const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;
-    const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New"};
+    const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New",createdBy:drf.createdBy||session?.name||role};
     sendTelegramNotification("design",`📝 <b>New Design Request</b>\n${no} · ${drf.client||"?"}\nProject: ${drf.projectTitle||"—"}\nDeadline: ${drf.designDeadline||"TBD"}\nBy: ${drf.createdBy||"?"}`);
     if(isSupabaseReady()) sbInsert('design_requests',drfToSb(rec)).catch(()=>{});
     return[...ds,rec];
@@ -3568,6 +3581,8 @@ export default function App(){
     const deal=deals.find(d=>d.id===dealId);
     const msg=`⚠️ <b>Scope Change Logged</b>\n${title||"?"}\nProject: ${deal?.client||dealId||"?"}\nBy: ${requestedBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
     sendTelegramNotification("sales",msg);
+    sendTelegramNotification("ops",msg);
+    sendTelegramNotification("procurement",msg);
     sendTelegramNotification("management",msg);
   };
   const updateAddendumStatus=(dealId,addId,status)=>{
@@ -3586,8 +3601,10 @@ export default function App(){
   const openAddCl=(projId=null,dept="Operations",type="Task")=>{setClForm({projectId:projId,type,customType:"",title:"",dept:dept,assignedTo:"",status:"To Do",priority:"Normal",dueDate:"",supplier:"",notes:"",whatCouldGoWrong:"",qty:"",unit:"pcs"});setEditCl(null);setClModal(true);};
   const openEditCl=item=>{setClForm({...item,customType:CL_TYPES.includes(item.type)?"":item.type,whatCouldGoWrong:item.whatCouldGoWrong||"",qty:item.qty||"",unit:item.unit||"pcs"});setEditCl(item.id);setClModal(true);};
   const saveCl=()=>{
-    if(!clForm.title) return;
+    if(!clForm.title||!clForm.title.trim()){toastEmit("Task title is required.","error");return;}
+    if(!clForm.dept){toastEmit("Department is required.","error");return;}
     const finalType=clForm.type==="Custom"&&clForm.customType?clForm.customType:clForm.type;
+    if(!finalType){toastEmit("Task type is required.","error");return;}
     const rec={...clForm,type:finalType,id:editCl||uid(),createdDate:today,createdBy:role};
     upChecklist(cs=>editCl?cs.map(c=>c.id===editCl?rec:c):[...cs,rec]);
     if(isSupabaseReady()) sbSyncOne("checklists",rec,toSbChecklist);
@@ -3596,7 +3613,8 @@ export default function App(){
   const delCl=delChecklist;
   const clStatusQ=(id,st)=>{
     upChecklist(cs=>cs.map(c=>c.id===id?{...c,status:st}:c));
-    if(isSupabaseReady()) sbUpdate('checklists',id,{status:st}).catch(()=>{});
+    if(isSupabaseReady()) sbUpdate('checklists',id,{status:st}).catch(e=>{toastEmit("Task status sync failed — check connection.","warning");console.error("clStatusQ:",e);});
+    if(st==="Done") toastEmit("Task marked done!","success");
   };
 
   const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
@@ -3922,7 +3940,9 @@ export default function App(){
 
   const saveDeal=(overrideData,skipDupCheck=false)=>{
     const data = overrideData||dealForm;
-    if(!data.client) return;
+    if(!data.client||!data.client.trim()){toastEmit("Client name is required.","error");return;}
+    if(!data.stage){toastEmit("Stage is required.","error");return;}
+    if(WON_STAGES.includes(data.stage)&&(!data.value||Number(data.value)<=0)){toastEmit("Contract value is required for awarded projects.","error");return;}
     // Duplicate detection — only on new deals, not edits or forced saves
     if(!editDeal&&!skipDupCheck){
       const clientLower=data.client.toLowerCase();
@@ -3950,7 +3970,8 @@ export default function App(){
     if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
     // Save new client to master list if not already present
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
-      const newClient={name:rec.client,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
+      const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
       GMD_CLIENTS.push(newClient);
       setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
     }
@@ -3990,6 +4011,7 @@ export default function App(){
     setDealModal(false);
   };
   const delDeal=id=>{
+    if(role!=="Manager"){toastEmit("Only Managers can delete deals.","error");return;}
     const deal=deals.find(d=>d.id===id);
     // Cascade-clear all related local state
     const dealMsIds=billings.filter(b=>b.dealId===id).map(b=>b.id);
@@ -4035,7 +4057,7 @@ export default function App(){
       const d=deals.find(x=>x.id===id);
       const missing=[];
       if(!d?.value||Number(d.value)===0) missing.push("Contract Value");
-      if(!d?.amountPaid&&Number(d?.amountPaid)===0) missing.push("Payments Received");
+      if(!d?.amountPaid||Number(d?.amountPaid)===0) missing.push("Payments Received");
       if(missing.length>0) toastEmit(`⚠ Before closing: please ensure ${missing.join(" and ")} are recorded in Finance.`,"warning");
     }
     upDeals(ds=>ds.map(d=>{
@@ -7595,7 +7617,12 @@ export default function App(){
         }}/>}
       {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward} drfs={drfs}/>}
       {priceModal&&<SetPriceModal deal={priceModal} today={today} onClose={()=>setPriceModal(null)} onSave={(val,note)=>{
-        upDeals(ds=>ds.map(x=>x.id===priceModal.id?{...x,value:val,notes:(x.notes||"")+(note?`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")} — ${note}`:`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")}`)}:x));
+        upDeals(ds=>ds.map(x=>{
+          if(x.id!==priceModal.id) return x;
+          const updated={...x,value:val,notes:(x.notes||"")+(note?`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")} — ${note}`:`\n[QS PRICING ${today}]: ₱${val.toLocaleString("en-PH")}`)};
+          if(isSupabaseReady()) sbUpdate('deals',x.id,{value:val,notes:updated.notes,updated_at:new Date().toISOString()}).catch(()=>{});
+          return updated;
+        }));
         logActivity(priceModal.id,"QS Pricing",`${priceModal.client} — price set to ₱${val.toLocaleString("en-PH")} by ${session?.name||"QS"}`);
         sendTelegramNotification("sales",`💰 <b>Price Set by QS</b>\nClient: <b>${priceModal.client}</b>${priceModal.ceNo?" · "+priceModal.ceNo:""}\nAmount: ₱${val.toLocaleString("en-PH",{maximumFractionDigits:0})}\nSet by: ${session?.name||"QS"}`);
         toastEmit("Price saved — Sales team notified.");
