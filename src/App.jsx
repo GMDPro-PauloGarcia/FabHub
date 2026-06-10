@@ -809,7 +809,7 @@ const Sel=({value,onChange,children})=>(
 );
 
 // Searchable project picker — replaces the long <select> for project linking
-const SearchSelect=({value,onChange,options,placeholder="Search…",noneLabel="— None —",noneValue=null})=>{
+function SearchSelect({value,onChange,options,placeholder="Search…",noneLabel="— None —",noneValue=null}){
   const [query,setQuery]=useState("");
   const [open,setOpen]=useState(false);
   const ref=useRef(null);
@@ -843,7 +843,7 @@ const SearchSelect=({value,onChange,options,placeholder="Search…",noneLabel="�
       )}
     </div>
   );
-};
+}
 // Focus-safe raw input — use this instead of bare <input> inside forms
 const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max,rows})=>{
   const base={...sx};
