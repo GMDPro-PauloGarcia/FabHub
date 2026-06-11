@@ -15807,8 +15807,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
 
           {/* ── Addendum / child deal milestones ── */}
           {(()=>{
-            const allDeals=[...wonDeals,...completedDeals];
-            const children=allDeals.filter(c=>c.parentDealId===selDeal);
+            const children=deals.filter(c=>c.parentDealId===selDeal);
             if(children.length===0) return null;
             return(
               <div style={{marginTop:20}}>
