@@ -304,10 +304,10 @@ const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.catego
 const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,lastUpdated:r.last_updated,createdBy:r.created_by});
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
-const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const supToSb=s=>({...(s.id?{id:s.id}:{}),company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||""});
 const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
-const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const subconToSb=s=>({...(s.id?{id:s.id}:{}),company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
@@ -1025,6 +1025,51 @@ function SearchSelect({value,onChange,options,placeholder="Search…",noneLabel=
     </div>
   );
 }
+// Searchable free-text combo — same look as SearchSelect, but the value IS the
+// typed text, so entries not yet in the master list are still allowed.
+function SearchCombo({value,onChange,options,placeholder="Type to search…"}){
+  const[open,setOpen]=useState(false);
+  const ref=useRef(null);
+  const q=(value||"").trim().toLowerCase();
+  const filtered=q?options.filter(o=>o.toLowerCase().includes(q)):options;
+  useEffect(()=>{
+    const handler=e=>{if(ref.current&&!ref.current.contains(e.target)) setOpen(false);};
+    document.addEventListener("mousedown",handler);
+    return()=>document.removeEventListener("mousedown",handler);
+  },[]);
+  return(
+    <div ref={ref} style={{position:"relative"}}>
+      <div style={{display:"flex",alignItems:"center",border:"1.5px solid "+(open?"#6366f1":"#e2e8f0"),borderRadius:8,background:"#fff",transition:"border-color .15s"}}>
+        <input value={value||""} onFocus={()=>setOpen(true)}
+          onChange={e=>{onChange(e.target.value);setOpen(true);}}
+          onKeyDown={e=>{if(e.key==="Escape")setOpen(false);if(e.key==="Enter"&&open&&filtered.length>0){e.preventDefault();onChange(filtered[0]);setOpen(false);}}}
+          placeholder={placeholder}
+          style={{flex:1,border:"none",outline:"none",padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"transparent",borderRadius:8,minWidth:0}}/>
+        <span onClick={()=>setOpen(o=>!o)} style={{padding:"0 10px",color:"#94a3b8",fontSize:".75rem",flexShrink:0,cursor:"pointer",userSelect:"none"}}>{open?"▲":"▼"}</span>
+      </div>
+      {open&&filtered.length>0&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:999,maxHeight:240,overflowY:"auto"}}>
+          {filtered.map((o,i)=>(
+            <div key={o+i} onClick={()=>{onChange(o);setOpen(false);}}
+              style={{padding:"9px 13px",fontSize:".85rem",color:o===value?"#6366f1":"#1e293b",fontWeight:o===value?700:400,cursor:"pointer",background:o===value?"#f0f0ff":"transparent",borderBottom:"1px solid #f8fafc"}}
+              onMouseEnter={e=>{if(o!==value)e.currentTarget.style.background="#f8fafc";}}
+              onMouseLeave={e=>{e.currentTarget.style.background=o===value?"#f0f0ff":"transparent";}}>{o}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+// De-duplicated, sorted company names for supplier pickers (tolerates rows
+// duplicated in the master list — see supabase_migration_010.sql)
+const supplierNameOptions=suppliers=>{
+  const seen=new Map();
+  (suppliers||[]).forEach(s=>{
+    const n=(s.company_name||s.companyName||"").trim();
+    if(n&&!seen.has(n.toLowerCase())) seen.set(n.toLowerCase(),n);
+  });
+  return[...seen.values()].sort((a,b)=>a.localeCompare(b));
+};
 // Focus-safe raw input — use this instead of bare <input> inside forms
 const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max,rows})=>{
   const base={...sx};
@@ -3001,21 +3046,22 @@ export default function App(){
     {rating:"NO",specialty:"Metal Works (Supply & Install)",strengthsWeaknesses:"W: Work errors/Design concerns about metal works/Billing",contactNo:"0917-802-6014",companyName:"Alba Motors/Elijah Mojares",paymentTerms:"Cash Basis",address:"88 Jenny's Avenue, Maybunga Pasig City",rateStructure:"Material/Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
   ];
 
-  // Seed initial data if tables are empty (runs once)
+  // Seed initial data only when the CLOUD table is actually empty. Checking
+  // local state here is not enough — at mount the async load hasn't populated
+  // it yet, which used to re-insert the whole seed list on every fresh
+  // browser session (the source of the duplicated suppliers).
   useEffect(()=>{
-    if(suppliers.length===0&&SEED_SUPPLIERS.length>0&&isSupabaseReady()){
-      SEED_SUPPLIERS.forEach(s=>{
-        addSupplier({...s,status:"Active"});
-      });
-    }
+    if(!isSupabaseReady()||SEED_SUPPLIERS.length===0) return;
+    sbList('suppliers',{select:'id',limit:1}).then(rows=>{
+      if(rows.length===0) SEED_SUPPLIERS.forEach(s=>addSupplier({...s,status:"Active"}));
+    }).catch(()=>{});
   },[/* one-time seed */]);
 
   useEffect(()=>{
-    if(subcons.length===0&&SEED_SUBCONS.length>0&&isSupabaseReady()){
-      SEED_SUBCONS.forEach(s=>{
-        addSubcon({...s,status:"Active"});
-      });
-    }
+    if(!isSupabaseReady()||SEED_SUBCONS.length===0) return;
+    sbList('subcontractors',{select:'id',limit:1}).then(rows=>{
+      if(rows.length===0) SEED_SUBCONS.forEach(s=>addSubcon({...s,status:"Active"}));
+    }).catch(()=>{});
   },[/* one-time seed */]);
 
   const logStockMove=(move)=>{
@@ -8562,9 +8608,9 @@ export default function App(){
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
     if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
@@ -8736,9 +8782,9 @@ export default function App(){
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
@@ -8918,9 +8964,9 @@ export default function App(){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
   }
 
@@ -9785,7 +9831,7 @@ First few:
       <MaterialRequestView
         mreqs={mreqs} addMR={addMR} updateMR={updateMR}
         prs={prs} addPR={addPR}
-        wonDeals={wonDeals} session={session} role={role}/>
+        wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>
     </Wrap>
   );
 
@@ -13682,6 +13728,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   const[discEditPo,setDiscEditPo]=useState(null);
   const[discEditType,setDiscEditType]=useState("amt");
   const[discEditVal,setDiscEditVal]=useState("");
+  const[expandedPOs,setExpandedPOs]=useState({});
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -13822,6 +13869,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   })();
 
   const STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","PO Issued":"#3b82f6","Partially Delivered":"#8b5cf6","Delivered":"#10b981","Cancelled":"#ef4444"};
+  const PO_GRID="86px 1fr 86px 124px 48px 112px 28px"; // compact table — same pattern as Awarded Projects
   // net of PO-level discounts
   const totalValue=grouped.reduce((s,g)=>s+(g.type==="po"?g.total:(n(g.pr.actUnitCost)||n(g.pr.estUnitCost))*n(g.pr.qty)),0);
 
@@ -13889,11 +13937,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>📦 New Purchase Order</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(4,1fr)",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #f1f5f9"}}>
             <Fld label="Supplier" required>
-              <input list="po-supplier-list" value={poSupplier} onChange={e=>setPoSupplier(e.target.value)} placeholder="Type or select supplier…"
-                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
-              <datalist id="po-supplier-list">
-                {(suppliers||[]).map(s=><option key={s.id} value={s.company_name||s.companyName||""}/>)}
-              </datalist>
+              <SearchCombo value={poSupplier} onChange={setPoSupplier}
+                options={supplierNameOptions(suppliers)} placeholder="Search or type supplier…"/>
             </Fld>
             <Fld label="PO Number" required hint="Suggested — confirmed on submit so two officers can't issue the same number"><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
@@ -14013,134 +14058,121 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
         </select>
       </div>
 
-      {grouped.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
-        {grouped.map((g,gi)=>{
-          if(g.type==="po"){
-            const {poNo,items,supplier,status,poDate:poD,total,gross,discount,discType,discValue}=g;
-            const allSameStatus=items.every(i=>i.status===status);
-            return(
-              <div key={poNo} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f8fafc",flexWrap:"wrap",gap:8}}>
-                  <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>📄 {poNo}</span>
-                    {supplier&&<span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>🏭 {supplier}</span>}
-                    {poD&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>{poD}</span>}
-                    <span style={{fontSize:".68rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{status}</span>
+      {grouped.length===0?(
+        <div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>
+      ):(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+          <div style={{overflowX:"auto"}}>
+            <div style={{display:"grid",gridTemplateColumns:PO_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:640}}>
+              {["PO #","Supplier","Date","Status","Items","Total",""].map((h,i)=>(
+                <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i>=4&&i<=5?"right":"left"}}>{h}</div>
+              ))}
+            </div>
+            {grouped.map((g,gi)=>{
+              const isPo=g.type==="po";
+              const key=isPo?g.poNo:g.pr.id;
+              const items=isPo?g.items:[g.pr];
+              const status=isPo?g.status:g.pr.status;
+              const supplier=isPo?g.supplier:(g.pr.supplier||"");
+              const date=isPo?g.poDate:(g.pr.createdDate||"");
+              const total=isPo?g.total:(n(g.pr.actUnitCost)||n(g.pr.estUnitCost))*n(g.pr.qty);
+              const discount=isPo?g.discount:0;
+              const allSameStatus=items.every(i=>i.status===status);
+              const isOpen=!!expandedPOs[key];
+              return(
+                <div key={key} style={{borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none"}}>
+                  <div onClick={()=>setExpandedPOs(p=>({...p,[key]:!p[key]}))}
+                    style={{display:"grid",gridTemplateColumns:PO_GRID,gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff",transition:"background .12s",minWidth:640}}
+                    onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
+                    onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
+                    <div style={{fontWeight:700,color:isPo?"#6366f1":"#94a3b8",fontSize:".74rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{isPo?g.poNo:"— PR —"}</div>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{supplier||(isPo?"—":items[0]?.itemName)}</div>
+                    <div style={{fontSize:".7rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{date||"—"}</div>
+                    <div style={{paddingRight:6,overflow:"hidden"}}>
+                      <span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span>
+                    </div>
+                    <div style={{textAlign:"right",fontSize:".74rem",color:"#64748b",fontWeight:600,paddingRight:8}}>{items.length}</div>
+                    <div style={{textAlign:"right",paddingRight:4}}>
+                      <span style={{fontWeight:700,color:"#10b981",fontSize:".78rem"}}>{fmt(total)}</span>
+                      {discount>0&&<div style={{fontSize:".6rem",color:"#dc2626",fontWeight:700}}>−{fmt(discount)}{g.discType==="pct"?` (${g.discValue}%)`:""} disc</div>}
+                    </div>
+                    <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{isOpen?"▲":"▼"}</div>
                   </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#10b981"}}>{fmt(total)}</span>
-                    {discount>0&&<span style={{fontSize:".7rem",color:"#dc2626",fontWeight:700}}>−{fmt(discount)}{discType==="pct"?` (${discValue}%)`:""} disc</span>}
-                    <span style={{fontSize:".7rem",color:"#94a3b8"}}>{items.length} item{items.length>1?"s":""}</span>
-                    <button onClick={()=>printPO(poNo,supplier,poD,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
-                    {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(discEditPo===poNo){setDiscEditPo(null);}else{setDiscEditPo(poNo);setDiscEditType(discType||"amt");setDiscEditVal(discValue>0?String(discValue):"");}}} style={{background:"#fff7ed",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>% Disc</button>}
-                    {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
-                  </div>
-                </div>
-                {discEditPo===poNo&&(
-                  <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 16px",background:"#fff7ed",borderTop:"1px solid #fed7aa",flexWrap:"wrap"}}>
-                    <span style={{fontSize:".75rem",fontWeight:700,color:"#9a3412"}}>PO Discount</span>
-                    <select value={discEditType} onChange={e=>setDiscEditType(e.target.value)} style={{border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".75rem",color:"#9a3412",background:"#fff",cursor:"pointer"}}>
-                      <option value="amt">₱ Amount</option>
-                      <option value="pct">% Percent</option>
-                    </select>
-                    <input type="number" min="0" value={discEditVal} onChange={e=>setDiscEditVal(e.target.value)} placeholder="0"
-                      style={{width:110,border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
-                    <span style={{fontSize:".72rem",color:"#9a3412"}}>= −{fmt(poDiscountAmt(discEditType,discEditVal,gross))} off {fmt(gross)}</span>
-                    <button onClick={()=>{
-                      const v=n(discEditVal);
-                      items.forEach(i=>updatePR(i.id,{poDiscType:v>0?discEditType:"",poDiscValue:v>0?v:0}));
-                      setDiscEditPo(null);
-                      toastEmit&&toastEmit(`Discount ${v>0?"applied to":"removed from"} ${poNo}`,"success");
-                    }} style={{background:"#c2410c",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".75rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Save</button>
-                    <button onClick={()=>setDiscEditPo(null)} style={{background:"transparent",border:"1px solid #fed7aa",borderRadius:7,padding:"5px 10px",fontSize:".75rem",color:"#9a3412",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                  </div>
-                )}
-                <div>
-                  {items.map((pr,ii)=>{
-                    const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-                    const deal=wonDeals.find(d=>d.id===pr.projectId);
-                    const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
-                    return(
-                      <div key={pr.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",flexWrap:"wrap"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
-                            <span style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</span>
-                            {!allSameStatus&&<span style={{fontSize:".65rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{pr.status}</span>}
-                            <span style={{fontSize:".65rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:20}}>{pr.category}</span>
-                            <span style={{fontSize:".65rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 7px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
-                          </div>
-                          <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
-                            {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
-                            <span>{pr.qty} {pr.unit}</span>
-                            {pr.deliveryNote&&<span>DR: {pr.deliveryNote}</span>}
-                          </div>
-                          {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&delivPct<100&&(
-                            <div style={{marginTop:4,display:"flex",alignItems:"center",gap:6}}>
-                              <div style={{flex:1,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden",maxWidth:120}}><div style={{height:"100%",width:delivPct+"%",background:"#f59e0b",borderRadius:2}}/></div>
-                              <span style={{fontSize:".65rem",color:"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
+                  {isOpen&&(
+                    <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
+                      {items.map(pr=>{
+                        const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
+                        const deal=wonDeals.find(d=>d.id===pr.projectId);
+                        const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
+                        return(
+                          <div key={pr.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 16px",borderBottom:"1px solid #f1f5f9",flexWrap:"wrap"}}>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
+                                <span style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{pr.itemName}</span>
+                                {!allSameStatus&&<span style={{fontSize:".62rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{pr.status}</span>}
+                                <span style={{fontSize:".62rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:20}}>{pr.category}</span>
+                                <span style={{fontSize:".62rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 7px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
+                              </div>
+                              <div style={{fontSize:".7rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
+                                {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
+                                <span>{pr.qty} {pr.unit}</span>
+                                {pr.deliveryNote&&<span>DR: {pr.deliveryNote}</span>}
+                                <span>By: {pr.requestedBy||"—"}</span>
+                                {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {pr.approvedBy}</span>}
+                              </div>
+                              {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&delivPct<100&&(
+                                <div style={{marginTop:3,display:"flex",alignItems:"center",gap:6}}>
+                                  <div style={{flex:1,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden",maxWidth:120}}><div style={{height:"100%",width:delivPct+"%",background:"#f59e0b",borderRadius:2}}/></div>
+                                  <span style={{fontSize:".62rem",color:"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
+                                </div>
+                              )}
                             </div>
-                          )}
+                            <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                              <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{fmt(actTotal)}</span>
+                              <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                                {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                              </select>
+                              <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"3px 9px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                              {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"3px 9px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 16px",flexWrap:"wrap"}}>
+                        {discount>0&&<span style={{fontSize:".7rem",color:"#64748b"}}>Subtotal {fmt(g.gross)} · <span style={{color:"#dc2626",fontWeight:700}}>Discount −{fmt(discount)}{g.discType==="pct"?` (${g.discValue}%)`:""}</span></span>}
+                        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                          {isPo&&<button onClick={()=>printPO(g.poNo,supplier,date,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>}
+                          {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(discEditPo===g.poNo){setDiscEditPo(null);}else{setDiscEditPo(g.poNo);setDiscEditType(g.discType||"amt");setDiscEditVal(g.discValue>0?String(g.discValue):"");}}} style={{background:"#fff7ed",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>% Disc</button>}
+                          {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+g.poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
                         </div>
-                        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{fmt(actTotal)}</span>
-                          <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 7px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                            {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                      </div>
+                      {isPo&&discEditPo===g.poNo&&(
+                        <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 16px",background:"#fff7ed",borderTop:"1px solid #fed7aa",flexWrap:"wrap"}}>
+                          <span style={{fontSize:".75rem",fontWeight:700,color:"#9a3412"}}>PO Discount</span>
+                          <select value={discEditType} onChange={e=>setDiscEditType(e.target.value)} style={{border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".75rem",color:"#9a3412",background:"#fff",cursor:"pointer"}}>
+                            <option value="amt">₱ Amount</option>
+                            <option value="pct">% Percent</option>
                           </select>
-                          <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                          {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                          <input type="number" min="0" value={discEditVal} onChange={e=>setDiscEditVal(e.target.value)} placeholder="0"
+                            style={{width:110,border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
+                          <span style={{fontSize:".72rem",color:"#9a3412"}}>= −{fmt(poDiscountAmt(discEditType,discEditVal,g.gross))} off {fmt(g.gross)}</span>
+                          <button onClick={()=>{
+                            const v=n(discEditVal);
+                            items.forEach(i=>updatePR(i.id,{poDiscType:v>0?discEditType:"",poDiscValue:v>0?v:0}));
+                            setDiscEditPo(null);
+                            toastEmit&&toastEmit(`Discount ${v>0?"applied to":"removed from"} ${g.poNo}`,"success");
+                          }} style={{background:"#c2410c",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".75rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Save</button>
+                          <button onClick={()=>setDiscEditPo(null)} style={{background:"transparent",border:"1px solid #fed7aa",borderRadius:7,padding:"5px 10px",fontSize:".75rem",color:"#9a3412",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
                         </div>
-                      </div>
-                    );
-                  })}
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            );
-          } else {
-            const {pr}=g;
-            const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-            const deal=wonDeals.find(d=>d.id===pr.projectId);
-            const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
-            return(
-              <div key={pr.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                  <div style={{flex:1,minWidth:180}}>
-                    <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{pr.itemName}</span>
-                      <span style={{fontSize:".68rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{pr.status}</span>
-                      <span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{pr.category}</span>
-                      <span style={{fontSize:".68rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 8px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
-                    </div>
-                    <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                      {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
-                      <span>Qty: {pr.qty} {pr.unit}</span>
-                      {pr.supplier&&<span>🏭 {pr.supplier}</span>}
-                      <span>By: {pr.requestedBy||"—"}</span>
-                      {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {pr.approvedBy}</span>}
-                    </div>
-                    {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&(
-                      <div style={{marginTop:6,display:"flex",alignItems:"center",gap:6}}>
-                        <div style={{width:100,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:delivPct+"%",background:delivPct===100?"#10b981":"#f59e0b",borderRadius:2}}/></div>
-                        <span style={{fontSize:".67rem",color:delivPct===100?"#059669":"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{display:"flex",gap:10,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}}>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{fmt(actTotal)}</span>
-                    <div style={{display:"flex",gap:6}}>
-                      <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                        {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
-                      </select>
-                      <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                      {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this PR?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          }
-        })}
-      </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -14381,7 +14413,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 }
 
 // ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit}){
+function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers}){
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -14678,8 +14710,8 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                     <div>
                       <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>Supplier <span style={{color:"#ef4444"}}>*</span></div>
-                      <input value={convSupplier} onChange={e=>setConvSupplier(e.target.value)} placeholder="e.g. Pacific Hardware Supply"
-                        style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
+                      <SearchCombo value={convSupplier} onChange={setConvSupplier}
+                        options={supplierNameOptions(suppliers)} placeholder="Search or type supplier…"/>
                     </div>
                     <div>
                       <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>PO Number <span style={{color:"#ef4444"}}>*</span></div>
@@ -18359,7 +18391,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   );
 }
 
-function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit}){
+function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit,suppliers}){
   const[tab,setTab]=useState("Material Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
@@ -18369,7 +18401,7 @@ function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breq
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
+      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>}
       {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
