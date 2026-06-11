@@ -1510,12 +1510,14 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         </div>
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="🔗 Link to Parent Deal" hint="Set this if the deal is an addendum or extension of an existing project">
-            <Sel value={form.parentDealId||""} onChange={e=>f("parentDealId",e.target.value||null)}>
-              <option value="">— Standalone deal —</option>
-              {deals.filter(d=>!d.parentDealId&&d.id!==editId).map(d=>(
-                <option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?` (${d.ceNo})`:""}</option>
-              ))}
-            </Sel>
+            <SearchSelect
+              value={form.parentDealId||null}
+              onChange={v=>f("parentDealId",v)}
+              options={deals.filter(d=>!d.parentDealId&&d.id!==editId).map(d=>({value:d.id,label:(d.contact||d.client)+(d.ceNo?` (${d.ceNo})`:"")})) }
+              placeholder="Type to search deals…"
+              noneLabel="— Standalone deal —"
+              noneValue={null}
+            />
           </Fld>
         </div>
         {isWon&&(
