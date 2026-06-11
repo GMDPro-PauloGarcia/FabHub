@@ -2985,9 +2985,10 @@ export default function App(){
       if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
         const rec=payload.new;
         const mapped={...rec,dealId:rec.deal_id,invoiceNo:rec.invoice_no,
-          invoiceDate:rec.invoice_date,dueDate:rec.due_date,createdBy:rec.created_by,payments:[]};
+          invoiceDate:rec.invoice_date,dueDate:rec.due_date,createdBy:rec.created_by};
         setBillings(bs=>{const ex=bs.find(b=>b.id===rec.id);
-          return ex?bs.map(b=>b.id===rec.id?{...b,...mapped}:b):[...bs,mapped];});
+          // Preserve existing payments array — billing_milestones RT event doesn't carry payments
+          return ex?bs.map(b=>b.id===rec.id?{...b,...mapped,payments:b.payments||[]}:b):[...bs,{...mapped,payments:[]}];});
       }
       if(payload.eventType==='DELETE') setBillings(bs=>bs.filter(b=>b.id!==payload.old.id));
     });
