@@ -9774,50 +9774,79 @@ First few:
               <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{total.toLocaleString("en-PH",{maximumFractionDigits:0})} total</span>
             </div>
             {list.length===0&&<EmptyState icon="📋" msg="No expenses match your filter."/>}
-            {list.length>0&&(
-              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{overflowX:"auto"}}>
-                  {/* Header */}
-                  <div style={{display:"grid",gridTemplateColumns:"96px 110px 1fr 140px 110px 100px 64px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"7px 14px",alignItems:"center",minWidth:700}}>
-                    {["Date","Category","Description","Project","Payee","Amount",""].map((h,i)=>(
-                      <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
-                    ))}
+            {list.length>0&&(()=>{
+              // Group by date
+              const COL="96px 110px 1fr 140px 110px 100px 64px";
+              const groups=[];
+              const seen={};
+              list.forEach(e=>{
+                const dk=e.expDate||`${e.year||new Date().getFullYear()}-${String((e.month!=null?e.month:new Date().getMonth())+1).padStart(2,"0")}-01`;
+                if(!seen[dk]){seen[dk]=true;groups.push({date:dk,items:[]});}
+                groups[groups.length-1].items.push(e);
+              });
+              return(
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                {/* Column header (sticky) */}
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  <div style={{overflowX:"auto"}}>
+                    <div style={{display:"grid",gridTemplateColumns:COL,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"7px 14px",alignItems:"center",minWidth:700}}>
+                      {["Date","Category","Description","Project","Payee","Amount",""].map((h,i)=>(
+                        <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
+                      ))}
+                    </div>
                   </div>
-                  {list.map((e,idx)=>{
-                    const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));
-                    const bk=e.bankAccount?BANKS.find(b=>b.id===e.bankAccount):null;
-                    const isExpanded=acctExpanded===e.id;
-                    return(
-                      <div key={e.id} style={{borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none"}}>
-                        <div onClick={()=>setAcctExpanded(isExpanded?null:e.id)}
-                          style={{display:"grid",gridTemplateColumns:"96px 110px 1fr 140px 110px 100px 64px",gap:0,padding:"9px 14px",alignItems:"center",cursor:"pointer",background:isExpanded?"#fefce8":"#fff",transition:"background .1s",minWidth:700}}
-                          onMouseEnter={e=>{if(!isExpanded)e.currentTarget.style.background="#f8fafc";}}
-                          onMouseLeave={e=>{e.currentTarget.style.background=isExpanded?"#fefce8":"#fff";}}>
-                          <div style={{fontSize:".73rem",color:"#64748b"}}>{e.expDate||`${MONTHS[e.month]} ${e.year||""}`}</div>
-                          <div><span style={{fontSize:".65rem",fontWeight:700,background:"#f1f5f9",borderRadius:20,padding:"2px 8px",color:"#475569",whiteSpace:"nowrap"}}>{e.category}</span></div>
-                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:10}}>{e.note}</div>
-                          <div style={{fontSize:".75rem",color:proj?"#8b5cf6":"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{proj?proj.client:"Company-wide"}</div>
-                          <div style={{fontSize:".75rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{e.payee||<span style={{color:"#cbd5e1"}}>—</span>}</div>
-                          <div style={{fontWeight:700,color:"#ef4444",fontSize:".82rem",textAlign:"right",paddingRight:12}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                          <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                            <button onClick={ev=>{ev.stopPropagation();openEditExp(e);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                            <button onClick={ev=>{ev.stopPropagation();delExp(e.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                          </div>
-                        </div>
-                        {isExpanded&&(
-                          <div style={{background:"#fefce8",borderTop:"1px solid #fef08a",padding:"10px 16px",display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-                            {bk&&<span style={{fontSize:".75rem",fontWeight:600,color:bk.color}}>🏦 {bk.short}</span>}
-                            {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{fontSize:".75rem",color:"#3b82f6",fontWeight:600,textDecoration:"none"}}>📎 View Receipt</a>}
-                            {proj?.contact&&<span style={{fontSize:".75rem",color:"#64748b"}}>👤 {proj.contact}</span>}
-                            {!bk&&!e.receipt&&!proj?.contact&&<span style={{fontSize:".75rem",color:"#94a3b8",fontStyle:"italic"}}>No additional details</span>}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
                 </div>
+                {groups.map(({date,items})=>{
+                  const dayTotal=items.reduce((s,e)=>s+Number(e.amount||0),0);
+                  const fmt2=(v)=>Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
+                  const label=(()=>{try{const d=new Date(date+"T00:00:00");return d.toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric",year:"numeric"});}catch{return date;}})();
+                  return(
+                    <div key={date} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                      {/* Day header */}
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 14px",background:"#1e293b",minWidth:700}}>
+                        <span style={{fontWeight:700,color:"#f8fafc",fontSize:".78rem"}}>📅 {label}</span>
+                        <span style={{fontWeight:700,color:"#f87171",fontSize:".8rem",fontFamily:"'Barlow Condensed',sans-serif"}}>−₱{fmt2(dayTotal)} &nbsp;<span style={{fontWeight:400,color:"rgba(255,255,255,.4)",fontSize:".68rem"}}>{items.length} item{items.length!==1?"s":""}</span></span>
+                      </div>
+                      <div style={{overflowX:"auto"}}>
+                        {items.map((e,idx)=>{
+                          const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));
+                          const bk=e.bankAccount?BANKS.find(b=>b.id===e.bankAccount):null;
+                          const isExpanded=acctExpanded===e.id;
+                          return(
+                            <div key={e.id} style={{borderBottom:idx<items.length-1?"1px solid #f1f5f9":"none",minWidth:700}}>
+                              <div onClick={()=>setAcctExpanded(isExpanded?null:e.id)}
+                                style={{display:"grid",gridTemplateColumns:COL,padding:"9px 14px",alignItems:"center",cursor:"pointer",background:isExpanded?"#fefce8":"#fff",transition:"background .1s"}}
+                                onMouseEnter={ev=>{if(!isExpanded)ev.currentTarget.style.background="#f8fafc";}}
+                                onMouseLeave={ev=>{ev.currentTarget.style.background=isExpanded?"#fefce8":"#fff";}}>
+                                <div style={{fontSize:".73rem",color:"#94a3b8"}}>—</div>
+                                <div><span style={{fontSize:".65rem",fontWeight:700,background:"#f1f5f9",borderRadius:20,padding:"2px 8px",color:"#475569",whiteSpace:"nowrap"}}>{e.category}</span></div>
+                                <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:10}}>{e.note}</div>
+                                <div style={{fontSize:".75rem",color:proj?"#8b5cf6":"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{proj?proj.client:"Company-wide"}</div>
+                                <div style={{fontSize:".75rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{e.payee||<span style={{color:"#cbd5e1"}}>—</span>}</div>
+                                <div style={{fontWeight:700,color:"#ef4444",fontSize:".82rem",textAlign:"right",paddingRight:12}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                                <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                                  <button onClick={ev=>{ev.stopPropagation();openEditExp(e);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                  <button onClick={ev=>{ev.stopPropagation();delExp(e.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                                </div>
+                              </div>
+                              {isExpanded&&(
+                                <div style={{background:"#fefce8",borderTop:"1px solid #fef08a",padding:"10px 16px",display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+                                  {bk&&<span style={{fontSize:".75rem",fontWeight:600,color:bk.color}}>🏦 {bk.short}</span>}
+                                  {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{fontSize:".75rem",color:"#3b82f6",fontWeight:600,textDecoration:"none"}}>📎 View Receipt</a>}
+                                  {proj?.contact&&<span style={{fontSize:".75rem",color:"#64748b"}}>👤 {proj.contact}</span>}
+                                  {!bk&&!e.receipt&&!proj?.contact&&<span style={{fontSize:".75rem",color:"#94a3b8",fontStyle:"italic"}}>No additional details</span>}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
+              );
+            })()}
           </>
         );
       })()}
