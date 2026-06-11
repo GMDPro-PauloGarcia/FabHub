@@ -15057,6 +15057,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
+  const[selectedMs,   setSelectedMs]  =useState(new Set());
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -15578,6 +15579,29 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           {billings.filter(b=>b.dealId===selDeal).length===0&&!showForm&&(
             <div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:".84rem"}}>No milestones yet. Hit + Add Milestone to create the first billing.</div>
           )}
+          {/* Bulk-select toolbar */}
+          {canEdit&&billings.filter(b=>b.dealId===selDeal).length>0&&(
+            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
+              <button onClick={()=>{
+                const ids=billings.filter(b=>b.dealId===selDeal).map(b=>b.id);
+                setSelectedMs(prev=>prev.size===ids.length?new Set():new Set(ids));
+              }} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"#475569",cursor:"pointer"}}>
+                {selectedMs.size===billings.filter(b=>b.dealId===selDeal).length?"☑ Deselect All":"☐ Select All"}
+              </button>
+              {selectedMs.size>0&&(
+                <button onClick={()=>{
+                  if(!window.confirm(`Delete ${selectedMs.size} milestone${selectedMs.size!==1?"s":""}? This cannot be undone.`)) return;
+                  selectedMs.forEach(id=>deleteMilestone(id));
+                  setSelectedMs(new Set());
+                }} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#dc2626",cursor:"pointer"}}>
+                  🗑 Delete {selectedMs.size} selected
+                </button>
+              )}
+              {selectedMs.size>0&&(
+                <span style={{fontSize:".72rem",color:"#94a3b8"}}>{selectedMs.size} of {billings.filter(b=>b.dealId===selDeal).length} selected</span>
+              )}
+            </div>
+          )}
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {billings.filter(b=>b.dealId===selDeal).map(ms=>{
               const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
@@ -15587,8 +15611,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
               const isOverdue=ms.dueDate&&ms.dueDate<today&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled";
               return(
-                <div key={ms.id} style={{background:"#f8fafc",borderRadius:10,border:`1.5px solid ${isOverdue?"#fecaca":sClr+"33"}`,padding:"12px 16px"}}>
+                <div key={ms.id} style={{background:selectedMs.has(ms.id)?"#fef2f2":"#f8fafc",borderRadius:10,border:`1.5px solid ${selectedMs.has(ms.id)?"#fca5a5":isOverdue?"#fecaca":sClr+"33"}`,padding:"12px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                    {canEdit&&<input type="checkbox" checked={selectedMs.has(ms.id)} onChange={e=>{setSelectedMs(prev=>{const n=new Set(prev);e.target.checked?n.add(ms.id):n.delete(ms.id);return n;});}} style={{marginTop:3,flexShrink:0,width:15,height:15,cursor:"pointer"}} onClick={e=>e.stopPropagation()}/>}
                     <div style={{flex:1}}>
                       <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
                         <span style={{fontWeight:700,color:"#0f172a"}}>{ms.name}</span>
