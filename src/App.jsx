@@ -12257,7 +12257,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   // Book balance = what bank confirms; if not filled, fall back to ending balance
   const bookUnreconciled=bankTotals.book===0&&bankTotals.end>0; // warn user when BOOK is blank but END is filled
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
-  const totalCashAvailable=workingBook+totalCollections-totalLess; // Working capital only — Unionbank (capital) excluded
+  const totalEndingBal=workingBanks.reduce((s,b)=>s+endingBal[b.id],0);
+  const totalCashAvailable=totalEndingBal; // Ending bal already = beg + cashIn − txOut
 
   // Per-bank computed values (new Excel-style layout)
   const workingBanks=BANKS.filter(b=>!b.capital);
@@ -12361,7 +12362,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   const wcBook=workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.book||0),0);
   const unionRow2=pos.banks["union"]||emptyBankRow();
   const unionCapital=n(unionRow2.book||0)||n(unionRow2.end||0)||n(unionRow2.beg||0);
-  const netCashAvail=wcBook+totalCollections-totalLess;
+  const netCashAvail=totalEndingBal;
   const totalGMDAssets=netCashAvail+unionCapital;
 
   // Column template: sticky label col + 5 bank cols + total col
@@ -12421,8 +12422,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       {/* KPI strip */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
-          ["Net Cash Available (WC)", "₱"+fmt2(netCashAvail), netCashAvail>=0?"#059669":"#ef4444"],
-          ["Working Capital (Book)",  "₱"+fmt2(wcBook), "#1d4ed8"],
+          ["Net Cash Available",      "₱"+fmt2(netCashAvail), netCashAvail>=0?"#059669":"#ef4444"],
+          ["Bank Ending Balance",     "₱"+fmt2(totalEndingBal), "#1d4ed8"],
           ["Total GMD Cash Assets",   "₱"+fmt2(totalGMDAssets), "#0e7490"],
           ["Collections Today",       "₱"+fmt2(totalCollections), "#10b981"],
           ["Outstanding Invoices",    "₱"+billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2}), billingMetrics.outstanding>0?"#f59e0b":"#059669"],
@@ -12893,7 +12894,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
           </div>
           <div style={{padding:"0 20px"}}>
             {[
-              ["Book Balance (Working Capital)",workingBook,"#1d4ed8","+"],
+              ["Bank Ending Balance",totalEndingBal,"#1d4ed8","="],
               ["Collections Today",totalCollections,"#059669","+"],
               ["Today's Transactions",totalLess,"#dc2626","−"],
             ].map(([label,val,color,sign])=>(
