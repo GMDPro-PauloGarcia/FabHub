@@ -57,7 +57,8 @@ export const sbLoadAll = async () => {
       cashPos, budgets, checklists, swatches, actLog, users, appSettings,
       drfs, inventory, stocklog, projRows,
       suppliers, subcontractors,
-      payables, loans, loanPayments
+      payables, loans, loanPayments,
+      swos
     ] = await Promise.all([
       sbList('deals',                    { order: 'created_at', limit: 1000 }),
       sbList('job_orders',               { order: 'created_at', limit: 500 }),
@@ -88,6 +89,7 @@ export const sbLoadAll = async () => {
       sbList('payables',        { order: 'created_at', limit: 500 }),
       sbList('loans',           { order: 'created_at', limit: 200 }),
       sbList('loan_payments',   { order: 'date',        limit: 1000 }),
+      sbList('subcon_work_orders', { order: 'created_at', limit: 500 }),
     ])
 
     // Build pcards object with departments embedded
@@ -150,7 +152,7 @@ export const sbLoadAll = async () => {
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
              checklist: checklists, swatches, actLog, users, settings: settingsObj,
              drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors,
-             payables, loans: loansArr }
+             payables, loans: loansArr, swos }
   } catch (err) {
     console.error('sbLoadAll failed:', err)
     return null
