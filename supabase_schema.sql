@@ -574,6 +574,11 @@ ALTER TABLE cash_positions
   ADD COLUMN IF NOT EXISTS manual_collections JSONB DEFAULT '[]',
   ADD COLUMN IF NOT EXISTS approved_payments  JSONB DEFAULT '[]';
 
+-- 2026-06: Per-milestone receipt type and withholding tax
+ALTER TABLE billing_milestones ADD COLUMN IF NOT EXISTS receipt_type TEXT DEFAULT NULL;
+ALTER TABLE billing_milestones ADD COLUMN IF NOT EXISTS withholding  BOOLEAN DEFAULT NULL;
+-- NULL means "inherit from deal" (app falls back to deal.receipt_type / deal.withholding)
+
 -- ============================================================
 --  DONE.
 -- ============================================================

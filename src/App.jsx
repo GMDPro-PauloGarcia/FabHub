@@ -2300,7 +2300,7 @@ export default function App(){
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(_jos);idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by})):null;
+            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null})):null;
             if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
             const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
@@ -2521,6 +2521,7 @@ export default function App(){
     amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
     invoice_date:r.invoiceDate||null, due_date:r.dueDate||null,
     status:r.status||"Draft", created_by:r.createdBy||"",
+    receipt_type:r.receiptType||null, withholding:r.withholding??null,
   });
   const toSbPayment = r=>({
     id:r.id, milestone_id:r.milestoneId, amount:Number(r.amount)||0,
@@ -14473,7 +14474,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
   const[editMsForm,setEditMsForm]=useState({});
-  const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft"});
+  const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:""});
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
@@ -14495,7 +14496,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const submitMS=()=>{
     if(!msForm.name||!msForm.amount) return;
     addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||nextInvoiceNo(),createdBy:session?.name||role});
-    setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft"});
+    setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setShowForm(false);
   };
   const submitPay=()=>{
@@ -14511,6 +14512,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
       amount:Number(editMsForm.amount)||0,
       invoiceNo:editMsForm.invoiceNo,invoiceDate:editMsForm.invoiceDate,
       dueDate:editMsForm.dueDate,
+      receiptType:editMsForm.receiptType??null,
+      withholding:editMsForm.withholding??null,
     });
     setEditMs(null);setEditMsForm({});
   };
@@ -14879,8 +14882,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           {(()=>{
             const ms=billings.filter(b=>b.dealId===selDeal);
             const rt=deal?.receiptType||"OR", wh=deal?.withholding||false;
-            // Net receivable per milestone (base + VAT − EWT), so summary matches each milestone's Net Due
-            const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,rt,wh).netReceivable,0);
+            // Net receivable per milestone — use milestone's own tax settings, fall back to deal
+            const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
             const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
             const tx=calcTax(deal?.value||0,rt,wh);
             return(
@@ -14955,10 +14958,24 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                     <Fld label="Invoice Date"><Inp type="date" value={msForm.invoiceDate} onChange={e=>fm("invoiceDate",e.target.value)}/></Fld>
                     <Fld label="Due Date"><Inp type="date" value={msForm.dueDate} onChange={e=>fm("dueDate",e.target.value)}/></Fld>
                     <Fld label="Status"><Sel value={msForm.status} onChange={e=>fm("status",e.target.value)}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+                    <Fld label="Receipt Type" hint={`Defaults to deal setting (${deal?.receiptType||"OR"})`}>
+                      <Sel value={msForm.receiptType||""} onChange={e=>fm("receiptType",e.target.value||null)}>
+                        <option value="">— Use Deal Default ({deal?.receiptType||"OR"}) —</option>
+                        <option value="OR">OR (Official Receipt)</option>
+                        <option value="AR">AR (Acknowledgement Receipt)</option>
+                      </Sel>
+                    </Fld>
+                    <Fld label="Withholding Tax (EWT 2%)" hint={`Defaults to deal setting (${deal?.withholding?"Yes":"No"})`}>
+                      <Sel value={msForm.withholding==null?"":String(msForm.withholding)} onChange={e=>fm("withholding",e.target.value===""?null:e.target.value==="true")}>
+                        <option value="">— Use Deal Default ({deal?.withholding?"Yes":"No"}) —</option>
+                        <option value="true">Yes — apply 2% EWT deduction</option>
+                        <option value="false">No — no withholding</option>
+                      </Sel>
+                    </Fld>
                     <div style={{gridColumn:"1/-1"}}><Fld label="Description"><Inp value={msForm.description} onChange={e=>fm("description",e.target.value)} placeholder="What this billing covers…"/></Fld></div>
                     {/* Tax preview */}
                     {n(msForm.amount)>0&&deal&&(()=>{
-                      const tx=calcTax(msForm.amount,deal.receiptType||"OR",deal.withholding||false);
+                      const tx=calcTax(msForm.amount,msForm.receiptType??deal.receiptType??"OR",msForm.withholding??deal.withholding??false);
                       return<div style={{gridColumn:"1/-1",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem"}}>
                         <span><span style={{color:"#92400e"}}>Base: </span><strong>₱{n(msForm.amount).toLocaleString("en-PH")}</strong></span>
                         {tx.vat>0&&<span><span style={{color:"#92400e"}}>VAT: </span><strong style={{color:"#f59e0b"}}>₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
@@ -14986,7 +15003,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {billings.filter(b=>b.dealId===selDeal).map(ms=>{
               const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
-              const tx=calcTax(ms.amount,deal?.receiptType||"OR",deal?.withholding||false);
+              const tx=calcTax(ms.amount,ms.receiptType??deal?.receiptType??"OR",ms.withholding??deal?.withholding??false);
               const balance=Math.max(0,tx.netReceivable-paidTotal);
               const pct=tx.netReceivable>0?Math.round(paidTotal/tx.netReceivable*100):0;
               const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
@@ -15076,6 +15093,20 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                             <Fld label="Invoice Date"><Inp type="date" value={editMsForm.invoiceDate||""} onChange={e=>fme("invoiceDate",e.target.value)}/></Fld>
                             <Fld label="Due Date"><Inp type="date" value={editMsForm.dueDate||""} onChange={e=>fme("dueDate",e.target.value)}/></Fld>
                             <Fld label="Description"><Inp value={editMsForm.description||""} onChange={e=>fme("description",e.target.value)} placeholder="Optional details…"/></Fld>
+                            <Fld label="Receipt Type" hint={`Deal default: ${deal?.receiptType||"OR"}`}>
+                              <Sel value={editMsForm.receiptType||""} onChange={e=>fme("receiptType",e.target.value||null)}>
+                                <option value="">— Use Deal Default ({deal?.receiptType||"OR"}) —</option>
+                                <option value="OR">OR (Official Receipt)</option>
+                                <option value="AR">AR (Acknowledgement Receipt)</option>
+                              </Sel>
+                            </Fld>
+                            <Fld label="Withholding Tax (EWT 2%)" hint={`Deal default: ${deal?.withholding?"Yes":"No"}`}>
+                              <Sel value={editMsForm.withholding==null?"":String(editMsForm.withholding)} onChange={e=>fme("withholding",e.target.value===""?null:e.target.value==="true")}>
+                                <option value="">— Use Deal Default ({deal?.withholding?"Yes":"No"}) —</option>
+                                <option value="true">Yes — apply 2% EWT deduction</option>
+                                <option value="false">No — no withholding</option>
+                              </Sel>
+                            </Fld>
                           </div>
                           <div style={{display:"flex",gap:8,marginTop:8}}>
                             <button onClick={saveEditMs} style={{background:"#1d4ed8",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
@@ -15115,7 +15146,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                       {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
                         <button onClick={()=>setShowPay(showPay===ms.id?null:ms.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
-                      {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||""});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
+                      {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||"",receiptType:ms.receiptType??null,withholding:ms.withholding??null});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
                       {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
                       {canEdit&&<button onClick={()=>{if(window.confirm("Delete this milestone?"))deleteMilestone(ms.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontFamily:"inherit",fontWeight:600,fontSize:".7rem",color:"#dc2626",cursor:"pointer"}}>Delete</button>}
                     </div>
