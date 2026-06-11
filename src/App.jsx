@@ -1715,6 +1715,9 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
           <Fld label="Description" required hint="Be specific — e.g. 'Steel tubes for TechZone kiosks'">
             <Inp value={form.note} onChange={e=>f("note",e.target.value)} placeholder="What was this expense for?"/>
           </Fld>
+          <Fld label="Payee" hint="Vendor, supplier, or person paid">
+            <Inp value={form.payee||""} onChange={e=>f("payee",e.target.value)} placeholder="e.g. ABC Supplies Inc."/>
+          </Fld>
           <Fld label="Bank Account" hint="Which bank account was this expense paid from?">
             <Sel value={form.bankAccount||""} onChange={e=>f("bankAccount",e.target.value||null)}>
               <option value="">— No bank (cash / untagged) —</option>
@@ -1748,6 +1751,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
               ["Category",form.category],
               ["Amount",fmt(Number(form.amount))],
               ["Description",form.note],
+              form.payee?["Payee",form.payee]:null,
               ["Bank Account",bankName],
               ["Project",projName],
               form.receipt?["Receipt","Linked ✓"]:null,
@@ -2434,7 +2438,7 @@ export default function App(){
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
-    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
+    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
     if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);idbE.push([KEYS.mreqs,ms]);}
@@ -2536,7 +2540,7 @@ export default function App(){
     const desc=r.note||r.description||"";
     return{id:r.id,deal_id:r.dealId||r.projectId||null,date,
       category:r.category||"",description:desc,note:desc,
-      amount:Number(r.amount)||0,supplier:r.supplier||"",receipt_no:r.receiptNo||"",
+      amount:Number(r.amount)||0,supplier:r.payee||r.supplier||"",receipt_no:r.receiptNo||"",
       bank_account:r.bankAccount||null};
   };
   const toSbPR = r=>({
@@ -3088,7 +3092,7 @@ export default function App(){
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const dt=rec.date?new Date(rec.date):null;
-        const mapped={...rec,dealId:rec.deal_id,receiptNo:rec.receipt_no,
+        const mapped={...rec,dealId:rec.deal_id,receiptNo:rec.receipt_no,payee:rec.supplier||"",
           month:dt?dt.getMonth():new Date().getMonth(),
           year:dt?dt.getFullYear():new Date().getFullYear()};
         setExps(es=>{const ex=es.find(e=>e.id===rec.id);
@@ -3895,7 +3899,7 @@ export default function App(){
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
   const[expModal,  setExpModal] =useState(false);
-  const[expForm,   setExpForm]  =useState({expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",projectId:null,bankAccount:"",receipt:""});
+  const[expForm,   setExpForm]  =useState({expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",projectId:null,bankAccount:"",receipt:""});
   const[editExpId, setEditExpId]=useState(null);
   const[infModal,  setInfModal] =useState(false);
   const[infForm,   setInfForm]  =useState({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
@@ -4339,7 +4343,7 @@ export default function App(){
   const proj=selProj?{...emptyProject(),...(projs[selProj]||{})}:null;
   const projDeal=selProj?deals.find(d=>d.id===selProj):null;
 
-  const openAddExp=(projId=null,date=null)=>{setExpForm({expDate:date||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",projectId:projId,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
+  const openAddExp=(projId=null,date=null)=>{setExpForm({expDate:date||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",projectId:projId,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
   const saveExp=(overrideData)=>{
     const data=overrideData||expForm;
