@@ -143,8 +143,44 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
   delivery_note    TEXT DEFAULT '',
   requested_by     TEXT DEFAULT '',
   approved_by      TEXT DEFAULT '',
-  project_name     TEXT DEFAULT ''
+  project_name     TEXT DEFAULT '',
+  po_discount_type  TEXT DEFAULT '',      -- '' | 'amt' | 'pct' (PO-level, duplicated per line)
+  po_discount_value NUMERIC DEFAULT 0
 );
+
+-- Atomic PO number allocator — claimed at submit time so concurrent
+-- submits never share a PO number (see supabase_migration_009.sql).
+CREATE TABLE IF NOT EXISTS po_counter (
+  id      INT PRIMARY KEY,
+  last_no INT NOT NULL DEFAULT 0
+);
+INSERT INTO po_counter (id, last_no) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION next_po_number()
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  max_used INT;
+  new_no   INT;
+BEGIN
+  SELECT COALESCE(MAX(substring(po_number FROM '^PO-(\d+)$')::INT), 0)
+    INTO max_used
+    FROM purchase_requests
+   WHERE po_number ~ '^PO-\d+$';
+
+  UPDATE po_counter
+     SET last_no = GREATEST(last_no, max_used) + 1
+   WHERE id = 1
+  RETURNING last_no INTO new_no;
+
+  RETURN 'PO-' || lpad(new_no::TEXT, 4, '0');
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION next_po_number() TO anon, authenticated;
 
 -- ── 8. MATERIAL REQUESTS ──────────────────────────────────
 CREATE TABLE IF NOT EXISTS material_requests (
