@@ -12255,10 +12255,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
   // Total Cash Available = Total Book Balance - Less
   // Book balance = what bank confirms; if not filled, fall back to ending balance
-  const bookUnreconciled=bankTotals.book===0&&bankTotals.end>0; // warn user when BOOK is blank but END is filled
+  const bookUnreconciled=bankTotals.book===0&&bankTotals.end>0;
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
-  const totalEndingBal=workingBanks.reduce((s,b)=>s+endingBal[b.id],0);
-  const totalCashAvailable=totalEndingBal; // Ending bal already = beg + cashIn − txOut
 
   // Per-bank computed values (new Excel-style layout)
   const workingBanks=BANKS.filter(b=>!b.capital);
@@ -12306,6 +12304,9 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     workingBanks.forEach(b=>{out[b.id]=totalMoneyPerBank[b.id]-txOut[b.id];});
     return out;
   },[totalMoneyPerBank,txOut]);
+
+  const totalEndingBal=workingBanks.reduce((s,b)=>s+endingBal[b.id],0);
+  const totalCashAvailable=totalEndingBal;
 
   const untaggedExps=useMemo(()=>dateExps.filter(e=>!e.bankAccount),[dateExps]);
   const untaggedPayments=useMemo(()=>todayPayments.filter(p=>!p.bank),[todayPayments]);
