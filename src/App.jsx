@@ -12322,11 +12322,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",
     color:"#0f172a",background:"#fff",width:"100%",boxSizing:"border-box",outline:"none"
   };
-  const cellStyle=(bg="#fff",bold=false)=>({
-    padding:"8px 12px",borderBottom:"1px solid #e2e8f0",
-    background:bg,fontWeight:bold?"700":"400",fontSize:".82rem",
-    color:"#0f172a"
-  });
   const labelCell={
     padding:"8px 12px",borderBottom:"1px solid #e2e8f0",
     background:"#f8fafc",fontWeight:600,fontSize:".8rem",
@@ -12343,18 +12338,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
   // Column template: sticky label col + 5 bank cols + total col
   const colTpl="200px repeat(5,1fr) 130px";
-
-  // Inline bank-selector buttons for untagged expenses/payments
-  const BankBtns=({onSelect,color="#1e293b"})=>(
-    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-      {workingBanks.map(b=>(
-        <button key={b.id} className="bank-btn" onClick={()=>onSelect(b.id)}
-          style={{borderColor:b.color,color:b.color}}>
-          {b.short}
-        </button>
-      ))}
-    </div>
-  );
 
   return(
     <div>
