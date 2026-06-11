@@ -4245,32 +4245,6 @@ export default function App(){
     };
     upJos(js=>[jo,...js]);
     if(isSupabaseReady()) sbSyncOne("job_orders",jo,toSbJO);
-    // Auto-create 50% DP billing milestone so Finance can log it
-    const dpAmount = Math.round(Number(awardModal.value||0) * 0.5);
-    if(dpAmount > 0){
-      const dpMs = {
-        id: uid(),
-        dealId: id,
-        label: "50% Down Payment",
-        amount: dpAmount,
-        status: "Unpaid",
-        dueDate: "",
-        invoiceNo: "",
-        invoiceDate: today,  // Fix 1: set today so P&L can recognize this revenue
-        payments: [],
-        createdBy: session?.name || "System",
-        createdAt: today,
-      };
-      upBillings(bs => [...bs, dpMs]);
-      if(isSupabaseReady()) sbSyncOne("billing_milestones", dpMs, toSbBilling);
-      // Fix 2: set deal.invoiced = dpAmount so Finance totOut KPI reflects it
-      upDeals(ds=>ds.map(d=>{
-        if(d.id!==id) return d;
-        const nd={...d,invoiced:Number(d.invoiced||0)+dpAmount};
-        if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
-        return nd;
-      }));
-    }
     // Create project card with PM/AE pre-populated
     createProjectCard(id,{...awardModal,
       aeAssigned:jo.aeAssigned,
