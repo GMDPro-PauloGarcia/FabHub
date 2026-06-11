@@ -77,6 +77,143 @@ const STAGE_DURATION = {
   "04 · CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
   "08 · Fabrication":   "Fab: 45 days · Construction: 45–60 days",
 };
+// ─── STAGE PROCESS REMINDERS ─────────────────────────────────────────────────
+// Shown as a modal when a deal moves to a new stage.
+// Reminds the responsible team of immediate actions and watch-outs.
+const STAGE_PROCESS_REMINDERS = {
+  "02 · Engagement":{
+    icon:"🤝",color:"#60a5fa",owner:"Account Executive",
+    summary:"Qualify the opportunity and engage the actual decision-maker.",
+    actions:[
+      "Schedule a meeting or call with the decision-maker — not just a coordinator",
+      "Confirm scope ballpark, budget range, and target completion date",
+      "Add client to GMD Client Directory if new",
+      "Log first contact details in deal notes",
+    ],
+    watchOut:"Don't send a quotation yet — confirm scope and budget first, or you'll be repricing later.",
+    sla:"Qualify within 3–5 business days",
+  },
+  "03 · Design & Folder":{
+    icon:"📁",color:"#a78bfa",owner:"Account Executive + Design",
+    summary:"Create project folder and brief Design via DRF. No verbal briefs.",
+    actions:[
+      "Create Google Drive project folder (use standard GMD folder template)",
+      "Submit a Design Request Form (DRF) — do not brief Design verbally",
+      "Upload all client references, mood boards, and floor plans to folder",
+      "Confirm design deadline with client and log it",
+    ],
+    watchOut:"Design starts without a proper DRF — no DRF = no start date. Always submit before expecting output.",
+    sla:"DRF within 1 business day of moving to this stage",
+  },
+  "04 · CE in Progress":{
+    icon:"📐",color:"#f59e0b",owner:"Design + QS (Cost Estimator)",
+    summary:"Design and CE run in parallel. Track both deadlines actively.",
+    actions:[
+      "Design target: 5–15 days for renderings. CE: 5–7 days after design approval",
+      "QS (Rodney) prepares CE — Sales presents but does NOT alter numbers",
+      "Flag any client scope changes immediately — every change affects CE",
+      "Check STAGE DURATION reference for timeline expectations",
+    ],
+    watchOut:"Sales quoting without QS sign-off = wrong number reaches client. CE is final only after Rodney / Paulo confirms.",
+    sla:"Design: 5–15 days · CE: 5–7 days",
+  },
+  "05 · For Approval":{
+    icon:"✍️",color:"#f97316",owner:"Account Executive + Paulo Garcia",
+    summary:"Present CE formally and get written client approval before moving forward.",
+    actions:[
+      "Loop Paulo Garcia in if project value is ₱3M or above — MANDATORY",
+      "Send formal CE document to client (PDF, not verbal or chat)",
+      "Log all revision requests in deal notes with dates",
+      "Set a follow-up date — do not leave this stage open-ended",
+    ],
+    watchOut:"Client says 'yes' verbally but won't sign — do not proceed to Kickoff without written approval (email or signed CE).",
+    sla:"Follow up within 2 business days if no client response",
+  },
+  "06 · Kickoff":{
+    icon:"🚀",color:"#10b981",owner:"Sales + Finance + Operations",
+    summary:"Project awarded. All teams brief today. Billing starts now.",
+    actions:[
+      "Sales: Create client WhatsApp/Viber comms group — add all stakeholders",
+      "Finance: Issue 50% downpayment billing immediately — same day",
+      "Operations: PM and coordinators receive full written project brief",
+      "Procurement: Begin swatch sourcing and flag any long-lead items",
+    ],
+    watchOut:"Kickoff happens but billing is delayed — billing delay = cash flow problem. Issue the DP invoice on Day 1.",
+    sla:"All kickoff tasks must be initiated within 1 business day",
+  },
+  "07 · Briefing":{
+    icon:"📋",color:"#06b6d4",owner:"Cost Control + Project Manager",
+    summary:"Lock budget before any procurement begins. No orders before budget approval.",
+    actions:[
+      "Cost Control creates and locks the project budget — nothing moves without this",
+      "PM reviews full approved plans — confirm revision number before briefing production",
+      "Assign production lead and site coordinator in project card",
+      "Set target completion date (TAT) in the system now",
+    ],
+    watchOut:"Procurement buying before budget is approved — lock budget first, order second. No exceptions.",
+    sla:"Budget must be set before fabrication Day 1",
+  },
+  "08 · Fabrication":{
+    icon:"🏗",color:"#3b82f6",owner:"Operations + Procurement",
+    summary:"Production running. PM updates client daily. Scope changes go through addenda.",
+    actions:[
+      "Procurement: Identify and order ALL long-lead items on Day 1 (glass, imported hardware, custom metal)",
+      "PM: Log daily or weekly client update — never let client ask 'any update?' first",
+      "Flag ANY scope change as an addendum — coordinate with Sales before telling client",
+      "All material swatches must be client-approved before fabrication of that item begins",
+    ],
+    watchOut:"Long-lead items ordered too late = production stalls. Check every lead time on Day 1, not Day 30.",
+    sla:"Fabrication: 45 days · Construction: 45–60 days",
+  },
+  "09 · Site & Billing":{
+    icon:"🔧",color:"#8b5cf6",owner:"Project Manager + Finance",
+    summary:"Progress billing and on-site supervision. Bill per agreed schedule — not when client asks.",
+    actions:[
+      "Finance: Issue progress billing per payment terms — don't wait for client to request",
+      "Operations: Schedule a mid-project client site visit",
+      "Confirm all permits are secured before installation day",
+      "Update project completion percentage in project card",
+    ],
+    watchOut:"Billing delayed = cash flow pressure. Set your billing trigger date at project start and honor it.",
+    sla:"Bill per payment schedule in signed CE",
+  },
+  "10 · Installation":{
+    icon:"📦",color:"#ec4899",owner:"Operations",
+    summary:"On-site installation. Logistics, site access, and delivery all pre-confirmed.",
+    actions:[
+      "Confirm site access and contact person the night before — not the morning of",
+      "Verify module count, sizes, and specs against PO and drawings before accepting delivery",
+      "All permits must be in hand before installation begins",
+      "PM must be on-site or reachable at all times",
+    ],
+    watchOut:"Truck arrives and site is locked — always confirm building admin access and loading dock schedule 24h in advance.",
+    sla:"All logistics confirmed 24–48 hours before installation",
+  },
+  "11 · Punchlist":{
+    icon:"✅",color:"#eab308",owner:"Project Manager",
+    summary:"Punchlist documented on-site, signed, and resolved within 5 business days.",
+    actions:[
+      "Document ALL punchlist items in writing before leaving the site — no verbal lists",
+      "Get client signature on punchlist document before departing",
+      "Assign each item to a person with a specific resolution date",
+      "Escalate to Paolo/Paulo immediately if client refuses to sign",
+    ],
+    watchOut:"Verbal punchlist is forgotten — always get a written, signed punchlist on-site. No exceptions.",
+    sla:"5 business day SLA from punch to full resolution",
+  },
+  "12 · Close-Out":{
+    icon:"🔒",color:"#059669",owner:"Project Manager + Finance",
+    summary:"Close the project cleanly. COC, final billing, and as-builts all submitted.",
+    actions:[
+      "PM submits Certificate of Completion (COC) with all addenda and resolved punchlist",
+      "Finance issues final billing for the remaining balance",
+      "Upload as-built plans to project folder (4 sets: Owner, Mall, PDF, CAD)",
+      "Mark all checklist items as Done before moving to 14 · Completed",
+    ],
+    watchOut:"Balance unpaid before closing — escalate if not paid within agreed terms. No project is 'done' with outstanding balance.",
+    sla:"All close-out tasks within 5 business days of client handover",
+  },
+};
 const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
 const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
@@ -351,8 +488,51 @@ const emptyPR = () => ({
   qtyDelivered:0, deliveryDate:"", deliveryNote:"",
   status:"Draft", requestedBy:"", approvedBy:"", approvedAt:"",
   budgetCategory:"Materials",  // which budget line this hits
+  poDiscType:"", poDiscValue:0,  // PO-level discount ('amt' ₱ | 'pct' %), duplicated on every line of the PO
   notes:"", createdDate:"",
 });
+
+// deal.contact holds the Project Name (legacy field name) — fall back to client
+const projDisplayName = d => d ? (d.contact || d.client || "") : "";
+const projOptionLabel = d => {
+  if(!d) return "";
+  let l = projDisplayName(d);
+  if(d.ceNo) l += ` · ${d.ceNo}`;
+  if(d.contact && d.client) l += ` (${d.client})`;
+  return l;
+};
+const projOptions = deals => (deals||[]).map(d=>({value:d.id,label:projOptionLabel(d)}));
+
+const PO_NO_RE = /^PO-(\d+)$/;
+const computeNextPoNo = prs => {
+  const nums=(prs||[]).map(p=>{const m=PO_NO_RE.exec(p.poNumber||"");return m?Number(m[1]):0;});
+  return `PO-${String((nums.length?Math.max(...nums):0)+1).padStart(4,"0")}`;
+};
+// Claim a PO number at SUBMIT time — never when the form opens — so officers
+// filling a PO simultaneously can't both keep the same suggested number.
+// Online: atomic server-side counter (next_po_number RPC, migration 009).
+// Offline / RPC missing: recompute from the latest synced list and skip past
+// any number already in use. A manually typed number that doesn't collide is
+// respected as an override.
+const claimPoNumber = async ({typed, suggested, prs}) => {
+  const taken=new Set((prs||[]).map(p=>p.poNumber).filter(Boolean));
+  const t=(typed||"").trim();
+  if(t && t!==suggested && !taken.has(t)) return t;
+  if(isSupabaseReady()){
+    try{
+      const {data,error}=await supabase.rpc('next_po_number');
+      if(!error && typeof data==="string" && PO_NO_RE.test(data)) return data;
+    }catch(e){ /* fall back to local allocation */ }
+  }
+  let n=Number(PO_NO_RE.exec(computeNextPoNo(prs))[1]);
+  while(taken.has(`PO-${String(n).padStart(4,"0")}`)) n++;
+  return `PO-${String(n).padStart(4,"0")}`;
+};
+const poDiscountAmt=(type,value,subtotal)=>{
+  const v=Number(value)||0;
+  if(v<=0||subtotal<=0) return 0;
+  return Math.min(type==="pct"?subtotal*Math.min(v,100)/100:v, subtotal);
+};
 
 const emptyBudget = () => ({
   Materials:0, Labor:0, Overhead:0, Subcon:0,
@@ -2310,7 +2490,7 @@ export default function App(){
             if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
             const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",poDiscType:p.po_discount_type||"",poDiscValue:Number(p.po_discount_value)||0})):null;
             if(_prs){setPrs(_prs);idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})):null;
             if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
@@ -2440,7 +2620,7 @@ export default function App(){
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",poDiscType:p.po_discount_type||"",poDiscValue:Number(p.po_discount_value)||0}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(bs2);idbE.push([KEYS.breqs,bs2]);}
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(as);idbE.push([KEYS.addenda,as]);}
@@ -2554,6 +2734,7 @@ export default function App(){
     po_number:r.poNumber||"", po_date:r.poDate||null,
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
+    po_discount_type:r.poDiscType||"", po_discount_value:Number(r.poDiscValue)||0,
   });
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
@@ -2963,7 +3144,8 @@ export default function App(){
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
-          awardRequestData:rec.award_request_data||null};
+          awardRequestData:rec.award_request_data||null,
+          parentDealId:rec.parent_deal_id||null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
       }
@@ -3032,14 +3214,22 @@ export default function App(){
       if(eventType==='DELETE') setJos(js=>js.filter(j=>j.id!==oldRow.id));
     });
 
-    // Purchase Requests — Procurement approves, Ops sees it immediately
+    // Purchase Requests — Procurement approves, Ops sees it immediately.
+    // Full snake→camel mapping (mirrors sbLoadAll) so a PO submitted on another
+    // device arrives with its poNumber/costs intact — the next officer's
+    // suggested PO number is computed from this list.
     const prSub = sbSubscribe('prs-rt', 'purchase_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={...rec,dealId:rec.deal_id,estimatedCost:rec.estimated_cost,
-          actualCost:rec.actual_cost,budgetCategory:rec.budget_category,
-          qtyDelivered:rec.qty_delivered,deliveryDate:rec.delivery_date,
-          drNo:rec.dr_no,createdBy:rec.created_by};
+        const mapped={...rec,dealId:rec.deal_id,projectId:rec.deal_id,itemName:rec.item||"",
+          estimatedCost:Number(rec.estimated_cost)||0,estUnitCost:Number(rec.estimated_cost)||0,
+          actualCost:Number(rec.actual_cost)||0,actUnitCost:Number(rec.actual_cost)||0,
+          budgetCategory:rec.budget_category,qtyDelivered:Number(rec.qty_delivered)||0,
+          deliveryDate:rec.delivery_date,deliveryNote:rec.delivery_note||"",
+          drNo:rec.dr_no,createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",
+          requestedBy:rec.requested_by||rec.created_by||"",approvedBy:rec.approved_by||"",
+          projectName:rec.project_name||"",poDiscType:rec.po_discount_type||"",
+          poDiscValue:Number(rec.po_discount_value)||0};
         setPrs(ps=>{const ex=ps.find(p=>p.id===rec.id);
           return ex?ps.map(p=>p.id===rec.id?{...p,...mapped}:p):[...ps,mapped];});
       }
@@ -3990,6 +4180,7 @@ export default function App(){
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[fromHome,   setFromHome]   =useState(false);
+  const[stageReminderModal,setStageReminderModal]=useState(null); // {dealId,stage,client}
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
   const smartImportInputRef=useRef(null);
@@ -4145,6 +4336,10 @@ export default function App(){
   const stageQ=(id,st)=>{
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="06 · Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
+    if(STAGE_PROCESS_REMINDERS[st]){
+      const dealForReminder=deals.find(d=>d.id===id);
+      setTimeout(()=>setStageReminderModal({dealId:id,stage:st,client:dealForReminder?.client||""}),200);
+    }
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
       const missing=[];
@@ -4807,6 +5002,72 @@ export default function App(){
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
+      {/* ── Stage Process Reminder Modal ── */}
+      {stageReminderModal&&STAGE_PROCESS_REMINDERS[stageReminderModal.stage]&&(()=>{
+        const rem=STAGE_PROCESS_REMINDERS[stageReminderModal.stage];
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setStageReminderModal(null)}>
+            <div style={{background:"#fff",borderRadius:20,padding:0,width:"100%",maxWidth:540,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 32px 96px rgba(0,0,0,.25)"}} onClick={e=>e.stopPropagation()}>
+              {/* Header */}
+              <div style={{background:"#1a1a2e",borderRadius:"20px 20px 0 0",padding:"20px 24px 16px",position:"relative"}}>
+                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
+                  <span style={{fontSize:"1.5rem"}}>{rem.icon}</span>
+                  <div>
+                    <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1.5px",color:"rgba(255,255,255,.45)",marginBottom:3}}>Stage Process Reminder</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#fff",lineHeight:1.1}}>{stageReminderModal.stage}</div>
+                  </div>
+                  <button onClick={()=>setStageReminderModal(null)} style={{position:"absolute",top:16,right:16,background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#94a3b8",fontSize:".95rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+                </div>
+                {stageReminderModal.client&&<div style={{fontSize:".72rem",color:"rgba(255,255,255,.45)",marginTop:4}}>📌 {stageReminderModal.client}</div>}
+                <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:6,background:rem.color+"22",border:`1px solid ${rem.color}44`,borderRadius:20,padding:"4px 12px"}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:rem.color,display:"inline-block",flexShrink:0}}/>
+                  <span style={{fontSize:".72rem",fontWeight:700,color:rem.color}}>Owner: {rem.owner}</span>
+                </div>
+              </div>
+              <div style={{height:3,background:`linear-gradient(90deg,${rem.color},#f59e0b)`}}/>
+              {/* Body */}
+              <div style={{padding:"20px 24px"}}>
+                <div style={{fontSize:".85rem",color:"#475569",lineHeight:1.6,marginBottom:18,fontWeight:500}}>{rem.summary}</div>
+                {/* Immediate Actions */}
+                <div style={{marginBottom:16}}>
+                  <div style={{fontSize:".65rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",marginBottom:10}}>Immediate Actions</div>
+                  {rem.actions.map((a,i)=>(
+                    <div key={i} style={{display:"flex",gap:10,marginBottom:9,alignItems:"flex-start"}}>
+                      <div style={{width:22,height:22,borderRadius:"50%",background:rem.color+"18",border:`1.5px solid ${rem.color}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                        <span style={{fontSize:".65rem",fontWeight:800,color:rem.color}}>{i+1}</span>
+                      </div>
+                      <div style={{fontSize:".82rem",color:"#1e293b",lineHeight:1.5,fontWeight:500}}>{a}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* SLA */}
+                {rem.sla&&(
+                  <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",gap:8,alignItems:"flex-start"}}>
+                    <span style={{fontSize:".95rem",flexShrink:0}}>⏱</span>
+                    <div>
+                      <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"#059669",marginBottom:2}}>Timeline / SLA</div>
+                      <div style={{fontSize:".8rem",color:"#064e3b",fontWeight:600}}>{rem.sla}</div>
+                    </div>
+                  </div>
+                )}
+                {/* Watch Out */}
+                <div style={{background:"#fef9c3",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:20,display:"flex",gap:8,alignItems:"flex-start"}}>
+                  <span style={{fontSize:"1rem",flexShrink:0}}>⚠️</span>
+                  <div>
+                    <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"#92400e",marginBottom:2}}>Watch Out</div>
+                    <div style={{fontSize:".8rem",color:"#78350f",lineHeight:1.5}}>{rem.watchOut}</div>
+                  </div>
+                </div>
+                {/* Buttons */}
+                <div style={{display:"flex",gap:10}}>
+                  <button onClick={()=>setStageReminderModal(null)} style={{flex:1,background:"#1a1a2e",border:"none",borderRadius:10,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Got it</button>
+                  <button onClick={()=>{setPage("checklist");setStageReminderModal(null);}} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:"pointer",whiteSpace:"nowrap"}}>📋 Open Checklist</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
@@ -6154,7 +6415,9 @@ export default function App(){
         const today2=new Date();
         const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
-        const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
+        const awardedVal=wonDeals.filter(d=>!d.parentDealId).reduce((s,d)=>
+          s+Number(d.value||0)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((cs,cd)=>cs+Number(cd.value||0),0)
+        ,0);
         const thisMonth=new Date().toISOString().slice(0,7);
         const newThisMonth=deals.filter(d=>d.dateAcquired?.slice(0,7)===thisMonth);
         const allMs=billings;
@@ -13120,21 +13383,22 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
   // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
-    return wonDeals.filter(d=>d.stage!=="12 · Close-Out").map(d=>{
+    return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&!d.parentDealId).map(d=>{
       const b=budgets[d.id]||emptyBudget();
       const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
-      prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
+      const dRelatedIds=new Set([d.id,...wonDeals.filter(cd=>cd.parentDealId===d.id).map(cd=>cd.id)]);
+      prs.filter(p=>dRelatedIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
         const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
         const cat=p.budgetCategory||"Materials";
         if(result[cat]!==undefined) result[cat]+=cost;
       });
-      exps.filter(e=>e.projectId===d.id).forEach(e=>{
+      exps.filter(e=>dRelatedIds.has(e.projectId)).forEach(e=>{
         const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
         result[cat]+=n(e.amount);
       });
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(b[c]),0);
       const totalActual=BUDGET_CATS.reduce((s,c)=>s+result[c],0);
-      const contractVal=n(d.value)||0;
+      const contractVal=n(d.value)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((s,cd)=>s+n(cd.value),0);
       const pctUsed=totalBudget>0?Math.round(totalActual/totalBudget*100):0;
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
       const isOver=totalBudget>0&&totalActual>totalBudget;
@@ -13143,24 +13407,25 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
     });
   },[wonDeals,budgets,prs,exps]);
 
-  // Actuals for the selected deal (detail view)
+  // Actuals for the selected deal (detail view) — includes costs logged against addendum deal IDs
   const actuals = useMemo(()=>{
     const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").forEach(p=>{
+    const relatedIds=new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]);
+    prs.filter(p=>relatedIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
       const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
       const cat=p.budgetCategory||"Materials";
       if(result[cat]!==undefined) result[cat]+=cost;
     });
-    exps.filter(e=>e.projectId===selDeal).forEach(e=>{
+    exps.filter(e=>relatedIds.has(e.projectId)).forEach(e=>{
       const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
       result[cat]+=n(e.amount);
     });
     return result;
-  },[prs,exps,selDeal]);
+  },[prs,exps,selDeal,wonDeals]);
 
   const totalBudget = BUDGET_CATS.reduce((s,c)=>s+n(form[c]),0);
   const totalActual = BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-  const contractVal = n(deal?.value)||0;
+  const contractVal = n(deal?.value)+wonDeals.filter(cd=>cd.parentDealId===deal?.id).reduce((s,cd)=>s+n(cd.value),0);
   const grossMargin = contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):0;
   const budgetUsed  = totalBudget>0?Math.round(totalActual/totalBudget*100):0;
   const linkedPRs   = prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").length;
@@ -13407,9 +13672,16 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   const[filterStat,setFilterStat]=useState("all");
   const[poSupplier,setPoSupplier]=useState("");
   const[poNumber,setPoNumber]=useState("");
+  const[poSuggestedNo,setPoSuggestedNo]=useState("");
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
   const[poStatus,setPoStatus]=useState("Draft");
   const[poItems,setPoItems]=useState([emptyPoItem()]);
+  const[poDiscType,setPoDiscType]=useState("amt");
+  const[poDiscValue,setPoDiscValue]=useState("");
+  const[submitting,setSubmitting]=useState(false);
+  const[discEditPo,setDiscEditPo]=useState(null);
+  const[discEditType,setDiscEditType]=useState("amt");
+  const[discEditVal,setDiscEditVal]=useState("");
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -13418,26 +13690,29 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
     return {_id:Math.random().toString(36).slice(2),projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0};
   }
 
-  const nextPoNo=()=>{
-    const existing=prs.map(p=>p.poNumber).filter(Boolean);
-    const nums=existing.map(n=>{const m=n.match(/PO-(\d+)/);return m?Number(m[1]):0;}).filter(x=>x>0);
-    const next=(nums.length?Math.max(...nums):0)+1;
-    return `PO-${String(next).padStart(4,"0")}`;
-  };
-
   const openNewPO=()=>{
-    setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
-    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]); setMode("newpo");
+    const sug=computeNextPoNo(prs);
+    setPoSupplier(""); setPoNumber(sug); setPoSuggestedNo(sug); setPoDate(new Date().toISOString().split("T")[0]);
+    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]); setPoDiscType("amt"); setPoDiscValue(""); setMode("newpo");
   };
 
   const printPO=(poNo,supplierName,poD,items)=>{
     const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const grandTotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
+    const subtotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
+    const disc=items.find(i=>(Number(i.poDiscValue)||0)>0);
+    const discAmt=poDiscountAmt(disc?.poDiscType,disc?.poDiscValue,subtotal);
+    const discLabel=disc?.poDiscType==="pct"?`Discount (${Number(disc.poDiscValue)}%)`:"Discount";
+    const grandTotal=subtotal-discAmt;
+    const totalRows=discAmt>0
+      ?`<tr><td colspan="6" style="text-align:right;font-weight:700">Subtotal</td><td style="text-align:right;font-weight:700">${fmt(subtotal)}</td></tr>
+        <tr><td colspan="6" style="text-align:right;color:#dc2626">${discLabel}</td><td style="text-align:right;color:#dc2626">−${fmt(discAmt)}</td></tr>
+        <tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>`
+      :`<tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>`;
     const rows=items.map((i,idx)=>{
       const deal=wonDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
       const lineTotal=unitCost*Number(i.qty||1);
-      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?deal.client+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineTotal)}</td></tr>`;
+      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal)+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineTotal)}</td></tr>`;
     }).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
 <style>
@@ -13472,7 +13747,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
 <table>
   <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Line Total</th></tr></thead>
   <tbody>${rows}</tbody>
-  <tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>
+  ${totalRows}
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br>_______________________</div>
@@ -13488,22 +13763,30 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   const removePoItem=(id)=>setPoItems(p=>p.filter(i=>i._id!==id));
   const updatePoItem=(id,k,v)=>setPoItems(p=>p.map(i=>i._id===id?{...i,[k]:v}:i));
 
-  const submitPO=()=>{
-    if(!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
-    const poNo=poNumber.trim();
+  const submitPO=async()=>{
+    if(submitting||!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
+    setSubmitting(true);
+    let poNo;
+    try{ poNo=await claimPoNumber({typed:poNumber,suggested:poSuggestedNo,prs}); }
+    finally{ setSubmitting(false); }
+    const subtotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
+    const discAmt=poDiscountAmt(poDiscType,poDiscValue,subtotal);
     poItems.forEach(item=>{
       const deal=wonDeals.find(d=>d.id===item.projectId);
       addPR({
         ...emptyPR(),
         itemName:item.itemName, category:item.category, budgetCategory:item.budgetCategory,
         qty:item.qty, unit:item.unit, estUnitCost:item.estUnitCost,
-        projectId:item.projectId, projectName:deal?.client||item.projectName||"",
+        projectId:item.projectId, projectName:projDisplayName(deal)||item.projectName||"",
         supplier:poSupplier, poNumber:poNo, poDate:poDate,
+        poDiscType:discAmt>0?poDiscType:"", poDiscValue:discAmt>0?Number(poDiscValue)||0:0,
         status:poStatus, requestedBy:session?.name||"",
         approvedBy:poStatus==="PO Issued"?session?.name||"":""
       });
     });
-    toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
+    toastEmit&&toastEmit(poNo!==poNumber.trim()
+      ?`Saved as ${poNo} — ${poNumber.trim()} was already taken by another PO`
+      :`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     setMode("list");
   };
 
@@ -13524,7 +13807,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
         solo.push(p);
       }
     });
-    const poGroups=Object.entries(byPO).map(([poNo,items])=>({type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)}));
+    const poGroups=Object.entries(byPO).map(([poNo,items])=>{
+      const gross=items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
+      const disc=items.find(i=>(n(i.poDiscValue))>0);
+      const discount=poDiscountAmt(disc?.poDiscType,disc?.poDiscValue,gross);
+      return {type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",gross,discount,discType:disc?.poDiscType||"",discValue:n(disc?.poDiscValue),total:gross-discount};
+    });
     const soloItems=solo.map(p=>({type:"solo",pr:p}));
     return [...poGroups,...soloItems].sort((a,b)=>{
       const aDate=a.type==="po"?a.poDate:a.pr.createdDate||"";
@@ -13534,7 +13822,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   })();
 
   const STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","PO Issued":"#3b82f6","Partially Delivered":"#8b5cf6","Delivered":"#10b981","Cancelled":"#ef4444"};
-  const totalValue=filteredAll.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
+  // net of PO-level discounts
+  const totalValue=grouped.reduce((s,g)=>s+(g.type==="po"?g.total:(n(g.pr.actUnitCost)||n(g.pr.estUnitCost))*n(g.pr.qty)),0);
 
   // Edit single PR inline
   if(mode==="editpr"&&editingId){
@@ -13546,10 +13835,14 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>Edit Purchase Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={editForm.projectId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);ef("projectId",e.target.value);ef("projectName",d?.client||"");}}>
-                <option value="">— Select Project —</option>
-                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
+              <SearchSelect
+                value={editForm.projectId||null}
+                onChange={v=>{const d=wonDeals.find(x=>x.id===v);ef("projectId",v||"");ef("projectName",projDisplayName(d));}}
+                options={projOptions(wonDeals)}
+                placeholder="Search project name or CE…"
+                noneLabel="— Select Project —"
+                noneValue=""
+              />
             </Fld>
             <Fld label="Budget Category">
               <Sel value={editForm.budgetCategory||"Materials"} onChange={e=>ef("budgetCategory",e.target.value)}>
@@ -13586,7 +13879,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   // New PO form
   if(mode==="newpo"){
     const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectId&&i.itemName.trim());
-    const grandTotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
+    const subtotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
+    const discAmt=poDiscountAmt(poDiscType,poDiscValue,subtotal);
+    const grandTotal=subtotal-discAmt;
     return(
       <div>
         <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
@@ -13600,7 +13895,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                 {(suppliers||[]).map(s=><option key={s.id} value={s.company_name||s.companyName||""}/>)}
               </datalist>
             </Fld>
-            <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
+            <Fld label="PO Number" required hint="Suggested — confirmed on submit so two officers can't issue the same number"><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
             <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
           </div>
@@ -13616,23 +13911,14 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr) 1fr 1fr",gap:10}}>
                     <Fld label="Project" required>
-                      <input
-                        list={`proj-list-${item._id}`}
-                        value={item.projectName}
-                        onChange={e=>{
-                          const name=e.target.value;
-                          const deal=wonDeals.find(d=>`${d.client}${d.ceNo?` · ${d.ceNo}`:""}` === name);
-                          updatePoItem(item._id,"projectName",name);
-                          if(deal) updatePoItem(item._id,"projectId",deal.id);
-                          else if(!name) updatePoItem(item._id,"projectId","");
-                        }}
-                        placeholder="Search project…"
-                        style={{width:"100%",border:`1.5px solid ${item.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
+                      <SearchSelect
+                        value={item.projectId||null}
+                        onChange={v=>{const d=wonDeals.find(x=>x.id===v);updatePoItem(item._id,"projectId",v||"");updatePoItem(item._id,"projectName",projDisplayName(d));}}
+                        options={projOptions(wonDeals)}
+                        placeholder="Search project name or CE…"
+                        noneLabel="— Select Project —"
+                        noneValue=""
                       />
-                      <datalist id={`proj-list-${item._id}`}>
-                        {wonDeals.map(d=><option key={d.id} value={`${d.client}${d.ceNo?` · ${d.ceNo}`:""}`}/>)}
-                      </datalist>
-                      {item.projectName&&!item.projectId&&<div style={{fontSize:".68rem",color:"#ef4444",marginTop:3}}>No matching project — select from the list</div>}
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
@@ -13652,13 +13938,31 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
             })}
           </div>
           <button onClick={addPoItem} style={{background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:700,width:"100%",marginBottom:16}}>+ Add Item</button>
-          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
-            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
+          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>Subtotal (est.)</span>
+              <span style={{fontWeight:700,color:"#475569",fontSize:".9rem"}}>{fmt(subtotal)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:8,flexWrap:"wrap"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>Discount</span>
+                <select value={poDiscType} onChange={e=>setPoDiscType(e.target.value)} style={{border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e40af",background:"#fff",cursor:"pointer"}}>
+                  <option value="amt">₱ Amount</option>
+                  <option value="pct">% Percent</option>
+                </select>
+                <input type="number" min="0" value={poDiscValue} onChange={e=>setPoDiscValue(e.target.value)} placeholder="0"
+                  style={{width:110,border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
+              </div>
+              <span style={{fontWeight:700,color:discAmt>0?"#dc2626":"#94a3b8",fontSize:".9rem"}}>−{fmt(discAmt)}</span>
+            </div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1.5px solid #bfdbfe",paddingTop:8}}>
+              <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
+            </div>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={submitPO} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
-              📦 Submit Purchase Order ({poItems.length} item{poItems.length>1?"s":""})
+            <button onClick={submitPO} disabled={!canSubmit||submitting} style={{background:canSubmit&&!submitting?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit&&!submitting?"#fff":"#94a3b8",cursor:canSubmit&&!submitting?"pointer":"not-allowed"}}>
+              {submitting?"⏳ Submitting…":`📦 Submit Purchase Order (${poItems.length} item${poItems.length>1?"s":""})`}
             </button>
             <button onClick={()=>setMode("list")} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
@@ -13693,10 +13997,16 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
       </div>
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-        <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-          <option value="all">All Projects</option>
-          {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-        </select>
+        <div style={{minWidth:240,flex:"0 1 300px"}}>
+          <SearchSelect
+            value={filterProj==="all"?null:filterProj}
+            onChange={v=>setFilterProj(v||"all")}
+            options={projOptions(wonDeals)}
+            placeholder="Search project name or CE…"
+            noneLabel="All Projects"
+            noneValue={null}
+          />
+        </div>
         <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Statuses</option>
           {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
@@ -13707,7 +14017,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
       <div style={{display:"flex",flexDirection:"column",gap:10}}>
         {grouped.map((g,gi)=>{
           if(g.type==="po"){
-            const {poNo,items,supplier,status,poDate:poD,total}=g;
+            const {poNo,items,supplier,status,poDate:poD,total,gross,discount,discType,discValue}=g;
             const allSameStatus=items.every(i=>i.status===status);
             return(
               <div key={poNo} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
@@ -13720,11 +14030,32 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                   </div>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#10b981"}}>{fmt(total)}</span>
+                    {discount>0&&<span style={{fontSize:".7rem",color:"#dc2626",fontWeight:700}}>−{fmt(discount)}{discType==="pct"?` (${discValue}%)`:""} disc</span>}
                     <span style={{fontSize:".7rem",color:"#94a3b8"}}>{items.length} item{items.length>1?"s":""}</span>
                     <button onClick={()=>printPO(poNo,supplier,poD,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                    {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(discEditPo===poNo){setDiscEditPo(null);}else{setDiscEditPo(poNo);setDiscEditType(discType||"amt");setDiscEditVal(discValue>0?String(discValue):"");}}} style={{background:"#fff7ed",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>% Disc</button>}
                     {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
                   </div>
                 </div>
+                {discEditPo===poNo&&(
+                  <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 16px",background:"#fff7ed",borderTop:"1px solid #fed7aa",flexWrap:"wrap"}}>
+                    <span style={{fontSize:".75rem",fontWeight:700,color:"#9a3412"}}>PO Discount</span>
+                    <select value={discEditType} onChange={e=>setDiscEditType(e.target.value)} style={{border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".75rem",color:"#9a3412",background:"#fff",cursor:"pointer"}}>
+                      <option value="amt">₱ Amount</option>
+                      <option value="pct">% Percent</option>
+                    </select>
+                    <input type="number" min="0" value={discEditVal} onChange={e=>setDiscEditVal(e.target.value)} placeholder="0"
+                      style={{width:110,border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
+                    <span style={{fontSize:".72rem",color:"#9a3412"}}>= −{fmt(poDiscountAmt(discEditType,discEditVal,gross))} off {fmt(gross)}</span>
+                    <button onClick={()=>{
+                      const v=n(discEditVal);
+                      items.forEach(i=>updatePR(i.id,{poDiscType:v>0?discEditType:"",poDiscValue:v>0?v:0}));
+                      setDiscEditPo(null);
+                      toastEmit&&toastEmit(`Discount ${v>0?"applied to":"removed from"} ${poNo}`,"success");
+                    }} style={{background:"#c2410c",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".75rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Save</button>
+                    <button onClick={()=>setDiscEditPo(null)} style={{background:"transparent",border:"1px solid #fed7aa",borderRadius:7,padding:"5px 10px",fontSize:".75rem",color:"#9a3412",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+                  </div>
+                )}
                 <div>
                   {items.map((pr,ii)=>{
                     const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
@@ -13740,7 +14071,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                             <span style={{fontSize:".65rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 7px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
                           </div>
                           <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
-                            {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                            {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
                             <span>{pr.qty} {pr.unit}</span>
                             {pr.deliveryNote&&<span>DR: {pr.deliveryNote}</span>}
                           </div>
@@ -13781,7 +14112,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                       <span style={{fontSize:".68rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 8px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
                     </div>
                     <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                      {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                      {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
                       <span>Qty: {pr.qty} {pr.unit}</span>
                       {pr.supplier&&<span>🏭 {pr.supplier}</span>}
                       <span>By: {pr.requestedBy||"—"}</span>
@@ -13825,10 +14156,11 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
   // Build per-project costing data
   const projectData = useMemo(()=>{
-    return wonDeals.map(deal=>{
+    return wonDeals.filter(deal=>!deal.parentDealId).map(deal=>{
       const budget = budgets[deal.id]||emptyBudget();
-      const dealPRs = prs.filter(p=>p.projectId===deal.id&&p.status!=="Cancelled");
-      const dealExps= exps.filter(e=>e.projectId===deal.id);
+      const dealRelatedIds=new Set([deal.id,...wonDeals.filter(cd=>cd.parentDealId===deal.id).map(cd=>cd.id)]);
+      const dealPRs = prs.filter(p=>dealRelatedIds.has(p.projectId)&&p.status!=="Cancelled");
+      const dealExps= exps.filter(e=>dealRelatedIds.has(e.projectId));
 
       const actuals={Materials:0,Labor:0,Overhead:0,Subcon:0};
       dealPRs.forEach(p=>{
@@ -13843,7 +14175,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(budget[c]),0);
       const totalActual=BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-      const contractVal=n(deal.value)||0;
+      const contractVal=n(deal.value)+wonDeals.filter(cd=>cd.parentDealId===deal.id).reduce((s,cd)=>s+n(cd.value),0);
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
       const budgetVariance=totalBudget-totalActual;
       const isOverBudget=totalBudget>0&&totalActual>totalBudget;
@@ -14061,13 +14393,8 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
   const[convertingId, setConvertingId] = useState(null);
   const[convSupplier, setConvSupplier] = useState("");
   const[convPoNo,     setConvPoNo]     = useState("");
-
-  const nextPoNo = () => {
-    const existing = (prs||[]).map(p=>p.poNumber).filter(Boolean);
-    const nums = existing.map(n=>{const m=n.match(/PO-(\d+)/);return m?Number(m[1]):0;}).filter(x=>x>0);
-    const next = (nums.length?Math.max(...nums):0)+1;
-    return `PO-${String(next).padStart(4,"0")}`;
-  };
+  const[convPoSuggested, setConvPoSuggested] = useState("");
+  const[convSubmitting,  setConvSubmitting]  = useState(false);
 
   const printMR = (mr) => {
     const deal = wonDeals.find(d=>d.id===mr.projectId);
@@ -14256,10 +14583,14 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Material Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
-                <option value="">— Select Project —</option>
-                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
+              <SearchSelect
+                value={form.projectId||null}
+                onChange={v=>f("projectId",v||"")}
+                options={projOptions(wonDeals)}
+                placeholder="Search project name or CE…"
+                noneLabel="— Select Project —"
+                noneValue=""
+              />
             </Fld>
             <Fld label="Urgency">
               <Sel value={form.urgency} onChange={e=>f("urgency",e.target.value)}>
@@ -14327,7 +14658,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                     <span style={{fontSize:".68rem",background:URGENCY_CLR[mr.urgency]+"22",color:URGENCY_CLR[mr.urgency],border:`1px solid ${URGENCY_CLR[mr.urgency]}44`,borderRadius:20,padding:"1px 9px",fontWeight:600}}>{mr.urgency}</span>
                   </div>
                   <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                    {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                    {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
                     <span>Qty: {mr.qty} {mr.unit}</span>
                     {estTotal>0&&<span>Est: {fmt(estTotal)}</span>}
                     <span>By: {mr.requestedBy||"—"}</span>
@@ -14354,28 +14685,34 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                       <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>PO Number <span style={{color:"#ef4444"}}>*</span></div>
                       <input value={convPoNo} onChange={e=>setConvPoNo(e.target.value)} placeholder="PO-0001"
                         style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
+                      <div style={{fontSize:".64rem",color:"#94a3b8",marginTop:2}}>Suggested — confirmed on issue to avoid duplicates</div>
                     </div>
                   </div>
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={()=>{
-                      if(!convSupplier.trim()||!convPoNo.trim()) return;
+                    <button onClick={async()=>{
+                      if(convSubmitting||!convSupplier.trim()||!convPoNo.trim()) return;
+                      setConvSubmitting(true);
+                      let poNo;
+                      try{ poNo=await claimPoNumber({typed:convPoNo,suggested:convPoSuggested,prs}); }
+                      finally{ setConvSubmitting(false); }
                       const dealN=wonDeals.find(d=>d.id===mr.projectId);
                       addPR({
-                        projectId:mr.projectId, projectName:dealN?.client||"",
+                        projectId:mr.projectId, projectName:projDisplayName(dealN),
                         itemName:mr.itemName, category:mr.category,
                         qty:mr.qty, unit:mr.unit, estUnitCost:mr.estUnitCost||0, actUnitCost:0,
-                        supplier:convSupplier.trim(), poNumber:convPoNo.trim(),
+                        supplier:convSupplier.trim(), poNumber:poNo,
                         poDate:new Date().toISOString().split("T")[0], status:"PO Issued",
                         requestedBy:mr.requestedBy||"", approvedBy:session?.name||"",
                         budgetCategory:"Materials", notes:`From MR: ${mr.notes||""}`,
                         description:mr.purpose||"",
                       });
                       updateMR(mr.id,{status:"Converted to PR",statusChangedAt:new Date().toISOString().split("T")[0]});
-                      sendTelegramNotification("operations",`✅ <b>Material Request → PO Issued</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${convPoNo.trim()}\nBy: ${session?.name}`);
+                      sendTelegramNotification("operations",`✅ <b>Material Request → PO Issued</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${poNo}\nBy: ${session?.name}`);
+                      if(poNo!==convPoNo.trim()) toastEmit&&toastEmit(`Issued as ${poNo} — ${convPoNo.trim()} was already taken by another PO`,"success");
                       setConvertingId(null); setConvSupplier(""); setConvPoNo("");
-                    }} disabled={!convSupplier.trim()||!convPoNo.trim()}
-                      style={{background:convSupplier.trim()&&convPoNo.trim()?"#1e40af":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:convSupplier.trim()&&convPoNo.trim()?"#fff":"#94a3b8",cursor:convSupplier.trim()&&convPoNo.trim()?"pointer":"not-allowed"}}>
-                      📦 Issue PO
+                    }} disabled={convSubmitting||!convSupplier.trim()||!convPoNo.trim()}
+                      style={{background:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"#1e40af":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"#fff":"#94a3b8",cursor:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"pointer":"not-allowed"}}>
+                      {convSubmitting?"⏳ Issuing…":"📦 Issue PO"}
                     </button>
                     <button onClick={()=>{setConvertingId(null);setConvSupplier("");setConvPoNo("");}}
                       style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
@@ -14386,7 +14723,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
               ) : (
                 canApprove&&mr.status==="Submitted"&&(
                   <div style={{display:"flex",gap:7,marginTop:8}}>
-                    <button onClick={()=>{setConvertingId(mr.id);setConvPoNo(nextPoNo());setConvSupplier("");}}
+                    <button onClick={()=>{const sug=computeNextPoNo(prs);setConvertingId(mr.id);setConvPoNo(sug);setConvPoSuggested(sug);setConvSupplier("");}}
                       style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
                       ✓ Convert to PO
                     </button>
@@ -14595,10 +14932,14 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Budget Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
-                <option value="">— Select Project —</option>
-                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
-              </Sel>
+              <SearchSelect
+                value={form.projectId||null}
+                onChange={v=>f("projectId",v||"")}
+                options={projOptions(wonDeals)}
+                placeholder="Search project name or CE…"
+                noneLabel="— Select Project —"
+                noneValue=""
+              />
             </Fld>
             <Fld label="Purpose" required>
               <Sel value={form.purpose} onChange={e=>f("purpose",e.target.value)}>
@@ -14656,7 +14997,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
                     {br.urgency!=="Normal"&&<span style={{fontSize:".68rem",color:br.urgency==="Urgent"?"#ef4444":"#f59e0b",background:br.urgency==="Urgent"?"#fef2f2":"#fffbeb",border:`1px solid ${br.urgency==="Urgent"?"#fecaca":"#fde68a"}`,borderRadius:20,padding:"1px 9px",fontWeight:600}}>{br.urgency}</span>}
                   </div>
                   <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
-                    {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                    {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
                     {br.dateNeeded&&<span>📅 Needed by {br.dateNeeded}</span>}
                     <span>By: {br.requestedBy||"—"}</span>
                     <span>{br.createdDate}</span>
@@ -15924,6 +16265,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
                     toastEmit(`Stage → ${st}`,"success");
+                    if(STAGE_PROCESS_REMINDERS[st]) setTimeout(()=>setStageReminderModal({dealId:selDeal,stage:st,client:deal.client}),200);
                   };
                   const stageOpts=[...WON_STAGES,"14 · Completed"];
                   return(
