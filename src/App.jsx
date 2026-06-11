@@ -2963,7 +2963,8 @@ export default function App(){
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
-          awardRequestData:rec.award_request_data||null};
+          awardRequestData:rec.award_request_data||null,
+          parentDealId:rec.parent_deal_id||null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
       }
@@ -6154,7 +6155,9 @@ export default function App(){
         const today2=new Date();
         const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
-        const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
+        const awardedVal=wonDeals.filter(d=>!d.parentDealId).reduce((s,d)=>
+          s+Number(d.value||0)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((cs,cd)=>cs+Number(cd.value||0),0)
+        ,0);
         const thisMonth=new Date().toISOString().slice(0,7);
         const newThisMonth=deals.filter(d=>d.dateAcquired?.slice(0,7)===thisMonth);
         const allMs=billings;
@@ -13119,21 +13122,22 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
   // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
-    return wonDeals.filter(d=>d.stage!=="12 · Close-Out").map(d=>{
+    return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&!d.parentDealId).map(d=>{
       const b=budgets[d.id]||emptyBudget();
       const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
-      prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
+      const dRelatedIds=new Set([d.id,...wonDeals.filter(cd=>cd.parentDealId===d.id).map(cd=>cd.id)]);
+      prs.filter(p=>dRelatedIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
         const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
         const cat=p.budgetCategory||"Materials";
         if(result[cat]!==undefined) result[cat]+=cost;
       });
-      exps.filter(e=>e.projectId===d.id).forEach(e=>{
+      exps.filter(e=>dRelatedIds.has(e.projectId)).forEach(e=>{
         const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
         result[cat]+=n(e.amount);
       });
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(b[c]),0);
       const totalActual=BUDGET_CATS.reduce((s,c)=>s+result[c],0);
-      const contractVal=n(d.value)||0;
+      const contractVal=n(d.value)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((s,cd)=>s+n(cd.value),0);
       const pctUsed=totalBudget>0?Math.round(totalActual/totalBudget*100):0;
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
       const isOver=totalBudget>0&&totalActual>totalBudget;
@@ -13142,24 +13146,25 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
     });
   },[wonDeals,budgets,prs,exps]);
 
-  // Actuals for the selected deal (detail view)
+  // Actuals for the selected deal (detail view) — includes costs logged against addendum deal IDs
   const actuals = useMemo(()=>{
     const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").forEach(p=>{
+    const relatedIds=new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]);
+    prs.filter(p=>relatedIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
       const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
       const cat=p.budgetCategory||"Materials";
       if(result[cat]!==undefined) result[cat]+=cost;
     });
-    exps.filter(e=>e.projectId===selDeal).forEach(e=>{
+    exps.filter(e=>relatedIds.has(e.projectId)).forEach(e=>{
       const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
       result[cat]+=n(e.amount);
     });
     return result;
-  },[prs,exps,selDeal]);
+  },[prs,exps,selDeal,wonDeals]);
 
   const totalBudget = BUDGET_CATS.reduce((s,c)=>s+n(form[c]),0);
   const totalActual = BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-  const contractVal = n(deal?.value)||0;
+  const contractVal = n(deal?.value)+wonDeals.filter(cd=>cd.parentDealId===deal?.id).reduce((s,cd)=>s+n(cd.value),0);
   const grossMargin = contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):0;
   const budgetUsed  = totalBudget>0?Math.round(totalActual/totalBudget*100):0;
   const linkedPRs   = prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").length;
@@ -13824,10 +13829,11 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
   // Build per-project costing data
   const projectData = useMemo(()=>{
-    return wonDeals.map(deal=>{
+    return wonDeals.filter(deal=>!deal.parentDealId).map(deal=>{
       const budget = budgets[deal.id]||emptyBudget();
-      const dealPRs = prs.filter(p=>p.projectId===deal.id&&p.status!=="Cancelled");
-      const dealExps= exps.filter(e=>e.projectId===deal.id);
+      const dealRelatedIds=new Set([deal.id,...wonDeals.filter(cd=>cd.parentDealId===deal.id).map(cd=>cd.id)]);
+      const dealPRs = prs.filter(p=>dealRelatedIds.has(p.projectId)&&p.status!=="Cancelled");
+      const dealExps= exps.filter(e=>dealRelatedIds.has(e.projectId));
 
       const actuals={Materials:0,Labor:0,Overhead:0,Subcon:0};
       dealPRs.forEach(p=>{
@@ -13842,7 +13848,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(budget[c]),0);
       const totalActual=BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-      const contractVal=n(deal.value)||0;
+      const contractVal=n(deal.value)+wonDeals.filter(cd=>cd.parentDealId===deal.id).reduce((s,cd)=>s+n(cd.value),0);
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
       const budgetVariance=totalBudget-totalActual;
       const isOverBudget=totalBudget>0&&totalActual>totalBudget;
