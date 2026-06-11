@@ -12663,12 +12663,14 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               </div>
             </div>
 
-            {/* ── 4. PENDING COLLECTIONS info ── */}
+            {/* ── 4. PENDING COLLECTIONS + COLLECTIONS BY TYPE side by side ── */}
             {(()=>{
               const TYPE_CLR={Downpayment:"#3b82f6","Progress Bill":"#8b5cf6","Assume Balance":"#f59e0b",Balance:"#f97316",Retention:"#ef4444"};
               const top3=pendingMilestones.slice(0,3);
               return(
-                <div style={{borderBottom:"2px solid #bae6fd",background:"#f0f9ff"}}>
+                <div style={{borderBottom:"2px solid #bae6fd",background:"#f0f9ff",display:"grid",gridTemplateColumns:mob?"1fr":"1fr 260px",alignItems:"start"}}>
+                  {/* Left: Pending Collections */}
+                  <div style={{borderRight:mob?"none":"1px solid #bae6fd"}}>
                   {/* Header */}
                   <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
                     <div>
@@ -12723,6 +12725,36 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
                   {top3.length===0&&(
                     <div style={{padding:"10px 16px",borderTop:"1px solid #bae6fd",fontSize:".75rem",color:"#64748b",fontStyle:"italic"}}>All billing milestones collected — no outstanding balance.</div>
                   )}
+                  </div>{/* end left col */}
+                  {/* Right: Collections by Type */}
+                  <div style={{background:"#f8fcff"}}>
+                    <div style={{padding:"8px 14px",borderBottom:"1px solid #bae6fd"}}>
+                      <span style={{fontWeight:700,color:"#1e293b",fontSize:".73rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 By Type</span>
+                    </div>
+                    {billingByType.map(({type,billed,collected,outstanding})=>{
+                      const pct=billed>0?Math.round(collected/billed*100):0;
+                      const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
+                      return(
+                        <div key={type} style={{padding:"8px 14px",borderBottom:"1px solid #e0f2fe"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:3}}>
+                            <div style={{display:"flex",alignItems:"center",gap:5}}>
+                              <span style={{width:7,height:7,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
+                              <span style={{fontWeight:600,color:"#0f172a",fontSize:".72rem"}}>{type}</span>
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".7rem"}}>{outstanding>0?`₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:0})} due`:"Fully collected"}</div>
+                              <div style={{fontSize:".62rem",color:"#94a3b8"}}>₱{collected.toLocaleString("en-PH",{minimumFractionDigits:0})} / ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                            </div>
+                          </div>
+                          {billed>0&&<div style={{height:3,background:"#e0f2fe",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2}}/></div>}
+                        </div>
+                      );
+                    })}
+                    <div style={{display:"flex",justifyContent:"space-between",padding:"8px 14px",background:"#e0f2fe"}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".72rem"}}>Total Outstanding</span>
+                      <span style={{fontWeight:800,color:"#ef4444",fontSize:".75rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+                    </div>
+                  </div>
                 </div>
               );
             })()}
@@ -12923,36 +12955,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               <span style={{fontWeight:800,color:billingMetrics.dueThisMonth>0?"#f59e0b":"#10b981",fontSize:".88rem"}}>
                 ₱{billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
               </span>
-            </div>
-          </div>
-
-          {/* Collections by Type */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 Collections by Type</span>
-            </div>
-            {billingByType.map(({type,billed,collected,outstanding})=>{
-              const pct=billed>0?Math.round(collected/billed*100):0;
-              const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
-              return(
-                <div key={type} style={{padding:"9px 16px",borderBottom:"1px solid #f1f5f9"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{width:8,height:8,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
-                      <span style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{type}</span>
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".8rem"}}>{outstanding>0?`₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} due`:"Fully collected"}</div>
-                      <div style={{fontSize:".67rem",color:"#94a3b8"}}>₱{collected.toLocaleString("en-PH",{minimumFractionDigits:2})} / ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-                    </div>
-                  </div>
-                  {billed>0&&<div style={{height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2,transition:"width .5s"}}/></div>}
-                </div>
-              );
-            })}
-            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:"#f8fafc"}}>
-              <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>Total Outstanding</span>
-              <span style={{fontWeight:800,color:"#ef4444",fontSize:".83rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
             </div>
           </div>
 
