@@ -474,6 +474,63 @@ CREATE TABLE IF NOT EXISTS public.subcontractors (
 );
 alter table public.subcontractors disable row level security;
 
+-- ── SUBCON WORK ORDERS (see supabase_migration_011.sql) ───
+CREATE TABLE IF NOT EXISTS public.subcon_work_orders (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  wo_number         text DEFAULT '',
+  deal_id           uuid REFERENCES public.deals(id) ON DELETE SET NULL,
+  project_name      text DEFAULT '',
+  subcontractor     text DEFAULT '',
+  specialty         text DEFAULT '',
+  scope_of_work     text DEFAULT '',
+  wo_date           date,
+  start_date        date,
+  target_end_date   date,
+  contract_amount   numeric DEFAULT 0,
+  retention_pct     numeric DEFAULT 0,
+  payment_structure text DEFAULT '',
+  payment_terms     text DEFAULT '',
+  status            text DEFAULT 'Issued',
+  notes             text DEFAULT '',
+  requested_by      text DEFAULT '',
+  approved_by       text DEFAULT '',
+  created_at        timestamptz DEFAULT now(),
+  updated_at        timestamptz
+);
+alter table public.subcon_work_orders disable row level security;
+
+CREATE TABLE IF NOT EXISTS public.wo_counter (
+  id      int PRIMARY KEY,
+  last_no int NOT NULL DEFAULT 0
+);
+INSERT INTO public.wo_counter (id, last_no) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
+
+CREATE OR REPLACE FUNCTION public.next_wo_number()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  max_used int;
+  new_no   int;
+BEGIN
+  SELECT COALESCE(MAX(substring(wo_number FROM '^WO-(\d+)$')::int), 0)
+    INTO max_used
+    FROM subcon_work_orders
+   WHERE wo_number ~ '^WO-\d+$';
+
+  UPDATE wo_counter
+     SET last_no = GREATEST(last_no, max_used) + 1
+   WHERE id = 1
+  RETURNING last_no INTO new_no;
+
+  RETURN 'WO-' || lpad(new_no::text, 4, '0');
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.next_wo_number() TO anon, authenticated;
+
 -- ============================================================
 -- ENABLE REALTIME ON ALL TABLES (skips tables already added)
 -- ============================================================
@@ -486,7 +543,7 @@ BEGIN
     'expenses','inflows','purchase_requests','material_requests',
     'budget_requests','addenda','cash_positions','project_budgets',
     'checklists','swatches','activity_log','user_profiles',
-    'suppliers','subcontractors'
+    'suppliers','subcontractors','subcon_work_orders'
   ] LOOP
     BEGIN
       EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);

@@ -295,7 +295,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",swos:"gmdv5:swos"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -533,6 +533,61 @@ const poDiscountAmt=(type,value,subtotal)=>{
   if(v<=0||subtotal<=0) return 0;
   return Math.min(type==="pct"?subtotal*Math.min(v,100)/100:v, subtotal);
 };
+
+// ─── SUBCON WORK ORDERS ───────────────────────────────────────────────────────
+// Subcon engagements are NOT purchase orders: a WO carries scope of work,
+// payment structure and retention, is issued to a Subcontractor Master entry,
+// and its contract amount feeds the project budget's Subcon line.
+const SWO_STATUSES=["Draft","Issued","In Progress","Completed","Cancelled"];
+const SWO_STATUS_CLR={"Draft":"#94a3b8","Issued":"#3b82f6","In Progress":"#f59e0b","Completed":"#10b981","Cancelled":"#ef4444"};
+const emptySWO=()=>({
+  id:"", woNumber:"", woDate:"",
+  projectId:"", projectName:"",
+  subcontractor:"", specialty:"", scopeOfWork:"",
+  startDate:"", targetEndDate:"",
+  contractAmount:"", retentionPct:"",
+  paymentStructure:"50% Start / 50% Completion", paymentTerms:"",
+  status:"Issued", notes:"", requestedBy:"", approvedBy:"", createdDate:"",
+});
+const swoToSb=r=>({
+  id:r.id, wo_number:r.woNumber||"", deal_id:r.projectId||r.dealId||null,
+  project_name:r.projectName||"", subcontractor:r.subcontractor||"",
+  specialty:r.specialty||"", scope_of_work:r.scopeOfWork||"",
+  wo_date:r.woDate||null, start_date:r.startDate||null, target_end_date:r.targetEndDate||null,
+  contract_amount:Number(r.contractAmount)||0, retention_pct:Number(r.retentionPct)||0,
+  payment_structure:r.paymentStructure||"", payment_terms:r.paymentTerms||"",
+  status:r.status||"Issued", notes:r.notes||"",
+  requested_by:r.requestedBy||"", approved_by:r.approvedBy||"",
+});
+const swoFromSb=r=>({...r,
+  woNumber:r.wo_number||"", projectId:r.deal_id, dealId:r.deal_id,
+  projectName:r.project_name||"", scopeOfWork:r.scope_of_work||"",
+  woDate:r.wo_date||"", startDate:r.start_date||"", targetEndDate:r.target_end_date||"",
+  contractAmount:Number(r.contract_amount)||0, retentionPct:Number(r.retention_pct)||0,
+  paymentStructure:r.payment_structure||"", paymentTerms:r.payment_terms||"",
+  requestedBy:r.requested_by||"", approvedBy:r.approved_by||"",
+});
+const WO_NO_RE=/^WO-(\d+)$/;
+const computeNextWoNo=swos=>{
+  const nums=(swos||[]).map(w=>{const m=WO_NO_RE.exec(w.woNumber||"");return m?Number(m[1]):0;});
+  return `WO-${String((nums.length?Math.max(...nums):0)+1).padStart(4,"0")}`;
+};
+// Same claim-at-submit discipline as PO numbers (atomic RPC, offline fallback)
+const claimWoNumber=async({typed,suggested,swos})=>{
+  const taken=new Set((swos||[]).map(w=>w.woNumber).filter(Boolean));
+  const t=(typed||"").trim();
+  if(t&&t!==suggested&&!taken.has(t)) return t;
+  if(isSupabaseReady()){
+    try{
+      const {data,error}=await supabase.rpc('next_wo_number');
+      if(!error&&typeof data==="string"&&WO_NO_RE.test(data)) return data;
+    }catch(e){ /* fall back to local allocation */ }
+  }
+  let nn=Number(WO_NO_RE.exec(computeNextWoNo(swos))[1]);
+  while(taken.has(`WO-${String(nn).padStart(4,"0")}`)) nn++;
+  return `WO-${String(nn).padStart(4,"0")}`;
+};
+const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 
 const emptyBudget = () => ({
   Materials:0, Labor:0, Overhead:0, Subcon:0,
@@ -2430,6 +2485,7 @@ export default function App(){
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
   const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
+  const[swos,       setSwos]      = useState([]);  // Subcon work orders
   const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""},hideValueInBots:false});
   const[customClients,setCustomClients]= useState([]);
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
@@ -2472,7 +2528,7 @@ export default function App(){
         const idb=await idbGetMany([
           KEYS.deals,KEYS.projects,KEYS.expenses,KEYS.inflows,KEYS.jos,
           KEYS.swatches,KEYS.checklist,KEYS.users,KEYS.cashPos,KEYS.prs,
-          KEYS.mreqs,KEYS.breqs,KEYS.drfs,KEYS.suppliers,KEYS.subcons,
+          KEYS.mreqs,KEYS.breqs,KEYS.drfs,KEYS.suppliers,KEYS.subcons,KEYS.swos,
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
@@ -2493,6 +2549,7 @@ export default function App(){
         if(idb[KEYS.drfs])        setDrfs(idb[KEYS.drfs]);
         if(idb[KEYS.suppliers])   setSuppliers(idb[KEYS.suppliers]);
         if(idb[KEYS.subcons])     setSubcons(idb[KEYS.subcons]);
+        if(idb[KEYS.swos])        setSwos(idb[KEYS.swos]);
         if(idb[KEYS.botsettings]) setBotSettings(idb[KEYS.botsettings]);
         if(idb[KEYS.customclients]){const cc=idb[KEYS.customclients];setCustomClients(cc);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
         if(idb["gmdv5:clientprofiles"]) setClientProfiles(idb["gmdv5:clientprofiles"]);
@@ -2567,6 +2624,8 @@ export default function App(){
             if(_suppliers){setSuppliers(_suppliers);idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
             if(_subcons){setSubcons(_subcons);idbE.push([KEYS.subcons,_subcons]);}
+            const _swos=data.swos?.length?data.swos.map(swoFromSb):null;
+            if(_swos){setSwos(_swos);idbE.push([KEYS.swos,_swos]);}
             const _users=data.users?.length?data.users.map(u=>{
               // If Supabase row has no password_hash, fall back to the DEFAULT_USERS hash
               // so existing users can still log in while hashes are being migrated
@@ -2671,6 +2730,7 @@ export default function App(){
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(as);idbE.push([KEYS.addenda,as]);}
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(cs);idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(ss);idbE.push([KEYS.swatches,ss]);}
+    if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(ws);idbE.push([KEYS.swos,ws]);}
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
@@ -2902,6 +2962,7 @@ export default function App(){
     await syncAll("budget_requests",breqs,toSbBR);
     await syncAll("addenda",addenda,toSbAddendum);
     await syncAll("swatches",swatches,toSbSwatch);
+    await syncAll("subcon_work_orders",swos,swoToSb);
     await syncAll("checklists",checklist,toSbChecklist);
     await syncAll("activity_log",actLog,toSbActivity);
     if(billings?.length){
@@ -2910,10 +2971,11 @@ export default function App(){
     if(budgets){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
         manual_collections: JSON.stringify(pos.collections?.manualCollections||[]),
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
-  },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
+  },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,swos,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
+  const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
   const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
 
   const addInventoryItem=(item)=>upInventory(iv=>{
@@ -3393,6 +3455,17 @@ export default function App(){
         setChecklist(cs=>eventType==='UPDATE'?cs.map(c=>c.id===rec.id?{...c,...item}:c):cs.find(c=>c.id===rec.id)?cs:[...cs,item]);
       }
     });
+    // Subcon Work Orders — issued by Procurement, visible everywhere live
+    const swoSub = sbSubscribe('swos-rt','subcon_work_orders',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setSwos(ws=>ws.filter(w=>w.id!==oldRow.id));return;}
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped=swoFromSb(rec);
+        setSwos(ws=>{const ex=ws.find(w=>w.id===rec.id);
+          return ex?ws.map(w=>w.id===rec.id?{...w,...mapped}:w):[...ws,mapped];});
+      }
+    });
+
     const swatchSub = sbSubscribe('swatches-rt','swatches',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setSwatches(ss=>ss.filter(s=>s.id!==oldRow.id));return;}
@@ -3441,6 +3514,7 @@ export default function App(){
       taskSub?.unsubscribe?.();
       checkSub?.unsubscribe?.();
       swatchSub?.unsubscribe?.();
+      swoSub?.unsubscribe?.();
       aeUpdateSub?.unsubscribe?.();
       pcardsTableSub?.unsubscribe?.();
     };
@@ -3727,6 +3801,28 @@ export default function App(){
     const pr=prs.find(p=>p.id===id);
     if(pr&&role!=="Manager"&&role!=="Procurement"&&pr.createdBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete purchase requests.","error");
     upPrs(ps=>ps.filter(p=>p.id!==id));if(isSupabaseReady()) sbDelete('purchase_requests',id).catch(()=>{});
+  };
+  // Subcon Work Order CRUD
+  const addSWO=(wo)=>{
+    const rec={...wo,id:uid(),createdDate:today};
+    upSwos(ws=>[rec,...ws]);
+    if(isSupabaseReady()) sbSyncOne("subcon_work_orders",rec,swoToSb);
+    const msg=`🛠 <b>Subcon Work Order ${rec.woNumber||""}</b>\n${rec.subcontractor||"?"}${rec.specialty?` · ${rec.specialty}`:""}\nProject: ${rec.projectName||"?"}\nAmount: ₱${(Number(rec.contractAmount)||0).toLocaleString("en-PH")}\nBy: ${rec.requestedBy||session?.name||"?"}`;
+    sendTelegramNotification("procurement",msg);
+    sendTelegramNotification("management",msg);
+  };
+  const updateSWO=(id,changes)=>{
+    upSwos(ws=>ws.map(w=>{
+      if(w.id!==id) return w;
+      const nw={...w,...changes};
+      if(isSupabaseReady()) sbSyncOne("subcon_work_orders",nw,swoToSb);
+      return nw;
+    }));
+  };
+  const deleteSWO=(id)=>{
+    const wo=swos.find(w=>w.id===id);
+    if(wo&&role!=="Manager"&&role!=="Procurement"&&wo.requestedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete work orders.","error");
+    upSwos(ws=>ws.filter(w=>w.id!==id));if(isSupabaseReady()) sbDelete('subcon_work_orders',id).catch(()=>{});
   };
   const saveDayPos=(date,pos)=>{
     upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
@@ -4670,7 +4766,7 @@ export default function App(){
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
@@ -4686,7 +4782,7 @@ export default function App(){
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     QS:[
@@ -4721,7 +4817,7 @@ export default function App(){
       home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
       checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
       procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
-      collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
+      collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",subconwo:"🛠️",
       drf:"📝",deliveries:"🚚",stockmove:"📦",reports:"📊",
       suppliers:"🏭",subcontractors:"👷",requests:"📋",masters:"🗂",
       "Sales Pipeline":"📊","My Pipeline":"📊",
@@ -4845,7 +4941,7 @@ export default function App(){
       home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
       checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
       procurement:"📦",clients:"🏢",accounts:"👥",collections:"💵",
-      materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",drf:"📝",
+      materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",subconwo:"🛠️",drf:"📝",
       deliveries:"🚚",stockmove:"📦",reports:"📊",suppliers:"🏭",
       subcontractors:"👷",calendar:"📅",inventory:"📦",pmupdates:"📝",addenda:"⚠️",
       activity:"🏆",requests:"📋",masters:"🗂️",
@@ -4855,7 +4951,7 @@ export default function App(){
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
       costanalysis:"Costs",accounting:"Accounts",procurement:"Orders",
       clients:"Clients",materialreq:"Materials",budgetreq:"Budget",
-      swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
+      swatchboard:"Swatches",subconwo:"Subcon WO",drf:"Design",deliveries:"Delivery",
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
       pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",activity:"Activity",
@@ -8606,8 +8702,9 @@ export default function App(){
       </Wrap>
     );
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
+    if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -8722,7 +8819,7 @@ export default function App(){
             </div>
           ):null;
         })()}
-        <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
+        <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/>
       </Wrap>
     );
     if(page==="home"&&role==="Procurement") return(
@@ -8779,8 +8876,9 @@ export default function App(){
         />
       </Wrap>
     );
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -8963,7 +9061,8 @@ export default function App(){
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -9556,8 +9655,8 @@ export default function App(){
         ))}
       </div>
       {costTab==="budget"
-        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
-        :<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/>
+        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/>
+        :<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/>
       }
     </Wrap>
   );
@@ -9857,7 +9956,7 @@ First few:
     <Wrap>
       <BudgetView
         wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget}
-        prs={prs} exps={exps} role={role}/>
+        prs={prs} exps={exps} role={role} swos={swos}/>
     </Wrap>
   );
 
@@ -9866,7 +9965,7 @@ First few:
     <Wrap>
       <CostingStudy
         wonDeals={wonDeals} budgets={budgets} prs={prs}
-        exps={exps} projs={projs} role={role}/>
+        exps={exps} projs={projs} role={role} swos={swos}/>
     </Wrap>
   );
 
@@ -13412,7 +13511,7 @@ function ExportImportPanel({KEYS, onClose}){
 }
 
 // ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
-function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
+function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos}){
   const[selDeal,setSelDeal]=useState(null);
   const deal = wonDeals.find(d=>d.id===selDeal);
   const budget = budgets[selDeal]||emptyBudget();
@@ -13438,6 +13537,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
         const cat=p.budgetCategory||"Materials";
         if(result[cat]!==undefined) result[cat]+=cost;
       });
+      (swos||[]).filter(w=>dRelatedIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{result.Subcon+=n(w.contractAmount);});
       exps.filter(e=>dRelatedIds.has(e.projectId)).forEach(e=>{
         const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
         result[cat]+=n(e.amount);
@@ -13451,7 +13551,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       const hasBudget=totalBudget>0;
       return{d,b,actuals:result,totalBudget,totalActual,contractVal,pctUsed,grossMargin,isOver,hasBudget};
     });
-  },[wonDeals,budgets,prs,exps]);
+  },[wonDeals,budgets,prs,exps,swos]);
 
   // Actuals for the selected deal (detail view) — includes costs logged against addendum deal IDs
   const actuals = useMemo(()=>{
@@ -13462,12 +13562,13 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       const cat=p.budgetCategory||"Materials";
       if(result[cat]!==undefined) result[cat]+=cost;
     });
+    (swos||[]).filter(w=>relatedIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{result.Subcon+=n(w.contractAmount);});
     exps.filter(e=>relatedIds.has(e.projectId)).forEach(e=>{
       const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
       result[cat]+=n(e.amount);
     });
     return result;
-  },[prs,exps,selDeal,wonDeals]);
+  },[prs,exps,selDeal,wonDeals,swos]);
 
   const totalBudget = BUDGET_CATS.reduce((s,c)=>s+n(form[c]),0);
   const totalActual = BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
@@ -14177,8 +14278,296 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   );
 }
 
+// ─── SUBCON WORK ORDERS ──────────────────────────────────────────────────────
+function SubconWOView({swos,addSWO,updateSWO,deleteSWO,wonDeals,subcons,session,role,toastEmit}){
+  const today=new Date().toISOString().split("T")[0];
+  const[mode,setMode]=useState("list");
+  const[editingId,setEditingId]=useState(null);
+  const[form,setForm]=useState(emptySWO());
+  const[suggestedNo,setSuggestedNo]=useState("");
+  const[submitting,setSubmitting]=useState(false);
+  const[filterProj,setFilterProj]=useState("all");
+  const[filterStat,setFilterStat]=useState("all");
+  const[expanded,setExpanded]=useState({});
+
+  const n=v=>Number(String(v).replace(/,/g,""))||0;
+  const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const canManage=role==="Manager"||role==="Procurement";
+
+  const openNew=()=>{
+    const sug=computeNextWoNo(swos);
+    setForm({...emptySWO(),woNumber:sug,woDate:today});
+    setSuggestedNo(sug); setEditingId(null); setMode("form");
+  };
+  const openEdit=w=>{setForm({...w});setSuggestedNo(w.woNumber||"");setEditingId(w.id);setMode("form");};
+
+  // Picking a master-list subcon auto-fills their commercial terms
+  const pickSubcon=name=>setForm(p=>{
+    const m=(subcons||[]).find(s=>(s.company_name||s.companyName||"").trim().toLowerCase()===name.trim().toLowerCase());
+    if(!m) return {...p,subcontractor:name};
+    return {...p,subcontractor:name,
+      specialty:m.specialty||p.specialty||"",
+      paymentStructure:m.payment_structure||m.paymentStructure||p.paymentStructure||"",
+      paymentTerms:m.payment_terms||m.paymentTerms||p.paymentTerms||""};
+  });
+
+  const submit=async()=>{
+    if(submitting||!form.subcontractor.trim()||!form.projectId||!form.scopeOfWork.trim()||n(form.contractAmount)<=0) return;
+    const deal=wonDeals.find(d=>d.id===form.projectId);
+    const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct)};
+    if(editingId){
+      updateSWO(editingId,base);
+      toastEmit&&toastEmit(`${form.woNumber||"Work order"} updated`,"success");
+      setMode("list");setEditingId(null);
+      return;
+    }
+    setSubmitting(true);
+    let woNo;
+    try{ woNo=await claimWoNumber({typed:form.woNumber,suggested:suggestedNo,swos}); }
+    finally{ setSubmitting(false); }
+    addSWO({...base,woNumber:woNo,requestedBy:session?.name||"",approvedBy:form.status==="Issued"?session?.name||"":""});
+    toastEmit&&toastEmit(woNo!==(form.woNumber||"").trim()
+      ?`Saved as ${woNo} — ${(form.woNumber||"").trim()} was already taken`
+      :`Work Order ${woNo} issued to ${form.subcontractor.trim()}`,"success");
+    setMode("list");
+  };
+
+  const printWO=w=>{
+    const fmt2=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
+    const retAmt=woRetentionAmt(w);
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Work Order — ${esc(w.woNumber)}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
+  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
+  .doc-title{font-size:20px;font-weight:800;color:#1e293b}
+  .doc-sub{font-size:11px;color:#64748b;margin-top:3px}
+  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 16px;margin-bottom:20px;background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid #e2e8f0}
+  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
+  .meta-item span{font-weight:700;font-size:13px}
+  .sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#1e293b;border-bottom:1.5px solid #1e293b;padding-bottom:4px;margin:18px 0 8px}
+  .scope{white-space:pre-wrap;font-size:12px;line-height:1.6;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;min-height:90px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;font-size:12px}
+  td.lbl{color:#64748b;width:220px}
+  td.val{font-weight:700}
+  .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b;font-size:13px}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:44px}
+  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
+  @media print{body{padding:20px}}
+</style></head><body>
+<div class="hdr">
+  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
+</div>
+<div class="meta">
+  <div class="meta-item"><label>Subcontractor</label><span>${esc(w.subcontractor)||"—"}</span></div>
+  <div class="meta-item"><label>WO Number</label><span>${esc(w.woNumber)||"—"}</span></div>
+  <div class="meta-item"><label>Date Issued</label><span>${esc(w.woDate)||"—"}</span></div>
+  <div class="meta-item"><label>Project</label><span>${esc(w.projectName)||"—"}</span></div>
+  <div class="meta-item"><label>Work Type</label><span>${esc(w.specialty)||"—"}</span></div>
+  <div class="meta-item"><label>Schedule</label><span>${esc(w.startDate)||"—"} → ${esc(w.targetEndDate)||"—"}</span></div>
+</div>
+<div class="sec-title">Scope of Work</div>
+<div class="scope">${esc(w.scopeOfWork)||"—"}</div>
+${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-height:0">${esc(w.notes)}</div>`:""}
+<div class="sec-title">Commercial Terms</div>
+<table>
+  <tr><td class="lbl">Payment Structure</td><td class="val">${esc(w.paymentStructure)||"—"}</td></tr>
+  <tr><td class="lbl">Payment Terms</td><td class="val">${esc(w.paymentTerms)||"—"}</td></tr>
+  <tr><td class="lbl">Retention${n(w.retentionPct)>0?` (${n(w.retentionPct)}%)`:""}</td><td class="val">${n(w.retentionPct)>0?"−"+fmt2(retAmt)+" held until acceptance":"None"}</td></tr>
+  <tr class="total-row"><td>CONTRACT AMOUNT</td><td>${fmt2(w.contractAmount)}</td></tr>
+</table>
+<div class="sig">
+  <div class="sig-box">Prepared by<br><br><br>_______________________<br>${esc(w.requestedBy)||""}</div>
+  <div class="sig-box">Approved by<br><br><br>_______________________<br>${esc(w.approvedBy)||""}</div>
+  <div class="sig-box">Conforme — Subcontractor<br><br><br>_______________________<br>${esc(w.subcontractor)||""}</div>
+</div>
+</body></html>`;
+    const win=window.open("","_blank","width=900,height=700");
+    if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
+  };
+
+  const filtered=swos.filter(w=>{
+    if(filterProj!=="all"&&w.projectId!==filterProj) return false;
+    if(filterStat!=="all"&&w.status!==filterStat) return false;
+    return true;
+  }).sort((a,b)=>String(b.woDate||b.createdDate||"").localeCompare(String(a.woDate||a.createdDate||"")));
+  const totalValue=filtered.filter(w=>w.status!=="Cancelled").reduce((s,w)=>s+n(w.contractAmount),0);
+
+  // ── Form (new / edit) ──────────────────────────────────────────────────────
+  if(mode==="form"){
+    const canSubmit=form.subcontractor.trim()&&form.projectId&&form.scopeOfWork.trim()&&n(form.contractAmount)>0&&!submitting;
+    const retAmt=woRetentionAmt({retentionPct:form.retentionPct,contractAmount:n(form.contractAmount)});
+    return(
+      <div>
+        <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Work Orders</button>
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>🛠️ {editingId?"Edit Work Order":"New Subcon Work Order"}</div>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
+            <Fld label="Subcontractor" required hint="From the Subcontractor Master — terms auto-fill">
+              <SearchCombo value={form.subcontractor} onChange={pickSubcon}
+                options={supplierNameOptions(subcons)} placeholder="Search or type subcontractor…"/>
+            </Fld>
+            <Fld label="Project" required>
+              <SearchSelect
+                value={form.projectId||null}
+                onChange={v=>{const d=wonDeals.find(x=>x.id===v);setForm(p=>({...p,projectId:v||"",projectName:projDisplayName(d)}));}}
+                options={projOptions(wonDeals)}
+                placeholder="Search project name or CE…"
+                noneLabel="— Select Project —"
+                noneValue=""
+              />
+            </Fld>
+            <Fld label="WO Number" required hint={editingId?undefined:"Suggested — confirmed on submit to avoid duplicates"}>
+              <Inp value={form.woNumber} onChange={e=>f("woNumber",e.target.value)} placeholder="WO-0001"/>
+            </Fld>
+            <Fld label="WO Date"><Inp type="date" value={form.woDate} onChange={e=>f("woDate",e.target.value)}/></Fld>
+            <Fld label="Work Type / Specialty"><Inp value={form.specialty} onChange={e=>f("specialty",e.target.value)} placeholder="e.g. General Works, Stone Works"/></Fld>
+            <Fld label="Status"><Sel value={form.status} onChange={e=>f("status",e.target.value)}>{SWO_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Start Date"><Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/></Fld>
+            <Fld label="Target Completion"><Inp type="date" value={form.targetEndDate} onChange={e=>f("targetEndDate",e.target.value)}/></Fld>
+            <div style={{gridColumn:"1/-1"}}>
+              <Fld label="Scope of Work" required hint="What exactly the subcontractor will deliver — printed on the WO">
+                <textarea value={form.scopeOfWork} onChange={e=>f("scopeOfWork",e.target.value)} rows={5}
+                  placeholder={"e.g.\n• Supply and install kitchen modular cabinets per approved drawings rev.3\n• Includes hardware, site measurement, hauling and 2 site visits\n• Excludes countertops and electrical"}
+                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+              </Fld>
+            </div>
+            <Fld label="Contract Amount (₱)" required><Inp type="number" value={form.contractAmount} onChange={e=>f("contractAmount",e.target.value)} placeholder="0.00"/></Fld>
+            <Fld label="Retention %" hint={retAmt>0?`${fmt(retAmt)} held until acceptance`:"0 = no retention"}>
+              <Inp type="number" value={form.retentionPct} onChange={e=>f("retentionPct",e.target.value)} placeholder="e.g. 10" min={0} max={100}/>
+            </Fld>
+            <Fld label="Payment Structure"><Inp value={form.paymentStructure} onChange={e=>f("paymentStructure",e.target.value)} placeholder="e.g. 50% Start / 50% Completion"/></Fld>
+            <Fld label="Payment Terms"><Inp value={form.paymentTerms} onChange={e=>f("paymentTerms",e.target.value)} placeholder="e.g. 30 Days, Cash Basis"/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Internal notes (optional)"/></Fld></div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:16}}>
+            <button onClick={submit} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
+              {submitting?"⏳ Saving…":editingId?"Save Changes":"🛠️ Issue Work Order"}
+            </button>
+            <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── List ──────────────────────────────────────────────────────────────────
+  const WO_GRID="86px 1.1fr 1fr 86px 110px 110px 28px";
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🛠️ Subcon Work Orders</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Scope-of-work engagements with subcontractors — separate from Purchase Orders, counted in the Subcon budget line</div>
+        </div>
+        {canManage&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>}
+      </div>
+
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
+        {[
+          {l:"Total WOs",   v:filtered.length,                                          c:"#0f172a"},
+          {l:"In Progress", v:filtered.filter(w=>w.status==="In Progress").length,      c:"#f59e0b"},
+          {l:"Completed",   v:filtered.filter(w=>w.status==="Completed").length,        c:"#10b981"},
+          {l:"Total Value", v:"Php "+totalValue.toLocaleString("en-PH",{maximumFractionDigits:0}), c:"#3b82f6"},
+        ].map(({l,v,c},i)=>(
+          <div key={l} style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
+            <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+        <div style={{minWidth:240,flex:"0 1 300px"}}>
+          <SearchSelect
+            value={filterProj==="all"?null:filterProj}
+            onChange={v=>setFilterProj(v||"all")}
+            options={projOptions(wonDeals)}
+            placeholder="Search project name or CE…"
+            noneLabel="All Projects"
+            noneValue={null}
+          />
+        </div>
+        <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+          <option value="all">All Statuses</option>
+          {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {filtered.length===0?(
+        <div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No work orders yet. Hit + New Work Order to engage a subcontractor.</div>
+      ):(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+          <div style={{overflowX:"auto"}}>
+            <div style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:660}}>
+              {["WO #","Subcontractor","Project","Date","Status","Amount",""].map((h,i)=>(
+                <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i===5?"right":"left"}}>{h}</div>
+              ))}
+            </div>
+            {filtered.map((w,wi)=>{
+              const isOpen=!!expanded[w.id];
+              const retAmt=woRetentionAmt(w);
+              return(
+                <div key={w.id} style={{borderBottom:wi<filtered.length-1?"1px solid #f1f5f9":"none"}}>
+                  <div onClick={()=>setExpanded(p=>({...p,[w.id]:!p[w.id]}))}
+                    style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff",transition:"background .12s",minWidth:660}}
+                    onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
+                    onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
+                    <div style={{fontWeight:700,color:"#6366f1",fontSize:".74rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{w.woNumber||"—"}</div>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{w.subcontractor||"—"}{w.specialty&&<span style={{fontWeight:400,color:"#94a3b8",fontSize:".7rem"}}> · {w.specialty}</span>}</div>
+                    <div style={{fontSize:".74rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{w.projectName||"—"}</div>
+                    <div style={{fontSize:".7rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{w.woDate||"—"}</div>
+                    <div style={{paddingRight:6,overflow:"hidden"}}>
+                      <span style={{fontSize:".62rem",background:SWO_STATUS_CLR[w.status]+"22",color:SWO_STATUS_CLR[w.status],border:`1px solid ${SWO_STATUS_CLR[w.status]}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{w.status}</span>
+                    </div>
+                    <div style={{textAlign:"right",paddingRight:4}}>
+                      <span style={{fontWeight:700,color:"#10b981",fontSize:".78rem"}}>{fmt(w.contractAmount)}</span>
+                      {retAmt>0&&<div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>{n(w.retentionPct)}% ret.</div>}
+                    </div>
+                    <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{isOpen?"▲":"▼"}</div>
+                  </div>
+                  {isOpen&&(
+                    <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"10px 16px"}}>
+                      <div style={{fontSize:".72rem",color:"#475569",whiteSpace:"pre-wrap",background:"#fff",border:"1px solid #f1f5f9",borderRadius:8,padding:"8px 12px",marginBottom:8}}>{w.scopeOfWork||"No scope recorded."}</div>
+                      <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:".7rem",color:"#64748b",marginBottom:8}}>
+                        {(w.startDate||w.targetEndDate)&&<span>📅 {w.startDate||"—"} → {w.targetEndDate||"—"}</span>}
+                        {w.paymentStructure&&<span>💸 {w.paymentStructure}</span>}
+                        {w.paymentTerms&&<span>🗓 {w.paymentTerms}</span>}
+                        {retAmt>0&&<span style={{color:"#c2410c",fontWeight:600}}>Retention {n(w.retentionPct)}% = {fmt(retAmt)}</span>}
+                        <span>By: {w.requestedBy||"—"}</span>
+                        {w.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {w.approvedBy}</span>}
+                        {w.notes&&<span style={{fontStyle:"italic"}}>{w.notes}</span>}
+                      </div>
+                      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                        <select value={w.status} onChange={e=>updateSWO(w.id,{status:e.target.value,...(e.target.value==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||""}:{})})} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                          {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
+                        </select>
+                        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                          <button onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                          <button onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
+                          {canManage&&<button onClick={()=>{if(window.confirm("Delete "+(w.woNumber||"this work order")+"?"))deleteSWO(w.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
-function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
+function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
   const[view,setView]=useState("list"); // list | project | company
   const[selCostProject,setSelCostProject]=useState(null); // selected project dealId
 
@@ -14193,6 +14582,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
       const dealRelatedIds=new Set([deal.id,...wonDeals.filter(cd=>cd.parentDealId===deal.id).map(cd=>cd.id)]);
       const dealPRs = prs.filter(p=>dealRelatedIds.has(p.projectId)&&p.status!=="Cancelled");
       const dealExps= exps.filter(e=>dealRelatedIds.has(e.projectId));
+      const dealSWOs= (swos||[]).filter(w=>dealRelatedIds.has(w.projectId)&&w.status!=="Cancelled");
 
       const actuals={Materials:0,Labor:0,Overhead:0,Subcon:0};
       dealPRs.forEach(p=>{
@@ -14200,6 +14590,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
         const cat=p.budgetCategory||"Materials";
         if(actuals[cat]!==undefined) actuals[cat]+=cost;
       });
+      dealSWOs.forEach(w=>{actuals.Subcon+=n(w.contractAmount);});
       dealExps.forEach(e=>{
         const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
         actuals[cat]+=n(e.amount);
@@ -14214,7 +14605,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 
       return{deal,budget,actuals,totalBudget,totalActual,contractVal,grossMargin,budgetVariance,isOverBudget,prCount:dealPRs.length};
     });
-  },[wonDeals,budgets,prs,exps]);
+  },[wonDeals,budgets,prs,exps,swos]);
 
   // Company-wide totals
   const companyTotals=useMemo(()=>{
