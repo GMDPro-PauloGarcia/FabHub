@@ -15329,14 +15329,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   };
 
   // Per-project summary for list
-  const projectSummaries=[...wonDeals,...completedDeals].map(d=>{
-    const ms=billings.filter(b=>b.dealId===d.id);
+  const projectSummaries=[...wonDeals,...completedDeals].filter(d=>!d.parentDealId).map(d=>{
+    const childIds=[...wonDeals,...completedDeals].filter(c=>c.parentDealId===d.id).map(c=>c.id);
+    const allDealIds=[d.id,...childIds];
+    const ms=billings.filter(b=>allDealIds.includes(b.dealId));
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
     const balance  =Math.max(0,billed-collected);
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=billed>0&&balance===0;
-    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
+    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length,childCount:childIds.length};
   }).filter(({d,balance,hasOverdue,fullyPaid})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
@@ -15455,7 +15457,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           ))}
         </div>
         {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
-        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>(
+        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount},i)=>(
           <div key={d.id}
             onClick={()=>setSelDeal(d.id)}
             style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
@@ -15469,6 +15471,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               </div>
               <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>
                 {d.ceNo||"No CE"} · {milestoneCount} milestone{milestoneCount!==1?"s":""}
+                {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600,marginLeft:6}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
                 {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
               </div>
             </div>
@@ -15801,6 +15804,89 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               );
             })}
           </div>
+
+          {/* ── Addendum / child deal milestones ── */}
+          {(()=>{
+            const allDeals=[...wonDeals,...completedDeals];
+            const children=allDeals.filter(c=>c.parentDealId===selDeal);
+            if(children.length===0) return null;
+            return(
+              <div style={{marginTop:20}}>
+                {children.map(child=>{
+                  const cMs=billings.filter(b=>b.dealId===child.id);
+                  const rt=child.receiptType||deal?.receiptType||"OR";
+                  const wh=child.withholding??deal?.withholding??false;
+                  const cBilled=cMs.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
+                  const cCollected=cMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+                  return(
+                    <div key={child.id} style={{marginBottom:16,borderRadius:12,border:"2px solid #e9d5ff",overflow:"hidden"}}>
+                      {/* Addendum header */}
+                      <div style={{background:"#f5f3ff",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+                        <div>
+                          <span style={{fontWeight:700,color:"#7c3aed",fontSize:".85rem"}}>📎 Addendum — {child.contact||child.ceNo||child.id.slice(-6)}</span>
+                          {child.ceNo&&<span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:8}}>{child.ceNo}</span>}
+                        </div>
+                        <div style={{display:"flex",gap:16,fontSize:".78rem"}}>
+                          <span style={{color:"#3b82f6",fontWeight:600}}>Billed: {fmt(cBilled)}</span>
+                          <span style={{color:"#059669",fontWeight:600}}>Collected: {fmt(cCollected)}</span>
+                          {cBilled>cCollected&&<span style={{color:"#ef4444",fontWeight:700}}>Due: {fmt(cBilled-cCollected)}</span>}
+                        </div>
+                      </div>
+                      {/* Addendum milestones */}
+                      <div style={{padding:"8px 16px",background:"#faf5ff"}}>
+                        {cMs.length===0?(
+                          <div style={{fontSize:".78rem",color:"#94a3b8",fontStyle:"italic",padding:"8px 0"}}>No milestones for this addendum yet.</div>
+                        ):cMs.map(ms=>{
+                          const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
+                          const tx=calcTax(ms.amount,ms.receiptType??rt,ms.withholding??wh);
+                          const balance=Math.max(0,tx.netReceivable-paidTotal);
+                          const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
+                          return(
+                            <div key={ms.id} style={{background:"#fff",borderRadius:8,border:`1px solid ${sClr}33`,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                              <div style={{flex:1}}>
+                                <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
+                                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{ms.name}</span>
+                                  <span style={{fontSize:".65rem",background:sClr+"22",color:sClr,border:`1px solid ${sClr}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{ms.status}</span>
+                                </div>
+                                <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
+                                  <span>{fmt(tx.netReceivable)}</span>
+                                  {ms.dueDate&&<span>Due: {ms.dueDate}</span>}
+                                  {balance>0&&<span style={{color:"#ef4444",fontWeight:700}}>Balance: {fmt(balance)}</span>}
+                                </div>
+                              </div>
+                              <div style={{display:"flex",gap:5,flexShrink:0}}>
+                                {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
+                                  <button onClick={()=>setShowPay(showPay===ms.id?null:ms.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",color:"#059669",cursor:"pointer"}}>+ Pay</button>
+                                )}
+                                {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 7px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
+                                {canEdit&&<button onClick={()=>{if(window.confirm("Delete?"))deleteMilestone(ms.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px",fontFamily:"inherit",fontSize:".68rem",color:"#dc2626",cursor:"pointer"}}>✕</button>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* Payment form for addendum milestones */}
+                        {showPay&&cMs.some(m=>m.id===showPay)&&(
+                          <div style={{background:"#f0fdf4",borderRadius:8,border:"1.5px solid #6ee7b7",padding:14,marginTop:8}}>
+                            <div style={{fontWeight:700,color:"#059669",marginBottom:10,fontSize:".82rem"}}>Log Payment</div>
+                            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
+                              <Fld label="Amount (₱)"><Inp type="number" value={payForm.amount} onChange={e=>fp("amount",e.target.value)} placeholder="0.00"/></Fld>
+                              <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
+                              <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque / transfer ref…"/></Fld>
+                              <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. BPI transfer"/></Fld>
+                            </div>
+                            <div style={{display:"flex",gap:8,marginTop:8}}>
+                              <button onClick={submitPay} disabled={!payForm.amount} style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>✓ Save Payment</button>
+                              <button onClick={()=>setShowPay(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </Modal>
       )}
     </div>
