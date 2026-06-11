@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FabHub — Daily Cash Position (Redesign Preview)</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#0f172a;padding:24px 16px;font-size:14px;}
+h1{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.6rem;color:#0f172a;margin-bottom:2px;}
+.subtitle{font-size:.78rem;color:#64748b;margin-bottom:20px;}
+
+/* ── KPI Strip ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;}
+.kpi{background:#fff;border-radius:12px;padding:14px 16px;border:1.5px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.kpi-val{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.25rem;line-height:1;}
+.kpi-lbl{font-size:.6rem;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-top:6px;}
+
+/* ── Section card ── */
+.card{background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;margin-bottom:16px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.04);}
+.card-hd{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;}
+.section-label{font-weight:700;font-size:.8rem;text-transform:uppercase;letter-spacing:.6px;}
+
+/* ── Bank grid table ── */
+.bank-table{width:100%;border-collapse:collapse;}
+.bank-table th{background:#1e293b;color:#fff;padding:10px 12px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;text-align:center;border-right:1px solid #334155;}
+.bank-table th.row-label-th{text-align:left;position:sticky;left:0;z-index:3;background:#1e293b;color:rgba(255,255,255,.5);width:210px;}
+.bank-table th.total-th{color:#f59e0b;border-right:none;}
+.bank-table td{padding:8px 12px;border-bottom:1px solid #f1f5f9;border-right:1px solid #f8fafc;font-size:.82rem;text-align:right;}
+.bank-table td.row-label{text-align:left;font-weight:600;font-size:.78rem;color:#475569;font-style:italic;background:#f8fafc;position:sticky;left:0;z-index:2;border-right:2px solid #e2e8f0;white-space:nowrap;}
+.bank-table td.total-cell{font-weight:700;border-right:none;}
+.bank-table tr.section-header td{background:#f8fafc;font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.8px;color:#64748b;padding:6px 12px;border-bottom:1.5px solid #e2e8f0;}
+.bank-table tr.computed td{background:#eff6ff;font-weight:700;color:#1d4ed8;}
+.bank-table tr.computed td.row-label{background:#dbeafe;color:#1d4ed8;}
+.bank-table tr.ending td{background:#f0fdf4;font-weight:800;color:#059669;}
+.bank-table tr.ending td.row-label{background:#dcfce7;color:#059669;}
+.bank-table tr.beg td{background:#fafafa;}
+.bank-table tr.book td{background:#fffbeb;}
+.bank-table tr.book td.row-label{background:#fef9c3;color:#92400e;}
+.bank-table tr.book td.total-cell{color:#b45309;}
+.bank-table tr.sub td{background:#fff;}
+.bank-table tr.sub td.row-label{font-style:normal;font-size:.76rem;padding-left:28px;color:#059669;}
+.bank-table tr.manual-row td.row-label{font-style:normal;font-size:.76rem;padding-left:28px;color:#8b5cf6;}
+.bank-table tr.expense-row td{background:#fff;}
+.bank-table tr.expense-row.untagged td{background:#fffbeb;}
+.bank-table tr.expense-row td.row-label{font-style:normal;font-size:.76rem;padding-left:28px;color:#dc2626;}
+.bank-table tr.expense-row.untagged td.row-label{color:#d97706;}
+.bank-table tr.section-spacer td{height:6px;background:#f8fafc;border-bottom:2px solid #e2e8f0;}
+.bank-table tr.pending-row td{background:#fffbeb;}
+.bank-table tr.pending-row td.row-label{background:#fef3c7;color:#b45309;font-style:normal;font-size:.76rem;padding-left:28px;}
+.bank-table tr.approved-row td{background:#f0fdf4;}
+.bank-table tr.approved-row td.row-label{background:#dcfce7;color:#059669;font-style:normal;font-size:.76rem;padding-left:28px;}
+.bank-table tr.total-money td{background:#0f172a;font-weight:800;color:#f1f5f9;border-bottom:2px solid #334155;}
+.bank-table tr.total-money td.row-label{background:#1e293b;color:#f1f5f9;}
+.bank-table tr.save-up td{background:#ecfdf5;color:#065f46;}
+.bank-table tr.save-up td.row-label{background:#d1fae5;color:#065f46;}
+
+/* ── Badges ── */
+.badge{display:inline-block;border-radius:20px;padding:1px 8px;font-size:.65rem;font-weight:700;white-space:nowrap;}
+.badge-pending{background:#fef3c7;color:#b45309;border:1px solid #fde68a;}
+.badge-approved{background:#dcfce7;color:#059669;border:1px solid #6ee7b7;}
+.badge-warn{background:#fff1f2;color:#dc2626;border:1px solid #fecaca;}
+
+/* ── Fake input ── */
+.fake-inp{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:6px;padding:5px 10px;color:#64748b;font-style:italic;font-size:.78rem;text-align:right;width:100%;display:block;}
+.fake-inp.active{background:#fff;border-color:#1d4ed8;color:#0f172a;font-style:normal;}
+
+/* ── Warning banner ── */
+.warn-banner{background:#fffbeb;border:1.5px solid #fcd34d;border-radius:10px;padding:10px 16px;margin-bottom:12px;font-size:.82rem;color:#92400e;display:flex;gap:10px;align-items:flex-start;}
+
+/* ── Notes ── */
+.notes-area{width:100%;min-height:64px;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-family:inherit;font-size:.85rem;color:#0f172a;resize:vertical;background:#fafafa;}
+
+/* pending-collections box */
+.pending-coll{background:#f0f9ff;border-radius:10px;border:1.5px solid #bae6fd;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;}
+.pending-coll-lbl{font-size:.78rem;color:#0369a1;font-weight:600;}
+.pending-coll-val{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.3rem;color:#0ea5e9;}
+
+/* trend strip */
+.trend-card{background:#fff;border-radius:12px;border:1.5px solid #e2e8f0;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:16px;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;flex-wrap:wrap;gap:10px;">
+  <div>
+    <h1>Daily Cash Position</h1>
+    <div class="subtitle">GMD Productions Inc. — Finance Summary &nbsp;·&nbsp; <strong style="color:#1d4ed8">June 10, 2026</strong></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <button style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:7px 14px;font-family:inherit;font-size:.78rem;font-weight:700;color:#1d4ed8;cursor:pointer;">⬇ Export CSV</button>
+    <input type="date" value="2026-06-10" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px;font-family:inherit;font-size:.85rem;color:#0f172a;">
+    <button style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 14px;font-family:inherit;font-size:.8rem;color:#64748b;cursor:pointer;font-weight:600;">📅 History (12)</button>
+    <button style="background:#1e293b;border:1.5px solid #1e293b;border-radius:8px;padding:7px 18px;font-family:inherit;font-size:.84rem;color:#fff;cursor:pointer;font-weight:700;">Save Position</button>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip" style="margin-top:16px;">
+  <div class="kpi"><div class="kpi-val" style="color:#059669;">₱7,234,560.00</div><div class="kpi-lbl">Total Cash Available</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#1d4ed8;">₱7,084,560.00</div><div class="kpi-lbl">Working Capital</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#0e7490;">₱500,000.00</div><div class="kpi-lbl">GMD Capital (Save-Up)</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#10b981;">₱150,000.00</div><div class="kpi-lbl">Collections Today</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#f59e0b;">₱1,234,567.00</div><div class="kpi-lbl">Pending Collections</div></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- MAIN BANK GRID -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="card">
+  <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+  <table class="bank-table" style="min-width:780px;">
+    <thead>
+      <tr>
+        <th class="row-label-th">CATEGORY</th>
+        <th>BPI</th>
+        <th>Metrobank</th>
+        <th>BDO</th>
+        <th>Security</th>
+        <th>Chinabank</th>
+        <th class="total-th">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+
+      <!-- ── 1. BEGINNING BALANCE ─────────────────────────── -->
+      <tr class="beg">
+        <td class="row-label">🏦 Bank Beginning Balance</td>
+        <td><div class="fake-inp active">5,234,560.00</div></td>
+        <td><div class="fake-inp active">1,000,000.00</div></td>
+        <td><div class="fake-inp active">500,000.00</div></td>
+        <td><div class="fake-inp active">200,000.00</div></td>
+        <td><div class="fake-inp active">100,000.00</div></td>
+        <td class="total-cell" style="font-weight:700;">7,034,560.00</td>
+      </tr>
+
+      <!-- ── 2. CASH IN (section header) ───────────────────── -->
+      <tr class="section-spacer"><td colspan="7"></td></tr>
+      <tr class="section-header">
+        <td class="row-label" style="color:#059669;font-style:normal;">💚 CASH IN</td>
+        <td colspan="6" style="text-align:left;color:#64748b;font-size:.72rem;font-weight:400;font-style:italic;">Finance-approved billing payments + other collections for the day</td>
+      </tr>
+
+      <!-- 2a. FabHub billing payments (Finance-approved) — per bank -->
+      <tr class="section-header" style="background:#f0fdf4!important;">
+        <td class="row-label" style="color:#059669;font-size:.72rem;padding-left:16px;font-style:normal;">Collections from FabHub &nbsp;<span class="badge badge-approved">2 approved</span> <span class="badge badge-pending" style="margin-left:3px;">1 pending</span></td>
+        <td colspan="5" style="text-align:left;color:#64748b;font-size:.72rem;font-style:italic;">Pulled from Billing milestones — click ✓ Approve to count toward balance</td>
+        <td style="font-weight:700;color:#059669;text-align:right;">150,000.00</td>
+      </tr>
+      <!-- Project row 1 — approved, BPI -->
+      <tr class="approved-row">
+        <td class="row-label"><span class="badge badge-approved">✓ Approved</span>&nbsp; Collecticons Inc — Final Billing</td>
+        <td style="font-weight:700;color:#059669;">100,000.00</td><!-- BPI -->
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td class="total-cell" style="color:#059669;">100,000.00</td>
+      </tr>
+      <!-- Project row 2 — approved, Metrobank -->
+      <tr class="approved-row">
+        <td class="row-label"><span class="badge badge-approved">✓ Approved</span>&nbsp; POPMART SM Davao — 50% Down</td>
+        <td>—</td>
+        <td style="font-weight:700;color:#059669;">50,000.00</td><!-- Metrobank -->
+        <td>—</td><td>—</td><td>—</td>
+        <td class="total-cell" style="color:#059669;">50,000.00</td>
+      </tr>
+      <!-- Project row 3 — PENDING, no bank tagged yet -->
+      <tr class="pending-row">
+        <td class="row-label"><span class="badge badge-pending">⏳ Pending</span>&nbsp; Zara BGC Fit-Out — Progress Bill <span class="badge badge-warn" style="margin-left:4px;">⚠ No bank tagged</span></td>
+        <td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+        <td class="total-cell" style="color:#94a3b8;">75,000.00</td>
+      </tr>
+
+      <!-- 2b. Other Collections (manual, non-project) -->
+      <tr class="section-header" style="background:#faf5ff!important;">
+        <td class="row-label" style="color:#8b5cf6;font-size:.72rem;padding-left:16px;font-style:normal;">Other Collections (non-project)</td>
+        <td colspan="5" style="text-align:left;color:#64748b;font-size:.72rem;font-style:italic;">Junk shop, excess materials, misc cash-in — assign to a bank</td>
+        <td style="font-weight:700;color:#8b5cf6;text-align:right;">0.00</td>
+      </tr>
+      <tr class="manual-row">
+        <td class="row-label" style="color:#94a3b8;font-style:italic;">+ Add collection</td>
+        <td colspan="5" style="text-align:left;padding:6px 12px;">
+          <span style="font-size:.72rem;color:#94a3b8;">e.g. Junk shop sale — ₱5,000 → BDO</span>
+        </td>
+        <td>—</td>
+      </tr>
+
+      <!-- ── 3. TOTAL MONEY (computed) ─────────────────────── -->
+      <tr class="section-spacer"><td colspan="7"></td></tr>
+      <tr class="total-money">
+        <td class="row-label">📌 TOTAL MONEY &nbsp;<span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.5);">Beginning + Cash In</span></td>
+        <td>5,334,560.00</td><!-- BPI: 5,234,560 + 100,000 -->
+        <td>1,050,000.00</td><!-- Metro: 1,000,000 + 50,000 -->
+        <td>500,000.00</td>
+        <td>200,000.00</td>
+        <td>100,000.00</td>
+        <td class="total-cell" style="color:#f59e0b;">7,184,560.00</td>
+      </tr>
+
+      <!-- ── 4. PENDING COLLECTIONS (info row) ─────────────── -->
+      <tr class="section-spacer"><td colspan="7"></td></tr>
+      <tr>
+        <td colspan="7" style="padding:12px 16px;background:#f0f9ff;border-bottom:2px solid #e2e8f0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-weight:700;color:#0369a1;font-size:.82rem;">📋 Pending Collections — Total Outstanding from Billing Milestones</div>
+              <div style="font-size:.72rem;color:#64748b;margin-top:2px;">Auto-pulled from FabHub billing. These are NOT yet received — for tracking only.</div>
+            </div>
+            <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.4rem;color:#0ea5e9;">₱ 1,234,567.00</div>
+          </div>
+        </td>
+      </tr>
+
+      <!-- ── 5. TODAY'S TRANSACTIONS (expenses) ────────────── -->
+      <tr class="section-spacer"><td colspan="7"></td></tr>
+      <tr class="section-header">
+        <td class="row-label" style="color:#dc2626;font-style:normal;">📤 TODAY'S TRANSACTIONS</td>
+        <td colspan="5" style="text-align:left;color:#64748b;font-size:.72rem;font-style:italic;">Expenses from Accounting tab — each must be tagged to a bank</td>
+        <td style="font-weight:700;color:#dc2626;text-align:right;">−50,000.00</td>
+      </tr>
+      <!-- Expense 1 — tagged, BPI -->
+      <tr class="expense-row">
+        <td class="row-label" style="color:#dc2626;">Materials — Steel channels (Zara)</td>
+        <td style="font-weight:600;color:#dc2626;">25,000.00</td><!-- BPI -->
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td class="total-cell" style="color:#dc2626;">25,000.00</td>
+      </tr>
+      <!-- Expense 2 — tagged, Metrobank -->
+      <tr class="expense-row">
+        <td class="row-label" style="color:#dc2626;">Labour — Carpenter team (POPMART)</td>
+        <td>—</td>
+        <td style="font-weight:600;color:#dc2626;">15,000.00</td><!-- Metrobank -->
+        <td>—</td><td>—</td><td>—</td>
+        <td class="total-cell" style="color:#dc2626;">15,000.00</td>
+      </tr>
+      <!-- Expense 3 — UNTAGGED — warning state -->
+      <tr class="expense-row untagged">
+        <td class="row-label" style="color:#d97706;">
+          Office supplies — Printer ink
+          <span class="badge badge-warn" style="margin-left:6px;">⚠ Assign bank</span>
+        </td>
+        <td colspan="5" style="text-align:center;padding:6px;">
+          <div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;">
+            <span style="font-size:.72rem;color:#92400e;font-weight:600;">Which bank was this charged to?</span>
+            <button style="background:#fff;border:1.5px solid #fcd34d;border-radius:6px;padding:3px 10px;font-size:.72rem;font-weight:700;color:#0f172a;cursor:pointer;font-family:inherit;">BPI</button>
+            <button style="background:#fff;border:1.5px solid #fcd34d;border-radius:6px;padding:3px 10px;font-size:.72rem;font-weight:700;color:#0f172a;cursor:pointer;font-family:inherit;">Metrobank</button>
+            <button style="background:#fff;border:1.5px solid #fcd34d;border-radius:6px;padding:3px 10px;font-size:.72rem;font-weight:700;color:#0f172a;cursor:pointer;font-family:inherit;">BDO</button>
+            <button style="background:#fff;border:1.5px solid #fcd34d;border-radius:6px;padding:3px 10px;font-size:.72rem;font-weight:700;color:#0f172a;cursor:pointer;font-family:inherit;">Security</button>
+            <button style="background:#fff;border:1.5px solid #fcd34d;border-radius:6px;padding:3px 10px;font-size:.72rem;font-weight:700;color:#0f172a;cursor:pointer;font-family:inherit;">Chinabank</button>
+          </div>
+        </td>
+        <td class="total-cell" style="color:#d97706;font-weight:700;">10,000.00</td>
+      </tr>
+
+      <!-- ── 6. BANK ENDING BALANCE (auto-computed) ────────── -->
+      <tr class="section-spacer"><td colspan="7"></td></tr>
+      <tr class="ending">
+        <td class="row-label">
+          ✅ Bank Ending Balance
+          <div style="font-size:.65rem;font-weight:400;color:#059669;margin-top:1px;">Auto-computed: Total Money − Today's Transactions</div>
+        </td>
+        <td>5,309,560.00</td><!-- 5,334,560 − 25,000 -->
+        <td>1,035,000.00</td><!-- 1,050,000 − 15,000 -->
+        <td>500,000.00</td>
+        <td>200,000.00</td>
+        <td>100,000.00</td>
+        <td class="total-cell" style="color:#059669;font-size:.88rem;">7,144,560.00</td>
+      </tr>
+      <!-- Variance warning row — shown when untagged expenses exist -->
+      <tr>
+        <td colspan="7" style="background:#fffbeb;padding:6px 16px;border-bottom:1.5px solid #fde68a;">
+          <span style="font-size:.75rem;color:#92400e;font-weight:600;">⚠️ 1 expense (₱10,000) is unassigned — ending balance per bank may be incomplete. Assign all expenses above to get accurate per-bank totals.</span>
+        </td>
+      </tr>
+
+      <!-- ── 7. BOOK BALANCE (manual reconciliation) ────────── -->
+      <tr class="section-spacer"><td colspan="7"></td></tr>
+      <tr class="section-header">
+        <td class="row-label" style="color:#b45309;font-style:normal;">📒 Book Balance <span style="font-size:.65rem;font-weight:400;color:#94a3b8;">(manual — what your bank statement confirms)</span></td>
+        <td colspan="6" style="font-size:.72rem;color:#92400e;">Fill in after reconciling with your online banking / passbook. Variance vs. Ending Balance is shown.</td>
+      </tr>
+      <tr class="book">
+        <td class="row-label">Book Balance (Reconciled)</td>
+        <td><div class="fake-inp active">5,309,560.00</div></td>
+        <td><div class="fake-inp active">1,035,000.00</div></td>
+        <td><div class="fake-inp">—</div></td>
+        <td><div class="fake-inp">—</div></td>
+        <td><div class="fake-inp">—</div></td>
+        <td class="total-cell" style="color:#b45309;">6,344,560.00</td>
+      </tr>
+      <!-- Variance row -->
+      <tr>
+        <td class="row-label" style="font-size:.72rem;color:#94a3b8;background:#fff;">Variance (Ending vs Book)</td>
+        <td style="color:#059669;font-weight:600;font-size:.78rem;">0.00</td>
+        <td style="color:#059669;font-weight:600;font-size:.78rem;">0.00</td>
+        <td style="color:#94a3b8;font-size:.78rem;">—</td>
+        <td style="color:#94a3b8;font-size:.78rem;">—</td>
+        <td style="color:#94a3b8;font-size:.78rem;">—</td>
+        <td style="color:#94a3b8;font-size:.78rem;font-weight:700;">0.00</td>
+      </tr>
+
+      <!-- ── 8. SAVE-UP CAPITAL (Unionbank, separate) ────────── -->
+      <tr class="section-spacer"><td colspan="7"></td></tr>
+      <tr class="save-up">
+        <td class="row-label" style="color:#065f46;">
+          🏦 Save-Up Capital (Unionbank)
+          <div style="font-size:.65rem;font-weight:400;color:#065f46;margin-top:1px;">NOT part of GMD working capital — long-term savings</div>
+        </td>
+        <td style="color:#94a3b8;">—</td>
+        <td style="color:#94a3b8;">—</td>
+        <td style="color:#94a3b8;">—</td>
+        <td style="color:#94a3b8;">—</td>
+        <td style="color:#94a3b8;">—</td>
+        <td class="total-cell" style="color:#065f46;">500,000.00</td>
+      </tr>
+      <tr class="save-up" style="border-bottom:2px solid #6ee7b7;">
+        <td class="row-label" style="color:#065f46;font-style:normal;font-size:.76rem;padding-left:28px;">Ending Balance (Unionbank)</td>
+        <td colspan="5" style="padding:5px 12px;"><div class="fake-inp active" style="max-width:160px;margin-left:auto;">500,000.00</div></td>
+        <td>—</td>
+      </tr>
+
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- ── POSITION SUMMARY ─────────────────────────────────────── -->
+<div class="card">
+  <div class="card-hd" style="background:#1e293b;">
+    <span class="section-label" style="color:#f59e0b;">📊 Position Summary</span>
+  </div>
+  <div style="padding:16px 20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:.82rem;color:#475569;font-weight:600;">Working Capital (Book)</span>
+        <span style="font-weight:700;color:#1d4ed8;font-size:.9rem;">₱6,344,560.00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:.82rem;color:#475569;font-weight:600;">Collections Today</span>
+        <span style="font-weight:700;color:#059669;font-size:.9rem;">+ ₱150,000.00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:.82rem;color:#475569;font-weight:600;">Today's Transactions</span>
+        <span style="font-weight:700;color:#dc2626;font-size:.9rem;">− ₱50,000.00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:.82rem;color:#475569;font-weight:600;">Outstanding Invoices (AR)</span>
+        <span style="font-weight:700;color:#f59e0b;font-size:.9rem;">₱1,234,567.00</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:.82rem;color:#475569;font-weight:600;">Supplier Payables</span>
+        <input type="text" placeholder="₱ enter amount" style="border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 8px;font-size:.8rem;width:130px;text-align:right;font-family:inherit;">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #e2e8f0;">
+        <span style="font-size:.82rem;color:#475569;font-weight:600;">Loans Payable</span>
+        <input type="text" placeholder="₱ enter amount" style="border:1.5px solid #e2e8f0;border-radius:6px;padding:4px 8px;font-size:.8rem;width:130px;text-align:right;font-family:inherit;">
+      </div>
+      <!-- Net Cash Available — full width -->
+      <div style="grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#f0fdf4;">
+        <span style="font-weight:700;color:#0f172a;font-size:.9rem;">Net Cash Available (Working Capital)</span>
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.4rem;color:#059669;">₱ 7,234,560.00</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── NOTES FOR THE DAY ────────────────────────────────────── -->
+<div class="card">
+  <div class="card-hd" style="background:#1e293b;">
+    <span class="section-label" style="color:#94a3b8;">📝 Notes for the Day</span>
+  </div>
+  <div style="padding:12px 16px;">
+    <textarea class="notes-area" placeholder="Add any notes about today's position, special instructions, or reminders for the team…">Collected POPMART 50% DP via Metrobank online transfer ref #MB2026-0610.</textarea>
+  </div>
+</div>
+
+<div style="height:40px;"></div>
+
+<!-- ── ANNOTATION CALLOUTS ─────────────────────────────────── -->
+<div style="background:#fff;border-radius:12px;border:1.5px solid #e2e8f0;padding:20px;margin-bottom:24px;">
+  <div style="font-weight:700;color:#0f172a;font-size:.9rem;margin-bottom:12px;">🔑 What's changed from the current design</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div style="background:#f0fdf4;border-radius:8px;padding:12px;border-left:3px solid #059669;">
+      <div style="font-weight:700;font-size:.82rem;color:#059669;margin-bottom:4px;">✅ Ending balance is now auto-computed</div>
+      <div style="font-size:.75rem;color:#374151;">Total Money (begin + cash in) minus Today's Transactions = Ending Balance per bank. No more manual entry — it self-balances like the Excel formula.</div>
+    </div>
+    <div style="background:#fffbeb;border-radius:8px;padding:12px;border-left:3px solid #f59e0b;">
+      <div style="font-weight:700;font-size:.82rem;color:#b45309;margin-bottom:4px;">⚠️ Untagged expenses are blocked inline</div>
+      <div style="font-size:.75rem;color:#374151;">If an expense has no bank tagged in Accounting, a bank-assign prompt appears right in the table row — Finance must resolve it before the position is complete.</div>
+    </div>
+    <div style="background:#eff6ff;border-radius:8px;padding:12px;border-left:3px solid #1d4ed8;">
+      <div style="font-weight:700;font-size:.82rem;color:#1d4ed8;margin-bottom:4px;">📌 Total Money row is the balance checkpoint</div>
+      <div style="font-size:.75rem;color:#374151;">Dark row (Begin + approved collections) shows the maximum available per bank before expenses are deducted — mirrors the Excel TOTAL MONEY formula.</div>
+    </div>
+    <div style="background:#faf5ff;border-radius:8px;padding:12px;border-left:3px solid #8b5cf6;">
+      <div style="font-weight:700;font-size:.82rem;color:#8b5cf6;margin-bottom:4px;">🏦 Unionbank (Save-Up Capital) is visually separated</div>
+      <div style="font-size:.75rem;color:#374151;">Unionbank gets its own teal section at the bottom, clearly labeled "NOT part of GMD working capital" — mirrors the Excel Save-Up Capital section.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
