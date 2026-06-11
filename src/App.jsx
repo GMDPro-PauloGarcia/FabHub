@@ -12089,6 +12089,32 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       .sort((a,b)=>b.balance-a.balance);
   },[billings,wonDeals]);
 
+  // Top pending milestones — per milestone, sorted by outstanding balance desc
+  const pendingMilestones=useMemo(()=>{
+    const classifyType=name=>{
+      const n=(name||"").toLowerCase();
+      if(n.includes("down")||n.includes("dp")) return "Downpayment";
+      if(n.includes("retention")||n.includes("retent")) return "Retention";
+      if(n.includes("assume")) return "Assume Balance";
+      if(n.includes("balance")&&!n.includes("assume")) return "Balance";
+      return "Progress Bill";
+    };
+    const now2=new Date();
+    return (billings||[])
+      .filter(b=>b.status!=="Cancelled"&&b.status!=="Paid"&&b.status!=="Fully Paid")
+      .map(b=>{
+        const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+        const balance=Math.max(0,Number(b.amount||0)-paid);
+        const deal=wonDeals.find(d=>d.id===b.dealId);
+        const daysOverdue=b.dueDate?Math.floor((now2-new Date(b.dueDate))/(1000*60*60*24)):null;
+        return{id:b.id,client:deal?.client||"Unknown",milestoneName:b.name||"Milestone",
+          type:classifyType(b.name),balance,dueDate:b.dueDate||null,
+          daysOverdue:daysOverdue>0?daysOverdue:null,pct:Number(b.amount)>0?Math.round(paid/Number(b.amount)*100):0};
+      })
+      .filter(r=>r.balance>0)
+      .sort((a,b)=>b.balance-a.balance);
+  },[billings,wonDeals]);
+
   // Collections breakdown by milestone type
   const billingByType=useMemo(()=>{
     const TYPES=["Downpayment","Progress Bill","Assume Balance","Retention"];
@@ -12617,28 +12643,68 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
             </div>
 
             {/* ── 4. PENDING COLLECTIONS info ── */}
-            <div style={{borderBottom:"2px solid #e2e8f0",background:"#f0f9ff"}}>
-              <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-                <div>
-                  <div style={{fontWeight:700,color:"#0369a1",fontSize:".8rem"}}>📋 Pending Collections — Outstanding from Billing Milestones</div>
-                  <div style={{fontSize:".7rem",color:"#64748b",marginTop:2}}>Not yet received — tracking only.</div>
-                </div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#0ea5e9"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-              </div>
-              {billingByDeal.length>0&&(
-                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"repeat(2,1fr)",borderTop:"1px solid #bae6fd"}}>
-                  {billingByDeal.slice(0,6).map((row,i)=>(
-                    <div key={row.dealId} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 16px",borderBottom:"1px solid #e0f2fe",borderRight:!mob&&i%2===0?"1px solid #e0f2fe":"none",gap:8}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".78rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.client}</div>
-                        <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{row.pct}% collected</div>
-                      </div>
-                      <div style={{fontWeight:700,color:"#ef4444",fontSize:".78rem",flexShrink:0}}>₱{row.balance.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+            {(()=>{
+              const TYPE_CLR={Downpayment:"#3b82f6","Progress Bill":"#8b5cf6","Assume Balance":"#f59e0b",Balance:"#f97316",Retention:"#ef4444"};
+              const top3=pendingMilestones.slice(0,3);
+              return(
+                <div style={{borderBottom:"2px solid #bae6fd",background:"#f0f9ff"}}>
+                  {/* Header */}
+                  <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#0369a1",fontSize:".8rem"}}>📋 Pending Collections — Outstanding from Billing Milestones</div>
+                      <div style={{fontSize:".7rem",color:"#64748b",marginTop:2}}>Not yet received — tracking only · {pendingMilestones.length} open milestone{pendingMilestones.length!==1?"s":""}</div>
                     </div>
-                  ))}
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#0ea5e9"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                  </div>
+                  {/* Column headers */}
+                  {top3.length>0&&(
+                    <>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 100px 80px 90px",padding:"5px 16px",borderTop:"1px solid #bae6fd",background:"#e0f2fe",gap:8}}>
+                        {["Project / Milestone","Type","Due","Amount"].map((h,i)=>(
+                          <div key={h} style={{fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#0369a1",textAlign:i>=2?"right":"left"}}>{h}</div>
+                        ))}
+                      </div>
+                      {top3.map((row,i)=>(
+                        <div key={row.id} style={{display:"grid",gridTemplateColumns:"1fr 100px 80px 90px",padding:"8px 16px",borderTop:"1px solid #e0f2fe",gap:8,background:i===0?"#fff7ed":i===1?"#fafafe":"#f0f9ff",alignItems:"center"}}>
+                          {/* Project + Milestone */}
+                          <div style={{minWidth:0}}>
+                            <div style={{fontWeight:700,color:"#0f172a",fontSize:".78rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.client}</div>
+                            <div style={{fontSize:".68rem",color:"#64748b",marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.milestoneName} · {row.pct}% collected</div>
+                          </div>
+                          {/* Type badge */}
+                          <div>
+                            <span style={{display:"inline-block",background:(TYPE_CLR[row.type]||"#64748b")+"18",color:TYPE_CLR[row.type]||"#64748b",border:`1px solid ${TYPE_CLR[row.type]||"#94a3b8"}44`,borderRadius:20,padding:"2px 7px",fontSize:".62rem",fontWeight:700,whiteSpace:"nowrap"}}>
+                              {row.type}
+                            </span>
+                          </div>
+                          {/* Due date + overdue */}
+                          <div style={{textAlign:"right"}}>
+                            {row.dueDate?(
+                              <>
+                                <div style={{fontSize:".7rem",color:row.daysOverdue?"#dc2626":"#475569",fontWeight:row.daysOverdue?700:400}}>{new Date(row.dueDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}</div>
+                                {row.daysOverdue&&<div style={{fontSize:".62rem",color:"#dc2626",fontWeight:700}}>{row.daysOverdue}d overdue</div>}
+                              </>
+                            ):<span style={{fontSize:".7rem",color:"#94a3b8"}}>No date</span>}
+                          </div>
+                          {/* Amount */}
+                          <div style={{textAlign:"right",fontWeight:800,color:i===0?"#c2410c":"#dc2626",fontSize:".82rem",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                            ₱{row.balance.toLocaleString("en-PH",{minimumFractionDigits:0})}
+                          </div>
+                        </div>
+                      ))}
+                      {pendingMilestones.length>3&&(
+                        <div style={{padding:"6px 16px",borderTop:"1px dashed #bae6fd",fontSize:".7rem",color:"#0369a1",fontWeight:600,background:"#f0f9ff"}}>
+                          +{pendingMilestones.length-3} more milestones · ₱{pendingMilestones.slice(3).reduce((s,r)=>s+r.balance,0).toLocaleString("en-PH",{minimumFractionDigits:0})} — see Billing tab
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {top3.length===0&&(
+                    <div style={{padding:"10px 16px",borderTop:"1px solid #bae6fd",fontSize:".75rem",color:"#64748b",fontStyle:"italic"}}>All billing milestones collected — no outstanding balance.</div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* ── 5. TODAY'S TRANSACTIONS header ── */}
             <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #fee2e2",background:"#fff7f7",borderTop:"2px solid #f87171"}}>
@@ -12764,102 +12830,111 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         );
       })()}
 
-      {/* ── POSITION SUMMARY ── */}
-      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,overflow:"hidden"}}>
-        <div style={{background:"#1e293b",padding:"12px 16px"}}>
-          <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📊 Position Summary</span>
-        </div>
-        <div style={{padding:"0 20px"}}>
-          {[
-            ["Book Balance (Working Capital)",workingBook,"#1d4ed8","+"],
-            ["Collections Today",totalCollections,"#059669","+"],
-            ["Today's Transactions",totalLess,"#dc2626","−"],
-          ].map(([label,val,color,sign])=>(
-            <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}}>
-              <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color,fontSize:"1.05rem",minWidth:18}}>{sign}</span>{label}
-              </div>
-              <div style={{fontWeight:700,color,fontSize:".88rem"}}>₱{fmt2(val)}</div>
-            </div>
-          ))}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:"2px solid #e2e8f0"}}>
-            <div style={{fontWeight:800,color:"#0f172a",fontSize:".9rem",textTransform:"uppercase",letterSpacing:".5px"}}>=  Net Cash Available (Working Capital)</div>
-            <div style={{fontWeight:900,color:totalCashAvailable>=0?"#059669":"#ef4444",fontSize:"1.3rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{fmt2(totalCashAvailable)}</div>
-          </div>
-          {(()=>{
-            const unionRow=pos.banks["union"]||emptyBankRow();
-            const saveUp=n(unionRow.book||0)||n(unionRow.end||0)||n(unionRow.beg||0);
-            const totalAssets=totalCashAvailable+saveUp;
-            return(<>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
-                <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#0e7490",fontSize:"1.05rem",minWidth:18}}>+</span>Save-Up Capital (Unionbank)
-                </div>
-                <div style={{fontWeight:700,color:"#0e7490",fontSize:".88rem"}}>₱{fmt2(saveUp)}</div>
-              </div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0"}}>
-                <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",textTransform:"uppercase",letterSpacing:".5px"}}>=  Total GMD Cash Assets</div>
-                <div style={{fontWeight:900,color:"#0e7490",fontSize:"1.6rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{fmt2(totalAssets)}</div>
-              </div>
-            </>);
-          })()}
-        </div>
-      </div>
+      {/* ── POSITION SUMMARY + KEY AREAS — side by side ── */}
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16,marginBottom:16,alignItems:"start"}}>
 
-      {/* ── KEY AREAS ── */}
-      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16,marginBottom:16}}>
+        {/* Left: Position Summary */}
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{background:"#1e293b",padding:"12px 16px"}}>
-            <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>KEY AREAS</span>
+            <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📊 Position Summary</span>
           </div>
-          {[["YTD Supplier Payable","ytd.supplierPayable","#ef4444"],["YTD Loans Payable","ytd.loansPayable","#f97316"]].map(([label,path,color])=>(
-            <div key={path} style={{display:"flex",flexDirection:mob?"column":"row",justifyContent:"space-between",alignItems:mob?"flex-start":"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",gap:mob?6:0}}>
-              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>{label}</div>
-              <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                <CurrInp value={path.split(".").reduce((o,k)=>o?.[k],pos)||""} onChange={e=>f(path,e.target.value)} style={{...inpStyle,width:mob?140:160,borderColor:`${color}44`}}/>
-                <span style={{fontWeight:700,color,minWidth:mob?70:90,textAlign:"right",fontSize:".82rem"}}>
-                  {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
-                </span>
+          <div style={{padding:"0 20px"}}>
+            {[
+              ["Book Balance (Working Capital)",workingBook,"#1d4ed8","+"],
+              ["Collections Today",totalCollections,"#059669","+"],
+              ["Today's Transactions",totalLess,"#dc2626","−"],
+            ].map(([label,val,color,sign])=>(
+              <div key={label} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 0",borderBottom:"1px solid #f1f5f9"}}>
+                <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color,fontSize:"1.05rem",minWidth:18}}>{sign}</span>{label}
+                </div>
+                <div style={{fontWeight:700,color,fontSize:".88rem"}}>₱{fmt2(val)}</div>
               </div>
+            ))}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0",borderBottom:"2px solid #e2e8f0"}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:".85rem",textTransform:"uppercase",letterSpacing:".4px"}}>=  Net Cash Available</div>
+              <div style={{fontWeight:900,color:totalCashAvailable>=0?"#059669":"#ef4444",fontSize:"1.25rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{fmt2(totalCashAvailable)}</div>
             </div>
-          ))}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:"#f0fdf4"}}>
-            <div>
-              <div style={{fontSize:".8rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>Due This Month</div>
-              <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>Billing milestones due this calendar month</div>
-            </div>
-            <span style={{fontWeight:800,color:billingMetrics.dueThisMonth>0?"#f59e0b":"#10b981",fontSize:".88rem"}}>
-              ₱{billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
-            </span>
+            {(()=>{
+              const unionRow=pos.banks["union"]||emptyBankRow();
+              const saveUp=n(unionRow.book||0)||n(unionRow.end||0)||n(unionRow.beg||0);
+              const totalAssets=totalCashAvailable+saveUp;
+              return(<>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#0e7490",fontSize:"1.05rem",minWidth:18}}>+</span>Save-Up Capital (Unionbank)
+                  </div>
+                  <div style={{fontWeight:700,color:"#0e7490",fontSize:".88rem"}}>₱{fmt2(saveUp)}</div>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0"}}>
+                  <div style={{fontWeight:800,color:"#0f172a",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".4px"}}>=  Total GMD Cash Assets</div>
+                  <div style={{fontWeight:900,color:"#0e7490",fontSize:"1.45rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{fmt2(totalAssets)}</div>
+                </div>
+              </>);
+            })()}
           </div>
         </div>
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-          <div style={{background:"#1e293b",padding:"12px 16px"}}>
-            <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 Collections by Type</span>
-          </div>
-          {billingByType.map(({type,billed,collected,outstanding})=>{
-            const pct=billed>0?Math.round(collected/billed*100):0;
-            const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
-            return(
-              <div key={type} style={{padding:"10px 16px",borderBottom:"1px solid #f1f5f9"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <span style={{width:8,height:8,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
-                    <span style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{type}</span>
-                  </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".82rem"}}>{outstanding>0?`₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} due`:"Fully collected"}</div>
-                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>₱{collected.toLocaleString("en-PH",{minimumFractionDigits:2})} / ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-                  </div>
+
+        {/* Right: Key Areas + Collections by Type stacked */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+
+          {/* Key Areas */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>KEY AREAS</span>
+            </div>
+            {[["YTD Supplier Payable","ytd.supplierPayable","#ef4444"],["YTD Loans Payable","ytd.loansPayable","#f97316"]].map(([label,path,color])=>(
+              <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",gap:8}}>
+                <div style={{fontSize:".78rem",color:"#475569",fontWeight:600,fontStyle:"italic",flex:1}}>{label}</div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                  <CurrInp value={path.split(".").reduce((o,k)=>o?.[k],pos)||""} onChange={e=>f(path,e.target.value)} style={{...inpStyle,width:120,borderColor:`${color}44`}}/>
+                  <span style={{fontWeight:700,color,minWidth:80,textAlign:"right",fontSize:".8rem"}}>
+                    {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
+                  </span>
                 </div>
-                {billed>0&&<div style={{height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2,transition:"width .5s"}}/></div>}
               </div>
-            );
-          })}
-          <div style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:"#f8fafc"}}>
-            <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>Total Outstanding</span>
-            <span style={{fontWeight:800,color:"#ef4444",fontSize:".85rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+            ))}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:"#f0fdf4"}}>
+              <div>
+                <div style={{fontSize:".78rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>Due This Month</div>
+                <div style={{fontSize:".63rem",color:"#94a3b8",marginTop:2}}>Billing milestones due this calendar month</div>
+              </div>
+              <span style={{fontWeight:800,color:billingMetrics.dueThisMonth>0?"#f59e0b":"#10b981",fontSize:".88rem"}}>
+                ₱{billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
+              </span>
+            </div>
           </div>
+
+          {/* Collections by Type */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 Collections by Type</span>
+            </div>
+            {billingByType.map(({type,billed,collected,outstanding})=>{
+              const pct=billed>0?Math.round(collected/billed*100):0;
+              const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
+              return(
+                <div key={type} style={{padding:"9px 16px",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{width:8,height:8,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
+                      <span style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{type}</span>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".8rem"}}>{outstanding>0?`₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} due`:"Fully collected"}</div>
+                      <div style={{fontSize:".67rem",color:"#94a3b8"}}>₱{collected.toLocaleString("en-PH",{minimumFractionDigits:2})} / ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                    </div>
+                  </div>
+                  {billed>0&&<div style={{height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2,transition:"width .5s"}}/></div>}
+                </div>
+              );
+            })}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:"#f8fafc"}}>
+              <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>Total Outstanding</span>
+              <span style={{fontWeight:800,color:"#ef4444",fontSize:".83rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+            </div>
+          </div>
+
         </div>
       </div>
 
