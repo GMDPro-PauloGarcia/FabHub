@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FabHub — Daily Cash Position v2 Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#f1f5f9;color:#0f172a;padding:20px 16px;font-size:14px;}
+
+/* ── Header ── */
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+.page-title{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.5rem;color:#0f172a;margin-bottom:2px;}
+.page-sub{font-size:.78rem;color:#64748b;}
+.hdr-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.btn{border:none;border-radius:8px;padding:7px 14px;font-family:inherit;font-size:.78rem;font-weight:700;cursor:pointer;}
+.btn-light{background:#eff6ff;border:1.5px solid #bfdbfe;color:#1d4ed8;}
+.btn-ghost{background:#f8fafc;border:1.5px solid #e2e8f0;color:#64748b;}
+.btn-dark{background:#1e293b;border:1.5px solid #1e293b;color:#fff;font-size:.84rem;padding:7px 18px;}
+
+/* ── KPI Strip ── */
+.kpi-strip{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
+.kpi{background:#fff;border-radius:12px;padding:14px 16px;border:1.5px solid #e2e8f0;box-shadow:0 1px 4px rgba(0,0,0,.04);}
+.kpi-val{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.2rem;line-height:1;}
+.kpi-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1px;color:#94a3b8;margin-top:6px;}
+
+/* ── Main table card ── */
+.tbl-card{background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;margin-bottom:16px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.04);}
+.tbl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;min-width:780px;}
+th{background:#1e293b;color:#fff;padding:10px 10px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;text-align:center;border-right:1px solid #334155;white-space:nowrap;}
+th.lbl-th{text-align:left;width:210px;color:rgba(255,255,255,.5);border-right:2px solid #334155;}
+th.tot-th{color:#f59e0b;border-right:none;}
+td{padding:8px 10px;border-bottom:1px solid #f1f5f9;border-right:1px solid #f8fafc;font-size:.82rem;text-align:right;vertical-align:middle;}
+td.lbl{text-align:left;font-weight:600;font-size:.77rem;color:#475569;font-style:italic;background:#f8fafc;border-right:2px solid #e2e8f0;white-space:nowrap;width:210px;}
+td.tot{font-weight:700;border-right:none;}
+
+/* row types */
+tr.beg td{background:#fafafa;}
+tr.beg td.lbl{background:#f1f5f9;color:#475569;}
+tr.sec-hd td{background:#f8fafc;font-weight:700;font-size:.7rem;text-transform:uppercase;letter-spacing:.8px;color:#64748b;padding:5px 10px;border-bottom:1.5px solid #e2e8f0;}
+tr.cash-in-hd td{background:#dcfce7;}
+tr.cash-in-hd td.lbl{background:#bbf7d0;color:#059669;font-style:normal;font-weight:800;font-size:.78rem;}
+tr.cash-in-hd td.tot{color:#059669;font-weight:800;}
+tr.coll-sub td{background:#f0fdf4;}
+tr.coll-sub td.lbl{background:#dcfce7;color:#059669;font-style:normal;font-size:.73rem;padding-left:20px;}
+tr.coll-sub td{color:#059669;}
+tr.approved td{background:#f0fdf4;}
+tr.approved td.lbl{background:#dcfce7;color:#059669;font-style:normal;font-size:.72rem;padding-left:28px;}
+tr.pending td{background:#fef9c3;}
+tr.pending td.lbl{background:#fef3c7;color:#b45309;font-style:normal;font-size:.72px;padding-left:28px;}
+tr.untagged-pay td{background:#fffbeb;}
+tr.untagged-pay td.lbl{background:#fef3c7;color:#b45309;font-style:normal;font-size:.72rem;padding-left:28px;}
+tr.other-sub td{background:#faf5ff;}
+tr.other-sub td.lbl{background:#f3e8ff;color:#7c3aed;font-style:normal;font-size:.73rem;padding-left:20px;}
+tr.other-sub td{color:#7c3aed;}
+tr.other-row td{background:#fff;}
+tr.other-row td.lbl{background:#faf5ff;font-style:normal;font-size:.72rem;padding-left:28px;color:#7c3aed;}
+tr.total-money td{background:#0f172a;font-weight:800;color:#f1f5f9;border-bottom:3px solid #334155;border-top:3px solid #334155;}
+tr.total-money td.lbl{background:#1e293b;color:#f1f5f9;font-style:normal;font-weight:800;}
+tr.total-money td.tot{color:#f59e0b;}
+tr.pending-info td{background:#f0f9ff;}
+tr.pending-info td.lbl{background:#e0f2fe;color:#0369a1;font-style:normal;font-weight:700;}
+tr.pending-info td.tot{color:#0ea5e9;font-weight:800;}
+tr.tx-hd td{background:#fff7f7;border-top:3px solid #f87171;}
+tr.tx-hd td.lbl{background:#fef2f2;color:#dc2626;font-style:normal;font-weight:700;}
+tr.tx-hd td.tot{color:#dc2626;font-weight:800;}
+tr.exp-row td{background:#fff;}
+tr.exp-row td.lbl{background:#fff7f7;color:#dc2626;font-style:normal;font-size:.72rem;padding-left:28px;}
+tr.exp-row td{color:#dc2626;}
+tr.exp-untagged td{background:#fffbeb;}
+tr.exp-untagged td.lbl{background:#fef3c7;color:#b45309;font-style:normal;font-size:.72rem;padding-left:28px;}
+tr.warn-strip td{background:#fffbeb;padding:6px 14px;font-size:.74rem;color:#92400e;font-weight:600;border-bottom:2px solid #fde68a;}
+tr.ending td{background:#f0fdf4;border-top:3px solid #6ee7b7;}
+tr.ending td.lbl{background:#dcfce7;color:#059669;font-style:normal;font-weight:800;}
+tr.ending td{color:#059669;font-weight:700;}
+tr.ending td.tot{font-weight:800;font-size:.9rem;}
+tr.book td{background:#fffbeb;border-top:3px solid #fcd34d;}
+tr.book td.lbl{background:#fef9c3;color:#92400e;font-style:normal;}
+tr.book td.tot{color:#b45309;font-weight:700;}
+tr.variance td{background:#fff;border-bottom:3px solid #e2e8f0;}
+tr.variance td.lbl{color:#94a3b8;font-size:.7rem;font-style:normal;}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;border-radius:20px;padding:2px 8px;font-size:.65rem;font-weight:700;white-space:nowrap;margin-left:4px;}
+.b-approved{background:#dcfce7;color:#059669;border:1px solid #6ee7b7;}
+.b-pending{background:#fef3c7;color:#b45309;border:1px solid #fde68a;}
+.b-warn{background:#fff1f2;color:#dc2626;border:1px solid #fecaca;}
+.b-info{background:#dbeafe;color:#1d4ed8;border:1px solid #93c5fd;}
+
+/* bank-assign buttons */
+.bank-btns{display:flex;gap:5px;align-items:center;flex-wrap:wrap;padding:7px 10px;}
+.bank-btn{background:#fff;border:1.5px solid #fcd34d;border-radius:6px;padding:3px 9px;font-size:.7rem;font-weight:700;color:#0f172a;cursor:pointer;font-family:inherit;}
+.bank-btn:hover{background:#fef9c3;}
+.assign-lbl{font-size:.7rem;color:#92400e;font-weight:700;margin-right:4px;}
+
+/* fake input */
+.inp{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:6px;padding:5px 8px;font-family:inherit;font-size:.8rem;text-align:right;width:100%;color:#0f172a;outline:none;}
+.inp:focus{border-color:#1d4ed8;box-shadow:0 0 0 3px rgba(29,78,216,.1);}
+
+/* ── Unionbank card ── */
+.union-card{background:#0e7490;border-radius:14px;margin-bottom:16px;overflow:hidden;border:2px solid #0891b2;}
+.union-hdr{padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.15);}
+.union-title{font-weight:800;color:#fff;font-size:.9rem;}
+.union-sub{font-size:.72rem;color:rgba(255,255,255,.6);margin-top:2px;}
+.union-total{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.5rem;color:#67e8f9;}
+.union-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(0,0,0,.2);}
+.union-field{background:rgba(255,255,255,.08);padding:12px 16px;}
+.union-field-lbl{font-size:.65rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;}
+.union-inp{text-align:right;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:6px 10px;background:rgba(255,255,255,.1);color:#fff;font-family:inherit;font-size:.88rem;font-weight:700;width:100%;outline:none;box-sizing:border-box;}
+
+/* ── Summary card ── */
+.summary-card{background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;margin-bottom:16px;overflow:hidden;}
+.summary-hdr{background:#1e293b;padding:12px 16px;}
+.summary-hdr-lbl{font-weight:700;color:#f59e0b;font-size:.88rem;text-transform:uppercase;letter-spacing:.5px;}
+.summary-body{padding:0 20px;}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #f1f5f9;}
+.summary-sign{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.05rem;min-width:18px;}
+.summary-lbl{font-size:.82rem;color:#475569;font-weight:600;}
+.summary-val{font-weight:700;font-size:.88rem;}
+.summary-net{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:2px solid #e2e8f0;}
+.summary-net-lbl{font-weight:800;color:#0f172a;font-size:.9rem;text-transform:uppercase;letter-spacing:.5px;}
+.summary-net-val{font-weight:900;font-size:1.3rem;font-family:'Barlow Condensed',sans-serif;color:#059669;}
+.summary-total{display:flex;justify-content:space-between;align-items:center;padding:16px 0;}
+.summary-total-lbl{font-weight:800;color:#0f172a;font-size:.95rem;text-transform:uppercase;letter-spacing:.5px;}
+.summary-total-val{font-weight:900;font-size:1.6rem;font-family:'Barlow Condensed',sans-serif;color:#0e7490;}
+
+/* ── Key Areas ── */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.inner-card{background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;overflow:hidden;}
+.inner-hdr{background:#1e293b;padding:11px 16px;font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.5px;}
+.key-row{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #f1f5f9;}
+.key-lbl{font-size:.8rem;color:#475569;font-weight:600;font-style:italic;}
+.key-val{font-weight:700;font-size:.82rem;}
+.progress-wrap{margin-top:4px;height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden;}
+.progress-bar{height:100%;border-radius:2px;transition:width .5s;}
+
+/* ── Notes ── */
+.notes-card{background:#fff;border-radius:12px;border:1.5px solid #e2e8f0;padding:16px;margin-bottom:8px;}
+.notes-lbl{font-weight:700;color:#475569;font-size:.78rem;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;}
+textarea{width:100%;min-height:56px;border:1.5px solid #e2e8f0;border-radius:8px;padding:10px 12px;font-family:inherit;font-size:.85rem;color:#1e293b;resize:vertical;outline:none;background:#fafafa;}
+
+/* ── Saved stamp ── */
+.saved-stamp{text-align:right;font-size:.7rem;color:#94a3b8;margin-top:6px;}
+</style>
+</head>
+<body>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div>
+    <div class="page-title">Daily Cash Position</div>
+    <div class="page-sub">GMD Productions Inc. — Finance Summary &nbsp;·&nbsp; <strong style="color:#1d4ed8">June 11, 2026</strong></div>
+  </div>
+  <div class="hdr-btns">
+    <button class="btn btn-light">⬇ Export CSV</button>
+    <input type="date" value="2026-06-11" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:7px 12px;font-family:inherit;font-size:.85rem;color:#0f172a;">
+    <button class="btn btn-ghost">📅 History (12)</button>
+    <button class="btn btn-dark">Save Position</button>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+  <div class="kpi"><div class="kpi-val" style="color:#0e7490;">₱7,924,560.00</div><div class="kpi-lbl">Total GMD Cash Assets</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#059669;">₱7,394,560.00</div><div class="kpi-lbl">Net Cash Available (WC)</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#1d4ed8;">₱7,294,560.00</div><div class="kpi-lbl">Working Capital (Book)</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#10b981;">₱150,000.00</div><div class="kpi-lbl">Collections Today</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:#f59e0b;">₱1,234,567.00</div><div class="kpi-lbl">Pending Collections</div></div>
+</div>
+
+<!-- MAIN BANK TABLE -->
+<div class="tbl-card">
+<div class="tbl-scroll">
+<table>
+  <thead>
+    <tr>
+      <th class="lbl-th">CATEGORY</th>
+      <th>BPI</th>
+      <th>Metrobank</th>
+      <th>BDO</th>
+      <th>Security</th>
+      <th>Chinabank</th>
+      <th class="tot-th">TOTAL</th>
+    </tr>
+  </thead>
+  <tbody>
+
+    <!-- 1. BEGINNING BALANCE -->
+    <tr class="beg">
+      <td class="lbl">🏦 Bank Beginning Balance</td>
+      <td><input class="inp" value="5,234,560.00"></td>
+      <td><input class="inp" value="1,000,000.00"></td>
+      <td><input class="inp" value="500,000.00"></td>
+      <td><input class="inp" value="200,000.00"></td>
+      <td><input class="inp" value="100,000.00"></td>
+      <td class="tot" style="color:#0f172a;">7,034,560.00</td>
+    </tr>
+
+    <!-- 2. CASH IN HEADER -->
+    <tr class="cash-in-hd">
+      <td class="lbl">💚 CASH IN</td>
+      <td colspan="4" style="text-align:left;padding:7px 10px;font-size:.72rem;color:#059669;font-weight:600;">
+        Finance-approved only
+        <span class="badge b-pending">1 pending</span>
+        <span class="badge b-warn">1 untagged</span>
+      </td>
+      <td></td>
+      <td class="tot" style="color:#059669;">150,000.00</td>
+    </tr>
+
+    <!-- 2a. Collections from FabHub sub-header -->
+    <tr class="coll-sub">
+      <td class="lbl" style="padding-left:20px;">Collections from FabHub</td>
+      <td style="color:#059669;font-weight:700;">100,000.00</td>
+      <td style="color:#059669;font-weight:700;">50,000.00</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td class="tot" style="color:#059669;">150,000.00</td>
+    </tr>
+
+    <!-- Approved payment row — BPI -->
+    <tr class="approved">
+      <td class="lbl" style="padding-left:28px;">
+        <span class="badge b-approved">✓ Approved</span><br>
+        <span style="font-weight:600;color:#1e293b;">Collecticons Inc</span><br>
+        <span style="font-size:.65rem;color:#64748b;">Final Billing · REF-2026-001</span>
+      </td>
+      <td style="color:#059669;font-weight:700;">100,000.00</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td class="tot" style="color:#059669;">100,000.00</td>
+    </tr>
+
+    <!-- Approved payment row — Metrobank -->
+    <tr class="approved">
+      <td class="lbl" style="padding-left:28px;">
+        <span class="badge b-approved">✓ Approved</span><br>
+        <span style="font-weight:600;color:#1e293b;">POPMART SM Davao</span><br>
+        <span style="font-size:.65rem;color:#64748b;">50% Downpayment · REF-2026-002</span>
+      </td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#059669;font-weight:700;">50,000.00</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td class="tot" style="color:#059669;">50,000.00</td>
+    </tr>
+
+    <!-- Pending — no bank tagged → inline assign buttons -->
+    <tr class="untagged-pay">
+      <td class="lbl" style="padding-left:28px;">
+        <span class="badge b-pending">⏳ Pending</span>
+        <span class="badge b-warn">⚠ Tag bank</span><br>
+        <span style="font-weight:600;color:#1e293b;">Zara BGC Fit-Out</span><br>
+        <span style="font-size:.65rem;color:#64748b;">Progress Bill · REF-2026-003</span>
+      </td>
+      <td colspan="5">
+        <div class="bank-btns">
+          <span class="assign-lbl">Tag bank to approve →</span>
+          <button class="bank-btn">BPI</button>
+          <button class="bank-btn">Metrobank</button>
+          <button class="bank-btn">BDO</button>
+          <button class="bank-btn">Security</button>
+          <button class="bank-btn">Chinabank</button>
+        </div>
+      </td>
+      <td class="tot" style="color:#94a3b8;">75,000.00</td>
+    </tr>
+
+    <!-- 2b. Other Collections sub-header -->
+    <tr class="other-sub">
+      <td class="lbl" style="padding-left:20px;">Other Collections</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#7c3aed;font-weight:700;">5,000.00</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td class="tot" style="color:#7c3aed;">5,000.00</td>
+    </tr>
+    <tr class="other-row">
+      <td class="lbl" style="padding-left:28px;font-style:normal;color:#7c3aed;">Junk shop sale — excess steel</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#7c3aed;font-weight:600;">5,000.00</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td class="tot" style="color:#7c3aed;">5,000.00</td>
+    </tr>
+
+    <!-- 3. TOTAL MONEY (computed) -->
+    <tr class="total-money">
+      <td class="lbl">📌 TOTAL MONEY <span style="font-size:.65rem;font-weight:400;color:rgba(255,255,255,.4)">Beg + Cash In</span></td>
+      <td>5,334,560.00</td><!-- BPI: 5,234,560 + 100,000 -->
+      <td>1,050,000.00</td>
+      <td>505,000.00</td><!-- BDO: 500,000 + 5,000 -->
+      <td>200,000.00</td>
+      <td>100,000.00</td>
+      <td class="tot">7,189,560.00</td>
+    </tr>
+
+    <!-- 4. PENDING COLLECTIONS INFO -->
+    <tr class="pending-info">
+      <td class="lbl" style="font-style:normal;font-weight:700;color:#0369a1;">
+        📋 Pending Collections
+        <div style="font-size:.65rem;font-weight:400;color:#0369a1;margin-top:2px;">Not yet received — tracking only</div>
+      </td>
+      <td colspan="4" style="text-align:left;padding:8px 12px;font-size:.75rem;color:#0369a1;">
+        Collecticons Inc &nbsp;₱420,000 &nbsp;·&nbsp; POPMART BGC &nbsp;₱380,000 &nbsp;·&nbsp; Zara BGC &nbsp;₱434,567
+      </td>
+      <td></td>
+      <td class="tot" style="color:#0ea5e9;font-size:.9rem;">₱1,234,567.00</td>
+    </tr>
+
+    <!-- 5. TODAY'S TRANSACTIONS HEADER -->
+    <tr class="tx-hd">
+      <td class="lbl" style="font-style:normal;font-weight:700;color:#dc2626;">📤 Today's Transactions</td>
+      <td colspan="4" style="text-align:left;padding:7px 10px;font-size:.72rem;color:#dc2626;font-weight:600;">
+        From Accounting module
+        <span class="badge b-warn">⚠ 1 needs bank tag</span>
+      </td>
+      <td></td>
+      <td class="tot" style="color:#dc2626;font-weight:800;">−50,000.00</td>
+    </tr>
+
+    <!-- Expense — tagged, BPI -->
+    <tr class="exp-row">
+      <td class="lbl" style="padding-left:28px;font-style:normal;">
+        <span style="font-weight:600;">Materials — Steel channels</span>
+        <span style="display:block;font-size:.65rem;color:#94a3b8;margin-top:1px;">Materials · BPI</span>
+      </td>
+      <td style="color:#dc2626;font-weight:700;">25,000.00</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td class="tot" style="color:#dc2626;">25,000.00</td>
+    </tr>
+
+    <!-- Expense — tagged, Metrobank -->
+    <tr class="exp-row">
+      <td class="lbl" style="padding-left:28px;font-style:normal;">
+        <span style="font-weight:600;">Labour — Carpenter team</span>
+        <span style="display:block;font-size:.65rem;color:#94a3b8;margin-top:1px;">Labour · Metrobank</span>
+      </td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#dc2626;font-weight:700;">15,000.00</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td style="color:#cbd5e1;">—</td>
+      <td class="tot" style="color:#dc2626;">15,000.00</td>
+    </tr>
+
+    <!-- Expense — UNTAGGED → inline bank assign -->
+    <tr class="exp-untagged">
+      <td class="lbl" style="padding-left:28px;font-style:normal;">
+        <span style="font-size:.65rem;font-weight:700;color:#dc2626;display:block;margin-bottom:2px;">⚠ Assign bank</span>
+        <span style="font-weight:600;">Office supplies — Printer ink</span>
+        <span style="display:block;font-size:.65rem;color:#94a3b8;margin-top:1px;">Office Supplies</span>
+      </td>
+      <td colspan="5">
+        <div class="bank-btns">
+          <span class="assign-lbl">Which bank?</span>
+          <button class="bank-btn">BPI</button>
+          <button class="bank-btn">Metrobank</button>
+          <button class="bank-btn">BDO</button>
+          <button class="bank-btn">Security</button>
+          <button class="bank-btn">Chinabank</button>
+        </div>
+      </td>
+      <td class="tot" style="color:#d97706;font-weight:700;">10,000.00</td>
+    </tr>
+
+    <!-- Warning strip -->
+    <tr class="warn-strip">
+      <td colspan="7">⚠️ 1 expense (₱10,000.00) is untagged — per-bank ending balance is incomplete until assigned above.</td>
+    </tr>
+
+    <!-- 6. ENDING BALANCE (auto-computed) -->
+    <tr class="ending">
+      <td class="lbl" style="font-style:normal;font-weight:800;color:#059669;">
+        ✅ Bank Ending Balance
+        <div style="font-size:.62rem;font-weight:400;color:#6ee7b7;margin-top:1px;">Auto: Total Money − Transactions</div>
+        <div style="font-size:.62rem;font-weight:700;color:#f59e0b;margin-top:1px;">⚠ partial (untagged exp)</div>
+      </td>
+      <td>5,309,560.00</td><!-- BPI: 5,334,560 − 25,000 -->
+      <td>1,035,000.00</td><!-- Metro: 1,050,000 − 15,000 -->
+      <td>505,000.00</td><!-- BDO unchanged (untagged exp not deducted yet) -->
+      <td>200,000.00</td>
+      <td>100,000.00</td>
+      <td class="tot" style="font-size:.9rem;">7,149,560.00</td>
+    </tr>
+
+    <!-- 7. BOOK BALANCE (manual) -->
+    <tr class="book">
+      <td class="lbl" style="font-style:normal;color:#92400e;">
+        📒 Book Balance
+        <div style="font-size:.62rem;font-weight:400;color:#b45309;margin-top:1px;">Manual — bank statement</div>
+      </td>
+      <td><input class="inp" value="5,309,560.00" style="border-color:#fcd34d;"></td>
+      <td><input class="inp" value="1,035,000.00" style="border-color:#fcd34d;"></td>
+      <td><input class="inp" placeholder="—" style="border-color:#fcd34d;color:#94a3b8;"></td>
+      <td><input class="inp" placeholder="—" style="border-color:#fcd34d;color:#94a3b8;"></td>
+      <td><input class="inp" placeholder="—" style="border-color:#fcd34d;color:#94a3b8;"></td>
+      <td class="tot" style="color:#b45309;">6,344,560.00</td>
+    </tr>
+
+    <!-- Variance row -->
+    <tr class="variance">
+      <td class="lbl">Variance (Ending vs Book)</td>
+      <td style="color:#059669;font-weight:700;font-size:.75rem;">✓</td>
+      <td style="color:#059669;font-weight:700;font-size:.75rem;">✓</td>
+      <td style="color:#94a3b8;font-size:.75rem;">—</td>
+      <td style="color:#94a3b8;font-size:.75rem;">—</td>
+      <td style="color:#94a3b8;font-size:.75rem;">—</td>
+      <td style="color:#94a3b8;font-size:.75rem;">—</td>
+    </tr>
+
+  </tbody>
+</table>
+</div>
+</div>
+
+<!-- UNIONBANK — Save-Up Capital -->
+<div class="union-card">
+  <div class="union-hdr">
+    <div>
+      <div class="union-title">🏛 Save-Up Capital — Unionbank</div>
+      <div class="union-sub">NOT part of GMD working capital · long-term savings only</div>
+    </div>
+    <div class="union-total">₱530,000.00</div>
+  </div>
+  <div class="union-fields">
+    <div class="union-field">
+      <div class="union-field-lbl">Beginning Balance</div>
+      <input class="union-inp" value="500,000.00">
+    </div>
+    <div class="union-field">
+      <div class="union-field-lbl">Book Balance</div>
+      <input class="union-inp" value="530,000.00">
+    </div>
+    <div class="union-field">
+      <div class="union-field-lbl">Ending Balance</div>
+      <input class="union-inp" value="530,000.00">
+    </div>
+  </div>
+</div>
+
+<!-- POSITION SUMMARY -->
+<div class="summary-card">
+  <div class="summary-hdr"><span class="summary-hdr-lbl">📊 Position Summary</span></div>
+  <div class="summary-body">
+    <div class="summary-row">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="summary-sign" style="color:#1d4ed8;">+</span>
+        <span class="summary-lbl">Book Balance (Working Capital)</span>
+      </div>
+      <span class="summary-val" style="color:#1d4ed8;">₱6,344,560.00</span>
+    </div>
+    <div class="summary-row">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="summary-sign" style="color:#059669;">+</span>
+        <span class="summary-lbl">Collections Today</span>
+      </div>
+      <span class="summary-val" style="color:#059669;">₱150,000.00</span>
+    </div>
+    <div class="summary-row">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="summary-sign" style="color:#dc2626;">−</span>
+        <span class="summary-lbl">Today's Transactions</span>
+      </div>
+      <span class="summary-val" style="color:#dc2626;">₱50,000.00</span>
+    </div>
+    <div class="summary-net">
+      <span class="summary-net-lbl">=&nbsp; Net Cash Available (Working Capital)</span>
+      <span class="summary-net-val">₱6,444,560.00</span>
+    </div>
+    <div class="summary-row">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="summary-sign" style="color:#0e7490;">+</span>
+        <span class="summary-lbl">Save-Up Capital (Unionbank)</span>
+      </div>
+      <span class="summary-val" style="color:#0e7490;">₱530,000.00</span>
+    </div>
+    <div class="summary-total">
+      <span class="summary-total-lbl">=&nbsp; Total GMD Cash Assets</span>
+      <span class="summary-total-val">₱6,974,560.00</span>
+    </div>
+  </div>
+</div>
+
+<!-- KEY AREAS + COLLECTIONS BY TYPE -->
+<div class="two-col">
+  <div class="inner-card">
+    <div class="inner-hdr" style="color:#f59e0b;">KEY AREAS</div>
+    <div class="key-row">
+      <span class="key-lbl">YTD Supplier Payable</span>
+      <input class="inp" value="350,000.00" style="max-width:140px;border-color:#fecaca;">
+    </div>
+    <div class="key-row">
+      <span class="key-lbl">YTD Loans Payable</span>
+      <input class="inp" value="120,000.00" style="max-width:140px;border-color:#fed7aa;">
+    </div>
+    <div class="key-row" style="background:#f0fdf4;">
+      <div>
+        <div class="key-lbl">Due This Month</div>
+        <div style="font-size:.65rem;color:#94a3b8;margin-top:2px;">Billing milestones due June 2026</div>
+      </div>
+      <span class="key-val" style="color:#f59e0b;">₱434,567.00</span>
+    </div>
+  </div>
+  <div class="inner-card">
+    <div class="inner-hdr" style="color:#4ade80;">📂 Collections by Type</div>
+    <div style="padding:10px 16px;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block;"></span><span style="font-weight:600;font-size:.82rem;">Downpayment</span></div>
+        <div style="text-align:right;"><div style="font-weight:700;color:#059669;font-size:.82rem;">Fully collected</div><div style="font-size:.68rem;color:#94a3b8;">₱250,000 / ₱250,000</div></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:100%;background:#3b82f6;"></div></div>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#8b5cf6;display:inline-block;"></span><span style="font-weight:600;font-size:.82rem;">Progress Bill</span></div>
+        <div style="text-align:right;"><div style="font-weight:700;color:#ef4444;font-size:.82rem;">₱984,567.00 due</div><div style="font-size:.68rem;color:#94a3b8;">₱150,000 / ₱1,134,567</div></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:13%;background:#8b5cf6;"></div></div>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span><span style="font-weight:600;font-size:.82rem;">Assume Balance</span></div>
+        <div style="text-align:right;"><div style="font-weight:700;color:#059669;font-size:.82rem;">Fully collected</div><div style="font-size:.68rem;color:#94a3b8;">₱0 / ₱0</div></div>
+      </div>
+    </div>
+    <div style="padding:10px 16px;border-bottom:1px solid #f1f5f9;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:6px;"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;"></span><span style="font-weight:600;font-size:.82rem;">Retention</span></div>
+        <div style="text-align:right;"><div style="font-weight:700;color:#ef4444;font-size:.82rem;">₱250,000.00 due</div><div style="font-size:.68rem;color:#94a3b8;">₱0 / ₱250,000</div></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" style="width:0%;background:#ef4444;"></div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:10px 16px;background:#f8fafc;">
+      <span style="font-weight:700;color:#0f172a;font-size:.82rem;">Total Outstanding</span>
+      <span style="font-weight:800;color:#ef4444;font-size:.85rem;">₱1,234,567.00</span>
+    </div>
+  </div>
+</div>
+
+<!-- NOTES -->
+<div class="notes-card">
+  <div class="notes-lbl">Notes for June 11, 2026</div>
+  <textarea placeholder="e.g. Transfer ₱500k BPI→BDO, incoming wire from client, pending cheque clearance…">Collected POPMART 50% DP via Metrobank online transfer ref #MB2026-0611.</textarea>
+</div>
+<div class="saved-stamp">Last saved: June 11, 2026, 9:14:32 AM</div>
+
+</body>
+</html>
