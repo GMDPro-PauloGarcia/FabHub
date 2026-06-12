@@ -2636,6 +2636,7 @@ export default function App(){
             if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
+            if(data.settings?.soa_notes){setSoaNotes(data.settings.soa_notes);}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);idbE.push([KEYS.projects,data.projs]);}
             console.log("\u2705 FabHub: Loaded from Supabase \u2014 "+(data.deals?.length||0)+" deals");
             try{
@@ -15493,7 +15494,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
   const[billingView,  setBillingView]  =useState("projects"); // projects | clients
   const[soaClient,    setSoaClient]   =useState(null);
-  const[soaNotes,     setSoaNotes]    =useState(`Payment Details:\nBank: BDO Unibank\nAccount Name: GMD Productions Inc.\nAccount No: 123-456-789-0\n\nPlease use your company name as reference when remitting payment.\nFor inquiries: sales@gmd.ph · +63 9189338436`);
+  const[soaNotes,     setSoaNotes]    =useState(`Thank you for choosing GMD Productions Inc.! We truly value your partnership and trust in our work.\n\nKindly remit payment to any of the following accounts:\n\nGMD - BDO CHECKING\nAccount No: 012758 000 370\nAccount Name: GMD Productions Inc.\n\nGMD - BPI CHECKING\nAccount No: 6011 0482 03\nAccount Name: GMD Productions Inc.\n\nGMD - METROBANK\nAccount No: 382-7-38202059-2\nAccount Name: GMD Productions Inc.\n\nGMD - UNIONBANK\nAccount No: 0018 0000 8603\nAccount Name: GMD Productions Inc.\n\nPlease send proof of payment to sales@gmd.ph or contact us at +63 9189338436.\nThank you!`);
   const[showCleared,  setShowCleared] =useState(false);
   const[selectedMs,   setSelectedMs]  =useState(new Set());
 
@@ -16173,7 +16174,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               <div style={{fontSize:".72rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".6px",marginBottom:8}}>📝 Notes &amp; Payment Details <span style={{color:"#94a3b8",fontWeight:400,textTransform:"none",letterSpacing:0}}>(appears on printed PDF)</span></div>
               <textarea
                 value={soaNotes}
-                onChange={e=>setSoaNotes(e.target.value)}
+                onChange={e=>{setSoaNotes(e.target.value);if(isSupabaseReady()) sbUpsert('app_settings',{key:'soa_notes',value:e.target.value,updated_at:new Date().toISOString()},'key').catch(()=>{});}}
                 rows={6}
                 style={{width:"100%",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",resize:"vertical",outline:"none",background:"#fff",lineHeight:1.6,boxSizing:"border-box"}}
                 placeholder="Add banking details, payment terms, or any notes to include in the PDF…"
