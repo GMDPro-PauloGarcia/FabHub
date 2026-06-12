@@ -16432,7 +16432,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         const soaDate=new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
         const rows=clientDeals.map(d=>{
           const childIds=deals.filter(c=>c.parentDealId===d.id).map(c=>c.id);
-          const ms=billings.filter(b=>[d.id,...childIds].includes(b.dealId)&&b.status!=="Cancelled");
+          // Only include milestones with an unpaid balance
+          const allMs=billings.filter(b=>[d.id,...childIds].includes(b.dealId)&&b.status!=="Cancelled");
+          const ms=allMs.filter(m=>{const paid=(m.payments||[]).reduce((s,p)=>s+n(p.amount),0);return Math.max(0,n(m.amount)-paid)>0;});
           const billed=ms.reduce((s,m)=>s+n(m.amount),0);
           const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
           const balance=Math.max(0,billed-collected);
@@ -16452,49 +16454,75 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   .co-name{font-weight:900;font-size:13px;margin-bottom:3px;}
   .co-info{font-size:10.5px;color:#555;line-height:1.6;}
   .doc-title{font-size:20px;font-weight:700;color:#1e293b;margin-bottom:4px;}
-  .doc-sub{font-size:11px;color:#666;}
+  .doc-sub{font-size:11px;color:#666;margin-bottom:2px;}
   table{width:100%;border-collapse:collapse;margin-bottom:16px;}
-  thead tr{background:#1e293b;}
+  thead tr{background:#1e293b;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
   th{padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.7);text-align:left;letter-spacing:.3px;}
   th.r{text-align:right;}
   td{padding:7px 10px;font-size:11.5px;border-bottom:1px solid #e2e8f0;vertical-align:top;}
   td.r{text-align:right;}
-  .proj-sub{font-size:10.5px;color:#64748b;margin-top:2px;}
-  .ms-row td{background:#f8fafc;font-size:11px;padding:4px 10px 4px 20px;}
-  .totals-row td{font-weight:700;font-size:12px;border-top:2px solid #1e293b;border-bottom:none;}
-  .balance-due{font-size:15px;font-weight:900;color:#dc2626;text-align:right;margin-top:12px;}
-  .footer{margin-top:24px;font-size:11px;color:#666;border-top:1px solid #e2e8f0;padding-top:12px;line-height:1.7;}
+  .proj-header td{background:#f8fafc;font-weight:700;font-size:12px;}
+  .ms-row td{font-size:11px;padding:5px 10px 5px 22px;color:#374151;}
+  .ms-meta{font-size:10px;color:#94a3b8;margin-top:1px;}
+  .totals-row td{font-weight:800;font-size:12.5px;border-top:2px solid #1e293b;border-bottom:none;background:#f8fafc;}
+  .balance-box{background:#fef2f2;border:1.5px solid #fecaca;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+  .balance-label{font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;}
+  .balance-amount{font-size:20px;font-weight:900;color:#dc2626;}
+  .notes-box{border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:16px;}
+  .notes-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1e293b;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;}
+  .thank-you{font-size:11px;color:#374151;line-height:1.7;margin-bottom:10px;}
+  .bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+  .bank-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;}
+  .bank-name{font-size:10px;font-weight:700;color:#1e293b;margin-bottom:3px;}
+  .bank-acct{font-size:11px;color:#374151;font-weight:600;}
+  .bank-owner{font-size:10px;color:#94a3b8;}
+  .remit-note{font-size:10.5px;color:#64748b;line-height:1.6;}
+  .footer-bar{margin-top:16px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;text-align:center;}
   .print-btn{text-align:center;margin-top:20px;}
   .print-btn button{padding:9px 24px;background:#1e293b;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;}
-  @media print{.print-btn{display:none;}thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}}
+  @media print{.print-btn{display:none;}}
 </style></head><body><div class="page">
   <div class="hdr">
-    <div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-info">32 Santan Unit H Brgy Fortune Marikina, NCR 1802 PH<br/>+63 9189338436 · sales@gmd.ph · TIN 010-063-229-000</div></div>
+    <div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-info">32 Santan Unit H Brgy Fortune Marikina, NCR 1802 PH<br/>+63 9189338436 &nbsp;·&nbsp; sales@gmd.ph<br/>TIN 010-063-229-000</div></div>
     <div style="text-align:right"><div class="doc-title">STATEMENT OF ACCOUNT</div><div class="doc-sub">Client: <strong>${soaClient}</strong></div><div class="doc-sub">As of: ${soaDate}</div></div>
   </div>
   <table>
     <thead><tr><th>Project / Milestone</th><th class="r">Billed</th><th class="r">Collected</th><th class="r">Balance</th></tr></thead>
     <tbody>
       ${rows.map(r=>`
-        <tr>
-          <td><strong>${r.d.contact||r.d.client}</strong>${r.d.ceNo?` <span style="color:#64748b">(${r.d.ceNo})</span>`:""}</td>
+        <tr class="proj-header">
+          <td><strong>${r.d.contact||r.d.client}</strong>${r.d.ceNo?` <span style="color:#64748b;font-weight:400;font-size:10px">(${r.d.ceNo})</span>`:""}</td>
           <td class="r">${fmt(r.billed)}</td>
-          <td class="r">${fmt(r.collected)}</td>
-          <td class="r" style="color:#dc2626;font-weight:700">${fmt(r.balance)}</td>
+          <td class="r" style="color:#059669">${fmt(r.collected)}</td>
+          <td class="r" style="color:#dc2626;font-weight:800">${fmt(r.balance)}</td>
         </tr>
         ${r.ms.map(m=>{
           const paid=(m.payments||[]).reduce((s,p)=>s+n(p.amount),0);
           const bal=Math.max(0,n(m.amount)-paid);
           if(bal===0) return "";
-          return`<tr class="ms-row"><td>↳ ${m.name||"Milestone"}${m.invoiceNo?` · ${m.invoiceNo}`:""}${m.dueDate?` · Due ${m.dueDate}`:""}</td><td class="r">${fmt(m.amount)}</td><td class="r">${fmt(paid)}</td><td class="r" style="color:#dc2626">${fmt(bal)}</td></tr>`;
+          const overdue=m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid";
+          return`<tr class="ms-row"><td>${m.name||"Milestone"}${m.invoiceNo?` <span style="color:#94a3b8">· ${m.invoiceNo}</span>`:""}${m.dueDate?` <span style="color:${overdue?"#dc2626":"#94a3b8"}">· Due ${m.dueDate}${overdue?" ⚠":""}` :"</span>"}</td><td class="r">${fmt(m.amount)}</td><td class="r" style="color:${paid>0?"#059669":"#94a3b8"}">${paid>0?fmt(paid):"—"}</td><td class="r" style="color:#dc2626">${fmt(bal)}</td></tr>`;
         }).join("")}
       `).join("")}
-      <tr class="totals-row"><td>TOTAL OUTSTANDING</td><td class="r">${fmt(totalBilled)}</td><td class="r">${fmt(totalCollected)}</td><td class="r" style="color:#dc2626">${fmt(totalBalance)}</td></tr>
+      <tr class="totals-row"><td>TOTAL OUTSTANDING</td><td class="r">${fmt(totalBilled)}</td><td class="r" style="color:#059669">${fmt(totalCollected)}</td><td class="r" style="color:#dc2626">${fmt(totalBalance)}</td></tr>
     </tbody>
   </table>
-  <div class="balance-due">TOTAL AMOUNT DUE: ${fmt(totalBalance)}</div>
-  ${soaNotes?`<div class="footer"><strong style="display:block;margin-bottom:6px;font-size:11.5px;color:#1e293b">Notes &amp; Payment Details</strong>${soaNotes.replace(/\n/g,"<br/>")}</div>`:""}
-  <div style="margin-top:14px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px"><em>This is a system-generated document · As of ${soaDate}</em></div>
+  <div class="balance-box">
+    <div class="balance-label">Total Amount Due</div>
+    <div class="balance-amount">${fmt(totalBalance)}</div>
+  </div>
+  <div class="notes-box">
+    <div class="notes-title">Notes &amp; Payment Details</div>
+    <div class="thank-you">Thank you for choosing <strong>GMD Productions Inc.</strong>! We truly value your partnership and trust in our work.<br/>Kindly remit payment to any of the following accounts:</div>
+    <div class="bank-grid">
+      <div class="bank-card"><div class="bank-name">GMD – BDO CHECKING</div><div class="bank-acct">012758 000 370</div><div class="bank-owner">GMD Productions Inc.</div></div>
+      <div class="bank-card"><div class="bank-name">GMD – BPI CHECKING</div><div class="bank-acct">6011 0482 03</div><div class="bank-owner">GMD Productions Inc.</div></div>
+      <div class="bank-card"><div class="bank-name">GMD – METROBANK</div><div class="bank-acct">382-7-38202059-2</div><div class="bank-owner">GMD Productions Inc.</div></div>
+      <div class="bank-card"><div class="bank-name">GMD – UNIONBANK</div><div class="bank-acct">0018 0000 8603</div><div class="bank-owner">GMD Productions Inc.</div></div>
+    </div>
+    <div class="remit-note">Please send proof of payment to <strong>sales@gmd.ph</strong> or contact us at <strong>+63 9189338436</strong>. Thank you!</div>
+  </div>
+  <div class="footer-bar">This is a system-generated document &nbsp;·&nbsp; As of ${soaDate}</div>
   <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
 </div></body></html>`);
           win.document.close();
