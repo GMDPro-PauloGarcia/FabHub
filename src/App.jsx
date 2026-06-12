@@ -15492,7 +15492,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
   const[billingView,  setBillingView]  =useState("projects"); // projects | clients
-  const[soaClient,    setSoaClient]   =useState(null); // client name for SOA modal
+  const[soaClient,    setSoaClient]   =useState(null);
+  const[soaNotes,     setSoaNotes]    =useState(`Payment Details:\nBank: BDO Unibank\nAccount Name: GMD Productions Inc.\nAccount No: 123-456-789-0\n\nPlease use your company name as reference when remitting payment.\nFor inquiries: sales@gmd.ph · +63 9189338436`);
   const[showCleared,  setShowCleared] =useState(false);
   const[selectedMs,   setSelectedMs]  =useState(new Set());
 
@@ -16152,7 +16153,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     </tbody>
   </table>
   <div class="balance-due">TOTAL AMOUNT DUE: ${fmt(totalBalance)}</div>
-  <div class="footer">This statement reflects all open billings as of ${soaDate}. Please remit payment to GMD Productions Inc.<br/>For inquiries contact us at sales@gmd.ph or +63 9189338436.<br/><em>This is a system-generated document.</em></div>
+  ${soaNotes?`<div class="footer"><strong style="display:block;margin-bottom:6px;font-size:11.5px;color:#1e293b">Notes &amp; Payment Details</strong>${soaNotes.replace(/\n/g,"<br/>")}</div>`:""}
+  <div style="margin-top:14px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px"><em>This is a system-generated document · As of ${soaDate}</em></div>
   <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
 </div></body></html>`);
           win.document.close();
@@ -16165,6 +16167,17 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                 style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>
                 🖨 Print / Save PDF
               </button>
+            </div>
+            {/* Notes / banking details editor */}
+            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".6px",marginBottom:8}}>📝 Notes &amp; Payment Details <span style={{color:"#94a3b8",fontWeight:400,textTransform:"none",letterSpacing:0}}>(appears on printed PDF)</span></div>
+              <textarea
+                value={soaNotes}
+                onChange={e=>setSoaNotes(e.target.value)}
+                rows={6}
+                style={{width:"100%",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",resize:"vertical",outline:"none",background:"#fff",lineHeight:1.6,boxSizing:"border-box"}}
+                placeholder="Add banking details, payment terms, or any notes to include in the PDF…"
+              />
             </div>
             {rows.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8"}}>No outstanding balances for this client.</div>}
             {rows.map(r=>(
