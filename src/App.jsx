@@ -15841,54 +15841,73 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
 
       {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-        {/* Table header */}
-        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",background:"#1e293b",padding:"10px 18px",gap:12}}>
-          {["Project","Billed","Collected","Balance","Status","Action"].map(h=>(
-            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",background:"#1e293b",padding:"7px 14px",gap:10}}>
+          {["Project","Contract Price","Billed","Collected","Balance","Status",""].map(h=>(
+            <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
           ))}
         </div>
         {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
-        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount},i)=>(
+        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount},i)=>{
+          const rt=d.receiptType||"OR", wh=d.withholding||false;
+          const tx=calcTax(d.value||0,rt,wh);
+          return(
           <div key={d.id}
             onClick={()=>setSelDeal(d.id)}
-            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
             onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
             onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+            {/* Project name */}
             <div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                {hasOverdue&&<span style={{color:"#ef4444",fontSize:".8rem"}}>🔴</span>}
-                <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
-                {d.contact&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>— {d.contact}</span>}
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                {hasOverdue&&<span style={{color:"#ef4444",fontSize:".75rem"}}>🔴</span>}
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
+                {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}
               </div>
-              <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>
-                {d.ceNo||"No CE"} · {milestoneCount} milestone{milestoneCount!==1?"s":""}
-                {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600,marginLeft:6}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
-                {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
+              <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
+                <span>{d.ceNo||"No CE"}</span>
+                <span>·</span>
+                <span>{milestoneCount} milestone{milestoneCount!==1?"s":""}</span>
+                {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
+                {fullyPaid&&<span style={{color:"#059669",fontWeight:700}}>✓ Fully Paid</span>}
               </div>
             </div>
-            <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>
-              {billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>}
+            {/* Contract Price + VAT */}
+            <div>
+              <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{d.value>0?fmt(d.value):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
+              {d.value>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
+                {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?`SI / no VAT`:"Non-VAT"}
+                {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
+              </div>}
             </div>
-            <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>
-              {collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>}
+            {/* Billed */}
+            <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>
+              {billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}
             </div>
-            <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>
+            {/* Collected */}
+            <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>
+              {collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}
+            </div>
+            {/* Balance */}
+            <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>
               {balance>0?fmt(balance):"✓ Clear"}
             </div>
+            {/* Status badge */}
             <div>
-              {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
-              {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
-              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
-              {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
+              {hasOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Overdue</span>}
+              {fullyPaid&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Paid</span>}
+              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
+              {milestoneCount===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
             </div>
+            {/* Open button */}
             <div>
               <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
-                style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
+                style={{background:"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
                 Open →
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
