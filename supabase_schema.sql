@@ -145,7 +145,16 @@ CREATE TABLE IF NOT EXISTS purchase_requests (
   approved_by      TEXT DEFAULT '',
   project_name     TEXT DEFAULT '',
   po_discount_type  TEXT DEFAULT '',      -- '' | 'amt' | 'pct' (PO-level, duplicated per line)
-  po_discount_value NUMERIC DEFAULT 0
+  po_discount_value NUMERIC DEFAULT 0,
+  -- Accounting/Finance pipeline (migration 012)
+  acct_status        TEXT DEFAULT '',
+  acct_notes         TEXT DEFAULT '',
+  acct_checked_by    TEXT DEFAULT '',
+  acct_checked_at    DATE,
+  payment_bank       TEXT DEFAULT '',
+  payment_ref        TEXT DEFAULT '',
+  payment_ordered_by TEXT DEFAULT '',
+  payment_ordered_at DATE
 );
 
 -- Atomic PO number allocator — claimed at submit time so concurrent
@@ -481,6 +490,15 @@ CREATE TABLE IF NOT EXISTS subcon_work_orders (
   notes             TEXT DEFAULT '',
   requested_by      TEXT DEFAULT '',
   approved_by       TEXT DEFAULT '',
+  -- Accounting/Finance pipeline (migration 012)
+  acct_status        TEXT DEFAULT '',
+  acct_notes         TEXT DEFAULT '',
+  acct_checked_by    TEXT DEFAULT '',
+  acct_checked_at    DATE,
+  payment_bank       TEXT DEFAULT '',
+  payment_ref        TEXT DEFAULT '',
+  payment_ordered_by TEXT DEFAULT '',
+  payment_ordered_at DATE,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ
 );
@@ -676,3 +694,6 @@ ALTER TABLE billing_milestones ADD COLUMN IF NOT EXISTS withholding  BOOLEAN DEF
 -- ============================================================
 --  DONE.
 -- ============================================================
+
+-- 2026-06: expense → PO/WO payment tagging (migration 012)
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS po_ref TEXT DEFAULT '';
