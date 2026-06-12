@@ -15931,35 +15931,45 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
             ))}
           </div>
         );
-        const ProjRow=({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount,totalContractValue},i)=>{
+        // Renders a single deal row — isChild=true for addendums
+        const DealRow=(d,i,isChild=false)=>{
+          const ms=billings.filter(b=>b.dealId===d.id);
+          const billed=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+          const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+          const balance=Math.max(0,billed-collected);
+          const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+          const fullyPaid=billed>0&&balance===0;
           const rt=d.receiptType||"OR", wh=d.withholding||false;
-          const contractVal=totalContractValue||n(d.value)||0;
-          const tx=calcTax(contractVal,rt,wh);
+          const tx=calcTax(d.value||0,rt,wh);
+          const bg=isChild?"#faf5ff":hasOverdue?"#fffafa":i%2?"#fafafa":"#fff";
           return(
             <div key={d.id}
               onClick={()=>setSelDeal(d.id)}
-              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
-              onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
-              <div>
+              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:bg,cursor:"pointer",alignItems:"center",transition:"background .1s",borderLeft:isChild?"3px solid #8b5cf6":"none"}}
+              onMouseEnter={e=>e.currentTarget.style.background=isChild?"#f3e8ff":"#eff6ff"}
+              onMouseLeave={e=>e.currentTarget.style.background=bg}>
+              <div style={{paddingLeft:isChild?14:0}}>
                 <div style={{display:"flex",alignItems:"center",gap:5}}>
+                  {isChild&&<span style={{color:"#8b5cf6",fontSize:".7rem",flexShrink:0}}>↳</span>}
                   {hasOverdue&&<span style={{color:"#ef4444",fontSize:".75rem"}}>🔴</span>}
-                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
-                  {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}
+                  {isChild
+                    ? <span style={{fontWeight:600,color:"#6d28d9",fontSize:".78rem"}}>{d.contact||d.client}</span>
+                    : <><span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
+                       {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}</>}
                 </div>
-                <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
-                  <span>{d.ceNo||"No CE"}</span><span>·</span>
-                  <span>{milestoneCount} milestone{milestoneCount!==1?"s":""}</span>
-                  {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
+                <div style={{fontSize:".66rem",color:isChild?"#7c3aed":"#94a3b8",marginTop:1,display:"flex",gap:5,flexWrap:"wrap"}}>
+                  {isChild&&<span style={{background:"#ede9fe",color:"#6d28d9",borderRadius:4,padding:"0 4px",fontWeight:600,fontSize:".62rem"}}>Addendum</span>}
+                  <span>{d.ceNo||"No CE"}</span>
+                  <span>·</span>
+                  <span>{ms.length} milestone{ms.length!==1?"s":""}</span>
                   {fullyPaid&&<span style={{color:"#059669",fontWeight:700}}>✓ Fully Paid</span>}
                 </div>
               </div>
               <div>
-                <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{contractVal>0?fmt(contractVal):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
-                {contractVal>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
+                <div style={{fontWeight:600,color:isChild?"#6d28d9":"#0f172a",fontSize:".8rem"}}>{d.value>0?fmt(d.value):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
+                {d.value>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
                   {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?"SI / no VAT":"Non-VAT"}
                   {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
-                  {childCount>0&&<span style={{color:"#8b5cf6",marginLeft:4}}>incl. {childCount} addendum{childCount!==1?"s":""}</span>}
                 </div>}
               </div>
               <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
@@ -15968,16 +15978,74 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               <div>
                 {hasOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Overdue</span>}
                 {fullyPaid&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Paid</span>}
-                {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
-                {milestoneCount===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
+                {!hasOverdue&&!fullyPaid&&ms.length>0&&<span style={{fontSize:".65rem",background:isChild?"#ede9fe":"#eff6ff",color:isChild?"#6d28d9":"#3b82f6",border:`1px solid ${isChild?"#c4b5fd":"#93c5fd"}`,borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
+                {ms.length===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
               </div>
               <div>
                 <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
-                  style={{background:"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
+                  style={{background:isChild?"#6d28d9":"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
                   Open →
                 </button>
               </div>
             </div>
+          );
+        };
+        // Renders parent row + indented child rows
+        const ProjGroup=({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount,totalContractValue},i)=>{
+          const children=deals.filter(c=>c.parentDealId===d.id);
+          const rt=d.receiptType||"OR", wh=d.withholding||false;
+          const tx=calcTax(totalContractValue||n(d.value)||0,rt,wh);
+          const contractVal=totalContractValue||n(d.value)||0;
+          const bg=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff";
+          return(
+            <React.Fragment key={d.id}>
+              {/* Parent row */}
+              <div
+                onClick={()=>setSelDeal(d.id)}
+                style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:children.length?"none":"1px solid #f1f5f9",background:bg,cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+                onMouseLeave={e=>e.currentTarget.style.background=bg}>
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                    {hasOverdue&&<span style={{color:"#ef4444",fontSize:".75rem"}}>🔴</span>}
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
+                    {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}
+                  </div>
+                  <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
+                    <span>{d.ceNo||"No CE"}</span><span>·</span>
+                    <span>{billings.filter(b=>b.dealId===d.id).length} milestone{billings.filter(b=>b.dealId===d.id).length!==1?"s":""}</span>
+                    {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
+                    {fullyPaid&&<span style={{color:"#059669",fontWeight:700}}>✓ Fully Paid</span>}
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{contractVal>0?fmt(contractVal):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
+                  {contractVal>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
+                    {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?"SI / no VAT":"Non-VAT"}
+                    {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
+                    {childCount>0&&<span style={{color:"#8b5cf6",marginLeft:4}}>incl. {childCount} addendum{childCount!==1?"s":""}</span>}
+                  </div>}
+                </div>
+                <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
+                <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>{collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
+                <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>{balance>0?fmt(balance):"✓ Clear"}</div>
+                <div>
+                  {hasOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Overdue</span>}
+                  {fullyPaid&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Paid</span>}
+                  {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
+                  {milestoneCount===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
+                </div>
+                <div>
+                  <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
+                    style={{background:"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
+                    Open →
+                  </button>
+                </div>
+              </div>
+              {/* Indented child/addendum rows */}
+              {children.map((c,ci)=>DealRow(c,ci,true))}
+              {children.length>0&&<div style={{height:4,background:"#f8f0ff",borderBottom:"1px solid #ede9fe"}}/>}
+            </React.Fragment>
           );
         };
         return(
@@ -15987,7 +16055,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               <ColHeaders/>
               {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
               {activeRows.length===0&&wonDeals.length>0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>All projects are cleared!</div>}
-              {activeRows.map((s,i)=>ProjRow(s,i))}
+              {activeRows.map((s,i)=>ProjGroup(s,i))}
             </div>
 
             {/* Cleared / Fully Paid */}
@@ -16008,7 +16076,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                         <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
                       ))}
                     </div>
-                    {clearedRows.map((s,i)=>ProjRow(s,i))}
+                    {clearedRows.map((s,i)=>ProjGroup(s,i))}
                   </>
                 )}
               </div>
