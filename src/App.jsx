@@ -2513,7 +2513,7 @@ export default function App(){
   const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[swos,       setSwos]      = useState([]);  // Subcon work orders
-  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:"",accounting:"",finance:""},hideValueInBots:false,poApprovers:""});
+  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""});
   const[customClients,setCustomClients]= useState([]);
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
@@ -14366,7 +14366,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                               const label=isPo?`PO Approved — ${g.poNo}`:"PR Approved";
                               const aMsg=`✅ <b>${label}</b>\nSupplier: ${supplier||"—"}\nItems: ${pend.length} · Total: ${fmt(total)}\nRequested by: ${items[0]?.requestedBy||"—"}\nApproved by: ${session?.name||"?"} · ${today}\n→ Sent to Accounting for documentation`;
                               sendTelegramNotification("procurement",aMsg);
-                              sendTelegramNotification("accounting",aMsg);
+                              sendTelegramNotification("financialcontrol",aMsg);
                               toastEmit&&toastEmit(`${isPo?g.poNo:"PR"} approved — sent to Accounting`,"success");
                             }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
                           )}
@@ -14701,7 +14701,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                               updateSWO(w.id,{status:"Issued",approvedBy:session?.name||"",acctStatus:"For Accounting"});
                               const aMsg=`✅ <b>Work Order Approved — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nApproved by: ${session?.name||"?"} · ${today}\n→ Sent to Accounting for documentation`;
                               sendTelegramNotification("procurement",aMsg);
-                              sendTelegramNotification("accounting",aMsg);
+                              sendTelegramNotification("financialcontrol",aMsg);
                               toastEmit&&toastEmit(`${w.woNumber} approved — sent to Accounting`,"success");
                             }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
                           )}
@@ -14879,7 +14879,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
                       {canAct&&a.acctStatus==="For Accounting"&&(
                         <button onClick={()=>{
                           d.apply({acctStatus:"Checked",acctNotes:draft,acctCheckedBy:session?.name||"",acctCheckedAt:today});
-                          sendTelegramNotification("finance",`🧾 <b>${d.kind} ${d.number} checked by Accounting</b>\nPayee: ${d.payee}\nAmount: ${fmt(d.amount)}\nChecked by: ${session?.name||"?"}\n→ Ready for Payment Order`);
+                          sendTelegramNotification("financialcontrol",`🧾 <b>${d.kind} ${d.number} checked by Accounting</b>\nPayee: ${d.payee}\nAmount: ${fmt(d.amount)}\nChecked by: ${session?.name||"?"}\n→ Ready for Payment Order`);
                           toastEmit&&toastEmit(`${d.number} checked — ready for payment order`,"success");
                         }} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Mark Checked</button>
                       )}
@@ -14895,8 +14895,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
                           d.apply({acctStatus:"Payment Ordered",paymentBank:bank,paymentRef:ref,paymentOrderedBy:session?.name||"",paymentOrderedAt:today});
                           const bk=(BANKS.find(b=>b.id===bank)||{}).short||bank;
                           const pMsg=`💳 <b>Payment Order — ${d.kind} ${d.number}</b>\nPay to: ${d.payee}\nAmount: ${fmt(d.amount)}\nBank: ${bk}${ref?`\nRef: ${ref}`:""}\nBy: ${session?.name||"?"} · ${today}`;
-                          sendTelegramNotification("finance",pMsg);
-                          sendTelegramNotification("management",pMsg);
+                          sendTelegramNotification("financialcontrol",pMsg);
                           toastEmit&&toastEmit(`Payment order created for ${d.number} (${bk})`,"success");
                         }} style={{background:bank?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:bank?"#fff":"#94a3b8",cursor:bank?"pointer":"not-allowed",fontFamily:"inherit",fontWeight:700}}>💳 Create Payment Order</button>
                       </>)}
@@ -18786,7 +18785,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
 
 // ─── BOT SETTINGS VIEW ────────────────────────────────────────────────────────
 function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,Wrap}){
-  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:"",accounting:"",finance:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false,poApprovers:botSettings.poApprovers||""});
+  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:"",financialcontrol:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false,poApprovers:botSettings.poApprovers||""});
   const[testing,setTesting]=React.useState(null);
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
@@ -18798,8 +18797,7 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
     {id:"procurement",label:"📦 Procurement",   hint:"MRs, deliveries, swatch approvals"},
     {id:"sales",      label:"💼 Sales",          hint:"Swatch approvals, deal updates"},
     {id:"management", label:"👔 Management",    hint:"High-level overdue alerts only"},
-    {id:"accounting", label:"🧾 Accounting",     hint:"Approved POs/WOs for documentation"},
-    {id:"finance",    label:"💰 Finance",        hint:"Payment orders"},
+    {id:"financialcontrol", label:"💼 Financial Control", hint:"Approved POs/WOs, accounting checks, payment orders — leave empty to use the Management chat"},
   ];
 
   const testChannel=async(chId)=>{
