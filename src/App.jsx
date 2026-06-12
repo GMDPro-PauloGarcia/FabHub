@@ -533,6 +533,11 @@ const poDiscountAmt=(type,value,subtotal)=>{
   if(v<=0||subtotal<=0) return 0;
   return Math.min(type==="pct"?subtotal*Math.min(v,100)/100:v, subtotal);
 };
+// Segregation of duties: a PO is approved by a Manager (always), or by a
+// Procurement officer who is NOT the one who requested it. Everyone else
+// submits as Pending Approval.
+const canApprovePO=(role,sessionName,requestedBy)=>
+  role==="Manager"||(role==="Procurement"&&!!sessionName&&sessionName!==(requestedBy||""));
 
 // ─── SUBCON WORK ORDERS ───────────────────────────────────────────────────────
 // Subcon engagements are NOT purchase orders: a WO carries scope of work,
@@ -3775,17 +3780,19 @@ export default function App(){
     upBudgets(bs=>({...bs,[dealId]:saved}));
     if(isSupabaseReady()) sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id").catch(e=>console.error("budget sync:",e.message));
   };
-  const addPR=(pr)=>{
+  const addPR=(pr,opts={})=>{
     const rec={...pr,id:uid(),createdDate:today};
     upPrs(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbSyncOne("purchase_requests",rec,toSbPR);
-    const deal=deals.find(d=>d.id===(pr.projectId||pr.dealId));
-    const msg=`🛒 <b>New Purchase Request</b>\n${pr.itemName||pr.item||"?"}\nProject: ${deal?.client||pr.dealId||"?"}\nQty: ${pr.qty||"?"} ${pr.unit||""}\nCategory: ${pr.category||"—"}\nUrgency: ${pr.urgency||"Normal"}\nBy: ${pr.requestedBy||session?.name||"?"}`;
-    sendTelegramNotification("procurement",msg);
-    sendTelegramNotification("management",msg);
+    if(!opts.silent){ // multi-line PO submits send ONE summary instead (opts.silent)
+      const deal=deals.find(d=>d.id===(pr.projectId||pr.dealId));
+      const msg=`🛒 <b>New Purchase Request</b>\n${pr.itemName||pr.item||"?"}\nProject: ${deal?.client||pr.dealId||"?"}\nQty: ${pr.qty||"?"} ${pr.unit||""}\nCategory: ${pr.category||"—"}\nUrgency: ${pr.urgency||"Normal"}\nBy: ${pr.requestedBy||session?.name||"?"}`;
+      sendTelegramNotification("procurement",msg);
+      sendTelegramNotification("management",msg);
+    }
   };
-  const updatePR=(id,changes)=>{
-    if(changes.status==="PO Issued"&&changes.approvedBy){
+  const updatePR=(id,changes,opts={})=>{
+    if(!opts.silent&&changes.status==="PO Issued"&&changes.approvedBy){
       const pr=prs.find(p=>p.id===id);
       const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
       sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"?"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
@@ -8701,7 +8708,7 @@ export default function App(){
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/></Wrap>);
@@ -8877,7 +8884,7 @@ export default function App(){
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -9060,7 +9067,7 @@ export default function App(){
 
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
@@ -9974,7 +9981,7 @@ First few:
     <Wrap>
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>
+        wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>
     </Wrap>
   );
 
@@ -13810,7 +13817,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos}){
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,role,toastEmit,suppliers}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swos,session,role,toastEmit,suppliers}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -13821,7 +13828,6 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   const[poNumber,setPoNumber]=useState("");
   const[poSuggestedNo,setPoSuggestedNo]=useState("");
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
-  const[poStatus,setPoStatus]=useState("Draft");
   const[poItems,setPoItems]=useState([emptyPoItem()]);
   const[poDiscType,setPoDiscType]=useState("amt");
   const[poDiscValue,setPoDiscValue]=useState("");
@@ -13833,6 +13839,41 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
+  // Managers issue directly; everyone else submits for approval
+  const directIssue=role==="Manager";
+
+  // ── Budget guard: live remaining per project budget line ──
+  const rootOf=id=>{const d=wonDeals.find(x=>x.id===id);return d?.parentDealId||id;};
+  const expCat=e=>e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
+  const budgetInfo=(projectId,cat)=>{
+    if(!projectId) return null;
+    const rootId=rootOf(projectId);
+    const budgetAmt=n(budgets?.[rootId]?.[cat]);
+    const related=new Set([rootId,...wonDeals.filter(d=>d.parentDealId===rootId).map(d=>d.id)]);
+    let used=0;
+    prs.forEach(p=>{if(related.has(p.projectId)&&p.status!=="Cancelled"&&(p.budgetCategory||"Materials")===cat) used+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);});
+    (exps||[]).forEach(e=>{if(related.has(e.projectId)&&expCat(e)===cat) used+=n(e.amount);});
+    if(cat==="Subcon") (swos||[]).forEach(w=>{if(related.has(w.projectId)&&w.status!=="Cancelled") used+=n(w.contractAmount);});
+    return {budgetAmt,used,left:budgetAmt-used,hasBudget:budgetAmt>0};
+  };
+  // what THIS form adds against the same project + budget line
+  const formCatTotal=(projectId,cat)=>poItems.reduce((s,i)=>
+    (!i.projectId||rootOf(i.projectId)!==rootOf(projectId)||(i.budgetCategory||"Materials")!==cat)?s:s+n(i.estUnitCost)*n(i.qty),0);
+  const budgetOverruns=()=>{
+    const over=[],seen=new Set();
+    poItems.forEach(i=>{
+      if(!i.projectId) return;
+      const cat=i.budgetCategory||"Materials";
+      const key=rootOf(i.projectId)+"|"+cat;
+      if(seen.has(key)) return; seen.add(key);
+      const bi=budgetInfo(i.projectId,cat);
+      if(bi&&bi.hasBudget){
+        const after=bi.left-formCatTotal(i.projectId,cat);
+        if(after<0){const d=wonDeals.find(x=>x.id===rootOf(i.projectId));over.push(`${cat} on ${projDisplayName(d)||"project"} over by ${fmt(-after)}`);}
+      }
+    });
+    return over;
+  };
 
   function emptyPoItem(){
     return {_id:Math.random().toString(36).slice(2),projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0};
@@ -13841,7 +13882,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
   const openNewPO=()=>{
     const sug=computeNextPoNo(prs);
     setPoSupplier(""); setPoNumber(sug); setPoSuggestedNo(sug); setPoDate(new Date().toISOString().split("T")[0]);
-    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]); setPoDiscType("amt"); setPoDiscValue(""); setMode("newpo");
+    setPoItems([emptyPoItem()]); setPoDiscType("amt"); setPoDiscValue(""); setMode("newpo");
   };
 
   const printPO=(poNo,supplierName,poD,items)=>{
@@ -13913,12 +13954,15 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
 
   const submitPO=async()=>{
     if(submitting||!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
+    const over=budgetOverruns();
+    if(over.length&&!window.confirm(`⚠️ This PO exceeds the project budget:\n\n• ${over.join("\n• ")}\n\nSubmit anyway? Management will be notified.`)) return;
     setSubmitting(true);
     let poNo;
     try{ poNo=await claimPoNumber({typed:poNumber,suggested:poSuggestedNo,prs}); }
     finally{ setSubmitting(false); }
     const subtotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
     const discAmt=poDiscountAmt(poDiscType,poDiscValue,subtotal);
+    const status=directIssue?"PO Issued":"Pending Approval";
     poItems.forEach(item=>{
       const deal=wonDeals.find(d=>d.id===item.projectId);
       addPR({
@@ -13928,13 +13972,18 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
         projectId:item.projectId, projectName:projDisplayName(deal)||item.projectName||"",
         supplier:poSupplier, poNumber:poNo, poDate:poDate,
         poDiscType:discAmt>0?poDiscType:"", poDiscValue:discAmt>0?Number(poDiscValue)||0:0,
-        status:poStatus, requestedBy:session?.name||"",
-        approvedBy:poStatus==="PO Issued"?session?.name||"":""
-      });
+        status, requestedBy:session?.name||"",
+        approvedBy:directIssue?session?.name||"":""
+      },{silent:true});
     });
+    const projNames=[...new Set(poItems.map(i=>projDisplayName(wonDeals.find(d=>d.id===i.projectId))).filter(Boolean))];
+    const msg=`📦 <b>${directIssue?"PO Issued":"PO Awaiting Approval"} — ${poNo}</b>\nSupplier: ${poSupplier}\nProject${projNames.length>1?"s":""}: ${projNames.join(", ")||"—"}\nItems: ${poItems.length} · Total: ₱${(subtotal-discAmt).toLocaleString("en-PH")}${discAmt>0?` (less ${fmt(discAmt)} discount)`:""}\nBy: ${session?.name||"?"}${over.length?`\n🚨 <b>OVER BUDGET</b> — ${over.join("; ")}`:""}`;
+    sendTelegramNotification("procurement",msg);
+    sendTelegramNotification("management",msg);
     toastEmit&&toastEmit(poNo!==poNumber.trim()
       ?`Saved as ${poNo} — ${poNumber.trim()} was already taken by another PO`
-      :`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
+      :directIssue?`PO ${poNo} issued — ${poItems.length} item${poItems.length>1?"s":""}`
+      :`PO ${poNo} submitted for approval — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     setMode("list");
   };
 
@@ -14017,7 +14066,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={editForm.notes} onChange={e=>ef("notes",e.target.value)}/></Fld></div>
           </div>
           <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={()=>{updatePR(editingId,editForm);toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
+            <button onClick={()=>{
+              const orig=prs.find(p=>p.id===editingId);
+              if(editForm.status==="PO Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy)){toastEmit&&toastEmit("Needs a Manager (or another Procurement officer) to approve.","error");return;}
+              updatePR(editingId,editForm);toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
             <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
@@ -14043,7 +14095,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
             </Fld>
             <Fld label="PO Number" required hint="Suggested — confirmed on submit so two officers can't issue the same number"><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
-            <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Approval">
+              <div style={{padding:"9px 13px",border:"1.5px dashed "+(directIssue?"#6ee7b7":"#fde68a"),borderRadius:8,fontSize:".76rem",fontWeight:700,color:directIssue?"#059669":"#b45309",background:directIssue?"#f0fdf4":"#fffbeb",boxSizing:"border-box"}}>
+                {directIssue?"✓ Issues immediately (Manager)":"⏳ Goes to Pending Approval"}
+              </div>
+            </Fld>
           </div>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Line Items</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
@@ -14079,6 +14135,18 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                       </div>
                     </div>
                   </div>
+                  {item.projectId&&(()=>{
+                    const cat=item.budgetCategory||"Materials";
+                    const bi=budgetInfo(item.projectId,cat);
+                    if(!bi) return null;
+                    if(!bi.hasBudget) return <div style={{marginTop:7,fontSize:".68rem",color:"#94a3b8"}}>ℹ️ No {cat} budget set for this project — flag to QS</div>;
+                    const after=bi.left-formCatTotal(item.projectId,cat);
+                    return(
+                      <div style={{marginTop:7,fontSize:".68rem",fontWeight:600,color:after<0?"#dc2626":after<bi.budgetAmt*.1?"#b45309":"#059669"}}>
+                        {after<0?"🚨":"💰"} {cat} budget {fmt(bi.budgetAmt)} · used {fmt(bi.used)} · left {fmt(bi.left)} → {after<0?`OVER by ${fmt(-after)} after this PO`:`${fmt(after)} left after this PO`}
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -14108,7 +14176,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
           </div>
           <div style={{display:"flex",gap:10}}>
             <button onClick={submitPO} disabled={!canSubmit||submitting} style={{background:canSubmit&&!submitting?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit&&!submitting?"#fff":"#94a3b8",cursor:canSubmit&&!submitting?"pointer":"not-allowed"}}>
-              {submitting?"⏳ Submitting…":`📦 Submit Purchase Order (${poItems.length} item${poItems.length>1?"s":""})`}
+              {submitting?"⏳ Submitting…":directIssue?`📦 Issue Purchase Order (${poItems.length} item${poItems.length>1?"s":""})`:`📦 Submit for Approval (${poItems.length} item${poItems.length>1?"s":""})`}
             </button>
             <button onClick={()=>setMode("list")} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
@@ -14230,7 +14298,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                             </div>
                             <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
                               <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{fmt(actTotal)}</span>
-                              <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                              <select value={pr.status} onChange={e=>{const st=e.target.value;
+                                if(st==="PO Issued"&&(pr.status==="Pending Approval"||pr.status==="Draft")&&!canApprovePO(role,session?.name||"",pr.requestedBy)){toastEmit&&toastEmit("Needs a Manager (or another Procurement officer) to approve.","error");return;}
+                                const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
                                 {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
                               </select>
                               <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"3px 9px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
@@ -14242,6 +14312,18 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                       <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 16px",flexWrap:"wrap"}}>
                         {discount>0&&<span style={{fontSize:".7rem",color:"#64748b"}}>Subtotal {fmt(g.gross)} · <span style={{color:"#dc2626",fontWeight:700}}>Discount −{fmt(discount)}{g.discType==="pct"?` (${g.discValue}%)`:""}</span></span>}
                         <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                          {(status==="Pending Approval"||status==="Draft")&&canApprovePO(role,session?.name||"",items[0]?.requestedBy)&&(
+                            <button onClick={()=>{
+                              const pend=items.filter(i=>i.status==="Pending Approval"||i.status==="Draft");
+                              pend.forEach(i=>updatePR(i.id,{status:"PO Issued",approvedBy:session?.name||"",approvedAt:today},{silent:true}));
+                              const label=isPo?`PO Approved — ${g.poNo}`:"PR Approved";
+                              sendTelegramNotification("procurement",`✅ <b>${label}</b>\nSupplier: ${supplier||"—"}\nItems: ${pend.length} · Total: ${fmt(total)}\nRequested by: ${items[0]?.requestedBy||"—"}\nApproved by: ${session?.name||"?"} · ${today}`);
+                              toastEmit&&toastEmit(`${isPo?g.poNo:"PR"} approved & issued`,"success");
+                            }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
+                          )}
+                          {(status==="Pending Approval"||status==="Draft")&&!canApprovePO(role,session?.name||"",items[0]?.requestedBy)&&(
+                            <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval{items[0]?.requestedBy===session?.name?" — requested by you":""}</span>
+                          )}
                           {isPo&&<button onClick={()=>printPO(g.poNo,supplier,date,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>}
                           {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(discEditPo===g.poNo){setDiscEditPo(null);}else{setDiscEditPo(g.poNo);setDiscEditType(g.discType||"amt");setDiscEditVal(g.discValue>0?String(g.discValue):"");}}} style={{background:"#fff7ed",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>% Disc</button>}
                           {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+g.poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
@@ -15119,23 +15201,25 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                       try{ poNo=await claimPoNumber({typed:convPoNo,suggested:convPoSuggested,prs}); }
                       finally{ setConvSubmitting(false); }
                       const dealN=wonDeals.find(d=>d.id===mr.projectId);
+                      const direct=role==="Manager"; // others submit the converted PO for approval
                       addPR({
                         projectId:mr.projectId, projectName:projDisplayName(dealN),
                         itemName:mr.itemName, category:mr.category,
                         qty:mr.qty, unit:mr.unit, estUnitCost:mr.estUnitCost||0, actUnitCost:0,
                         supplier:convSupplier.trim(), poNumber:poNo,
-                        poDate:new Date().toISOString().split("T")[0], status:"PO Issued",
-                        requestedBy:mr.requestedBy||"", approvedBy:session?.name||"",
+                        poDate:new Date().toISOString().split("T")[0], status:direct?"PO Issued":"Pending Approval",
+                        requestedBy:mr.requestedBy||"", approvedBy:direct?session?.name||"":"",
                         budgetCategory:"Materials", notes:`From MR: ${mr.notes||""}`,
                         description:mr.purpose||"",
-                      });
+                      },{silent:true});
                       updateMR(mr.id,{status:"Converted to PR",statusChangedAt:new Date().toISOString().split("T")[0]});
-                      sendTelegramNotification("operations",`✅ <b>Material Request → PO Issued</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${poNo}\nBy: ${session?.name}`);
-                      if(poNo!==convPoNo.trim()) toastEmit&&toastEmit(`Issued as ${poNo} — ${convPoNo.trim()} was already taken by another PO`,"success");
+                      sendTelegramNotification("operations",`${direct?"✅":"⏳"} <b>Material Request → PO ${direct?"Issued":"Awaiting Approval"}</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${poNo}\nBy: ${session?.name}`);
+                      if(poNo!==convPoNo.trim()) toastEmit&&toastEmit(`Saved as ${poNo} — ${convPoNo.trim()} was already taken by another PO`,"success");
+                      else toastEmit&&toastEmit(direct?`PO ${poNo} issued`:`PO ${poNo} submitted for approval`,"success");
                       setConvertingId(null); setConvSupplier(""); setConvPoNo("");
                     }} disabled={convSubmitting||!convSupplier.trim()||!convPoNo.trim()}
                       style={{background:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"#1e40af":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"#fff":"#94a3b8",cursor:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"pointer":"not-allowed"}}>
-                      {convSubmitting?"⏳ Issuing…":"📦 Issue PO"}
+                      {convSubmitting?"⏳ Saving…":role==="Manager"?"📦 Issue PO":"📦 Submit for Approval"}
                     </button>
                     <button onClick={()=>{setConvertingId(null);setConvSupplier("");setConvPoNo("");}}
                       style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
