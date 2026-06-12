@@ -15724,7 +15724,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
 
   // Per-project summary for list
   const projectSummaries=[...wonDeals,...completedDeals].filter(d=>!d.parentDealId).map(d=>{
-    const childIds=[...wonDeals,...completedDeals].filter(c=>c.parentDealId===d.id).map(c=>c.id);
+    const children=[...wonDeals,...completedDeals,...deals].filter(c=>c.parentDealId===d.id);
+    const childIds=children.map(c=>c.id);
     const allDealIds=[d.id,...childIds];
     const ms=billings.filter(b=>allDealIds.includes(b.dealId));
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
@@ -15732,7 +15733,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     const balance  =Math.max(0,billed-collected);
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=billed>0&&balance===0;
-    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length,childCount:childIds.length};
+    const totalContractValue=n(d.value)+children.reduce((s,c)=>s+n(c.value),0);
+    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length,childCount:childIds.length,totalContractValue};
   }).filter(({d,balance,hasOverdue,fullyPaid})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
@@ -15929,9 +15931,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
             ))}
           </div>
         );
-        const ProjRow=({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount},i)=>{
+        const ProjRow=({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount,totalContractValue},i)=>{
           const rt=d.receiptType||"OR", wh=d.withholding||false;
-          const tx=calcTax(d.value||0,rt,wh);
+          const contractVal=totalContractValue||n(d.value)||0;
+          const tx=calcTax(contractVal,rt,wh);
           return(
             <div key={d.id}
               onClick={()=>setSelDeal(d.id)}
@@ -15952,10 +15955,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                 </div>
               </div>
               <div>
-                <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{d.value>0?fmt(d.value):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
-                {d.value>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{contractVal>0?fmt(contractVal):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
+                {contractVal>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
                   {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?"SI / no VAT":"Non-VAT"}
                   {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
+                  {childCount>0&&<span style={{color:"#8b5cf6",marginLeft:4}}>incl. {childCount} addendum{childCount!==1?"s":""}</span>}
                 </div>}
               </div>
               <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
