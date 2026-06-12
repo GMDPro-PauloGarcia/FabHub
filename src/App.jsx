@@ -15491,6 +15491,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
+  const[billingView,  setBillingView]  =useState("projects"); // projects | clients
+  const[soaClient,    setSoaClient]   =useState(null); // client name for SOA modal
+  const[showCleared,  setShowCleared] =useState(false);
   const[selectedMs,   setSelectedMs]  =useState(new Set());
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
@@ -15822,93 +15825,316 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         );
       })()}
 
-      {/* ── SEARCH + FILTER ────────────────────────────────────────────── */}
+      {/* ── VIEW TOGGLE + SEARCH + FILTER ──────────────────────────────── */}
       <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+        {/* View toggle */}
+        <div style={{display:"flex",background:"#f1f5f9",borderRadius:8,padding:3,gap:2}}>
+          {[["projects","📋 By Project"],["clients","👥 By Client"]].map(([v,l])=>(
+            <button key={v} onClick={()=>setBillingView(v)}
+              style={{padding:"5px 12px",borderRadius:6,border:"none",background:billingView===v?"#1e293b":"transparent",color:billingView===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:billingView===v?700:500,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}>
+              {l}
+            </button>
+          ))}
+        </div>
         <div style={{flex:1,minWidth:200,position:"relative"}}>
           <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem",pointerEvents:"none"}}>🔍</span>
           <input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Search project, CE no, or contact…"
             style={{width:"100%",paddingLeft:32,paddingRight:10,paddingTop:8,paddingBottom:8,border:"1.5px solid #e2e8f0",borderRadius:8,fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
         </div>
-        <div style={{display:"flex",gap:6}}>
+        {billingView==="projects"&&<div style={{display:"flex",gap:6}}>
           {[["all","All"],["outstanding","Outstanding"],["overdue","Overdue"],["paid","Fully Paid"]].map(([v,l])=>(
             <button key={v} onClick={()=>setBillingFilter(v)}
               style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${billingFilter===v?"#1e293b":"#e2e8f0"}`,background:billingFilter===v?"#1e293b":"#fff",color:billingFilter===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:billingFilter===v?700:400,cursor:"pointer",whiteSpace:"nowrap"}}>
               {l}
             </button>
           ))}
-        </div>
+        </div>}
       </div>
 
-      {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
-      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",background:"#1e293b",padding:"7px 14px",gap:10}}>
-          {["Project","Contract Price","Billed","Collected","Balance","Status",""].map(h=>(
-            <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
-          ))}
-        </div>
-        {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
-        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount},i)=>{
+      {/* ── BY CLIENT VIEW ─────────────────────────────────────────────── */}
+      {billingView==="clients"&&(()=>{
+        // Group all project summaries by client name
+        const allSummaries=[...wonDeals,...completedDeals].filter(d=>!d.parentDealId).map(d=>{
+          const childIds=deals.filter(c=>c.parentDealId===d.id).map(c=>c.id);
+          const allIds=[d.id,...childIds];
+          const ms=billings.filter(b=>allIds.includes(b.dealId));
+          const billed=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
+          const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+          const balance=Math.max(0,billed-collected);
+          const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+          const fullyPaid=billed>0&&balance===0;
+          return{d,ms,billed,collected,balance,hasOverdue,fullyPaid};
+        });
+        // Group by client
+        const clientMap={};
+        allSummaries.forEach(s=>{
+          const c=s.d.client||"Unknown";
+          if(!clientMap[c]) clientMap[c]={client:c,projects:[],billed:0,collected:0,balance:0,hasOverdue:false};
+          clientMap[c].projects.push(s);
+          clientMap[c].billed+=s.billed;
+          clientMap[c].collected+=s.collected;
+          clientMap[c].balance+=s.balance;
+          if(s.hasOverdue) clientMap[c].hasOverdue=true;
+        });
+        const clientRows=Object.values(clientMap)
+          .filter(c=>!billingSearch||c.client.toLowerCase().includes(billingSearch.toLowerCase()))
+          .sort((a,b)=>b.balance-a.balance);
+        return(
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px",background:"#1e293b",padding:"7px 14px",gap:10}}>
+              {["Client","Total Billed","Total Collected","Balance Due",""].map(h=>(
+                <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+              ))}
+            </div>
+            {clientRows.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No clients found.</div>}
+            {clientRows.map((c,i)=>(
+              <div key={c.client}
+                style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px",padding:"7px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:c.hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",alignItems:"center",cursor:"pointer",transition:"background .1s"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+                onMouseLeave={e=>e.currentTarget.style.background=c.hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+                <div>
+                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                    {c.hasOverdue&&<span style={{fontSize:".75rem"}}>🔴</span>}
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{c.client}</span>
+                  </div>
+                  <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1}}>
+                    {c.projects.length} project{c.projects.length!==1?"s":""}
+                    {c.projects.filter(p=>p.hasOverdue).length>0&&<span style={{color:"#ef4444",marginLeft:6,fontWeight:600}}>{c.projects.filter(p=>p.hasOverdue).length} overdue</span>}
+                    {c.balance===0&&c.billed>0&&<span style={{color:"#059669",marginLeft:6,fontWeight:600}}>✓ Cleared</span>}
+                  </div>
+                </div>
+                <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{c.billed>0?fmt(c.billed):<span style={{color:"#e2e8f0"}}>—</span>}</div>
+                <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>{c.collected>0?fmt(c.collected):<span style={{color:"#e2e8f0"}}>—</span>}</div>
+                <div style={{fontWeight:700,color:c.balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>{c.balance>0?fmt(c.balance):"✓ Clear"}</div>
+                <div style={{display:"flex",gap:6}}>
+                  {c.balance>0&&<button onClick={e=>{e.stopPropagation();setSoaClient(c.client);}}
+                    style={{background:"#0f172a",border:"none",borderRadius:6,padding:"4px 9px",fontFamily:"inherit",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}}>
+                    📄 SOA
+                  </button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── BY PROJECT VIEW ────────────────────────────────────────────── */}
+      {billingView==="projects"&&(()=>{
+        const activeRows=projectSummaries.filter(s=>!s.fullyPaid);
+        const clearedRows=projectSummaries.filter(s=>s.fullyPaid);
+        const ColHeaders=()=>(
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",background:"#1e293b",padding:"7px 14px",gap:10}}>
+            {["Project","Contract Price","Billed","Collected","Balance","Status",""].map(h=>(
+              <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+            ))}
+          </div>
+        );
+        const ProjRow=({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount},i)=>{
           const rt=d.receiptType||"OR", wh=d.withholding||false;
           const tx=calcTax(d.value||0,rt,wh);
           return(
-          <div key={d.id}
-            onClick={()=>setSelDeal(d.id)}
-            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
-            onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
-            {/* Project name */}
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:5}}>
-                {hasOverdue&&<span style={{color:"#ef4444",fontSize:".75rem"}}>🔴</span>}
-                <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
-                {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}
+            <div key={d.id}
+              onClick={()=>setSelDeal(d.id)}
+              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+              onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:5}}>
+                  {hasOverdue&&<span style={{color:"#ef4444",fontSize:".75rem"}}>🔴</span>}
+                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
+                  {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}
+                </div>
+                <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <span>{d.ceNo||"No CE"}</span><span>·</span>
+                  <span>{milestoneCount} milestone{milestoneCount!==1?"s":""}</span>
+                  {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
+                  {fullyPaid&&<span style={{color:"#059669",fontWeight:700}}>✓ Fully Paid</span>}
+                </div>
               </div>
-              <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
-                <span>{d.ceNo||"No CE"}</span>
-                <span>·</span>
-                <span>{milestoneCount} milestone{milestoneCount!==1?"s":""}</span>
-                {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
-                {fullyPaid&&<span style={{color:"#059669",fontWeight:700}}>✓ Fully Paid</span>}
+              <div>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{d.value>0?fmt(d.value):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
+                {d.value>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
+                  {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?"SI / no VAT":"Non-VAT"}
+                  {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
+                </div>}
+              </div>
+              <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
+              <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>{collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
+              <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>{balance>0?fmt(balance):"✓ Clear"}</div>
+              <div>
+                {hasOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Overdue</span>}
+                {fullyPaid&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Paid</span>}
+                {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
+                {milestoneCount===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
+              </div>
+              <div>
+                <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
+                  style={{background:"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
+                  Open →
+                </button>
               </div>
             </div>
-            {/* Contract Price + VAT */}
-            <div>
-              <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{d.value>0?fmt(d.value):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
-              {d.value>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
-                {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?`SI / no VAT`:"Non-VAT"}
-                {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
-              </div>}
+          );
+        };
+        return(
+          <>
+            {/* Active projects */}
+            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:14}}>
+              <ColHeaders/>
+              {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
+              {activeRows.length===0&&wonDeals.length>0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>All projects are cleared!</div>}
+              {activeRows.map((s,i)=>ProjRow(s,i))}
             </div>
-            {/* Billed */}
-            <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>
-              {billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}
-            </div>
-            {/* Collected */}
-            <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>
-              {collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}
-            </div>
-            {/* Balance */}
-            <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>
-              {balance>0?fmt(balance):"✓ Clear"}
-            </div>
-            {/* Status badge */}
-            <div>
-              {hasOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Overdue</span>}
-              {fullyPaid&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Paid</span>}
-              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
-              {milestoneCount===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
-            </div>
-            {/* Open button */}
-            <div>
-              <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
-                style={{background:"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
-                Open →
+
+            {/* Cleared / Fully Paid */}
+            {(billingFilter==="all"||billingFilter==="paid")&&clearedRows.length>0&&(
+              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #d1fae5",overflow:"hidden"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#f0fdf4",padding:"8px 14px",borderBottom:"1px solid #d1fae5",cursor:"pointer"}}
+                  onClick={()=>setShowCleared(v=>!v)}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:".78rem",fontWeight:700,color:"#059669"}}>✓ Cleared Accounts</span>
+                    <span style={{fontSize:".68rem",background:"#d1fae5",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 8px",fontWeight:700}}>{clearedRows.length}</span>
+                  </div>
+                  <span style={{color:"#059669",fontSize:".8rem"}}>{showCleared?"▲ Hide":"▼ Show"}</span>
+                </div>
+                {showCleared&&(
+                  <>
+                    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",background:"#064e3b",padding:"7px 14px",gap:10}}>
+                      {["Project","Contract Price","Billed","Collected","Balance","Status",""].map(h=>(
+                        <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+                      ))}
+                    </div>
+                    {clearedRows.map((s,i)=>ProjRow(s,i))}
+                  </>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
+
+      {/* ── SOA MODAL ──────────────────────────────────────────────────── */}
+      {soaClient&&(()=>{
+        const clientDeals=[...wonDeals,...completedDeals].filter(d=>d.client===soaClient&&!d.parentDealId);
+        const soaDate=new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
+        const rows=clientDeals.map(d=>{
+          const childIds=deals.filter(c=>c.parentDealId===d.id).map(c=>c.id);
+          const ms=billings.filter(b=>[d.id,...childIds].includes(b.dealId)&&b.status!=="Cancelled");
+          const billed=ms.reduce((s,m)=>s+n(m.amount),0);
+          const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+          const balance=Math.max(0,billed-collected);
+          return{d,ms,billed,collected,balance};
+        }).filter(r=>r.balance>0);
+        const totalBilled=rows.reduce((s,r)=>s+r.billed,0);
+        const totalCollected=rows.reduce((s,r)=>s+r.collected,0);
+        const totalBalance=rows.reduce((s,r)=>s+r.balance,0);
+        const printSOA=()=>{
+          const win=window.open("","_blank");
+          win.document.write(`<!DOCTYPE html><html><head><title>SOA — ${soaClient}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#1a1a1a;background:#fff;}
+  .page{max-width:780px;margin:0 auto;padding:36px 44px;}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #1e293b;}
+  .co-name{font-weight:900;font-size:13px;margin-bottom:3px;}
+  .co-info{font-size:10.5px;color:#555;line-height:1.6;}
+  .doc-title{font-size:20px;font-weight:700;color:#1e293b;margin-bottom:4px;}
+  .doc-sub{font-size:11px;color:#666;}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px;}
+  thead tr{background:#1e293b;}
+  th{padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.7);text-align:left;letter-spacing:.3px;}
+  th.r{text-align:right;}
+  td{padding:7px 10px;font-size:11.5px;border-bottom:1px solid #e2e8f0;vertical-align:top;}
+  td.r{text-align:right;}
+  .proj-sub{font-size:10.5px;color:#64748b;margin-top:2px;}
+  .ms-row td{background:#f8fafc;font-size:11px;padding:4px 10px 4px 20px;}
+  .totals-row td{font-weight:700;font-size:12px;border-top:2px solid #1e293b;border-bottom:none;}
+  .balance-due{font-size:15px;font-weight:900;color:#dc2626;text-align:right;margin-top:12px;}
+  .footer{margin-top:24px;font-size:11px;color:#666;border-top:1px solid #e2e8f0;padding-top:12px;line-height:1.7;}
+  .print-btn{text-align:center;margin-top:20px;}
+  .print-btn button{padding:9px 24px;background:#1e293b;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;}
+  @media print{.print-btn{display:none;}thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}}
+</style></head><body><div class="page">
+  <div class="hdr">
+    <div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-info">32 Santan Unit H Brgy Fortune Marikina, NCR 1802 PH<br/>+63 9189338436 · sales@gmd.ph · TIN 010-063-229-000</div></div>
+    <div style="text-align:right"><div class="doc-title">STATEMENT OF ACCOUNT</div><div class="doc-sub">Client: <strong>${soaClient}</strong></div><div class="doc-sub">As of: ${soaDate}</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Project / Milestone</th><th class="r">Billed</th><th class="r">Collected</th><th class="r">Balance</th></tr></thead>
+    <tbody>
+      ${rows.map(r=>`
+        <tr>
+          <td><strong>${r.d.contact||r.d.client}</strong>${r.d.ceNo?` <span style="color:#64748b">(${r.d.ceNo})</span>`:""}</td>
+          <td class="r">${fmt(r.billed)}</td>
+          <td class="r">${fmt(r.collected)}</td>
+          <td class="r" style="color:#dc2626;font-weight:700">${fmt(r.balance)}</td>
+        </tr>
+        ${r.ms.map(m=>{
+          const paid=(m.payments||[]).reduce((s,p)=>s+n(p.amount),0);
+          const bal=Math.max(0,n(m.amount)-paid);
+          if(bal===0) return "";
+          return`<tr class="ms-row"><td>↳ ${m.name||"Milestone"}${m.invoiceNo?` · ${m.invoiceNo}`:""}${m.dueDate?` · Due ${m.dueDate}`:""}</td><td class="r">${fmt(m.amount)}</td><td class="r">${fmt(paid)}</td><td class="r" style="color:#dc2626">${fmt(bal)}</td></tr>`;
+        }).join("")}
+      `).join("")}
+      <tr class="totals-row"><td>TOTAL OUTSTANDING</td><td class="r">${fmt(totalBilled)}</td><td class="r">${fmt(totalCollected)}</td><td class="r" style="color:#dc2626">${fmt(totalBalance)}</td></tr>
+    </tbody>
+  </table>
+  <div class="balance-due">TOTAL AMOUNT DUE: ${fmt(totalBalance)}</div>
+  <div class="footer">This statement reflects all open billings as of ${soaDate}. Please remit payment to GMD Productions Inc.<br/>For inquiries contact us at sales@gmd.ph or +63 9189338436.<br/><em>This is a system-generated document.</em></div>
+  <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+</div></body></html>`);
+          win.document.close();
+        };
+        return(
+          <Modal open title={`📄 Statement of Account — ${soaClient}`} onClose={()=>setSoaClient(null)} wide>
+            <div style={{marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+              <div style={{fontSize:".8rem",color:"#64748b"}}>Open billings as of {soaDate}</div>
+              <button onClick={printSOA}
+                style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>
+                🖨 Print / Save PDF
               </button>
             </div>
-          </div>
-          );
-        })}
-      </div>
+            {rows.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8"}}>No outstanding balances for this client.</div>}
+            {rows.map(r=>(
+              <div key={r.d.id} style={{marginBottom:12,border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden"}}>
+                <div style={{background:"#f8fafc",padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
+                  <div>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{r.d.contact||r.d.client}</span>
+                    {r.d.ceNo&&<span style={{fontSize:".7rem",color:"#94a3b8",marginLeft:6}}>{r.d.ceNo}</span>}
+                  </div>
+                  <div style={{display:"flex",gap:16,fontSize:".75rem"}}>
+                    <span style={{color:"#3b82f6"}}>Billed: <strong>{fmt(r.billed)}</strong></span>
+                    <span style={{color:"#059669"}}>Collected: <strong>{fmt(r.collected)}</strong></span>
+                    <span style={{color:"#dc2626"}}>Due: <strong>{fmt(r.balance)}</strong></span>
+                  </div>
+                </div>
+                {r.ms.filter(m=>{const p=(m.payments||[]).reduce((s,x)=>s+n(x.amount),0);return Math.max(0,n(m.amount)-p)>0;}).map(m=>{
+                  const paid=(m.payments||[]).reduce((s,p)=>s+n(p.amount),0);
+                  const bal=Math.max(0,n(m.amount)-paid);
+                  return(
+                    <div key={m.id} style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:12,padding:"6px 14px",borderBottom:"1px solid #f1f5f9",alignItems:"center"}}>
+                      <div style={{fontSize:".78rem",color:"#0f172a"}}>
+                        {m.name||"Milestone"}
+                        {m.invoiceNo&&<span style={{fontSize:".68rem",color:"#94a3b8",marginLeft:6}}>{m.invoiceNo}</span>}
+                        {m.dueDate&&<span style={{fontSize:".68rem",color:m.dueDate<today?"#ef4444":"#94a3b8",marginLeft:6}}>Due {m.dueDate}</span>}
+                      </div>
+                      <div style={{fontSize:".75rem",color:"#3b82f6",textAlign:"right"}}>{fmt(m.amount)}</div>
+                      <div style={{fontSize:".75rem",color:"#059669",textAlign:"right"}}>{fmt(paid)}</div>
+                      <div style={{fontSize:".75rem",fontWeight:700,color:"#dc2626",textAlign:"right"}}>{fmt(bal)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            {rows.length>0&&(
+              <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>TOTAL OUTSTANDING BALANCE</span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:"#dc2626"}}>{fmt(totalBalance)}</span>
+              </div>
+            )}
+          </Modal>
+        );
+      })()}
 
       {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
       {selDeal&&(
