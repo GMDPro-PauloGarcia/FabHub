@@ -14585,30 +14585,57 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
     const file=e.target.files[0];if(!file)return;
     e.target.value="";
     if(!supabase){setFpError("Supabase not configured. Add REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY to your .env, then deploy the analyze-floor-plan Edge Function.");return;}
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const dataUrl=ev.target.result;
-      setFpPreview(dataUrl);
-      setFpResult(null);setFpError(null);
-      const base64=dataUrl.split(",")[1];
-      const mime=file.type||"image/jpeg";
-      setFpAnalyzing(true);
-      supabase.functions.invoke("analyze-floor-plan",{body:{imageBase64:base64,mimeType:mime}})
-        .then(({data,error})=>{
-          if(error){setFpError(String(error.message||error));return;}
-          if(data?.error){setFpError(data.error);return;}
-          setFpResult(data);
-          setGenParams(p=>({
-            ...p,
-            area:data.totalArea?String(Math.round(data.totalArea)):"",
-            type:(data.projectType&&["kiosk","retail","office","fnb"].includes(data.projectType))?data.projectType:"retail",
-          }));
-          setShowGenForm(true);
-        })
-        .catch(err=>setFpError(String(err)))
-        .finally(()=>setFpAnalyzing(false));
-    };
-    reader.readAsDataURL(file);
+    setFpResult(null);setFpError(null);setFpAnalyzing(true);
+    const isPdf=file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf");
+    if(isPdf){
+      // Render first page of PDF to JPEG via PDF.js — avoids payload size limits
+      const reader=new FileReader();
+      reader.onload=async ev=>{
+        try{
+          if(!window.pdfjsLib){setFpError("PDF.js not loaded — try refreshing the page.");setFpAnalyzing(false);return;}
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+          const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise;
+          const page=await pdf.getPage(1);
+          const vp=page.getViewport({scale:2});
+          const canvas=document.createElement("canvas");
+          canvas.width=vp.width;canvas.height=vp.height;
+          await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
+          const dataUrl=canvas.toDataURL("image/jpeg",0.85);
+          setFpPreview(dataUrl);
+          const base64=dataUrl.split(",")[1];
+          supabase.functions.invoke("analyze-floor-plan",{body:{imageBase64:base64,mimeType:"image/jpeg"}})
+            .then(({data,error})=>{
+              if(error){setFpError(String(error.message||error));return;}
+              if(data?.error){setFpError(data.error);return;}
+              setFpResult(data);
+              setGenParams(p=>({...p,area:data.totalArea?String(Math.round(data.totalArea)):"",type:(data.projectType&&["kiosk","retail","office","fnb"].includes(data.projectType))?data.projectType:"retail"}));
+              setShowGenForm(true);
+            })
+            .catch(err=>setFpError(String(err)))
+            .finally(()=>setFpAnalyzing(false));
+        }catch(err){setFpError("Could not read PDF: "+String(err));setFpAnalyzing(false);}
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        const dataUrl=ev.target.result;
+        setFpPreview(dataUrl);
+        const base64=dataUrl.split(",")[1];
+        const mime=file.type||"image/jpeg";
+        supabase.functions.invoke("analyze-floor-plan",{body:{imageBase64:base64,mimeType:mime}})
+          .then(({data,error})=>{
+            if(error){setFpError(String(error.message||error));return;}
+            if(data?.error){setFpError(data.error);return;}
+            setFpResult(data);
+            setGenParams(p=>({...p,area:data.totalArea?String(Math.round(data.totalArea)):"",type:(data.projectType&&["kiosk","retail","office","fnb"].includes(data.projectType))?data.projectType:"retail"}));
+            setShowGenForm(true);
+          })
+          .catch(err=>setFpError(String(err)))
+          .finally(()=>setFpAnalyzing(false));
+      };
+      reader.readAsDataURL(file);
+    }
   };
   const BOQ_RATES={
     kiosk:{
