@@ -354,6 +354,53 @@ const emptyPR = () => ({
   notes:"", createdDate:"",
 });
 
+const swoToSb=r=>({
+  id:r.id, wo_number:r.woNumber||"", deal_id:r.projectId||r.dealId||null,
+  project_name:r.projectName||"", subcontractor:r.subcontractor||"",
+  specialty:r.specialty||"", scope_of_work:r.scopeOfWork||"",
+  wo_date:r.woDate||null, start_date:r.startDate||null, target_end_date:r.targetEndDate||null,
+  contract_amount:Number(r.contractAmount)||0, retention_pct:Number(r.retentionPct)||0,
+  payment_structure:r.paymentStructure||"", payment_terms:r.paymentTerms||"",
+  status:r.status||"Issued", notes:r.notes||"",
+  requested_by:r.requestedBy||"", approved_by:r.approvedBy||"",
+  acct_status:r.acctStatus||"", acct_notes:r.acctNotes||"",
+  acct_checked_by:r.acctCheckedBy||"", acct_checked_at:r.acctCheckedAt||null,
+  payment_bank:r.paymentBank||"", payment_ref:r.paymentRef||"",
+  payment_ordered_by:r.paymentOrderedBy||"", payment_ordered_at:r.paymentOrderedAt||null,
+});
+const swoFromSb=r=>({...r,
+  woNumber:r.wo_number||"", projectId:r.deal_id, dealId:r.deal_id,
+  projectName:r.project_name||"", scopeOfWork:r.scope_of_work||"",
+  woDate:r.wo_date||"", startDate:r.start_date||"", targetEndDate:r.target_end_date||"",
+  contractAmount:Number(r.contract_amount)||0, retentionPct:Number(r.retention_pct)||0,
+  paymentStructure:r.payment_structure||"", paymentTerms:r.payment_terms||"",
+  requestedBy:r.requested_by||"", approvedBy:r.approved_by||"",
+  acctStatus:r.acct_status||"", acctNotes:r.acct_notes||"",
+  acctCheckedBy:r.acct_checked_by||"", acctCheckedAt:r.acct_checked_at||"",
+  paymentBank:r.payment_bank||"", paymentRef:r.payment_ref||"",
+  paymentOrderedBy:r.payment_ordered_by||"", paymentOrderedAt:r.payment_ordered_at||"",
+});
+const WO_NO_RE=/^WO-(\d+)$/;
+const computeNextWoNo=swos=>{
+  const nums=(swos||[]).map(w=>{const m=WO_NO_RE.exec(w.woNumber||"");return m?Number(m[1]):0;});
+  return `WO-${String((nums.length?Math.max(...nums):0)+1).padStart(4,"0")}`;
+};
+const claimWoNumber=async({typed,suggested,swos})=>{
+  const taken=new Set((swos||[]).map(w=>w.woNumber).filter(Boolean));
+  const t=(typed||"").trim();
+  if(t&&t!==suggested&&!taken.has(t)) return t;
+  if(isSupabaseReady()){
+    try{
+      const {data,error}=await supabase.rpc('next_wo_number');
+      if(!error&&typeof data==="string"&&WO_NO_RE.test(data)) return data;
+    }catch(e){ /* fall back to local allocation */ }
+  }
+  let nn=Number(WO_NO_RE.exec(computeNextWoNo(swos))[1]);
+  while(taken.has(`WO-${String(nn).padStart(4,"0")}`)) nn++;
+  return `WO-${String(nn).padStart(4,"0")}`;
+};
+const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
+
 const emptyBudget = () => ({
   Materials:0, Labor:0, Overhead:0, Subcon:0,
   notes:"", lockedAt:null,
@@ -2346,7 +2393,7 @@ export default function App(){
             if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
             const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null})):null;
             if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
-            const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
+            const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
             const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})):null;
             if(_prs){setPrs(_prs);idbE.push([KEYS.prs,_prs]);}
@@ -2479,7 +2526,8 @@ export default function App(){
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
-    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
+    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
+    if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(ws);idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
     if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);idbE.push([KEYS.mreqs,ms]);}
@@ -2713,6 +2761,7 @@ export default function App(){
     await syncAll("job_orders",jos,toSbJO);
     await syncAll("expenses",exps,toSbExpense);
     await syncAll("purchase_requests",prs,toSbPR);
+    await syncAll("subcon_work_orders",swos,swoToSb);
     await syncAll("material_requests",mreqs,toSbMR);
     await syncAll("budget_requests",breqs,toSbBR);
     await syncAll("addenda",addenda,toSbAddendum);
@@ -2730,6 +2779,7 @@ export default function App(){
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
   const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
+  const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
 
   const addInventoryItem=(item)=>upInventory(iv=>{
     const rec={...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
@@ -2772,6 +2822,28 @@ export default function App(){
   const deleteSubcon=(id)=>{
     upSubcons(ss=>ss.filter(s=>s.id!==id));
     if(isSupabaseReady()) sbDelete('subcontractors',id).catch(()=>{});
+  };
+
+  const addSWO=(wo)=>{
+    const rec={...wo,id:uid(),createdDate:today};
+    upSwos(ws=>[rec,...ws]);
+    if(isSupabaseReady()) sbSyncOne("subcon_work_orders",rec,swoToSb);
+    const msg=`🛠 <b>${rec.status==="Pending Approval"?"Work Order Awaiting Approval":"Subcon Work Order Issued"} ${rec.woNumber||""}</b>\n${rec.subcontractor||"?"}${rec.specialty?` · ${rec.specialty}`:""}\nProject: ${rec.projectName||"?"}\nAmount: ₱${(Number(rec.contractAmount)||0).toLocaleString("en-PH")}\nBy: ${rec.requestedBy||session?.name||"?"}`;
+    sendTelegramNotification("procurement",msg);
+    sendTelegramNotification("management",msg);
+  };
+  const updateSWO=(id,changes)=>{
+    upSwos(ws=>ws.map(w=>{
+      if(w.id!==id) return w;
+      const nw={...w,...changes};
+      if(isSupabaseReady()) sbSyncOne("subcon_work_orders",nw,swoToSb);
+      return nw;
+    }));
+  };
+  const deleteSWO=(id)=>{
+    const wo=swos.find(w=>w.id===id);
+    if(wo&&role!=="Manager"&&role!=="Procurement"&&wo.requestedBy!==session?.name) return toastEmit&&toastEmit("Only Managers, Procurement, or the creator can delete work orders.","error");
+    upSwos(ws=>ws.filter(w=>w.id!==id));if(isSupabaseReady()) sbDelete('subcon_work_orders',id).catch(()=>{});
   };
 
   const addCEReq=async(rec)=>{
@@ -3149,6 +3221,15 @@ export default function App(){
           return ex?es.map(e=>e.id===rec.id?{...e,...mapped}:e):[...es,mapped];});
       }
       if(eventType==='DELETE') setExps(es=>es.filter(e=>e.id!==oldRow.id));
+    });
+
+    const swoSub = sbSubscribe('swos-rt','subcon_work_orders',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped=swoFromSb(rec);
+        setSwos(ws=>{const ex=ws.find(w=>w.id===rec.id);return ex?ws.map(w=>w.id===rec.id?{...w,...mapped}:w):[mapped,...ws];});
+      }
+      if(eventType==='DELETE') setSwos(ws=>ws.filter(w=>w.id!==oldRow.id));
     });
 
     // Inflows — payment received, cash position updates across all devices
@@ -4493,7 +4574,7 @@ export default function App(){
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"🧮 BOQ Builder"},{id:"inventory",l:"Inventory"}]},
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
@@ -4510,7 +4591,7 @@ export default function App(){
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     QS:[
@@ -4872,7 +4953,7 @@ export default function App(){
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
         <div style={{display:"flex",gap:10}}><Btn variant="danger" onClick={()=>delDeal(confirmDel)}>Yes, Delete</Btn><Btn variant="ghost" onClick={()=>setConfirmDel(null)}>Cancel</Btn></div>
@@ -8361,12 +8442,13 @@ export default function App(){
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
     if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
     if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
@@ -8537,11 +8619,12 @@ export default function App(){
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
@@ -8720,11 +8803,12 @@ export default function App(){
 
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
   }
 
@@ -13753,8 +13837,517 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
+// ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
+function SubconWOView({swos,addSWO,updateSWO,deleteSWO,wonDeals,subcons,session,role,toastEmit,poApprovers}){
+  const today=new Date().toISOString().split("T")[0];
+  const[mode,setMode]=useState("list");
+  const[editingId,setEditingId]=useState(null);
+  const[form,setForm]=useState(emptySWO());
+  const[suggestedNo,setSuggestedNo]=useState("");
+  const[submitting,setSubmitting]=useState(false);
+  const[filterProj,setFilterProj]=useState("all");
+  const[filterStat,setFilterStat]=useState("all");
+  const[expanded,setExpanded]=useState({});
+
+  const n=v=>Number(String(v).replace(/,/g,""))||0;
+  const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const canManage=role==="Manager"||role==="Procurement";
+  const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
+
+  const openNew=()=>{
+    const sug=computeNextWoNo(swos);
+    setForm({...emptySWO(),woNumber:sug,woDate:today});
+    setSuggestedNo(sug); setEditingId(null); setMode("form");
+  };
+  const openEdit=w=>{setForm({...w});setSuggestedNo(w.woNumber||"");setEditingId(w.id);setMode("form");};
+
+  // Picking a master-list subcon auto-fills their commercial terms
+  const pickSubcon=name=>setForm(p=>{
+    const m=(subcons||[]).find(s=>(s.company_name||s.companyName||"").trim().toLowerCase()===name.trim().toLowerCase());
+    if(!m) return {...p,subcontractor:name};
+    return {...p,subcontractor:name,
+      specialty:m.specialty||p.specialty||"",
+      paymentStructure:m.payment_structure||m.paymentStructure||p.paymentStructure||"",
+      paymentTerms:m.payment_terms||m.paymentTerms||p.paymentTerms||""};
+  });
+
+  const submit=async()=>{
+    if(submitting||!form.subcontractor.trim()||!form.projectId||!form.scopeOfWork.trim()||n(form.contractAmount)<=0) return;
+    const deal=wonDeals.find(d=>d.id===form.projectId);
+    const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct)};
+    if(editingId){
+      const orig=swos.find(w=>w.id===editingId);
+      if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
+      if(base.status==="Issued"&&orig&&orig.status!=="Issued") Object.assign(base,{approvedBy:session?.name||"",acctStatus:base.acctStatus||"For Accounting"});
+      updateSWO(editingId,base);
+      toastEmit&&toastEmit(`${form.woNumber||"Work order"} updated`,"success");
+      setMode("list");setEditingId(null);
+      return;
+    }
+    setSubmitting(true);
+    let woNo;
+    try{ woNo=await claimWoNumber({typed:form.woNumber,suggested:suggestedNo,swos}); }
+    finally{ setSubmitting(false); }
+    addSWO({...base,woNumber:woNo,status:woDirect?"Issued":"Pending Approval",
+      requestedBy:session?.name||"",approvedBy:woDirect?session?.name||"":"",
+      acctStatus:woDirect?"For Accounting":""});
+    toastEmit&&toastEmit(woNo!==(form.woNumber||"").trim()
+      ?`Saved as ${woNo} — ${(form.woNumber||"").trim()} was already taken`
+      :woDirect?`Work Order ${woNo} issued to ${form.subcontractor.trim()}`
+      :`Work Order ${woNo} submitted for approval`,"success");
+    setMode("list");
+  };
+
+  const printWO=w=>{
+    const fmt2=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
+    const retAmt=woRetentionAmt(w);
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Work Order — ${esc(w.woNumber)}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
+  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
+  .doc-title{font-size:20px;font-weight:800;color:#1e293b}
+  .doc-sub{font-size:11px;color:#64748b;margin-top:3px}
+  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 16px;margin-bottom:20px;background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid #e2e8f0}
+  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
+  .meta-item span{font-weight:700;font-size:13px}
+  .sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#1e293b;border-bottom:1.5px solid #1e293b;padding-bottom:4px;margin:18px 0 8px}
+  .scope{white-space:pre-wrap;font-size:12px;line-height:1.6;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;min-height:90px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;font-size:12px}
+  td.lbl{color:#64748b;width:220px}
+  td.val{font-weight:700}
+  .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b;font-size:13px}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:44px}
+  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
+  @media print{body{padding:20px}}
+</style></head><body>
+<div class="hdr">
+  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
+</div>
+<div class="meta">
+  <div class="meta-item"><label>Subcontractor</label><span>${esc(w.subcontractor)||"—"}</span></div>
+  <div class="meta-item"><label>WO Number</label><span>${esc(w.woNumber)||"—"}</span></div>
+  <div class="meta-item"><label>Date Issued</label><span>${esc(w.woDate)||"—"}</span></div>
+  <div class="meta-item"><label>Project</label><span>${esc(w.projectName)||"—"}</span></div>
+  <div class="meta-item"><label>Work Type</label><span>${esc(w.specialty)||"—"}</span></div>
+  <div class="meta-item"><label>Schedule</label><span>${esc(w.startDate)||"—"} → ${esc(w.targetEndDate)||"—"}</span></div>
+</div>
+<div class="sec-title">Scope of Work</div>
+<div class="scope">${esc(w.scopeOfWork)||"—"}</div>
+${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-height:0">${esc(w.notes)}</div>`:""}
+<div class="sec-title">Commercial Terms</div>
+<table>
+  <tr><td class="lbl">Payment Structure</td><td class="val">${esc(w.paymentStructure)||"—"}</td></tr>
+  <tr><td class="lbl">Payment Terms</td><td class="val">${esc(w.paymentTerms)||"—"}</td></tr>
+  <tr><td class="lbl">Retention${n(w.retentionPct)>0?` (${n(w.retentionPct)}%)`:""}</td><td class="val">${n(w.retentionPct)>0?"−"+fmt2(retAmt)+" held until acceptance":"None"}</td></tr>
+  <tr class="total-row"><td>CONTRACT AMOUNT</td><td>${fmt2(w.contractAmount)}</td></tr>
+</table>
+<div class="sig">
+  <div class="sig-box">Prepared by<br><br><br>_______________________<br>${esc(w.requestedBy)||""}</div>
+  <div class="sig-box">Approved by<br><br><br>_______________________<br>${esc(w.approvedBy)||""}</div>
+  <div class="sig-box">Conforme — Subcontractor<br><br><br>_______________________<br>${esc(w.subcontractor)||""}</div>
+</div>
+</body></html>`;
+    const win=window.open("","_blank","width=900,height=700");
+    if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
+  };
+
+  const filtered=swos.filter(w=>{
+    if(filterProj!=="all"&&w.projectId!==filterProj) return false;
+    if(filterStat!=="all"&&w.status!==filterStat) return false;
+    return true;
+  }).sort((a,b)=>String(b.woDate||b.createdDate||"").localeCompare(String(a.woDate||a.createdDate||"")));
+  const totalValue=filtered.filter(w=>w.status!=="Cancelled").reduce((s,w)=>s+n(w.contractAmount),0);
+
+  // ── Form (new / edit) ──────────────────────────────────────────────────────
+  if(mode==="form"){
+    const canSubmit=form.subcontractor.trim()&&form.projectId&&form.scopeOfWork.trim()&&n(form.contractAmount)>0&&!submitting;
+    const retAmt=woRetentionAmt({retentionPct:form.retentionPct,contractAmount:n(form.contractAmount)});
+    return(
+      <div>
+        <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Work Orders</button>
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>🛠️ {editingId?"Edit Work Order":"New Subcon Work Order"}</div>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
+            <Fld label="Subcontractor" required hint="From the Subcontractor Master — terms auto-fill">
+              <SearchCombo value={form.subcontractor} onChange={pickSubcon}
+                options={supplierNameOptions(subcons)} placeholder="Search or type subcontractor…"/>
+            </Fld>
+            <Fld label="Project" required>
+              <SearchSelect
+                value={form.projectId||null}
+                onChange={v=>{const d=wonDeals.find(x=>x.id===v);setForm(p=>({...p,projectId:v||"",projectName:projDisplayName(d)}));}}
+                options={projOptions(wonDeals)}
+                placeholder="Search project name or CE…"
+                noneLabel="— Select Project —"
+                noneValue=""
+              />
+            </Fld>
+            <Fld label="WO Number" required hint={editingId?undefined:"Suggested — confirmed on submit to avoid duplicates"}>
+              <Inp value={form.woNumber} onChange={e=>f("woNumber",e.target.value)} placeholder="WO-0001"/>
+            </Fld>
+            <Fld label="WO Date"><Inp type="date" value={form.woDate} onChange={e=>f("woDate",e.target.value)}/></Fld>
+            <Fld label="Work Type / Specialty"><Inp value={form.specialty} onChange={e=>f("specialty",e.target.value)} placeholder="e.g. General Works, Stone Works"/></Fld>
+            {editingId
+              ?<Fld label="Status"><Sel value={form.status} onChange={e=>f("status",e.target.value)}>{SWO_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+              :<Fld label="Approval">
+                <div style={{padding:"9px 13px",border:"1.5px dashed "+(woDirect?"#6ee7b7":"#fde68a"),borderRadius:8,fontSize:".76rem",fontWeight:700,color:woDirect?"#059669":"#b45309",background:woDirect?"#f0fdf4":"#fffbeb",boxSizing:"border-box"}}>
+                  {woDirect?"✓ Issues immediately":"⏳ Goes to Pending Approval"}
+                </div>
+              </Fld>}
+            <Fld label="Start Date"><Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/></Fld>
+            <Fld label="Target Completion"><Inp type="date" value={form.targetEndDate} onChange={e=>f("targetEndDate",e.target.value)}/></Fld>
+            <div style={{gridColumn:"1/-1"}}>
+              <Fld label="Scope of Work" required hint="What exactly the subcontractor will deliver — printed on the WO">
+                <textarea value={form.scopeOfWork} onChange={e=>f("scopeOfWork",e.target.value)} rows={5}
+                  placeholder={"e.g.\n• Supply and install kitchen modular cabinets per approved drawings rev.3\n• Includes hardware, site measurement, hauling and 2 site visits\n• Excludes countertops and electrical"}
+                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+              </Fld>
+            </div>
+            <Fld label="Contract Amount (₱)" required><Inp type="number" value={form.contractAmount} onChange={e=>f("contractAmount",e.target.value)} placeholder="0.00"/></Fld>
+            <Fld label="Retention %" hint={retAmt>0?`${fmt(retAmt)} held until acceptance`:"0 = no retention"}>
+              <Inp type="number" value={form.retentionPct} onChange={e=>f("retentionPct",e.target.value)} placeholder="e.g. 10" min={0} max={100}/>
+            </Fld>
+            <Fld label="Payment Structure"><Inp value={form.paymentStructure} onChange={e=>f("paymentStructure",e.target.value)} placeholder="e.g. 50% Start / 50% Completion"/></Fld>
+            <Fld label="Payment Terms"><Inp value={form.paymentTerms} onChange={e=>f("paymentTerms",e.target.value)} placeholder="e.g. 30 Days, Cash Basis"/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Internal notes (optional)"/></Fld></div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:16}}>
+            <button onClick={submit} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
+              {submitting?"⏳ Saving…":editingId?"Save Changes":"🛠️ Issue Work Order"}
+            </button>
+            <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── List ──────────────────────────────────────────────────────────────────
+  const WO_GRID="86px 1.1fr 1fr 86px 110px 110px 28px";
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🛠️ Subcon Work Orders</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Scope-of-work engagements with subcontractors — separate from Purchase Orders, counted in the Subcon budget line</div>
+        </div>
+        {canManage&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>}
+      </div>
+
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
+        {[
+          {l:"Total WOs",   v:filtered.length,                                          c:"#0f172a"},
+          {l:"In Progress", v:filtered.filter(w=>w.status==="In Progress").length,      c:"#f59e0b"},
+          {l:"Completed",   v:filtered.filter(w=>w.status==="Completed").length,        c:"#10b981"},
+          {l:"Total Value", v:"Php "+totalValue.toLocaleString("en-PH",{maximumFractionDigits:0}), c:"#3b82f6"},
+        ].map(({l,v,c},i)=>(
+          <div key={l} style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
+            <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+        <div style={{minWidth:240,flex:"0 1 300px"}}>
+          <SearchSelect
+            value={filterProj==="all"?null:filterProj}
+            onChange={v=>setFilterProj(v||"all")}
+            options={projOptions(wonDeals)}
+            placeholder="Search project name or CE…"
+            noneLabel="All Projects"
+            noneValue={null}
+          />
+        </div>
+        <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+          <option value="all">All Statuses</option>
+          {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {filtered.length===0?(
+        <div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No work orders yet. Hit + New Work Order to engage a subcontractor.</div>
+      ):(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+          <div style={{overflowX:"auto"}}>
+            <div style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:660}}>
+              {["WO #","Subcontractor","Project","Date","Status","Amount",""].map((h,i)=>(
+                <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i===5?"right":"left"}}>{h}</div>
+              ))}
+            </div>
+            {filtered.map((w,wi)=>{
+              const isOpen=!!expanded[w.id];
+              const retAmt=woRetentionAmt(w);
+              return(
+                <div key={w.id} style={{borderBottom:wi<filtered.length-1?"1px solid #f1f5f9":"none"}}>
+                  <div onClick={()=>setExpanded(p=>({...p,[w.id]:!p[w.id]}))}
+                    style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff",transition:"background .12s",minWidth:660}}
+                    onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
+                    onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
+                    <div style={{fontWeight:700,color:"#6366f1",fontSize:".74rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{w.woNumber||"—"}</div>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{w.subcontractor||"—"}{w.specialty&&<span style={{fontWeight:400,color:"#94a3b8",fontSize:".7rem"}}> · {w.specialty}</span>}</div>
+                    <div style={{fontSize:".74rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{w.projectName||"—"}</div>
+                    <div style={{fontSize:".7rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{w.woDate||"—"}</div>
+                    <div style={{paddingRight:6,overflow:"hidden"}}>
+                      <span style={{fontSize:".62rem",background:SWO_STATUS_CLR[w.status]+"22",color:SWO_STATUS_CLR[w.status],border:`1px solid ${SWO_STATUS_CLR[w.status]}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{w.status}</span>
+                    </div>
+                    <div style={{textAlign:"right",paddingRight:4}}>
+                      <span style={{fontWeight:700,color:"#10b981",fontSize:".78rem"}}>{fmt(w.contractAmount)}</span>
+                      {retAmt>0&&<div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>{n(w.retentionPct)}% ret.</div>}
+                    </div>
+                    <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{isOpen?"▲":"▼"}</div>
+                  </div>
+                  {isOpen&&(
+                    <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"10px 16px"}}>
+                      <div style={{fontSize:".72rem",color:"#475569",whiteSpace:"pre-wrap",background:"#fff",border:"1px solid #f1f5f9",borderRadius:8,padding:"8px 12px",marginBottom:8}}>{w.scopeOfWork||"No scope recorded."}</div>
+                      <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:".7rem",color:"#64748b",marginBottom:8}}>
+                        {(w.startDate||w.targetEndDate)&&<span>📅 {w.startDate||"—"} → {w.targetEndDate||"—"}</span>}
+                        {w.paymentStructure&&<span>💸 {w.paymentStructure}</span>}
+                        {w.paymentTerms&&<span>🗓 {w.paymentTerms}</span>}
+                        {retAmt>0&&<span style={{color:"#c2410c",fontWeight:600}}>Retention {n(w.retentionPct)}% = {fmt(retAmt)}</span>}
+                        <span>By: {w.requestedBy||"—"}</span>
+                        {w.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {w.approvedBy}</span>}
+                        {w.notes&&<span style={{fontStyle:"italic"}}>{w.notes}</span>}
+                      </div>
+                      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                        <select value={w.status} onChange={e=>{const st=e.target.value;
+                          if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
+                          updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                          {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
+                        </select>
+                        {w.acctStatus&&<span style={{fontSize:".62rem",background:(ACCT_CLR[w.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[w.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[w.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {w.acctStatus}{w.acctStatus==="Payment Ordered"&&w.paymentBank?` · ${(BANKS.find(b=>b.id===w.paymentBank)||{}).short||w.paymentBank}`:""}</span>}
+                        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
+                            <button onClick={()=>{
+                              updateSWO(w.id,{status:"Issued",approvedBy:session?.name||"",acctStatus:"For Accounting"});
+                              const aMsg=`✅ <b>Work Order Approved — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nApproved by: ${session?.name||"?"} · ${today}\n→ Sent to Accounting for documentation`;
+                              sendTelegramNotification("procurement",aMsg);
+                              sendTelegramNotification("financialcontrol",aMsg);
+                              toastEmit&&toastEmit(`${w.woNumber} approved — sent to Accounting`,"success");
+                            }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
+                          )}
+                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
+                            <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
+                          )}
+                          <button onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                          <button onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
+                          {canManage&&<button onClick={()=>{if(window.confirm("Delete "+(w.woNumber||"this work order")+"?"))deleteSWO(w.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ACCOUNTING / FINANCE — PO DOCUMENTATION & PAYMENT ORDERS ────────────────
+// Pipeline: Procurement issues → Accounting checks & takes notes → Finance
+// creates the bank-tagged Payment Order. Lives on the Accounting page.
+
+// ─── PO DOCUMENTATION QUEUE ─────────────────────────────────────────────────────
+function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role,toastEmit}){
+  const today=new Date().toISOString().split("T")[0];
+  const n=v=>Number(String(v).replace(/,/g,""))||0;
+  const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  const[stageFilter,setStageFilter]=useState("For Accounting");
+  const[open,setOpen]=useState({});
+  const[notesDraft,setNotesDraft]=useState({});
+  const[bankPick,setBankPick]=useState({});
+  const[refPick,setRefPick]=useState({});
+  const canAct=role==="Manager"||role==="Finance";
+
+  const docs=[];
+  const byPO={};
+  prs.forEach(p=>{ if(p.acctStatus){const key=p.poNumber||p.id;(byPO[key]=byPO[key]||[]).push(p);} });
+  Object.entries(byPO).forEach(([key,items])=>{
+    const gross=items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
+    const d=items.find(i=>(n(i.poDiscValue))>0);
+    const discount=poDiscountAmt(d?.poDiscType,d?.poDiscValue,gross);
+    const a=items.find(i=>i.acctStatus)||items[0];
+    docs.push({kind:"PO",key:"po:"+key,number:items[0].poNumber||"(no PO #)",payee:items[0].supplier||"—",
+      projects:[...new Set(items.map(i=>i.projectName).filter(Boolean))].join(", ")||"—",
+      amount:gross-discount,acct:a,lines:items,
+      apply:changes=>items.forEach(i=>updatePR(i.id,changes,{silent:true}))});
+  });
+  (swos||[]).forEach(w=>{
+    if(!w.acctStatus) return;
+    docs.push({kind:"WO",key:"wo:"+w.id,number:w.woNumber||"(no WO #)",payee:w.subcontractor||"—",
+      projects:w.projectName||"—",amount:n(w.contractAmount),acct:w,lines:null,retentionPct:n(w.retentionPct),
+      apply:changes=>updateSWO(w.id,changes)});
+  });
+  const STAGES=["For Accounting","Checked","Payment Ordered"];
+  docs.sort((a,b)=>STAGES.indexOf(a.acct.acctStatus)-STAGES.indexOf(b.acct.acctStatus)||String(b.number).localeCompare(String(a.number)));
+  const shown=stageFilter==="All"?docs:docs.filter(d=>d.acct.acctStatus===stageFilter);
+  const counts=Object.fromEntries(STAGES.map(s=>[s,docs.filter(d=>d.acct.acctStatus===s).length]));
+
+  const printPaymentOrder=d=>{
+    const a=d.acct;
+    const bank=BANKS.find(b=>b.id===a.paymentBank);
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const fmt2=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Payment Order — ${esc(d.number)}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
+  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
+  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
+  .doc-title{font-size:20px;font-weight:800;color:#1e293b}
+  .doc-sub{font-size:11px;color:#64748b;margin-top:3px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  td{padding:9px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;font-size:12px}
+  td.lbl{color:#64748b;width:200px}
+  td.val{font-weight:700}
+  .amount-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b;font-size:15px}
+  .trail{margin-top:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:11px;color:#475569;line-height:1.8}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:44px}
+  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
+  @media print{body{padding:20px}}
+</style></head><body>
+<div class="hdr">
+  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div style="text-align:right"><div class="doc-title">PAYMENT ORDER</div><div class="doc-sub">${esc(d.number)} · ${esc(a.paymentOrderedAt)||today}</div></div>
+</div>
+<table>
+  <tr><td class="lbl">Pay To</td><td class="val">${esc(d.payee)}</td></tr>
+  <tr><td class="lbl">For</td><td class="val">${d.kind} ${esc(d.number)} — ${esc(d.projects)}</td></tr>
+  <tr><td class="lbl">Pay From (Bank)</td><td class="val">${esc(bank?bank.name+" ("+bank.short+")":a.paymentBank||"—")}</td></tr>
+  <tr><td class="lbl">Reference</td><td class="val">${esc(a.paymentRef)||"—"}</td></tr>
+  ${d.kind==="WO"&&d.retentionPct>0?`<tr><td class="lbl">Retention (${d.retentionPct}%)</td><td class="val">−${fmt2(d.amount*d.retentionPct/100)} held until acceptance</td></tr>`:""}
+  <tr class="amount-row"><td>AMOUNT</td><td>${fmt2(d.amount)}</td></tr>
+</table>
+${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)}</div>`:""}
+<div class="trail">
+  Requested by: <b>${esc(a.requestedBy)||"—"}</b><br>
+  Approved by: <b>${esc(a.approvedBy)||"—"}</b><br>
+  Checked by Accounting: <b>${esc(a.acctCheckedBy)||"—"}</b>${a.acctCheckedAt?` · ${esc(a.acctCheckedAt)}`:""}<br>
+  Payment ordered by: <b>${esc(a.paymentOrderedBy)||"—"}</b>${a.paymentOrderedAt?` · ${esc(a.paymentOrderedAt)}`:""}
+</div>
+<div class="sig">
+  <div class="sig-box">Prepared by — Finance<br><br><br>_______________________<br>${esc(a.paymentOrderedBy)||""}</div>
+  <div class="sig-box">Approved by<br><br><br>_______________________</div>
+  <div class="sig-box">Received by — Payee<br><br><br>_______________________</div>
+</div>
+</body></html>`;
+    const win=window.open("","_blank","width=900,height=700");
+    if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
+  };
+
+  if(docs.length===0) return null;
+  return(
+    <div style={{marginBottom:22}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>🧾 PO Documentation & Payment Orders</div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {["All",...STAGES].map(s=>(
+            <button key={s} onClick={()=>setStageFilter(s)} style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${stageFilter===s?(ACCT_CLR[s]||"#3b82f6"):"#e2e8f0"}`,background:stageFilter===s?(ACCT_CLR[s]||"#3b82f6")+"18":"#fff",color:stageFilter===s?(ACCT_CLR[s]||"#3b82f6"):"#64748b",fontWeight:stageFilter===s?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".74rem"}}>
+              {s}{s!=="All"&&counts[s]>0?` (${counts[s]})`:""}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+        {shown.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:".8rem"}}>Nothing in "{stageFilter}".</div>}
+        {shown.map((d,di)=>{
+          const a=d.acct;
+          const isOpen=!!open[d.key];
+          const draft=notesDraft[d.key]!==undefined?notesDraft[d.key]:(a.acctNotes||"");
+          const bank=bankPick[d.key]!==undefined?bankPick[d.key]:(a.paymentBank||"");
+          const ref=refPick[d.key]!==undefined?refPick[d.key]:(a.paymentRef||"");
+          return(
+            <div key={d.key} style={{borderBottom:di<shown.length-1?"1px solid #f1f5f9":"none"}}>
+              <div onClick={()=>setOpen(p=>({...p,[d.key]:!p[d.key]}))}
+                style={{display:"grid",gridTemplateColumns:"40px 86px 1.2fr 1fr 130px 110px 28px",gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff"}}
+                onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
+                onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
+                <div style={{fontSize:".82rem"}}>{d.kind==="PO"?"📦":"🛠"}</div>
+                <div style={{fontWeight:700,color:"#6366f1",fontSize:".74rem"}}>{d.number}</div>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.payee}</div>
+                <div style={{fontSize:".72rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.projects}</div>
+                <div style={{paddingRight:6}}>
+                  <span style={{fontSize:".62rem",background:(ACCT_CLR[a.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[a.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[a.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{a.acctStatus}</span>
+                </div>
+                <div style={{textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",paddingRight:4}}>{fmt(d.amount)}</div>
+                <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem"}}>{isOpen?"▲":"▼"}</div>
+              </div>
+              {isOpen&&(
+                <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"10px 16px"}}>
+                  {d.lines&&(
+                    <div style={{fontSize:".7rem",color:"#64748b",marginBottom:8}}>
+                      {d.lines.map(l=><div key={l.id}>• {l.itemName} — {l.qty} {l.unit} × {fmt(n(l.actUnitCost)||n(l.estUnitCost))}</div>)}
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:".7rem",color:"#64748b",marginBottom:8}}>
+                    <span>Requested: {a.requestedBy||"—"}</span>
+                    <span>Approved: {a.approvedBy||"—"}</span>
+                    {a.acctCheckedBy&&<span style={{color:"#3b82f6",fontWeight:600}}>Checked: {a.acctCheckedBy} · {a.acctCheckedAt}</span>}
+                    {a.paymentOrderedBy&&<span style={{color:"#059669",fontWeight:600}}>Payment: {(BANKS.find(b=>b.id===a.paymentBank)||{}).short||a.paymentBank||"—"} · {a.paymentRef||"no ref"} · {a.paymentOrderedBy} · {a.paymentOrderedAt}</span>}
+                  </div>
+                  <textarea value={draft} onChange={e=>setNotesDraft(p=>({...p,[d.key]:e.target.value}))} rows={2}
+                    placeholder="Accounting notes — receipts checked, OR/SI numbers, discrepancies…"
+                    disabled={!canAct}
+                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box",background:canAct?"#fff":"#f8fafc"}}/>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginTop:8,flexWrap:"wrap"}}>
+                    {canAct&&draft!==(a.acctNotes||"")&&(
+                      <button onClick={()=>{d.apply({acctNotes:draft});toastEmit&&toastEmit("Notes saved","success");}}
+                        style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>💾 Save Notes</button>
+                    )}
+                    <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                      {canAct&&a.acctStatus==="For Accounting"&&(
+                        <button onClick={()=>{
+                          d.apply({acctStatus:"Checked",acctNotes:draft,acctCheckedBy:session?.name||"",acctCheckedAt:today});
+                          sendTelegramNotification("financialcontrol",`🧾 <b>${d.kind} ${d.number} checked by Accounting</b>\nPayee: ${d.payee}\nAmount: ${fmt(d.amount)}\nChecked by: ${session?.name||"?"}\n→ Ready for Payment Order`);
+                          toastEmit&&toastEmit(`${d.number} checked — ready for payment order`,"success");
+                        }} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Mark Checked</button>
+                      )}
+                      {canAct&&a.acctStatus==="Checked"&&(<>
+                        <select value={bank} onChange={e=>setBankPick(p=>({...p,[d.key]:e.target.value}))} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                          <option value="">— Pay from bank… —</option>
+                          {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
+                        </select>
+                        <input value={ref} onChange={e=>setRefPick(p=>({...p,[d.key]:e.target.value}))} placeholder="Cheque / ref no. (optional)"
+                          style={{width:160,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                        <button disabled={!bank} onClick={()=>{
+                          if(!bank) return;
+                          d.apply({acctStatus:"Payment Ordered",paymentBank:bank,paymentRef:ref,paymentOrderedBy:session?.name||"",paymentOrderedAt:today});
+                          const bk=(BANKS.find(b=>b.id===bank)||{}).short||bank;
+                          const pMsg=`💳 <b>Payment Order — ${d.kind} ${d.number}</b>\nPay to: ${d.payee}\nAmount: ${fmt(d.amount)}\nBank: ${bk}${ref?`\nRef: ${ref}`:""}\nBy: ${session?.name||"?"} · ${today}`;
+                          sendTelegramNotification("financialcontrol",pMsg);
+                          toastEmit&&toastEmit(`Payment order created for ${d.number} (${bk})`,"success");
+                        }} style={{background:bank?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:bank?"#fff":"#94a3b8",cursor:bank?"pointer":"not-allowed",fontFamily:"inherit",fontWeight:700}}>💳 Create Payment Order</button>
+                      </>)}
+                      {a.acctStatus==="Payment Ordered"&&(
+                        <button onClick={()=>printPaymentOrder(d)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print Payment Order</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── COSTING STUDY ────────────────────────────────────────────────────────────
+
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,role,toastEmit,suppliers}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swos,session,role,toastEmit,suppliers,poApprovers}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -14405,7 +14998,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
 }
 
 // ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit}){
+function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers,poApprovers}){
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -18376,7 +18969,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   );
 }
 
-function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit}){
+function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit,suppliers,poApprovers}){
   const[tab,setTab]=useState("Material Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
@@ -18386,7 +18979,7 @@ function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breq
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
+      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={poApprovers}/>}
       {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
