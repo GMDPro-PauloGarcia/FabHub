@@ -8006,32 +8006,95 @@ export default function App(){
           const grossMargin=totalCollected>0?Math.round(grossProfit/totalCollected*100):0;
           const collectionRate=totalBilled>0?Math.round(totalCollected/totalBilled*100):0;
           const outstanding=Math.max(0,totalBilled-totalCollected);
-          // DSO: (outstanding / (totalCollected/365)) — how many days to collect
           const dso=totalCollected>0?Math.round(outstanding/(totalCollected/365)):0;
-          // Backlog: awarded deal value minus already-billed
           const backlog=wonDeals.reduce((s,d)=>{
             const billed=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").reduce((bs,b)=>bs+Number(b.amount||0),0);
             return s+Math.max(0,Number(d.value||0)-billed);
           },0);
           const pipelineVal=deals.filter(d=>ACTIVE_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
-          // Win rate last 12 months
           const y12ago=new Date();y12ago.setFullYear(y12ago.getFullYear()-1);
           const recentDeals=deals.filter(d=>{const dt=new Date(d.createdAt||"2020-01-01");return dt>=y12ago;});
           const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>WON_STAGES.includes(d.stage)||d.stage==="14 · Completed").length/recentDeals.length*100):0;
           const avgDeal=wonDeals.length>0?Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)/wonDeals.length):0;
-          // Monthly revenue (last 6 months)
           const months6=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{y:d.getFullYear(),m:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]};});
           const monthlyRev=months6.map(({y,m})=>billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>{const d=new Date(b.invoiceDate||b.dueDate||"");return d.getFullYear()===y&&d.getMonth()===m?s+Number(b.amount||0):s;},0));
           const monthlyExp=months6.map(({y,m})=>exps.reduce((s,e)=>((e.year||cy)===y&&Number(e.month||0)===m)?s+Number(e.amount||0):s,0));
           const maxBar=Math.max(...monthlyRev,1);
-          // Top clients by collected
           const clientMap={};billings.forEach(b=>{const d=wonDeals.find(x=>x.id===b.dealId)||completedDeals.find(x=>x.id===b.dealId);if(!d)return;const k=d.client;if(!clientMap[k])clientMap[k]=0;clientMap[k]+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);});
           const topClients=Object.entries(clientMap).sort(([,a],[,b])=>b-a).slice(0,5);
-          // Unpaid payables total
           const totalPayables=payables.filter(p=>p.status==="Unpaid").reduce((s,p)=>s+Number(p.amount||0),0);
           const overduePayables=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).length;
+
+          // ── DAILY DIGEST ─────────────────────────────────────────────────
+          const overdueBillings=billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+          const unbilledProjects=wonDeals.filter(d=>billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").length===0);
+          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+
+          // Build digest alerts list
+          const digestAlerts=[];
+          if(overdueBillings.length>0) digestAlerts.push({icon:"🚨",level:"danger",text:`${overdueBillings.length} overdue invoice${overdueBillings.length!==1?"s":""} — ₱${Number(overdueBillings.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,x)=>ps+Number(x.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0)).toLocaleString("en-PH",{maximumFractionDigits:0})} uncollected`});
+          if(grossMargin<25) digestAlerts.push({icon:"📉",level:"warning",text:`Gross margin at ${grossMargin}% — below 25% target`});
+          if(dso>90) digestAlerts.push({icon:"⏳",level:"warning",text:`DSO is ${dso} days — clients are paying very slowly`});
+          if(outstanding>0) digestAlerts.push({icon:"💰",level:"info",text:`Outstanding AR: ${fmtM(outstanding)} across ${overdueBillings.length} milestone${overdueBillings.length!==1?"s":""}`});
+          if(unbilledProjects.length>0) digestAlerts.push({icon:"📋",level:"warning",text:`${unbilledProjects.length} awarded project${unbilledProjects.length!==1?"s":""} with no milestones billed yet`});
+          if(overduePayables>0) digestAlerts.push({icon:"📤",level:"warning",text:`${overduePayables} overdue payable${overduePayables!==1?"s":""} — ₱${Number(payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).reduce((s,p)=>s+Number(p.amount||0),0)).toLocaleString("en-PH",{maximumFractionDigits:0})}`});
+          if(backlog>0) digestAlerts.push({icon:"🏗",level:"info",text:`Contract backlog: ${fmtM(backlog)} in awarded work not yet billed`});
+          if(digestAlerts.length===0) digestAlerts.push({icon:"✅",level:"ok",text:"All financial indicators are on track — no alerts today."});
+
+          const sendDigest=async()=>{
+            const dateStr=now.toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+            const lines=[
+              `💼 <b>GMD Finance Daily Digest</b>`,
+              `📅 ${dateStr}`,
+              ``,
+              `📊 <b>Key Metrics</b>`,
+              `• Total Billed: ${fmtM(totalBilled)}`,
+              `• Total Collected: ${fmtM(totalCollected)} (${collectionRate}% rate)`,
+              `• Outstanding AR: ${fmtM(outstanding)}`,
+              `• Gross Margin: ${grossMargin}%`,
+              `• DSO: ${dso} days`,
+              `• Contract Backlog: ${fmtM(backlog)}`,
+              ``,
+              `🚦 <b>Alerts</b>`,
+              ...digestAlerts.map(a=>`${a.icon} ${a.text}`),
+              ``,
+              `📤 <b>Payables</b>`,
+              `• Unpaid: ${fmtM(totalPayables)}${overduePayables>0?` | ${overduePayables} overdue`:""}`,
+              ``,
+              `🏆 <b>Top Collectors</b>`,
+              ...topClients.slice(0,3).map(([c,v],i)=>`${i+1}. ${c}: ${fmtM(v)}`),
+              ``,
+              `<i>Sent from FabHub Finance · ${dateStr}</i>`,
+            ];
+            await sendTelegramNotification("financialcontrol", lines.join("\n"));
+            toastEmit("Daily digest sent to Financial Control ✅","success");
+          };
+
           return(
             <div>
+              {/* ── Daily Digest Panel ── */}
+              <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontSize:"1rem"}}>📡</span>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Finance Daily Digest</span>
+                    <span style={{fontSize:".68rem",color:"#94a3b8"}}>— {now.toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span>
+                  </div>
+                  <button onClick={sendDigest}
+                    style={{background:"#0f172a",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+                    <span>📲</span> Send to Telegram
+                  </button>
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                  {digestAlerts.map((a,i)=>(
+                    <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"6px 10px",borderRadius:7,background:a.level==="danger"?"#fef2f2":a.level==="warning"?"#fffbeb":a.level==="ok"?"#f0fdf4":"#f8fafc",border:`1px solid ${a.level==="danger"?"#fecaca":a.level==="warning"?"#fde68a":a.level==="ok"?"#bbf7d0":"#e2e8f0"}`}}>
+                      <span style={{fontSize:".85rem",flexShrink:0}}>{a.icon}</span>
+                      <span style={{fontSize:".78rem",color:a.level==="danger"?"#dc2626":a.level==="warning"?"#92400e":a.level==="ok"?"#059669":"#475569",fontWeight:a.level==="danger"||a.level==="warning"?600:400}}>{a.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Expansion Signal Banner */}
               {(()=>{
                 const signals=[];
