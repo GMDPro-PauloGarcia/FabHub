@@ -14494,6 +14494,7 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
   const[boqQuotNo,setBoqQuotNo]=useState(()=>budget.boq?.quotationNo||"");
   const[boqSecs,setBoqSecs]=useState(()=>budget.boq?.sections?.length?budget.boq.sections:BOQ_SECTIONS.map(s=>({...s,items:[]})));
   const[boqExp,setBoqExp]=useState("A");
+  const[viewMode,setViewMode]=useState("edit");
   const boqFileRef=useRef(null);
   const boqGrandTotal=boqSecs.reduce((s,sec)=>s+sec.items.reduce((ss,it)=>ss+n(it.qty)*n(it.unitCost),0),0);
   const boqVat=boqGrandTotal*0.12;const boqGrandVat=boqGrandTotal+boqVat;
@@ -14548,14 +14549,108 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
           {contractVal>0&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:".58rem",color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:".5px"}}>Contract Value</div><div style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>{fmtPHP(contractVal)}</div></div>}
           <button onClick={onClose} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"6px 14px",color:"rgba(255,255,255,.7)",cursor:"pointer",fontSize:".82rem",fontWeight:600,flexShrink:0}}>✕ Close</button>
         </div>
-        <div style={{padding:"16px 20px 20px",maxHeight:"calc(100vh - 100px)",overflowY:"auto"}}>
-          <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center",marginBottom:14,padding:"11px 14px",background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0"}}>
-            <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>BOQ Date</div><input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/></div>
-            <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Quotation No.</div><input value={boqQuotNo} onChange={e=>setBoqQuotNo(e.target.value)} placeholder="e.g. 0051" style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",width:130,outline:"none"}}/></div>
-            <button onClick={()=>boqFileRef.current?.click()} style={{marginLeft:"auto",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>⬆ Import Excel</button>
-            <input ref={boqFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={handleImport}/>
-          </div>
-          {boqSecs.map(sec=>{
+        {/* Mode toggle */}
+        <div style={{background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 20px",display:"flex",gap:4}}>
+          {[["edit","✏ Edit"],["preview","👁 Preview"]].map(([m,l])=>(
+            <button key={m} onClick={()=>setViewMode(m)} style={{background:viewMode===m?"#1e293b":"transparent",border:"none",borderRadius:7,padding:"5px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:viewMode===m?700:500,color:viewMode===m?"#fff":"#64748b",cursor:"pointer",transition:"all .15s"}}>{l}</button>
+          ))}
+        </div>
+        <div style={{padding:"16px 20px 20px",maxHeight:"calc(100vh - 130px)",overflowY:"auto"}}>
+          {/* Metadata bar — editable in edit mode, read-only in preview */}
+          {viewMode==="edit"?(
+            <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center",marginBottom:14,padding:"11px 14px",background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0"}}>
+              <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>BOQ Date</div><input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/></div>
+              <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Quotation No.</div><input value={boqQuotNo} onChange={e=>setBoqQuotNo(e.target.value)} placeholder="e.g. 0051" style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",width:130,outline:"none"}}/></div>
+              <button onClick={()=>boqFileRef.current?.click()} style={{marginLeft:"auto",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>⬆ Import Excel</button>
+              <input ref={boqFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={handleImport}/>
+            </div>
+          ):(
+            <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"center",marginBottom:14,padding:"10px 14px",background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:".82rem",color:"#475569"}}>
+              <span><b style={{color:"#0f172a"}}>{deal?.contact||deal?.client}</b></span>
+              {deal?.location&&<span>📍 {deal.location}</span>}
+              {boqDate&&<span>📅 {boqDate}</span>}
+              {boqQuotNo&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:5,padding:"2px 8px",fontWeight:700}}>Q-No: {boqQuotNo}</span>}
+              {boqGrandTotal===0&&<span style={{color:"#ef4444",fontWeight:600}}>⚠ No items yet — switch to Edit to add line items.</span>}
+            </div>
+          )}
+
+          {/* ── PREVIEW MODE ─────────────────────────────────────────── */}
+          {viewMode==="preview"&&(()=>{
+            const activeSecs=boqSecs.filter(s=>s.items.length>0);
+            if(!activeSecs.length) return <div style={{textAlign:"center",padding:"40px 0",color:"#94a3b8",fontSize:".88rem"}}>No line items yet. Switch to <b>Edit</b> to add items.</div>;
+            let globalItemNo=0;
+            return(
+              <div>
+                {/* Trade summary cards */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8,marginBottom:18}}>
+                  {activeSecs.map(sec=>{
+                    const st=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);
+                    const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
+                    return(
+                      <div key={sec.id} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${catClr}33`,padding:"11px 14px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}>
+                          <span style={{fontWeight:800,color:catClr,fontSize:".95rem"}}>{sec.id}</span>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".78rem",lineHeight:1.3}}>{sec.name}</span>
+                        </div>
+                        <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:2}}>{fmtPHP(st)}</div>
+                        <div style={{fontSize:".65rem",color:catClr,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{sec.budgetCat} · {sec.items.length} item{sec.items.length!==1?"s":""}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Full line-item table per section */}
+                {activeSecs.map(sec=>{
+                  const secTotal=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);
+                  const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
+                  return(
+                    <div key={sec.id} style={{marginBottom:14,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
+                      <div style={{background:catClr,padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <span style={{fontWeight:800,color:"#fff",fontSize:".85rem"}}>{sec.id} · {sec.name}</span>
+                        <span style={{fontSize:".7rem",color:"rgba(255,255,255,.8)",fontWeight:700,background:"rgba(255,255,255,.18)",borderRadius:4,padding:"2px 8px"}}>{sec.budgetCat}</span>
+                      </div>
+                      <div style={{overflowX:"auto"}}>
+                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:560}}>
+                          <thead>
+                            <tr style={{background:"#f8fafc"}}>
+                              {["#","Description","Qty","Unit","Unit Cost","Amount","Remarks"].map((h,hi)=>(
+                                <th key={h} style={{padding:"6px 9px",textAlign:["Qty","Unit Cost","Amount"].includes(h)?"right":"left",fontSize:".62rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sec.items.map((it,ii)=>{
+                              globalItemNo++;
+                              const amt=n(it.qty)*n(it.unitCost);
+                              return(
+                                <tr key={ii} style={{borderTop:"1px solid #f1f5f9",background:ii%2?"#fafafa":"#fff"}}>
+                                  <td style={{padding:"6px 9px",color:"#94a3b8",fontSize:".72rem",fontWeight:600,whiteSpace:"nowrap"}}>{sec.id}.{ii+1}</td>
+                                  <td style={{padding:"6px 9px",color:"#0f172a",fontWeight:500}}>{it.desc||"—"}</td>
+                                  <td style={{padding:"6px 9px",textAlign:"right",color:"#0f172a"}}>{Number(it.qty||0).toLocaleString()}</td>
+                                  <td style={{padding:"6px 9px",color:"#64748b"}}>{it.unit||""}</td>
+                                  <td style={{padding:"6px 9px",textAlign:"right",color:"#475569"}}>₱{Number(it.unitCost||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</td>
+                                  <td style={{padding:"6px 9px",textAlign:"right",fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{amt>0?"₱"+amt.toLocaleString("en-PH",{minimumFractionDigits:2}):"—"}</td>
+                                  <td style={{padding:"6px 9px",color:"#94a3b8",fontSize:".75rem",fontStyle:it.remarks?"normal":"italic"}}>{it.remarks||""}</td>
+                                </tr>
+                              );
+                            })}
+                            <tr style={{borderTop:"2px solid #e2e8f0",background:"#f1f5f9"}}>
+                              <td colSpan={5} style={{padding:"7px 9px",textAlign:"right",fontWeight:700,fontSize:".72rem",color:"#475569",textTransform:"uppercase",letterSpacing:".5px"}}>Sub-total — {sec.name}</td>
+                              <td style={{padding:"7px 9px",textAlign:"right",fontWeight:800,color:"#0f172a",whiteSpace:"nowrap"}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</td>
+                              <td/>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* ── EDIT MODE sections ──────────────────────────────────── */}
+          {viewMode==="edit"&&boqSecs.map(sec=>{
             const secTotal=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);
             const isOpen=boqExp===sec.id;const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
             return(
@@ -14597,6 +14692,7 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
               </div>
             );
           })}
+          {/* Grand total bar — shown in both modes */}
           <div style={{background:"#1e293b",borderRadius:10,padding:"14px 18px",marginTop:4,marginBottom:14,display:"flex",justifyContent:"flex-end",gap:28,flexWrap:"wrap"}}>
             {[{l:"Grand Total (ex-VAT)",v:fmtPHP(boqGrandTotal),big:false},{l:"VAT 12%",v:fmtPHP(boqVat),big:false},{l:"Grand Total w/ VAT",v:fmtPHP(boqGrandVat),big:true}].map(({l,v,big})=>(
               <div key={l} style={{textAlign:"right"}}><div style={{fontSize:".58rem",color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"1px",marginBottom:2}}>{l}</div><div style={{fontWeight:800,color:big?"#f59e0b":"rgba(255,255,255,.8)",fontSize:big?"1.1rem":".9rem"}}>{v}</div></div>
