@@ -16455,6 +16455,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[showDateEdit,setShowDateEdit]=useState(false);
   const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
+  const[pmUpdateModal,setPmUpdateModal]=useState(null);
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
@@ -16491,12 +16492,63 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   };
   const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Overdue"],none:["#94a3b8","No TAT"]};
 
+  const calcCardGrade=(deal,pc)=>{
+    if(!pc||!deal) return{score:0,grade:"F",color:"#ef4444",gcolor:"#fef2f2",breakdown:{}};
+    let score=0;
+    // ─ Completeness (40pts) ────────────────────────────────────────────────
+    const joR=jos.find(j=>j.dealId===deal.id);
+    const hasPM=!!(pc.pm1||joR?.pm1);
+    const hasDate=!!pc.targetEndDate;
+    const b=budgets[deal.id];
+    const hasBudget=b&&["Materials","Labor","Overhead","Subcon"].some(k=>Number(b[k]||0)>0);
+    const hasDesigner=!!(pc.designer||joR?.designer);
+    const hasCE=!!deal.ceNo;
+    const completeness=(hasPM?10:0)+(hasDate?12:0)+(hasBudget?10:0)+(hasDesigner?5:0)+(hasCE?3:0);
+    score+=completeness;
+    // ─ Update recency (30pts) ─────────────────────────────────────────────
+    const updates=(actLog||[]).filter(a=>a.dealId===deal.id&&a.action==="PM Update");
+    const lastUpd=updates[0];
+    let recency=0,recencyLabel="No updates yet";
+    if(lastUpd){
+      const ds=Math.ceil((today2-new Date(lastUpd.date))/86400000);
+      if(ds<=2){recency=30;recencyLabel=ds===0?"Today":ds===1?"Yesterday":`${ds}d ago`;}
+      else if(ds<=7){recency=22;recencyLabel=`${ds}d ago`;}
+      else if(ds<=14){recency=12;recencyLabel=`${ds}d ago`;}
+      else if(ds<=30){recency=5;recencyLabel=`${ds}d ago`;}
+      else{recency=0;recencyLabel=`${ds}d ago (stale)`;}
+    }
+    score+=recency;
+    // ─ Timeline health (30pts) ────────────────────────────────────────────
+    let timeline=10,timelineLabel="No target date";
+    const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
+    if(end){
+      const dl=Math.ceil((end-today2)/86400000);
+      if(dl<0){timeline=0;timelineLabel=`${Math.abs(dl)}d overdue`;}
+      else if(dl===0){timeline=5;timelineLabel="Due today";}
+      else if(dl<=7){timeline=10;timelineLabel=`${dl}d left`;}
+      else if(dl<=14){timeline=18;timelineLabel=`${dl}d left`;}
+      else if(dl<=30){timeline=24;timelineLabel=`${dl}d left`;}
+      else{timeline=30;timelineLabel=`${dl}d left`;}
+    }
+    score+=timeline;
+    // ─ Grade ─────────────────────────────────────────────────────────────
+    let grade,color,gcolor;
+    if(score>=85){grade="A+";color="#059669";gcolor="#dcfce7";}
+    else if(score>=75){grade="A";color="#10b981";gcolor="#d1fae5";}
+    else if(score>=65){grade="B";color="#3b82f6";gcolor="#dbeafe";}
+    else if(score>=50){grade="C";color="#f59e0b";gcolor="#fef3c7";}
+    else if(score>=30){grade="D";color="#f97316";gcolor="#ffedd5";}
+    else{grade="F";color="#ef4444";gcolor="#fef2f2";}
+    return{score,grade,color,gcolor,breakdown:{completeness:{earned:completeness,max:40,items:{hasPM,hasDate,hasBudget,hasDesigner,hasCE}},recency:{earned:recency,max:30,label:recencyLabel,count:updates.length},timeline:{earned:timeline,max:30,label:timelineLabel}}};
+  };
+
   const totalCards=Object.keys(pcards).length;
   const fullyDone=Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length;
   const needsAttn=wonDeals.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";}).length;
   const openBCount=(blockers||[]).filter(b=>b.status==="Open").length;
 
   return(
+    <>
     <div>
       {/* Page header */}
       <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
@@ -16576,7 +16628,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             const parentList=list.filter(d=>!d.parentDealId);
             const renderPCRow=(d,idx,total,isChild=false)=>{
               const pc=pcards[d.id];
-              const h=getHealth(d,pc);const[hc,hl]=HC[h];
+              const g=calcCardGrade(d,pc);
+              const h=getHealth(d,pc);const[hc]=HC[h];
               const joR=jos.find(j=>j.dealId===d.id);
               const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
               const pct=projPct(pc,d);
@@ -16585,7 +16638,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
               return(
                 <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
-                  style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":hc}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:720}}
+                  style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":g.color}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:720}}
                   onMouseEnter={e=>e.currentTarget.style.background=isChild?"#fef3c7":"#f8fafc"}
                   onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":"#fff"}>
                   <div style={{paddingRight:10,minWidth:0}}>
@@ -16596,7 +16649,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client}</div>
                   <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{ae==="—"?<span style={{color:"#cbd5e1"}}>—</span>:ae}</div>
                   <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{pm==="—"?<span style={{color:"#cbd5e1"}}>Unassigned</span>:pm}</div>
-                  <div><span style={{fontSize:".64rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 7px",whiteSpace:"nowrap"}}>{pct===100?"✅ Done":hl}</span></div>
+                  <div style={{lineHeight:1.2}}>
+                    <span style={{fontSize:".72rem",fontWeight:800,color:g.color,background:g.gcolor,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",letterSpacing:".3px",display:"inline-block"}}>{pct===100?"✅":g.grade}</span>
+                    <div style={{fontSize:".55rem",color:g.color,marginTop:2,paddingLeft:2,fontWeight:600}}>{g.score}pts</div>
+                  </div>
                   <div style={{fontSize:".74rem",fontWeight:dLeft!==null&&dLeft<0?700:400,color:dLeft===null?"#cbd5e1":dLeft<0?"#ef4444":dLeft<=7?"#f59e0b":"#64748b"}}>
                     {dLeft===null?"—":dLeft<0?`${Math.abs(dLeft)}d over`:`${dLeft}d left`}
                   </div>
@@ -16609,7 +16665,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{overflowX:"auto"}}>
                 {/* Table header */}
                 <div style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center",minWidth:720}}>
-                  {["Project","Client","AE","PM","Health","Due"].map((h,i)=>(
+                  {["Project","Client","AE","PM","Grade","Due"].map((h,i)=>(
                     <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
                   ))}
                 </div>
@@ -16633,6 +16689,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         (()=>{
           const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
+          const cardGrade=calcCardGrade(deal,card);
           const pi=phaseIdx(deal?.stage);
           const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
@@ -16966,6 +17023,56 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   </div>
                 )}
               </div>
+
+              {/* ── Card Grade ── */}
+              {(()=>{
+                const{score,grade,color,gcolor,breakdown}=cardGrade;
+                const{completeness,recency,timeline}=breakdown;
+                const missingItems=[];
+                if(!completeness.items.hasPM) missingItems.push("Assign a PM");
+                if(!completeness.items.hasDate) missingItems.push("Set target date");
+                if(!completeness.items.hasBudget) missingItems.push("Enter budget");
+                if(!completeness.items.hasDesigner) missingItems.push("Assign designer");
+                if(!completeness.items.hasCE) missingItems.push("Set CE number");
+                return(
+                  <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${color}44`,padding:isMobile?"12px 14px":"14px 20px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:8}}>🏅 Card Score</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                          {[
+                            {label:"Completeness",earned:completeness.earned,max:40,hint:completeness.items.hasPM&&completeness.items.hasDate&&completeness.items.hasBudget?"All filled":"Missing info",color:"#8b5cf6"},
+                            {label:"Update Recency",earned:recency.earned,max:30,hint:recency.label,color:"#0ea5e9"},
+                            {label:"Timeline",earned:timeline.earned,max:30,hint:timeline.label,color:"#f59e0b"},
+                          ].map(({label,earned,max,hint,color:c})=>(
+                            <div key={label} style={{background:"#f8fafc",borderRadius:10,padding:"10px 12px"}}>
+                              <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>{label}</div>
+                              <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                                <span style={{fontWeight:800,fontSize:"1.1rem",color:c}}>{earned}</span>
+                                <span style={{fontSize:".7rem",color:"#94a3b8"}}>/{max}</span>
+                              </div>
+                              <div style={{height:4,background:"#e2e8f0",borderRadius:2,marginTop:4,overflow:"hidden"}}>
+                                <div style={{height:"100%",width:(earned/max*100)+"%",background:c,borderRadius:2}}/>
+                              </div>
+                              <div style={{fontSize:".6rem",color:"#64748b",marginTop:3}}>{hint}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {missingItems.length>0&&(
+                          <div style={{marginTop:8,fontSize:".68rem",color:"#64748b"}}>
+                            <span style={{fontWeight:700,color:"#94a3b8"}}>To improve: </span>
+                            {missingItems.map((m,i)=><span key={i}><span style={{color:"#ef4444"}}>•</span> {m}{i<missingItems.length-1?" ":""}</span>)}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+                        <div style={{width:62,height:62,borderRadius:14,background:gcolor,border:`2.5px solid ${color}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:"1.7rem",color,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"-1px"}}>{pct===100?"✅":grade}</div>
+                        <div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>{score}/100</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* ── Project Team ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -17364,6 +17471,46 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
               </div>
 
+              {/* ── PM Updates ── */}
+              {(()=>{
+                const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date));
+                const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
+                const canPost=role==="Manager"||role==="Operations"||isPM;
+                return(
+                  <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                    <div style={{padding:"12px 18px",background:"#0ea5e9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <span style={{fontWeight:700,color:"#fff",fontSize:".84rem"}}>📝 PM Updates</span>
+                        <span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>{allProjUpdates.length} total</span>
+                        {allProjUpdates[0]&&<span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>· last: {allProjUpdates[0].date}</span>}
+                      </div>
+                      {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})}
+                        style={{background:"#fff",border:"none",borderRadius:8,padding:"5px 13px",fontFamily:"inherit",fontSize:".75rem",color:"#0ea5e9",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
+                    </div>
+                    {allProjUpdates.length===0
+                      ?<div style={{padding:"14px 18px",fontSize:".8rem",color:"#94a3b8",textAlign:"center"}}>No updates yet.{canPost&&" Be the first to post one!"}</div>
+                      :<div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
+                        {allProjUpdates.slice(0,5).map((u,i)=>{
+                          const match=u.detail?.match(/^\[([^\]]+)\]:\s*(.*)/s);
+                          const meta=match?match[1]:"";
+                          const text=match?match[2].trim():(u.detail||"");
+                          const isToday=u.date===today;
+                          return(
+                            <div key={u.id||i} style={{padding:"9px 12px",borderRadius:9,background:i===0?"#f0f9ff":"#f8fafc",border:i===0?"1.5px solid #bae6fd":"1px solid #f1f5f9"}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                                <span style={{fontSize:".65rem",fontWeight:700,color:isToday?"#0ea5e9":"#94a3b8"}}>{isToday?"Today":u.date} · {u.by}</span>
+                                {meta&&<span style={{fontSize:".6rem",color:"#8b5cf6",background:"#f5f3ff",borderRadius:4,padding:"1px 6px"}}>{meta.split("·")[0]?.trim()}</span>}
+                              </div>
+                              <div style={{fontSize:".78rem",color:"#0f172a",lineHeight:1.45}}>{text}</div>
+                            </div>
+                          );
+                        })}
+                        {allProjUpdates.length>5&&<div style={{fontSize:".68rem",color:"#94a3b8",textAlign:"center",padding:"2px 0"}}>+{allProjUpdates.length-5} older updates</div>}
+                      </div>}
+                  </div>
+                );
+              })()}
+
               {/* ── Finance Snapshot ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>💰 Finance Snapshot</div>
@@ -17393,6 +17540,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         })()
       )}
     </div>
+    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
+    </>
   );
 }
 
