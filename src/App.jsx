@@ -479,6 +479,17 @@ const PR_STATUSES  = ["Draft","Pending Approval","PO Issued","Partially Delivere
 const PR_CATS      = ["Materials","Hardware","Fixtures","Signage","Electrical","Structural","Finishing","Tools & Equipment","Subcon","Other"];
 const BUDGET_CATS  = ["Materials","Labor","Overhead","Subcon"];
 const BUDGET_CAT_CLR = {Materials:"#3b82f6",Labor:"#10b981",Overhead:"#f59e0b",Subcon:"#8b5cf6"};
+const BOQ_SECTIONS=[
+  {id:"A",name:"General Requirements",budgetCat:"Overhead"},
+  {id:"B",name:"Architectural",budgetCat:"Materials"},
+  {id:"C",name:"Electrical",budgetCat:"Materials"},
+  {id:"D",name:"Electronics",budgetCat:"Materials"},
+  {id:"E",name:"Mechanical",budgetCat:"Subcon"},
+  {id:"F",name:"Plumbing",budgetCat:"Subcon"},
+  {id:"G",name:"FDAS",budgetCat:"Subcon"},
+  {id:"H",name:"Signages",budgetCat:"Materials"},
+  {id:"I",name:"Built-Ins / Furniture",budgetCat:"Materials"},
+];
 
 const emptyPR = () => ({
   id:"", projectId:"", projectName:"",
@@ -13532,10 +13543,20 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
   const[drillCat,setDrillCat]=useState(null);
   const[showSuppliers,setShowSuppliers]=useState(false);
   const[showHistory,setShowHistory]=useState(false);
+  const[boqMode,setBoqMode]=useState(false);
+  const[boqDate,setBoqDate]=useState("");
+  const[boqQuotNo,setBoqQuotNo]=useState("");
+  const[boqSecs,setBoqSecs]=useState([]);
+  const[boqExp,setBoqExp]=useState("A");
+  const boqFileRef=useRef(null);
 
   useEffect(()=>{
     const b=budgets[selDeal]||emptyBudget();
-    setForm(b);setSaved(!!budgets[selDeal]?.savedAt);setDrillCat(null);setShowSuppliers(false);setShowHistory(false);
+    setForm(b);setSaved(!!budgets[selDeal]?.savedAt);setDrillCat(null);setShowSuppliers(false);setShowHistory(false);setBoqMode(false);
+    const sq=b.boq;
+    if(sq?.sections?.length){setBoqSecs(sq.sections);setBoqDate(sq.date||"");setBoqQuotNo(sq.quotationNo||"");}
+    else{setBoqSecs(BOQ_SECTIONS.map(s=>({...s,items:[]})));setBoqDate(new Date().toISOString().split("T")[0]);setBoqQuotNo("");}
+    setBoqExp("A");
   },[selDeal,budgets]);
 
   const f=(k,v)=>{setSaved(false);setForm(p=>({...p,[k]:v}));};
@@ -13623,6 +13644,9 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
   const linkedRelIds=selDeal?new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]):new Set();
   const linkedPRs=prs.filter(p=>linkedRelIds.has(p.projectId)&&p.status!=="Cancelled").length;
   const linkedExps=exps.filter(e=>linkedRelIds.has(e.projectId)).length;
+  const boqGrandTotal=boqSecs.reduce((s,sec)=>s+sec.items.reduce((ss,it)=>ss+Number(it.qty||0)*Number(it.unitCost||0),0),0);
+  const boqVat=boqGrandTotal*0.12;
+  const boqGrandVat=boqGrandTotal+boqVat;
 
   // Drill-down line items for selected category
   const drillData=useMemo(()=>{
@@ -13671,6 +13695,92 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
     const prev=budgets[selDeal]?.history||[];
     saveBudget(selDeal,{...form,history:[entry,...prev].slice(0,25)});
     setSaved(true);
+  };
+
+  // BOQ handlers
+  const handleApplyBoq=()=>{
+    const cats={Materials:0,Labor:0,Overhead:0,Subcon:0};
+    boqSecs.forEach(sec=>{const cat=BUDGET_CATS.includes(sec.budgetCat)?sec.budgetCat:"Materials";sec.items.forEach(it=>{cats[cat]+=Number(it.qty||0)*Number(it.unitCost||0);});});
+    const entry={changedAt:new Date().toISOString(),changedBy:session?.name||role||"User",Materials:Math.round(cats.Materials),Labor:Math.round(cats.Labor),Overhead:Math.round(cats.Overhead),Subcon:Math.round(cats.Subcon),note:"Applied from BOQ"};
+    const prev=budgets[selDeal]?.history||[];
+    const nf={...form,Materials:Math.round(cats.Materials),Labor:Math.round(cats.Labor),Overhead:Math.round(cats.Overhead),Subcon:Math.round(cats.Subcon),boq:{date:boqDate,quotationNo:boqQuotNo,sections:boqSecs},history:[entry,...prev].slice(0,25)};
+    setForm(nf);saveBudget(selDeal,nf);setSaved(true);setBoqMode(false);
+  };
+  const handleSaveBoq=()=>{
+    const nf={...form,boq:{date:boqDate,quotationNo:boqQuotNo,sections:boqSecs}};
+    setForm(nf);saveBudget(selDeal,nf);setSaved(true);
+  };
+  const handleImportBoq=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      if(!window.XLSX){alert("XLSX library not ready. Try again in a moment.");return;}
+      try{
+        const wb=window.XLSX.read(ev.target.result,{type:"array"});
+        let best=null,bestHasLetters=false;
+        for(const sn of wb.SheetNames){
+          if(sn.toUpperCase()==="BOM")continue;
+          const d=window.XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:""});
+          const has=/^[A-I]\.?\s*$/.test(d.slice(0,50).map(r=>String(r[0]||"").trim()).join("|").split("|").find(v=>/^[A-I]\.?\s*$/.test(v))||"");
+          if(!best||(has&&!bestHasLetters)){best=sn;bestHasLetters=has;}
+        }
+        if(!best){alert("No BOQ sheet found.");return;}
+        const data=window.XLSX.utils.sheet_to_json(wb.Sheets[best],{header:1,defval:""});
+        let hdrIdx=-1,qtyC=-1,unitC=-1,rateC=-1,remC=-1;
+        for(let i=0;i<Math.min(15,data.length);i++){
+          const r=data[i].map(c=>String(c).toLowerCase().trim());
+          const qi=r.findIndex(c=>c==="qty"||c==="qty.");
+          const ui=r.findIndex(c=>c==="unit");
+          if(qi>=0&&ui>=0){hdrIdx=i;qtyC=qi;unitC=ui;rateC=r.findIndex(c=>c==="rate"||c.includes("unit cost"));if(rateC<0)rateC=qi+2;remC=r.findIndex(c=>c==="remarks");break;}
+        }
+        const newSecs=BOQ_SECTIONS.map(s=>({...s,items:[]}));
+        let cur=null;
+        for(let i=(hdrIdx>=0?hdrIdx+1:0);i<data.length;i++){
+          const row=data[i];if(!row||row.every(c=>c===""))continue;
+          const f0=String(row[0]||"").trim();
+          const lm=f0.match(/^([A-I])\.?\s*$/i);
+          if(lm){
+            const lt=lm[1].toUpperCase();
+            cur=newSecs.find(s=>s.id===lt);
+            if(!cur){const ns={id:lt,name:String(row[1]||"").trim()||`Section ${lt}`,budgetCat:"Materials",items:[]};newSecs.push(ns);cur=ns;}
+            else{const sn=String(row[1]||"").trim();if(sn)cur.name=sn;}
+            continue;
+          }
+          const rs=row.join("").toLowerCase();
+          if(rs.includes("sub-total")||rs.includes("grand total")||rs.includes("vat"))continue;
+          if(!cur)continue;
+          const qty=Number(row[qtyC>=0?qtyC:4]||0);
+          const rate=Number(row[rateC>=0?rateC:6]||0);
+          if(!qty&&!rate)continue;
+          let desc="";
+          for(let ci=0;ci<Math.min(5,row.length);ci++){const cv=String(row[ci]||"").trim();if(cv&&!cv.match(/^[A-I]\.?$/i))  {desc=cv;break;}}
+          if(!desc)continue;
+          const unit=String(row[unitC>=0?unitC:5]||"lot").trim();
+          const rem=remC>=0?String(row[remC]||"").trim():"";
+          cur.items.push({desc,qty:qty||1,unit:unit||"lot",unitCost:rate,remarks:rem});
+        }
+        setBoqSecs(newSecs);
+        const first=newSecs.find(s=>s.items.length>0);if(first)setBoqExp(first.id);
+      }catch(err){alert("Error reading file: "+err.message);}
+    };
+    reader.readAsArrayBuffer(file);e.target.value="";
+  };
+  const handleBoqPrint=()=>{
+    const d_=deal;
+    const rows=boqSecs.filter(s=>s.items.length>0).map(sec=>{
+      const st=sec.items.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitCost||0),0);
+      return `<tr style="background:#f1f5f9"><td colspan="7" style="padding:5px 8px;font-weight:700">${sec.id}. ${sec.name}</td></tr>
+      ${sec.items.map(it=>`<tr><td></td><td style="padding:3px 8px">${it.desc||""}</td><td style="padding:3px 8px;text-align:right">${Number(it.qty||0).toLocaleString()}</td><td style="padding:3px 8px">${it.unit||""}</td><td style="padding:3px 8px;text-align:right">₱${Number(it.unitCost||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="padding:3px 8px;text-align:right;font-weight:600">₱${(Number(it.qty||0)*Number(it.unitCost||0)).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="padding:3px 8px;font-size:8pt;color:#555">${it.remarks||""}</td></tr>`).join("")}
+      <tr style="background:#e2e8f0"><td colspan="5" style="padding:4px 8px;text-align:right;font-weight:700;font-size:8pt">Sub-total ${sec.name}</td><td style="padding:4px 8px;text-align:right;font-weight:800">₱${st.toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td></td></tr>`;
+    }).join("");
+    const html=`<!DOCTYPE html><html><head><title>BOQ – ${d_?.contact||d_?.client||""}</title><style>body{font-family:Arial,sans-serif;font-size:10pt;margin:15mm;color:#000}h1{text-align:center;font-size:14pt;margin:0 0 6px}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1e293b;color:#fff;padding:5px 8px;font-size:8pt;text-align:left}td{border-bottom:1px solid #e2e8f0}@media print{body{margin:10mm}}</style></head><body>
+    <h1>BILL OF QUANTITIES</h1>
+    <table style="width:auto;margin-bottom:12px;font-size:9pt"><tr><td style="padding:2px 8px 2px 0"><b>Project:</b></td><td style="padding:2px 8px">${d_?.contact||d_?.client||""}</td><td style="padding:2px 8px 2px 16px"><b>Date:</b></td><td style="padding:2px 8px">${boqDate}</td></tr><tr><td style="padding:2px 8px 2px 0"><b>Location:</b></td><td style="padding:2px 8px">${d_?.location||""}</td><td style="padding:2px 8px 2px 16px"><b>Quotation No.:</b></td><td style="padding:2px 8px">${boqQuotNo}</td></tr><tr><td style="padding:2px 8px 2px 0"><b>Contractor:</b></td><td colspan="3" style="padding:2px 8px">GMD Productions Inc.</td></tr></table>
+    <table><thead><tr><th>Item No.</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Total Amount</th><th>Remarks</th></tr></thead><tbody>${rows}</tbody></table>
+    <table style="width:280px;margin-left:auto"><tr><td style="padding:4px 8px;font-weight:600">GRAND TOTAL</td><td style="padding:4px 8px;text-align:right;font-weight:700">₱${boqGrandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr><td style="padding:4px 8px">VAT 12%</td><td style="padding:4px 8px;text-align:right">₱${boqVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr style="background:#1e293b;color:#fff"><td style="padding:6px 8px;font-weight:700">GRAND TOTAL w/ VAT</td><td style="padding:6px 8px;text-align:right;font-weight:800">₱${boqGrandVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr></table>
+    <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:80px;font-size:9pt"><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Rodney E. Erpe</b><br>Quantity Surveyor, GMD Productions Inc.</div></div><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Paulo Miguel Garcia</b><br>President, GMD Productions Inc.</div></div></div>
+    <script>window.onload=()=>window.print()</script></body></html>`;
+    const w=window.open("","_blank");w.document.write(html);w.document.close();
   };
 
   // Summary KPIs across all projects
@@ -13803,6 +13913,17 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
         </div>
       </div>
 
+      {/* Tab toggle */}
+      <div style={{display:"flex",gap:4,marginBottom:16,background:"#f1f5f9",borderRadius:10,padding:4,width:"fit-content"}}>
+        <button onClick={()=>setBoqMode(false)} style={{background:!boqMode?"#fff":"transparent",border:"none",borderRadius:8,padding:"7px 18px",fontFamily:"inherit",fontSize:".82rem",fontWeight:!boqMode?700:500,color:!boqMode?"#0f172a":"#64748b",cursor:"pointer",boxShadow:!boqMode?"0 1px 4px rgba(0,0,0,.08)":"none"}}>
+          Budget Summary
+        </button>
+        <button onClick={()=>setBoqMode(true)} style={{background:boqMode?"#fff":"transparent",border:"none",borderRadius:8,padding:"7px 18px",fontFamily:"inherit",fontSize:".82rem",fontWeight:boqMode?700:500,color:boqMode?"#0f172a":"#64748b",cursor:"pointer",boxShadow:boqMode?"0 1px 4px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:6}}>
+          BOQ Builder
+          {budget.boq?.sections?.some(s=>s.items?.length>0)&&<span style={{fontSize:".6rem",background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 7px",fontWeight:700}}>saved</span>}
+        </button>
+      </div>
+
       {totalAtCompletion===0&&totalBudget>0&&linkedPRs===0&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".82rem",color:"#92400e"}}>
           ⚠️ <strong>No costs linked yet</strong> — link expenses and PRs to this project to populate actuals.
@@ -13844,6 +13965,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
         ))}
       </div>
 
+      {!boqMode&&<>
       {/* Budget table with drill-down */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
         <div style={{display:"grid",gridTemplateColumns:"150px 1fr 1fr 1fr 1fr 32px",background:"#1e293b",padding:"10px 16px",gap:10}}>
@@ -14126,6 +14248,169 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
               })}
             </div>
           )}
+        </div>
+      )}
+      </>}
+
+      {/* ── BOQ BUILDER ── */}
+      {boqMode&&(
+        <div>
+          {/* Metadata bar */}
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 16px",marginBottom:14,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:".68rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>BOQ Date</div>
+              <input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)}
+                style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none"}}/>
+            </div>
+            <div>
+              <div style={{fontSize:".68rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Quotation No.</div>
+              <input value={boqQuotNo} onChange={e=>setBoqQuotNo(e.target.value)} placeholder="e.g. 0051"
+                style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",width:140,outline:"none"}}/>
+            </div>
+            <button onClick={()=>boqFileRef.current?.click()}
+              style={{marginLeft:"auto",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#475569",cursor:"pointer",fontWeight:600}}>
+              ⬆ Import from Excel
+            </button>
+            <input ref={boqFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={handleImportBoq}/>
+          </div>
+
+          {/* Sections */}
+          {boqSecs.map(sec=>{
+            const secTotal=sec.items.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitCost||0),0);
+            const isOpen=boqExp===sec.id;
+            const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
+            return(
+              <div key={sec.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",marginBottom:8,overflow:"hidden"}}>
+                <div onClick={()=>setBoqExp(isOpen?null:sec.id)}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",cursor:"pointer",background:isOpen?"#f8faff":"#fff",borderBottom:isOpen?"1.5px solid #e2e8f0":"none",transition:"background .1s"}}>
+                  <span style={{fontWeight:800,color:catClr,fontSize:".95rem",minWidth:24,flexShrink:0}}>{sec.id}</span>
+                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",flex:1}}>{sec.name}</span>
+                  <div onClick={e=>e.stopPropagation()}>
+                    <select value={sec.budgetCat} onChange={e=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,budgetCat:e.target.value}:s))}
+                      style={{border:`1.5px solid ${catClr}44`,borderRadius:7,padding:"3px 8px",fontFamily:"inherit",fontSize:".75rem",background:`${catClr}10`,color:catClr,cursor:"pointer",outline:"none",fontWeight:700}}>
+                      {BUDGET_CATS.map(c=><option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",minWidth:130,textAlign:"right",flexShrink:0}}>
+                    {secTotal>0?fmtPHP(secTotal):<span style={{color:"#cbd5e1"}}>₱ 0.00</span>}
+                  </span>
+                  <span style={{color:"#94a3b8",fontSize:".85rem",flexShrink:0}}>{isOpen?"▲":"▼"}</span>
+                </div>
+                {isOpen&&(
+                  <div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:".82rem",minWidth:680}}>
+                      <thead>
+                        <tr style={{background:"#f8fafc"}}>
+                          {["Description","Qty","Unit","Unit Cost (₱)","Amount (₱)","Remarks",""].map(h=>(
+                            <th key={h} style={{padding:"7px 10px",textAlign:["Qty","Unit Cost (₱)","Amount (₱)"].includes(h)?"right":"left",fontSize:".62rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap",borderBottom:"1.5px solid #e2e8f0"}}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sec.items.map((it,ii)=>{
+                          const amt=Number(it.qty||0)*Number(it.unitCost||0);
+                          const upd=(field,val)=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:s.items.map((x,xi)=>xi===ii?{...x,[field]:val}:x)}:s));
+                          const cellSty={border:"none",width:"100%",fontFamily:"inherit",fontSize:".82rem",outline:"none",borderRadius:4,padding:"3px 6px",background:"transparent"};
+                          return(
+                            <tr key={ii} style={{borderTop:"1px solid #f1f5f9"}}>
+                              <td style={{padding:"4px 6px",minWidth:220}}>
+                                <input value={it.desc||""} onChange={e=>upd("desc",e.target.value)} placeholder="Item description…"
+                                  style={{...cellSty}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
+                              </td>
+                              <td style={{padding:"4px 4px",width:72}}>
+                                <input value={it.qty||""} onChange={e=>upd("qty",e.target.value)} placeholder="1"
+                                  style={{...cellSty,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
+                              </td>
+                              <td style={{padding:"4px 4px",width:72}}>
+                                <input value={it.unit||""} onChange={e=>upd("unit",e.target.value)} placeholder="lot"
+                                  style={{...cellSty}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
+                              </td>
+                              <td style={{padding:"4px 4px",width:130}}>
+                                <input value={it.unitCost||""} onChange={e=>upd("unitCost",e.target.value)} placeholder="0.00"
+                                  style={{...cellSty,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
+                              </td>
+                              <td style={{padding:"4px 10px",textAlign:"right",fontWeight:600,color:"#0f172a",whiteSpace:"nowrap",width:130}}>
+                                {amt>0?"₱"+amt.toLocaleString("en-PH",{minimumFractionDigits:2}):<span style={{color:"#cbd5e1"}}>—</span>}
+                              </td>
+                              <td style={{padding:"4px 4px",minWidth:110}}>
+                                <input value={it.remarks||""} onChange={e=>upd("remarks",e.target.value)} placeholder="optional"
+                                  style={{...cellSty,color:"#64748b",fontSize:".75rem"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
+                              </td>
+                              <td style={{padding:"4px 8px",width:28,textAlign:"center"}}>
+                                <button onClick={()=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:s.items.filter((_,xi)=>xi!==ii)}:s))}
+                                  style={{background:"none",border:"none",cursor:"pointer",color:"#ef4444",fontSize:"1rem",lineHeight:1,padding:0}}>×</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {/* Add row */}
+                        <tr style={{borderTop:"1px solid #f1f5f9",background:"#fafafa"}}>
+                          <td colSpan={7} style={{padding:"8px 10px"}}>
+                            <button onClick={()=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:[...s.items,{desc:"",qty:1,unit:"lot",unitCost:0,remarks:""}]}:s))}
+                              style={{background:"none",border:"1.5px dashed #cbd5e1",borderRadius:7,padding:"5px 18px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>
+                              + Add Item
+                            </button>
+                          </td>
+                        </tr>
+                        {/* Section subtotal */}
+                        {sec.items.length>0&&(
+                          <tr style={{borderTop:"1.5px solid #e2e8f0",background:"#f1f5f9"}}>
+                            <td colSpan={4} style={{padding:"7px 10px",fontWeight:700,textAlign:"right",fontSize:".72rem",color:"#475569",textTransform:"uppercase",letterSpacing:".5px"}}>
+                              Sub-total {sec.name}
+                            </td>
+                            <td style={{padding:"7px 10px",textAlign:"right",fontWeight:800,color:"#0f172a"}}>
+                              ₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}
+                            </td>
+                            <td colSpan={2}/>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Grand Total bar */}
+          <div style={{background:"#1e293b",borderRadius:12,padding:"16px 20px",marginTop:4,marginBottom:16,display:"flex",justifyContent:"flex-end",gap:32,flexWrap:"wrap"}}>
+            {[
+              {l:"Grand Total (ex-VAT)",v:fmtPHP(boqGrandTotal),big:false},
+              {l:"VAT 12%",v:fmtPHP(boqVat),big:false},
+              {l:"Grand Total w/ VAT",v:fmtPHP(boqGrandVat),big:true},
+            ].map(({l,v,big})=>(
+              <div key={l} style={{textAlign:"right"}}>
+                <div style={{fontSize:".6rem",color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"1px",marginBottom:3}}>{l}</div>
+                <div style={{fontWeight:800,color:big?"#f59e0b":"rgba(255,255,255,.85)",fontSize:big?"1.15rem":".95rem"}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {boqGrandTotal>0&&contractVal>0&&(
+            <div style={{fontSize:".78rem",color:boqGrandTotal/contractVal>0.85?"#ef4444":"#059669",fontWeight:600,marginBottom:12,textAlign:"right"}}>
+              {boqGrandTotal/contractVal>0.85
+                ?`⚠️ BOQ cost (ex-VAT) = ${Math.round(boqGrandTotal/contractVal*100)}% of contract value — thin margin`
+                :`✓ BOQ (ex-VAT) at ${Math.round(boqGrandTotal/contractVal*100)}% of contract value`}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+            <button onClick={handleApplyBoq}
+              style={{background:"#0f172a",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
+              ✓ Apply to Budget
+            </button>
+            <button onClick={handleSaveBoq}
+              style={{background:"#3b82f6",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
+              Save BOQ
+            </button>
+            <button onClick={handleBoqPrint}
+              style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#475569",cursor:"pointer"}}>
+              🖨 Print / Export PDF
+            </button>
+            <span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:"auto"}}>
+              Apply rolls BOQ section totals into the budget. Save BOQ stores it without changing budget numbers.
+            </span>
+          </div>
         </div>
       )}
     </div>
