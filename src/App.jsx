@@ -14593,6 +14593,7 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
       reader.onload=async ev=>{
         try{
           if(!window.pdfjsLib){setFpError("PDF.js not loaded — try refreshing the page.");setFpAnalyzing(false);return;}
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
           const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise;
           const page=await pdf.getPage(1);
           const vp=page.getViewport({scale:2});
