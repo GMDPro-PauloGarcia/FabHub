@@ -354,6 +354,14 @@ const emptyPR = () => ({
   notes:"", createdDate:"",
 });
 
+const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
+  if(role==="Manager") return true;
+  if(role!=="Procurement"||!sessionName) return false;
+  const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(list.length) return list.includes(sessionName.trim().toLowerCase());
+  return sessionName!==(requestedBy||"");
+};
+
 const swoToSb=r=>({
   id:r.id, wo_number:r.woNumber||"", deal_id:r.projectId||r.dealId||null,
   project_name:r.projectName||"", subcontractor:r.subcontractor||"",
