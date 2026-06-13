@@ -14495,6 +14495,9 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
   const[boqSecs,setBoqSecs]=useState(()=>budget.boq?.sections?.length?budget.boq.sections:BOQ_SECTIONS.map(s=>({...s,items:[]})));
   const[boqExp,setBoqExp]=useState("A");
   const[viewMode,setViewMode]=useState("edit");
+  const[showGenForm,setShowGenForm]=useState(false);
+  const[genParams,setGenParams]=useState({area:"",type:"retail",finish:"standard"});
+  const[genBanner,setGenBanner]=useState(null);
   const boqFileRef=useRef(null);
   const boqGrandTotal=boqSecs.reduce((s,sec)=>s+sec.items.reduce((ss,it)=>ss+n(it.qty)*n(it.unitCost),0),0);
   const boqVat=boqGrandTotal*0.12;const boqGrandVat=boqGrandTotal+boqVat;
@@ -14533,6 +14536,81 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
       }catch(err){alert("Error: "+err.message);}
     };reader.readAsArrayBuffer(file);e.target.value="";
   };
+  const BOQ_RATES={
+    kiosk:{
+      basic:   {mob:600,  tempFac:20000,cleaning:150,floor:2200,ceil:1800,wall:4000,paint:250,elec:2800,elec2:600, hvac:3500,plumb:0,   fdas:700, sign:50000, builtin:7000},
+      standard:{mob:700,  tempFac:25000,cleaning:180,floor:2800,ceil:2200,wall:5000,paint:320,elec:3200,elec2:900, hvac:4200,plumb:0,   fdas:900, sign:80000, builtin:10000},
+      premium: {mob:1000, tempFac:30000,cleaning:220,floor:4500,ceil:3500,wall:7500,paint:480,elec:4500,elec2:1400,hvac:6000,plumb:0,   fdas:1200,sign:150000,builtin:16000},
+    },
+    retail:{
+      basic:   {mob:700,  tempFac:25000,cleaning:160,floor:2500,ceil:2000,wall:4200,paint:280,elec:3000,elec2:700, hvac:4000,plumb:800, fdas:800, sign:80000, builtin:7000},
+      standard:{mob:900,  tempFac:30000,cleaning:200,floor:3200,ceil:2500,wall:5200,paint:380,elec:3500,elec2:1100,hvac:5000,plumb:1200,fdas:1000,sign:120000,builtin:10000},
+      premium: {mob:1300, tempFac:40000,cleaning:260,floor:5500,ceil:4000,wall:7800,paint:580,elec:5000,elec2:1800,hvac:7000,plumb:2000,fdas:1400,sign:200000,builtin:15000},
+    },
+    office:{
+      basic:   {mob:600,  tempFac:20000,cleaning:140,floor:2000,ceil:1800,wall:3500,paint:240,elec:2800,elec2:1000,hvac:3800,plumb:600, fdas:700, sign:30000, builtin:5500},
+      standard:{mob:800,  tempFac:25000,cleaning:180,floor:2800,ceil:2200,wall:4500,paint:340,elec:3500,elec2:1500,hvac:4800,plumb:1000,fdas:900, sign:50000, builtin:8500},
+      premium: {mob:1200, tempFac:35000,cleaning:240,floor:5000,ceil:3800,wall:7000,paint:550,elec:5000,elec2:2500,hvac:7000,plumb:1800,fdas:1300,sign:100000,builtin:14000},
+    },
+    fnb:{
+      basic:   {mob:800,  tempFac:28000,cleaning:180,floor:2800,ceil:2200,wall:5000,paint:340,elec:3500,elec2:800, hvac:5000,plumb:2800,fdas:900, sign:60000, builtin:8500},
+      standard:{mob:1100, tempFac:35000,cleaning:220,floor:3800,ceil:3000,wall:6500,paint:460,elec:4500,elec2:1200,hvac:6500,plumb:4200,fdas:1100,sign:100000,builtin:12000},
+      premium: {mob:1500, tempFac:50000,cleaning:280,floor:6000,ceil:5000,wall:9000,paint:680,elec:6500,elec2:2000,hvac:9000,plumb:6500,fdas:1600,sign:180000,builtin:19000},
+    },
+  };
+  function generateBOQ(area,type,finish){
+    const sqm=Math.max(1,Number(area)||0);
+    const r=(BOQ_RATES[type]||BOQ_RATES.retail)[finish]||BOQ_RATES.retail.standard;
+    const wallSqm=Math.round(Math.sqrt(sqm)*4*3);
+    const days=Math.max(30,Math.round(sqm*0.5));
+    const P=v=>`₱${Number(v).toLocaleString()}`;
+    const note=(qty,unit,rate,label)=>`${qty.toLocaleString()} ${unit} × ${P(rate)} ${label}`;
+    const uid=()=>Math.random().toString(36).slice(2,9);
+    const typeLabel={kiosk:"kiosk",retail:"retail fit-out",office:"office",fnb:"F&B"}[type]||type;
+    const finLabel=finish;
+    return BOQ_SECTIONS.map(s=>{
+      let items=[];
+      switch(s.id){
+        case"A":items=[
+          {id:uid(),desc:"Mobilization & site preparation",qty:sqm,unit:"sqm",unitCost:r.mob,remarks:"",note:note(sqm,"sqm",r.mob,`[mobilization rate — ${finLabel} ${typeLabel}]`)},
+          {id:uid(),desc:"Temporary facilities (barricades, site boards)",qty:1,unit:"lot",unitCost:r.tempFac,remarks:"",note:`1 lot × ${P(r.tempFac)} [fixed allowance — ${finLabel} ${typeLabel}]`},
+          {id:uid(),desc:"Safety officer",qty:days,unit:"day",unitCost:1200,remarks:"",note:note(days,"days",1200,`[est. ${days}-day project from ${sqm} sqm]`)},
+          {id:uid(),desc:"Site clearing & final cleaning",qty:sqm,unit:"sqm",unitCost:r.cleaning,remarks:"",note:note(sqm,"sqm",r.cleaning,`[cleaning rate — ${finLabel}]`)},
+        ];break;
+        case"B":items=[
+          {id:uid(),desc:"Flooring works",qty:sqm,unit:"sqm",unitCost:r.floor,remarks:"",note:note(sqm,"sqm",r.floor,`[${finLabel} floor rate — ${typeLabel}]`)},
+          {id:uid(),desc:"Ceiling works",qty:sqm,unit:"sqm",unitCost:r.ceil,remarks:"",note:note(sqm,"sqm",r.ceil,`[${finLabel} ceiling rate — ${typeLabel}]`)},
+          {id:uid(),desc:"Wall cladding / partitions",qty:wallSqm,unit:"sqm",unitCost:r.wall,remarks:"",note:note(wallSqm,"sqm",r.wall,`[est. wall area: √${sqm}×4 sides×3m H — ${finLabel}]`)},
+          {id:uid(),desc:"Painting works",qty:wallSqm,unit:"sqm",unitCost:r.paint,remarks:"",note:note(wallSqm,"sqm",r.paint,`[${finLabel} paint rate]`)},
+        ];break;
+        case"C":items=[
+          {id:uid(),desc:"Power & lighting works",qty:sqm,unit:"sqm",unitCost:r.elec,remarks:"",note:note(sqm,"sqm",r.elec,`[${finLabel} electrical rate — ${typeLabel}]`)},
+        ];break;
+        case"D":items=[
+          {id:uid(),desc:"Data / CCTV / AV works",qty:sqm,unit:"sqm",unitCost:r.elec2,remarks:"",note:note(sqm,"sqm",r.elec2,`[${finLabel} electronics rate — ${typeLabel}]`)},
+        ];break;
+        case"E":items=[
+          {id:uid(),desc:"HVAC / airconditioning works",qty:sqm,unit:"sqm",unitCost:r.hvac,remarks:"",note:note(sqm,"sqm",r.hvac,`[${finLabel} mechanical rate — ${typeLabel}]`)},
+        ];break;
+        case"F":items=r.plumb>0?[
+          {id:uid(),desc:"Plumbing works",qty:sqm,unit:"sqm",unitCost:r.plumb,remarks:"",note:note(sqm,"sqm",r.plumb,`[${finLabel} plumbing rate — ${typeLabel}]`)},
+        ]:[
+          {id:uid(),desc:"Plumbing works",qty:1,unit:"lot",unitCost:0,remarks:"N/A — adjust if required",note:`Set ₱0 — kiosk typically no plumbing; override if needed`},
+        ];break;
+        case"G":items=[
+          {id:uid(),desc:"Fire detection & alarm system",qty:sqm,unit:"sqm",unitCost:r.fdas,remarks:"",note:note(sqm,"sqm",r.fdas,`[${finLabel} FDAS rate]`)},
+        ];break;
+        case"H":items=[
+          {id:uid(),desc:"Main signage works",qty:1,unit:"lot",unitCost:r.sign,remarks:"",note:`1 lot × ${P(r.sign)} [${finLabel} signage allowance — ${typeLabel}]`},
+        ];break;
+        case"I":items=[
+          {id:uid(),desc:"Custom built-ins / furniture",qty:sqm,unit:"sqm",unitCost:r.builtin,remarks:"",note:note(sqm,"sqm",r.builtin,`[${finLabel} millwork rate — ${typeLabel}]`)},
+        ];break;
+        default:items=[];
+      }
+      return{...s,items};
+    });
+  }
   const handlePrint=()=>{
     const rows=boqSecs.filter(s=>s.items.length>0).map(sec=>{const st=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);return`<tr style="background:#f1f5f9"><td colspan="7" style="padding:5px 8px;font-weight:700">${sec.id}. ${sec.name}</td></tr>${sec.items.map(it=>`<tr><td></td><td style="padding:3px 8px">${it.desc||""}</td><td style="text-align:right;padding:3px 8px">${Number(it.qty||0).toLocaleString()}</td><td style="padding:3px 8px">${it.unit||""}</td><td style="text-align:right;padding:3px 8px">₱${Number(it.unitCost||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="text-align:right;padding:3px 8px;font-weight:600">₱${(n(it.qty)*n(it.unitCost)).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="padding:3px 8px;font-size:8pt;color:#555">${it.remarks||""}</td></tr>`).join("")}<tr style="background:#e2e8f0"><td colspan="5" style="text-align:right;padding:4px 8px;font-weight:700;font-size:8pt">Sub-total ${sec.name}</td><td style="text-align:right;padding:4px 8px;font-weight:800">₱${st.toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td></td></tr>`;}).join("");
     const html=`<!DOCTYPE html><html><head><title>BOQ – ${deal?.contact||deal?.client||""}</title><style>body{font-family:Arial,sans-serif;font-size:10pt;margin:15mm}h1{text-align:center;font-size:14pt;margin:0 0 6px}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1e293b;color:#fff;padding:5px 8px;font-size:8pt;text-align:left}td{border-bottom:1px solid #e2e8f0}@media print{body{margin:10mm}}</style></head><body><h1>BILL OF QUANTITIES</h1><table style="width:auto;font-size:9pt;margin-bottom:12px"><tr><td style="padding:2px 8px 2px 0"><b>Project:</b></td><td>${deal?.contact||deal?.client||""}</td><td style="padding:2px 8px 2px 16px"><b>Date:</b></td><td>${boqDate}</td></tr><tr><td><b>Location:</b></td><td>${deal?.location||""}</td><td style="padding:2px 8px 2px 16px"><b>Quotation No.:</b></td><td>${boqQuotNo}</td></tr><tr><td><b>Contractor:</b></td><td colspan="3">GMD Productions Inc.</td></tr></table><table><thead><tr><th>Item No.</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Total Amount</th><th>Remarks</th></tr></thead><tbody>${rows}</tbody></table><table style="width:280px;margin-left:auto"><tr><td style="padding:4px 8px;font-weight:600">GRAND TOTAL</td><td style="text-align:right;padding:4px 8px;font-weight:700">₱${boqGrandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr><td style="padding:4px 8px">VAT 12%</td><td style="text-align:right;padding:4px 8px">₱${boqVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr style="background:#1e293b;color:#fff"><td style="padding:6px 8px;font-weight:700">GRAND TOTAL w/ VAT</td><td style="text-align:right;padding:6px 8px;font-weight:800">₱${boqGrandVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr></table><div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:80px;font-size:9pt"><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Rodney E. Erpe</b><br>Quantity Surveyor, GMD Productions Inc.</div></div><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Paulo Miguel Garcia</b><br>President, GMD Productions Inc.</div></div></div><script>window.onload=()=>window.print()</script></body></html>`;
@@ -14562,6 +14640,7 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
               <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>BOQ Date</div><input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/></div>
               <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Quotation No.</div><input value={boqQuotNo} onChange={e=>setBoqQuotNo(e.target.value)} placeholder="e.g. 0051" style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",width:130,outline:"none"}}/></div>
               <button onClick={()=>boqFileRef.current?.click()} style={{marginLeft:"auto",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>⬆ Import Excel</button>
+              <button onClick={()=>setShowGenForm(g=>!g)} style={{background:showGenForm?"#7c3aed":"#f5f3ff",border:"1.5px solid #c4b5fd",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:showGenForm?"#fff":"#7c3aed",cursor:"pointer",fontWeight:600}}>✨ Generate BOQ</button>
               <input ref={boqFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={handleImport}/>
             </div>
           ):(
@@ -14574,6 +14653,54 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
             </div>
           )}
 
+          {/* ── GENERATE FORM ─────────────────────────────────────────── */}
+          {viewMode==="edit"&&showGenForm&&(
+            <div style={{background:"#f5f3ff",border:"1.5px solid #c4b5fd",borderRadius:10,padding:"14px 16px",marginBottom:12}}>
+              <div style={{fontWeight:700,color:"#7c3aed",fontSize:".82rem",marginBottom:10}}>✨ Generate BOQ from parameters</div>
+              <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-end"}}>
+                <div>
+                  <div style={{fontSize:".62rem",color:"#7c3aed",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Floor Area (sqm)</div>
+                  <input type="number" value={genParams.area} onChange={e=>setGenParams(p=>({...p,area:e.target.value}))} placeholder="e.g. 150" style={{border:"1.5px solid #c4b5fd",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",width:110,outline:"none"}}/>
+                </div>
+                <div>
+                  <div style={{fontSize:".62rem",color:"#7c3aed",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Project Type</div>
+                  <select value={genParams.type} onChange={e=>setGenParams(p=>({...p,type:e.target.value}))} style={{border:"1.5px solid #c4b5fd",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",background:"#fff",color:"#0f172a"}}>
+                    <option value="kiosk">Kiosk</option>
+                    <option value="retail">Retail Fit-out</option>
+                    <option value="office">Office Fit-out</option>
+                    <option value="fnb">F&B / Restaurant</option>
+                  </select>
+                </div>
+                <div>
+                  <div style={{fontSize:".62rem",color:"#7c3aed",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Finish Level</div>
+                  <select value={genParams.finish} onChange={e=>setGenParams(p=>({...p,finish:e.target.value}))} style={{border:"1.5px solid #c4b5fd",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",background:"#fff",color:"#0f172a"}}>
+                    <option value="basic">Basic</option>
+                    <option value="standard">Standard</option>
+                    <option value="premium">Premium</option>
+                  </select>
+                </div>
+                <div style={{display:"flex",gap:8,marginLeft:"auto"}}>
+                  <button onClick={()=>setShowGenForm(false)} style={{background:"#fff",border:"1.5px solid #c4b5fd",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",cursor:"pointer",fontWeight:600}}>Cancel</button>
+                  <button onClick={()=>{
+                    if(!genParams.area||Number(genParams.area)<=0){alert("Enter a valid floor area.");return;}
+                    const generated=generateBOQ(genParams.area,genParams.type,genParams.finish);
+                    setBoqSecs(generated);
+                    const first=generated.find(s=>s.items.length>0);if(first)setBoqExp(first.id);
+                    const tl={kiosk:"Kiosk",retail:"Retail Fit-out",office:"Office Fit-out",fnb:"F&B / Restaurant"}[genParams.type]||genParams.type;
+                    const fl={basic:"Basic",standard:"Standard",premium:"Premium"}[genParams.finish]||genParams.finish;
+                    setGenBanner(`Generated from: ${genParams.area} sqm · ${tl} · ${fl} finish — review and adjust all line items below.`);
+                    setShowGenForm(false);
+                  }} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✨ Generate</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {viewMode==="edit"&&genBanner&&(
+            <div style={{background:"#fffbeb",border:"1.5px solid #fbbf24",borderRadius:8,padding:"8px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+              <span style={{fontSize:".78rem",color:"#92400e",fontWeight:600}}>✨ {genBanner}</span>
+              <button onClick={()=>setGenBanner(null)} style={{background:"none",border:"none",cursor:"pointer",color:"#b45309",fontSize:".85rem",fontWeight:700,padding:"2px 6px",flexShrink:0}}>✕</button>
+            </div>
+          )}
           {/* ── PREVIEW MODE ─────────────────────────────────────────── */}
           {viewMode==="preview"&&(()=>{
             const activeSecs=boqSecs.filter(s=>s.items.length>0);
@@ -14625,7 +14752,7 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
                               return(
                                 <tr key={ii} style={{borderTop:"1px solid #f1f5f9",background:ii%2?"#fafafa":"#fff"}}>
                                   <td style={{padding:"6px 9px",color:"#94a3b8",fontSize:".72rem",fontWeight:600,whiteSpace:"nowrap"}}>{sec.id}.{ii+1}</td>
-                                  <td style={{padding:"6px 9px",color:"#0f172a",fontWeight:500}}>{it.desc||"—"}</td>
+                                  <td style={{padding:"6px 9px",color:"#0f172a",fontWeight:500}}><div>{it.desc||"—"}</div>{it.note&&<div style={{fontSize:".62rem",color:"#94a3b8",marginTop:2}}>{it.note}</div>}</td>
                                   <td style={{padding:"6px 9px",textAlign:"right",color:"#0f172a"}}>{Number(it.qty||0).toLocaleString()}</td>
                                   <td style={{padding:"6px 9px",color:"#64748b"}}>{it.unit||""}</td>
                                   <td style={{padding:"6px 9px",textAlign:"right",color:"#475569"}}>₱{Number(it.unitCost||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</td>
@@ -14673,7 +14800,7 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
                           const cs={border:"none",width:"100%",fontFamily:"inherit",fontSize:".8rem",outline:"none",borderRadius:3,padding:"3px 5px",background:"transparent"};
                           return(
                             <tr key={ii} style={{borderTop:"1px solid #f1f5f9"}}>
-                              <td style={{padding:"3px 5px",minWidth:200}}><input value={it.desc||""} onChange={e=>upd("desc",e.target.value)} placeholder="Description…" style={cs} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
+                              <td style={{padding:"3px 5px",minWidth:200}}><input value={it.desc||""} onChange={e=>upd("desc",e.target.value)} placeholder="Description…" style={cs} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>{it.note&&<div style={{fontSize:".6rem",color:"#94a3b8",paddingLeft:5,lineHeight:1.4,marginTop:1}}>{it.note}</div>}</td>
                               <td style={{padding:"3px 4px",width:68}}><input value={it.qty||""} onChange={e=>upd("qty",e.target.value)} style={{...cs,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
                               <td style={{padding:"3px 4px",width:68}}><input value={it.unit||""} onChange={e=>upd("unit",e.target.value)} style={cs} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
                               <td style={{padding:"3px 4px",width:120}}><input value={it.unitCost||""} onChange={e=>upd("unitCost",e.target.value)} style={{...cs,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
