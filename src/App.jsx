@@ -2524,6 +2524,7 @@ export default function App(){
   const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[swos,       setSwos]      = useState([]);  // Subcon work orders
+  const[ceReqs,     setCeReqs]    = useState([]);  // CE/QS cost estimation requests
   const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""});
   const[customClients,setCustomClients]= useState([]);
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
@@ -2770,6 +2771,7 @@ export default function App(){
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(cs);idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(ss);idbE.push([KEYS.swatches,ss]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(ws);idbE.push([KEYS.swos,ws]);}
+    if(isSupabaseReady()){sbList('ce_requests',{order:'created_at',limit:500}).then(rows=>{if(rows?.length)setCeReqs(rows.map(r=>({id:r.id,clientName:r.client_name,projectName:r.project_name,location:r.location,projectType:r.project_type,priority:r.priority,status:r.status,submittedBy:r.submitted_by,targetDeadline:r.target_deadline,submissionDeadline:r.submission_deadline,targetBudget:r.target_budget,targetMargin:r.target_margin,plansLink:r.plans_link,skpLink:r.skp_link,scheduleOfFinish:r.schedule_of_finish,notes:r.notes,ceNotes:r.ce_notes,bidAmount:r.bid_amount,bidMarginPct:r.bid_margin_pct,awarded:r.awarded,awardDate:r.award_date,dealId:r.deal_id,createdAt:r.created_at})));}).catch(()=>{});}
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes,...(b.boq_data?{boq:b.boq_data}:{})}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
@@ -3020,6 +3022,14 @@ export default function App(){
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
   const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
   const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
+  const addCEReq=useCallback(async(rec)=>{
+    const row=await sbInsert('ce_requests',rec);
+    if(row)setCeReqs(p=>[...p,{id:row.id,clientName:row.client_name,projectName:row.project_name,location:row.location,projectType:row.project_type,priority:row.priority,status:row.status,submittedBy:row.submitted_by,targetDeadline:row.target_deadline,submissionDeadline:row.submission_deadline,targetBudget:row.target_budget,targetMargin:row.target_margin,plansLink:row.plans_link,skpLink:row.skp_link,scheduleOfFinish:row.schedule_of_finish,notes:row.notes,ceNotes:row.ce_notes,bidAmount:row.bid_amount,bidMarginPct:row.bid_margin_pct,awarded:row.awarded,awardDate:row.award_date,dealId:row.deal_id,createdAt:row.created_at}]);
+  },[]);
+  const updateCEReq=useCallback(async(id,updates)=>{
+    await sbUpdate('ce_requests',id,updates);
+    setCeReqs(p=>p.map(r=>{if(r.id!==id)return r;return{...r,...(updates.status!==undefined?{status:updates.status}:{}),clientName:updates.client_name??r.clientName,projectName:updates.project_name??r.projectName,location:updates.location??r.location,projectType:updates.project_type??r.projectType,priority:updates.priority??r.priority,submittedBy:updates.submitted_by??r.submittedBy,targetDeadline:updates.target_deadline??r.targetDeadline,submissionDeadline:updates.submission_deadline??r.submissionDeadline,targetBudget:updates.target_budget??r.targetBudget,targetMargin:updates.target_margin??r.targetMargin,plansLink:updates.plans_link??r.plansLink,skpLink:updates.skp_link??r.skpLink,scheduleOfFinish:updates.schedule_of_finish??r.scheduleOfFinish,notes:updates.notes??r.notes,ceNotes:updates.ce_notes??r.ceNotes,bidAmount:updates.bid_amount??r.bidAmount,bidMarginPct:updates.bid_margin_pct??r.bidMarginPct,awarded:updates.awarded??r.awarded,awardDate:updates.award_date??r.awardDate};}));
+  },[]);
 
   const addInventoryItem=(item)=>upInventory(iv=>{
     const rec={...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
@@ -4820,13 +4830,14 @@ export default function App(){
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"}]},
+      {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
@@ -4839,9 +4850,10 @@ export default function App(){
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     QS:[
-      {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
+      {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
+      {group:"CE / QS",  items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"Projects", items:[{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"Projects", items:[{id:"projects",l:"📋 Projects"}]},
     ],
     Operations:[
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
@@ -6976,7 +6988,7 @@ export default function App(){
   ):(
     <ConstructionCalendar
       wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
-      prs={prs} billings={billings} drfs={drfs}
+      prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
     />
   );
@@ -9184,7 +9196,7 @@ export default function App(){
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
-    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -9760,6 +9772,8 @@ export default function App(){
 
   if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
+
+  if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
 
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
@@ -14518,6 +14532,316 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
             <span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:"auto"}}>
               Apply rolls BOQ section totals into the budget. Save BOQ stores it without changing budget numbers.
             </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── CE/QS QUEUE VIEW ────────────────────────────────────────────────────────
+function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
+  const n=v=>Number(String(v||0).replace(/,/g,""))||0;
+  const fmtPHP2=v=>v?("₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0})):"—";
+  const[tab,setTab]=React.useState("queue");
+  const[showForm,setShowForm]=React.useState(false);
+  const[editId,setEditId]=React.useState(null);
+  const[detailId,setDetailId]=React.useState(null);
+  const isQS=["Manager","QS"].includes(role);
+  const isSales=["Manager","Sales"].includes(role);
+  const TYPES={kiosk:"Kiosk",retail:"Retail Fit-out",office:"Office",fnb:"F&B / Restaurant",signage:"Signage",event:"Event / Activation",repair:"Repair / Refurb",other:"Other"};
+  const PRI_CLR={High:"#ef4444",Normal:"#3b82f6",Low:"#94a3b8"};
+  const STATUS_CLR={Pending:"#f59e0b",Ongoing:"#3b82f6",Done:"#10b981"};
+  const AWARDED_CLR={Won:"#10b981",Lost:"#ef4444",Pending:"#94a3b8"};
+  const emptyForm=()=>({clientName:"",projectName:"",location:"",projectType:"retail",priority:"Normal",targetDeadline:"",submissionDeadline:"",targetBudget:"",targetMargin:"",plansLink:"",skpLink:"",scheduleOfFinish:"",notes:"",ceNotes:"",bidAmount:"",bidMarginPct:"",awarded:"Pending",awardDate:""});
+  const[form,setForm]=React.useState(emptyForm());
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const openNew=()=>{setForm(emptyForm());setEditId(null);setShowForm(true);};
+  const openEdit=r=>{setForm({clientName:r.clientName||"",projectName:r.projectName||"",location:r.location||"",projectType:r.projectType||"retail",priority:r.priority||"Normal",targetDeadline:r.targetDeadline||"",submissionDeadline:r.submissionDeadline||"",targetBudget:r.targetBudget||"",targetMargin:r.targetMargin||"",plansLink:r.plansLink||"",skpLink:r.skpLink||"",scheduleOfFinish:r.scheduleOfFinish||"",notes:r.notes||"",ceNotes:r.ceNotes||"",bidAmount:r.bidAmount||"",bidMarginPct:r.bidMarginPct||"",awarded:r.awarded||"Pending",awardDate:r.awardDate||""});setEditId(r.id);setShowForm(true);};
+  const handleSave=async()=>{
+    if(!form.clientName.trim()){alert("Client name is required.");return;}
+    const rec={client_name:form.clientName.trim(),project_name:form.projectName,location:form.location,project_type:form.projectType,priority:form.priority,submitted_by:session?.name||role||"",target_deadline:form.targetDeadline||null,submission_deadline:form.submissionDeadline||null,target_budget:n(form.targetBudget)||null,target_margin:n(form.targetMargin)||null,plans_link:form.plansLink,skp_link:form.skpLink,schedule_of_finish:form.scheduleOfFinish,notes:form.notes,ce_notes:form.ceNotes,bid_amount:n(form.bidAmount)||null,bid_margin_pct:n(form.bidMarginPct)||null,awarded:form.awarded,award_date:form.awardDate||null,updated_at:new Date().toISOString()};
+    if(editId){await updateCEReq(editId,rec);}else{await addCEReq({...rec,status:"Pending"});}
+    setShowForm(false);toastEmit?.("Saved","success");
+  };
+  const setStatus=(id,status)=>updateCEReq(id,{status,updated_at:new Date().toISOString()});
+  const setAwarded=(id,awarded)=>updateCEReq(id,{awarded,award_date:awarded!=="Pending"?new Date().toISOString().split("T")[0]:null,updated_at:new Date().toISOString()});
+  const daysDiff=d=>{if(!d)return null;const diff=Math.round((new Date(d)-new Date())/(864e5));return diff;};
+  const daysLabel=d=>{const diff=daysDiff(d);if(diff===null)return null;if(diff<0)return{txt:`${Math.abs(diff)}d overdue`,clr:"#ef4444"};if(diff===0)return{txt:"Due today",clr:"#f59e0b"};return{txt:`${diff}d left`,clr:diff<=3?"#f59e0b":"#64748b"};};
+
+  const pending=ceReqs.filter(r=>r.status==="Pending");
+  const ongoing=ceReqs.filter(r=>r.status==="Ongoing");
+  const done=ceReqs.filter(r=>r.status==="Done");
+  const submitted=done.filter(r=>r.bidAmount>0||r.awarded!=="Pending");
+  const won=submitted.filter(r=>r.awarded==="Won");
+  const lost=submitted.filter(r=>r.awarded==="Lost");
+  const winRate=submitted.length?Math.round(won.length/submitted.length*100):0;
+  const avgMarginWon=won.length?Math.round(won.reduce((s,r)=>s+Number(r.bidMarginPct||0),0)/won.length):0;
+  const byType=Object.entries(TYPES).map(([k,label])=>{const sub=submitted.filter(r=>r.projectType===k);const w=sub.filter(r=>r.awarded==="Won");return{key:k,label,total:sub.length,won:w.length,rate:sub.length?Math.round(w.length/sub.length*100):0};}).filter(x=>x.total>0);
+
+  const Card=({r})=>{
+    const dl=daysLabel(r.targetDeadline);
+    const daysPending=r.createdAt?Math.round((new Date()-new Date(r.createdAt))/(864e5)):null;
+    return(
+      <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>setDetailId(r.id===detailId?null:r.id)}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.clientName}</div>
+            {r.projectName&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>{r.projectName}</div>}
+          </div>
+          <span style={{background:PRI_CLR[r.priority]+"22",color:PRI_CLR[r.priority],borderRadius:5,padding:"2px 7px",fontSize:".65rem",fontWeight:700,flexShrink:0}}>{r.priority}</span>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+          <span style={{background:"#f1f5f9",color:"#475569",borderRadius:5,padding:"2px 7px",fontSize:".67rem",fontWeight:600}}>{TYPES[r.projectType]||r.projectType}</span>
+          {r.targetBudget>0&&<span style={{background:"#f0fdf4",color:"#059669",borderRadius:5,padding:"2px 7px",fontSize:".67rem",fontWeight:600}}>{fmtPHP2(r.targetBudget)}</span>}
+          {r.targetMargin>0&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:5,padding:"2px 7px",fontSize:".67rem",fontWeight:600}}>{r.targetMargin}% margin</span>}
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,gap:8}}>
+          <div style={{fontSize:".67rem",color:"#94a3b8"}}>{r.submittedBy}{daysPending!==null?` · ${daysPending}d ago`:""}</div>
+          {dl&&<span style={{fontSize:".67rem",fontWeight:700,color:dl.clr}}>{dl.txt}</span>}
+        </div>
+        {detailId===r.id&&(
+          <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",flexDirection:"column",gap:6}}>
+            {r.location&&<div style={{fontSize:".72rem",color:"#475569"}}>📍 {r.location}</div>}
+            {r.submissionDeadline&&<div style={{fontSize:".72rem",color:"#475569"}}>📅 Submit by: {r.submissionDeadline}</div>}
+            {r.plansLink&&<div style={{fontSize:".72rem"}}><a href={r.plansLink.startsWith("http")?r.plansLink:"#"} target="_blank" rel="noreferrer" style={{color:"#3b82f6"}}>🗺 Plans link</a></div>}
+            {r.skpLink&&<div style={{fontSize:".72rem"}}><a href={r.skpLink.startsWith("http")?r.skpLink:"#"} target="_blank" rel="noreferrer" style={{color:"#3b82f6"}}>📐 SKP file link</a></div>}
+            {r.scheduleOfFinish&&<div style={{fontSize:".72rem",color:"#475569"}}>📋 {r.scheduleOfFinish}</div>}
+            {r.notes&&<div style={{fontSize:".72rem",color:"#475569",background:"#f8fafc",borderRadius:6,padding:"6px 8px"}}>{r.notes}</div>}
+            {r.ceNotes&&isQS&&<div style={{fontSize:".72rem",color:"#7c3aed",background:"#f5f3ff",borderRadius:6,padding:"6px 8px",fontStyle:"italic"}}>📐 CE Notes: {r.ceNotes}</div>}
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}}>
+              {isQS&&r.status==="Pending"&&<button onClick={e=>{e.stopPropagation();setStatus(r.id,"Ongoing");}} style={{background:"#3b82f6",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>→ Start</button>}
+              {isQS&&r.status==="Ongoing"&&<button onClick={e=>{e.stopPropagation();setStatus(r.id,"Done");}} style={{background:"#10b981",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>✓ Mark Done</button>}
+              {isQS&&r.status==="Ongoing"&&<button onClick={e=>{e.stopPropagation();setStatus(r.id,"Pending");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 10px",color:"#64748b",fontFamily:"inherit",fontSize:".72rem",cursor:"pointer"}}>← Back to Pending</button>}
+              {(isQS||isSales)&&<button onClick={e=>{e.stopPropagation();openEdit(r);}} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",color:"#475569",fontFamily:"inherit",fontSize:".72rem",cursor:"pointer"}}>✏ Edit</button>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return(
+    <div style={{padding:"0 0 40px"}}>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,gap:12,flexWrap:"wrap"}}>
+        <div>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📐 CE / QS Queue</div>
+          <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>Cost estimation requests — {pending.length} pending · {ongoing.length} ongoing · {done.length} done</div>
+        </div>
+        {(isQS||isSales)&&<button onClick={openNew} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>+ Submit CE Request</button>}
+      </div>
+      {/* Summary strip */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:20}}>
+        {[["Pending",pending.length,"#f59e0b"],["Ongoing",ongoing.length,"#3b82f6"],["Done",done.length,"#10b981"],["Win Rate",submitted.length?winRate+"%":"—","#8b5cf6"]].map(([l,v,c])=>(
+          <div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+            <div style={{fontSize:".65rem",color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+            <div style={{fontSize:"1.4rem",fontWeight:800,color:c,marginTop:4}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      {/* Tabs */}
+      <div style={{display:"flex",gap:4,marginBottom:16,borderBottom:"1.5px solid #e2e8f0",paddingBottom:8}}>
+        {[["queue","📋 Queue"],["winloss","🏆 Win/Loss"],["analysis","📊 Analysis"]].map(([t,l])=>(
+          <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?"#1e293b":"transparent",border:"none",borderRadius:7,padding:"6px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:tab===t?700:500,color:tab===t?"#fff":"#64748b",cursor:"pointer"}}>{l}</button>
+        ))}
+      </div>
+
+      {/* ── QUEUE TAB ── */}
+      {tab==="queue"&&(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:16,alignItems:"start"}}>
+          {[["Pending",pending,"#f59e0b"],["Ongoing",ongoing,"#3b82f6"],["Done",done,"#10b981"]].map(([label,list,clr])=>(
+            <div key={label}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <span style={{width:10,height:10,borderRadius:"50%",background:clr,display:"inline-block"}}/>
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{label}</span>
+                <span style={{background:clr+"22",color:clr,borderRadius:20,padding:"1px 8px",fontSize:".7rem",fontWeight:700}}>{list.length}</span>
+              </div>
+              {list.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8",padding:"20px 0",textAlign:"center"}}>No {label.toLowerCase()} requests</div>}
+              {list.sort((a,b)=>{const pa={High:0,Normal:1,Low:2};return(pa[a.priority]||1)-(pa[b.priority]||1);}).map(r=><Card key={r.id} r={r}/>)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── WIN/LOSS TAB ── */}
+      {tab==="winloss"&&(
+        <div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:20}}>
+            {[["Submitted",submitted.length,"#475569"],["Won",won.length,"#10b981"],["Lost",lost.length,"#ef4444"],["Win Rate",submitted.length?winRate+"%":"—","#8b5cf6"],["Avg Margin (Won)",won.length?avgMarginWon+"%":"—","#059669"]].map(([l,v,c])=>(
+              <div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+                <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+                <div style={{fontSize:"1.3rem",fontWeight:800,color:c,marginTop:4}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {submitted.length===0?(
+            <div style={{textAlign:"center",padding:"60px 0",color:"#94a3b8",fontSize:".88rem"}}>No completed CEs with bid data yet.<br/>Mark a request as Done and add bid details to track win/loss.</div>
+          ):(
+            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}>
+                <thead><tr style={{background:"#f8fafc"}}>{["Client","Type","Bid Amount","Margin","Status","Outcome"].map(h=><th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1.5px solid #e2e8f0"}}>{h}</th>)}</tr></thead>
+                <tbody>
+                  {submitted.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).map(r=>(
+                    <tr key={r.id} style={{borderBottom:"1px solid #f1f5f9"}}>
+                      <td style={{padding:"10px 14px"}}>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{r.clientName}</div>
+                        {r.projectName&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{r.projectName}</div>}
+                      </td>
+                      <td style={{padding:"10px 14px",fontSize:".78rem",color:"#475569"}}>{TYPES[r.projectType]||r.projectType}</td>
+                      <td style={{padding:"10px 14px",fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{fmtPHP2(r.bidAmount)}</td>
+                      <td style={{padding:"10px 14px",fontSize:".82rem",color:r.bidMarginPct>=20?"#059669":r.bidMarginPct>=10?"#f59e0b":"#ef4444",fontWeight:700}}>{r.bidMarginPct?r.bidMarginPct+"%":"—"}</td>
+                      <td style={{padding:"10px 14px"}}>
+                        <span style={{background:STATUS_CLR[r.status]+"22",color:STATUS_CLR[r.status],borderRadius:5,padding:"2px 8px",fontSize:".7rem",fontWeight:700}}>{r.status}</span>
+                      </td>
+                      <td style={{padding:"10px 14px"}}>
+                        {isSales?(
+                          <select value={r.awarded} onChange={e=>setAwarded(r.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 8px",fontFamily:"inherit",fontSize:".75rem",outline:"none",background:"#fff",color:AWARDED_CLR[r.awarded],fontWeight:700}}>
+                            <option value="Pending">Pending</option>
+                            <option value="Won">Won</option>
+                            <option value="Lost">Lost</option>
+                          </select>
+                        ):(
+                          <span style={{background:AWARDED_CLR[r.awarded]+"22",color:AWARDED_CLR[r.awarded],borderRadius:5,padding:"2px 8px",fontSize:".7rem",fontWeight:700}}>{r.awarded}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ANALYSIS TAB ── */}
+      {tab==="analysis"&&(
+        <div>
+          {byType.length===0?(
+            <div style={{textAlign:"center",padding:"60px 0",color:"#94a3b8",fontSize:".88rem"}}>No data yet — win/loss outcomes will appear here once CEs are submitted and marked Won or Lost.</div>
+          ):(
+            <div>
+              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".88rem"}}>Win Rate by Project Type</div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12,marginBottom:24}}>
+                {byType.sort((a,b)=>b.rate-a.rate).map(x=>(
+                  <div key={x.key} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"14px 16px"}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:6}}>{x.label}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                      <div style={{flex:1,height:8,borderRadius:4,background:"#f1f5f9",overflow:"hidden"}}>
+                        <div style={{width:x.rate+"%",height:"100%",background:x.rate>=60?"#10b981":x.rate>=40?"#f59e0b":"#ef4444",borderRadius:4,transition:"width .4s"}}/>
+                      </div>
+                      <span style={{fontWeight:800,color:x.rate>=60?"#10b981":x.rate>=40?"#f59e0b":"#ef4444",fontSize:".88rem",flexShrink:0}}>{x.rate}%</span>
+                    </div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>{x.won} won · {x.total-x.won} lost · {x.total} total</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".88rem"}}>All Submitted CEs ({submitted.length})</div>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:8,fontSize:".72rem",color:"#64748b"}}>
+                <span>Total bid value: <b style={{color:"#0f172a"}}>₱{submitted.reduce((s,r)=>s+Number(r.bidAmount||0),0).toLocaleString("en-PH",{maximumFractionDigits:0})}</b></span>
+                <span>Won value: <b style={{color:"#10b981"}}>₱{won.reduce((s,r)=>s+Number(r.bidAmount||0),0).toLocaleString("en-PH",{maximumFractionDigits:0})}</b></span>
+                <span>Avg margin (won): <b style={{color:"#059669"}}>{avgMarginWon}%</b></span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── FORM MODAL ── */}
+      {showForm&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:10020,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto"}}>
+          <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:640,boxShadow:"0 24px 64px rgba(0,0,0,.3)",marginBottom:24}}>
+            <div style={{background:"#1e293b",borderRadius:"16px 16px 0 0",padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontWeight:800,color:"#fff",fontSize:".95rem"}}>{editId?"Edit CE Request":"New CE Request"}</div>
+              <button onClick={()=>setShowForm(false)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"5px 12px",color:"rgba(255,255,255,.7)",cursor:"pointer",fontSize:".82rem",fontWeight:600}}>✕</button>
+            </div>
+            <div style={{padding:"18px 20px 20px",display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div style={{gridColumn:"1/-1"}}>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Client Name *</label>
+                  <input value={form.clientName} onChange={e=>f("clientName",e.target.value)} placeholder="e.g. BINI — SM Seaside Cebu" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Project Name</label>
+                  <input value={form.projectName} onChange={e=>f("projectName",e.target.value)} placeholder="e.g. Phase 2 Fit-out" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Location</label>
+                  <input value={form.location} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM Seaside, Cebu" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Project Type</label>
+                  <select value={form.projectType} onChange={e=>f("projectType",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",background:"#fff",boxSizing:"border-box"}}>
+                    {Object.entries(TYPES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Priority</label>
+                  <select value={form.priority} onChange={e=>f("priority",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",background:"#fff",boxSizing:"border-box"}}>
+                    <option>High</option><option>Normal</option><option>Low</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>CE Deadline</label>
+                  <input type="date" value={form.targetDeadline} onChange={e=>f("targetDeadline",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Proposal Submission Deadline</label>
+                  <input type="date" value={form.submissionDeadline} onChange={e=>f("submissionDeadline",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Target Budget (₱)</label>
+                  <input type="number" value={form.targetBudget} onChange={e=>f("targetBudget",e.target.value)} placeholder="0" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Target Margin (%)</label>
+                  <input type="number" value={form.targetMargin} onChange={e=>f("targetMargin",e.target.value)} placeholder="e.g. 25" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div style={{gridColumn:"1/-1"}}>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Plans Link (Google Drive, etc.)</label>
+                  <input value={form.plansLink} onChange={e=>f("plansLink",e.target.value)} placeholder="https://drive.google.com/..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>SKP File Link</label>
+                  <input value={form.skpLink} onChange={e=>f("skpLink",e.target.value)} placeholder="https://..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Schedule of Finish</label>
+                  <input value={form.scheduleOfFinish} onChange={e=>f("scheduleOfFinish",e.target.value)} placeholder="e.g. Standard finish, no special cladding" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div style={{gridColumn:"1/-1"}}>
+                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Notes for CE/QS (from Sales)</label>
+                  <textarea value={form.notes} onChange={e=>f("notes",e.target.value)} rows={3} placeholder="Scope clarifications, special requirements, client preferences..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+                </div>
+                {isQS&&<>
+                  <div style={{gridColumn:"1/-1",borderTop:"1.5px solid #e2e8f0",paddingTop:10,marginTop:2}}>
+                    <div style={{fontSize:".72rem",fontWeight:700,color:"#7c3aed",marginBottom:8}}>📐 CE/QS Fields</div>
+                  </div>
+                  <div style={{gridColumn:"1/-1"}}>
+                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>CE Notes (internal)</label>
+                    <textarea value={form.ceNotes} onChange={e=>f("ceNotes",e.target.value)} rows={2} placeholder="Internal notes, assumptions, scope concerns..." style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Bid Amount (₱)</label>
+                    <input type="number" value={form.bidAmount} onChange={e=>f("bidAmount",e.target.value)} placeholder="Final bid" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Bid Margin (%)</label>
+                    <input type="number" value={form.bidMarginPct} onChange={e=>f("bidMarginPct",e.target.value)} placeholder="e.g. 22" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Outcome</label>
+                    <select value={form.awarded} onChange={e=>f("awarded",e.target.value)} style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",background:"#fff",boxSizing:"border-box"}}>
+                      <option value="Pending">Pending</option><option value="Won">Won</option><option value="Lost">Lost</option>
+                    </select>
+                  </div>
+                </>}
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
+                <button onClick={()=>setShowForm(false)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 20px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
+                <button onClick={handleSave} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"9px 24px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Save Request</button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -19549,7 +19873,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
 }
 
 // ─── CONSTRUCTION CALENDAR ────────────────────────────────────────────────────
-function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPage,setJumpDeal,today,Wrap}){
+function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
@@ -19573,8 +19897,11 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPa
       const deal=wonDeals.find(x=>x.id===d.dealId);
       list.push({date:d.designDeadline,type:"drf",label:deal?.client||d.client||"?",sub:d.drfNo||"DRF",detail:d.projectTitle||"",color:"#ec4899",icon:"📝",dealId:d.dealId});
     });
+    (ceReqs||[]).filter(r=>r.targetDeadline&&r.status!=="Done").forEach(r=>{
+      list.push({date:r.targetDeadline,type:"ce",label:r.clientName||"?",sub:r.projectName||"CE Request",detail:`${r.priority} priority · ${r.status}`,color:"#8b5cf6",icon:"📐",ceId:r.id});
+    });
     return list;
-  },[wonDeals,pcards,jos,prs,billings,drfs]);
+  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs]);
 
   const eventsByDate=React.useMemo(()=>{
     const map={};events.forEach(e=>{if(!map[e.date])map[e.date]=[];map[e.date].push(e);});return map;
