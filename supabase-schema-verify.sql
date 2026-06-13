@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS public.inflows (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE public.inflows ADD COLUMN IF NOT EXISTS ref_no text DEFAULT '';
+ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS po_ref text DEFAULT '';
 
 -- ── 10. PURCHASE REQUESTS ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.purchase_requests (
@@ -208,6 +209,14 @@ ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS approved_by     te
 ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS project_name    text    DEFAULT '';
 ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS po_discount_type  text    DEFAULT '';
 ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS po_discount_value numeric DEFAULT 0;
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS acct_status        text DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS acct_notes         text DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS acct_checked_by    text DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS acct_checked_at    date;
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS payment_bank       text DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS payment_ref        text DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS payment_ordered_by text DEFAULT '';
+ALTER TABLE public.purchase_requests ADD COLUMN IF NOT EXISTS payment_ordered_at date;
 
 -- Atomic PO number allocator (see supabase_migration_009.sql)
 CREATE TABLE IF NOT EXISTS public.po_counter (
@@ -498,6 +507,14 @@ CREATE TABLE IF NOT EXISTS public.subcon_work_orders (
   updated_at        timestamptz
 );
 alter table public.subcon_work_orders disable row level security;
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS acct_status        text DEFAULT '';
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS acct_notes         text DEFAULT '';
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS acct_checked_by    text DEFAULT '';
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS acct_checked_at    date;
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS payment_bank       text DEFAULT '';
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS payment_ref        text DEFAULT '';
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS payment_ordered_by text DEFAULT '';
+ALTER TABLE public.subcon_work_orders ADD COLUMN IF NOT EXISTS payment_ordered_at date;
 
 CREATE TABLE IF NOT EXISTS public.wo_counter (
   id      int PRIMARY KEY,
