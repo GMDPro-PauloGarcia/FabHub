@@ -26,7 +26,7 @@ serve(async (req) => {
       });
     }
 
-    const prompt = `You are a quantity surveyor assistant. Analyze this architectural floor plan image.
+    const prompt = `You are a quantity surveyor assistant. Analyze this architectural floor plan.
 
 Extract and return ONLY a valid JSON object with these fields:
 {
@@ -43,32 +43,31 @@ Rules:
 - If dimensions are in feet, convert to meters first (1 ft = 0.3048 m).
 - If no scale or dimensions are visible, estimate relative areas based on visual proportions and set totalArea to your best estimate.
 - projectType: use "fnb" for restaurants/cafes/food courts, "retail" for shops/stores, "office" for workspaces, "kiosk" for small booths under 30 sqm, "unknown" if unclear.
+- For multi-page PDFs, analyze the page that shows the floor plan layout.
 - Return ONLY the JSON. No explanation, no markdown.`;
+
+    const isPdf = mimeType === "application/pdf";
+    const fileContent = isPdf
+      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: imageBase64 } }
+      : { type: "image", source: { type: "base64", media_type: mimeType, data: imageBase64 } };
+
+    const headers: Record<string, string> = {
+      "x-api-key": CLAUDE_KEY,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+    };
+    if (isPdf) headers["anthropic-beta"] = "pdfs-2024-09-25";
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {
-        "x-api-key": CLAUDE_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-      },
+      headers,
       body: JSON.stringify({
         model: "claude-opus-4-8",
         max_tokens: 512,
         messages: [
           {
             role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mimeType,
-                  data: imageBase64,
-                },
-              },
-              { type: "text", text: prompt },
-            ],
+            content: [fileContent, { type: "text", text: prompt }],
           },
         ],
       }),
