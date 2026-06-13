@@ -77,143 +77,6 @@ const STAGE_DURATION = {
   "04 · CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
   "08 · Fabrication":   "Fab: 45 days · Construction: 45–60 days",
 };
-// ─── STAGE PROCESS REMINDERS ─────────────────────────────────────────────────
-// Shown as a modal when a deal moves to a new stage.
-// Reminds the responsible team of immediate actions and watch-outs.
-const STAGE_PROCESS_REMINDERS = {
-  "02 · Engagement":{
-    icon:"🤝",color:"#60a5fa",owner:"Account Executive",
-    summary:"Qualify the opportunity and engage the actual decision-maker.",
-    actions:[
-      "Schedule a meeting or call with the decision-maker — not just a coordinator",
-      "Confirm scope ballpark, budget range, and target completion date",
-      "Add client to GMD Client Directory if new",
-      "Log first contact details in deal notes",
-    ],
-    watchOut:"Don't send a quotation yet — confirm scope and budget first, or you'll be repricing later.",
-    sla:"Qualify within 3–5 business days",
-  },
-  "03 · Design & Folder":{
-    icon:"📁",color:"#a78bfa",owner:"Account Executive + Design",
-    summary:"Create project folder and brief Design via DRF. No verbal briefs.",
-    actions:[
-      "Create Google Drive project folder (use standard GMD folder template)",
-      "Submit a Design Request Form (DRF) — do not brief Design verbally",
-      "Upload all client references, mood boards, and floor plans to folder",
-      "Confirm design deadline with client and log it",
-    ],
-    watchOut:"Design starts without a proper DRF — no DRF = no start date. Always submit before expecting output.",
-    sla:"DRF within 1 business day of moving to this stage",
-  },
-  "04 · CE in Progress":{
-    icon:"📐",color:"#f59e0b",owner:"Design + QS (Cost Estimator)",
-    summary:"Design and CE run in parallel. Track both deadlines actively.",
-    actions:[
-      "Design target: 5–15 days for renderings. CE: 5–7 days after design approval",
-      "QS (Rodney) prepares CE — Sales presents but does NOT alter numbers",
-      "Flag any client scope changes immediately — every change affects CE",
-      "Check STAGE DURATION reference for timeline expectations",
-    ],
-    watchOut:"Sales quoting without QS sign-off = wrong number reaches client. CE is final only after Rodney / Paulo confirms.",
-    sla:"Design: 5–15 days · CE: 5–7 days",
-  },
-  "05 · For Approval":{
-    icon:"✍️",color:"#f97316",owner:"Account Executive + Paulo Garcia",
-    summary:"Present CE formally and get written client approval before moving forward.",
-    actions:[
-      "Loop Paulo Garcia in if project value is ₱3M or above — MANDATORY",
-      "Send formal CE document to client (PDF, not verbal or chat)",
-      "Log all revision requests in deal notes with dates",
-      "Set a follow-up date — do not leave this stage open-ended",
-    ],
-    watchOut:"Client says 'yes' verbally but won't sign — do not proceed to Kickoff without written approval (email or signed CE).",
-    sla:"Follow up within 2 business days if no client response",
-  },
-  "06 · Kickoff":{
-    icon:"🚀",color:"#10b981",owner:"Sales + Finance + Operations",
-    summary:"Project awarded. All teams brief today. Billing starts now.",
-    actions:[
-      "Sales: Create client WhatsApp/Viber comms group — add all stakeholders",
-      "Finance: Issue 50% downpayment billing immediately — same day",
-      "Operations: PM and coordinators receive full written project brief",
-      "Procurement: Begin swatch sourcing and flag any long-lead items",
-    ],
-    watchOut:"Kickoff happens but billing is delayed — billing delay = cash flow problem. Issue the DP invoice on Day 1.",
-    sla:"All kickoff tasks must be initiated within 1 business day",
-  },
-  "07 · Briefing":{
-    icon:"📋",color:"#06b6d4",owner:"Cost Control + Project Manager",
-    summary:"Lock budget before any procurement begins. No orders before budget approval.",
-    actions:[
-      "Cost Control creates and locks the project budget — nothing moves without this",
-      "PM reviews full approved plans — confirm revision number before briefing production",
-      "Assign production lead and site coordinator in project card",
-      "Set target completion date (TAT) in the system now",
-    ],
-    watchOut:"Procurement buying before budget is approved — lock budget first, order second. No exceptions.",
-    sla:"Budget must be set before fabrication Day 1",
-  },
-  "08 · Fabrication":{
-    icon:"🏗",color:"#3b82f6",owner:"Operations + Procurement",
-    summary:"Production running. PM updates client daily. Scope changes go through addenda.",
-    actions:[
-      "Procurement: Identify and order ALL long-lead items on Day 1 (glass, imported hardware, custom metal)",
-      "PM: Log daily or weekly client update — never let client ask 'any update?' first",
-      "Flag ANY scope change as an addendum — coordinate with Sales before telling client",
-      "All material swatches must be client-approved before fabrication of that item begins",
-    ],
-    watchOut:"Long-lead items ordered too late = production stalls. Check every lead time on Day 1, not Day 30.",
-    sla:"Fabrication: 45 days · Construction: 45–60 days",
-  },
-  "09 · Site & Billing":{
-    icon:"🔧",color:"#8b5cf6",owner:"Project Manager + Finance",
-    summary:"Progress billing and on-site supervision. Bill per agreed schedule — not when client asks.",
-    actions:[
-      "Finance: Issue progress billing per payment terms — don't wait for client to request",
-      "Operations: Schedule a mid-project client site visit",
-      "Confirm all permits are secured before installation day",
-      "Update project completion percentage in project card",
-    ],
-    watchOut:"Billing delayed = cash flow pressure. Set your billing trigger date at project start and honor it.",
-    sla:"Bill per payment schedule in signed CE",
-  },
-  "10 · Installation":{
-    icon:"📦",color:"#ec4899",owner:"Operations",
-    summary:"On-site installation. Logistics, site access, and delivery all pre-confirmed.",
-    actions:[
-      "Confirm site access and contact person the night before — not the morning of",
-      "Verify module count, sizes, and specs against PO and drawings before accepting delivery",
-      "All permits must be in hand before installation begins",
-      "PM must be on-site or reachable at all times",
-    ],
-    watchOut:"Truck arrives and site is locked — always confirm building admin access and loading dock schedule 24h in advance.",
-    sla:"All logistics confirmed 24–48 hours before installation",
-  },
-  "11 · Punchlist":{
-    icon:"✅",color:"#eab308",owner:"Project Manager",
-    summary:"Punchlist documented on-site, signed, and resolved within 5 business days.",
-    actions:[
-      "Document ALL punchlist items in writing before leaving the site — no verbal lists",
-      "Get client signature on punchlist document before departing",
-      "Assign each item to a person with a specific resolution date",
-      "Escalate to Paolo/Paulo immediately if client refuses to sign",
-    ],
-    watchOut:"Verbal punchlist is forgotten — always get a written, signed punchlist on-site. No exceptions.",
-    sla:"5 business day SLA from punch to full resolution",
-  },
-  "12 · Close-Out":{
-    icon:"🔒",color:"#059669",owner:"Project Manager + Finance",
-    summary:"Close the project cleanly. COC, final billing, and as-builts all submitted.",
-    actions:[
-      "PM submits Certificate of Completion (COC) with all addenda and resolved punchlist",
-      "Finance issues final billing for the remaining balance",
-      "Upload as-built plans to project folder (4 sets: Owner, Mall, PDF, CAD)",
-      "Mark all checklist items as Done before moving to 14 · Completed",
-    ],
-    watchOut:"Balance unpaid before closing — escalate if not paid within agreed terms. No project is 'done' with outstanding balance.",
-    sla:"All close-out tasks within 5 business days of client handover",
-  },
-};
 const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
 const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
 const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
@@ -295,7 +158,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",swos:"gmdv5:swos"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -304,10 +167,10 @@ const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.catego
 const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,lastUpdated:r.last_updated,createdBy:r.created_by});
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
-const supToSb=s=>({...(s.id?{id:s.id}:{}),company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||""});
 const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
-const subconToSb=s=>({...(s.id?{id:s.id}:{}),company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
@@ -479,20 +342,7 @@ const PR_STATUSES  = ["Draft","Pending Approval","PO Issued","Partially Delivere
 const PR_CATS      = ["Materials","Hardware","Fixtures","Signage","Electrical","Structural","Finishing","Tools & Equipment","Subcon","Other"];
 const BUDGET_CATS  = ["Materials","Labor","Overhead","Subcon"];
 const BUDGET_CAT_CLR = {Materials:"#3b82f6",Labor:"#10b981",Overhead:"#f59e0b",Subcon:"#8b5cf6"};
-const BOQ_SECTIONS=[
-  {id:"A",name:"General Requirements",budgetCat:"Overhead"},
-  {id:"B",name:"Architectural",budgetCat:"Materials"},
-  {id:"C",name:"Electrical",budgetCat:"Materials"},
-  {id:"D",name:"Electronics",budgetCat:"Materials"},
-  {id:"E",name:"Mechanical",budgetCat:"Subcon"},
-  {id:"F",name:"Plumbing",budgetCat:"Subcon"},
-  {id:"G",name:"FDAS",budgetCat:"Subcon"},
-  {id:"H",name:"Signages",budgetCat:"Materials"},
-  {id:"I",name:"Built-Ins / Furniture",budgetCat:"Materials"},
-];
 
-// Accounting/Finance pipeline: Approved → For Accounting → Checked → Payment Ordered
-const ACCT_CLR={"For Accounting":"#f59e0b","Checked":"#3b82f6","Payment Ordered":"#10b981"};
 const emptyPR = () => ({
   id:"", projectId:"", projectName:"",
   itemName:"", category:"Materials", description:"",
@@ -501,128 +351,8 @@ const emptyPR = () => ({
   qtyDelivered:0, deliveryDate:"", deliveryNote:"",
   status:"Draft", requestedBy:"", approvedBy:"", approvedAt:"",
   budgetCategory:"Materials",  // which budget line this hits
-  poDiscType:"", poDiscValue:0,  // PO-level discount ('amt' ₱ | 'pct' %), duplicated on every line of the PO
-  acctStatus:"", acctNotes:"", acctCheckedBy:"", acctCheckedAt:"",       // accounting documentation step
-  paymentBank:"", paymentRef:"", paymentOrderedBy:"", paymentOrderedAt:"", // finance payment order step
   notes:"", createdDate:"",
 });
-
-// deal.contact holds the Project Name (legacy field name) — fall back to client
-const projDisplayName = d => d ? (d.contact || d.client || "") : "";
-const projOptionLabel = d => {
-  if(!d) return "";
-  let l = projDisplayName(d);
-  if(d.ceNo) l += ` · ${d.ceNo}`;
-  if(d.contact && d.client) l += ` (${d.client})`;
-  return l;
-};
-const projOptions = deals => (deals||[]).map(d=>({value:d.id,label:projOptionLabel(d)}));
-
-const PO_NO_RE = /^PO-(\d+)$/;
-const computeNextPoNo = prs => {
-  const nums=(prs||[]).map(p=>{const m=PO_NO_RE.exec(p.poNumber||"");return m?Number(m[1]):0;});
-  return `PO-${String((nums.length?Math.max(...nums):0)+1).padStart(4,"0")}`;
-};
-// Claim a PO number at SUBMIT time — never when the form opens — so officers
-// filling a PO simultaneously can't both keep the same suggested number.
-// Online: atomic server-side counter (next_po_number RPC, migration 009).
-// Offline / RPC missing: recompute from the latest synced list and skip past
-// any number already in use. A manually typed number that doesn't collide is
-// respected as an override.
-const claimPoNumber = async ({typed, suggested, prs}) => {
-  const taken=new Set((prs||[]).map(p=>p.poNumber).filter(Boolean));
-  const t=(typed||"").trim();
-  if(t && t!==suggested && !taken.has(t)) return t;
-  if(isSupabaseReady()){
-    try{
-      const {data,error}=await supabase.rpc('next_po_number');
-      if(!error && typeof data==="string" && PO_NO_RE.test(data)) return data;
-    }catch(e){ /* fall back to local allocation */ }
-  }
-  let n=Number(PO_NO_RE.exec(computeNextPoNo(prs))[1]);
-  while(taken.has(`PO-${String(n).padStart(4,"0")}`)) n++;
-  return `PO-${String(n).padStart(4,"0")}`;
-};
-const poDiscountAmt=(type,value,subtotal)=>{
-  const v=Number(value)||0;
-  if(v<=0||subtotal<=0) return 0;
-  return Math.min(type==="pct"?subtotal*Math.min(v,100)/100:v, subtotal);
-};
-// Segregation of duties: a PO is approved by a Manager (always), or by a
-// Procurement officer who is NOT the one who requested it. Everyone else
-// submits as Pending Approval.
-const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
-  if(role==="Manager") return true;
-  if(role!=="Procurement"||!sessionName) return false;
-  const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
-  if(list.length) return list.includes(sessionName.trim().toLowerCase()); // designated approvers (e.g. Marian)
-  return sessionName!==(requestedBy||""); // fallback: any other Procurement officer
-};
-
-// ─── SUBCON WORK ORDERS ───────────────────────────────────────────────────────
-// Subcon engagements are NOT purchase orders: a WO carries scope of work,
-// payment structure and retention, is issued to a Subcontractor Master entry,
-// and its contract amount feeds the project budget's Subcon line.
-const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
-const SWO_STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","Issued":"#3b82f6","In Progress":"#f59e0b","Completed":"#10b981","Cancelled":"#ef4444"};
-const emptySWO=()=>({
-  id:"", woNumber:"", woDate:"",
-  projectId:"", projectName:"",
-  subcontractor:"", specialty:"", scopeOfWork:"",
-  startDate:"", targetEndDate:"",
-  contractAmount:"", retentionPct:"",
-  paymentStructure:"50% Start / 50% Completion", paymentTerms:"",
-  status:"Issued", notes:"", requestedBy:"", approvedBy:"", createdDate:"",
-  acctStatus:"", acctNotes:"", acctCheckedBy:"", acctCheckedAt:"",
-  paymentBank:"", paymentRef:"", paymentOrderedBy:"", paymentOrderedAt:"",
-});
-const swoToSb=r=>({
-  id:r.id, wo_number:r.woNumber||"", deal_id:r.projectId||r.dealId||null,
-  project_name:r.projectName||"", subcontractor:r.subcontractor||"",
-  specialty:r.specialty||"", scope_of_work:r.scopeOfWork||"",
-  wo_date:r.woDate||null, start_date:r.startDate||null, target_end_date:r.targetEndDate||null,
-  contract_amount:Number(r.contractAmount)||0, retention_pct:Number(r.retentionPct)||0,
-  payment_structure:r.paymentStructure||"", payment_terms:r.paymentTerms||"",
-  status:r.status||"Issued", notes:r.notes||"",
-  requested_by:r.requestedBy||"", approved_by:r.approvedBy||"",
-  acct_status:r.acctStatus||"", acct_notes:r.acctNotes||"",
-  acct_checked_by:r.acctCheckedBy||"", acct_checked_at:r.acctCheckedAt||null,
-  payment_bank:r.paymentBank||"", payment_ref:r.paymentRef||"",
-  payment_ordered_by:r.paymentOrderedBy||"", payment_ordered_at:r.paymentOrderedAt||null,
-});
-const swoFromSb=r=>({...r,
-  woNumber:r.wo_number||"", projectId:r.deal_id, dealId:r.deal_id,
-  projectName:r.project_name||"", scopeOfWork:r.scope_of_work||"",
-  woDate:r.wo_date||"", startDate:r.start_date||"", targetEndDate:r.target_end_date||"",
-  contractAmount:Number(r.contract_amount)||0, retentionPct:Number(r.retention_pct)||0,
-  paymentStructure:r.payment_structure||"", paymentTerms:r.payment_terms||"",
-  requestedBy:r.requested_by||"", approvedBy:r.approved_by||"",
-  acctStatus:r.acct_status||"", acctNotes:r.acct_notes||"",
-  acctCheckedBy:r.acct_checked_by||"", acctCheckedAt:r.acct_checked_at||"",
-  paymentBank:r.payment_bank||"", paymentRef:r.payment_ref||"",
-  paymentOrderedBy:r.payment_ordered_by||"", paymentOrderedAt:r.payment_ordered_at||"",
-});
-const WO_NO_RE=/^WO-(\d+)$/;
-const computeNextWoNo=swos=>{
-  const nums=(swos||[]).map(w=>{const m=WO_NO_RE.exec(w.woNumber||"");return m?Number(m[1]):0;});
-  return `WO-${String((nums.length?Math.max(...nums):0)+1).padStart(4,"0")}`;
-};
-// Same claim-at-submit discipline as PO numbers (atomic RPC, offline fallback)
-const claimWoNumber=async({typed,suggested,swos})=>{
-  const taken=new Set((swos||[]).map(w=>w.woNumber).filter(Boolean));
-  const t=(typed||"").trim();
-  if(t&&t!==suggested&&!taken.has(t)) return t;
-  if(isSupabaseReady()){
-    try{
-      const {data,error}=await supabase.rpc('next_wo_number');
-      if(!error&&typeof data==="string"&&WO_NO_RE.test(data)) return data;
-    }catch(e){ /* fall back to local allocation */ }
-  }
-  let nn=Number(WO_NO_RE.exec(computeNextWoNo(swos))[1]);
-  while(taken.has(`WO-${String(nn).padStart(4,"0")}`)) nn++;
-  return `WO-${String(nn).padStart(4,"0")}`;
-};
-const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 
 const emptyBudget = () => ({
   Materials:0, Labor:0, Overhead:0, Subcon:0,
@@ -1117,51 +847,6 @@ function SearchSelect({value,onChange,options,placeholder="Search…",noneLabel=
     </div>
   );
 }
-// Searchable free-text combo — same look as SearchSelect, but the value IS the
-// typed text, so entries not yet in the master list are still allowed.
-function SearchCombo({value,onChange,options,placeholder="Type to search…"}){
-  const[open,setOpen]=useState(false);
-  const ref=useRef(null);
-  const q=(value||"").trim().toLowerCase();
-  const filtered=q?options.filter(o=>o.toLowerCase().includes(q)):options;
-  useEffect(()=>{
-    const handler=e=>{if(ref.current&&!ref.current.contains(e.target)) setOpen(false);};
-    document.addEventListener("mousedown",handler);
-    return()=>document.removeEventListener("mousedown",handler);
-  },[]);
-  return(
-    <div ref={ref} style={{position:"relative"}}>
-      <div style={{display:"flex",alignItems:"center",border:"1.5px solid "+(open?"#6366f1":"#e2e8f0"),borderRadius:8,background:"#fff",transition:"border-color .15s"}}>
-        <input value={value||""} onFocus={()=>setOpen(true)}
-          onChange={e=>{onChange(e.target.value);setOpen(true);}}
-          onKeyDown={e=>{if(e.key==="Escape")setOpen(false);if(e.key==="Enter"&&open&&filtered.length>0){e.preventDefault();onChange(filtered[0]);setOpen(false);}}}
-          placeholder={placeholder}
-          style={{flex:1,border:"none",outline:"none",padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"transparent",borderRadius:8,minWidth:0}}/>
-        <span onClick={()=>setOpen(o=>!o)} style={{padding:"0 10px",color:"#94a3b8",fontSize:".75rem",flexShrink:0,cursor:"pointer",userSelect:"none"}}>{open?"▲":"▼"}</span>
-      </div>
-      {open&&filtered.length>0&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:999,maxHeight:240,overflowY:"auto"}}>
-          {filtered.map((o,i)=>(
-            <div key={o+i} onClick={()=>{onChange(o);setOpen(false);}}
-              style={{padding:"9px 13px",fontSize:".85rem",color:o===value?"#6366f1":"#1e293b",fontWeight:o===value?700:400,cursor:"pointer",background:o===value?"#f0f0ff":"transparent",borderBottom:"1px solid #f8fafc"}}
-              onMouseEnter={e=>{if(o!==value)e.currentTarget.style.background="#f8fafc";}}
-              onMouseLeave={e=>{e.currentTarget.style.background=o===value?"#f0f0ff":"transparent";}}>{o}</div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-// De-duplicated, sorted company names for supplier pickers (tolerates rows
-// duplicated in the master list — see supabase_migration_010.sql)
-const supplierNameOptions=suppliers=>{
-  const seen=new Map();
-  (suppliers||[]).forEach(s=>{
-    const n=(s.company_name||s.companyName||"").trim();
-    if(n&&!seen.has(n.toLowerCase())) seen.set(n.toLowerCase(),n);
-  });
-  return[...seen.values()].sort((a,b)=>a.localeCompare(b));
-};
 // Focus-safe raw input — use this instead of bare <input> inside forms
 const FInp=({value,onChange,type="text",placeholder,style:sx={},className,onKeyDown,min,max,rows})=>{
   const base={...sx};
@@ -2041,7 +1726,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 }
 
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
-function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,editId,projList,clientName,poRefOptions}){
+function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,editId,projList,clientName}){
   const[form,setForm]=useState(initialExpForm||{});
   const[step,setStep]=useState(1);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -2084,9 +1769,6 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
               noneLabel="Company-wide (salaries, rent, overhead)"
               noneValue={null}
             />
-          </Fld>
-          <Fld label="PO / WO Reference" hint="Tag if this pays a Purchase Order or Work Order — tagged payments are not double-counted in project costing">
-            <SearchCombo value={form.poRef||""} onChange={v=>f("poRef",v)} options={poRefOptions||[]} placeholder="e.g. PO-0012 / WO-0003 (optional)"/>
           </Fld>
           <Fld label="Receipt / Invoice Link" hint="Paste a Google Drive, email, or any URL link to the receipt">
             <Inp type="url" value={form.receipt||""} onChange={e=>f("receipt",e.target.value)} placeholder="https://drive.google.com/… (optional)"/>
@@ -2559,9 +2241,7 @@ export default function App(){
   const[drfs,        setDrfs]      = useState([]);   // Design Request Forms
   const[suppliers,  setSuppliers] = useState([]);  // Supplier master list
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
-  const[swos,       setSwos]      = useState([]);  // Subcon work orders
-  const[ceReqs,     setCeReqs]    = useState([]);  // CE/QS cost estimation requests
-  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""});
+  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:""},hideValueInBots:false});
   const[customClients,setCustomClients]= useState([]);
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
@@ -2603,7 +2283,7 @@ export default function App(){
         const idb=await idbGetMany([
           KEYS.deals,KEYS.projects,KEYS.expenses,KEYS.inflows,KEYS.jos,
           KEYS.swatches,KEYS.checklist,KEYS.users,KEYS.cashPos,KEYS.prs,
-          KEYS.mreqs,KEYS.breqs,KEYS.drfs,KEYS.suppliers,KEYS.subcons,KEYS.swos,
+          KEYS.mreqs,KEYS.breqs,KEYS.drfs,KEYS.suppliers,KEYS.subcons,
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
@@ -2624,7 +2304,6 @@ export default function App(){
         if(idb[KEYS.drfs])        setDrfs(idb[KEYS.drfs]);
         if(idb[KEYS.suppliers])   setSuppliers(idb[KEYS.suppliers]);
         if(idb[KEYS.subcons])     setSubcons(idb[KEYS.subcons]);
-        if(idb[KEYS.swos])        setSwos(idb[KEYS.swos]);
         if(idb[KEYS.botsettings]) setBotSettings(idb[KEYS.botsettings]);
         if(idb[KEYS.customclients]){const cc=idb[KEYS.customclients];setCustomClients(cc);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
         if(idb["gmdv5:clientprofiles"]) setClientProfiles(idb["gmdv5:clientprofiles"]);
@@ -2665,9 +2344,9 @@ export default function App(){
             if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
             const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null})):null;
             if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
-            const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
+            const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",poDiscType:p.po_discount_type||"",poDiscValue:Number(p.po_discount_value)||0,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||""})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})):null;
             if(_prs){setPrs(_prs);idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})):null;
             if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
@@ -2681,7 +2360,7 @@ export default function App(){
             if(_swatches){setSwatches(_swatches);idbE.push([KEYS.swatches,_swatches]);}
             if(data.actLog?.length) setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
             if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
-            const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes,...(b.boq_data?{boq:b.boq_data}:{})}])):null;
+            const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(_budgets);idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows?.length){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
             const _payables=data.payables?.length?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""})):null;
@@ -2699,8 +2378,6 @@ export default function App(){
             if(_suppliers){setSuppliers(_suppliers);idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
             if(_subcons){setSubcons(_subcons);idbE.push([KEYS.subcons,_subcons]);}
-            const _swos=data.swos?.length?data.swos.map(swoFromSb):null;
-            if(_swos){setSwos(_swos);idbE.push([KEYS.swos,_swos]);}
             const _users=data.users?.length?data.users.map(u=>{
               // If Supabase row has no password_hash, fall back to the DEFAULT_USERS hash
               // so existing users can still log in while hashes are being migrated
@@ -2711,7 +2388,6 @@ export default function App(){
             if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
-            if(data.settings?.soa_notes){setSoaNotes(data.settings.soa_notes);}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);idbE.push([KEYS.projects,data.projs]);}
             console.log("\u2705 FabHub: Loaded from Supabase \u2014 "+(data.deals?.length||0)+" deals");
             try{
@@ -2798,19 +2474,17 @@ export default function App(){
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
-    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
+    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",poDiscType:p.po_discount_type||"",poDiscValue:Number(p.po_discount_value)||0,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||""}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(bs2);idbE.push([KEYS.breqs,bs2]);}
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(as);idbE.push([KEYS.addenda,as]);}
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(cs);idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(ss);idbE.push([KEYS.swatches,ss]);}
-    if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(ws);idbE.push([KEYS.swos,ws]);}
-    if(isSupabaseReady()){sbList('ce_requests',{order:'created_at',limit:500}).then(rows=>{if(rows?.length)setCeReqs(rows.map(r=>({id:r.id,clientName:r.client_name,projectName:r.project_name,location:r.location,projectType:r.project_type,priority:r.priority,status:r.status,submittedBy:r.submitted_by,targetDeadline:r.target_deadline,submissionDeadline:r.submission_deadline,targetBudget:r.target_budget,targetMargin:r.target_margin,plansLink:r.plans_link,skpLink:r.skp_link,scheduleOfFinish:r.schedule_of_finish,notes:r.notes,ceNotes:r.ce_notes,bidAmount:r.bid_amount,bidMarginPct:r.bid_margin_pct,awarded:r.awarded,awardDate:r.award_date,dealId:r.deal_id,createdAt:r.created_at})));}).catch(()=>{});}
     if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
-    if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes,...(b.boq_data?{boq:b.boq_data}:{})}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
+    if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(us);idbE.push([KEYS.users,us]);}
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);idbE.push(["gmdv5:loans",ls]);}
@@ -2903,7 +2577,7 @@ export default function App(){
     return{id:r.id,deal_id:r.dealId||r.projectId||null,date,
       category:r.category||"",description:desc,note:desc,
       amount:Number(r.amount)||0,supplier:r.payee||r.supplier||"",receipt_no:r.receiptNo||"",
-      bank_account:r.bankAccount||null,po_ref:r.poRef||""};
+      bank_account:r.bankAccount||null};
   };
   const toSbPR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null, item:r.itemName||r.item||"",
@@ -2916,11 +2590,6 @@ export default function App(){
     po_number:r.poNumber||"", po_date:r.poDate||null,
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
-    po_discount_type:r.poDiscType||"", po_discount_value:Number(r.poDiscValue)||0,
-    acct_status:r.acctStatus||"", acct_notes:r.acctNotes||"",
-    acct_checked_by:r.acctCheckedBy||"", acct_checked_at:r.acctCheckedAt||null,
-    payment_bank:r.paymentBank||"", payment_ref:r.paymentRef||"",
-    payment_ordered_by:r.paymentOrderedBy||"", payment_ordered_at:r.paymentOrderedAt||null,
   });
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
@@ -2976,7 +2645,7 @@ export default function App(){
   const toSbBudget = (dealId,b)=>({
     deal_id:dealId, materials:Number(b.Materials)||0, labor:Number(b.Labor)||0,
     overhead:Number(b.Overhead)||0, subcon:Number(b.Subcon)||0, notes:b.notes||"",
-    set_by:b.setBy||"", boq_data:b.boq||null,
+    set_by:b.setBy||"",
   });
   const toSbActivity = r=>({
     id:r.id||("act"+Date.now()), deal_id:r.dealId||null,
@@ -3043,7 +2712,6 @@ export default function App(){
     await syncAll("budget_requests",breqs,toSbBR);
     await syncAll("addenda",addenda,toSbAddendum);
     await syncAll("swatches",swatches,toSbSwatch);
-    await syncAll("subcon_work_orders",swos,swoToSb);
     await syncAll("checklists",checklist,toSbChecklist);
     await syncAll("activity_log",actLog,toSbActivity);
     if(billings?.length){
@@ -3052,20 +2720,11 @@ export default function App(){
     if(budgets){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
         manual_collections: JSON.stringify(pos.collections?.manualCollections||[]),
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
-  },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,swos,checklist,actLog,billings,budgets,cashPositions,infs]);
+  },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
   const upInventory =useCallback(fn=>setInventory(p=>{const n=fn(p);persist(KEYS.inventory,n);return n;}),[persist]);
   const upStocklog  =useCallback(fn=>setStocklog(p=>{const n=fn(p);persist(KEYS.stocklog,n);return n;}),[persist]);
   const upSuppliers =useCallback(fn=>setSuppliers(p=>{const n=fn(p);persist(KEYS.suppliers,n);return n;}),[persist]);
-  const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
   const upSubcons   =useCallback(fn=>setSubcons(p=>{const n=fn(p);persist(KEYS.subcons,n);return n;}),[persist]);
-  const addCEReq=useCallback(async(rec)=>{
-    const row=await sbInsert('ce_requests',rec);
-    if(row)setCeReqs(p=>[...p,{id:row.id,clientName:row.client_name,projectName:row.project_name,location:row.location,projectType:row.project_type,priority:row.priority,status:row.status,submittedBy:row.submitted_by,targetDeadline:row.target_deadline,submissionDeadline:row.submission_deadline,targetBudget:row.target_budget,targetMargin:row.target_margin,plansLink:row.plans_link,skpLink:row.skp_link,scheduleOfFinish:row.schedule_of_finish,notes:row.notes,ceNotes:row.ce_notes,bidAmount:row.bid_amount,bidMarginPct:row.bid_margin_pct,awarded:row.awarded,awardDate:row.award_date,dealId:row.deal_id,createdAt:row.created_at}]);
-  },[]);
-  const updateCEReq=useCallback(async(id,updates)=>{
-    await sbUpdate('ce_requests',id,updates);
-    setCeReqs(p=>p.map(r=>{if(r.id!==id)return r;return{...r,...(updates.status!==undefined?{status:updates.status}:{}),clientName:updates.client_name??r.clientName,projectName:updates.project_name??r.projectName,location:updates.location??r.location,projectType:updates.project_type??r.projectType,priority:updates.priority??r.priority,submittedBy:updates.submitted_by??r.submittedBy,targetDeadline:updates.target_deadline??r.targetDeadline,submissionDeadline:updates.submission_deadline??r.submissionDeadline,targetBudget:updates.target_budget??r.targetBudget,targetMargin:updates.target_margin??r.targetMargin,plansLink:updates.plans_link??r.plansLink,skpLink:updates.skp_link??r.skpLink,scheduleOfFinish:updates.schedule_of_finish??r.scheduleOfFinish,notes:updates.notes??r.notes,ceNotes:updates.ce_notes??r.ceNotes,bidAmount:updates.bid_amount??r.bidAmount,bidMarginPct:updates.bid_margin_pct??r.bidMarginPct,awarded:updates.awarded??r.awarded,awardDate:updates.award_date??r.awardDate};}));
-  },[]);
 
   const addInventoryItem=(item)=>upInventory(iv=>{
     const rec={...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
@@ -3197,22 +2856,21 @@ export default function App(){
     {rating:"NO",specialty:"Metal Works (Supply & Install)",strengthsWeaknesses:"W: Work errors/Design concerns about metal works/Billing",contactNo:"0917-802-6014",companyName:"Alba Motors/Elijah Mojares",paymentTerms:"Cash Basis",address:"88 Jenny's Avenue, Maybunga Pasig City",rateStructure:"Material/Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
   ];
 
-  // Seed initial data only when the CLOUD table is actually empty. Checking
-  // local state here is not enough — at mount the async load hasn't populated
-  // it yet, which used to re-insert the whole seed list on every fresh
-  // browser session (the source of the duplicated suppliers).
+  // Seed initial data if tables are empty (runs once)
   useEffect(()=>{
-    if(!isSupabaseReady()||SEED_SUPPLIERS.length===0) return;
-    sbList('suppliers',{select:'id',limit:1}).then(rows=>{
-      if(rows.length===0) SEED_SUPPLIERS.forEach(s=>addSupplier({...s,status:"Active"}));
-    }).catch(()=>{});
+    if(suppliers.length===0&&SEED_SUPPLIERS.length>0&&isSupabaseReady()){
+      SEED_SUPPLIERS.forEach(s=>{
+        addSupplier({...s,status:"Active"});
+      });
+    }
   },[/* one-time seed */]);
 
   useEffect(()=>{
-    if(!isSupabaseReady()||SEED_SUBCONS.length===0) return;
-    sbList('subcontractors',{select:'id',limit:1}).then(rows=>{
-      if(rows.length===0) SEED_SUBCONS.forEach(s=>addSubcon({...s,status:"Active"}));
-    }).catch(()=>{});
+    if(subcons.length===0&&SEED_SUBCONS.length>0&&isSupabaseReady()){
+      SEED_SUBCONS.forEach(s=>{
+        addSubcon({...s,status:"Active"});
+      });
+    }
   },[/* one-time seed */]);
 
   const logStockMove=(move)=>{
@@ -3341,8 +2999,7 @@ export default function App(){
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
-          awardRequestData:rec.award_request_data||null,
-          parentDealId:rec.parent_deal_id||null};
+          awardRequestData:rec.award_request_data||null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
       }
@@ -3411,26 +3068,14 @@ export default function App(){
       if(eventType==='DELETE') setJos(js=>js.filter(j=>j.id!==oldRow.id));
     });
 
-    // Purchase Requests — Procurement approves, Ops sees it immediately.
-    // Full snake→camel mapping (mirrors sbLoadAll) so a PO submitted on another
-    // device arrives with its poNumber/costs intact — the next officer's
-    // suggested PO number is computed from this list.
+    // Purchase Requests — Procurement approves, Ops sees it immediately
     const prSub = sbSubscribe('prs-rt', 'purchase_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={...rec,dealId:rec.deal_id,projectId:rec.deal_id,itemName:rec.item||"",
-          estimatedCost:Number(rec.estimated_cost)||0,estUnitCost:Number(rec.estimated_cost)||0,
-          actualCost:Number(rec.actual_cost)||0,actUnitCost:Number(rec.actual_cost)||0,
-          budgetCategory:rec.budget_category,qtyDelivered:Number(rec.qty_delivered)||0,
-          deliveryDate:rec.delivery_date,deliveryNote:rec.delivery_note||"",
-          drNo:rec.dr_no,createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",
-          requestedBy:rec.requested_by||rec.created_by||"",approvedBy:rec.approved_by||"",
-          projectName:rec.project_name||"",poDiscType:rec.po_discount_type||"",
-          poDiscValue:Number(rec.po_discount_value)||0,
-          acctStatus:rec.acct_status||"",acctNotes:rec.acct_notes||"",
-          acctCheckedBy:rec.acct_checked_by||"",acctCheckedAt:rec.acct_checked_at||"",
-          paymentBank:rec.payment_bank||"",paymentRef:rec.payment_ref||"",
-          paymentOrderedBy:rec.payment_ordered_by||"",paymentOrderedAt:rec.payment_ordered_at||""};
+        const mapped={...rec,dealId:rec.deal_id,estimatedCost:rec.estimated_cost,
+          actualCost:rec.actual_cost,budgetCategory:rec.budget_category,
+          qtyDelivered:rec.qty_delivered,deliveryDate:rec.delivery_date,
+          drNo:rec.dr_no,createdBy:rec.created_by};
         setPrs(ps=>{const ex=ps.find(p=>p.id===rec.id);
           return ex?ps.map(p=>p.id===rec.id?{...p,...mapped}:p):[...ps,mapped];});
       }
@@ -3483,7 +3128,7 @@ export default function App(){
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const dt=rec.date?new Date(rec.date):null;
-        const mapped={...rec,dealId:rec.deal_id,receiptNo:rec.receipt_no,payee:rec.supplier||"",poRef:rec.po_ref||"",
+        const mapped={...rec,dealId:rec.deal_id,receiptNo:rec.receipt_no,payee:rec.supplier||"",
           month:dt?dt.getMonth():new Date().getMonth(),
           year:dt?dt.getFullYear():new Date().getFullYear()};
         setExps(es=>{const ex=es.find(e=>e.id===rec.id);
@@ -3548,17 +3193,6 @@ export default function App(){
         setChecklist(cs=>eventType==='UPDATE'?cs.map(c=>c.id===rec.id?{...c,...item}:c):cs.find(c=>c.id===rec.id)?cs:[...cs,item]);
       }
     });
-    // Subcon Work Orders — issued by Procurement, visible everywhere live
-    const swoSub = sbSubscribe('swos-rt','subcon_work_orders',payload=>{
-      const{eventType,new:rec,old:oldRow}=payload;
-      if(eventType==='DELETE'){setSwos(ws=>ws.filter(w=>w.id!==oldRow.id));return;}
-      if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped=swoFromSb(rec);
-        setSwos(ws=>{const ex=ws.find(w=>w.id===rec.id);
-          return ex?ws.map(w=>w.id===rec.id?{...w,...mapped}:w):[...ws,mapped];});
-      }
-    });
-
     const swatchSub = sbSubscribe('swatches-rt','swatches',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setSwatches(ss=>ss.filter(s=>s.id!==oldRow.id));return;}
@@ -3607,7 +3241,6 @@ export default function App(){
       taskSub?.unsubscribe?.();
       checkSub?.unsubscribe?.();
       swatchSub?.unsubscribe?.();
-      swoSub?.unsubscribe?.();
       aeUpdateSub?.unsubscribe?.();
       pcardsTableSub?.unsubscribe?.();
     };
@@ -3868,19 +3501,17 @@ export default function App(){
     upBudgets(bs=>({...bs,[dealId]:saved}));
     if(isSupabaseReady()) sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id").catch(e=>console.error("budget sync:",e.message));
   };
-  const addPR=(pr,opts={})=>{
+  const addPR=(pr)=>{
     const rec={...pr,id:uid(),createdDate:today};
     upPrs(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbSyncOne("purchase_requests",rec,toSbPR);
-    if(!opts.silent){ // multi-line PO submits send ONE summary instead (opts.silent)
-      const deal=deals.find(d=>d.id===(pr.projectId||pr.dealId));
-      const msg=`🛒 <b>New Purchase Request</b>\n${pr.itemName||pr.item||"?"}\nProject: ${deal?.client||pr.dealId||"?"}\nQty: ${pr.qty||"?"} ${pr.unit||""}\nCategory: ${pr.category||"—"}\nUrgency: ${pr.urgency||"Normal"}\nBy: ${pr.requestedBy||session?.name||"?"}`;
-      sendTelegramNotification("procurement",msg);
-      sendTelegramNotification("management",msg);
-    }
+    const deal=deals.find(d=>d.id===(pr.projectId||pr.dealId));
+    const msg=`🛒 <b>New Purchase Request</b>\n${pr.itemName||pr.item||"?"}\nProject: ${deal?.client||pr.dealId||"?"}\nQty: ${pr.qty||"?"} ${pr.unit||""}\nCategory: ${pr.category||"—"}\nUrgency: ${pr.urgency||"Normal"}\nBy: ${pr.requestedBy||session?.name||"?"}`;
+    sendTelegramNotification("procurement",msg);
+    sendTelegramNotification("management",msg);
   };
-  const updatePR=(id,changes,opts={})=>{
-    if(!opts.silent&&changes.status==="PO Issued"&&changes.approvedBy){
+  const updatePR=(id,changes)=>{
+    if(changes.status==="PO Issued"&&changes.approvedBy){
       const pr=prs.find(p=>p.id===id);
       const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
       sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"?"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
@@ -3896,28 +3527,6 @@ export default function App(){
     const pr=prs.find(p=>p.id===id);
     if(pr&&role!=="Manager"&&role!=="Procurement"&&pr.createdBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete purchase requests.","error");
     upPrs(ps=>ps.filter(p=>p.id!==id));if(isSupabaseReady()) sbDelete('purchase_requests',id).catch(()=>{});
-  };
-  // Subcon Work Order CRUD
-  const addSWO=(wo)=>{
-    const rec={...wo,id:uid(),createdDate:today};
-    upSwos(ws=>[rec,...ws]);
-    if(isSupabaseReady()) sbSyncOne("subcon_work_orders",rec,swoToSb);
-    const msg=`🛠 <b>${rec.status==="Pending Approval"?"Work Order Awaiting Approval":"Subcon Work Order Issued"} ${rec.woNumber||""}</b>\n${rec.subcontractor||"?"}${rec.specialty?` · ${rec.specialty}`:""}\nProject: ${rec.projectName||"?"}\nAmount: ₱${(Number(rec.contractAmount)||0).toLocaleString("en-PH")}\nBy: ${rec.requestedBy||session?.name||"?"}`;
-    sendTelegramNotification("procurement",msg);
-    sendTelegramNotification("management",msg);
-  };
-  const updateSWO=(id,changes)=>{
-    upSwos(ws=>ws.map(w=>{
-      if(w.id!==id) return w;
-      const nw={...w,...changes};
-      if(isSupabaseReady()) sbSyncOne("subcon_work_orders",nw,swoToSb);
-      return nw;
-    }));
-  };
-  const deleteSWO=(id)=>{
-    const wo=swos.find(w=>w.id===id);
-    if(wo&&role!=="Manager"&&role!=="Procurement"&&wo.requestedBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete work orders.","error");
-    upSwos(ws=>ws.filter(w=>w.id!==id));if(isSupabaseReady()) sbDelete('subcon_work_orders',id).catch(()=>{});
   };
   const saveDayPos=(date,pos)=>{
     upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
@@ -4120,8 +3729,6 @@ export default function App(){
 
   const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
 
-  // ── Warehouse delivery receipt state ──────────────────────────────────────
-  const[whDeliveryEdit,setWhDeliveryEdit]=useState({}); // {[pr.id]: {qty,date,note}}
 
   // ── Auth helpers ───────────────────────────────────────────────────────────
   const login=async(username,password)=>{
@@ -4345,11 +3952,9 @@ export default function App(){
   const[editLoanId,setEditLoanId]=useState(null);
   const[loanPay,   setLoanPay]  =useState({});
   const[loanForm,  setLoanForm] =useState({lender:"",type:"Bank Loan",principal:"",disbursedDate:"",termMonths:"",interestRate:"",monthlyPayment:"",notes:""});
-  const[acctSearch,  setAcctSearch]  =useState("");
-  const[acctCat,     setAcctCat]    =useState("All");
-  const[acctProj,    setAcctProj]   =useState("all");
-  const[acctExpanded,setAcctExpanded]=useState(null);
-  const[acctDate,    setAcctDate]   =useState(today);
+  const[acctSearch,setAcctSearch]=useState("");
+  const[acctCat,   setAcctCat]  =useState("All");
+  const[acctProj,  setAcctProj] =useState("all");
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -4420,9 +4025,6 @@ export default function App(){
   const[costTab,     setCostTab]     = useState("budget"); // cost analysis sub-tab
   const[page,       setPage]       =useState("home");
   const[fromHome,   setFromHome]   =useState(false);
-  const[stageReminderModal,setStageReminderModal]=useState(null); // {dealId,stage,client}
-  const[boqEditDeal,setBoqEditDeal]=useState(null);  // deal ID — opens BOQ modal from pipeline
-  const[boqKickoffModal,setBoqKickoffModal]=useState(null); // {dealId,cats,contractVal}
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
   const smartImportInputRef=useRef(null);
@@ -4593,10 +4195,6 @@ export default function App(){
   const stageQ=(id,st)=>{
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="06 · Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
-    if(STAGE_PROCESS_REMINDERS[st]){
-      const dealForReminder=deals.find(d=>d.id===id);
-      setTimeout(()=>setStageReminderModal({dealId:id,stage:st,client:dealForReminder?.client||""}),200);
-    }
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
       const missing=[];
@@ -4710,20 +4308,19 @@ export default function App(){
     });
     // Load checklist
     setTimeout(()=>loadChecklistTemplate(id,awardModal.client),200);
-    // Budget seeding: prefer BOQ if one exists, otherwise use 70/30 default split
+    // Auto-set QS budget at 30% margin target (70% cost of contract value)
     const contractVal=Number(awardModal.value||0);
-    const existingBoq=budgets[id]?.boq;
-    const hasBoq=existingBoq?.sections?.some(s=>s.items?.length>0);
-    if(hasBoq){
-      const cats={Materials:0,Labor:0,Overhead:0,Subcon:0};
-      existingBoq.sections.forEach(sec=>{
-        const cat=BUDGET_CATS.includes(sec.budgetCat)?sec.budgetCat:"Materials";
-        sec.items.forEach(it=>{cats[cat]+=Number(it.qty||0)*Number(it.unitCost||0);});
-      });
-      setTimeout(()=>setBoqKickoffModal({dealId:id,cats,contractVal}),300);
-    }else if(contractVal>0){
+    if(contractVal>0){
       const costTarget=contractVal*0.70;
-      saveBudget(id,{Materials:Math.round(costTarget*0.50),Labor:Math.round(costTarget*0.25),Overhead:Math.round(costTarget*0.15),Subcon:Math.round(costTarget*0.10),marginTarget:30,autoGenerated:true,autoGeneratedAt:today});
+      saveBudget(id,{
+        Materials: Math.round(costTarget*0.50),
+        Labor:     Math.round(costTarget*0.25),
+        Overhead:  Math.round(costTarget*0.15),
+        Subcon:    Math.round(costTarget*0.10),
+        marginTarget:30,
+        autoGenerated:true,
+        autoGeneratedAt:today,
+      });
     }
     // Log
     logActivity(id,"Project Awarded",`${awardModal.client} — JO ${jo.joNo} issued. PM: ${pmDisplay}. AE: ${jo.aeAssigned||"—"}. Awarded by: ${session?.name}.`,session?.name);
@@ -4882,15 +4479,14 @@ export default function App(){
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"inventory",l:"Inventory"}]},
+      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"QS / Cost",   items:[{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"🧮 BOQ Builder"},{id:"inventory",l:"Inventory"}]},
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
@@ -4899,14 +4495,13 @@ export default function App(){
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
     ],
     QS:[
-      {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
-      {group:"CE / QS",  items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"}]},
+      {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"Projects", items:[{id:"projects",l:"📋 Projects"}]},
+      {group:"Projects", items:[{id:"projects",l:"📋 Projects"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"🧮 BOQ Builder"}]},
     ],
     Operations:[
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
@@ -4935,7 +4530,7 @@ export default function App(){
       home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
       checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
       procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
-      collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",subconwo:"🛠️",
+      collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
       drf:"📝",deliveries:"🚚",stockmove:"📦",reports:"📊",
       suppliers:"🏭",subcontractors:"👷",requests:"📋",masters:"🗂",
       "Sales Pipeline":"📊","My Pipeline":"📊",
@@ -5059,7 +4654,7 @@ export default function App(){
       home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
       checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
       procurement:"📦",clients:"🏢",accounts:"👥",collections:"💵",
-      materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",subconwo:"🛠️",drf:"📝",
+      materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",drf:"📝",
       deliveries:"🚚",stockmove:"📦",reports:"📊",suppliers:"🏭",
       subcontractors:"👷",calendar:"📅",inventory:"📦",pmupdates:"📝",addenda:"⚠️",
       activity:"🏆",requests:"📋",masters:"🗂️",
@@ -5069,7 +4664,7 @@ export default function App(){
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
       costanalysis:"Costs",accounting:"Accounts",procurement:"Orders",
       clients:"Clients",materialreq:"Materials",budgetreq:"Budget",
-      swatchboard:"Swatches",subconwo:"Subcon WO",drf:"Design",deliveries:"Delivery",
+      swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
       pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",activity:"Activity",
@@ -5262,136 +4857,7 @@ export default function App(){
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
-      {/* ── Stage Process Reminder Modal ── */}
-      {stageReminderModal&&STAGE_PROCESS_REMINDERS[stageReminderModal.stage]&&(()=>{
-        const rem=STAGE_PROCESS_REMINDERS[stageReminderModal.stage];
-        return(
-          <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setStageReminderModal(null)}>
-            <div style={{background:"#fff",borderRadius:20,padding:0,width:"100%",maxWidth:540,maxHeight:"92vh",overflowY:"auto",boxShadow:"0 32px 96px rgba(0,0,0,.25)"}} onClick={e=>e.stopPropagation()}>
-              {/* Header */}
-              <div style={{background:"#1a1a2e",borderRadius:"20px 20px 0 0",padding:"20px 24px 16px",position:"relative"}}>
-                <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
-                  <span style={{fontSize:"1.5rem"}}>{rem.icon}</span>
-                  <div>
-                    <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1.5px",color:"rgba(255,255,255,.45)",marginBottom:3}}>Stage Process Reminder</div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#fff",lineHeight:1.1}}>{stageReminderModal.stage}</div>
-                  </div>
-                  <button onClick={()=>setStageReminderModal(null)} style={{position:"absolute",top:16,right:16,background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,width:30,height:30,cursor:"pointer",color:"#94a3b8",fontSize:".95rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-                </div>
-                {stageReminderModal.client&&<div style={{fontSize:".72rem",color:"rgba(255,255,255,.45)",marginTop:4}}>📌 {stageReminderModal.client}</div>}
-                <div style={{marginTop:10,display:"inline-flex",alignItems:"center",gap:6,background:rem.color+"22",border:`1px solid ${rem.color}44`,borderRadius:20,padding:"4px 12px"}}>
-                  <span style={{width:8,height:8,borderRadius:"50%",background:rem.color,display:"inline-block",flexShrink:0}}/>
-                  <span style={{fontSize:".72rem",fontWeight:700,color:rem.color}}>Owner: {rem.owner}</span>
-                </div>
-              </div>
-              <div style={{height:3,background:`linear-gradient(90deg,${rem.color},#f59e0b)`}}/>
-              {/* Body */}
-              <div style={{padding:"20px 24px"}}>
-                <div style={{fontSize:".85rem",color:"#475569",lineHeight:1.6,marginBottom:18,fontWeight:500}}>{rem.summary}</div>
-                {/* Immediate Actions */}
-                <div style={{marginBottom:16}}>
-                  <div style={{fontSize:".65rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",marginBottom:10}}>Immediate Actions</div>
-                  {rem.actions.map((a,i)=>(
-                    <div key={i} style={{display:"flex",gap:10,marginBottom:9,alignItems:"flex-start"}}>
-                      <div style={{width:22,height:22,borderRadius:"50%",background:rem.color+"18",border:`1.5px solid ${rem.color}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
-                        <span style={{fontSize:".65rem",fontWeight:800,color:rem.color}}>{i+1}</span>
-                      </div>
-                      <div style={{fontSize:".82rem",color:"#1e293b",lineHeight:1.5,fontWeight:500}}>{a}</div>
-                    </div>
-                  ))}
-                </div>
-                {/* SLA */}
-                {rem.sla&&(
-                  <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px",marginBottom:12,display:"flex",gap:8,alignItems:"flex-start"}}>
-                    <span style={{fontSize:".95rem",flexShrink:0}}>⏱</span>
-                    <div>
-                      <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"#059669",marginBottom:2}}>Timeline / SLA</div>
-                      <div style={{fontSize:".8rem",color:"#064e3b",fontWeight:600}}>{rem.sla}</div>
-                    </div>
-                  </div>
-                )}
-                {/* Watch Out */}
-                <div style={{background:"#fef9c3",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",marginBottom:20,display:"flex",gap:8,alignItems:"flex-start"}}>
-                  <span style={{fontSize:"1rem",flexShrink:0}}>⚠️</span>
-                  <div>
-                    <div style={{fontSize:".62rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:"#92400e",marginBottom:2}}>Watch Out</div>
-                    <div style={{fontSize:".8rem",color:"#78350f",lineHeight:1.5}}>{rem.watchOut}</div>
-                  </div>
-                </div>
-                {/* Buttons */}
-                <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>setStageReminderModal(null)} style={{flex:1,background:"#1a1a2e",border:"none",borderRadius:10,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Got it</button>
-                  <button onClick={()=>{setPage("checklist");setStageReminderModal(null);}} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:"pointer",whiteSpace:"nowrap"}}>📋 Open Checklist</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-      {/* BOQ → Budget prompt shown at Kickoff when a BOQ exists */}
-      {boqKickoffModal&&(()=>{
-        const {dealId:kid,cats:kc,contractVal:kcv}=boqKickoffModal;
-        const kDeal=[...deals,...wonDeals].find(d=>d.id===kid);
-        const boqTotal=BUDGET_CATS.reduce((s,c)=>s+kc[c],0);
-        return(
-          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:10010,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-            <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:460,boxShadow:"0 20px 60px rgba(0,0,0,.25)",overflow:"hidden"}}>
-              <div style={{background:"#059669",padding:"16px 20px",display:"flex",alignItems:"center",gap:12}}>
-                <span style={{fontSize:"1.4rem"}}>🚀</span>
-                <div>
-                  <div style={{fontWeight:800,color:"#fff",fontSize:"1rem"}}>Kickoff — Apply BOQ to Budget?</div>
-                  <div style={{fontSize:".72rem",color:"rgba(255,255,255,.75)",marginTop:2}}>{kDeal?.contact||kDeal?.client}</div>
-                </div>
-              </div>
-              <div style={{padding:"20px 20px 16px"}}>
-                <p style={{fontSize:".85rem",color:"#475569",marginBottom:14,marginTop:0}}>A BOQ already exists for this project. Use it to set the project budget?</p>
-                <div style={{background:"#f8fafc",borderRadius:10,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-                  {BUDGET_CATS.map((cat,i)=>(
-                    <div key={cat} style={{display:"flex",justifyContent:"space-between",padding:"8px 14px",borderBottom:i<BUDGET_CATS.length-1?"1px solid #f1f5f9":"none",alignItems:"center"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{width:8,height:8,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],display:"inline-block",flexShrink:0}}/>
-                        <span style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{cat}</span>
-                      </div>
-                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".83rem"}}>{fmtPHP(Math.round(kc[cat]))}</span>
-                    </div>
-                  ))}
-                  <div style={{display:"flex",justifyContent:"space-between",padding:"9px 14px",background:"#1e293b",alignItems:"center"}}>
-                    <span style={{fontWeight:700,color:"rgba(255,255,255,.7)",fontSize:".8rem",textTransform:"uppercase",letterSpacing:".5px"}}>Total Budget</span>
-                    <span style={{fontWeight:800,color:"#f59e0b",fontSize:".9rem"}}>{fmtPHP(Math.round(boqTotal))}</span>
-                  </div>
-                </div>
-                {kcv>0&&<div style={{fontSize:".72rem",color:boqTotal/kcv>0.85?"#ef4444":"#059669",fontWeight:600,marginBottom:14}}>
-                  BOQ cost = {Math.round(boqTotal/kcv*100)}% of contract value{boqTotal/kcv>0.85?" — tight margin, review before applying":""}.
-                </div>}
-                <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                  <button onClick={()=>{
-                    const prev=budgets[kid]?.history||[];
-                    const entry={changedAt:new Date().toISOString(),changedBy:session?.name||role||"User",Materials:Math.round(kc.Materials),Labor:Math.round(kc.Labor),Overhead:Math.round(kc.Overhead),Subcon:Math.round(kc.Subcon),note:"Applied from BOQ at Kickoff"};
-                    saveBudget(kid,{...(budgets[kid]||emptyBudget()),Materials:Math.round(kc.Materials),Labor:Math.round(kc.Labor),Overhead:Math.round(kc.Overhead),Subcon:Math.round(kc.Subcon),history:[entry,...prev].slice(0,25)});
-                    setBoqKickoffModal(null);
-                  }} style={{flex:1,background:"#059669",border:"none",borderRadius:9,padding:"11px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
-                    ✓ Apply BOQ Budget
-                  </button>
-                  <button onClick={()=>{
-                    if(kcv>0){const ct=kcv*0.70;saveBudget(kid,{...(budgets[kid]||emptyBudget()),Materials:Math.round(ct*0.50),Labor:Math.round(ct*0.25),Overhead:Math.round(ct*0.15),Subcon:Math.round(ct*0.10),marginTarget:30,autoGenerated:true,autoGeneratedAt:today});}
-                    setBoqKickoffModal(null);
-                  }} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:"pointer",whiteSpace:"nowrap"}}>
-                    Use Default Split
-                  </button>
-                  <button onClick={()=>setBoqKickoffModal(null)} style={{background:"none",border:"none",padding:"11px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#94a3b8",cursor:"pointer"}}>Skip</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-      {/* BOQ modal from pipeline 📋 button */}
-      {boqEditDeal&&(()=>{
-        const bd=[...deals,...wonDeals].find(d=>d.id===boqEditDeal);
-        if(!bd)return null;
-        return <BOQModal dealId={boqEditDeal} deal={bd} budgets={budgets} saveBudget={saveBudget} onClose={()=>setBoqEditDeal(null)} session={session} role={role} wonDeals={wonDeals}/>;
-      })()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
         <div style={{display:"flex",gap:10}}><Btn variant="danger" onClick={()=>delDeal(confirmDel)}>Yes, Delete</Btn><Btn variant="ghost" onClick={()=>setConfirmDel(null)}>Cancel</Btn></div>
@@ -5466,7 +4932,7 @@ export default function App(){
     </div>
     </WrapCtx.Provider>
   );
-  },[navCollapsed, isMobile, role, page, fromHome, boqEditDeal, boqKickoffModal, stageReminderModal]);
+  },[navCollapsed, isMobile, role, page, fromHome]);
   // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
   if(!ready) return(
     <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -6738,9 +6204,7 @@ export default function App(){
         const today2=new Date();
         const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
-        const awardedVal=wonDeals.filter(d=>!d.parentDealId).reduce((s,d)=>
-          s+Number(d.value||0)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((cs,cd)=>cs+Number(cd.value||0),0)
-        ,0);
+        const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
         const thisMonth=new Date().toISOString().slice(0,7);
         const newThisMonth=deals.filter(d=>d.dateAcquired?.slice(0,7)===thisMonth);
         const allMs=billings;
@@ -7041,7 +6505,7 @@ export default function App(){
   ):(
     <ConstructionCalendar
       wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
-      prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
+      prs={prs} billings={billings} drfs={drfs}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
     />
   );
@@ -7945,7 +7409,6 @@ export default function App(){
                     <div style={{display:"flex",gap:4}}>
                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>✏</button>}
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
-                      <button onClick={()=>setBoqEditDeal(d.id)} title="Open BOQ Builder" style={{background:budgets[d.id]?.boq?.sections?.some(s=>s.items?.length>0)?"#eff6ff":"#f8fafc",border:budgets[d.id]?.boq?.sections?.some(s=>s.items?.length>0)?"1.5px solid #93c5fd":"1px solid #e2e8f0",borderRadius:6,padding:"11px 12px",fontSize:".75rem",color:budgets[d.id]?.boq?.sections?.some(s=>s.items?.length>0)?"#3b82f6":"#94a3b8",cursor:"pointer",fontFamily:"inherit",minHeight:36,fontWeight:700}}>📋</button>
                       {(role==="Manager"||role==="Sales")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>}
                       {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Delete">✕</button>}
                     </div>
@@ -7979,7 +7442,6 @@ export default function App(){
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Edit">✏</button>}
                 {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Set Client Price">₱</button>}
                 {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Update Client Price">₱✏</button>}
-                <button onClick={()=>setBoqEditDeal(d.id)} title="BOQ Builder" style={{background:budgets[d.id]?.boq?.sections?.some(s=>s.items?.length>0)?"#eff6ff":"#f8fafc",border:budgets[d.id]?.boq?.sections?.some(s=>s.items?.length>0)?"1.5px solid #93c5fd":"1px solid #e2e8f0",borderRadius:5,padding:isMobile?"8px 10px":"4px 6px",fontSize:isMobile?".72rem":".65rem",color:budgets[d.id]?.boq?.sections?.some(s=>s.items?.length>0)?"#3b82f6":"#94a3b8",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}}>📋</button>
                 {(role==="Manager"||role==="Sales")
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Award Project">🏆</button>
                   :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Request Award">🏆</button>
@@ -8884,13 +8346,12 @@ export default function App(){
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
-    if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
+    if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
     if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
@@ -9002,7 +8463,7 @@ export default function App(){
             </div>
           ):null;
         })()}
-        <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos} session={session}/>
+        <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
       </Wrap>
     );
     if(page==="home"&&role==="Procurement") return(
@@ -9059,13 +8520,12 @@ export default function App(){
         />
       </Wrap>
     );
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
@@ -9109,6 +8569,7 @@ export default function App(){
   if(role==="Warehouse"){
     if(page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
+    if(page==="boq") return(<Wrap><BOQBuilder wonDeals={[...wonDeals,...completedDeals]} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -9153,66 +8614,29 @@ export default function App(){
                   <div style={{background:"#dc2626",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Due Today — Receive and Inspect ({arrivedToday.length})</span></div>
                   {arrivedToday.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
-                    const n2=v=>Number(String(v||"").replace(/,/g,""))||0;
-                    const confirmFull=()=>{
-                      const dr=`Received by ${session?.name||"Warehouse"} on ${today}`;
-                      updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:dr});
-                      sendTelegramNotification("procurement",`📦 <b>Delivery Confirmed (Full)</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
-                      const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
-                      if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Auto-logged from PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});toastEmit(`Stock updated: +${pr.qty} ${pr.unit||""} of ${invMatch.name}`,"success");}
-                      else toastEmit(`Delivery recorded. "${pr.itemName}" not found in inventory — log manually if needed.`,"info");
-                    };
-                    const editing=whDeliveryEdit[pr.id];
                     return(
-                      <React.Fragment key={pr.id}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:editing?"none":"1px solid #fee2e2",background:"#fff",flexWrap:"wrap",gap:8}}>
+                      <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<arrivedToday.length-1?"1px solid #fee2e2":"",background:"#fff"}}>
                         <div>
                           <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{pr.itemName}</div>
                           <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {pr.qty} {pr.unit} · {pr.supplier||"No supplier"}</div>
                           {pr.poNumber&&<div style={{fontSize:".68rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
                         </div>
-                        <div style={{display:"flex",gap:6,flexShrink:0}}>
-                          <button onClick={confirmFull} style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>✓ Full</button>
-                          <button onClick={()=>setWhDeliveryEdit(p=>({...p,[pr.id]:{qty:"",date:today,note:""}}))} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",color:"#475569",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>↳ Partial</button>
-                        </div>
+                        <button onClick={()=>{
+                          updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:`Received by ${session?.name||"Warehouse"} on ${today}`});
+                          sendTelegramNotification("procurement",`📦 <b>Delivery Confirmed</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
+                          // Auto-log stock IN movement if item exists in inventory
+                          const invMatch=inventory.find(i=>i.name?.toLowerCase()===pr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
+                          if(invMatch){
+                            logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Auto-logged from PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});
+                            toastEmit(`Stock updated: +${pr.qty} ${pr.unit||""} of ${invMatch.name}`,"success");
+                          } else {
+                            toastEmit(`Delivery recorded. "${pr.itemName}" not found in inventory — log manually in Stock Movements if needed.`,"info");
+                          }
+                        }}
+                          style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                          ✓ Mark Received
+                        </button>
                       </div>
-                      {editing&&(
-                        <div style={{background:"#f0fdf4",borderBottom:"1px solid #fee2e2",padding:"10px 16px",display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
-                          <div style={{fontSize:".72rem",fontWeight:700,color:"#166534",minWidth:"100%",marginBottom:2}}>Record partial receipt for <em>{pr.itemName}</em> (ordered: {pr.qty} {pr.unit})</div>
-                          <div>
-                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Qty Received</div>
-                            <input type="number" min={1} max={n2(pr.qty)} value={editing.qty}
-                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],qty:e.target.value}}))}
-                              style={{width:80,border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                          </div>
-                          <div>
-                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Date Received</div>
-                            <input type="date" value={editing.date}
-                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],date:e.target.value}}))}
-                              style={{border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                          </div>
-                          <div style={{flex:1,minWidth:120}}>
-                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>DR / Delivery Note</div>
-                            <input type="text" value={editing.note} placeholder="e.g. DR-2024-0087"
-                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],note:e.target.value}}))}
-                              style={{width:"100%",border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                          </div>
-                          <button disabled={!editing.qty||n2(editing.qty)<=0} onClick={()=>{
-                            const qRec=n2(editing.qty);
-                            const isFullNow=qRec>=n2(pr.qty);
-                            const st=isFullNow?"Delivered":"Partially Delivered";
-                            const dr=editing.note||`Partial receipt by ${session?.name||"Warehouse"} · ${editing.date}`;
-                            updatePR(pr.id,{status:st,qtyDelivered:qRec,deliveryDate:editing.date,deliveryNote:dr});
-                            sendTelegramNotification("procurement",`📦 <b>${isFullNow?"Delivery Confirmed":"Partial Delivery"}</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nReceived: ${qRec} / ${pr.qty} ${pr.unit||""}\nBy: ${session?.name||"Warehouse"} · ${editing.date}${editing.note?"\nDR: "+editing.note:""}`);
-                            const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
-                            if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:qRec,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`${isFullNow?"Full":"Partial"} delivery · PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:editing.date});toastEmit(`Stock updated: +${qRec} ${pr.unit||""} of ${invMatch.name}`,"success");}
-                            else toastEmit(`Receipt recorded (${qRec}/${pr.qty}). Not in inventory — log stock manually if needed.`,"info");
-                            setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;});
-                          }} style={{background:editing.qty&&n2(editing.qty)>0?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontSize:".75rem",color:editing.qty&&n2(editing.qty)>0?"#fff":"#94a3b8",cursor:editing.qty&&n2(editing.qty)>0?"pointer":"not-allowed",fontWeight:700}}>Save Receipt</button>
-                          <button onClick={()=>setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;})} style={{background:"transparent",border:"1px solid #bbf7d0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#166534",cursor:"pointer"}}>Cancel</button>
-                        </div>
-                      )}
-                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -9221,70 +8645,18 @@ export default function App(){
               {/* Overdue deliveries */}
               {overdueDeliveries.length>0&&(
                 <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fed7aa",overflow:"hidden"}}>
-                  <div style={{background:"#d97706",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ Overdue — Contact Procurement to follow up ({overdueDeliveries.length})</span></div>
+                  <div style={{background:"#d97706",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ Overdue — Follow Up with Procurement ({overdueDeliveries.length})</span></div>
                   {overdueDeliveries.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
                     const daysLate=Math.ceil((now-new Date(pr.deliveryDate))/(1000*60*60*24));
-                    const n2=v=>Number(String(v||"").replace(/,/g,""))||0;
-                    const editing=whDeliveryEdit[pr.id];
                     return(
-                      <React.Fragment key={pr.id}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:editing?"none":"1px solid #fef3c7",background:"#fff",flexWrap:"wrap",gap:8}}>
+                      <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<overdueDeliveries.length-1?"1px solid #fef3c7":"",background:"#fff"}}>
                         <div>
                           <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</div>
                           <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · Expected {pr.deliveryDate} · {pr.supplier||"No supplier"}</div>
-                          {pr.poNumber&&<div style={{fontSize:".68rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
                         </div>
-                        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-                          <span style={{fontSize:".72rem",background:"#fff7ed",color:"#d97706",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
-                          <button onClick={()=>{
-                            const dr=`Received by ${session?.name||"Warehouse"} on ${today}`;
-                            updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:dr});
-                            sendTelegramNotification("procurement",`📦 <b>Late Delivery Confirmed</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
-                            const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
-                            if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Late delivery · PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});}
-                            toastEmit(`Late delivery recorded for ${pr.itemName}`,"success");
-                          }} style={{background:"#059669",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>✓ Received</button>
-                          <button onClick={()=>setWhDeliveryEdit(p=>({...p,[pr.id]:{qty:"",date:today,note:""}}))} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 10px",color:"#475569",fontFamily:"inherit",fontWeight:600,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>↳ Partial</button>
-                        </div>
+                        <span style={{fontSize:".72rem",background:"#fff7ed",color:"#d97706",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
                       </div>
-                      {editing&&(
-                        <div style={{background:"#f0fdf4",borderBottom:"1px solid #fef3c7",padding:"10px 16px",display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
-                          <div style={{fontSize:".72rem",fontWeight:700,color:"#166534",minWidth:"100%",marginBottom:2}}>Record partial receipt for <em>{pr.itemName}</em> (ordered: {pr.qty} {pr.unit})</div>
-                          <div>
-                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Qty Received</div>
-                            <input type="number" min={1} max={n2(pr.qty)} value={editing.qty}
-                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],qty:e.target.value}}))}
-                              style={{width:80,border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                          </div>
-                          <div>
-                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Date Received</div>
-                            <input type="date" value={editing.date}
-                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],date:e.target.value}}))}
-                              style={{border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                          </div>
-                          <div style={{flex:1,minWidth:120}}>
-                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>DR / Delivery Note</div>
-                            <input type="text" value={editing.note} placeholder="e.g. DR-2024-0087"
-                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],note:e.target.value}}))}
-                              style={{width:"100%",border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                          </div>
-                          <button disabled={!editing.qty||n2(editing.qty)<=0} onClick={()=>{
-                            const qRec=n2(editing.qty);
-                            const isFullNow=qRec>=n2(pr.qty);
-                            const st=isFullNow?"Delivered":"Partially Delivered";
-                            const dr=editing.note||`Partial receipt by ${session?.name||"Warehouse"} · ${editing.date}`;
-                            updatePR(pr.id,{status:st,qtyDelivered:qRec,deliveryDate:editing.date,deliveryNote:dr});
-                            sendTelegramNotification("procurement",`📦 <b>${isFullNow?"Late Delivery Confirmed":"Partial Delivery"}</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nReceived: ${qRec} / ${pr.qty} ${pr.unit||""}\nBy: ${session?.name||"Warehouse"} · ${editing.date}${editing.note?"\nDR: "+editing.note:""}`);
-                            const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
-                            if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:qRec,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Late delivery · PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:editing.date});}
-                            toastEmit(`Receipt recorded (${qRec}/${pr.qty} ${pr.unit||""})`,"success");
-                            setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;});
-                          }} style={{background:editing.qty&&n2(editing.qty)>0?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontSize:".75rem",color:editing.qty&&n2(editing.qty)>0?"#fff":"#94a3b8",cursor:editing.qty&&n2(editing.qty)>0?"pointer":"not-allowed",fontWeight:700}}>Save Receipt</button>
-                          <button onClick={()=>setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;})} style={{background:"transparent",border:"1px solid #bbf7d0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#166534",cursor:"pointer"}}>Cancel</button>
-                        </div>
-                      )}
-                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -9332,13 +8704,12 @@ export default function App(){
 
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit}/></Wrap>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -9399,11 +8770,11 @@ export default function App(){
     );
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/>;
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} deals={deals} session={session} role={role}/></Wrap>);
+    if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
   }
 
   // ── GLOBAL DRF PAGE (Sales / Manager) ───────────────────────────────────
-  if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} deals={deals} session={session} role={role}/></Wrap>);
+  if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
 
   // ── PROJECT CARDS ────────────────────────────────────────────────────────────
   // ── TEAM ACTIVITY DASHBOARD ──────────────────────────────────────────────
@@ -9915,8 +9286,6 @@ export default function App(){
   if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
 
-  if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
-
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
     <Wrap>
@@ -9929,8 +9298,8 @@ export default function App(){
         ))}
       </div>
       {costTab==="budget"
-        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos} session={session}/>
-        :<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/>
+        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
+        :<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/>
       }
     </Wrap>
   );
@@ -10048,7 +9417,6 @@ export default function App(){
   // ── ACCOUNTING (Expenses) ─────────────────────────────────────────────────
   if(page==="accounting") return(
     <Wrap>
-      <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem"}}>📋 Accounting — Expenses</div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
@@ -10119,14 +9487,7 @@ First few:
         </div>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-        {/* Date picker — primary filter */}
-        <div style={{display:"flex",alignItems:"center",gap:6,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px"}}>
-          <button onClick={()=>{const d=new Date(acctDate+"T00:00:00");d.setDate(d.getDate()-1);setAcctDate(d.toISOString().split("T")[0]);}} style={{background:"none",border:"none",cursor:"pointer",color:"#64748b",fontSize:"1rem",lineHeight:1,padding:"0 2px"}}>‹</button>
-          <input type="date" value={acctDate} onChange={e=>setAcctDate(e.target.value)} style={{border:"none",outline:"none",fontFamily:"inherit",fontSize:".84rem",fontWeight:600,color:"#0f172a",background:"transparent",cursor:"pointer"}}/>
-          <button onClick={()=>{const d=new Date(acctDate+"T00:00:00");d.setDate(d.getDate()+1);setAcctDate(d.toISOString().split("T")[0]);}} style={{background:"none",border:"none",cursor:"pointer",color:"#64748b",fontSize:"1rem",lineHeight:1,padding:"0 2px"}}>›</button>
-          {acctDate!==today&&<button onClick={()=>setAcctDate(today)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"2px 8px",fontSize:".68rem",fontWeight:700,color:"#475569",cursor:"pointer",fontFamily:"inherit",marginLeft:2}}>Today</button>}
-        </div>
-        <div style={{position:"relative",flex:1,minWidth:160}}>
+        <div style={{position:"relative",flex:1,minWidth:180}}>
           <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".8rem"}}>🔍</span>
           <input value={acctSearch} onChange={e=>setAcctSearch(e.target.value)} placeholder="Search expenses…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px 7px 28px",fontFamily:"inherit",fontSize:".83rem",boxSizing:"border-box"}}/>
         </div>
@@ -10142,70 +9503,47 @@ First few:
         {(acctSearch||acctCat!=="All"||acctProj!=="all")&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
       </div>
       {(()=>{
-        let list=[...exps].filter(e=>(e.expDate||`${e.year||new Date().getFullYear()}-${String((e.month||0)+1).padStart(2,"0")}-01`)===acctDate).sort((a,b)=>(a.note||"").localeCompare(b.note||""));
+        let list=[...exps].sort((a,b)=>(b.date||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}`).localeCompare(a.date||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}`));
         if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
         if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
         if(acctProj==="company") list=list.filter(e=>!e.projectId);
         else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
         const total=list.reduce((s,e)=>s+Number(e.amount||0),0);
-        const COL="110px 1fr 140px 110px 100px 64px";
-        const dayLabel=(()=>{try{const d=new Date(acctDate+"T00:00:00");return d.toLocaleDateString("en-PH",{weekday:"long",month:"long",day:"numeric",year:"numeric"});}catch{return acctDate;}})();
         return(
           <>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"8px 14px",background:"#1e293b",borderRadius:10}}>
-              <span style={{fontWeight:700,color:"#f8fafc",fontSize:".82rem"}}>📅 {dayLabel}</span>
-              <span style={{fontWeight:800,color:"#f87171",fontSize:".85rem",fontFamily:"'Barlow Condensed',sans-serif"}}>
-                {list.length>0?`−₱${total.toLocaleString("en-PH",{maximumFractionDigits:0})}`:""}&nbsp;
-                <span style={{fontWeight:400,color:"rgba(255,255,255,.45)",fontSize:".72rem"}}>{list.length} expense{list.length!==1?"s":""}</span>
-              </span>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"8px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+              <span style={{fontSize:".78rem",color:"#64748b"}}>{list.length} expense{list.length!==1?"s":""}{(acctSearch||acctCat!=="All"||acctProj!=="all")?" matching filter":""}</span>
+              <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{total.toLocaleString("en-PH",{maximumFractionDigits:0})} total</span>
             </div>
-            {list.length===0&&<EmptyState icon="📋" msg={`No expenses logged for ${acctDate}.`}/>}
-            {list.length>0&&(
-              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{overflowX:"auto"}}>
-                  <div style={{display:"grid",gridTemplateColumns:COL,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"7px 14px",alignItems:"center",minWidth:640}}>
-                    {["Category","Description","Project","Payee","Amount",""].map((h,i)=>(
-                      <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
-                    ))}
-                  </div>
-                  {list.map((e,idx)=>{
-                    const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));
-                    const bk=e.bankAccount?BANKS.find(b=>b.id===e.bankAccount):null;
-                    const isExpanded=acctExpanded===e.id;
-                    return(
-                      <div key={e.id} style={{borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none"}}>
-                        <div onClick={()=>setAcctExpanded(isExpanded?null:e.id)}
-                          style={{display:"grid",gridTemplateColumns:COL,padding:"9px 14px",alignItems:"center",cursor:"pointer",background:isExpanded?"#fefce8":"#fff",transition:"background .1s",minWidth:640}}
-                          onMouseEnter={ev=>{if(!isExpanded)ev.currentTarget.style.background="#f8fafc";}}
-                          onMouseLeave={ev=>{ev.currentTarget.style.background=isExpanded?"#fefce8":"#fff";}}>
-                          <div><span style={{fontSize:".65rem",fontWeight:700,background:"#f1f5f9",borderRadius:20,padding:"2px 8px",color:"#475569",whiteSpace:"nowrap"}}>{e.category}</span></div>
-                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:10}}>{e.note}</div>
-                          <div style={{fontSize:".75rem",color:proj?"#8b5cf6":"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{proj?proj.client:"Company-wide"}</div>
-                          <div style={{fontSize:".75rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{e.payee||<span style={{color:"#cbd5e1"}}>—</span>}</div>
-                          <div style={{fontWeight:700,color:"#ef4444",fontSize:".82rem",textAlign:"right",paddingRight:12}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                          <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                            <button onClick={ev=>{ev.stopPropagation();openEditExp(e);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                            <button onClick={ev=>{ev.stopPropagation();delExp(e.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                          </div>
-                        </div>
-                        {isExpanded&&(
-                          <div style={{background:"#fefce8",borderTop:"1px solid #fef08a",padding:"10px 16px",display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-                            {bk&&<span style={{fontSize:".75rem",fontWeight:600,color:bk.color}}>🏦 {bk.short}</span>}
-                            {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{fontSize:".75rem",color:"#3b82f6",fontWeight:600,textDecoration:"none"}}>📎 View Receipt</a>}
-                            {proj?.contact&&<span style={{fontSize:".75rem",color:"#64748b"}}>👤 {proj.contact}</span>}
-                            {!bk&&!e.receipt&&!proj?.contact&&<span style={{fontSize:".75rem",color:"#94a3b8",fontStyle:"italic"}}>No additional details</span>}
-                          </div>
-                        )}
+            {list.length===0&&<EmptyState icon="📋" msg="No expenses match your filter."/>}
+            {list.map(e=>{
+              const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));
+              return(
+                <Card key={e.id}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,color:"#0f172a"}}>{e.note}</div>
+                      <div style={{fontSize:".75rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                        <span style={{background:"#f1f5f9",borderRadius:20,padding:"1px 8px",fontWeight:600}}>{e.category}</span>
+                        {proj?<span style={{color:"#8b5cf6"}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</span>:<span style={{color:"#94a3b8"}}>Company-wide</span>}
+                        <span>{e.expDate||MONTHS[e.month]}</span>
+                        {e.bankAccount&&(()=>{const bk=BANKS.find(b=>b.id===e.bankAccount);return bk?<span style={{color:bk.color,fontWeight:600}}>🏦 {bk.short}</span>:null;})()}
+                        {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{color:"#3b82f6",textDecoration:"none",fontWeight:600}}>📎 Receipt</a>}
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+                    </div>
+                    <div style={{display:"flex",alignItems:"center",gap:10}}>
+                      <span style={{fontWeight:800,color:"#ef4444",fontSize:"1rem"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+                      <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                      <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
           </>
         );
       })()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={[...projList,...completedDeals]} clientName={clientName} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={[...projList,...completedDeals]} clientName={clientName}/>
     </Wrap>
   );
 
@@ -10215,7 +9553,7 @@ First few:
       <MaterialRequestView
         mreqs={mreqs} addMR={addMR} updateMR={updateMR}
         prs={prs} addPR={addPR}
-        wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/>
+        wonDeals={wonDeals} session={session} role={role}/>
     </Wrap>
   );
 
@@ -10241,7 +9579,7 @@ First few:
     <Wrap>
       <BudgetView
         wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget}
-        prs={prs} exps={exps} role={role} swos={swos}/>
+        prs={prs} exps={exps} role={role}/>
     </Wrap>
   );
 
@@ -10250,7 +9588,7 @@ First few:
     <Wrap>
       <CostingStudy
         wonDeals={wonDeals} budgets={budgets} prs={prs}
-        exps={exps} projs={projs} role={role} swos={swos}/>
+        exps={exps} projs={projs} role={role}/>
     </Wrap>
   );
 
@@ -10259,7 +9597,7 @@ First few:
     <Wrap>
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
-        wonDeals={wonDeals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/>
+        wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>
     </Wrap>
   );
 
@@ -11147,7 +10485,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 }
 
 // ─── DESIGN REQUEST FORM (DRF) VIEW ──────────────────────────────────────────
-function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,deals,session,role}){
+function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
   const[form,setForm]=useState(emptyDRF());
@@ -12948,8 +12286,9 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
   // Total Cash Available = Total Book Balance - Less
   // Book balance = what bank confirms; if not filled, fall back to ending balance
-  const bookUnreconciled=bankTotals.book===0&&bankTotals.end>0;
+  const bookUnreconciled=bankTotals.book===0&&bankTotals.end>0; // warn user when BOOK is blank but END is filled
   const workingBook=bankTotals.book>0?bankTotals.book:bankTotals.end;
+  const totalCashAvailable=workingBook+totalCollections-totalLess; // Working capital only — Unionbank (capital) excluded
 
   // Per-bank computed values (new Excel-style layout)
   const workingBanks=BANKS.filter(b=>!b.capital);
@@ -12997,9 +12336,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     workingBanks.forEach(b=>{out[b.id]=totalMoneyPerBank[b.id]-txOut[b.id];});
     return out;
   },[totalMoneyPerBank,txOut]);
-
-  const totalEndingBal=workingBanks.reduce((s,b)=>s+endingBal[b.id],0);
-  const totalCashAvailable=totalEndingBal;
 
   const untaggedExps=useMemo(()=>dateExps.filter(e=>!e.bankAccount),[dateExps]);
   const untaggedPayments=useMemo(()=>todayPayments.filter(p=>!p.bank),[todayPayments]);
@@ -13056,7 +12392,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   const wcBook=workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.book||0),0);
   const unionRow2=pos.banks["union"]||emptyBankRow();
   const unionCapital=n(unionRow2.book||0)||n(unionRow2.end||0)||n(unionRow2.beg||0);
-  const netCashAvail=totalEndingBal;
+  const netCashAvail=wcBook+totalCollections-totalLess;
   const totalGMDAssets=netCashAvail+unionCapital;
 
   // Column template: sticky label col + 5 bank cols + total col
@@ -13116,8 +12452,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       {/* KPI strip */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
-          ["Net Cash Available",      "₱"+fmt2(netCashAvail), netCashAvail>=0?"#059669":"#ef4444"],
-          ["Bank Ending Balance",     "₱"+fmt2(totalEndingBal), "#1d4ed8"],
+          ["Net Cash Available (WC)", "₱"+fmt2(netCashAvail), netCashAvail>=0?"#059669":"#ef4444"],
+          ["Working Capital (Book)",  "₱"+fmt2(wcBook), "#1d4ed8"],
           ["Total GMD Cash Assets",   "₱"+fmt2(totalGMDAssets), "#0e7490"],
           ["Collections Today",       "₱"+fmt2(totalCollections), "#10b981"],
           ["Outstanding Invoices",    "₱"+billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2}), billingMetrics.outstanding>0?"#f59e0b":"#059669"],
@@ -13358,14 +12694,12 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               </div>
             </div>
 
-            {/* ── 4. PENDING COLLECTIONS + COLLECTIONS BY TYPE side by side ── */}
+            {/* ── 4. PENDING COLLECTIONS info ── */}
             {(()=>{
               const TYPE_CLR={Downpayment:"#3b82f6","Progress Bill":"#8b5cf6","Assume Balance":"#f59e0b",Balance:"#f97316",Retention:"#ef4444"};
               const top3=pendingMilestones.slice(0,3);
               return(
-                <div style={{borderBottom:"2px solid #bae6fd",background:"#f0f9ff",display:"grid",gridTemplateColumns:mob?"1fr":"1fr 260px",alignItems:"start"}}>
-                  {/* Left: Pending Collections */}
-                  <div style={{borderRight:mob?"none":"1px solid #bae6fd"}}>
+                <div style={{borderBottom:"2px solid #bae6fd",background:"#f0f9ff"}}>
                   {/* Header */}
                   <div style={{padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
                     <div>
@@ -13420,36 +12754,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
                   {top3.length===0&&(
                     <div style={{padding:"10px 16px",borderTop:"1px solid #bae6fd",fontSize:".75rem",color:"#64748b",fontStyle:"italic"}}>All billing milestones collected — no outstanding balance.</div>
                   )}
-                  </div>{/* end left col */}
-                  {/* Right: Collections by Type */}
-                  <div style={{background:"#f8fcff"}}>
-                    <div style={{padding:"8px 14px",borderBottom:"1px solid #bae6fd"}}>
-                      <span style={{fontWeight:700,color:"#1e293b",fontSize:".73rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 By Type</span>
-                    </div>
-                    {billingByType.map(({type,billed,collected,outstanding})=>{
-                      const pct=billed>0?Math.round(collected/billed*100):0;
-                      const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
-                      return(
-                        <div key={type} style={{padding:"8px 14px",borderBottom:"1px solid #e0f2fe"}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:3}}>
-                            <div style={{display:"flex",alignItems:"center",gap:5}}>
-                              <span style={{width:7,height:7,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
-                              <span style={{fontWeight:600,color:"#0f172a",fontSize:".72rem"}}>{type}</span>
-                            </div>
-                            <div style={{textAlign:"right"}}>
-                              <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".7rem"}}>{outstanding>0?`₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:0})} due`:"Fully collected"}</div>
-                              <div style={{fontSize:".62rem",color:"#94a3b8"}}>₱{collected.toLocaleString("en-PH",{minimumFractionDigits:0})} / ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                            </div>
-                          </div>
-                          {billed>0&&<div style={{height:3,background:"#e0f2fe",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2}}/></div>}
-                        </div>
-                      );
-                    })}
-                    <div style={{display:"flex",justifyContent:"space-between",padding:"8px 14px",background:"#e0f2fe"}}>
-                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".72rem"}}>Total Outstanding</span>
-                      <span style={{fontWeight:800,color:"#ef4444",fontSize:".75rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
-                    </div>
-                  </div>
                 </div>
               );
             })()}
@@ -13588,7 +12892,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
           </div>
           <div style={{padding:"0 20px"}}>
             {[
-              ["Bank Ending Balance",totalEndingBal,"#1d4ed8","="],
+              ["Book Balance (Working Capital)",workingBook,"#1d4ed8","+"],
               ["Collections Today",totalCollections,"#059669","+"],
               ["Today's Transactions",totalLess,"#dc2626","−"],
             ].map(([label,val,color,sign])=>(
@@ -13650,6 +12954,36 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               <span style={{fontWeight:800,color:billingMetrics.dueThisMonth>0?"#f59e0b":"#10b981",fontSize:".88rem"}}>
                 ₱{billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
               </span>
+            </div>
+          </div>
+
+          {/* Collections by Type */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 Collections by Type</span>
+            </div>
+            {billingByType.map(({type,billed,collected,outstanding})=>{
+              const pct=billed>0?Math.round(collected/billed*100):0;
+              const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
+              return(
+                <div key={type} style={{padding:"9px 16px",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{width:8,height:8,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
+                      <span style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{type}</span>
+                    </div>
+                    <div style={{textAlign:"right"}}>
+                      <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".8rem"}}>{outstanding>0?`₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} due`:"Fully collected"}</div>
+                      <div style={{fontSize:".67rem",color:"#94a3b8"}}>₱{collected.toLocaleString("en-PH",{minimumFractionDigits:2})} / ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                    </div>
+                  </div>
+                  {billed>0&&<div style={{height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2,transition:"width .5s"}}/></div>}
+                </div>
+              );
+            })}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:"#f8fafc"}}>
+              <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>Total Outstanding</span>
+              <span style={{fontWeight:800,color:"#ef4444",fontSize:".83rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
             </div>
           </div>
 
@@ -13796,263 +13130,74 @@ function ExportImportPanel({KEYS, onClose}){
 }
 
 // ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
-function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
+function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   const[selDeal,setSelDeal]=useState(null);
-  const deal=wonDeals.find(d=>d.id===selDeal);
-  const budget=budgets[selDeal]||emptyBudget();
+  const deal = wonDeals.find(d=>d.id===selDeal);
+  const budget = budgets[selDeal]||emptyBudget();
   const[form,setForm]=useState(budget);
   const[saved,setSaved]=useState(false);
-  const[drillCat,setDrillCat]=useState(null);
-  const[showSuppliers,setShowSuppliers]=useState(false);
-  const[showHistory,setShowHistory]=useState(false);
-  const[boqMode,setBoqMode]=useState(false);
-  const[boqDate,setBoqDate]=useState("");
-  const[boqQuotNo,setBoqQuotNo]=useState("");
-  const[boqSecs,setBoqSecs]=useState([]);
-  const[boqExp,setBoqExp]=useState("A");
-  const boqFileRef=useRef(null);
 
   useEffect(()=>{
     const b=budgets[selDeal]||emptyBudget();
-    setForm(b);setSaved(!!budgets[selDeal]?.savedAt);setDrillCat(null);setShowSuppliers(false);setShowHistory(false);setBoqMode(false);
-    const sq=b.boq;
-    if(sq?.sections?.length){setBoqSecs(sq.sections);setBoqDate(sq.date||"");setBoqQuotNo(sq.quotationNo||"");}
-    else{setBoqSecs(BOQ_SECTIONS.map(s=>({...s,items:[]})));setBoqDate(new Date().toISOString().split("T")[0]);setBoqQuotNo("");}
-    setBoqExp("A");
+    setForm(b); setSaved(!!budgets[selDeal]?.savedAt);
   },[selDeal,budgets]);
 
   const f=(k,v)=>{setSaved(false);setForm(p=>({...p,[k]:v}));};
-  const n=v=>Number(String(v||0).replace(/,/g,""))||0;
+  const n=v=>Number(String(v).replace(/,/g,""))||0;
 
-  // 3-tier cost split per project: Actual (received/done) | Committed (PO Issued) | Pending (Draft/Approval)
+  // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
-    return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&!d.parentDealId).map(d=>{
+    return wonDeals.filter(d=>d.stage!=="12 · Close-Out").map(d=>{
       const b=budgets[d.id]||emptyBudget();
-      const mk=()=>({Materials:0,Labor:0,Overhead:0,Subcon:0});
-      const actual=mk(),committed=mk(),pending=mk();
-      const dRelatedIds=new Set([d.id,...wonDeals.filter(cd=>cd.parentDealId===d.id).map(cd=>cd.id)]);
-      prs.filter(p=>dRelatedIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
-        const cat=BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials";
-        const estC=n(p.estUnitCost)*n(p.qty);
-        const actC=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-        if(p.status==="Delivered"||p.status==="Partially Delivered")actual[cat]+=actC;
-        else if(p.status==="PO Issued")committed[cat]+=estC;
-        else pending[cat]+=estC;
+      const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
+      prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
+        const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+        const cat=p.budgetCategory||"Materials";
+        if(result[cat]!==undefined) result[cat]+=cost;
       });
-      (swos||[]).filter(w=>dRelatedIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{
-        const amt=n(w.contractAmount);
-        if(w.status==="Completed")actual.Subcon+=amt;
-        else if(w.status==="Issued"||w.status==="In Progress")committed.Subcon+=amt;
-        else pending.Subcon+=amt;
-      });
-      (swos||[]).filter(w=>dRelatedIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{result.Subcon+=n(w.contractAmount);});
-      exps.filter(e=>dRelatedIds.has(e.projectId)&&!e.poRef).forEach(e=>{
+      exps.filter(e=>e.projectId===d.id).forEach(e=>{
         const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
-        actual[cat]+=n(e.amount);
+        result[cat]+=n(e.amount);
       });
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(b[c]),0);
-      const totalActual=BUDGET_CATS.reduce((s,c)=>s+actual[c],0);
-      const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+committed[c],0);
-      const totalPending=BUDGET_CATS.reduce((s,c)=>s+pending[c],0);
-      const totalAtCompletion=totalActual+totalCommitted+totalPending;
-      const contractVal=n(d.value)+wonDeals.filter(cd=>cd.parentDealId===d.id).reduce((s,cd)=>s+n(cd.value),0);
+      const totalActual=BUDGET_CATS.reduce((s,c)=>s+result[c],0);
+      const contractVal=n(d.value)||0;
+      const pctUsed=totalBudget>0?Math.round(totalActual/totalBudget*100):0;
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
-      const eacMargin=contractVal>0?Math.round((contractVal-totalAtCompletion)/contractVal*100):null;
-      const isOver=totalBudget>0&&totalAtCompletion>totalBudget;
+      const isOver=totalBudget>0&&totalActual>totalBudget;
       const hasBudget=totalBudget>0;
-      return{d,b,actual,committed,pending,totalBudget,totalActual,totalCommitted,totalPending,totalAtCompletion,contractVal,grossMargin,eacMargin,isOver,hasBudget};
+      return{d,b,actuals:result,totalBudget,totalActual,contractVal,pctUsed,grossMargin,isOver,hasBudget};
     });
-  },[wonDeals,budgets,prs,exps,swos]);
+  },[wonDeals,budgets,prs,exps]);
 
-  // 3-tier cost tiers for the selected deal (detail view)
-  const costTiers=useMemo(()=>{
-    const mk=()=>({Materials:0,Labor:0,Overhead:0,Subcon:0});
-    if(!selDeal)return{actual:mk(),committed:mk(),pending:mk()};
-    const relatedIds=new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]);
-    const actual=mk(),committed=mk(),pending=mk();
-    prs.filter(p=>relatedIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
-      const cat=BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials";
-      const estC=n(p.estUnitCost)*n(p.qty);
-      const actC=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-      if(p.status==="Delivered"||p.status==="Partially Delivered")actual[cat]+=actC;
-      else if(p.status==="PO Issued")committed[cat]+=estC;
-      else pending[cat]+=estC;
+  // Actuals for the selected deal (detail view)
+  const actuals = useMemo(()=>{
+    const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
+    prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").forEach(p=>{
+      const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+      const cat=p.budgetCategory||"Materials";
+      if(result[cat]!==undefined) result[cat]+=cost;
     });
-    (swos||[]).filter(w=>relatedIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{
-      const amt=n(w.contractAmount);
-      if(w.status==="Completed")actual.Subcon+=amt;
-      else if(w.status==="Issued"||w.status==="In Progress")committed.Subcon+=amt;
-      else pending.Subcon+=amt;
-    });
-    (swos||[]).filter(w=>relatedIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{result.Subcon+=n(w.contractAmount);});
-    exps.filter(e=>relatedIds.has(e.projectId)&&!e.poRef).forEach(e=>{
+    exps.filter(e=>e.projectId===selDeal).forEach(e=>{
       const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
-      actual[cat]+=n(e.amount);
+      result[cat]+=n(e.amount);
     });
-    return{actual,committed,pending};
-  },[prs,exps,selDeal,wonDeals,swos]);
+    return result;
+  },[prs,exps,selDeal]);
 
-  const actuals=costTiers.actual;
-  const committed=costTiers.committed;
-  const pending=costTiers.pending;
-
-  const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(form[c]),0);
-  const totalActual=BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-  const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+committed[c],0);
-  const totalPending=BUDGET_CATS.reduce((s,c)=>s+pending[c],0);
-  const totalAtCompletion=totalActual+totalCommitted+totalPending;
-  const contractVal=n(deal?.value)+wonDeals.filter(cd=>cd.parentDealId===deal?.id).reduce((s,cd)=>s+n(cd.value),0);
-  const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):0;
-  const eacMargin=contractVal>0?Math.round((contractVal-totalAtCompletion)/contractVal*100):0;
-  const budgetLeft=totalBudget-totalAtCompletion;
-  const linkedRelIds=selDeal?new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]):new Set();
-  const linkedPRs=prs.filter(p=>linkedRelIds.has(p.projectId)&&p.status!=="Cancelled").length;
-  const linkedExps=exps.filter(e=>linkedRelIds.has(e.projectId)).length;
-  const boqGrandTotal=boqSecs.reduce((s,sec)=>s+sec.items.reduce((ss,it)=>ss+Number(it.qty||0)*Number(it.unitCost||0),0),0);
-  const boqVat=boqGrandTotal*0.12;
-  const boqGrandVat=boqGrandTotal+boqVat;
-
-  // Drill-down line items for selected category
-  const drillData=useMemo(()=>{
-    if(!drillCat||!selDeal)return null;
-    const relIds=new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]);
-    const catPRs=prs.filter(p=>relIds.has(p.projectId)&&(BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials")===drillCat&&p.status!=="Cancelled");
-    const catExps=exps.filter(e=>{const ec=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";return relIds.has(e.projectId)&&ec===drillCat;});
-    const catSWOs=drillCat==="Subcon"?(swos||[]).filter(w=>relIds.has(w.projectId)&&w.status!=="Cancelled"):[];
-    return{catPRs,catExps,catSWOs};
-  },[drillCat,selDeal,wonDeals,prs,exps,swos]);
-
-  // Supplier spend concentration for the selected deal
-  const supplierData=useMemo(()=>{
-    if(!selDeal)return{bySupplier:[],grandTotal:0};
-    const relIds=new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]);
-    const map={};
-    prs.filter(p=>relIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
-      const sup=(p.supplier||"Unknown").trim();
-      if(!map[sup])map[sup]={supplier:sup,estTotal:0,actTotal:0,count:0,cats:{}};
-      const cat=BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials";
-      const est=n(p.estUnitCost)*n(p.qty);
-      const act=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-      map[sup].estTotal+=est;map[sup].actTotal+=act;map[sup].count++;
-      map[sup].cats[cat]=(map[sup].cats[cat]||0)+act;
-    });
-    (swos||[]).filter(w=>relIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{
-      const sup=(w.subcontractor||"Unknown Subcon").trim();
-      if(!map[sup])map[sup]={supplier:sup,estTotal:0,actTotal:0,count:0,cats:{}};
-      const amt=n(w.contractAmount);
-      map[sup].estTotal+=amt;map[sup].actTotal+=amt;map[sup].count++;
-      map[sup].cats["Subcon"]=(map[sup].cats["Subcon"]||0)+amt;
-    });
-    const arr=Object.values(map).sort((a,b)=>b.actTotal-a.actTotal);
-    const grandTotal=arr.reduce((s,x)=>s+x.actTotal,0);
-    return{bySupplier:arr,grandTotal};
-  },[selDeal,prs,swos,wonDeals]);
-
-  // Save handler — logs a history entry inside the budget object (localStorage only)
-  const handleSave=()=>{
-    const entry={
-      changedAt:new Date().toISOString(),
-      changedBy:session?.name||role||"User",
-      Materials:n(form.Materials),Labor:n(form.Labor),Overhead:n(form.Overhead),Subcon:n(form.Subcon),
-      note:form.notes||""
-    };
-    const prev=budgets[selDeal]?.history||[];
-    saveBudget(selDeal,{...form,history:[entry,...prev].slice(0,25)});
-    setSaved(true);
-  };
-
-  // BOQ handlers
-  const handleApplyBoq=()=>{
-    const cats={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    boqSecs.forEach(sec=>{const cat=BUDGET_CATS.includes(sec.budgetCat)?sec.budgetCat:"Materials";sec.items.forEach(it=>{cats[cat]+=Number(it.qty||0)*Number(it.unitCost||0);});});
-    const entry={changedAt:new Date().toISOString(),changedBy:session?.name||role||"User",Materials:Math.round(cats.Materials),Labor:Math.round(cats.Labor),Overhead:Math.round(cats.Overhead),Subcon:Math.round(cats.Subcon),note:"Applied from BOQ"};
-    const prev=budgets[selDeal]?.history||[];
-    const nf={...form,Materials:Math.round(cats.Materials),Labor:Math.round(cats.Labor),Overhead:Math.round(cats.Overhead),Subcon:Math.round(cats.Subcon),boq:{date:boqDate,quotationNo:boqQuotNo,sections:boqSecs},history:[entry,...prev].slice(0,25)};
-    setForm(nf);saveBudget(selDeal,nf);setSaved(true);setBoqMode(false);
-  };
-  const handleSaveBoq=()=>{
-    const nf={...form,boq:{date:boqDate,quotationNo:boqQuotNo,sections:boqSecs}};
-    setForm(nf);saveBudget(selDeal,nf);setSaved(true);
-  };
-  const handleImportBoq=e=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      if(!window.XLSX){alert("XLSX library not ready. Try again in a moment.");return;}
-      try{
-        const wb=window.XLSX.read(ev.target.result,{type:"array"});
-        let best=null,bestHasLetters=false;
-        for(const sn of wb.SheetNames){
-          if(sn.toUpperCase()==="BOM")continue;
-          const d=window.XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:""});
-          const has=/^[A-I]\.?\s*$/.test(d.slice(0,50).map(r=>String(r[0]||"").trim()).join("|").split("|").find(v=>/^[A-I]\.?\s*$/.test(v))||"");
-          if(!best||(has&&!bestHasLetters)){best=sn;bestHasLetters=has;}
-        }
-        if(!best){alert("No BOQ sheet found.");return;}
-        const data=window.XLSX.utils.sheet_to_json(wb.Sheets[best],{header:1,defval:""});
-        let hdrIdx=-1,qtyC=-1,unitC=-1,rateC=-1,remC=-1;
-        for(let i=0;i<Math.min(15,data.length);i++){
-          const r=data[i].map(c=>String(c).toLowerCase().trim());
-          const qi=r.findIndex(c=>c==="qty"||c==="qty.");
-          const ui=r.findIndex(c=>c==="unit");
-          if(qi>=0&&ui>=0){hdrIdx=i;qtyC=qi;unitC=ui;rateC=r.findIndex(c=>c==="rate"||c.includes("unit cost"));if(rateC<0)rateC=qi+2;remC=r.findIndex(c=>c==="remarks");break;}
-        }
-        const newSecs=BOQ_SECTIONS.map(s=>({...s,items:[]}));
-        let cur=null;
-        for(let i=(hdrIdx>=0?hdrIdx+1:0);i<data.length;i++){
-          const row=data[i];if(!row||row.every(c=>c===""))continue;
-          const f0=String(row[0]||"").trim();
-          const lm=f0.match(/^([A-I])\.?\s*$/i);
-          if(lm){
-            const lt=lm[1].toUpperCase();
-            cur=newSecs.find(s=>s.id===lt);
-            if(!cur){const ns={id:lt,name:String(row[1]||"").trim()||`Section ${lt}`,budgetCat:"Materials",items:[]};newSecs.push(ns);cur=ns;}
-            else{const sn=String(row[1]||"").trim();if(sn)cur.name=sn;}
-            continue;
-          }
-          const rs=row.join("").toLowerCase();
-          if(rs.includes("sub-total")||rs.includes("grand total")||rs.includes("vat"))continue;
-          if(!cur)continue;
-          const qty=Number(row[qtyC>=0?qtyC:4]||0);
-          const rate=Number(row[rateC>=0?rateC:6]||0);
-          if(!qty&&!rate)continue;
-          let desc="";
-          for(let ci=0;ci<Math.min(5,row.length);ci++){const cv=String(row[ci]||"").trim();if(cv&&!cv.match(/^[A-I]\.?$/i))  {desc=cv;break;}}
-          if(!desc)continue;
-          const unit=String(row[unitC>=0?unitC:5]||"lot").trim();
-          const rem=remC>=0?String(row[remC]||"").trim():"";
-          cur.items.push({desc,qty:qty||1,unit:unit||"lot",unitCost:rate,remarks:rem});
-        }
-        setBoqSecs(newSecs);
-        const first=newSecs.find(s=>s.items.length>0);if(first)setBoqExp(first.id);
-      }catch(err){alert("Error reading file: "+err.message);}
-    };
-    reader.readAsArrayBuffer(file);e.target.value="";
-  };
-  const handleBoqPrint=()=>{
-    const d_=deal;
-    const rows=boqSecs.filter(s=>s.items.length>0).map(sec=>{
-      const st=sec.items.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitCost||0),0);
-      return `<tr style="background:#f1f5f9"><td colspan="7" style="padding:5px 8px;font-weight:700">${sec.id}. ${sec.name}</td></tr>
-      ${sec.items.map(it=>`<tr><td></td><td style="padding:3px 8px">${it.desc||""}</td><td style="padding:3px 8px;text-align:right">${Number(it.qty||0).toLocaleString()}</td><td style="padding:3px 8px">${it.unit||""}</td><td style="padding:3px 8px;text-align:right">₱${Number(it.unitCost||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="padding:3px 8px;text-align:right;font-weight:600">₱${(Number(it.qty||0)*Number(it.unitCost||0)).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="padding:3px 8px;font-size:8pt;color:#555">${it.remarks||""}</td></tr>`).join("")}
-      <tr style="background:#e2e8f0"><td colspan="5" style="padding:4px 8px;text-align:right;font-weight:700;font-size:8pt">Sub-total ${sec.name}</td><td style="padding:4px 8px;text-align:right;font-weight:800">₱${st.toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td></td></tr>`;
-    }).join("");
-    const html=`<!DOCTYPE html><html><head><title>BOQ – ${d_?.contact||d_?.client||""}</title><style>body{font-family:Arial,sans-serif;font-size:10pt;margin:15mm;color:#000}h1{text-align:center;font-size:14pt;margin:0 0 6px}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1e293b;color:#fff;padding:5px 8px;font-size:8pt;text-align:left}td{border-bottom:1px solid #e2e8f0}@media print{body{margin:10mm}}</style></head><body>
-    <h1>BILL OF QUANTITIES</h1>
-    <table style="width:auto;margin-bottom:12px;font-size:9pt"><tr><td style="padding:2px 8px 2px 0"><b>Project:</b></td><td style="padding:2px 8px">${d_?.contact||d_?.client||""}</td><td style="padding:2px 8px 2px 16px"><b>Date:</b></td><td style="padding:2px 8px">${boqDate}</td></tr><tr><td style="padding:2px 8px 2px 0"><b>Location:</b></td><td style="padding:2px 8px">${d_?.location||""}</td><td style="padding:2px 8px 2px 16px"><b>Quotation No.:</b></td><td style="padding:2px 8px">${boqQuotNo}</td></tr><tr><td style="padding:2px 8px 2px 0"><b>Contractor:</b></td><td colspan="3" style="padding:2px 8px">GMD Productions Inc.</td></tr></table>
-    <table><thead><tr><th>Item No.</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Total Amount</th><th>Remarks</th></tr></thead><tbody>${rows}</tbody></table>
-    <table style="width:280px;margin-left:auto"><tr><td style="padding:4px 8px;font-weight:600">GRAND TOTAL</td><td style="padding:4px 8px;text-align:right;font-weight:700">₱${boqGrandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr><td style="padding:4px 8px">VAT 12%</td><td style="padding:4px 8px;text-align:right">₱${boqVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr style="background:#1e293b;color:#fff"><td style="padding:6px 8px;font-weight:700">GRAND TOTAL w/ VAT</td><td style="padding:6px 8px;text-align:right;font-weight:800">₱${boqGrandVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr></table>
-    <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:80px;font-size:9pt"><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Rodney E. Erpe</b><br>Quantity Surveyor, GMD Productions Inc.</div></div><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Paulo Miguel Garcia</b><br>President, GMD Productions Inc.</div></div></div>
-    <script>window.onload=()=>window.print()</script></body></html>`;
-    const w=window.open("","_blank");w.document.write(html);w.document.close();
-  };
+  const totalBudget = BUDGET_CATS.reduce((s,c)=>s+n(form[c]),0);
+  const totalActual = BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
+  const contractVal = n(deal?.value)||0;
+  const grossMargin = contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):0;
+  const budgetUsed  = totalBudget>0?Math.round(totalActual/totalBudget*100):0;
+  const linkedPRs   = prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").length;
+  const linkedExps  = exps.filter(e=>e.projectId===selDeal).length;
 
   // Summary KPIs across all projects
   const overBudgetCount=allProjectData.filter(p=>p.isOver).length;
   const noBudgetCount=allProjectData.filter(p=>!p.hasBudget).length;
   const totalAllBudget=allProjectData.reduce((s,p)=>s+p.totalBudget,0);
   const totalAllActual=allProjectData.reduce((s,p)=>s+p.totalActual,0);
-  const totalAllCommitted=allProjectData.reduce((s,p)=>s+p.totalCommitted,0);
 
   // ── CARD GRID VIEW ───────────────────────────────────────────────────────────
   if(!selDeal) return(
@@ -14065,15 +13210,14 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
       {/* Summary KPIs */}
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
         {[
-          {l:"Active Projects",   v:allProjectData.length,   c:"#0f172a"},
-          {l:"Total Budget Set",  v:fmtPHP(totalAllBudget),  c:"#3b82f6"},
-          {l:"Total Actual Spend",v:fmtPHP(totalAllActual),  c:totalAllActual>totalAllBudget&&totalAllBudget>0?"#ef4444":"#10b981"},
-          {l:"Committed POs",     v:fmtPHP(totalAllCommitted),c:totalAllCommitted>0?"#f59e0b":"#94a3b8",sub:overBudgetCount>0?`${overBudgetCount} EAC over budget`:""},
-        ].map(({l,v,c,sub})=>(
+          {l:"Active Projects",  v:allProjectData.length,                  c:"#0f172a"},
+          {l:"Total Budget Set", v:fmtPHP(totalAllBudget),                 c:"#3b82f6"},
+          {l:"Total Actual Spend",v:fmtPHP(totalAllActual),                c:totalAllActual>totalAllBudget&&totalAllBudget>0?"#ef4444":"#10b981"},
+          {l:"Over Budget",      v:overBudgetCount,                        c:overBudgetCount>0?"#ef4444":"#059669"},
+        ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-            <div style={{fontWeight:800,fontSize:"1rem",color:c,lineHeight:1.2,wordBreak:"break-all"}}>{v}</div>
+            <div style={{fontWeight:800,fontSize:typeof v==="number"&&v<1000?"1.5rem":"1rem",color:c,lineHeight:1.2,wordBreak:"break-all"}}>{v}</div>
             <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
-            {sub&&<div style={{fontSize:".6rem",color:"#ef4444",marginTop:2,fontWeight:600}}>{sub}</div>}
           </div>
         ))}
       </div>
@@ -14094,10 +13238,9 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
 
       {/* Project Cards Grid */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
-        {allProjectData.map(({d,totalBudget:tb,totalActual:ta,totalCommitted:tc,totalAtCompletion:tac,grossMargin:gm,eacMargin:em,isOver,hasBudget})=>{
-          const eacPct=tb>0?Math.round(tac/tb*100):0;
-          const healthClr=isOver?"#ef4444":!hasBudget?"#94a3b8":eacPct>80?"#f59e0b":"#059669";
-          const healthLabel=isOver?"EAC Over Budget":!hasBudget?"No Budget":eacPct>80?"At Risk":"On Track";
+        {allProjectData.map(({d,actuals:acts,totalBudget:tb,totalActual:ta,contractVal:cv,pctUsed,grossMargin:gm,isOver,hasBudget})=>{
+          const healthClr=isOver?"#ef4444":!hasBudget?"#94a3b8":pctUsed>80?"#f59e0b":"#059669";
+          const healthLabel=isOver?"Over Budget":!hasBudget?"No Budget":pctUsed>80?"At Risk":"On Track";
           return(
             <div key={d.id} onClick={()=>setSelDeal(d.id)}
               style={{background:"#fff",borderRadius:14,border:`1.5px solid ${isOver?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${healthClr}`,padding:"16px 18px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
@@ -14114,43 +13257,42 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
                 <span style={{fontSize:".65rem",fontWeight:700,color:healthClr,background:healthClr+"18",border:`1px solid ${healthClr}33`,borderRadius:20,padding:"2px 9px",flexShrink:0,marginLeft:8}}>{healthLabel}</span>
               </div>
 
+              {/* Budget bars */}
               {hasBudget?(
                 <>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:10}}>
-                    <div style={{background:"#f8fafc",borderRadius:8,padding:"7px 10px"}}>
-                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2}}>Budget</div>
-                      <div style={{fontWeight:700,color:"#3b82f6",fontSize:".82rem"}}>{fmtPHP(tb)}</div>
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
+                    <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".5px"}}>Budget</div>
+                      <div style={{fontWeight:700,color:"#3b82f6",fontSize:".85rem",lineHeight:1.2}}>{fmtPHP(tb)}</div>
                     </div>
-                    <div style={{background:"#f8fafc",borderRadius:8,padding:"7px 10px"}}>
-                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2}}>Actual</div>
-                      <div style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{fmtPHP(ta)}</div>
-                    </div>
-                    {tc>0&&<div style={{background:"#fffbeb",borderRadius:8,padding:"7px 10px"}}>
-                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#92400e",marginBottom:2}}>Committed PO</div>
-                      <div style={{fontWeight:700,color:"#f59e0b",fontSize:".82rem"}}>{fmtPHP(tc)}</div>
-                    </div>}
-                    <div style={{background:isOver?"#fef2f2":"#f0fdf4",borderRadius:8,padding:"7px 10px"}}>
-                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:isOver?"#dc2626":"#065f46",marginBottom:2}}>At-Completion</div>
-                      <div style={{fontWeight:700,color:isOver?"#ef4444":"#059669",fontSize:".82rem"}}>{fmtPHP(tac)}</div>
+                    <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".5px"}}>Actual Spend</div>
+                      <div style={{fontWeight:700,color:isOver?"#ef4444":"#10b981",fontSize:".85rem",lineHeight:1.2}}>{fmtPHP(ta)}</div>
                     </div>
                   </div>
-                  {/* Dual-layer progress bar: actual (solid) + committed/pending (translucent) */}
+                  {/* Progress bar */}
                   <div style={{marginBottom:8}}>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:".65rem",color:"#94a3b8",marginBottom:3}}>
-                      <span>{Math.min(100,eacPct)}% of budget committed/spent</span>
-                      <div style={{display:"flex",gap:8}}>
-                        {gm!==null&&<span style={{color:"#94a3b8"}}>Now: {gm}%</span>}
-                        {em!==null&&<span style={{color:em>=20?"#059669":em>=10?"#f59e0b":"#ef4444",fontWeight:700}}>EAC: {em}%</span>}
-                      </div>
+                      <span>{pctUsed}% of budget used</span>
+                      {gm!==null&&<span style={{color:gm>=20?"#059669":gm>=10?"#f59e0b":"#ef4444",fontWeight:700}}>{gm}% margin</span>}
                     </div>
-                    <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden",position:"relative"}}>
-                      <div style={{position:"absolute",left:0,top:0,height:"100%",width:Math.min(100,Math.round(tac/tb*100))+"%",background:isOver?"#fecaca":"#fde68a",borderRadius:3}}/>
-                      <div style={{position:"absolute",left:0,top:0,height:"100%",width:Math.min(100,Math.round(ta/tb*100))+"%",background:isOver?"#ef4444":"#10b981",borderRadius:3}}/>
+                    <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
+                      <div style={{height:"100%",width:Math.min(100,pctUsed)+"%",background:healthClr,borderRadius:3,transition:"width .5s"}}/>
                     </div>
-                    <div style={{display:"flex",gap:10,marginTop:4,fontSize:".6rem",color:"#94a3b8"}}>
-                      <span style={{display:"flex",alignItems:"center",gap:3}}><span style={{width:8,height:8,borderRadius:2,background:"#10b981",display:"inline-block"}}/> Actual</span>
-                      <span style={{display:"flex",alignItems:"center",gap:3}}><span style={{width:8,height:8,borderRadius:2,background:"#f59e0b",display:"inline-block"}}/> Committed/Pending</span>
-                    </div>
+                  </div>
+                  {/* Category dots */}
+                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                    {BUDGET_CATS.map(cat=>{
+                      const bcat=Number((budgets[d.id]||{})[cat]||0);
+                      const acat=acts[cat];
+                      const cpct=bcat>0?Math.round(acat/bcat*100):0;
+                      const cc=acat>bcat&&bcat>0?"#ef4444":cpct>80?"#f59e0b":BUDGET_CAT_CLR[cat];
+                      return bcat>0?(
+                        <span key={cat} style={{fontSize:".65rem",background:cc+"18",color:cc,border:`1px solid ${cc}33`,borderRadius:20,padding:"1px 7px",fontWeight:600}}>
+                          {cat} {cpct}%
+                        </span>
+                      ):null;
+                    })}
                   </div>
                 </>
               ):(
@@ -14177,35 +13319,28 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
         </div>
       </div>
 
-      {/* Tab toggle */}
-      <div style={{display:"flex",gap:4,marginBottom:16,background:"#f1f5f9",borderRadius:10,padding:4,width:"fit-content"}}>
-        <button onClick={()=>setBoqMode(false)} style={{background:!boqMode?"#fff":"transparent",border:"none",borderRadius:8,padding:"7px 18px",fontFamily:"inherit",fontSize:".82rem",fontWeight:!boqMode?700:500,color:!boqMode?"#0f172a":"#64748b",cursor:"pointer",boxShadow:!boqMode?"0 1px 4px rgba(0,0,0,.08)":"none"}}>
-          Budget Summary
-        </button>
-        <button onClick={()=>setBoqMode(true)} style={{background:boqMode?"#fff":"transparent",border:"none",borderRadius:8,padding:"7px 18px",fontFamily:"inherit",fontSize:".82rem",fontWeight:boqMode?700:500,color:boqMode?"#0f172a":"#64748b",cursor:"pointer",boxShadow:boqMode?"0 1px 4px rgba(0,0,0,.08)":"none",display:"flex",alignItems:"center",gap:6}}>
-          BOQ Builder
-          {budget.boq?.sections?.some(s=>s.items?.length>0)&&<span style={{fontSize:".6rem",background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 7px",fontWeight:700}}>saved</span>}
-        </button>
-      </div>
-
-      {totalAtCompletion===0&&totalBudget>0&&linkedPRs===0&&(
+      {/* Data source status */}
+      {totalActual===0&&totalBudget>0&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".82rem",color:"#92400e"}}>
-          ⚠️ <strong>No costs linked yet</strong> — link expenses and PRs to this project to populate actuals.
+          ⚠️ <strong>Actual Spend shows ₱0</strong> — to populate it, link your expenses and PRs to this project:<br/>
+          <span style={{fontWeight:600}}>1.</span> In <em>Expenses</em>, set "Link to Project" to this project.<br/>
+          <span style={{fontWeight:600}}>2.</span> In <em>Purchase Orders</em>, set the project and budget category (Materials / Labor / Overhead / Subcon).<br/>
+          Currently: <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> · <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
         </div>
       )}
-      {(totalActual>0||totalCommitted>0)&&(
+      {totalActual>0&&(
         <div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:".78rem",color:"#065f46"}}>
-          📊 <strong>{linkedPRs} PR{linkedPRs!==1?"s":""}</strong> + <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked · Click any category row below to drill into line items.
+          📊 Actual spend from <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> + <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
         </div>
       )}
 
-      {/* Primary KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:10}}>
+      {/* KPIs */}
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
         {[
-          {l:"Contract Value", v:fmtPHP(contractVal),                  c:"#0f172a"},
-          {l:"Total Budget",   v:totalBudget>0?fmtPHP(totalBudget):"Not set",c:"#3b82f6"},
-          {l:"Actual Spend",   v:fmtPHP(totalActual),                  c:totalActual>totalBudget&&totalBudget>0?"#ef4444":"#10b981"},
-          {l:"Current Margin", v:contractVal>0?grossMargin+"%":"—",    c:grossMargin>=20?"#059669":grossMargin>=10?"#f59e0b":"#ef4444"},
+          {l:"Contract Value",  v:fmtPHP(contractVal),       c:"#0f172a"},
+          {l:"Total Budget",    v:totalBudget>0?fmtPHP(totalBudget):"Not set", c:"#3b82f6"},
+          {l:"Actual Spend",    v:fmtPHP(totalActual),       c:totalActual>totalBudget&&totalBudget>0?"#ef4444":"#10b981"},
+          {l:"Gross Margin",    v:contractVal>0?grossMargin+"%":"—", c:grossMargin>=20?"#059669":grossMargin>=10?"#f59e0b":"#ef4444"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
             <div style={{fontWeight:800,fontSize:"1rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
@@ -14213,192 +13348,58 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
           </div>
         ))}
       </div>
-      {/* Forecast KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
-        {[
-          {l:"Committed (PO Issued)",v:fmtPHP(totalCommitted),        c:"#f59e0b",sub:"Legally obligated, not yet received"},
-          {l:"Pending Requests",     v:fmtPHP(totalPending),           c:"#8b5cf6",sub:"Draft / Awaiting approval"},
-          {l:"At-Completion Cost",   v:fmtPHP(totalAtCompletion),      c:totalAtCompletion>totalBudget&&totalBudget>0?"#ef4444":"#0f172a",sub:"Actual + Committed + Pending"},
-          {l:"EAC Margin",           v:contractVal>0?eacMargin+"%":"—",c:eacMargin>=20?"#059669":eacMargin>=10?"#f59e0b":"#ef4444",sub:"Est. margin at completion"},
-        ].map(({l,v,c,sub})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"12px 16px",border:`1.5px solid ${c}33`,borderLeft:`3px solid ${c}`}}>
-            <div style={{fontWeight:800,fontSize:".95rem",color:c,lineHeight:1.3}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
-            <div style={{fontSize:".6rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>
-          </div>
-        ))}
-      </div>
 
-      {!boqMode&&<>
-      {/* Budget table with drill-down */}
+      {/* Budget table */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-        <div style={{display:"grid",gridTemplateColumns:"150px 1fr 1fr 1fr 1fr 32px",background:"#1e293b",padding:"10px 16px",gap:10}}>
-          {["Category","Budget (₱)","Actual (Received)","Committed (PO)","Budget Left",""].map(h=>(
-            <div key={h} style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+        <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:12}}>
+          {["Category","Budget (₱)","Actual Spend","Variance","% Used"].map(h=>(
+            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
           ))}
         </div>
         {BUDGET_CATS.map((cat,i)=>{
           const bgt=n(form[cat]);
           const act=actuals[cat];
-          const comm=committed[cat];
-          const pend=pending[cat];
-          const atC=act+comm+pend;
-          const left=bgt-atC;
-          const isExpanded=drillCat===cat;
-          const isOverCat=bgt>0&&atC>bgt;
-          const pct=bgt>0?Math.round(atC/bgt*100):0;
-          const actPct=bgt>0?Math.round(act/bgt*100):0;
+          const variance=bgt-act;
+          const pct=bgt>0?Math.round(act/bgt*100):act>0?999:0;
           return(
-            <React.Fragment key={cat}>
-              <div
-                onClick={()=>setDrillCat(isExpanded?null:cat)}
-                style={{display:"grid",gridTemplateColumns:"150px 1fr 1fr 1fr 1fr 32px",padding:"12px 16px",gap:10,borderBottom:"1px solid #f1f5f9",background:isExpanded?"#eff6ff":i%2?"#fafafa":"#fff",alignItems:"center",cursor:"pointer",transition:"background .1s"}}
-                onMouseEnter={e=>{if(!isExpanded)e.currentTarget.style.background="#f8fafc";}}
-                onMouseLeave={e=>{if(!isExpanded)e.currentTarget.style.background=i%2?"#fafafa":"#fff";}}>
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{width:10,height:10,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],flexShrink:0,display:"inline-block"}}/>
-                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{cat}</span>
-                </div>
-                <div onClick={e=>e.stopPropagation()}>
-                  <input
-                    value={form[cat]||""}
-                    onChange={e=>f(cat,e.target.value)}
-                    placeholder="0.00"
-                    style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",width:"100%",boxSizing:"border-box",textAlign:"right",outline:"none"}}/>
-                </div>
-                <div style={{fontSize:".82rem",textAlign:"right"}}>
-                  <div style={{fontWeight:600,color:"#10b981"}}>{fmtPHP(act)}</div>
-                  {comm>0&&<div style={{fontSize:".68rem",color:"#f59e0b",marginTop:1}}>+{fmtPHP(comm)} PO</div>}
-                  {pend>0&&<div style={{fontSize:".68rem",color:"#8b5cf6",marginTop:1}}>+{fmtPHP(pend)} pending</div>}
-                </div>
-                <div style={{textAlign:"right"}}>
-                  <div style={{fontWeight:700,color:comm>0?"#f59e0b":"#94a3b8",fontSize:".82rem"}}>{comm>0?fmtPHP(comm):"—"}</div>
-                  {bgt>0&&pct>0&&<div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:4,overflow:"hidden",position:"relative"}}>
-                    <div style={{position:"absolute",left:0,top:0,height:"100%",width:Math.min(100,pct)+"%",background:isOverCat?"#fecaca":"#fde68a",borderRadius:2}}/>
-                    <div style={{position:"absolute",left:0,top:0,height:"100%",width:Math.min(100,actPct)+"%",background:isOverCat?"#ef4444":"#10b981",borderRadius:2}}/>
-                  </div>}
-                </div>
-                <div style={{textAlign:"right",fontWeight:700,fontSize:".82rem",color:bgt===0?"#94a3b8":left<0?"#ef4444":"#059669"}}>
-                  {bgt>0?(left<0?"▼ ":"▲ ")+fmtPHP(Math.abs(left)):"—"}
-                </div>
-                <div style={{textAlign:"center",color:"#94a3b8",fontSize:"1rem",lineHeight:1}}>{isExpanded?"▲":"▼"}</div>
+            <div key={cat} style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{width:10,height:10,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],flexShrink:0,display:"inline-block"}}/>
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{cat}</span>
               </div>
-              {isExpanded&&drillData&&(
-                <div style={{background:"#f8fafc",borderLeft:`4px solid ${BUDGET_CAT_CLR[cat]}`,padding:"14px 18px",borderBottom:"1px solid #e2e8f0"}}>
-                  {drillData.catPRs.length>0&&(
-                    <>
-                      <div style={{fontWeight:700,fontSize:".72rem",color:"#475569",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>Purchase Orders / Requests ({drillData.catPRs.length})</div>
-                      <div style={{overflowX:"auto"}}>
-                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
-                          <thead>
-                            <tr style={{color:"#94a3b8",fontSize:".65rem",textTransform:"uppercase"}}>
-                              {["Item","Supplier","Qty","Est. Cost","Act. Cost","Status"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 8px",fontWeight:600,whiteSpace:"nowrap"}}>{h}</th>)}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {drillData.catPRs.map((p,pi)=>{
-                              const estTotal=n(p.estUnitCost)*n(p.qty);
-                              const actTotal=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-                              const pricVar=n(p.actUnitCost)>0?n(p.actUnitCost)-n(p.estUnitCost):0;
-                              const sClr={Delivered:"#10b981","Partially Delivered":"#3b82f6","PO Issued":"#f59e0b","Pending Approval":"#8b5cf6",Draft:"#94a3b8"}[p.status]||"#94a3b8";
-                              return(
-                                <tr key={p.id||pi} style={{borderTop:"1px solid #e2e8f0",background:pi%2?"#fff":"transparent"}}>
-                                  <td style={{padding:"6px 8px",color:"#0f172a",fontWeight:500}}>{p.itemName||p.item||"—"}</td>
-                                  <td style={{padding:"6px 8px",color:"#64748b"}}>{p.supplier||"—"}</td>
-                                  <td style={{padding:"6px 8px",color:"#64748b",whiteSpace:"nowrap"}}>{n(p.qty)} {p.unit||""}</td>
-                                  <td style={{padding:"6px 8px",color:"#0f172a",textAlign:"right",whiteSpace:"nowrap"}}>{fmtPHP(estTotal)}</td>
-                                  <td style={{padding:"6px 8px",textAlign:"right",whiteSpace:"nowrap"}}>
-                                    {(p.status==="Delivered"||p.status==="Partially Delivered")
-                                      ?<span style={{color:pricVar>0?"#ef4444":"#0f172a",fontWeight:pricVar>0?700:400}}>
-                                          {fmtPHP(actTotal)}{pricVar>0&&<span style={{fontSize:".65rem",marginLeft:4}}>▲{fmtPHP(n(p.qty)*pricVar)}</span>}
-                                        </span>
-                                      :<span style={{color:"#94a3b8"}}>—</span>}
-                                  </td>
-                                  <td style={{padding:"6px 8px",whiteSpace:"nowrap"}}>
-                                    <span style={{fontSize:".65rem",fontWeight:700,color:sClr,background:sClr+"18",border:`1px solid ${sClr}33`,borderRadius:20,padding:"1px 8px"}}>{p.status}</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
-                  {drillData.catSWOs.length>0&&(
-                    <>
-                      <div style={{fontWeight:700,fontSize:".72rem",color:"#475569",textTransform:"uppercase",letterSpacing:".8px",marginTop:12,marginBottom:8}}>Subcon Work Orders ({drillData.catSWOs.length})</div>
-                      <div style={{overflowX:"auto"}}>
-                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
-                          <thead>
-                            <tr style={{color:"#94a3b8",fontSize:".65rem",textTransform:"uppercase"}}>
-                              {["Subcontractor","Scope","Contract Amount","Status"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 8px",fontWeight:600}}>{h}</th>)}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {drillData.catSWOs.map((w,wi)=>{
-                              const sClr=SWO_STATUS_CLR[w.status]||"#94a3b8";
-                              return(
-                                <tr key={w.id||wi} style={{borderTop:"1px solid #e2e8f0",background:wi%2?"#fff":"transparent"}}>
-                                  <td style={{padding:"6px 8px",color:"#0f172a",fontWeight:500}}>{w.subcontractor||"—"}</td>
-                                  <td style={{padding:"6px 8px",color:"#64748b"}}>{w.scopeOfWork||"—"}</td>
-                                  <td style={{padding:"6px 8px",color:"#0f172a",fontWeight:600,textAlign:"right"}}>{fmtPHP(n(w.contractAmount))}</td>
-                                  <td style={{padding:"6px 8px"}}>
-                                    <span style={{fontSize:".65rem",fontWeight:700,color:sClr,background:sClr+"18",border:`1px solid ${sClr}33`,borderRadius:20,padding:"1px 8px"}}>{w.status}</span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
-                  {drillData.catExps.length>0&&(
-                    <>
-                      <div style={{fontWeight:700,fontSize:".72rem",color:"#475569",textTransform:"uppercase",letterSpacing:".8px",marginTop:12,marginBottom:8}}>Expenses ({drillData.catExps.length})</div>
-                      <div style={{overflowX:"auto"}}>
-                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
-                          <thead>
-                            <tr style={{color:"#94a3b8",fontSize:".65rem",textTransform:"uppercase"}}>
-                              {["Description","Supplier / Payee","Amount","Date"].map(h=><th key={h} style={{textAlign:"left",padding:"4px 8px",fontWeight:600}}>{h}</th>)}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {drillData.catExps.map((e,ei)=>(
-                              <tr key={e.id||ei} style={{borderTop:"1px solid #e2e8f0",background:ei%2?"#fff":"transparent"}}>
-                                <td style={{padding:"6px 8px",color:"#0f172a"}}>{e.description||e.note||"—"}</td>
-                                <td style={{padding:"6px 8px",color:"#64748b"}}>{e.supplier||e.payee||"—"}</td>
-                                <td style={{padding:"6px 8px",color:"#0f172a",fontWeight:600,textAlign:"right"}}>{fmtPHP(n(e.amount))}</td>
-                                <td style={{padding:"6px 8px",color:"#64748b"}}>{e.expDate||e.date||"—"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </>
-                  )}
-                  {drillData.catPRs.length===0&&drillData.catExps.length===0&&drillData.catSWOs.length===0&&(
-                    <div style={{color:"#94a3b8",fontSize:".8rem",textAlign:"center",padding:"10px 0"}}>No line items linked to this project for {cat} yet.</div>
-                  )}
-                </div>
-              )}
-            </React.Fragment>
+              <div>
+                <input
+                  value={form[cat]||""}
+                  onChange={e=>f(cat,e.target.value)}
+                  placeholder="0.00"
+                  style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",width:"100%",boxSizing:"border-box",textAlign:"right",outline:"none"}}/>
+              </div>
+              <div style={{fontWeight:600,color:act>bgt&&bgt>0?"#ef4444":"#10b981",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(act)}</div>
+              <div style={{fontWeight:600,color:variance<0?"#ef4444":"#059669",fontSize:".82rem",textAlign:"right"}}>
+                {bgt>0?(variance<0?"▼ ":"▲ ")+fmtPHP(Math.abs(variance)):"—"}
+              </div>
+              <div style={{textAlign:"center"}}>
+                <span style={{fontSize:".78rem",fontWeight:700,color:pct>100?"#ef4444":pct>80?"#f59e0b":"#059669"}}>
+                  {pct===999?"N/A":pct+"%"}
+                </span>
+                {bgt>0&&(
+                  <div style={{height:4,background:"#f1f5f9",borderRadius:2,marginTop:4,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:Math.min(pct,100)+"%",background:pct>100?"#ef4444":pct>80?"#f59e0b":"#10b981",borderRadius:2}}/>
+                  </div>
+                )}
+              </div>
+            </div>
           );
         })}
         {/* Totals row */}
-        <div style={{display:"grid",gridTemplateColumns:"150px 1fr 1fr 1fr 1fr 32px",padding:"12px 16px",gap:10,background:"#1e293b",alignItems:"center"}}>
+        <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,background:"#1e293b",alignItems:"center"}}>
           <div style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>TOTAL</div>
           <div style={{fontWeight:800,color:"#fff",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalBudget)}</div>
-          <div style={{fontSize:".82rem",textAlign:"right"}}>
-            <div style={{fontWeight:800,color:"#4ade80"}}>{fmtPHP(totalActual)}</div>
-            {totalCommitted>0&&<div style={{fontSize:".7rem",color:"#fbbf24",marginTop:1}}>+{fmtPHP(totalCommitted)} PO</div>}
+          <div style={{fontWeight:800,color:totalActual>totalBudget?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalActual)}</div>
+          <div style={{fontWeight:800,color:totalBudget-totalActual<0?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>
+            {totalBudget>0?(totalBudget-totalActual<0?"▼ ":"▲ ")+fmtPHP(Math.abs(totalBudget-totalActual)):"—"}
           </div>
-          <div style={{fontWeight:800,color:totalCommitted>0?"#fbbf24":"rgba(255,255,255,.3)",fontSize:".82rem",textAlign:"right"}}>{totalCommitted>0?fmtPHP(totalCommitted):"—"}</div>
-          <div style={{fontWeight:800,color:budgetLeft<0?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>
-            {totalBudget>0?(budgetLeft<0?"▼ ":"▲ ")+fmtPHP(Math.abs(budgetLeft)):"—"}
-          </div>
-          <div/>
+          <div style={{textAlign:"center",fontWeight:800,color:budgetUsed>100?"#f87171":"#4ade80",fontSize:".85rem"}}>{budgetUsed}%</div>
         </div>
       </div>
 
@@ -14409,1037 +13410,22 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
           placeholder="e.g. Includes mobilization, based on approved CE dated…"
           rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
       </div>
-      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
-        <button onClick={handleSave}
+      <div style={{display:"flex",gap:10,alignItems:"center"}}>
+        <button onClick={()=>{saveBudget(selDeal,form);setSaved(true);}}
           style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
           {saved?"✓ Saved":"Save Budget"}
         </button>
         {budget.savedAt&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Last saved {new Date(budget.savedAt).toLocaleDateString("en-PH")}</span>}
-        {(budget.history||[]).length>0&&(
-          <button onClick={()=>setShowHistory(h=>!h)}
-            style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>
-            📋 {showHistory?"Hide":"Show"} History ({(budget.history||[]).length})
-          </button>
-        )}
         {totalActual>totalBudget&&totalBudget>0&&(
-          <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>🚨 Already over budget by {fmtPHP(totalActual-totalBudget)}</span>
+          <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>⚠️ Over budget by {fmtPHP(totalActual-totalBudget)}</span>
         )}
-        {totalActual<=totalBudget&&totalAtCompletion>totalBudget&&totalBudget>0&&(
-          <span style={{fontSize:".78rem",color:"#f59e0b",fontWeight:700}}>⚠️ Forecast to exceed budget by {fmtPHP(totalAtCompletion-totalBudget)} once committed POs land</span>
-        )}
-      </div>
-
-      {/* Budget Revision History */}
-      {showHistory&&(budget.history||[]).length>0&&(
-        <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginTop:12}}>
-          <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:12}}>Budget Revision History</div>
-          <div style={{display:"flex",flexDirection:"column",gap:12}}>
-            {(budget.history||[]).map((h,hi)=>{
-              const prev=(budget.history||[])[hi+1];
-              return(
-                <div key={hi} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-                  <div style={{flexShrink:0,width:10,height:10,borderRadius:"50%",background:hi===0?"#3b82f6":"#cbd5e1",marginTop:4}}/>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4,marginBottom:5}}>
-                      <span style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{h.changedBy||"User"}</span>
-                      <span style={{fontSize:".72rem",color:"#94a3b8"}}>{new Date(h.changedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>
-                    </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {BUDGET_CATS.map(cat=>{
-                        const cur=h[cat]||0;
-                        const was=prev?.[cat]||0;
-                        const diff=cur-was;
-                        return(
-                          <span key={cat} style={{fontSize:".72rem",background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,padding:"2px 8px",color:"#475569"}}>
-                            {cat}: {fmtPHP(cur)}{prev&&diff!==0&&<span style={{color:diff>0?"#ef4444":"#059669",fontWeight:700}}> ({diff>0?"+":""}{fmtPHP(diff)})</span>}
-                          </span>
-                        );
-                      })}
-                    </div>
-                    {h.note&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:4,fontStyle:"italic"}}>"{h.note}"</div>}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Supplier Spend Concentration */}
-      {supplierData.bySupplier.length>0&&(
-        <div style={{marginTop:16,marginBottom:4}}>
-          <button onClick={()=>setShowSuppliers(s=>!s)}
-            style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 16px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600,width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span>🏭 Supplier Spend Breakdown ({supplierData.bySupplier.length} supplier{supplierData.bySupplier.length!==1?"s":""})</span>
-            <span style={{color:"#94a3b8"}}>{showSuppliers?"▲":"▼"}</span>
-          </button>
-          {showSuppliers&&(
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginTop:8}}>
-              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 80px",background:"#334155",padding:"9px 16px",gap:10}}>
-                {["Supplier / Subcon","Categories","Est. Total","Actual / Committed","Concentration"].map(h=>(
-                  <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
-                ))}
-              </div>
-              {supplierData.bySupplier.map((s,si)=>{
-                const share=supplierData.grandTotal>0?Math.round(s.actTotal/supplierData.grandTotal*100):0;
-                const priceVar=s.actTotal-s.estTotal;
-                const topCats=Object.entries(s.cats).sort((a,b)=>b[1]-a[1]).map(([c])=>c);
-                const isConc=share>=40;
-                return(
-                  <div key={si} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 80px",padding:"10px 16px",gap:10,borderBottom:"1px solid #f1f5f9",background:si%2?"#fafafa":"#fff",alignItems:"center"}}>
-                    <div>
-                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{s.supplier}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{s.count} PO{s.count!==1?"s/SWOs":""}</div>
-                    </div>
-                    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                      {topCats.map(c=><span key={c} style={{fontSize:".6rem",background:BUDGET_CAT_CLR[c]+"18",color:BUDGET_CAT_CLR[c],border:`1px solid ${BUDGET_CAT_CLR[c]}33`,borderRadius:20,padding:"1px 6px",fontWeight:600}}>{c}</span>)}
-                    </div>
-                    <div style={{fontSize:".8rem",color:"#64748b"}}>{fmtPHP(s.estTotal)}</div>
-                    <div>
-                      <div style={{fontSize:".8rem",fontWeight:600,color:"#0f172a"}}>{fmtPHP(s.actTotal)}</div>
-                      {priceVar>50&&<div style={{fontSize:".68rem",color:"#ef4444",fontWeight:600,marginTop:1}}>▲ {fmtPHP(priceVar)} vs est.</div>}
-                      {priceVar<-50&&<div style={{fontSize:".68rem",color:"#059669",fontWeight:600,marginTop:1}}>▼ {fmtPHP(Math.abs(priceVar))} savings</div>}
-                    </div>
-                    <div style={{textAlign:"center"}}>
-                      <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden",marginBottom:3}}>
-                        <div style={{height:"100%",width:share+"%",background:isConc?"#ef4444":share>=25?"#f59e0b":"#10b981",borderRadius:3}}/>
-                      </div>
-                      <span style={{fontSize:".75rem",fontWeight:700,color:isConc?"#ef4444":share>=25?"#f59e0b":"#059669"}}>{share}%</span>
-                      {isConc&&<div style={{fontSize:".58rem",color:"#ef4444",marginTop:1}}>High risk</div>}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-      </>}
-
-      {/* ── BOQ BUILDER ── */}
-      {boqMode&&(
-        <div>
-          {/* Metadata bar */}
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 16px",marginBottom:14,display:"flex",gap:16,flexWrap:"wrap",alignItems:"center"}}>
-            <div>
-              <div style={{fontSize:".68rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>BOQ Date</div>
-              <input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)}
-                style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none"}}/>
-            </div>
-            <div>
-              <div style={{fontSize:".68rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Quotation No.</div>
-              <input value={boqQuotNo} onChange={e=>setBoqQuotNo(e.target.value)} placeholder="e.g. 0051"
-                style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",width:140,outline:"none"}}/>
-            </div>
-            <button onClick={()=>boqFileRef.current?.click()}
-              style={{marginLeft:"auto",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#475569",cursor:"pointer",fontWeight:600}}>
-              ⬆ Import from Excel
-            </button>
-            <input ref={boqFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={handleImportBoq}/>
-          </div>
-
-          {/* Sections */}
-          {boqSecs.map(sec=>{
-            const secTotal=sec.items.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitCost||0),0);
-            const isOpen=boqExp===sec.id;
-            const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
-            return(
-              <div key={sec.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",marginBottom:8,overflow:"hidden"}}>
-                <div onClick={()=>setBoqExp(isOpen?null:sec.id)}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",cursor:"pointer",background:isOpen?"#f8faff":"#fff",borderBottom:isOpen?"1.5px solid #e2e8f0":"none",transition:"background .1s"}}>
-                  <span style={{fontWeight:800,color:catClr,fontSize:".95rem",minWidth:24,flexShrink:0}}>{sec.id}</span>
-                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",flex:1}}>{sec.name}</span>
-                  <div onClick={e=>e.stopPropagation()}>
-                    <select value={sec.budgetCat} onChange={e=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,budgetCat:e.target.value}:s))}
-                      style={{border:`1.5px solid ${catClr}44`,borderRadius:7,padding:"3px 8px",fontFamily:"inherit",fontSize:".75rem",background:`${catClr}10`,color:catClr,cursor:"pointer",outline:"none",fontWeight:700}}>
-                      {BUDGET_CATS.map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",minWidth:130,textAlign:"right",flexShrink:0}}>
-                    {secTotal>0?fmtPHP(secTotal):<span style={{color:"#cbd5e1"}}>₱ 0.00</span>}
-                  </span>
-                  <span style={{color:"#94a3b8",fontSize:".85rem",flexShrink:0}}>{isOpen?"▲":"▼"}</span>
-                </div>
-                {isOpen&&(
-                  <div style={{overflowX:"auto"}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:".82rem",minWidth:680}}>
-                      <thead>
-                        <tr style={{background:"#f8fafc"}}>
-                          {["Description","Qty","Unit","Unit Cost (₱)","Amount (₱)","Remarks",""].map(h=>(
-                            <th key={h} style={{padding:"7px 10px",textAlign:["Qty","Unit Cost (₱)","Amount (₱)"].includes(h)?"right":"left",fontSize:".62rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap",borderBottom:"1.5px solid #e2e8f0"}}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sec.items.map((it,ii)=>{
-                          const amt=Number(it.qty||0)*Number(it.unitCost||0);
-                          const upd=(field,val)=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:s.items.map((x,xi)=>xi===ii?{...x,[field]:val}:x)}:s));
-                          const cellSty={border:"none",width:"100%",fontFamily:"inherit",fontSize:".82rem",outline:"none",borderRadius:4,padding:"3px 6px",background:"transparent"};
-                          return(
-                            <tr key={ii} style={{borderTop:"1px solid #f1f5f9"}}>
-                              <td style={{padding:"4px 6px",minWidth:220}}>
-                                <input value={it.desc||""} onChange={e=>upd("desc",e.target.value)} placeholder="Item description…"
-                                  style={{...cellSty}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
-                              </td>
-                              <td style={{padding:"4px 4px",width:72}}>
-                                <input value={it.qty||""} onChange={e=>upd("qty",e.target.value)} placeholder="1"
-                                  style={{...cellSty,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
-                              </td>
-                              <td style={{padding:"4px 4px",width:72}}>
-                                <input value={it.unit||""} onChange={e=>upd("unit",e.target.value)} placeholder="lot"
-                                  style={{...cellSty}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
-                              </td>
-                              <td style={{padding:"4px 4px",width:130}}>
-                                <input value={it.unitCost||""} onChange={e=>upd("unitCost",e.target.value)} placeholder="0.00"
-                                  style={{...cellSty,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
-                              </td>
-                              <td style={{padding:"4px 10px",textAlign:"right",fontWeight:600,color:"#0f172a",whiteSpace:"nowrap",width:130}}>
-                                {amt>0?"₱"+amt.toLocaleString("en-PH",{minimumFractionDigits:2}):<span style={{color:"#cbd5e1"}}>—</span>}
-                              </td>
-                              <td style={{padding:"4px 4px",minWidth:110}}>
-                                <input value={it.remarks||""} onChange={e=>upd("remarks",e.target.value)} placeholder="optional"
-                                  style={{...cellSty,color:"#64748b",fontSize:".75rem"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>
-                              </td>
-                              <td style={{padding:"4px 8px",width:28,textAlign:"center"}}>
-                                <button onClick={()=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:s.items.filter((_,xi)=>xi!==ii)}:s))}
-                                  style={{background:"none",border:"none",cursor:"pointer",color:"#ef4444",fontSize:"1rem",lineHeight:1,padding:0}}>×</button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        {/* Add row */}
-                        <tr style={{borderTop:"1px solid #f1f5f9",background:"#fafafa"}}>
-                          <td colSpan={7} style={{padding:"8px 10px"}}>
-                            <button onClick={()=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:[...s.items,{desc:"",qty:1,unit:"lot",unitCost:0,remarks:""}]}:s))}
-                              style={{background:"none",border:"1.5px dashed #cbd5e1",borderRadius:7,padding:"5px 18px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>
-                              + Add Item
-                            </button>
-                          </td>
-                        </tr>
-                        {/* Section subtotal */}
-                        {sec.items.length>0&&(
-                          <tr style={{borderTop:"1.5px solid #e2e8f0",background:"#f1f5f9"}}>
-                            <td colSpan={4} style={{padding:"7px 10px",fontWeight:700,textAlign:"right",fontSize:".72rem",color:"#475569",textTransform:"uppercase",letterSpacing:".5px"}}>
-                              Sub-total {sec.name}
-                            </td>
-                            <td style={{padding:"7px 10px",textAlign:"right",fontWeight:800,color:"#0f172a"}}>
-                              ₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}
-                            </td>
-                            <td colSpan={2}/>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Grand Total bar */}
-          <div style={{background:"#1e293b",borderRadius:12,padding:"16px 20px",marginTop:4,marginBottom:16,display:"flex",justifyContent:"flex-end",gap:32,flexWrap:"wrap"}}>
-            {[
-              {l:"Grand Total (ex-VAT)",v:fmtPHP(boqGrandTotal),big:false},
-              {l:"VAT 12%",v:fmtPHP(boqVat),big:false},
-              {l:"Grand Total w/ VAT",v:fmtPHP(boqGrandVat),big:true},
-            ].map(({l,v,big})=>(
-              <div key={l} style={{textAlign:"right"}}>
-                <div style={{fontSize:".6rem",color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:"1px",marginBottom:3}}>{l}</div>
-                <div style={{fontWeight:800,color:big?"#f59e0b":"rgba(255,255,255,.85)",fontSize:big?"1.15rem":".95rem"}}>{v}</div>
-              </div>
-            ))}
-          </div>
-          {boqGrandTotal>0&&contractVal>0&&(
-            <div style={{fontSize:".78rem",color:boqGrandTotal/contractVal>0.85?"#ef4444":"#059669",fontWeight:600,marginBottom:12,textAlign:"right"}}>
-              {boqGrandTotal/contractVal>0.85
-                ?`⚠️ BOQ cost (ex-VAT) = ${Math.round(boqGrandTotal/contractVal*100)}% of contract value — thin margin`
-                :`✓ BOQ (ex-VAT) at ${Math.round(boqGrandTotal/contractVal*100)}% of contract value`}
-            </div>
-          )}
-
-          {/* Actions */}
-          <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-            <button onClick={handleApplyBoq}
-              style={{background:"#0f172a",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
-              ✓ Apply to Budget
-            </button>
-            <button onClick={handleSaveBoq}
-              style={{background:"#3b82f6",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
-              Save BOQ
-            </button>
-            <button onClick={handleBoqPrint}
-              style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#475569",cursor:"pointer"}}>
-              🖨 Print / Export PDF
-            </button>
-            <span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:"auto"}}>
-              Apply rolls BOQ section totals into the budget. Save BOQ stores it without changing budget numbers.
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── CE/QS QUEUE VIEW ────────────────────────────────────────────────────────
-function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
-  const n=v=>Number(String(v||0).replace(/,/g,""))||0;
-  const fmtPHP2=v=>v?("₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0})):"—";
-  const[tab,setTab]=React.useState("queue");
-  const[showForm,setShowForm]=React.useState(false);
-  const[editId,setEditId]=React.useState(null);
-  const[detailId,setDetailId]=React.useState(null);
-  const isQS=["Manager","QS"].includes(role);
-  const isSales=["Manager","Sales"].includes(role);
-  const TYPES={kiosk:"Kiosk",retail:"Retail Fit-out",office:"Office",fnb:"F&B / Restaurant",signage:"Signage",event:"Event / Activation",repair:"Repair / Refurb",other:"Other"};
-  const PRI_CLR={High:"#ef4444",Normal:"#3b82f6",Low:"#94a3b8"};
-  const STATUS_CLR={Pending:"#f59e0b",Ongoing:"#3b82f6",Done:"#10b981"};
-  const AWARDED_CLR={Won:"#10b981",Lost:"#ef4444",Pending:"#94a3b8"};
-  const emptyForm=()=>({clientName:"",projectName:"",location:"",projectType:"retail",priority:"Normal",targetDeadline:"",submissionDeadline:"",targetBudget:"",targetMargin:"",plansLink:"",skpLink:"",scheduleOfFinish:"",notes:"",ceNotes:"",bidAmount:"",bidMarginPct:"",awarded:"Pending",awardDate:""});
-  const[form,setForm]=React.useState(emptyForm());
-  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const openNew=()=>{setForm(emptyForm());setEditId(null);setShowForm(true);};
-  const openEdit=r=>{setForm({clientName:r.clientName||"",projectName:r.projectName||"",location:r.location||"",projectType:r.projectType||"retail",priority:r.priority||"Normal",targetDeadline:r.targetDeadline||"",submissionDeadline:r.submissionDeadline||"",targetBudget:r.targetBudget||"",targetMargin:r.targetMargin||"",plansLink:r.plansLink||"",skpLink:r.skpLink||"",scheduleOfFinish:r.scheduleOfFinish||"",notes:r.notes||"",ceNotes:r.ceNotes||"",bidAmount:r.bidAmount||"",bidMarginPct:r.bidMarginPct||"",awarded:r.awarded||"Pending",awardDate:r.awardDate||""});setEditId(r.id);setShowForm(true);};
-  const handleSave=async()=>{
-    if(!form.clientName.trim()){alert("Client name is required.");return;}
-    const rec={client_name:form.clientName.trim(),project_name:form.projectName,location:form.location,project_type:form.projectType,priority:form.priority,submitted_by:session?.name||role||"",target_deadline:form.targetDeadline||null,submission_deadline:form.submissionDeadline||null,target_budget:n(form.targetBudget)||null,target_margin:n(form.targetMargin)||null,plans_link:form.plansLink,skp_link:form.skpLink,schedule_of_finish:form.scheduleOfFinish,notes:form.notes,ce_notes:form.ceNotes,bid_amount:n(form.bidAmount)||null,bid_margin_pct:n(form.bidMarginPct)||null,awarded:form.awarded,award_date:form.awardDate||null,updated_at:new Date().toISOString()};
-    if(editId){await updateCEReq(editId,rec);}else{await addCEReq({...rec,status:"Pending"});}
-    setShowForm(false);toastEmit?.("Saved","success");
-  };
-  const setStatus=(id,status)=>updateCEReq(id,{status,updated_at:new Date().toISOString()});
-  const setAwarded=(id,awarded)=>updateCEReq(id,{awarded,award_date:awarded!=="Pending"?new Date().toISOString().split("T")[0]:null,updated_at:new Date().toISOString()});
-  const daysDiff=d=>{if(!d)return null;const diff=Math.round((new Date(d)-new Date())/(864e5));return diff;};
-  const daysLabel=d=>{const diff=daysDiff(d);if(diff===null)return null;if(diff<0)return{txt:`${Math.abs(diff)}d overdue`,clr:"#ef4444"};if(diff===0)return{txt:"Due today",clr:"#f59e0b"};return{txt:`${diff}d left`,clr:diff<=3?"#f59e0b":"#64748b"};};
-
-  const pending=ceReqs.filter(r=>r.status==="Pending");
-  const ongoing=ceReqs.filter(r=>r.status==="Ongoing");
-  const done=ceReqs.filter(r=>r.status==="Done");
-  const submitted=done.filter(r=>r.bidAmount>0||r.awarded!=="Pending");
-  const won=submitted.filter(r=>r.awarded==="Won");
-  const lost=submitted.filter(r=>r.awarded==="Lost");
-  const winRate=submitted.length?Math.round(won.length/submitted.length*100):0;
-  const avgMarginWon=won.length?Math.round(won.reduce((s,r)=>s+Number(r.bidMarginPct||0),0)/won.length):0;
-  const byType=Object.entries(TYPES).map(([k,label])=>{const sub=submitted.filter(r=>r.projectType===k);const w=sub.filter(r=>r.awarded==="Won");return{key:k,label,total:sub.length,won:w.length,rate:sub.length?Math.round(w.length/sub.length*100):0};}).filter(x=>x.total>0);
-
-  const Card=({r})=>{
-    const dl=daysLabel(r.targetDeadline);
-    const daysPending=r.createdAt?Math.round((new Date()-new Date(r.createdAt))/(864e5)):null;
-    return(
-      <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:8,cursor:"pointer"}} onClick={()=>setDetailId(r.id===detailId?null:r.id)}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.clientName}</div>
-            {r.projectName&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>{r.projectName}</div>}
-          </div>
-          <span style={{background:PRI_CLR[r.priority]+"22",color:PRI_CLR[r.priority],borderRadius:5,padding:"2px 7px",fontSize:".65rem",fontWeight:700,flexShrink:0}}>{r.priority}</span>
-        </div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
-          <span style={{background:"#f1f5f9",color:"#475569",borderRadius:5,padding:"2px 7px",fontSize:".67rem",fontWeight:600}}>{TYPES[r.projectType]||r.projectType}</span>
-          {r.targetBudget>0&&<span style={{background:"#f0fdf4",color:"#059669",borderRadius:5,padding:"2px 7px",fontSize:".67rem",fontWeight:600}}>{fmtPHP2(r.targetBudget)}</span>}
-          {r.targetMargin>0&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:5,padding:"2px 7px",fontSize:".67rem",fontWeight:600}}>{r.targetMargin}% margin</span>}
-        </div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8,gap:8}}>
-          <div style={{fontSize:".67rem",color:"#94a3b8"}}>{r.submittedBy}{daysPending!==null?` · ${daysPending}d ago`:""}</div>
-          {dl&&<span style={{fontSize:".67rem",fontWeight:700,color:dl.clr}}>{dl.txt}</span>}
-        </div>
-        {detailId===r.id&&(
-          <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",flexDirection:"column",gap:6}}>
-            {r.location&&<div style={{fontSize:".72rem",color:"#475569"}}>📍 {r.location}</div>}
-            {r.submissionDeadline&&<div style={{fontSize:".72rem",color:"#475569"}}>📅 Submit by: {r.submissionDeadline}</div>}
-            {r.plansLink&&<div style={{fontSize:".72rem"}}><a href={r.plansLink.startsWith("http")?r.plansLink:"#"} target="_blank" rel="noreferrer" style={{color:"#3b82f6"}}>🗺 Plans link</a></div>}
-            {r.skpLink&&<div style={{fontSize:".72rem"}}><a href={r.skpLink.startsWith("http")?r.skpLink:"#"} target="_blank" rel="noreferrer" style={{color:"#3b82f6"}}>📐 SKP file link</a></div>}
-            {r.scheduleOfFinish&&<div style={{fontSize:".72rem",color:"#475569"}}>📋 {r.scheduleOfFinish}</div>}
-            {r.notes&&<div style={{fontSize:".72rem",color:"#475569",background:"#f8fafc",borderRadius:6,padding:"6px 8px"}}>{r.notes}</div>}
-            {r.ceNotes&&isQS&&<div style={{fontSize:".72rem",color:"#7c3aed",background:"#f5f3ff",borderRadius:6,padding:"6px 8px",fontStyle:"italic"}}>📐 CE Notes: {r.ceNotes}</div>}
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:4}}>
-              {isQS&&r.status==="Pending"&&<button onClick={e=>{e.stopPropagation();setStatus(r.id,"Ongoing");}} style={{background:"#3b82f6",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>→ Start</button>}
-              {isQS&&r.status==="Ongoing"&&<button onClick={e=>{e.stopPropagation();setStatus(r.id,"Done");}} style={{background:"#10b981",border:"none",borderRadius:6,padding:"5px 10px",color:"#fff",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>✓ Mark Done</button>}
-              {isQS&&r.status==="Ongoing"&&<button onClick={e=>{e.stopPropagation();setStatus(r.id,"Pending");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"5px 10px",color:"#64748b",fontFamily:"inherit",fontSize:".72rem",cursor:"pointer"}}>← Back to Pending</button>}
-              {(isQS||isSales)&&<button onClick={e=>{e.stopPropagation();openEdit(r);}} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",color:"#475569",fontFamily:"inherit",fontSize:".72rem",cursor:"pointer"}}>✏ Edit</button>}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  return(
-    <div style={{padding:"0 0 40px"}}>
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,gap:12,flexWrap:"wrap"}}>
-        <div>
-          <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📐 CE / QS Queue</div>
-          <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>Cost estimation requests — {pending.length} pending · {ongoing.length} ongoing · {done.length} done</div>
-        </div>
-        {(isQS||isSales)&&<button onClick={openNew} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>+ Submit CE Request</button>}
-      </div>
-      {/* Summary strip */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:10,marginBottom:20}}>
-        {[["Pending",pending.length,"#f59e0b"],["Ongoing",ongoing.length,"#3b82f6"],["Done",done.length,"#10b981"],["Win Rate",submitted.length?winRate+"%":"—","#8b5cf6"]].map(([l,v,c])=>(
-          <div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
-            <div style={{fontSize:".65rem",color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
-            <div style={{fontSize:"1.4rem",fontWeight:800,color:c,marginTop:4}}>{v}</div>
-          </div>
-        ))}
-      </div>
-      {/* Tabs */}
-      <div style={{display:"flex",gap:4,marginBottom:16,borderBottom:"1.5px solid #e2e8f0",paddingBottom:8}}>
-        {[["queue","📋 Queue"],["winloss","🏆 Win/Loss"],["analysis","📊 Analysis"]].map(([t,l])=>(
-          <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?"#1e293b":"transparent",border:"none",borderRadius:7,padding:"6px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:tab===t?700:500,color:tab===t?"#fff":"#64748b",cursor:"pointer"}}>{l}</button>
-        ))}
-      </div>
-
-      {/* ── QUEUE TAB ── */}
-      {tab==="queue"&&(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))",gap:16,alignItems:"start"}}>
-          {[["Pending",pending,"#f59e0b"],["Ongoing",ongoing,"#3b82f6"],["Done",done,"#10b981"]].map(([label,list,clr])=>(
-            <div key={label}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                <span style={{width:10,height:10,borderRadius:"50%",background:clr,display:"inline-block"}}/>
-                <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{label}</span>
-                <span style={{background:clr+"22",color:clr,borderRadius:20,padding:"1px 8px",fontSize:".7rem",fontWeight:700}}>{list.length}</span>
-              </div>
-              {list.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8",padding:"20px 0",textAlign:"center"}}>No {label.toLowerCase()} requests</div>}
-              {list.sort((a,b)=>{const pa={High:0,Normal:1,Low:2};return(pa[a.priority]||1)-(pa[b.priority]||1);}).map(r=><Card key={r.id} r={r}/>)}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── WIN/LOSS TAB ── */}
-      {tab==="winloss"&&(
-        <div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:10,marginBottom:20}}>
-            {[["Submitted",submitted.length,"#475569"],["Won",won.length,"#10b981"],["Lost",lost.length,"#ef4444"],["Win Rate",submitted.length?winRate+"%":"—","#8b5cf6"],["Avg Margin (Won)",won.length?avgMarginWon+"%":"—","#059669"]].map(([l,v,c])=>(
-              <div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
-                <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
-                <div style={{fontSize:"1.3rem",fontWeight:800,color:c,marginTop:4}}>{v}</div>
-              </div>
-            ))}
-          </div>
-          {submitted.length===0?(
-            <div style={{textAlign:"center",padding:"60px 0",color:"#94a3b8",fontSize:".88rem"}}>No completed CEs with bid data yet.<br/>Mark a request as Done and add bid details to track win/loss.</div>
-          ):(
-            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}>
-                <thead><tr style={{background:"#f8fafc"}}>{["Client","Type","Bid Amount","Margin","Status","Outcome"].map(h=><th key={h} style={{padding:"10px 14px",textAlign:"left",fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1.5px solid #e2e8f0"}}>{h}</th>)}</tr></thead>
-                <tbody>
-                  {submitted.sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0)).map(r=>(
-                    <tr key={r.id} style={{borderBottom:"1px solid #f1f5f9"}}>
-                      <td style={{padding:"10px 14px"}}>
-                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{r.clientName}</div>
-                        {r.projectName&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{r.projectName}</div>}
-                      </td>
-                      <td style={{padding:"10px 14px",fontSize:".78rem",color:"#475569"}}>{TYPES[r.projectType]||r.projectType}</td>
-                      <td style={{padding:"10px 14px",fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{fmtPHP2(r.bidAmount)}</td>
-                      <td style={{padding:"10px 14px",fontSize:".82rem",color:r.bidMarginPct>=20?"#059669":r.bidMarginPct>=10?"#f59e0b":"#ef4444",fontWeight:700}}>{r.bidMarginPct?r.bidMarginPct+"%":"—"}</td>
-                      <td style={{padding:"10px 14px"}}>
-                        <span style={{background:STATUS_CLR[r.status]+"22",color:STATUS_CLR[r.status],borderRadius:5,padding:"2px 8px",fontSize:".7rem",fontWeight:700}}>{r.status}</span>
-                      </td>
-                      <td style={{padding:"10px 14px"}}>
-                        {isSales?(
-                          <select value={r.awarded} onChange={e=>setAwarded(r.id,e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 8px",fontFamily:"inherit",fontSize:".75rem",outline:"none",background:"#fff",color:AWARDED_CLR[r.awarded],fontWeight:700}}>
-                            <option value="Pending">Pending</option>
-                            <option value="Won">Won</option>
-                            <option value="Lost">Lost</option>
-                          </select>
-                        ):(
-                          <span style={{background:AWARDED_CLR[r.awarded]+"22",color:AWARDED_CLR[r.awarded],borderRadius:5,padding:"2px 8px",fontSize:".7rem",fontWeight:700}}>{r.awarded}</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── ANALYSIS TAB ── */}
-      {tab==="analysis"&&(
-        <div>
-          {byType.length===0?(
-            <div style={{textAlign:"center",padding:"60px 0",color:"#94a3b8",fontSize:".88rem"}}>No data yet — win/loss outcomes will appear here once CEs are submitted and marked Won or Lost.</div>
-          ):(
-            <div>
-              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".88rem"}}>Win Rate by Project Type</div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12,marginBottom:24}}>
-                {byType.sort((a,b)=>b.rate-a.rate).map(x=>(
-                  <div key={x.key} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"14px 16px"}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:6}}>{x.label}</div>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                      <div style={{flex:1,height:8,borderRadius:4,background:"#f1f5f9",overflow:"hidden"}}>
-                        <div style={{width:x.rate+"%",height:"100%",background:x.rate>=60?"#10b981":x.rate>=40?"#f59e0b":"#ef4444",borderRadius:4,transition:"width .4s"}}/>
-                      </div>
-                      <span style={{fontWeight:800,color:x.rate>=60?"#10b981":x.rate>=40?"#f59e0b":"#ef4444",fontSize:".88rem",flexShrink:0}}>{x.rate}%</span>
-                    </div>
-                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>{x.won} won · {x.total-x.won} lost · {x.total} total</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".88rem"}}>All Submitted CEs ({submitted.length})</div>
-              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:8,fontSize:".72rem",color:"#64748b"}}>
-                <span>Total bid value: <b style={{color:"#0f172a"}}>₱{submitted.reduce((s,r)=>s+Number(r.bidAmount||0),0).toLocaleString("en-PH",{maximumFractionDigits:0})}</b></span>
-                <span>Won value: <b style={{color:"#10b981"}}>₱{won.reduce((s,r)=>s+Number(r.bidAmount||0),0).toLocaleString("en-PH",{maximumFractionDigits:0})}</b></span>
-                <span>Avg margin (won): <b style={{color:"#059669"}}>{avgMarginWon}%</b></span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ── FORM MODAL ── */}
-      {showForm&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:10020,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:16,overflowY:"auto"}}>
-          <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:640,boxShadow:"0 24px 64px rgba(0,0,0,.3)",marginBottom:24}}>
-            <div style={{background:"#1e293b",borderRadius:"16px 16px 0 0",padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <div style={{fontWeight:800,color:"#fff",fontSize:".95rem"}}>{editId?"Edit CE Request":"New CE Request"}</div>
-              <button onClick={()=>setShowForm(false)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"5px 12px",color:"rgba(255,255,255,.7)",cursor:"pointer",fontSize:".82rem",fontWeight:600}}>✕</button>
-            </div>
-            <div style={{padding:"18px 20px 20px",display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div style={{gridColumn:"1/-1"}}>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Client Name *</label>
-                  <input value={form.clientName} onChange={e=>f("clientName",e.target.value)} placeholder="e.g. BINI — SM Seaside Cebu" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Project Name</label>
-                  <input value={form.projectName} onChange={e=>f("projectName",e.target.value)} placeholder="e.g. Phase 2 Fit-out" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Location</label>
-                  <input value={form.location} onChange={e=>f("location",e.target.value)} placeholder="e.g. SM Seaside, Cebu" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Project Type</label>
-                  <select value={form.projectType} onChange={e=>f("projectType",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",background:"#fff",boxSizing:"border-box"}}>
-                    {Object.entries(TYPES).map(([k,v])=><option key={k} value={k}>{v}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Priority</label>
-                  <select value={form.priority} onChange={e=>f("priority",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",background:"#fff",boxSizing:"border-box"}}>
-                    <option>High</option><option>Normal</option><option>Low</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>CE Deadline</label>
-                  <input type="date" value={form.targetDeadline} onChange={e=>f("targetDeadline",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Proposal Submission Deadline</label>
-                  <input type="date" value={form.submissionDeadline} onChange={e=>f("submissionDeadline",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Target Budget (₱)</label>
-                  <input type="number" value={form.targetBudget} onChange={e=>f("targetBudget",e.target.value)} placeholder="0" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Target Margin (%)</label>
-                  <input type="number" value={form.targetMargin} onChange={e=>f("targetMargin",e.target.value)} placeholder="e.g. 25" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div style={{gridColumn:"1/-1"}}>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Plans Link (Google Drive, etc.)</label>
-                  <input value={form.plansLink} onChange={e=>f("plansLink",e.target.value)} placeholder="https://drive.google.com/..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>SKP File Link</label>
-                  <input value={form.skpLink} onChange={e=>f("skpLink",e.target.value)} placeholder="https://..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Schedule of Finish</label>
-                  <input value={form.scheduleOfFinish} onChange={e=>f("scheduleOfFinish",e.target.value)} placeholder="e.g. Standard finish, no special cladding" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div style={{gridColumn:"1/-1"}}>
-                  <label style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Notes for CE/QS (from Sales)</label>
-                  <textarea value={form.notes} onChange={e=>f("notes",e.target.value)} rows={3} placeholder="Scope clarifications, special requirements, client preferences..." style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
-                </div>
-                {isQS&&<>
-                  <div style={{gridColumn:"1/-1",borderTop:"1.5px solid #e2e8f0",paddingTop:10,marginTop:2}}>
-                    <div style={{fontSize:".72rem",fontWeight:700,color:"#7c3aed",marginBottom:8}}>📐 CE/QS Fields</div>
-                  </div>
-                  <div style={{gridColumn:"1/-1"}}>
-                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>CE Notes (internal)</label>
-                    <textarea value={form.ceNotes} onChange={e=>f("ceNotes",e.target.value)} rows={2} placeholder="Internal notes, assumptions, scope concerns..." style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",resize:"vertical",boxSizing:"border-box"}}/>
-                  </div>
-                  <div>
-                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Bid Amount (₱)</label>
-                    <input type="number" value={form.bidAmount} onChange={e=>f("bidAmount",e.target.value)} placeholder="Final bid" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                  </div>
-                  <div>
-                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Bid Margin (%)</label>
-                    <input type="number" value={form.bidMarginPct} onChange={e=>f("bidMarginPct",e.target.value)} placeholder="e.g. 22" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",boxSizing:"border-box"}}/>
-                  </div>
-                  <div>
-                    <label style={{fontSize:".68rem",fontWeight:700,color:"#7c3aed",textTransform:"uppercase",letterSpacing:".5px",display:"block",marginBottom:4}}>Outcome</label>
-                    <select value={form.awarded} onChange={e=>f("awarded",e.target.value)} style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",background:"#fff",boxSizing:"border-box"}}>
-                      <option value="Pending">Pending</option><option value="Won">Won</option><option value="Lost">Lost</option>
-                    </select>
-                  </div>
-                </>}
-              </div>
-              <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:6}}>
-                <button onClick={()=>setShowForm(false)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 20px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                <button onClick={handleSave} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"9px 24px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Save Request</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
-function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}){
-  const n=v=>Number(String(v||0).replace(/,/g,""))||0;
-  const budget=budgets[dealId]||emptyBudget();
-  const contractVal=n(deal?.value)+(wonDeals||[]).filter(cd=>cd.parentDealId===deal?.id).reduce((s,cd)=>s+n(cd.value),0);
-  const[boqDate,setBoqDate]=useState(()=>budget.boq?.date||new Date().toISOString().split("T")[0]);
-  const[boqQuotNo,setBoqQuotNo]=useState(()=>budget.boq?.quotationNo||"");
-  const[boqSecs,setBoqSecs]=useState(()=>budget.boq?.sections?.length?budget.boq.sections:BOQ_SECTIONS.map(s=>({...s,items:[]})));
-  const[boqExp,setBoqExp]=useState("A");
-  const[viewMode,setViewMode]=useState("edit");
-  const[showGenForm,setShowGenForm]=useState(false);
-  const[genParams,setGenParams]=useState({area:"",type:"retail",finish:"standard"});
-  const[genBanner,setGenBanner]=useState(null);
-  const[fpAnalyzing,setFpAnalyzing]=useState(false);
-  const[fpResult,setFpResult]=useState(null);
-  const[fpError,setFpError]=useState(null);
-  const[fpPreview,setFpPreview]=useState(null);
-  const boqFileRef=useRef(null);
-  const fpFileRef=useRef(null);
-  const boqGrandTotal=boqSecs.reduce((s,sec)=>s+sec.items.reduce((ss,it)=>ss+n(it.qty)*n(it.unitCost),0),0);
-  const boqVat=boqGrandTotal*0.12;const boqGrandVat=boqGrandTotal+boqVat;
-  const handleSave=()=>saveBudget(dealId,{...budget,boq:{date:boqDate,quotationNo:boqQuotNo,sections:boqSecs}});
-  const handleApply=()=>{
-    const cats={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    boqSecs.forEach(sec=>{const cat=BUDGET_CATS.includes(sec.budgetCat)?sec.budgetCat:"Materials";sec.items.forEach(it=>{cats[cat]+=n(it.qty)*n(it.unitCost);});});
-    const entry={changedAt:new Date().toISOString(),changedBy:session?.name||role||"User",Materials:Math.round(cats.Materials),Labor:Math.round(cats.Labor),Overhead:Math.round(cats.Overhead),Subcon:Math.round(cats.Subcon),note:"Applied from BOQ"};
-    const prev=budget.history||[];
-    saveBudget(dealId,{...budget,Materials:Math.round(cats.Materials),Labor:Math.round(cats.Labor),Overhead:Math.round(cats.Overhead),Subcon:Math.round(cats.Subcon),boq:{date:boqDate,quotationNo:boqQuotNo,sections:boqSecs},history:[entry,...prev].slice(0,25)});
-    onClose();
-  };
-  const handleImport=e=>{
-    const file=e.target.files[0];if(!file)return;
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      if(!window.XLSX){alert("XLSX library not ready.");return;}
-      try{
-        const wb=window.XLSX.read(ev.target.result,{type:"array"});
-        let best=null,bestHas=false;
-        for(const sn of wb.SheetNames){if(sn.toUpperCase()==="BOM")continue;const d2=window.XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:""});const has=d2.slice(0,50).some(r=>/^[A-I]\.?\s*$/.test(String(r[0]||"").trim()));if(!best||(has&&!bestHas)){best=sn;bestHas=has;}}
-        if(!best){alert("No BOQ sheet found.");return;}
-        const data=window.XLSX.utils.sheet_to_json(wb.Sheets[best],{header:1,defval:""});
-        let hdrIdx=-1,qtyC=-1,unitC=-1,rateC=-1;
-        for(let i=0;i<Math.min(15,data.length);i++){const r=data[i].map(c=>String(c).toLowerCase().trim());const qi=r.findIndex(c=>c==="qty"||c==="qty.");const ui=r.findIndex(c=>c==="unit");if(qi>=0&&ui>=0){hdrIdx=i;qtyC=qi;unitC=ui;rateC=r.findIndex(c=>c==="rate"||c.includes("unit cost"));if(rateC<0)rateC=qi+2;break;}}
-        const ns2=BOQ_SECTIONS.map(s=>({...s,items:[]}));let cur=null;
-        for(let i=(hdrIdx>=0?hdrIdx+1:0);i<data.length;i++){
-          const row=data[i];if(!row||row.every(c=>c===""))continue;const f0=String(row[0]||"").trim();const lm=f0.match(/^([A-I])\.?\s*$/i);
-          if(lm){const lt=lm[1].toUpperCase();cur=ns2.find(s=>s.id===lt);if(cur){const sn=String(row[1]||"").trim();if(sn)cur.name=sn;}else{const nsc={id:lt,name:String(row[1]||"").trim()||`Section ${lt}`,budgetCat:"Materials",items:[]};ns2.push(nsc);cur=nsc;}continue;}
-          const rs=row.join("").toLowerCase();if(rs.includes("sub-total")||rs.includes("grand total")||rs.includes("vat"))continue;if(!cur)continue;
-          const qty=n(row[qtyC>=0?qtyC:4]);const rate=n(row[rateC>=0?rateC:6]);if(!qty&&!rate)continue;
-          let desc="";for(let ci=0;ci<Math.min(5,row.length);ci++){const cv=String(row[ci]||"").trim();if(cv&&!cv.match(/^[A-I]\.?$/i)){desc=cv;break;}}
-          if(!desc)continue;cur.items.push({desc,qty:qty||1,unit:String(row[unitC>=0?unitC:5]||"lot").trim(),unitCost:rate,remarks:""});
-        }
-        setBoqSecs(ns2);const first=ns2.find(s=>s.items.length>0);if(first)setBoqExp(first.id);
-      }catch(err){alert("Error: "+err.message);}
-    };reader.readAsArrayBuffer(file);e.target.value="";
-  };
-  const handleFloorPlan=e=>{
-    const file=e.target.files[0];if(!file)return;
-    e.target.value="";
-    if(!supabase){setFpError("Supabase not configured. Add REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY to your .env, then deploy the analyze-floor-plan Edge Function.");return;}
-    setFpResult(null);setFpError(null);setFpAnalyzing(true);
-    const isPdf=file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf");
-    if(isPdf){
-      // Render first page of PDF to JPEG via PDF.js — avoids payload size limits
-      const reader=new FileReader();
-      reader.onload=async ev=>{
-        try{
-          if(!window.pdfjsLib){setFpError("PDF.js not loaded — try refreshing the page.");setFpAnalyzing(false);return;}
-          window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-          const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise;
-          const page=await pdf.getPage(1);
-          const vp=page.getViewport({scale:2});
-          const canvas=document.createElement("canvas");
-          canvas.width=vp.width;canvas.height=vp.height;
-          await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
-          const dataUrl=canvas.toDataURL("image/jpeg",0.85);
-          setFpPreview(dataUrl);
-          const base64=dataUrl.split(",")[1];
-          supabase.functions.invoke("analyze-floor-plan",{body:{imageBase64:base64,mimeType:"image/jpeg"}})
-            .then(({data,error})=>{
-              if(error){setFpError(String(error.message||error));return;}
-              if(data?.error){setFpError(data.error);return;}
-              setFpResult(data);
-              setGenParams(p=>({...p,area:data.totalArea?String(Math.round(data.totalArea)):"",type:(data.projectType&&["kiosk","retail","office","fnb"].includes(data.projectType))?data.projectType:"retail"}));
-              setShowGenForm(true);
-            })
-            .catch(err=>setFpError(String(err)))
-            .finally(()=>setFpAnalyzing(false));
-        }catch(err){setFpError("Could not read PDF: "+String(err));setFpAnalyzing(false);}
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      const reader=new FileReader();
-      reader.onload=ev=>{
-        const dataUrl=ev.target.result;
-        setFpPreview(dataUrl);
-        const base64=dataUrl.split(",")[1];
-        const mime=file.type||"image/jpeg";
-        supabase.functions.invoke("analyze-floor-plan",{body:{imageBase64:base64,mimeType:mime}})
-          .then(({data,error})=>{
-            if(error){setFpError(String(error.message||error));return;}
-            if(data?.error){setFpError(data.error);return;}
-            setFpResult(data);
-            setGenParams(p=>({...p,area:data.totalArea?String(Math.round(data.totalArea)):"",type:(data.projectType&&["kiosk","retail","office","fnb"].includes(data.projectType))?data.projectType:"retail"}));
-            setShowGenForm(true);
-          })
-          .catch(err=>setFpError(String(err)))
-          .finally(()=>setFpAnalyzing(false));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-  const BOQ_RATES={
-    kiosk:{
-      basic:   {mob:600,  tempFac:20000,cleaning:150,floor:2200,ceil:1800,wall:4000,paint:250,elec:2800,elec2:600, hvac:3500,plumb:0,   fdas:700, sign:50000, builtin:7000},
-      standard:{mob:700,  tempFac:25000,cleaning:180,floor:2800,ceil:2200,wall:5000,paint:320,elec:3200,elec2:900, hvac:4200,plumb:0,   fdas:900, sign:80000, builtin:10000},
-      premium: {mob:1000, tempFac:30000,cleaning:220,floor:4500,ceil:3500,wall:7500,paint:480,elec:4500,elec2:1400,hvac:6000,plumb:0,   fdas:1200,sign:150000,builtin:16000},
-    },
-    retail:{
-      basic:   {mob:700,  tempFac:25000,cleaning:160,floor:2500,ceil:2000,wall:4200,paint:280,elec:3000,elec2:700, hvac:4000,plumb:800, fdas:800, sign:80000, builtin:7000},
-      standard:{mob:900,  tempFac:30000,cleaning:200,floor:3200,ceil:2500,wall:5200,paint:380,elec:3500,elec2:1100,hvac:5000,plumb:1200,fdas:1000,sign:120000,builtin:10000},
-      premium: {mob:1300, tempFac:40000,cleaning:260,floor:5500,ceil:4000,wall:7800,paint:580,elec:5000,elec2:1800,hvac:7000,plumb:2000,fdas:1400,sign:200000,builtin:15000},
-    },
-    office:{
-      basic:   {mob:600,  tempFac:20000,cleaning:140,floor:2000,ceil:1800,wall:3500,paint:240,elec:2800,elec2:1000,hvac:3800,plumb:600, fdas:700, sign:30000, builtin:5500},
-      standard:{mob:800,  tempFac:25000,cleaning:180,floor:2800,ceil:2200,wall:4500,paint:340,elec:3500,elec2:1500,hvac:4800,plumb:1000,fdas:900, sign:50000, builtin:8500},
-      premium: {mob:1200, tempFac:35000,cleaning:240,floor:5000,ceil:3800,wall:7000,paint:550,elec:5000,elec2:2500,hvac:7000,plumb:1800,fdas:1300,sign:100000,builtin:14000},
-    },
-    fnb:{
-      basic:   {mob:800,  tempFac:28000,cleaning:180,floor:2800,ceil:2200,wall:5000,paint:340,elec:3500,elec2:800, hvac:5000,plumb:2800,fdas:900, sign:60000, builtin:8500},
-      standard:{mob:1100, tempFac:35000,cleaning:220,floor:3800,ceil:3000,wall:6500,paint:460,elec:4500,elec2:1200,hvac:6500,plumb:4200,fdas:1100,sign:100000,builtin:12000},
-      premium: {mob:1500, tempFac:50000,cleaning:280,floor:6000,ceil:5000,wall:9000,paint:680,elec:6500,elec2:2000,hvac:9000,plumb:6500,fdas:1600,sign:180000,builtin:19000},
-    },
-  };
-  function generateBOQ(area,type,finish){
-    const sqm=Math.max(1,Number(area)||0);
-    const r=(BOQ_RATES[type]||BOQ_RATES.retail)[finish]||BOQ_RATES.retail.standard;
-    const wallSqm=Math.round(Math.sqrt(sqm)*4*3);
-    const days=Math.max(30,Math.round(sqm*0.5));
-    const P=v=>`₱${Number(v).toLocaleString()}`;
-    const note=(qty,unit,rate,label)=>`${qty.toLocaleString()} ${unit} × ${P(rate)} ${label}`;
-    const uid=()=>Math.random().toString(36).slice(2,9);
-    const typeLabel={kiosk:"kiosk",retail:"retail fit-out",office:"office",fnb:"F&B"}[type]||type;
-    const finLabel=finish;
-    return BOQ_SECTIONS.map(s=>{
-      let items=[];
-      switch(s.id){
-        case"A":items=[
-          {id:uid(),desc:"Mobilization & site preparation",qty:sqm,unit:"sqm",unitCost:r.mob,remarks:"",note:note(sqm,"sqm",r.mob,`[mobilization rate — ${finLabel} ${typeLabel}]`)},
-          {id:uid(),desc:"Temporary facilities (barricades, site boards)",qty:1,unit:"lot",unitCost:r.tempFac,remarks:"",note:`1 lot × ${P(r.tempFac)} [fixed allowance — ${finLabel} ${typeLabel}]`},
-          {id:uid(),desc:"Safety officer",qty:days,unit:"day",unitCost:1200,remarks:"",note:note(days,"days",1200,`[est. ${days}-day project from ${sqm} sqm]`)},
-          {id:uid(),desc:"Site clearing & final cleaning",qty:sqm,unit:"sqm",unitCost:r.cleaning,remarks:"",note:note(sqm,"sqm",r.cleaning,`[cleaning rate — ${finLabel}]`)},
-        ];break;
-        case"B":items=[
-          {id:uid(),desc:"Flooring works",qty:sqm,unit:"sqm",unitCost:r.floor,remarks:"",note:note(sqm,"sqm",r.floor,`[${finLabel} floor rate — ${typeLabel}]`)},
-          {id:uid(),desc:"Ceiling works",qty:sqm,unit:"sqm",unitCost:r.ceil,remarks:"",note:note(sqm,"sqm",r.ceil,`[${finLabel} ceiling rate — ${typeLabel}]`)},
-          {id:uid(),desc:"Wall cladding / partitions",qty:wallSqm,unit:"sqm",unitCost:r.wall,remarks:"",note:note(wallSqm,"sqm",r.wall,`[est. wall area: √${sqm}×4 sides×3m H — ${finLabel}]`)},
-          {id:uid(),desc:"Painting works",qty:wallSqm,unit:"sqm",unitCost:r.paint,remarks:"",note:note(wallSqm,"sqm",r.paint,`[${finLabel} paint rate]`)},
-        ];break;
-        case"C":items=[
-          {id:uid(),desc:"Power & lighting works",qty:sqm,unit:"sqm",unitCost:r.elec,remarks:"",note:note(sqm,"sqm",r.elec,`[${finLabel} electrical rate — ${typeLabel}]`)},
-        ];break;
-        case"D":items=[
-          {id:uid(),desc:"Data / CCTV / AV works",qty:sqm,unit:"sqm",unitCost:r.elec2,remarks:"",note:note(sqm,"sqm",r.elec2,`[${finLabel} electronics rate — ${typeLabel}]`)},
-        ];break;
-        case"E":items=[
-          {id:uid(),desc:"HVAC / airconditioning works",qty:sqm,unit:"sqm",unitCost:r.hvac,remarks:"",note:note(sqm,"sqm",r.hvac,`[${finLabel} mechanical rate — ${typeLabel}]`)},
-        ];break;
-        case"F":items=r.plumb>0?[
-          {id:uid(),desc:"Plumbing works",qty:sqm,unit:"sqm",unitCost:r.plumb,remarks:"",note:note(sqm,"sqm",r.plumb,`[${finLabel} plumbing rate — ${typeLabel}]`)},
-        ]:[
-          {id:uid(),desc:"Plumbing works",qty:1,unit:"lot",unitCost:0,remarks:"N/A — adjust if required",note:`Set ₱0 — kiosk typically no plumbing; override if needed`},
-        ];break;
-        case"G":items=[
-          {id:uid(),desc:"Fire detection & alarm system",qty:sqm,unit:"sqm",unitCost:r.fdas,remarks:"",note:note(sqm,"sqm",r.fdas,`[${finLabel} FDAS rate]`)},
-        ];break;
-        case"H":items=[
-          {id:uid(),desc:"Main signage works",qty:1,unit:"lot",unitCost:r.sign,remarks:"",note:`1 lot × ${P(r.sign)} [${finLabel} signage allowance — ${typeLabel}]`},
-        ];break;
-        case"I":items=[
-          {id:uid(),desc:"Custom built-ins / furniture",qty:sqm,unit:"sqm",unitCost:r.builtin,remarks:"",note:note(sqm,"sqm",r.builtin,`[${finLabel} millwork rate — ${typeLabel}]`)},
-        ];break;
-        default:items=[];
-      }
-      return{...s,items};
-    });
-  }
-  const handlePrint=()=>{
-    const rows=boqSecs.filter(s=>s.items.length>0).map(sec=>{const st=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);return`<tr style="background:#f1f5f9"><td colspan="7" style="padding:5px 8px;font-weight:700">${sec.id}. ${sec.name}</td></tr>${sec.items.map(it=>`<tr><td></td><td style="padding:3px 8px">${it.desc||""}</td><td style="text-align:right;padding:3px 8px">${Number(it.qty||0).toLocaleString()}</td><td style="padding:3px 8px">${it.unit||""}</td><td style="text-align:right;padding:3px 8px">₱${Number(it.unitCost||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="text-align:right;padding:3px 8px;font-weight:600">₱${(n(it.qty)*n(it.unitCost)).toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td style="padding:3px 8px;font-size:8pt;color:#555">${it.remarks||""}</td></tr>`).join("")}<tr style="background:#e2e8f0"><td colspan="5" style="text-align:right;padding:4px 8px;font-weight:700;font-size:8pt">Sub-total ${sec.name}</td><td style="text-align:right;padding:4px 8px;font-weight:800">₱${st.toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td></td></tr>`;}).join("");
-    const html=`<!DOCTYPE html><html><head><title>BOQ – ${deal?.contact||deal?.client||""}</title><style>body{font-family:Arial,sans-serif;font-size:10pt;margin:15mm}h1{text-align:center;font-size:14pt;margin:0 0 6px}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#1e293b;color:#fff;padding:5px 8px;font-size:8pt;text-align:left}td{border-bottom:1px solid #e2e8f0}@media print{body{margin:10mm}}</style></head><body><h1>BILL OF QUANTITIES</h1><table style="width:auto;font-size:9pt;margin-bottom:12px"><tr><td style="padding:2px 8px 2px 0"><b>Project:</b></td><td>${deal?.contact||deal?.client||""}</td><td style="padding:2px 8px 2px 16px"><b>Date:</b></td><td>${boqDate}</td></tr><tr><td><b>Location:</b></td><td>${deal?.location||""}</td><td style="padding:2px 8px 2px 16px"><b>Quotation No.:</b></td><td>${boqQuotNo}</td></tr><tr><td><b>Contractor:</b></td><td colspan="3">GMD Productions Inc.</td></tr></table><table><thead><tr><th>Item No.</th><th>Description</th><th style="text-align:right">Qty</th><th>Unit</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Total Amount</th><th>Remarks</th></tr></thead><tbody>${rows}</tbody></table><table style="width:280px;margin-left:auto"><tr><td style="padding:4px 8px;font-weight:600">GRAND TOTAL</td><td style="text-align:right;padding:4px 8px;font-weight:700">₱${boqGrandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr><td style="padding:4px 8px">VAT 12%</td><td style="text-align:right;padding:4px 8px">₱${boqVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr><tr style="background:#1e293b;color:#fff"><td style="padding:6px 8px;font-weight:700">GRAND TOTAL w/ VAT</td><td style="text-align:right;padding:6px 8px;font-weight:800">₱${boqGrandVat.toLocaleString("en-PH",{minimumFractionDigits:2})}</td></tr></table><div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:80px;font-size:9pt"><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Rodney E. Erpe</b><br>Quantity Surveyor, GMD Productions Inc.</div></div><div><div style="border-top:1px solid #000;padding-top:4px;margin-top:28px"><b>Paulo Miguel Garcia</b><br>President, GMD Productions Inc.</div></div></div><script>window.onload=()=>window.print()</script></body></html>`;
-    const w=window.open("","_blank");w.document.write(html);w.document.close();
-  };
-  return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:10010,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"12px",overflowY:"auto"}}>
-      <div style={{background:"#f8fafc",borderRadius:16,width:"100%",maxWidth:1000,boxShadow:"0 24px 64px rgba(0,0,0,.3)",marginBottom:16}}>
-        <div style={{background:"#1e293b",borderRadius:"16px 16px 0 0",padding:"14px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:800,color:"#fff",fontSize:".95rem"}}>📋 BOQ Builder</div>
-            <div style={{fontSize:".7rem",color:"rgba(255,255,255,.5)",marginTop:2}}>{deal?.contact||deal?.client} · {deal?.stage||"Pipeline"}</div>
-          </div>
-          {contractVal>0&&<div style={{textAlign:"right",flexShrink:0}}><div style={{fontSize:".58rem",color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:".5px"}}>Contract Value</div><div style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>{fmtPHP(contractVal)}</div></div>}
-          <button onClick={onClose} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:8,padding:"6px 14px",color:"rgba(255,255,255,.7)",cursor:"pointer",fontSize:".82rem",fontWeight:600,flexShrink:0}}>✕ Close</button>
-        </div>
-        {/* Mode toggle */}
-        <div style={{background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 20px",display:"flex",gap:4}}>
-          {[["edit","✏ Edit"],["preview","👁 Preview"]].map(([m,l])=>(
-            <button key={m} onClick={()=>setViewMode(m)} style={{background:viewMode===m?"#1e293b":"transparent",border:"none",borderRadius:7,padding:"5px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:viewMode===m?700:500,color:viewMode===m?"#fff":"#64748b",cursor:"pointer",transition:"all .15s"}}>{l}</button>
-          ))}
-        </div>
-        <div style={{padding:"16px 20px 20px",maxHeight:"calc(100vh - 130px)",overflowY:"auto"}}>
-          {/* Metadata bar — editable in edit mode, read-only in preview */}
-          {viewMode==="edit"?(
-            <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center",marginBottom:14,padding:"11px 14px",background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0"}}>
-              <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>BOQ Date</div><input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/></div>
-              <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Quotation No.</div><input value={boqQuotNo} onChange={e=>setBoqQuotNo(e.target.value)} placeholder="e.g. 0051" style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",width:130,outline:"none"}}/></div>
-              <button onClick={()=>boqFileRef.current?.click()} style={{marginLeft:"auto",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>⬆ Import Excel</button>
-              <button onClick={()=>fpFileRef.current?.click()} disabled={fpAnalyzing} title="Upload a floor plan image — AI will extract the area and auto-fill the BOQ generator" style={{background:fpAnalyzing?"#f0fdf4":fpResult?"#ecfdf5":"#f0fdf4",border:`1.5px solid ${fpResult?"#34d399":"#6ee7b7"}`,borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:fpAnalyzing?"#059669":fpResult?"#059669":"#059669",cursor:fpAnalyzing?"wait":"pointer",fontWeight:600,opacity:fpAnalyzing?0.7:1}}>{fpAnalyzing?"⏳ Analyzing…":fpResult?"🗺 Re-scan Floor Plan":"🗺 Scan Floor Plan"}</button>
-              <button onClick={()=>setShowGenForm(g=>!g)} style={{background:showGenForm?"#7c3aed":"#f5f3ff",border:"1.5px solid #c4b5fd",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:showGenForm?"#fff":"#7c3aed",cursor:"pointer",fontWeight:600}}>✨ Generate BOQ</button>
-              <input ref={boqFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={handleImport}/>
-              <input ref={fpFileRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleFloorPlan}/>
-            </div>
-          ):(
-            <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"center",marginBottom:14,padding:"10px 14px",background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:".82rem",color:"#475569"}}>
-              <span><b style={{color:"#0f172a"}}>{deal?.contact||deal?.client}</b></span>
-              {deal?.location&&<span>📍 {deal.location}</span>}
-              {boqDate&&<span>📅 {boqDate}</span>}
-              {boqQuotNo&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:5,padding:"2px 8px",fontWeight:700}}>Q-No: {boqQuotNo}</span>}
-              {boqGrandTotal===0&&<span style={{color:"#ef4444",fontWeight:600}}>⚠ No items yet — switch to Edit to add line items.</span>}
-            </div>
-          )}
-
-          {/* ── FLOOR PLAN AI RESULT ─────────────────────────────────── */}
-          {viewMode==="edit"&&fpError&&(
-            <div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-              <span style={{fontSize:".78rem",color:"#991b1b",fontWeight:600}}>⚠ Floor plan scan failed: {fpError}</span>
-              <button onClick={()=>{setFpError(null);setFpPreview(null);}} style={{background:"none",border:"none",cursor:"pointer",color:"#b91c1c",fontWeight:700,padding:"2px 6px"}}>✕</button>
-            </div>
-          )}
-          {viewMode==="edit"&&fpResult&&!fpError&&(
-            <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"12px 16px",marginBottom:12,display:"flex",gap:14,flexWrap:"wrap",alignItems:"flex-start"}}>
-              {fpPreview&&<img src={fpPreview} alt="floor plan" style={{width:80,height:80,objectFit:"cover",borderRadius:8,border:"1.5px solid #a7f3d0",flexShrink:0}}/>}
-              <div style={{flex:1,minWidth:200}}>
-                <div style={{fontWeight:700,color:"#065f46",fontSize:".82rem",marginBottom:6}}>🗺 AI Floor Plan Analysis</div>
-                <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem",color:"#047857"}}>
-                  {fpResult.totalArea&&<span><b>Area:</b> {Math.round(fpResult.totalArea)} sqm</span>}
-                  {fpResult.projectType&&fpResult.projectType!=="unknown"&&<span><b>Type detected:</b> {{kiosk:"Kiosk",retail:"Retail",office:"Office",fnb:"F&B"}[fpResult.projectType]||fpResult.projectType}</span>}
-                </div>
-                {fpResult.spaces?.length>0&&(
-                  <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {fpResult.spaces.slice(0,8).map((sp,i)=>(
-                      <span key={i} style={{background:"#d1fae5",color:"#065f46",borderRadius:5,padding:"2px 8px",fontSize:".72rem",fontWeight:600}}>
-                        {sp.name}{sp.area?` · ${Math.round(sp.area)} sqm`:""}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {fpResult.notes&&<div style={{marginTop:6,fontSize:".72rem",color:"#6b7280",fontStyle:"italic"}}>{fpResult.notes}</div>}
-                <div style={{marginTop:8,fontSize:".72rem",color:"#059669",fontWeight:600}}>✓ Area pre-filled in Generate BOQ below — review and adjust before generating.</div>
-              </div>
-              <button onClick={()=>{setFpResult(null);setFpPreview(null);}} style={{background:"none",border:"none",cursor:"pointer",color:"#6b7280",fontWeight:700,padding:"2px 6px",flexShrink:0}}>✕</button>
-            </div>
-          )}
-
-          {/* ── GENERATE FORM ─────────────────────────────────────────── */}
-          {viewMode==="edit"&&showGenForm&&(
-            <div style={{background:"#f5f3ff",border:"1.5px solid #c4b5fd",borderRadius:10,padding:"14px 16px",marginBottom:12}}>
-              <div style={{fontWeight:700,color:"#7c3aed",fontSize:".82rem",marginBottom:10}}>✨ Generate BOQ from parameters</div>
-              <div style={{display:"flex",gap:12,flexWrap:"wrap",alignItems:"flex-end"}}>
-                <div>
-                  <div style={{fontSize:".62rem",color:"#7c3aed",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Floor Area (sqm)</div>
-                  <input type="number" value={genParams.area} onChange={e=>setGenParams(p=>({...p,area:e.target.value}))} placeholder="e.g. 150" style={{border:"1.5px solid #c4b5fd",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",width:110,outline:"none"}}/>
-                </div>
-                <div>
-                  <div style={{fontSize:".62rem",color:"#7c3aed",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Project Type</div>
-                  <select value={genParams.type} onChange={e=>setGenParams(p=>({...p,type:e.target.value}))} style={{border:"1.5px solid #c4b5fd",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",background:"#fff",color:"#0f172a"}}>
-                    <option value="kiosk">Kiosk</option>
-                    <option value="retail">Retail Fit-out</option>
-                    <option value="office">Office Fit-out</option>
-                    <option value="fnb">F&B / Restaurant</option>
-                  </select>
-                </div>
-                <div>
-                  <div style={{fontSize:".62rem",color:"#7c3aed",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Finish Level</div>
-                  <select value={genParams.finish} onChange={e=>setGenParams(p=>({...p,finish:e.target.value}))} style={{border:"1.5px solid #c4b5fd",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",background:"#fff",color:"#0f172a"}}>
-                    <option value="basic">Basic</option>
-                    <option value="standard">Standard</option>
-                    <option value="premium">Premium</option>
-                  </select>
-                </div>
-                <div style={{display:"flex",gap:8,marginLeft:"auto"}}>
-                  <button onClick={()=>setShowGenForm(false)} style={{background:"#fff",border:"1.5px solid #c4b5fd",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",cursor:"pointer",fontWeight:600}}>Cancel</button>
-                  <button onClick={()=>{
-                    if(!genParams.area||Number(genParams.area)<=0){alert("Enter a valid floor area.");return;}
-                    const generated=generateBOQ(genParams.area,genParams.type,genParams.finish);
-                    setBoqSecs(generated);
-                    const first=generated.find(s=>s.items.length>0);if(first)setBoqExp(first.id);
-                    const tl={kiosk:"Kiosk",retail:"Retail Fit-out",office:"Office Fit-out",fnb:"F&B / Restaurant"}[genParams.type]||genParams.type;
-                    const fl={basic:"Basic",standard:"Standard",premium:"Premium"}[genParams.finish]||genParams.finish;
-                    setGenBanner(`Generated from: ${genParams.area} sqm · ${tl} · ${fl} finish — review and adjust all line items below.`);
-                    setShowGenForm(false);
-                  }} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>✨ Generate</button>
-                </div>
-              </div>
-            </div>
-          )}
-          {viewMode==="edit"&&genBanner&&(
-            <div style={{background:"#fffbeb",border:"1.5px solid #fbbf24",borderRadius:8,padding:"8px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-              <span style={{fontSize:".78rem",color:"#92400e",fontWeight:600}}>✨ {genBanner}</span>
-              <button onClick={()=>setGenBanner(null)} style={{background:"none",border:"none",cursor:"pointer",color:"#b45309",fontSize:".85rem",fontWeight:700,padding:"2px 6px",flexShrink:0}}>✕</button>
-            </div>
-          )}
-          {/* ── PREVIEW MODE ─────────────────────────────────────────── */}
-          {viewMode==="preview"&&(()=>{
-            const activeSecs=boqSecs.filter(s=>s.items.length>0);
-            if(!activeSecs.length) return <div style={{textAlign:"center",padding:"40px 0",color:"#94a3b8",fontSize:".88rem"}}>No line items yet. Switch to <b>Edit</b> to add items.</div>;
-            let globalItemNo=0;
-            return(
-              <div>
-                {/* Trade summary cards */}
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8,marginBottom:18}}>
-                  {activeSecs.map(sec=>{
-                    const st=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);
-                    const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
-                    return(
-                      <div key={sec.id} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${catClr}33`,padding:"11px 14px"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:5}}>
-                          <span style={{fontWeight:800,color:catClr,fontSize:".95rem"}}>{sec.id}</span>
-                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".78rem",lineHeight:1.3}}>{sec.name}</span>
-                        </div>
-                        <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:2}}>{fmtPHP(st)}</div>
-                        <div style={{fontSize:".65rem",color:catClr,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{sec.budgetCat} · {sec.items.length} item{sec.items.length!==1?"s":""}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Full line-item table per section */}
-                {activeSecs.map(sec=>{
-                  const secTotal=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);
-                  const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
-                  return(
-                    <div key={sec.id} style={{marginBottom:14,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
-                      <div style={{background:catClr,padding:"8px 14px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                        <span style={{fontWeight:800,color:"#fff",fontSize:".85rem"}}>{sec.id} · {sec.name}</span>
-                        <span style={{fontSize:".7rem",color:"rgba(255,255,255,.8)",fontWeight:700,background:"rgba(255,255,255,.18)",borderRadius:4,padding:"2px 8px"}}>{sec.budgetCat}</span>
-                      </div>
-                      <div style={{overflowX:"auto"}}>
-                        <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:560}}>
-                          <thead>
-                            <tr style={{background:"#f8fafc"}}>
-                              {["#","Description","Qty","Unit","Unit Cost","Amount","Remarks"].map((h,hi)=>(
-                                <th key={h} style={{padding:"6px 9px",textAlign:["Qty","Unit Cost","Amount"].includes(h)?"right":"left",fontSize:".62rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sec.items.map((it,ii)=>{
-                              globalItemNo++;
-                              const amt=n(it.qty)*n(it.unitCost);
-                              return(
-                                <tr key={ii} style={{borderTop:"1px solid #f1f5f9",background:ii%2?"#fafafa":"#fff"}}>
-                                  <td style={{padding:"6px 9px",color:"#94a3b8",fontSize:".72rem",fontWeight:600,whiteSpace:"nowrap"}}>{sec.id}.{ii+1}</td>
-                                  <td style={{padding:"6px 9px",color:"#0f172a",fontWeight:500}}><div>{it.desc||"—"}</div>{it.note&&<div style={{fontSize:".62rem",color:"#94a3b8",marginTop:2}}>{it.note}</div>}</td>
-                                  <td style={{padding:"6px 9px",textAlign:"right",color:"#0f172a"}}>{Number(it.qty||0).toLocaleString()}</td>
-                                  <td style={{padding:"6px 9px",color:"#64748b"}}>{it.unit||""}</td>
-                                  <td style={{padding:"6px 9px",textAlign:"right",color:"#475569"}}>₱{Number(it.unitCost||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</td>
-                                  <td style={{padding:"6px 9px",textAlign:"right",fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{amt>0?"₱"+amt.toLocaleString("en-PH",{minimumFractionDigits:2}):"—"}</td>
-                                  <td style={{padding:"6px 9px",color:"#94a3b8",fontSize:".75rem",fontStyle:it.remarks?"normal":"italic"}}>{it.remarks||""}</td>
-                                </tr>
-                              );
-                            })}
-                            <tr style={{borderTop:"2px solid #e2e8f0",background:"#f1f5f9"}}>
-                              <td colSpan={5} style={{padding:"7px 9px",textAlign:"right",fontWeight:700,fontSize:".72rem",color:"#475569",textTransform:"uppercase",letterSpacing:".5px"}}>Sub-total — {sec.name}</td>
-                              <td style={{padding:"7px 9px",textAlign:"right",fontWeight:800,color:"#0f172a",whiteSpace:"nowrap"}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</td>
-                              <td/>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
-
-          {/* ── EDIT MODE sections ──────────────────────────────────── */}
-          {viewMode==="edit"&&boqSecs.map(sec=>{
-            const secTotal=sec.items.reduce((s,it)=>s+n(it.qty)*n(it.unitCost),0);
-            const isOpen=boqExp===sec.id;const catClr=BUDGET_CAT_CLR[sec.budgetCat]||"#94a3b8";
-            return(
-              <div key={sec.id} style={{background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",marginBottom:7,overflow:"hidden"}}>
-                <div onClick={()=>setBoqExp(isOpen?null:sec.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",background:isOpen?"#f0f7ff":"#fff",borderBottom:isOpen?"1.5px solid #e2e8f0":"none"}}>
-                  <span style={{fontWeight:800,color:catClr,fontSize:".9rem",minWidth:20,flexShrink:0}}>{sec.id}</span>
-                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",flex:1}}>{sec.name}</span>
-                  <div onClick={e=>e.stopPropagation()}><select value={sec.budgetCat} onChange={e=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,budgetCat:e.target.value}:s))} style={{border:`1.5px solid ${catClr}44`,borderRadius:6,padding:"3px 7px",fontFamily:"inherit",fontSize:".73rem",background:`${catClr}10`,color:catClr,cursor:"pointer",outline:"none",fontWeight:700}}>{BUDGET_CATS.map(c=><option key={c} value={c}>{c}</option>)}</select></div>
-                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",minWidth:120,textAlign:"right",flexShrink:0}}>{secTotal>0?fmtPHP(secTotal):<span style={{color:"#cbd5e1"}}>₱ 0.00</span>}</span>
-                  <span style={{color:"#94a3b8",fontSize:".8rem",flexShrink:0}}>{isOpen?"▲":"▼"}</span>
-                </div>
-                {isOpen&&(
-                  <div style={{overflowX:"auto"}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:580}}>
-                      <thead><tr style={{background:"#f8fafc"}}>{["Description","Qty","Unit","Unit Cost (₱)","Amount (₱)","Remarks",""].map(h=><th key={h} style={{padding:"6px 9px",textAlign:["Qty","Unit Cost (₱)","Amount (₱)"].includes(h)?"right":"left",fontSize:".6rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1.5px solid #e2e8f0"}}>{h}</th>)}</tr></thead>
-                      <tbody>
-                        {sec.items.map((it,ii)=>{
-                          const amt=n(it.qty)*n(it.unitCost);
-                          const upd=(f,v)=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:s.items.map((x,xi)=>xi===ii?{...x,[f]:v}:x)}:s));
-                          const cs={border:"none",width:"100%",fontFamily:"inherit",fontSize:".8rem",outline:"none",borderRadius:3,padding:"3px 5px",background:"transparent"};
-                          return(
-                            <tr key={ii} style={{borderTop:"1px solid #f1f5f9"}}>
-                              <td style={{padding:"3px 5px",minWidth:200}}><input value={it.desc||""} onChange={e=>upd("desc",e.target.value)} placeholder="Description…" style={cs} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/>{it.note&&<div style={{fontSize:".6rem",color:"#94a3b8",paddingLeft:5,lineHeight:1.4,marginTop:1}}>{it.note}</div>}</td>
-                              <td style={{padding:"3px 4px",width:68}}><input value={it.qty||""} onChange={e=>upd("qty",e.target.value)} style={{...cs,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
-                              <td style={{padding:"3px 4px",width:68}}><input value={it.unit||""} onChange={e=>upd("unit",e.target.value)} style={cs} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
-                              <td style={{padding:"3px 4px",width:120}}><input value={it.unitCost||""} onChange={e=>upd("unitCost",e.target.value)} style={{...cs,textAlign:"right"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
-                              <td style={{padding:"3px 9px",textAlign:"right",fontWeight:600,color:"#0f172a",whiteSpace:"nowrap",width:120}}>{amt>0?"₱"+amt.toLocaleString("en-PH",{minimumFractionDigits:2}):<span style={{color:"#cbd5e1"}}>—</span>}</td>
-                              <td style={{padding:"3px 4px",minWidth:90}}><input value={it.remarks||""} onChange={e=>upd("remarks",e.target.value)} style={{...cs,color:"#64748b",fontSize:".73rem"}} onFocus={e=>e.target.style.background="#eff6ff"} onBlur={e=>e.target.style.background="transparent"}/></td>
-                              <td style={{padding:"3px 6px",width:26}}><button onClick={()=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:s.items.filter((_,xi)=>xi!==ii)}:s))} style={{background:"none",border:"none",cursor:"pointer",color:"#ef4444",fontSize:".9rem",lineHeight:1,padding:0}}>×</button></td>
-                            </tr>
-                          );
-                        })}
-                        <tr style={{borderTop:"1px solid #f1f5f9",background:"#fafafa"}}><td colSpan={7} style={{padding:"7px 9px"}}><button onClick={()=>setBoqSecs(ss=>ss.map(s=>s.id===sec.id?{...s,items:[...s.items,{desc:"",qty:1,unit:"lot",unitCost:0,remarks:""}]}:s))} style={{background:"none",border:"1.5px dashed #cbd5e1",borderRadius:6,padding:"4px 14px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>+ Add Item</button></td></tr>
-                        {sec.items.length>0&&<tr style={{borderTop:"1.5px solid #e2e8f0",background:"#f1f5f9"}}><td colSpan={4} style={{padding:"6px 9px",fontWeight:700,textAlign:"right",fontSize:".7rem",color:"#475569",textTransform:"uppercase"}}>Sub-total {sec.name}</td><td style={{padding:"6px 9px",textAlign:"right",fontWeight:800,color:"#0f172a"}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</td><td colSpan={2}/></tr>}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-          {/* Grand total bar — shown in both modes */}
-          <div style={{background:"#1e293b",borderRadius:10,padding:"14px 18px",marginTop:4,marginBottom:14,display:"flex",justifyContent:"flex-end",gap:28,flexWrap:"wrap"}}>
-            {[{l:"Grand Total (ex-VAT)",v:fmtPHP(boqGrandTotal),big:false},{l:"VAT 12%",v:fmtPHP(boqVat),big:false},{l:"Grand Total w/ VAT",v:fmtPHP(boqGrandVat),big:true}].map(({l,v,big})=>(
-              <div key={l} style={{textAlign:"right"}}><div style={{fontSize:".58rem",color:"rgba(255,255,255,.4)",textTransform:"uppercase",letterSpacing:"1px",marginBottom:2}}>{l}</div><div style={{fontWeight:800,color:big?"#f59e0b":"rgba(255,255,255,.8)",fontSize:big?"1.1rem":".9rem"}}>{v}</div></div>
-            ))}
-          </div>
-          {boqGrandTotal>0&&contractVal>0&&<div style={{fontSize:".75rem",color:boqGrandTotal/contractVal>0.85?"#ef4444":"#059669",fontWeight:600,marginBottom:12,textAlign:"right"}}>{boqGrandTotal/contractVal>0.85?`⚠️ BOQ (ex-VAT) = ${Math.round(boqGrandTotal/contractVal*100)}% of contract — check margin`:`✓ BOQ at ${Math.round(boqGrandTotal/contractVal*100)}% of contract value`}</div>}
-          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-            <button onClick={handleApply} style={{background:"#059669",border:"none",borderRadius:9,padding:"10px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>✓ Apply to Budget</button>
-            <button onClick={handleSave} style={{background:"#3b82f6",border:"none",borderRadius:9,padding:"10px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>💾 Save BOQ</button>
-            <button onClick={handlePrint} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:"#475569",cursor:"pointer"}}>🖨 Print PDF</button>
-          </div>
-        </div>
       </div>
     </div>
   );
 }
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swos,session,role,toastEmit,suppliers,poApprovers}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,role,toastEmit,suppliers}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -15448,88 +13434,37 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   const[filterStat,setFilterStat]=useState("all");
   const[poSupplier,setPoSupplier]=useState("");
   const[poNumber,setPoNumber]=useState("");
-  const[poSuggestedNo,setPoSuggestedNo]=useState("");
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
+  const[poStatus,setPoStatus]=useState("Draft");
   const[poItems,setPoItems]=useState([emptyPoItem()]);
-  const[poDiscType,setPoDiscType]=useState("amt");
-  const[poDiscValue,setPoDiscValue]=useState("");
-  const[submitting,setSubmitting]=useState(false);
-  const[discEditPo,setDiscEditPo]=useState(null);
-  const[discEditType,setDiscEditType]=useState("amt");
-  const[discEditVal,setDiscEditVal]=useState("");
-  const[expandedPOs,setExpandedPOs]=useState({});
-  const[deliveryEdit,setDeliveryEdit]=useState({});  // {[pr.id]: {qty,date,note}}
-  const[poHeaderEdit,setPoHeaderEdit]=useState(null); // poNo being edited
-  const[poHeaderForm,setPoHeaderForm]=useState({supplier:"",date:""});
-  const[filterSupplier,setFilterSupplier]=useState("");
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
-  // Managers and designated approvers issue directly; everyone else submits for approval
-  const directIssue=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
-  // Delivery receipt is Warehouse's job — Procurement should not mark their own POs as received
-  const canReceiveDelivery=role==="Manager"||role==="Operations";
-
-  // ── Budget guard: live remaining per project budget line ──
-  const rootOf=id=>{const d=wonDeals.find(x=>x.id===id);return d?.parentDealId||id;};
-  const expCat=e=>e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
-  const budgetInfo=(projectId,cat)=>{
-    if(!projectId) return null;
-    const rootId=rootOf(projectId);
-    const budgetAmt=n(budgets?.[rootId]?.[cat]);
-    const related=new Set([rootId,...wonDeals.filter(d=>d.parentDealId===rootId).map(d=>d.id)]);
-    let used=0;
-    prs.forEach(p=>{if(related.has(p.projectId)&&p.status!=="Cancelled"&&(p.budgetCategory||"Materials")===cat) used+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);});
-    (exps||[]).forEach(e=>{if(related.has(e.projectId)&&!e.poRef&&expCat(e)===cat) used+=n(e.amount);}); // PO-tagged expenses are payments of already-counted commitments
-    if(cat==="Subcon") (swos||[]).forEach(w=>{if(related.has(w.projectId)&&w.status!=="Cancelled") used+=n(w.contractAmount);});
-    return {budgetAmt,used,left:budgetAmt-used,hasBudget:budgetAmt>0};
-  };
-  // what THIS form adds against the same project + budget line
-  const formCatTotal=(projectId,cat)=>poItems.reduce((s,i)=>
-    (!i.projectId||rootOf(i.projectId)!==rootOf(projectId)||(i.budgetCategory||"Materials")!==cat)?s:s+n(i.estUnitCost)*n(i.qty),0);
-  const budgetOverruns=()=>{
-    const over=[],seen=new Set();
-    poItems.forEach(i=>{
-      if(!i.projectId) return;
-      const cat=i.budgetCategory||"Materials";
-      const key=rootOf(i.projectId)+"|"+cat;
-      if(seen.has(key)) return; seen.add(key);
-      const bi=budgetInfo(i.projectId,cat);
-      if(bi&&bi.hasBudget){
-        const after=bi.left-formCatTotal(i.projectId,cat);
-        if(after<0){const d=wonDeals.find(x=>x.id===rootOf(i.projectId));over.push(`${cat} on ${projDisplayName(d)||"project"} over by ${fmt(-after)}`);}
-      }
-    });
-    return over;
-  };
 
   function emptyPoItem(){
     return {_id:Math.random().toString(36).slice(2),projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0};
   }
 
+  const nextPoNo=()=>{
+    const existing=prs.map(p=>p.poNumber).filter(Boolean);
+    const nums=existing.map(n=>{const m=n.match(/PO-(\d+)/);return m?Number(m[1]):0;}).filter(x=>x>0);
+    const next=(nums.length?Math.max(...nums):0)+1;
+    return `PO-${String(next).padStart(4,"0")}`;
+  };
+
   const openNewPO=()=>{
-    const sug=computeNextPoNo(prs);
-    setPoSupplier(""); setPoNumber(sug); setPoSuggestedNo(sug); setPoDate(new Date().toISOString().split("T")[0]);
-    setPoItems([emptyPoItem()]); setPoDiscType("amt"); setPoDiscValue(""); setMode("newpo");
+    setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
+    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]); setMode("newpo");
   };
 
   const printPO=(poNo,supplierName,poD,items)=>{
     const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const subtotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
-    const disc=items.find(i=>(Number(i.poDiscValue)||0)>0);
-    const discAmt=poDiscountAmt(disc?.poDiscType,disc?.poDiscValue,subtotal);
-    const discLabel=disc?.poDiscType==="pct"?`Discount (${Number(disc.poDiscValue)}%)`:"Discount";
-    const grandTotal=subtotal-discAmt;
-    const totalRows=discAmt>0
-      ?`<tr><td colspan="6" style="text-align:right;font-weight:700">Subtotal</td><td style="text-align:right;font-weight:700">${fmt(subtotal)}</td></tr>
-        <tr><td colspan="6" style="text-align:right;color:#dc2626">${discLabel}</td><td style="text-align:right;color:#dc2626">−${fmt(discAmt)}</td></tr>
-        <tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>`
-      :`<tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>`;
+    const grandTotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
     const rows=items.map((i,idx)=>{
       const deal=wonDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
       const lineTotal=unitCost*Number(i.qty||1);
-      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal)+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineTotal)}</td></tr>`;
+      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?deal.client+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineTotal)}</td></tr>`;
     }).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
 <style>
@@ -15564,7 +13499,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
 <table>
   <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Line Total</th></tr></thead>
   <tbody>${rows}</tbody>
-  ${totalRows}
+  <tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br>_______________________</div>
@@ -15580,46 +13515,28 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   const removePoItem=(id)=>setPoItems(p=>p.filter(i=>i._id!==id));
   const updatePoItem=(id,k,v)=>setPoItems(p=>p.map(i=>i._id===id?{...i,[k]:v}:i));
 
-  const submitPO=async()=>{
-    if(submitting||!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
-    const over=budgetOverruns();
-    if(over.length&&!window.confirm(`⚠️ This PO exceeds the project budget:\n\n• ${over.join("\n• ")}\n\nSubmit anyway? Management will be notified.`)) return;
-    setSubmitting(true);
-    let poNo;
-    try{ poNo=await claimPoNumber({typed:poNumber,suggested:poSuggestedNo,prs}); }
-    finally{ setSubmitting(false); }
-    const subtotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
-    const discAmt=poDiscountAmt(poDiscType,poDiscValue,subtotal);
-    const status=directIssue?"PO Issued":"Pending Approval";
+  const submitPO=()=>{
+    if(!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
+    const poNo=poNumber.trim();
     poItems.forEach(item=>{
       const deal=wonDeals.find(d=>d.id===item.projectId);
       addPR({
         ...emptyPR(),
         itemName:item.itemName, category:item.category, budgetCategory:item.budgetCategory,
         qty:item.qty, unit:item.unit, estUnitCost:item.estUnitCost,
-        projectId:item.projectId, projectName:projDisplayName(deal)||item.projectName||"",
+        projectId:item.projectId, projectName:deal?.client||item.projectName||"",
         supplier:poSupplier, poNumber:poNo, poDate:poDate,
-        poDiscType:discAmt>0?poDiscType:"", poDiscValue:discAmt>0?Number(poDiscValue)||0:0,
-        status, requestedBy:session?.name||"",
-        approvedBy:directIssue?session?.name||"":"",
-        acctStatus:directIssue?"For Accounting":""
-      },{silent:true});
+        status:poStatus, requestedBy:session?.name||"",
+        approvedBy:poStatus==="PO Issued"?session?.name||"":""
+      });
     });
-    const projNames=[...new Set(poItems.map(i=>projDisplayName(wonDeals.find(d=>d.id===i.projectId))).filter(Boolean))];
-    const msg=`📦 <b>${directIssue?"PO Issued":"PO Awaiting Approval"} — ${poNo}</b>\nSupplier: ${poSupplier}\nProject${projNames.length>1?"s":""}: ${projNames.join(", ")||"—"}\nItems: ${poItems.length} · Total: ₱${(subtotal-discAmt).toLocaleString("en-PH")}${discAmt>0?` (less ${fmt(discAmt)} discount)`:""}\nBy: ${session?.name||"?"}${over.length?`\n🚨 <b>OVER BUDGET</b> — ${over.join("; ")}`:""}`;
-    sendTelegramNotification("procurement",msg);
-    sendTelegramNotification("management",msg);
-    toastEmit&&toastEmit(poNo!==poNumber.trim()
-      ?`Saved as ${poNo} — ${poNumber.trim()} was already taken by another PO`
-      :directIssue?`PO ${poNo} issued — ${poItems.length} item${poItems.length>1?"s":""}`
-      :`PO ${poNo} submitted for approval — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
+    toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     setMode("list");
   };
 
   const filteredAll=prs.filter(p=>{
     if(filterProj!=="all"&&p.projectId!==filterProj) return false;
     if(filterStat!=="all"&&p.status!==filterStat) return false;
-    if(filterSupplier.trim()&&!(p.supplier||"").toLowerCase().includes(filterSupplier.trim().toLowerCase())) return false;
     return true;
   });
 
@@ -15634,12 +13551,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
         solo.push(p);
       }
     });
-    const poGroups=Object.entries(byPO).map(([poNo,items])=>{
-      const gross=items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
-      const disc=items.find(i=>(n(i.poDiscValue))>0);
-      const discount=poDiscountAmt(disc?.poDiscType,disc?.poDiscValue,gross);
-      return {type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",gross,discount,discType:disc?.poDiscType||"",discValue:n(disc?.poDiscValue),total:gross-discount};
-    });
+    const poGroups=Object.entries(byPO).map(([poNo,items])=>({type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)}));
     const soloItems=solo.map(p=>({type:"solo",pr:p}));
     return [...poGroups,...soloItems].sort((a,b)=>{
       const aDate=a.type==="po"?a.poDate:a.pr.createdDate||"";
@@ -15649,9 +13561,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   })();
 
   const STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","PO Issued":"#3b82f6","Partially Delivered":"#8b5cf6","Delivered":"#10b981","Cancelled":"#ef4444"};
-  const PO_GRID="86px 1fr 86px 124px 48px 112px 28px"; // compact table — same pattern as Awarded Projects
-  // net of PO-level discounts
-  const totalValue=grouped.reduce((s,g)=>s+(g.type==="po"?g.total:(n(g.pr.actUnitCost)||n(g.pr.estUnitCost))*n(g.pr.qty)),0);
+  const totalValue=filteredAll.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
 
   // Edit single PR inline
   if(mode==="editpr"&&editingId){
@@ -15663,14 +13573,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>Edit Purchase Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <SearchSelect
-                value={editForm.projectId||null}
-                onChange={v=>{const d=wonDeals.find(x=>x.id===v);ef("projectId",v||"");ef("projectName",projDisplayName(d));}}
-                options={projOptions(wonDeals)}
-                placeholder="Search project name or CE…"
-                noneLabel="— Select Project —"
-                noneValue=""
-              />
+              <Sel value={editForm.projectId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);ef("projectId",e.target.value);ef("projectName",d?.client||"");}}>
+                <option value="">— Select Project —</option>
+                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+              </Sel>
             </Fld>
             <Fld label="Budget Category">
               <Sel value={editForm.budgetCategory||"Materials"} onChange={e=>ef("budgetCategory",e.target.value)}>
@@ -15684,11 +13590,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
             <Fld label="Unit"><Sel value={editForm.unit} onChange={e=>ef("unit",e.target.value)}>{["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}</Sel></Fld>
             <Fld label="Est Unit Cost (₱)"><Inp type="number" value={editForm.estUnitCost} onChange={e=>ef("estUnitCost",e.target.value)}/></Fld>
             <Fld label="Actual Unit Cost (₱)"><Inp type="number" value={editForm.actUnitCost} onChange={e=>ef("actUnitCost",e.target.value)}/></Fld>
-            <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PR_STATUSES.filter(s=>canReceiveDelivery||s!=="Partially Delivered"&&s!=="Delivered").map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
             <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
             <Fld label="Requested By"><Inp value={editForm.requestedBy} onChange={e=>ef("requestedBy",e.target.value)}/></Fld>
-            {(editForm.status==="Partially Delivered"||editForm.status==="Delivered")&&canReceiveDelivery&&(<>
+            {(editForm.status==="Partially Delivered"||editForm.status==="Delivered")&&(<>
               <Fld label="Qty Delivered"><Inp type="number" value={editForm.qtyDelivered} onChange={e=>ef("qtyDelivered",e.target.value)}/></Fld>
               <Fld label="Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
               <div style={{gridColumn:"1/-1"}}><Fld label="DR / Delivery Note"><Inp value={editForm.deliveryNote} onChange={e=>ef("deliveryNote",e.target.value)}/></Fld></div>
@@ -15696,10 +13602,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={editForm.notes} onChange={e=>ef("notes",e.target.value)}/></Fld></div>
           </div>
           <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={()=>{
-              const orig=prs.find(p=>p.id===editingId);
-              if(editForm.status==="PO Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or another Procurement officer) to approve.","error");return;}
-              updatePR(editingId,editForm);toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
+            <button onClick={()=>{updatePR(editingId,editForm);toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
             <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
@@ -15710,9 +13613,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   // New PO form
   if(mode==="newpo"){
     const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectId&&i.itemName.trim());
-    const subtotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
-    const discAmt=poDiscountAmt(poDiscType,poDiscValue,subtotal);
-    const grandTotal=subtotal-discAmt;
+    const grandTotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
     return(
       <div>
         <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
@@ -15720,16 +13621,15 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>📦 New Purchase Order</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(4,1fr)",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #f1f5f9"}}>
             <Fld label="Supplier" required>
-              <SearchCombo value={poSupplier} onChange={setPoSupplier}
-                options={supplierNameOptions(suppliers)} placeholder="Search or type supplier…"/>
+              <input list="po-supplier-list" value={poSupplier} onChange={e=>setPoSupplier(e.target.value)} placeholder="Type or select supplier…"
+                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
+              <datalist id="po-supplier-list">
+                {(suppliers||[]).map(s=><option key={s.id} value={s.company_name||s.companyName||""}/>)}
+              </datalist>
             </Fld>
-            <Fld label="PO Number" required hint="Suggested — confirmed on submit so two officers can't issue the same number"><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
+            <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
-            <Fld label="Approval">
-              <div style={{padding:"9px 13px",border:"1.5px dashed "+(directIssue?"#6ee7b7":"#fde68a"),borderRadius:8,fontSize:".76rem",fontWeight:700,color:directIssue?"#059669":"#b45309",background:directIssue?"#f0fdf4":"#fffbeb",boxSizing:"border-box"}}>
-                {directIssue?"✓ Issues immediately (Manager)":"⏳ Goes to Pending Approval"}
-              </div>
-            </Fld>
+            <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
           </div>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Line Items</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
@@ -15743,39 +13643,27 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(2,1fr) 1fr 1fr",gap:10}}>
                     <Fld label="Project" required>
-                      <SearchSelect
-                        value={item.projectId||null}
-                        onChange={v=>{const d=wonDeals.find(x=>x.id===v);updatePoItem(item._id,"projectId",v||"");updatePoItem(item._id,"projectName",projDisplayName(d));}}
-                        options={projOptions(wonDeals)}
-                        placeholder="Search project name or CE…"
-                        noneLabel="— Select Project —"
-                        noneValue=""
+                      <input
+                        list={`proj-list-${item._id}`}
+                        value={item.projectName}
+                        onChange={e=>{
+                          const name=e.target.value;
+                          const deal=wonDeals.find(d=>`${d.client}${d.ceNo?` · ${d.ceNo}`:""}` === name);
+                          updatePoItem(item._id,"projectName",name);
+                          if(deal) updatePoItem(item._id,"projectId",deal.id);
+                          else if(!name) updatePoItem(item._id,"projectId","");
+                        }}
+                        placeholder="Search project…"
+                        style={{width:"100%",border:`1.5px solid ${item.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
                       />
+                      <datalist id={`proj-list-${item._id}`}>
+                        {wonDeals.map(d=><option key={d.id} value={`${d.client}${d.ceNo?` · ${d.ceNo}`:""}`}/>)}
+                      </datalist>
+                      {item.projectName&&!item.projectId&&<div style={{fontSize:".68rem",color:"#ef4444",marginTop:3}}>No matching project — select from the list</div>}
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-                    <Fld label="Budget Line"><Sel value={item.budgetCategory} onChange={e=>updatePoItem(item._id,"budgetCategory",e.target.value)}>{BUDGET_CATS.map(c=><option key={c}>{c}</option>)}</Sel>
-                      {(()=>{
-                        if(!item.projectId||!item.budgetCategory)return null;
-                        const relIds=new Set([item.projectId,...wonDeals.filter(cd=>cd.parentDealId===item.projectId).map(cd=>cd.id)]);
-                        const budgeted=n(budgets[item.projectId]?.[item.budgetCategory]||0);
-                        if(!budgeted)return<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:4}}>No budget set for this category</div>;
-                        let spent=0,committed2=0;
-                        prs.filter(p=>relIds.has(p.projectId)&&(BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials")===item.budgetCategory&&p.status!=="Cancelled").forEach(p=>{
-                          const est=n(p.estUnitCost)*n(p.qty);const act=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-                          if(p.status==="Delivered"||p.status==="Partially Delivered")spent+=act;else committed2+=est;
-                        });
-                        const remaining=budgeted-spent-committed2;
-                        const clr=remaining<0?"#ef4444":remaining<budgeted*0.1?"#f59e0b":"#059669";
-                        return(
-                          <div style={{background:clr+"0f",border:`1px solid ${clr}33`,borderRadius:6,padding:"4px 8px",marginTop:4,fontSize:".68rem"}}>
-                            <span style={{color:"#64748b"}}>Budget left: </span>
-                            <span style={{fontWeight:700,color:clr}}>{remaining<0?"Over by ":""}{fmtPHP(Math.abs(remaining))}</span>
-                            <span style={{color:"#94a3b8"}}> of {fmtPHP(budgeted)}</span>
-                          </div>
-                        );
-                      })()}
-                    </Fld>
+                    <Fld label="Budget Line"><Sel value={item.budgetCategory} onChange={e=>updatePoItem(item._id,"budgetCategory",e.target.value)}>{BUDGET_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
                     <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1}/></Fld>
                     <Fld label="Unit"><Sel value={item.unit} onChange={e=>updatePoItem(item._id,"unit",e.target.value)}>{["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}</Sel></Fld>
                     <Fld label="Est Unit Cost (₱)"><Inp type="number" value={item.estUnitCost} onChange={e=>updatePoItem(item._id,"estUnitCost",e.target.value)} placeholder="0"/></Fld>
@@ -15786,48 +13674,18 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                       </div>
                     </div>
                   </div>
-                  {item.projectId&&(()=>{
-                    const cat=item.budgetCategory||"Materials";
-                    const bi=budgetInfo(item.projectId,cat);
-                    if(!bi) return null;
-                    if(!bi.hasBudget) return <div style={{marginTop:7,fontSize:".68rem",color:"#94a3b8"}}>ℹ️ No {cat} budget set for this project — flag to QS</div>;
-                    const after=bi.left-formCatTotal(item.projectId,cat);
-                    return(
-                      <div style={{marginTop:7,fontSize:".68rem",fontWeight:600,color:after<0?"#dc2626":after<bi.budgetAmt*.1?"#b45309":"#059669"}}>
-                        {after<0?"🚨":"💰"} {cat} budget {fmt(bi.budgetAmt)} · used {fmt(bi.used)} · left {fmt(bi.left)} → {after<0?`OVER by ${fmt(-after)} after this PO`:`${fmt(after)} left after this PO`}
-                      </div>
-                    );
-                  })()}
                 </div>
               );
             })}
           </div>
           <button onClick={addPoItem} style={{background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:700,width:"100%",marginBottom:16}}>+ Add Item</button>
-          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>Subtotal (est.)</span>
-              <span style={{fontWeight:700,color:"#475569",fontSize:".9rem"}}>{fmt(subtotal)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:8,flexWrap:"wrap"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>Discount</span>
-                <select value={poDiscType} onChange={e=>setPoDiscType(e.target.value)} style={{border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e40af",background:"#fff",cursor:"pointer"}}>
-                  <option value="amt">₱ Amount</option>
-                  <option value="pct">% Percent</option>
-                </select>
-                <input type="number" min="0" value={poDiscValue} onChange={e=>setPoDiscValue(e.target.value)} placeholder="0"
-                  style={{width:110,border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
-              </div>
-              <span style={{fontWeight:700,color:discAmt>0?"#dc2626":"#94a3b8",fontSize:".9rem"}}>−{fmt(discAmt)}</span>
-            </div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"1.5px solid #bfdbfe",paddingTop:8}}>
-              <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
-            </div>
+          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
+            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
           </div>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={submitPO} disabled={!canSubmit||submitting} style={{background:canSubmit&&!submitting?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit&&!submitting?"#fff":"#94a3b8",cursor:canSubmit&&!submitting?"pointer":"not-allowed"}}>
-              {submitting?"⏳ Submitting…":directIssue?`📦 Issue Purchase Order (${poItems.length} item${poItems.length>1?"s":""})`:`📦 Submit for Approval (${poItems.length} item${poItems.length>1?"s":""})`}
+            <button onClick={submitPO} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
+              📦 Submit Purchase Order ({poItems.length} item{poItems.length>1?"s":""})
             </button>
             <button onClick={()=>setMode("list")} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
@@ -15849,447 +13707,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
 
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
         {[
-          {l:"Total POs",          v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length,                                    c:"#0f172a"},
-          {l:"Pending Approval",   v:prs.filter(p=>p.status==="Pending Approval").length,                                                                               c:"#f59e0b"},
-          {l:"Awaiting Delivery",  v:[...new Set(prs.filter(p=>p.status==="PO Issued"||p.status==="Partially Delivered").map(p=>p.poNumber||p.id))].length,             c:"#8b5cf6"},
-          {l:"Total Value",        v:"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),                                       c:"#10b981"},
-        ].map(({l,v,c},i)=>(
-          <div key={l} onClick={l==="Awaiting Delivery"?()=>setFilterStat(filterStat==="PO Issued"?"all":"PO Issued"):undefined}
-            style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16,cursor:l==="Awaiting Delivery"?"pointer":"default"}}>
-            <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
-            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}{l==="Awaiting Delivery"&&<span style={{marginLeft:4,color:"#8b5cf6",fontSize:".55rem"}}>↑ click to filter</span>}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-        <div style={{minWidth:240,flex:"0 1 300px"}}>
-          <SearchSelect
-            value={filterProj==="all"?null:filterProj}
-            onChange={v=>setFilterProj(v||"all")}
-            options={projOptions(wonDeals)}
-            placeholder="Search project name or CE…"
-            noneLabel="All Projects"
-            noneValue={null}
-          />
-        </div>
-        <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-          <option value="all">All Statuses</option>
-          {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
-        </select>
-        <input value={filterSupplier} onChange={e=>setFilterSupplier(e.target.value)} placeholder="Search supplier…"
-          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",minWidth:160,flex:"0 1 200px",boxSizing:"border-box"}}/>
-      </div>
-
-      {grouped.length===0?(
-        <div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>
-      ):(
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-          <div style={{overflowX:"auto"}}>
-            <div style={{display:"grid",gridTemplateColumns:PO_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:640}}>
-              {["PO #","Supplier","Date","Status","Items","Total",""].map((h,i)=>(
-                <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i>=4&&i<=5?"right":"left"}}>{h}</div>
-              ))}
-            </div>
-            {grouped.map((g,gi)=>{
-              const isPo=g.type==="po";
-              const key=isPo?g.poNo:g.pr.id;
-              const items=isPo?g.items:[g.pr];
-              const status=isPo?g.status:g.pr.status;
-              const supplier=isPo?g.supplier:(g.pr.supplier||"");
-              const date=isPo?g.poDate:(g.pr.createdDate||"");
-              const total=isPo?g.total:(n(g.pr.actUnitCost)||n(g.pr.estUnitCost))*n(g.pr.qty);
-              const discount=isPo?g.discount:0;
-              const allSameStatus=items.every(i=>i.status===status);
-              const isOpen=!!expandedPOs[key];
-              return(
-                <div key={key} style={{borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none"}}>
-                  <div onClick={()=>setExpandedPOs(p=>({...p,[key]:!p[key]}))}
-                    style={{display:"grid",gridTemplateColumns:PO_GRID,gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff",transition:"background .12s",minWidth:640}}
-                    onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
-                    onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
-                    <div style={{fontWeight:700,color:isPo?"#6366f1":"#94a3b8",fontSize:".74rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{isPo?g.poNo:"— PR —"}</div>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{supplier||(isPo?"—":items[0]?.itemName)}</div>
-                    <div style={{fontSize:".7rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{date||"—"}</div>
-                    <div style={{paddingRight:6,overflow:"hidden"}}>
-                      <span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span>
-                    </div>
-                    <div style={{textAlign:"right",fontSize:".74rem",color:"#64748b",fontWeight:600,paddingRight:8}}>{items.length}</div>
-                    <div style={{textAlign:"right",paddingRight:4}}>
-                      <span style={{fontWeight:700,color:"#10b981",fontSize:".78rem"}}>{fmt(total)}</span>
-                      {discount>0&&<div style={{fontSize:".6rem",color:"#dc2626",fontWeight:700}}>−{fmt(discount)}{g.discType==="pct"?` (${g.discValue}%)`:""} disc</div>}
-                    </div>
-                    <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{isOpen?"▲":"▼"}</div>
-                  </div>
-                  {isOpen&&(
-                    <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9"}}>
-                      {items.map(pr=>{
-                        const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-                        const deal=wonDeals.find(d=>d.id===pr.projectId);
-                        const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
-                        return(
-                          <React.Fragment key={pr.id}>
-                          <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 16px",borderBottom:deliveryEdit[pr.id]?"none":"1px solid #f1f5f9",flexWrap:"wrap"}}>
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
-                                <span style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{pr.itemName}</span>
-                                {!allSameStatus&&<span style={{fontSize:".62rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{pr.status}</span>}
-                                <span style={{fontSize:".62rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:20}}>{pr.category}</span>
-                                <span style={{fontSize:".62rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 7px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
-                              </div>
-                              <div style={{fontSize:".7rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
-                                {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
-                                <span>{pr.qty} {pr.unit}</span>
-                                {pr.deliveryNote&&<span>DR: {pr.deliveryNote}</span>}
-                                <span>By: {pr.requestedBy||"—"}</span>
-                                {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {pr.approvedBy}</span>}
-                              </div>
-                              {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&delivPct<100&&(
-                                <div style={{marginTop:3,display:"flex",alignItems:"center",gap:6}}>
-                                  <div style={{flex:1,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden",maxWidth:120}}><div style={{height:"100%",width:delivPct+"%",background:"#f59e0b",borderRadius:2}}/></div>
-                                  <span style={{fontSize:".62rem",color:"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
-                                </div>
-                              )}
-                            </div>
-                            <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-                              <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{fmt(actTotal)}</span>
-                              <select value={pr.status} onChange={e=>{const st=e.target.value;
-                                if(st==="PO Issued"&&(pr.status==="Pending Approval"||pr.status==="Draft")&&!canApprovePO(role,session?.name||"",pr.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or another Procurement officer) to approve.","error");return;}
-                                const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};
-                                if(canReceiveDelivery&&(st==="Partially Delivered"||st==="Delivered")&&pr.status!==st){
-                                  updatePR(pr.id,{status:st,...extra});
-                                  setDeliveryEdit(p=>({...p,[pr.id]:{qty:String(st==="Delivered"?pr.qty:(pr.qtyDelivered||"")),date:pr.deliveryDate||today,note:pr.deliveryNote||""}}));
-                                  return;
-                                }
-                                updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                                {PR_STATUSES.filter(s=>canReceiveDelivery||s!=="Partially Delivered"&&s!=="Delivered").map(s=><option key={s}>{s}</option>)}
-                              </select>
-                              <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"3px 9px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                              {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"3px 9px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
-                            </div>
-                          </div>
-                          {deliveryEdit[pr.id]&&canReceiveDelivery&&(
-                            <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderBottomLeftRadius:8,borderBottomRightRadius:8,padding:"10px 14px",margin:"0 0 0 0",borderBottom:"1px solid #f1f5f9",display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
-                              <div style={{fontSize:".72rem",fontWeight:700,color:"#166534",minWidth:"100%",marginBottom:2}}>📦 Record delivery for <em>{pr.itemName}</em></div>
-                              <div>
-                                <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Qty Delivered</div>
-                                <input type="number" min={0} max={n(pr.qty)} value={deliveryEdit[pr.id].qty}
-                                  onChange={e=>setDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],qty:e.target.value}}))}
-                                  style={{width:80,border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                              </div>
-                              <div>
-                                <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Date Received</div>
-                                <input type="date" value={deliveryEdit[pr.id].date}
-                                  onChange={e=>setDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],date:e.target.value}}))}
-                                  style={{border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                              </div>
-                              <div style={{flex:1,minWidth:120}}>
-                                <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>DR / Delivery Note</div>
-                                <input type="text" value={deliveryEdit[pr.id].note} placeholder="e.g. DR-2024-0087"
-                                  onChange={e=>setDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],note:e.target.value}}))}
-                                  style={{width:"100%",border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                              </div>
-                              <button onClick={()=>{
-                                updatePR(pr.id,{qtyDelivered:n(deliveryEdit[pr.id].qty),deliveryDate:deliveryEdit[pr.id].date,deliveryNote:deliveryEdit[pr.id].note});
-                                setDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;});
-                                toastEmit&&toastEmit("Delivery recorded","success");
-                              }} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Save</button>
-                              <button onClick={()=>setDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;})} style={{background:"transparent",border:"1px solid #bbf7d0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#166534",cursor:"pointer"}}>Skip</button>
-                            </div>
-                          )}
-                          </React.Fragment>
-                        );
-                      })}
-                      <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 16px",flexWrap:"wrap"}}>
-                        {discount>0&&<span style={{fontSize:".7rem",color:"#64748b"}}>Subtotal {fmt(g.gross)} · <span style={{color:"#dc2626",fontWeight:700}}>Discount −{fmt(discount)}{g.discType==="pct"?` (${g.discValue}%)`:""}</span></span>}
-                        {(()=>{const a=items.find(i=>i.acctStatus);if(!a)return null;
-                          const bank=a.acctStatus==="Payment Ordered"&&a.paymentBank?(BANKS.find(b=>b.id===a.paymentBank)||{}).short||a.paymentBank:"";
-                          return <span style={{fontSize:".64rem",background:(ACCT_CLR[a.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[a.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[a.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {a.acctStatus}{bank?` · ${bank}`:""}</span>;})()}
-                        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                          {(status==="Pending Approval"||status==="Draft")&&canApprovePO(role,session?.name||"",items[0]?.requestedBy,poApprovers)&&(
-                            <button onClick={()=>{
-                              const pend=items.filter(i=>i.status==="Pending Approval"||i.status==="Draft");
-                              pend.forEach(i=>updatePR(i.id,{status:"PO Issued",approvedBy:session?.name||"",approvedAt:today,acctStatus:"For Accounting"},{silent:true}));
-                              const label=isPo?`PO Approved — ${g.poNo}`:"PR Approved";
-                              const aMsg=`✅ <b>${label}</b>\nSupplier: ${supplier||"—"}\nItems: ${pend.length} · Total: ${fmt(total)}\nRequested by: ${items[0]?.requestedBy||"—"}\nApproved by: ${session?.name||"?"} · ${today}\n→ Sent to Accounting for documentation`;
-                              sendTelegramNotification("procurement",aMsg);
-                              sendTelegramNotification("financialcontrol",aMsg);
-                              toastEmit&&toastEmit(`${isPo?g.poNo:"PR"} approved — sent to Accounting`,"success");
-                            }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
-                          )}
-                          {(status==="Pending Approval"||status==="Draft")&&!canApprovePO(role,session?.name||"",items[0]?.requestedBy,poApprovers)&&(
-                            <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval{items[0]?.requestedBy===session?.name?" — requested by you":""}</span>
-                          )}
-                          {isPo&&<button onClick={()=>printPO(g.poNo,supplier,date,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>}
-                          {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(poHeaderEdit===g.poNo){setPoHeaderEdit(null);}else{setPoHeaderEdit(g.poNo);setPoHeaderForm({supplier:supplier||"",date:date||""});}}} style={{background:"#f0f9ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#0369a1",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏ Header</button>}
-                          {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(discEditPo===g.poNo){setDiscEditPo(null);}else{setDiscEditPo(g.poNo);setDiscEditType(g.discType||"amt");setDiscEditVal(g.discValue>0?String(g.discValue):"");}}} style={{background:"#fff7ed",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>% Disc</button>}
-                          {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+g.poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
-                        </div>
-                      </div>
-                      {isPo&&poHeaderEdit===g.poNo&&(
-                        <div style={{display:"flex",gap:8,alignItems:"flex-end",padding:"10px 16px",background:"#f0f9ff",borderTop:"1px solid #bae6fd",flexWrap:"wrap"}}>
-                          <span style={{fontSize:".75rem",fontWeight:700,color:"#0369a1",alignSelf:"center"}}>Edit PO Header</span>
-                          <div>
-                            <div style={{fontSize:".6rem",color:"#64748b",marginBottom:2}}>Supplier</div>
-                            <div style={{minWidth:200}}>
-                              <SearchCombo value={poHeaderForm.supplier} onChange={v=>setPoHeaderForm(p=>({...p,supplier:v}))}
-                                options={supplierNameOptions(suppliers)} placeholder="Search or type supplier…"/>
-                            </div>
-                          </div>
-                          <div>
-                            <div style={{fontSize:".6rem",color:"#64748b",marginBottom:2}}>PO Date</div>
-                            <input type="date" value={poHeaderForm.date} onChange={e=>setPoHeaderForm(p=>({...p,date:e.target.value}))}
-                              style={{border:"1.5px solid #bae6fd",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                          </div>
-                          <button onClick={()=>{
-                            items.forEach(i=>updatePR(i.id,{supplier:poHeaderForm.supplier,poDate:poHeaderForm.date}));
-                            setPoHeaderEdit(null);
-                            toastEmit&&toastEmit(`${g.poNo} header updated`,"success");
-                          }} style={{background:"#0369a1",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".75rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Save</button>
-                          <button onClick={()=>setPoHeaderEdit(null)} style={{background:"transparent",border:"1px solid #bae6fd",borderRadius:7,padding:"5px 10px",fontSize:".75rem",color:"#0369a1",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                        </div>
-                      )}
-                      {isPo&&discEditPo===g.poNo&&(
-                        <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 16px",background:"#fff7ed",borderTop:"1px solid #fed7aa",flexWrap:"wrap"}}>
-                          <span style={{fontSize:".75rem",fontWeight:700,color:"#9a3412"}}>PO Discount</span>
-                          <select value={discEditType} onChange={e=>setDiscEditType(e.target.value)} style={{border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".75rem",color:"#9a3412",background:"#fff",cursor:"pointer"}}>
-                            <option value="amt">₱ Amount</option>
-                            <option value="pct">% Percent</option>
-                          </select>
-                          <input type="number" min="0" value={discEditVal} onChange={e=>setDiscEditVal(e.target.value)} placeholder="0"
-                            style={{width:110,border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
-                          <span style={{fontSize:".72rem",color:"#9a3412"}}>= −{fmt(poDiscountAmt(discEditType,discEditVal,g.gross))} off {fmt(g.gross)}</span>
-                          <button onClick={()=>{
-                            const v=n(discEditVal);
-                            items.forEach(i=>updatePR(i.id,{poDiscType:v>0?discEditType:"",poDiscValue:v>0?v:0}));
-                            setDiscEditPo(null);
-                            toastEmit&&toastEmit(`Discount ${v>0?"applied to":"removed from"} ${g.poNo}`,"success");
-                          }} style={{background:"#c2410c",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".75rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Save</button>
-                          <button onClick={()=>setDiscEditPo(null)} style={{background:"transparent",border:"1px solid #fed7aa",borderRadius:7,padding:"5px 10px",fontSize:".75rem",color:"#9a3412",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── SUBCON WORK ORDERS ──────────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,updateSWO,deleteSWO,wonDeals,subcons,session,role,toastEmit,poApprovers}){
-  const today=new Date().toISOString().split("T")[0];
-  const[mode,setMode]=useState("list");
-  const[editingId,setEditingId]=useState(null);
-  const[form,setForm]=useState(emptySWO());
-  const[suggestedNo,setSuggestedNo]=useState("");
-  const[submitting,setSubmitting]=useState(false);
-  const[filterProj,setFilterProj]=useState("all");
-  const[filterStat,setFilterStat]=useState("all");
-  const[expanded,setExpanded]=useState({});
-
-  const n=v=>Number(String(v).replace(/,/g,""))||0;
-  const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const canManage=role==="Manager"||role==="Procurement";
-  const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
-
-  const openNew=()=>{
-    const sug=computeNextWoNo(swos);
-    setForm({...emptySWO(),woNumber:sug,woDate:today});
-    setSuggestedNo(sug); setEditingId(null); setMode("form");
-  };
-  const openEdit=w=>{setForm({...w});setSuggestedNo(w.woNumber||"");setEditingId(w.id);setMode("form");};
-
-  // Picking a master-list subcon auto-fills their commercial terms
-  const pickSubcon=name=>setForm(p=>{
-    const m=(subcons||[]).find(s=>(s.company_name||s.companyName||"").trim().toLowerCase()===name.trim().toLowerCase());
-    if(!m) return {...p,subcontractor:name};
-    return {...p,subcontractor:name,
-      specialty:m.specialty||p.specialty||"",
-      paymentStructure:m.payment_structure||m.paymentStructure||p.paymentStructure||"",
-      paymentTerms:m.payment_terms||m.paymentTerms||p.paymentTerms||""};
-  });
-
-  const submit=async()=>{
-    if(submitting||!form.subcontractor.trim()||!form.projectId||!form.scopeOfWork.trim()||n(form.contractAmount)<=0) return;
-    const deal=wonDeals.find(d=>d.id===form.projectId);
-    const base={...form,projectName:projDisplayName(deal)||form.projectName||"",contractAmount:n(form.contractAmount),retentionPct:n(form.retentionPct)};
-    if(editingId){
-      const orig=swos.find(w=>w.id===editingId);
-      if(base.status==="Issued"&&orig&&(orig.status==="Pending Approval"||orig.status==="Draft")&&!canApprovePO(role,session?.name||"",orig.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
-      if(base.status==="Issued"&&orig&&orig.status!=="Issued") Object.assign(base,{approvedBy:session?.name||"",acctStatus:base.acctStatus||"For Accounting"});
-      updateSWO(editingId,base);
-      toastEmit&&toastEmit(`${form.woNumber||"Work order"} updated`,"success");
-      setMode("list");setEditingId(null);
-      return;
-    }
-    setSubmitting(true);
-    let woNo;
-    try{ woNo=await claimWoNumber({typed:form.woNumber,suggested:suggestedNo,swos}); }
-    finally{ setSubmitting(false); }
-    addSWO({...base,woNumber:woNo,status:woDirect?"Issued":"Pending Approval",
-      requestedBy:session?.name||"",approvedBy:woDirect?session?.name||"":"",
-      acctStatus:woDirect?"For Accounting":""});
-    toastEmit&&toastEmit(woNo!==(form.woNumber||"").trim()
-      ?`Saved as ${woNo} — ${(form.woNumber||"").trim()} was already taken`
-      :woDirect?`Work Order ${woNo} issued to ${form.subcontractor.trim()}`
-      :`Work Order ${woNo} submitted for approval`,"success");
-    setMode("list");
-  };
-
-  const printWO=w=>{
-    const fmt2=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const retAmt=woRetentionAmt(w);
-    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Work Order — ${esc(w.woNumber)}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
-  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
-  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
-  .doc-title{font-size:20px;font-weight:800;color:#1e293b}
-  .doc-sub{font-size:11px;color:#64748b;margin-top:3px}
-  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px 16px;margin-bottom:20px;background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid #e2e8f0}
-  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
-  .meta-item span{font-weight:700;font-size:13px}
-  .sec-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#1e293b;border-bottom:1.5px solid #1e293b;padding-bottom:4px;margin:18px 0 8px}
-  .scope{white-space:pre-wrap;font-size:12px;line-height:1.6;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;min-height:90px}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;font-size:12px}
-  td.lbl{color:#64748b;width:220px}
-  td.val{font-weight:700}
-  .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b;font-size:13px}
-  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:44px}
-  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
-  @media print{body{padding:20px}}
-</style></head><body>
-<div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
-  <div style="text-align:right"><div class="doc-title">SUBCON WORK ORDER</div><div class="doc-sub">${esc(w.woNumber)} · ${esc(w.woDate)||""}</div></div>
-</div>
-<div class="meta">
-  <div class="meta-item"><label>Subcontractor</label><span>${esc(w.subcontractor)||"—"}</span></div>
-  <div class="meta-item"><label>WO Number</label><span>${esc(w.woNumber)||"—"}</span></div>
-  <div class="meta-item"><label>Date Issued</label><span>${esc(w.woDate)||"—"}</span></div>
-  <div class="meta-item"><label>Project</label><span>${esc(w.projectName)||"—"}</span></div>
-  <div class="meta-item"><label>Work Type</label><span>${esc(w.specialty)||"—"}</span></div>
-  <div class="meta-item"><label>Schedule</label><span>${esc(w.startDate)||"—"} → ${esc(w.targetEndDate)||"—"}</span></div>
-</div>
-<div class="sec-title">Scope of Work</div>
-<div class="scope">${esc(w.scopeOfWork)||"—"}</div>
-${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-height:0">${esc(w.notes)}</div>`:""}
-<div class="sec-title">Commercial Terms</div>
-<table>
-  <tr><td class="lbl">Payment Structure</td><td class="val">${esc(w.paymentStructure)||"—"}</td></tr>
-  <tr><td class="lbl">Payment Terms</td><td class="val">${esc(w.paymentTerms)||"—"}</td></tr>
-  <tr><td class="lbl">Retention${n(w.retentionPct)>0?` (${n(w.retentionPct)}%)`:""}</td><td class="val">${n(w.retentionPct)>0?"−"+fmt2(retAmt)+" held until acceptance":"None"}</td></tr>
-  <tr class="total-row"><td>CONTRACT AMOUNT</td><td>${fmt2(w.contractAmount)}</td></tr>
-</table>
-<div class="sig">
-  <div class="sig-box">Prepared by<br><br><br>_______________________<br>${esc(w.requestedBy)||""}</div>
-  <div class="sig-box">Approved by<br><br><br>_______________________<br>${esc(w.approvedBy)||""}</div>
-  <div class="sig-box">Conforme — Subcontractor<br><br><br>_______________________<br>${esc(w.subcontractor)||""}</div>
-</div>
-</body></html>`;
-    const win=window.open("","_blank","width=900,height=700");
-    if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
-  };
-
-  const filtered=swos.filter(w=>{
-    if(filterProj!=="all"&&w.projectId!==filterProj) return false;
-    if(filterStat!=="all"&&w.status!==filterStat) return false;
-    return true;
-  }).sort((a,b)=>String(b.woDate||b.createdDate||"").localeCompare(String(a.woDate||a.createdDate||"")));
-  const totalValue=filtered.filter(w=>w.status!=="Cancelled").reduce((s,w)=>s+n(w.contractAmount),0);
-
-  // ── Form (new / edit) ──────────────────────────────────────────────────────
-  if(mode==="form"){
-    const canSubmit=form.subcontractor.trim()&&form.projectId&&form.scopeOfWork.trim()&&n(form.contractAmount)>0&&!submitting;
-    const retAmt=woRetentionAmt({retentionPct:form.retentionPct,contractAmount:n(form.contractAmount)});
-    return(
-      <div>
-        <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Work Orders</button>
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
-          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>🛠️ {editingId?"Edit Work Order":"New Subcon Work Order"}</div>
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
-            <Fld label="Subcontractor" required hint="From the Subcontractor Master — terms auto-fill">
-              <SearchCombo value={form.subcontractor} onChange={pickSubcon}
-                options={supplierNameOptions(subcons)} placeholder="Search or type subcontractor…"/>
-            </Fld>
-            <Fld label="Project" required>
-              <SearchSelect
-                value={form.projectId||null}
-                onChange={v=>{const d=wonDeals.find(x=>x.id===v);setForm(p=>({...p,projectId:v||"",projectName:projDisplayName(d)}));}}
-                options={projOptions(wonDeals)}
-                placeholder="Search project name or CE…"
-                noneLabel="— Select Project —"
-                noneValue=""
-              />
-            </Fld>
-            <Fld label="WO Number" required hint={editingId?undefined:"Suggested — confirmed on submit to avoid duplicates"}>
-              <Inp value={form.woNumber} onChange={e=>f("woNumber",e.target.value)} placeholder="WO-0001"/>
-            </Fld>
-            <Fld label="WO Date"><Inp type="date" value={form.woDate} onChange={e=>f("woDate",e.target.value)}/></Fld>
-            <Fld label="Work Type / Specialty"><Inp value={form.specialty} onChange={e=>f("specialty",e.target.value)} placeholder="e.g. General Works, Stone Works"/></Fld>
-            {editingId
-              ?<Fld label="Status"><Sel value={form.status} onChange={e=>f("status",e.target.value)}>{SWO_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-              :<Fld label="Approval">
-                <div style={{padding:"9px 13px",border:"1.5px dashed "+(woDirect?"#6ee7b7":"#fde68a"),borderRadius:8,fontSize:".76rem",fontWeight:700,color:woDirect?"#059669":"#b45309",background:woDirect?"#f0fdf4":"#fffbeb",boxSizing:"border-box"}}>
-                  {woDirect?"✓ Issues immediately":"⏳ Goes to Pending Approval"}
-                </div>
-              </Fld>}
-            <Fld label="Start Date"><Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/></Fld>
-            <Fld label="Target Completion"><Inp type="date" value={form.targetEndDate} onChange={e=>f("targetEndDate",e.target.value)}/></Fld>
-            <div style={{gridColumn:"1/-1"}}>
-              <Fld label="Scope of Work" required hint="What exactly the subcontractor will deliver — printed on the WO">
-                <textarea value={form.scopeOfWork} onChange={e=>f("scopeOfWork",e.target.value)} rows={5}
-                  placeholder={"e.g.\n• Supply and install kitchen modular cabinets per approved drawings rev.3\n• Includes hardware, site measurement, hauling and 2 site visits\n• Excludes countertops and electrical"}
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
-              </Fld>
-            </div>
-            <Fld label="Contract Amount (₱)" required><Inp type="number" value={form.contractAmount} onChange={e=>f("contractAmount",e.target.value)} placeholder="0.00"/></Fld>
-            <Fld label="Retention %" hint={retAmt>0?`${fmt(retAmt)} held until acceptance`:"0 = no retention"}>
-              <Inp type="number" value={form.retentionPct} onChange={e=>f("retentionPct",e.target.value)} placeholder="e.g. 10" min={0} max={100}/>
-            </Fld>
-            <Fld label="Payment Structure"><Inp value={form.paymentStructure} onChange={e=>f("paymentStructure",e.target.value)} placeholder="e.g. 50% Start / 50% Completion"/></Fld>
-            <Fld label="Payment Terms"><Inp value={form.paymentTerms} onChange={e=>f("paymentTerms",e.target.value)} placeholder="e.g. 30 Days, Cash Basis"/></Fld>
-            <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Internal notes (optional)"/></Fld></div>
-          </div>
-          <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={submit} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
-              {submitting?"⏳ Saving…":editingId?"Save Changes":"🛠️ Issue Work Order"}
-            </button>
-            <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"11px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── List ──────────────────────────────────────────────────────────────────
-  const WO_GRID="86px 1.1fr 1fr 86px 110px 110px 28px";
-  return(
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
-        <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🛠️ Subcon Work Orders</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Scope-of-work engagements with subcontractors — separate from Purchase Orders, counted in the Subcon budget line</div>
-        </div>
-        {canManage&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>}
-      </div>
-
-      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
-        {[
-          {l:"Total WOs",   v:filtered.length,                                          c:"#0f172a"},
-          {l:"In Progress", v:filtered.filter(w=>w.status==="In Progress").length,      c:"#f59e0b"},
-          {l:"Completed",   v:filtered.filter(w=>w.status==="Completed").length,        c:"#10b981"},
-          {l:"Total Value", v:"Php "+totalValue.toLocaleString("en-PH",{maximumFractionDigits:0}), c:"#3b82f6"},
+          {l:"Total POs",       v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a"},
+          {l:"Pending Approval",v:prs.filter(p=>p.status==="Pending Approval").length,                                            c:"#f59e0b"},
+          {l:"PO Issued",       v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length,           c:"#3b82f6"},
+          {l:"Total Value",     v:"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),   c:"#10b981"},
         ].map(({l,v,c},i)=>(
           <div key={l} style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
             <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
@@ -16299,286 +13720,121 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
       </div>
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-        <div style={{minWidth:240,flex:"0 1 300px"}}>
-          <SearchSelect
-            value={filterProj==="all"?null:filterProj}
-            onChange={v=>setFilterProj(v||"all")}
-            options={projOptions(wonDeals)}
-            placeholder="Search project name or CE…"
-            noneLabel="All Projects"
-            noneValue={null}
-          />
-        </div>
+        <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+          <option value="all">All Projects</option>
+          {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+        </select>
         <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Statuses</option>
-          {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
+          {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
       </div>
 
-      {filtered.length===0?(
-        <div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No work orders yet. Hit + New Work Order to engage a subcontractor.</div>
-      ):(
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-          <div style={{overflowX:"auto"}}>
-            <div style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:660}}>
-              {["WO #","Subcontractor","Project","Date","Status","Amount",""].map((h,i)=>(
-                <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i===5?"right":"left"}}>{h}</div>
-              ))}
-            </div>
-            {filtered.map((w,wi)=>{
-              const isOpen=!!expanded[w.id];
-              const retAmt=woRetentionAmt(w);
-              return(
-                <div key={w.id} style={{borderBottom:wi<filtered.length-1?"1px solid #f1f5f9":"none"}}>
-                  <div onClick={()=>setExpanded(p=>({...p,[w.id]:!p[w.id]}))}
-                    style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff",transition:"background .12s",minWidth:660}}
-                    onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
-                    onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
-                    <div style={{fontWeight:700,color:"#6366f1",fontSize:".74rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{w.woNumber||"—"}</div>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{w.subcontractor||"—"}{w.specialty&&<span style={{fontWeight:400,color:"#94a3b8",fontSize:".7rem"}}> · {w.specialty}</span>}</div>
-                    <div style={{fontSize:".74rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{w.projectName||"—"}</div>
-                    <div style={{fontSize:".7rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{w.woDate||"—"}</div>
-                    <div style={{paddingRight:6,overflow:"hidden"}}>
-                      <span style={{fontSize:".62rem",background:SWO_STATUS_CLR[w.status]+"22",color:SWO_STATUS_CLR[w.status],border:`1px solid ${SWO_STATUS_CLR[w.status]}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{w.status}</span>
-                    </div>
-                    <div style={{textAlign:"right",paddingRight:4}}>
-                      <span style={{fontWeight:700,color:"#10b981",fontSize:".78rem"}}>{fmt(w.contractAmount)}</span>
-                      {retAmt>0&&<div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>{n(w.retentionPct)}% ret.</div>}
-                    </div>
-                    <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{isOpen?"▲":"▼"}</div>
+      {grouped.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {grouped.map((g,gi)=>{
+          if(g.type==="po"){
+            const {poNo,items,supplier,status,poDate:poD,total}=g;
+            const allSameStatus=items.every(i=>i.status===status);
+            return(
+              <div key={poNo} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f8fafc",flexWrap:"wrap",gap:8}}>
+                  <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+                    <span style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>📄 {poNo}</span>
+                    {supplier&&<span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>🏭 {supplier}</span>}
+                    {poD&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>{poD}</span>}
+                    <span style={{fontSize:".68rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{status}</span>
                   </div>
-                  {isOpen&&(
-                    <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"10px 16px"}}>
-                      <div style={{fontSize:".72rem",color:"#475569",whiteSpace:"pre-wrap",background:"#fff",border:"1px solid #f1f5f9",borderRadius:8,padding:"8px 12px",marginBottom:8}}>{w.scopeOfWork||"No scope recorded."}</div>
-                      <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:".7rem",color:"#64748b",marginBottom:8}}>
-                        {(w.startDate||w.targetEndDate)&&<span>📅 {w.startDate||"—"} → {w.targetEndDate||"—"}</span>}
-                        {w.paymentStructure&&<span>💸 {w.paymentStructure}</span>}
-                        {w.paymentTerms&&<span>🗓 {w.paymentTerms}</span>}
-                        {retAmt>0&&<span style={{color:"#c2410c",fontWeight:600}}>Retention {n(w.retentionPct)}% = {fmt(retAmt)}</span>}
-                        <span>By: {w.requestedBy||"—"}</span>
-                        {w.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {w.approvedBy}</span>}
-                        {w.notes&&<span style={{fontStyle:"italic"}}>{w.notes}</span>}
-                      </div>
-                      <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                        <select value={w.status} onChange={e=>{const st=e.target.value;
-                          if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
-                          updateSWO(w.id,{status:st,...(st==="Issued"&&w.status!=="Issued"?{approvedBy:session?.name||"",acctStatus:w.acctStatus||"For Accounting"}:{})});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                          {SWO_STATUSES.map(s=><option key={s}>{s}</option>)}
-                        </select>
-                        {w.acctStatus&&<span style={{fontSize:".62rem",background:(ACCT_CLR[w.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[w.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[w.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🧾 {w.acctStatus}{w.acctStatus==="Payment Ordered"&&w.paymentBank?` · ${(BANKS.find(b=>b.id===w.paymentBank)||{}).short||w.paymentBank}`:""}</span>}
-                        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
-                            <button onClick={()=>{
-                              updateSWO(w.id,{status:"Issued",approvedBy:session?.name||"",acctStatus:"For Accounting"});
-                              const aMsg=`✅ <b>Work Order Approved — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nAmount: ${fmt(w.contractAmount)}\nRequested by: ${w.requestedBy||"—"}\nApproved by: ${session?.name||"?"} · ${today}\n→ Sent to Accounting for documentation`;
-                              sendTelegramNotification("procurement",aMsg);
-                              sendTelegramNotification("financialcontrol",aMsg);
-                              toastEmit&&toastEmit(`${w.woNumber} approved — sent to Accounting`,"success");
-                            }} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Approve & Issue</button>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#10b981"}}>{fmt(total)}</span>
+                    <span style={{fontSize:".7rem",color:"#94a3b8"}}>{items.length} item{items.length>1?"s":""}</span>
+                    <button onClick={()=>printPO(poNo,supplier,poD,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                    {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
+                  </div>
+                </div>
+                <div>
+                  {items.map((pr,ii)=>{
+                    const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
+                    const deal=wonDeals.find(d=>d.id===pr.projectId);
+                    const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
+                    return(
+                      <div key={pr.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",flexWrap:"wrap"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
+                            <span style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</span>
+                            {!allSameStatus&&<span style={{fontSize:".65rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{pr.status}</span>}
+                            <span style={{fontSize:".65rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:20}}>{pr.category}</span>
+                            <span style={{fontSize:".65rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 7px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
+                          </div>
+                          <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
+                            {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                            <span>{pr.qty} {pr.unit}</span>
+                            {pr.deliveryNote&&<span>DR: {pr.deliveryNote}</span>}
+                          </div>
+                          {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&delivPct<100&&(
+                            <div style={{marginTop:4,display:"flex",alignItems:"center",gap:6}}>
+                              <div style={{flex:1,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden",maxWidth:120}}><div style={{height:"100%",width:delivPct+"%",background:"#f59e0b",borderRadius:2}}/></div>
+                              <span style={{fontSize:".65rem",color:"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
+                            </div>
                           )}
-                          {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
-                            <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
-                          )}
-                          <button onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
-                          <button onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
-                          {canManage&&<button onClick={()=>{if(window.confirm("Delete "+(w.woNumber||"this work order")+"?"))deleteSWO(w.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
+                        </div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{fmt(actTotal)}</span>
+                          <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 7px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                            {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                          </select>
+                          <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                          {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                         </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── ACCOUNTING / FINANCE — PO DOCUMENTATION & PAYMENT ORDERS ────────────────
-// Pipeline: Procurement issues → Accounting checks & takes notes → Finance
-// creates the bank-tagged Payment Order. Lives on the Accounting page.
-function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role,toastEmit}){
-  const today=new Date().toISOString().split("T")[0];
-  const n=v=>Number(String(v).replace(/,/g,""))||0;
-  const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
-  const[stageFilter,setStageFilter]=useState("For Accounting");
-  const[open,setOpen]=useState({});
-  const[notesDraft,setNotesDraft]=useState({});
-  const[bankPick,setBankPick]=useState({});
-  const[refPick,setRefPick]=useState({});
-  const canAct=role==="Manager"||role==="Finance";
-
-  const docs=[];
-  const byPO={};
-  prs.forEach(p=>{ if(p.acctStatus){const key=p.poNumber||p.id;(byPO[key]=byPO[key]||[]).push(p);} });
-  Object.entries(byPO).forEach(([key,items])=>{
-    const gross=items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
-    const d=items.find(i=>(n(i.poDiscValue))>0);
-    const discount=poDiscountAmt(d?.poDiscType,d?.poDiscValue,gross);
-    const a=items.find(i=>i.acctStatus)||items[0];
-    docs.push({kind:"PO",key:"po:"+key,number:items[0].poNumber||"(no PO #)",payee:items[0].supplier||"—",
-      projects:[...new Set(items.map(i=>i.projectName).filter(Boolean))].join(", ")||"—",
-      amount:gross-discount,acct:a,lines:items,
-      apply:changes=>items.forEach(i=>updatePR(i.id,changes,{silent:true}))});
-  });
-  (swos||[]).forEach(w=>{
-    if(!w.acctStatus) return;
-    docs.push({kind:"WO",key:"wo:"+w.id,number:w.woNumber||"(no WO #)",payee:w.subcontractor||"—",
-      projects:w.projectName||"—",amount:n(w.contractAmount),acct:w,lines:null,retentionPct:n(w.retentionPct),
-      apply:changes=>updateSWO(w.id,changes)});
-  });
-  const STAGES=["For Accounting","Checked","Payment Ordered"];
-  docs.sort((a,b)=>STAGES.indexOf(a.acct.acctStatus)-STAGES.indexOf(b.acct.acctStatus)||String(b.number).localeCompare(String(a.number)));
-  const shown=stageFilter==="All"?docs:docs.filter(d=>d.acct.acctStatus===stageFilter);
-  const counts=Object.fromEntries(STAGES.map(s=>[s,docs.filter(d=>d.acct.acctStatus===s).length]));
-
-  const printPaymentOrder=d=>{
-    const a=d.acct;
-    const bank=BANKS.find(b=>b.id===a.paymentBank);
-    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const fmt2=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Payment Order — ${esc(d.number)}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;border-bottom:2px solid #1e293b;padding-bottom:16px}
-  .co{font-size:22px;font-weight:800;letter-spacing:-0.5px}
-  .co-sub{font-size:11px;color:#64748b;margin-top:2px}
-  .doc-title{font-size:20px;font-weight:800;color:#1e293b}
-  .doc-sub{font-size:11px;color:#64748b;margin-top:3px}
-  table{width:100%;border-collapse:collapse;margin-top:8px}
-  td{padding:9px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;font-size:12px}
-  td.lbl{color:#64748b;width:200px}
-  td.val{font-weight:700}
-  .amount-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b;font-size:15px}
-  .trail{margin-top:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:11px;color:#475569;line-height:1.8}
-  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:44px}
-  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
-  @media print{body{padding:20px}}
-</style></head><body>
-<div class="hdr">
-  <div><div class="co">GMD Pro</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
-  <div style="text-align:right"><div class="doc-title">PAYMENT ORDER</div><div class="doc-sub">${esc(d.number)} · ${esc(a.paymentOrderedAt)||today}</div></div>
-</div>
-<table>
-  <tr><td class="lbl">Pay To</td><td class="val">${esc(d.payee)}</td></tr>
-  <tr><td class="lbl">For</td><td class="val">${d.kind} ${esc(d.number)} — ${esc(d.projects)}</td></tr>
-  <tr><td class="lbl">Pay From (Bank)</td><td class="val">${esc(bank?bank.name+" ("+bank.short+")":a.paymentBank||"—")}</td></tr>
-  <tr><td class="lbl">Reference</td><td class="val">${esc(a.paymentRef)||"—"}</td></tr>
-  ${d.kind==="WO"&&d.retentionPct>0?`<tr><td class="lbl">Retention (${d.retentionPct}%)</td><td class="val">−${fmt2(d.amount*d.retentionPct/100)} held until acceptance</td></tr>`:""}
-  <tr class="amount-row"><td>AMOUNT</td><td>${fmt2(d.amount)}</td></tr>
-</table>
-${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)}</div>`:""}
-<div class="trail">
-  Requested by: <b>${esc(a.requestedBy)||"—"}</b><br>
-  Approved by: <b>${esc(a.approvedBy)||"—"}</b><br>
-  Checked by Accounting: <b>${esc(a.acctCheckedBy)||"—"}</b>${a.acctCheckedAt?` · ${esc(a.acctCheckedAt)}`:""}<br>
-  Payment ordered by: <b>${esc(a.paymentOrderedBy)||"—"}</b>${a.paymentOrderedAt?` · ${esc(a.paymentOrderedAt)}`:""}
-</div>
-<div class="sig">
-  <div class="sig-box">Prepared by — Finance<br><br><br>_______________________<br>${esc(a.paymentOrderedBy)||""}</div>
-  <div class="sig-box">Approved by<br><br><br>_______________________</div>
-  <div class="sig-box">Received by — Payee<br><br><br>_______________________</div>
-</div>
-</body></html>`;
-    const win=window.open("","_blank","width=900,height=700");
-    if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
-  };
-
-  if(docs.length===0) return null;
-  return(
-    <div style={{marginBottom:22}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
-        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>🧾 PO Documentation & Payment Orders</div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["All",...STAGES].map(s=>(
-            <button key={s} onClick={()=>setStageFilter(s)} style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${stageFilter===s?(ACCT_CLR[s]||"#3b82f6"):"#e2e8f0"}`,background:stageFilter===s?(ACCT_CLR[s]||"#3b82f6")+"18":"#fff",color:stageFilter===s?(ACCT_CLR[s]||"#3b82f6"):"#64748b",fontWeight:stageFilter===s?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".74rem"}}>
-              {s}{s!=="All"&&counts[s]>0?` (${counts[s]})`:""}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-        {shown.length===0&&<div style={{textAlign:"center",padding:"20px 0",color:"#94a3b8",fontSize:".8rem"}}>Nothing in "{stageFilter}".</div>}
-        {shown.map((d,di)=>{
-          const a=d.acct;
-          const isOpen=!!open[d.key];
-          const draft=notesDraft[d.key]!==undefined?notesDraft[d.key]:(a.acctNotes||"");
-          const bank=bankPick[d.key]!==undefined?bankPick[d.key]:(a.paymentBank||"");
-          const ref=refPick[d.key]!==undefined?refPick[d.key]:(a.paymentRef||"");
-          return(
-            <div key={d.key} style={{borderBottom:di<shown.length-1?"1px solid #f1f5f9":"none"}}>
-              <div onClick={()=>setOpen(p=>({...p,[d.key]:!p[d.key]}))}
-                style={{display:"grid",gridTemplateColumns:"40px 86px 1.2fr 1fr 130px 110px 28px",gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff"}}
-                onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
-                onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
-                <div style={{fontSize:".82rem"}}>{d.kind==="PO"?"📦":"🛠"}</div>
-                <div style={{fontWeight:700,color:"#6366f1",fontSize:".74rem"}}>{d.number}</div>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.payee}</div>
-                <div style={{fontSize:".72rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.projects}</div>
-                <div style={{paddingRight:6}}>
-                  <span style={{fontSize:".62rem",background:(ACCT_CLR[a.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[a.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[a.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{a.acctStatus}</span>
-                </div>
-                <div style={{textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",paddingRight:4}}>{fmt(d.amount)}</div>
-                <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem"}}>{isOpen?"▲":"▼"}</div>
               </div>
-              {isOpen&&(
-                <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"10px 16px"}}>
-                  {d.lines&&(
-                    <div style={{fontSize:".7rem",color:"#64748b",marginBottom:8}}>
-                      {d.lines.map(l=><div key={l.id}>• {l.itemName} — {l.qty} {l.unit} × {fmt(n(l.actUnitCost)||n(l.estUnitCost))}</div>)}
+            );
+          } else {
+            const {pr}=g;
+            const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
+            const deal=wonDeals.find(d=>d.id===pr.projectId);
+            const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
+            return(
+              <div key={pr.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:180}}>
+                    <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{pr.itemName}</span>
+                      <span style={{fontSize:".68rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{pr.status}</span>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{pr.category}</span>
+                      <span style={{fontSize:".68rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 8px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
                     </div>
-                  )}
-                  <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:".7rem",color:"#64748b",marginBottom:8}}>
-                    <span>Requested: {a.requestedBy||"—"}</span>
-                    <span>Approved: {a.approvedBy||"—"}</span>
-                    {a.acctCheckedBy&&<span style={{color:"#3b82f6",fontWeight:600}}>Checked: {a.acctCheckedBy} · {a.acctCheckedAt}</span>}
-                    {a.paymentOrderedBy&&<span style={{color:"#059669",fontWeight:600}}>Payment: {(BANKS.find(b=>b.id===a.paymentBank)||{}).short||a.paymentBank||"—"} · {a.paymentRef||"no ref"} · {a.paymentOrderedBy} · {a.paymentOrderedAt}</span>}
-                  </div>
-                  <textarea value={draft} onChange={e=>setNotesDraft(p=>({...p,[d.key]:e.target.value}))} rows={2}
-                    placeholder="Accounting notes — receipts checked, OR/SI numbers, discrepancies…"
-                    disabled={!canAct}
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 11px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box",background:canAct?"#fff":"#f8fafc"}}/>
-                  <div style={{display:"flex",gap:6,alignItems:"center",marginTop:8,flexWrap:"wrap"}}>
-                    {canAct&&draft!==(a.acctNotes||"")&&(
-                      <button onClick={()=>{d.apply({acctNotes:draft});toastEmit&&toastEmit("Notes saved","success");}}
-                        style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>💾 Save Notes</button>
+                    <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
+                      {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
+                      <span>Qty: {pr.qty} {pr.unit}</span>
+                      {pr.supplier&&<span>🏭 {pr.supplier}</span>}
+                      <span>By: {pr.requestedBy||"—"}</span>
+                      {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {pr.approvedBy}</span>}
+                    </div>
+                    {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&(
+                      <div style={{marginTop:6,display:"flex",alignItems:"center",gap:6}}>
+                        <div style={{width:100,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:delivPct+"%",background:delivPct===100?"#10b981":"#f59e0b",borderRadius:2}}/></div>
+                        <span style={{fontSize:".67rem",color:delivPct===100?"#059669":"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
+                      </div>
                     )}
-                    <div style={{marginLeft:"auto",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                      {canAct&&a.acctStatus==="For Accounting"&&(
-                        <button onClick={()=>{
-                          d.apply({acctStatus:"Checked",acctNotes:draft,acctCheckedBy:session?.name||"",acctCheckedAt:today});
-                          sendTelegramNotification("financialcontrol",`🧾 <b>${d.kind} ${d.number} checked by Accounting</b>\nPayee: ${d.payee}\nAmount: ${fmt(d.amount)}\nChecked by: ${session?.name||"?"}\n→ Ready for Payment Order`);
-                          toastEmit&&toastEmit(`${d.number} checked — ready for payment order`,"success");
-                        }} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Mark Checked</button>
-                      )}
-                      {canAct&&a.acctStatus==="Checked"&&(<>
-                        <select value={bank} onChange={e=>setBankPick(p=>({...p,[d.key]:e.target.value}))} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                          <option value="">— Pay from bank… —</option>
-                          {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
-                        </select>
-                        <input value={ref} onChange={e=>setRefPick(p=>({...p,[d.key]:e.target.value}))} placeholder="Cheque / ref no. (optional)"
-                          style={{width:160,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#1e293b",boxSizing:"border-box"}}/>
-                        <button disabled={!bank} onClick={()=>{
-                          if(!bank) return;
-                          d.apply({acctStatus:"Payment Ordered",paymentBank:bank,paymentRef:ref,paymentOrderedBy:session?.name||"",paymentOrderedAt:today});
-                          const bk=(BANKS.find(b=>b.id===bank)||{}).short||bank;
-                          const pMsg=`💳 <b>Payment Order — ${d.kind} ${d.number}</b>\nPay to: ${d.payee}\nAmount: ${fmt(d.amount)}\nBank: ${bk}${ref?`\nRef: ${ref}`:""}\nBy: ${session?.name||"?"} · ${today}`;
-                          sendTelegramNotification("financialcontrol",pMsg);
-                          toastEmit&&toastEmit(`Payment order created for ${d.number} (${bk})`,"success");
-                        }} style={{background:bank?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:bank?"#fff":"#94a3b8",cursor:bank?"pointer":"not-allowed",fontFamily:"inherit",fontWeight:700}}>💳 Create Payment Order</button>
-                      </>)}
-                      {a.acctStatus==="Payment Ordered"&&(
-                        <button onClick={()=>printPaymentOrder(d)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print Payment Order</button>
-                      )}
+                  </div>
+                  <div style={{display:"flex",gap:10,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{fmt(actTotal)}</span>
+                    <div style={{display:"flex",gap:6}}>
+                      <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                        {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                      </select>
+                      <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                      {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this PR?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
                     </div>
                   </div>
                 </div>
-              )}
-            </div>
-          );
+              </div>
+            );
+          }
         })}
       </div>
     </div>
@@ -16586,7 +13842,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 }
 
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
-function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
+function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
   const[view,setView]=useState("list"); // list | project | company
   const[selCostProject,setSelCostProject]=useState(null); // selected project dealId
 
@@ -16596,28 +13852,16 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
 
   // Build per-project costing data
   const projectData = useMemo(()=>{
-    return wonDeals.filter(deal=>!deal.parentDealId).map(deal=>{
+    return wonDeals.map(deal=>{
       const budget = budgets[deal.id]||emptyBudget();
-      const dealRelatedIds=new Set([deal.id,...wonDeals.filter(cd=>cd.parentDealId===deal.id).map(cd=>cd.id)]);
-      const dealPRs = prs.filter(p=>dealRelatedIds.has(p.projectId)&&p.status!=="Cancelled");
-      const dealExps= exps.filter(e=>dealRelatedIds.has(e.projectId)&&!e.poRef); // PO/WO-tagged expenses: commitment already counted via the PO/WO
-      const dealSWOs= (swos||[]).filter(w=>dealRelatedIds.has(w.projectId)&&w.status!=="Cancelled");
+      const dealPRs = prs.filter(p=>p.projectId===deal.id&&p.status!=="Cancelled");
+      const dealExps= exps.filter(e=>e.projectId===deal.id);
 
-      const mk=()=>({Materials:0,Labor:0,Overhead:0,Subcon:0});
-      const actuals=mk(),committed=mk(),pending=mk();
+      const actuals={Materials:0,Labor:0,Overhead:0,Subcon:0};
       dealPRs.forEach(p=>{
-        const cat=BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials";
-        const estC=n(p.estUnitCost)*n(p.qty);
-        const actC=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-        if(p.status==="Delivered"||p.status==="Partially Delivered")actuals[cat]+=actC;
-        else if(p.status==="PO Issued")committed[cat]+=estC;
-        else pending[cat]+=estC;
-      });
-      dealSWOs.forEach(w=>{
-        const amt=n(w.contractAmount);
-        if(w.status==="Completed")actuals.Subcon+=amt;
-        else if(w.status==="Issued"||w.status==="In Progress")committed.Subcon+=amt;
-        else pending.Subcon+=amt;
+        const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+        const cat=p.budgetCategory||"Materials";
+        if(actuals[cat]!==undefined) actuals[cat]+=cost;
       });
       dealExps.forEach(e=>{
         const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
@@ -16626,45 +13870,38 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
 
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(budget[c]),0);
       const totalActual=BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
-      const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+committed[c],0);
-      const totalPending=BUDGET_CATS.reduce((s,c)=>s+pending[c],0);
-      const totalAtCompletion=totalActual+totalCommitted+totalPending;
-      const contractVal=n(deal.value)+wonDeals.filter(cd=>cd.parentDealId===deal.id).reduce((s,cd)=>s+n(cd.value),0);
+      const contractVal=n(deal.value)||0;
       const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
-      const eacMargin=contractVal>0?Math.round((contractVal-totalAtCompletion)/contractVal*100):null;
-      const budgetVariance=totalBudget-totalAtCompletion;
-      const isOverBudget=totalBudget>0&&totalAtCompletion>totalBudget;
+      const budgetVariance=totalBudget-totalActual;
+      const isOverBudget=totalBudget>0&&totalActual>totalBudget;
 
-      return{deal,budget,actuals,committed,pending,totalBudget,totalActual,totalCommitted,totalPending,totalAtCompletion,contractVal,grossMargin,eacMargin,budgetVariance,isOverBudget,prCount:dealPRs.length};
+      return{deal,budget,actuals,totalBudget,totalActual,contractVal,grossMargin,budgetVariance,isOverBudget,prCount:dealPRs.length};
     });
-  },[wonDeals,budgets,prs,exps,swos]);
+  },[wonDeals,budgets,prs,exps]);
 
   // Company-wide totals
   const companyTotals=useMemo(()=>{
     const totals={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    const commTotals={Materials:0,Labor:0,Overhead:0,Subcon:0};
     const budgetTotals={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    let totalContract=0,totalActual=0,totalBudget=0,totalCommitted=0,totalAtCompletion=0;
+    let totalContract=0,totalActual=0,totalBudget=0;
     projectData.forEach(pd=>{
-      BUDGET_CATS.forEach(c=>{totals[c]+=pd.actuals[c];commTotals[c]+=pd.committed[c];budgetTotals[c]+=n(pd.budget[c]);});
+      BUDGET_CATS.forEach(c=>{totals[c]+=pd.actuals[c];budgetTotals[c]+=n(pd.budget[c]);});
       totalContract+=pd.contractVal;
       totalActual+=pd.totalActual;
-      totalCommitted+=pd.totalCommitted;
-      totalAtCompletion+=pd.totalAtCompletion;
       totalBudget+=pd.totalBudget;
     });
-    return{totals,commTotals,budgetTotals,totalContract,totalActual,totalCommitted,totalAtCompletion,totalBudget};
+    return{totals,budgetTotals,totalContract,totalActual,totalBudget};
   },[projectData]);
 
   const overBudget=projectData.filter(p=>p.isOverBudget);
-  const lowMargin=projectData.filter(p=>p.eacMargin!==null&&p.eacMargin<20);
+  const lowMargin=projectData.filter(p=>p.grossMargin!==null&&p.grossMargin<20);
 
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Costing Study</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Budget vs actual + committed · {projectData.length} projects · {overBudget.length>0?`${overBudget.length} forecast over budget`:""} {lowMargin.length>0?`· ${lowMargin.length} low EAC margin`:""}</div>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Budget vs actual · {projectData.length} projects · {overBudget.length>0?`${overBudget.length} over budget`:""} {lowMargin.length>0?`· ${lowMargin.length} low margin`:""}</div>
         </div>
         <div style={{display:"flex",gap:8}}>
           {[["list","📋 List"],["project","Per Project"],["company","Company-Wide"]].map(([v,l])=>(
@@ -16675,26 +13912,27 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
         </div>
       </div>
 
-      {/* Alert banners — based on at-completion forecast */}
+      {/* Alert banners */}
       {overBudget.length>0&&(
         <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:".82rem",color:"#dc2626"}}>
-          🚨 <strong>{overBudget.length} project{overBudget.length>1?"s":""} forecast over budget (incl. committed POs):</strong> {overBudget.map(p=>p.deal.client).join(", ")}
+          🚨 <strong>{overBudget.length} project{overBudget.length>1?"s":""} over budget:</strong> {overBudget.map(p=>p.deal.client).join(", ")}
         </div>
       )}
       {lowMargin.length>0&&(
         <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:14,fontSize:".82rem",color:"#c2410c"}}>
-          ⚠️ <strong>{lowMargin.length} project{lowMargin.length>1?"s":""} below 20% EAC margin:</strong> {lowMargin.map(p=>`${p.deal.client} (${p.eacMargin}%)`).join(", ")}
+          ⚠️ <strong>{lowMargin.length} project{lowMargin.length>1?"s":""} below 20% margin:</strong> {lowMargin.map(p=>`${p.deal.client} (${p.grossMargin}%)`).join(", ")}
         </div>
       )}
 
       {view==="company"&&(
         <>
           {/* Company-wide KPIs */}
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(3,1fr)",gap:10,marginBottom:10}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
             {[
               {l:"Total Contract Value", v:fmt(companyTotals.totalContract), c:"#0f172a"},
               {l:"Total Budgeted",       v:fmt(companyTotals.totalBudget),   c:"#3b82f6"},
               {l:"Total Actual Spend",   v:fmt(companyTotals.totalActual),   c:companyTotals.totalActual>companyTotals.totalBudget?"#ef4444":"#10b981"},
+              {l:"Overall Margin",       v:companyTotals.totalContract>0?Math.round((companyTotals.totalContract-companyTotals.totalActual)/companyTotals.totalContract*100)+"%":"—", c:"#8b5cf6"},
             ].map(({l,v,c})=>(
               <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
@@ -16702,46 +13940,24 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
               </div>
             ))}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
-            {[
-              {l:"Committed (PO Issued)",v:fmt(companyTotals.totalCommitted),                                                                                          c:"#f59e0b",sub:"Cash obligations in flight"},
-              {l:"Forecast Cost (EAC)",  v:fmt(companyTotals.totalAtCompletion),                                                                                       c:companyTotals.totalAtCompletion>companyTotals.totalBudget&&companyTotals.totalBudget>0?"#ef4444":"#0f172a",sub:"Actual + committed + pending"},
-              {l:"Current Margin",       v:companyTotals.totalContract>0?Math.round((companyTotals.totalContract-companyTotals.totalActual)/companyTotals.totalContract*100)+"%":"—",      c:"#8b5cf6",sub:"On received costs only"},
-              {l:"Forecast Margin (EAC)",v:companyTotals.totalContract>0?Math.round((companyTotals.totalContract-companyTotals.totalAtCompletion)/companyTotals.totalContract*100)+"%":"—",c:"#6366f1",sub:"At-completion estimate"},
-            ].map(({l,v,c,sub})=>(
-              <div key={l} style={{background:"#fff",borderRadius:12,padding:"12px 16px",border:`1.5px solid ${c}33`,borderLeft:`3px solid ${c}`}}>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c}}>{v}</div>
-                <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
-                <div style={{fontSize:".58rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>
-              </div>
-            ))}
-          </div>
 
           {/* Company-wide by category */}
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
             <div style={{padding:"12px 18px",background:"#1e293b",fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>Cost Breakdown by Category — All Projects</div>
-            <div style={{display:"grid",gridTemplateColumns:"120px 1fr 1fr 1fr 1fr 80px",padding:"8px 18px",gap:10,background:"#334155"}}>
-              {["Category","Budget","Actual","Committed","Budget Left","Share"].map(h=>(
-                <div key={h} style={{fontSize:".62rem",fontWeight:700,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".6px",textAlign:h==="Category"?"left":h==="Share"?"center":"right"}}>{h}</div>
-              ))}
-            </div>
             {BUDGET_CATS.map((cat,i)=>{
               const bgt=companyTotals.budgetTotals[cat];
               const act=companyTotals.totals[cat];
-              const comm=companyTotals.commTotals[cat];
-              const left=bgt-(act+comm);
-              const share=companyTotals.totalAtCompletion>0?Math.round((act+comm)/companyTotals.totalAtCompletion*100):0;
+              const share=companyTotals.totalActual>0?Math.round(act/companyTotals.totalActual*100):0;
               return(
-                <div key={cat} style={{display:"grid",gridTemplateColumns:"120px 1fr 1fr 1fr 1fr 80px",padding:"12px 18px",gap:10,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+                <div key={cat} style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <span style={{width:10,height:10,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],flexShrink:0,display:"inline-block"}}/>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{cat}</span>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{cat}</span>
                   </div>
-                  <div style={{textAlign:"right",color:"#3b82f6",fontWeight:600,fontSize:".82rem"}}>{fmt(bgt)}</div>
-                  <div style={{textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{fmt(act)}</div>
-                  <div style={{textAlign:"right",fontWeight:600,color:comm>0?"#f59e0b":"#cbd5e1",fontSize:".82rem"}}>{comm>0?fmt(comm):"—"}</div>
-                  <div style={{textAlign:"right",color:left<0?"#ef4444":"#059669",fontWeight:600,fontSize:".82rem"}}>{bgt>0?(left<0?"▼":"▲")+" "+fmt(Math.abs(left)):"—"}</div>
-                  <div style={{textAlign:"center",fontSize:".76rem",fontWeight:700,color:"#8b5cf6"}}>{share}%</div>
+                  <div style={{textAlign:"right",color:"#3b82f6",fontWeight:600}}>{fmt(bgt)}</div>
+                  <div style={{textAlign:"right",fontWeight:700,color:act>bgt&&bgt>0?"#ef4444":"#10b981"}}>{fmt(act)}</div>
+                  <div style={{textAlign:"right",color:bgt-act<0?"#ef4444":"#059669",fontWeight:600}}>{bgt>0?(bgt-act<0?"▼":"▲")+" "+fmt(Math.abs(bgt-act)):"—"}</div>
+                  <div style={{textAlign:"center",fontSize:".78rem",fontWeight:700,color:"#8b5cf6"}}>{share}% of total</div>
                 </div>
               );
             })}
@@ -16750,38 +13966,34 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
       )}
 
       {view==="list"&&(
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",overflowX:"auto"}}>
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr .8fr .8fr 70px",background:"#1e293b",padding:"10px 16px",gap:10,minWidth:880}}>
-            {["Project","Contract","Budget","Actual","Committed","Margin","EAC Margin","Status"].map(h=>(
-              <div key={h} style={{fontSize:".64rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:12}}>
+            {["Project","Contract","Budget","Actual Spend","Margin","Status"].map(h=>(
+              <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
             ))}
           </div>
           {projectData.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects yet.</div>}
           {projectData.map((pd,i)=>{
             const isOver=pd.isOverBudget;
-            const isLow=pd.eacMargin!==null&&pd.eacMargin<20;
+            const isLow=pd.grossMargin!==null&&pd.grossMargin<20;
             return(
-              <div key={pd.deal.id} onClick={()=>{setSelCostProject(pd.deal.id);setView("project");}} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr .8fr .8fr 70px",padding:"11px 16px",gap:10,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s",minWidth:880}}
+              <div key={pd.deal.id} onClick={()=>{setSelCostProject(pd.deal.id);setView("project");}} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
                 onMouseLeave={e=>e.currentTarget.style.background=i%2?"#fafafa":"#fff"}>
                 <div>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{pd.deal.client}</div>
                   <div style={{fontSize:".7rem",color:"#64748b",marginTop:1}}>{pd.deal.ceNo||"No CE"} · {pd.deal.contact||pd.deal.product}</div>
                 </div>
-                <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{fmt(pd.contractVal)}</div>
-                <div style={{fontWeight:600,color:"#3b82f6",fontSize:".82rem"}}>{pd.totalBudget>0?fmt(pd.totalBudget):<span style={{color:"#cbd5e1"}}>Not set</span>}</div>
-                <div style={{fontWeight:700,color:"#10b981",fontSize:".82rem"}}>{fmt(pd.totalActual)}</div>
-                <div style={{fontWeight:600,color:pd.totalCommitted>0?"#f59e0b":"#cbd5e1",fontSize:".82rem"}}>{pd.totalCommitted>0?fmt(pd.totalCommitted):"—"}</div>
-                <div style={{fontWeight:700,fontSize:".82rem",color:pd.grossMargin===null?"#94a3b8":"#475569"}}>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>₱{pd.contractVal.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                <div style={{fontWeight:600,color:"#3b82f6",fontSize:".85rem"}}>{pd.totalBudget>0?"₱"+pd.totalBudget.toLocaleString("en-PH",{minimumFractionDigits:0}):<span style={{color:"#cbd5e1"}}>Not set</span>}</div>
+                <div style={{fontWeight:700,color:isOver?"#ef4444":"#10b981",fontSize:".85rem"}}>₱{pd.totalActual.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                <div style={{fontWeight:800,fontSize:".9rem",color:pd.grossMargin===null?"#94a3b8":isLow?"#ef4444":"#059669"}}>
                   {pd.grossMargin!==null?pd.grossMargin+"%":"—"}
                 </div>
-                <div style={{fontWeight:800,fontSize:".88rem",color:pd.eacMargin===null?"#94a3b8":isLow?"#ef4444":"#059669"}}>
-                  {pd.eacMargin!==null?pd.eacMargin+"%":"—"}
-                </div>
                 <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                  {isOver&&<span style={{fontSize:".6rem",background:"#fef2f2",color:"#dc2626",padding:"1px 6px",borderRadius:20,fontWeight:700}}>Over</span>}
-                  {isLow&&!isOver&&<span style={{fontSize:".6rem",background:"#fff7ed",color:"#c2410c",padding:"1px 6px",borderRadius:20,fontWeight:700}}>Low</span>}
-                  {!isOver&&!isLow&&pd.totalBudget>0&&<span style={{fontSize:".6rem",background:"#f0fdf4",color:"#059669",padding:"1px 6px",borderRadius:20,fontWeight:700}}>OK</span>}
+                  {isOver&&<span style={{fontSize:".62rem",background:"#fef2f2",color:"#dc2626",padding:"1px 6px",borderRadius:20,fontWeight:700}}>Over</span>}
+                  {isLow&&<span style={{fontSize:".62rem",background:"#fff7ed",color:"#c2410c",padding:"1px 6px",borderRadius:20,fontWeight:700}}>Low</span>}
+                  {!isOver&&!isLow&&pd.totalBudget>0&&<span style={{fontSize:".62rem",background:"#f0fdf4",color:"#059669",padding:"1px 6px",borderRadius:20,fontWeight:700}}>OK</span>}
                 </div>
               </div>
             );
@@ -16807,62 +14019,52 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
                   {pd.deal.contact&&<div style={{fontSize:".73rem",color:"#64748b",marginTop:1}}>{pd.deal.contact}</div>}
                   <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>{pd.prCount} PRs logged · {pd.deal.stage.replace(/^\d+ · /,"")}</div>
                 </div>
-                <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+                <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
                   {[
-                    {l:"Contract", v:fmt(pd.contractVal),c:"#0f172a"},
-                    {l:"Budget",   v:pd.totalBudget>0?fmt(pd.totalBudget):"Not set",c:"#3b82f6"},
-                    {l:"Actual",   v:fmt(pd.totalActual),c:"#10b981"},
-                    {l:"Committed",v:pd.totalCommitted>0?fmt(pd.totalCommitted):"—",c:pd.totalCommitted>0?"#f59e0b":"#cbd5e1"},
-                    {l:"EAC Cost", v:fmt(pd.totalAtCompletion),c:pd.isOverBudget?"#ef4444":"#0f172a"},
-                    {l:"Margin",   v:pd.grossMargin!==null?pd.grossMargin+"%":"—",c:pd.grossMargin===null?"#94a3b8":"#475569"},
-                    {l:"EAC Margin",v:pd.eacMargin!==null?pd.eacMargin+"%":"—",c:pd.eacMargin===null?"#94a3b8":pd.eacMargin<20?"#ef4444":"#059669"},
+                    {l:"Contract",v:fmt(pd.contractVal),c:"#0f172a"},
+                    {l:"Budget",  v:pd.totalBudget>0?fmt(pd.totalBudget):"Not set",c:"#3b82f6"},
+                    {l:"Actual",  v:fmt(pd.totalActual),c:pd.isOverBudget?"#ef4444":"#10b981"},
+                    {l:"Margin",  v:pd.grossMargin!==null?pd.grossMargin+"%":"—",c:pd.grossMargin===null?"#94a3b8":pd.grossMargin<20?"#ef4444":"#059669"},
                   ].map(({l,v,c})=>(
                     <div key={l} style={{textAlign:"right"}}>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:c}}>{v}</div>
-                      <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:c}}>{v}</div>
+                      <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
                     </div>
                   ))}
                 </div>
               </div>
-              {/* Category breakdown — actual (solid) + committed (translucent) overlay */}
+              {/* Category breakdown */}
               <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:0}}>
                 {BUDGET_CATS.map((cat,i)=>{
                   const bgt=n(pd.budget[cat]);
                   const act=pd.actuals[cat];
-                  const comm=pd.committed[cat];
-                  const pend=pd.pending[cat];
-                  const atC=act+comm+pend;
-                  const actPct=bgt>0?Math.round(act/bgt*100):act>0?999:0;
-                  const eacPct=bgt>0?Math.round(atC/bgt*100):atC>0?999:0;
-                  const overCat=bgt>0&&atC>bgt;
+                  const p=bgt>0?Math.round(act/bgt*100):act>0?999:0;
                   return(
                     <div key={cat} style={{padding:"12px 16px",borderRight:i<3?"1px solid #f1f5f9":"none",borderTop:"1px solid #f1f5f9"}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
                         <span style={{width:8,height:8,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],display:"inline-block"}}/>
                         <span style={{fontSize:".72rem",fontWeight:700,color:"#475569"}}>{cat}</span>
                       </div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:overCat?"#ef4444":"#0f172a"}}>{fmt(act)}</div>
-                      {(comm>0||pend>0)&&<div style={{fontSize:".62rem",color:"#f59e0b",marginTop:1}}>+{fmt(comm+pend)} committed/pending</div>}
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:act>bgt&&bgt>0?"#ef4444":"#0f172a"}}>{fmt(act)}</div>
                       <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>Budget: {bgt>0?fmt(bgt):"—"}</div>
                       {bgt>0&&(
                         <div style={{marginTop:5}}>
-                          <div style={{height:5,background:"#f1f5f9",borderRadius:2,overflow:"hidden",position:"relative"}}>
-                            <div style={{position:"absolute",left:0,top:0,height:"100%",width:Math.min(eacPct,100)+"%",background:overCat?"#fecaca":"#fde68a",borderRadius:2}}/>
-                            <div style={{position:"absolute",left:0,top:0,height:"100%",width:Math.min(actPct===999?100:actPct,100)+"%",background:actPct>100?"#ef4444":"#10b981",borderRadius:2}}/>
+                          <div style={{height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}>
+                            <div style={{height:"100%",width:Math.min(p,100)+"%",background:p>100?"#ef4444":p>80?"#f59e0b":"#10b981",borderRadius:2}}/>
                           </div>
-                          <div style={{fontSize:".65rem",color:overCat?"#ef4444":"#94a3b8",marginTop:2,fontWeight:overCat?700:400}}>{eacPct===999?"No budget":eacPct+"% at completion"}</div>
+                          <div style={{fontSize:".65rem",color:p>100?"#ef4444":"#94a3b8",marginTop:2,fontWeight:p>100?700:400}}>{p===999?"No budget":p+"%"}</div>
                         </div>
                       )}
                     </div>
                   );
                 })}
               </div>
-              {/* Variance note — at-completion forecast */}
+              {/* Variance note */}
               {pd.totalBudget>0&&(
                 <div style={{padding:"8px 18px",background:pd.isOverBudget?"#fef2f2":"#f0fdf4",fontSize:".75rem",fontWeight:600,color:pd.isOverBudget?"#dc2626":"#059669",borderTop:"1px solid #e2e8f0"}}>
                   {pd.isOverBudget
-                    ?`🚨 Forecast over budget by ${fmt(Math.abs(pd.budgetVariance))} at completion${pd.totalCommitted>0?` (incl. ${fmt(pd.totalCommitted)} committed POs not yet received)`:""} — review now`
-                    :`✓ ${fmt(pd.budgetVariance)} budget headroom after committed + pending costs`}
+                    ?`🚨 Over budget by ${fmt(Math.abs(pd.budgetVariance))} — review spend immediately`
+                    :`✓ ${fmt(pd.budgetVariance)} remaining of budget`}
                 </div>
               )}
             </div>
@@ -16874,7 +14076,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
 }
 
 // ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers,poApprovers}){
+function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit}){
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -16886,8 +14088,13 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
   const[convertingId, setConvertingId] = useState(null);
   const[convSupplier, setConvSupplier] = useState("");
   const[convPoNo,     setConvPoNo]     = useState("");
-  const[convPoSuggested, setConvPoSuggested] = useState("");
-  const[convSubmitting,  setConvSubmitting]  = useState(false);
+
+  const nextPoNo = () => {
+    const existing = (prs||[]).map(p=>p.poNumber).filter(Boolean);
+    const nums = existing.map(n=>{const m=n.match(/PO-(\d+)/);return m?Number(m[1]):0;}).filter(x=>x>0);
+    const next = (nums.length?Math.max(...nums):0)+1;
+    return `PO-${String(next).padStart(4,"0")}`;
+  };
 
   const printMR = (mr) => {
     const deal = wonDeals.find(d=>d.id===mr.projectId);
@@ -17076,14 +14283,10 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Material Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <SearchSelect
-                value={form.projectId||null}
-                onChange={v=>f("projectId",v||"")}
-                options={projOptions(wonDeals)}
-                placeholder="Search project name or CE…"
-                noneLabel="— Select Project —"
-                noneValue=""
-              />
+              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
+                <option value="">— Select Project —</option>
+                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+              </Sel>
             </Fld>
             <Fld label="Urgency">
               <Sel value={form.urgency} onChange={e=>f("urgency",e.target.value)}>
@@ -17099,30 +14302,6 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
               <Sel value={form.category} onChange={e=>f("category",e.target.value)}>
                 {PR_CATS.map(c=><option key={c}>{c}</option>)}
               </Sel>
-              {(()=>{
-                if(!form.projectId)return null;
-                const budCat=form.category==="Labor"?"Labor":form.category==="Subcon"?"Subcon":form.category==="Overhead"?"Overhead":"Materials";
-                const relIds=new Set([form.projectId,...wonDeals.filter(cd=>cd.parentDealId===form.projectId).map(cd=>cd.id)]);
-                const budgeted=Number((budgets||{})[form.projectId]?.[budCat]||0);
-                if(!budgeted)return<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:4}}>No {budCat} budget set for this project</div>;
-                let spent=0,comm=0;
-                (prs||[]).filter(p=>relIds.has(p.projectId)&&(BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials")===budCat&&p.status!=="Cancelled").forEach(p=>{
-                  const est=Number(p.estUnitCost||0)*Number(p.qty||0);const act=(Number(p.actUnitCost||0)||Number(p.estUnitCost||0))*Number(p.qty||0);
-                  if(p.status==="Delivered"||p.status==="Partially Delivered")spent+=act;else comm+=est;
-                });
-                (swos||[]).filter(w=>relIds.has(w.projectId)&&budCat==="Subcon"&&w.status!=="Cancelled").forEach(w=>{
-                  if(w.status==="Completed")spent+=Number(w.contractAmount||0);else comm+=Number(w.contractAmount||0);
-                });
-                const remaining=budgeted-spent-comm;
-                const clr=remaining<0?"#ef4444":remaining<budgeted*0.15?"#f59e0b":"#059669";
-                return(
-                  <div style={{background:clr+"0f",border:`1px solid ${clr}33`,borderRadius:6,padding:"4px 8px",marginTop:4,fontSize:".68rem"}}>
-                    <span style={{color:"#64748b"}}>{budCat} budget left: </span>
-                    <span style={{fontWeight:700,color:clr}}>{remaining<0?"Over by ":""}{("₱"+Math.abs(remaining).toLocaleString("en-PH",{minimumFractionDigits:0}))}</span>
-                    <span style={{color:"#94a3b8"}}> of {"₱"+budgeted.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
-                  </div>
-                );
-              })()}
             </Fld>
             <Fld label="Qty & Unit">
               <div style={{display:"flex",gap:8}}>
@@ -17175,7 +14354,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                     <span style={{fontSize:".68rem",background:URGENCY_CLR[mr.urgency]+"22",color:URGENCY_CLR[mr.urgency],border:`1px solid ${URGENCY_CLR[mr.urgency]}44`,borderRadius:20,padding:"1px 9px",fontWeight:600}}>{mr.urgency}</span>
                   </div>
                   <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                    {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
+                    {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
                     <span>Qty: {mr.qty} {mr.unit}</span>
                     {estTotal>0&&<span>Est: {fmt(estTotal)}</span>}
                     <span>By: {mr.requestedBy||"—"}</span>
@@ -17195,44 +14374,35 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}}>
                     <div>
                       <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>Supplier <span style={{color:"#ef4444"}}>*</span></div>
-                      <SearchCombo value={convSupplier} onChange={setConvSupplier}
-                        options={supplierNameOptions(suppliers)} placeholder="Search or type supplier…"/>
+                      <input value={convSupplier} onChange={e=>setConvSupplier(e.target.value)} placeholder="e.g. Pacific Hardware Supply"
+                        style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
                     </div>
                     <div>
                       <div style={{fontSize:".68rem",fontWeight:700,color:"#64748b",marginBottom:3}}>PO Number <span style={{color:"#ef4444"}}>*</span></div>
                       <input value={convPoNo} onChange={e=>setConvPoNo(e.target.value)} placeholder="PO-0001"
                         style={{width:"100%",border:"1.5px solid #93c5fd",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
-                      <div style={{fontSize:".64rem",color:"#94a3b8",marginTop:2}}>Suggested — confirmed on issue to avoid duplicates</div>
                     </div>
                   </div>
                   <div style={{display:"flex",gap:8}}>
-                    <button onClick={async()=>{
-                      if(convSubmitting||!convSupplier.trim()||!convPoNo.trim()) return;
-                      setConvSubmitting(true);
-                      let poNo;
-                      try{ poNo=await claimPoNumber({typed:convPoNo,suggested:convPoSuggested,prs}); }
-                      finally{ setConvSubmitting(false); }
+                    <button onClick={()=>{
+                      if(!convSupplier.trim()||!convPoNo.trim()) return;
                       const dealN=wonDeals.find(d=>d.id===mr.projectId);
-                      const direct=canApprovePO(role,session?.name||"",session?.name||"",poApprovers); // others submit the converted PO for approval
                       addPR({
-                        projectId:mr.projectId, projectName:projDisplayName(dealN),
+                        projectId:mr.projectId, projectName:dealN?.client||"",
                         itemName:mr.itemName, category:mr.category,
                         qty:mr.qty, unit:mr.unit, estUnitCost:mr.estUnitCost||0, actUnitCost:0,
-                        supplier:convSupplier.trim(), poNumber:poNo,
-                        poDate:new Date().toISOString().split("T")[0], status:direct?"PO Issued":"Pending Approval",
-                        requestedBy:mr.requestedBy||"", approvedBy:direct?session?.name||"":"",
-                        acctStatus:direct?"For Accounting":"",
+                        supplier:convSupplier.trim(), poNumber:convPoNo.trim(),
+                        poDate:new Date().toISOString().split("T")[0], status:"PO Issued",
+                        requestedBy:mr.requestedBy||"", approvedBy:session?.name||"",
                         budgetCategory:"Materials", notes:`From MR: ${mr.notes||""}`,
                         description:mr.purpose||"",
-                      },{silent:true});
+                      });
                       updateMR(mr.id,{status:"Converted to PR",statusChangedAt:new Date().toISOString().split("T")[0]});
-                      sendTelegramNotification("operations",`${direct?"✅":"⏳"} <b>Material Request → PO ${direct?"Issued":"Awaiting Approval"}</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${poNo}\nBy: ${session?.name}`);
-                      if(poNo!==convPoNo.trim()) toastEmit&&toastEmit(`Saved as ${poNo} — ${convPoNo.trim()} was already taken by another PO`,"success");
-                      else toastEmit&&toastEmit(direct?`PO ${poNo} issued`:`PO ${poNo} submitted for approval`,"success");
+                      sendTelegramNotification("operations",`✅ <b>Material Request → PO Issued</b>\n${mr.itemName}\nProject: ${dealN?.client||"?"}${dealN?.contact?" — "+dealN.contact:""}\nSupplier: ${convSupplier.trim()}\nPO: ${convPoNo.trim()}\nBy: ${session?.name}`);
                       setConvertingId(null); setConvSupplier(""); setConvPoNo("");
-                    }} disabled={convSubmitting||!convSupplier.trim()||!convPoNo.trim()}
-                      style={{background:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"#1e40af":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"#fff":"#94a3b8",cursor:convSupplier.trim()&&convPoNo.trim()&&!convSubmitting?"pointer":"not-allowed"}}>
-                      {convSubmitting?"⏳ Saving…":canApprovePO(role,session?.name||"",session?.name||"",poApprovers)?"📦 Issue PO":"📦 Submit for Approval"}
+                    }} disabled={!convSupplier.trim()||!convPoNo.trim()}
+                      style={{background:convSupplier.trim()&&convPoNo.trim()?"#1e40af":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:convSupplier.trim()&&convPoNo.trim()?"#fff":"#94a3b8",cursor:convSupplier.trim()&&convPoNo.trim()?"pointer":"not-allowed"}}>
+                      📦 Issue PO
                     </button>
                     <button onClick={()=>{setConvertingId(null);setConvSupplier("");setConvPoNo("");}}
                       style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>
@@ -17243,7 +14413,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
               ) : (
                 canApprove&&mr.status==="Submitted"&&(
                   <div style={{display:"flex",gap:7,marginTop:8}}>
-                    <button onClick={()=>{const sug=computeNextPoNo(prs);setConvertingId(mr.id);setConvPoNo(sug);setConvPoSuggested(sug);setConvSupplier("");}}
+                    <button onClick={()=>{setConvertingId(mr.id);setConvPoNo(nextPoNo());setConvSupplier("");}}
                       style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
                       ✓ Convert to PO
                     </button>
@@ -17452,14 +14622,10 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
           <div style={{fontWeight:800,color:"#0f172a",marginBottom:16}}>New Budget Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <SearchSelect
-                value={form.projectId||null}
-                onChange={v=>f("projectId",v||"")}
-                options={projOptions(wonDeals)}
-                placeholder="Search project name or CE…"
-                noneLabel="— Select Project —"
-                noneValue=""
-              />
+              <Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}>
+                <option value="">— Select Project —</option>
+                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+              </Sel>
             </Fld>
             <Fld label="Purpose" required>
               <Sel value={form.purpose} onChange={e=>f("purpose",e.target.value)}>
@@ -17517,7 +14683,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
                     {br.urgency!=="Normal"&&<span style={{fontSize:".68rem",color:br.urgency==="Urgent"?"#ef4444":"#f59e0b",background:br.urgency==="Urgent"?"#fef2f2":"#fffbeb",border:`1px solid ${br.urgency==="Urgent"?"#fecaca":"#fde68a"}`,borderRadius:20,padding:"1px 9px",fontWeight:600}}>{br.urgency}</span>}
                   </div>
                   <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
-                    {deal&&<span>📁 {projDisplayName(deal)}{deal.contact&&deal.client?` — ${deal.client}`:""}</span>}
+                    {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
                     {br.dateNeeded&&<span>📅 Needed by {br.dateNeeded}</span>}
                     <span>By: {br.requestedBy||"—"}</span>
                     <span>{br.createdDate}</span>
@@ -17577,11 +14743,6 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
-  const[billingView,  setBillingView]  =useState("projects"); // projects | clients
-  const[soaClient,    setSoaClient]   =useState(null);
-  const[soaNotes,     setSoaNotes]    =useState(`Thank you for choosing GMD Productions Inc.! We truly value your partnership and trust in our work.\n\nKindly remit payment to any of the following accounts:\n\nGMD - BDO CHECKING\nAccount No: 012758 000 370\nAccount Name: GMD Productions Inc.\n\nGMD - BPI CHECKING\nAccount No: 6011 0482 03\nAccount Name: GMD Productions Inc.\n\nGMD - METROBANK\nAccount No: 382-7-38202059-2\nAccount Name: GMD Productions Inc.\n\nGMD - UNIONBANK\nAccount No: 0018 0000 8603\nAccount Name: GMD Productions Inc.\n\nPlease send proof of payment to sales@gmd.ph or contact us at +63 9189338436.\nThank you!`);
-  const[showCleared,  setShowCleared] =useState(false);
-  const[selectedMs,   setSelectedMs]  =useState(new Set());
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -17810,18 +14971,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   };
 
   // Per-project summary for list
-  const projectSummaries=[...wonDeals,...completedDeals].filter(d=>!d.parentDealId).map(d=>{
-    const children=[...wonDeals,...completedDeals,...deals].filter(c=>c.parentDealId===d.id);
-    const childIds=children.map(c=>c.id);
-    const allDealIds=[d.id,...childIds];
-    const ms=billings.filter(b=>allDealIds.includes(b.dealId));
+  const projectSummaries=[...wonDeals,...completedDeals].map(d=>{
+    const ms=billings.filter(b=>b.dealId===d.id);
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
     const balance  =Math.max(0,billed-collected);
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=billed>0&&balance===0;
-    const totalContractValue=n(d.value)+children.reduce((s,c)=>s+n(c.value),0);
-    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length,childCount:childIds.length,totalContractValue};
+    return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
   }).filter(({d,balance,hasOverdue,fullyPaid})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
@@ -17914,426 +15071,73 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         );
       })()}
 
-      {/* ── VIEW TOGGLE + SEARCH + FILTER ──────────────────────────────── */}
+      {/* ── SEARCH + FILTER ────────────────────────────────────────────── */}
       <div style={{display:"flex",gap:10,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-        {/* View toggle */}
-        <div style={{display:"flex",background:"#f1f5f9",borderRadius:8,padding:3,gap:2}}>
-          {[["projects","📋 By Project"],["clients","👥 By Client"]].map(([v,l])=>(
-            <button key={v} onClick={()=>setBillingView(v)}
-              style={{padding:"5px 12px",borderRadius:6,border:"none",background:billingView===v?"#1e293b":"transparent",color:billingView===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:billingView===v?700:500,cursor:"pointer",whiteSpace:"nowrap",transition:"all .15s"}}>
-              {l}
-            </button>
-          ))}
-        </div>
         <div style={{flex:1,minWidth:200,position:"relative"}}>
           <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem",pointerEvents:"none"}}>🔍</span>
           <input value={billingSearch} onChange={e=>setBillingSearch(e.target.value)} placeholder="Search project, CE no, or contact…"
             style={{width:"100%",paddingLeft:32,paddingRight:10,paddingTop:8,paddingBottom:8,border:"1.5px solid #e2e8f0",borderRadius:8,fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
         </div>
-        {billingView==="projects"&&<div style={{display:"flex",gap:6}}>
+        <div style={{display:"flex",gap:6}}>
           {[["all","All"],["outstanding","Outstanding"],["overdue","Overdue"],["paid","Fully Paid"]].map(([v,l])=>(
             <button key={v} onClick={()=>setBillingFilter(v)}
               style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${billingFilter===v?"#1e293b":"#e2e8f0"}`,background:billingFilter===v?"#1e293b":"#fff",color:billingFilter===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:billingFilter===v?700:400,cursor:"pointer",whiteSpace:"nowrap"}}>
               {l}
             </button>
           ))}
-        </div>}
+        </div>
       </div>
 
-      {/* ── BY CLIENT VIEW ─────────────────────────────────────────────── */}
-      {billingView==="clients"&&(()=>{
-        // Group all project summaries by client name
-        const allSummaries=[...wonDeals,...completedDeals].filter(d=>!d.parentDealId).map(d=>{
-          const childIds=deals.filter(c=>c.parentDealId===d.id).map(c=>c.id);
-          const allIds=[d.id,...childIds];
-          const ms=billings.filter(b=>allIds.includes(b.dealId));
-          const billed=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
-          const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
-          const balance=Math.max(0,billed-collected);
-          const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
-          const fullyPaid=billed>0&&balance===0;
-          return{d,ms,billed,collected,balance,hasOverdue,fullyPaid};
-        });
-        // Group by client
-        const clientMap={};
-        allSummaries.forEach(s=>{
-          const c=s.d.client||"Unknown";
-          if(!clientMap[c]) clientMap[c]={client:c,projects:[],billed:0,collected:0,balance:0,hasOverdue:false};
-          clientMap[c].projects.push(s);
-          clientMap[c].billed+=s.billed;
-          clientMap[c].collected+=s.collected;
-          clientMap[c].balance+=s.balance;
-          if(s.hasOverdue) clientMap[c].hasOverdue=true;
-        });
-        const clientRows=Object.values(clientMap)
-          .filter(c=>!billingSearch||c.client.toLowerCase().includes(billingSearch.toLowerCase()))
-          .sort((a,b)=>b.balance-a.balance);
-        return(
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px",background:"#1e293b",padding:"7px 14px",gap:10}}>
-              {["Client","Total Billed","Total Collected","Balance Due",""].map(h=>(
-                <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
-              ))}
-            </div>
-            {clientRows.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No clients found.</div>}
-            {clientRows.map((c,i)=>(
-              <div key={c.client}
-                style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px",padding:"7px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:c.hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",alignItems:"center",cursor:"pointer",transition:"background .1s"}}
-                onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
-                onMouseLeave={e=>e.currentTarget.style.background=c.hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
-                <div>
-                  <div style={{display:"flex",alignItems:"center",gap:5}}>
-                    {c.hasOverdue&&<span style={{fontSize:".75rem"}}>🔴</span>}
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{c.client}</span>
-                  </div>
-                  <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1}}>
-                    {c.projects.length} project{c.projects.length!==1?"s":""}
-                    {c.projects.filter(p=>p.hasOverdue).length>0&&<span style={{color:"#ef4444",marginLeft:6,fontWeight:600}}>{c.projects.filter(p=>p.hasOverdue).length} overdue</span>}
-                    {c.balance===0&&c.billed>0&&<span style={{color:"#059669",marginLeft:6,fontWeight:600}}>✓ Cleared</span>}
-                  </div>
-                </div>
-                <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{c.billed>0?fmt(c.billed):<span style={{color:"#e2e8f0"}}>—</span>}</div>
-                <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>{c.collected>0?fmt(c.collected):<span style={{color:"#e2e8f0"}}>—</span>}</div>
-                <div style={{fontWeight:700,color:c.balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>{c.balance>0?fmt(c.balance):"✓ Clear"}</div>
-                <div style={{display:"flex",gap:6}}>
-                  {c.balance>0&&<button onClick={e=>{e.stopPropagation();setSoaClient(c.client);}}
-                    style={{background:"#0f172a",border:"none",borderRadius:6,padding:"4px 9px",fontFamily:"inherit",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}}>
-                    📄 SOA
-                  </button>}
-                </div>
+      {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        {/* Table header */}
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",background:"#1e293b",padding:"10px 18px",gap:12}}>
+          {["Project","Billed","Collected","Balance","Status","Action"].map(h=>(
+            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+          ))}
+        </div>
+        {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
+        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>(
+          <div key={d.id}
+            onClick={()=>setSelDeal(d.id)}
+            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+            onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+            onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                {hasOverdue&&<span style={{color:"#ef4444",fontSize:".8rem"}}>🔴</span>}
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
+                {d.contact&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>— {d.contact}</span>}
               </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* ── BY PROJECT VIEW ────────────────────────────────────────────── */}
-      {billingView==="projects"&&(()=>{
-        const activeRows=projectSummaries.filter(s=>!s.fullyPaid);
-        const clearedRows=projectSummaries.filter(s=>s.fullyPaid);
-        const ColHeaders=()=>(
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",background:"#1e293b",padding:"7px 14px",gap:10}}>
-            {["Project","Contract Price","Billed","Collected","Balance","Status",""].map(h=>(
-              <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.55)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
-            ))}
-          </div>
-        );
-        // Renders a single deal row — isChild=true for addendums
-        const DealRow=(d,i,isChild=false)=>{
-          const ms=billings.filter(b=>b.dealId===d.id);
-          const billed=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
-          const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
-          const balance=Math.max(0,billed-collected);
-          const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
-          const fullyPaid=billed>0&&balance===0;
-          const rt=d.receiptType||"OR", wh=d.withholding||false;
-          const tx=calcTax(d.value||0,rt,wh);
-          const bg=isChild?"#faf5ff":hasOverdue?"#fffafa":i%2?"#fafafa":"#fff";
-          return(
-            <div key={d.id}
-              onClick={()=>setSelDeal(d.id)}
-              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:"1px solid #f1f5f9",background:bg,cursor:"pointer",alignItems:"center",transition:"background .1s",borderLeft:isChild?"3px solid #8b5cf6":"none"}}
-              onMouseEnter={e=>e.currentTarget.style.background=isChild?"#f3e8ff":"#eff6ff"}
-              onMouseLeave={e=>e.currentTarget.style.background=bg}>
-              <div style={{paddingLeft:isChild?14:0}}>
-                <div style={{display:"flex",alignItems:"center",gap:5}}>
-                  {isChild&&<span style={{color:"#8b5cf6",fontSize:".7rem",flexShrink:0}}>↳</span>}
-                  {hasOverdue&&<span style={{color:"#ef4444",fontSize:".75rem"}}>🔴</span>}
-                  {isChild
-                    ? <span style={{fontWeight:600,color:"#6d28d9",fontSize:".78rem"}}>{d.contact||d.client}</span>
-                    : <><span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
-                       {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}</>}
-                </div>
-                <div style={{fontSize:".66rem",color:isChild?"#7c3aed":"#94a3b8",marginTop:1,display:"flex",gap:5,flexWrap:"wrap"}}>
-                  {isChild&&<span style={{background:"#ede9fe",color:"#6d28d9",borderRadius:4,padding:"0 4px",fontWeight:600,fontSize:".62rem"}}>Addendum</span>}
-                  <span>{d.ceNo||"No CE"}</span>
-                  <span>·</span>
-                  <span>{ms.length} milestone{ms.length!==1?"s":""}</span>
-                  {fullyPaid&&<span style={{color:"#059669",fontWeight:700}}>✓ Fully Paid</span>}
-                </div>
-              </div>
-              <div>
-                <div style={{fontWeight:600,color:isChild?"#6d28d9":"#0f172a",fontSize:".8rem"}}>{d.value>0?fmt(d.value):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
-                {d.value>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
-                  {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?"SI / no VAT":"Non-VAT"}
-                  {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
-                </div>}
-              </div>
-              <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
-              <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>{collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
-              <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>{balance>0?fmt(balance):"✓ Clear"}</div>
-              <div>
-                {hasOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Overdue</span>}
-                {fullyPaid&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Paid</span>}
-                {!hasOverdue&&!fullyPaid&&ms.length>0&&<span style={{fontSize:".65rem",background:isChild?"#ede9fe":"#eff6ff",color:isChild?"#6d28d9":"#3b82f6",border:`1px solid ${isChild?"#c4b5fd":"#93c5fd"}`,borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
-                {ms.length===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
-              </div>
-              <div>
-                <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
-                  style={{background:isChild?"#6d28d9":"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
-                  Open →
-                </button>
+              <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>
+                {d.ceNo||"No CE"} · {milestoneCount} milestone{milestoneCount!==1?"s":""}
+                {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
               </div>
             </div>
-          );
-        };
-        // Renders parent row + indented child rows
-        const ProjGroup=({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount,childCount,totalContractValue},i)=>{
-          const children=deals.filter(c=>c.parentDealId===d.id);
-          const rt=d.receiptType||"OR", wh=d.withholding||false;
-          const tx=calcTax(totalContractValue||n(d.value)||0,rt,wh);
-          const contractVal=totalContractValue||n(d.value)||0;
-          const bg=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff";
-          return(
-            <React.Fragment key={d.id}>
-              {/* Parent row */}
-              <div
-                onClick={()=>setSelDeal(d.id)}
-                style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",padding:"6px 14px",gap:10,borderBottom:children.length?"none":"1px solid #f1f5f9",background:bg,cursor:"pointer",alignItems:"center",transition:"background .1s"}}
-                onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
-                onMouseLeave={e=>e.currentTarget.style.background=bg}>
-                <div>
-                  <div style={{display:"flex",alignItems:"center",gap:5}}>
-                    {hasOverdue&&<span style={{color:"#ef4444",fontSize:".75rem"}}>🔴</span>}
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.client}</span>
-                    {d.contact&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>— {d.contact}</span>}
-                  </div>
-                  <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:1,display:"flex",gap:6,flexWrap:"wrap"}}>
-                    <span>{d.ceNo||"No CE"}</span><span>·</span>
-                    <span>{billings.filter(b=>b.dealId===d.id).length} milestone{billings.filter(b=>b.dealId===d.id).length!==1?"s":""}</span>
-                    {childCount>0&&<span style={{color:"#8b5cf6",fontWeight:600}}>+{childCount} addendum{childCount!==1?"s":""}</span>}
-                    {fullyPaid&&<span style={{color:"#059669",fontWeight:700}}>✓ Fully Paid</span>}
-                  </div>
-                </div>
-                <div>
-                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{contractVal>0?fmt(contractVal):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}</div>
-                  {contractVal>0&&<div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>
-                    {rt==="OR"?`+VAT ₱${(tx.vat||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`:rt==="SI"?"SI / no VAT":"Non-VAT"}
-                    {wh&&<span style={{color:"#f59e0b",marginLeft:4}}>−WH</span>}
-                    {childCount>0&&<span style={{color:"#8b5cf6",marginLeft:4}}>incl. {childCount} addendum{childCount!==1?"s":""}</span>}
-                  </div>}
-                </div>
-                <div style={{fontWeight:600,color:"#3b82f6",fontSize:".8rem"}}>{billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
-                <div style={{fontWeight:600,color:"#059669",fontSize:".8rem"}}>{collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".72rem"}}>—</span>}</div>
-                <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".8rem"}}>{balance>0?fmt(balance):"✓ Clear"}</div>
-                <div>
-                  {hasOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Overdue</span>}
-                  {fullyPaid&&<span style={{fontSize:".65rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Paid</span>}
-                  {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 7px",fontWeight:700}}>Active</span>}
-                  {milestoneCount===0&&<span style={{fontSize:".65rem",color:"#e2e8f0"}}>—</span>}
-                </div>
-                <div>
-                  <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
-                    style={{background:"#1e293b",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
-                    Open →
-                  </button>
-                </div>
-              </div>
-              {/* Indented child/addendum rows */}
-              {children.map((c,ci)=>DealRow(c,ci,true))}
-              {children.length>0&&<div style={{height:4,background:"#f8f0ff",borderBottom:"1px solid #ede9fe"}}/>}
-            </React.Fragment>
-          );
-        };
-        return(
-          <>
-            {/* Active projects */}
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:14}}>
-              <ColHeaders/>
-              {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
-              {activeRows.length===0&&wonDeals.length>0&&<div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>All projects are cleared!</div>}
-              {activeRows.map((s,i)=>ProjGroup(s,i))}
+            <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>
+              {billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>}
             </div>
-
-            {/* Cleared / Fully Paid */}
-            {(billingFilter==="all"||billingFilter==="paid")&&clearedRows.length>0&&(
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #d1fae5",overflow:"hidden"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#f0fdf4",padding:"8px 14px",borderBottom:"1px solid #d1fae5",cursor:"pointer"}}
-                  onClick={()=>setShowCleared(v=>!v)}>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontSize:".78rem",fontWeight:700,color:"#059669"}}>✓ Cleared Accounts</span>
-                    <span style={{fontSize:".68rem",background:"#d1fae5",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 8px",fontWeight:700}}>{clearedRows.length}</span>
-                  </div>
-                  <span style={{color:"#059669",fontSize:".8rem"}}>{showCleared?"▲ Hide":"▼ Show"}</span>
-                </div>
-                {showCleared&&(
-                  <>
-                    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 90px 72px",background:"#064e3b",padding:"7px 14px",gap:10}}>
-                      {["Project","Contract Price","Billed","Collected","Balance","Status",""].map(h=>(
-                        <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.45)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
-                      ))}
-                    </div>
-                    {clearedRows.map((s,i)=>ProjGroup(s,i))}
-                  </>
-                )}
-              </div>
-            )}
-          </>
-        );
-      })()}
-
-      {/* ── SOA MODAL ──────────────────────────────────────────────────── */}
-      {soaClient&&(()=>{
-        const clientDeals=[...wonDeals,...completedDeals].filter(d=>d.client===soaClient&&!d.parentDealId);
-        const soaDate=new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
-        const rows=clientDeals.map(d=>{
-          const childIds=deals.filter(c=>c.parentDealId===d.id).map(c=>c.id);
-          // Only include milestones with an unpaid balance
-          const allMs=billings.filter(b=>[d.id,...childIds].includes(b.dealId)&&b.status!=="Cancelled");
-          const ms=allMs.filter(m=>{const paid=(m.payments||[]).reduce((s,p)=>s+n(p.amount),0);return Math.max(0,n(m.amount)-paid)>0;});
-          const billed=ms.reduce((s,m)=>s+n(m.amount),0);
-          const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
-          const balance=Math.max(0,billed-collected);
-          return{d,ms,billed,collected,balance};
-        }).filter(r=>r.balance>0);
-        const totalBilled=rows.reduce((s,r)=>s+r.billed,0);
-        const totalCollected=rows.reduce((s,r)=>s+r.collected,0);
-        const totalBalance=rows.reduce((s,r)=>s+r.balance,0);
-        const printSOA=()=>{
-          const win=window.open("","_blank");
-          win.document.write(`<!DOCTYPE html><html><head><title>SOA — ${soaClient}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#1a1a1a;background:#fff;}
-  .page{max-width:780px;margin:0 auto;padding:36px 44px;}
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:14px;border-bottom:2px solid #1e293b;}
-  .co-name{font-weight:900;font-size:13px;margin-bottom:3px;}
-  .co-info{font-size:10.5px;color:#555;line-height:1.6;}
-  .doc-title{font-size:20px;font-weight:700;color:#1e293b;margin-bottom:4px;}
-  .doc-sub{font-size:11px;color:#666;margin-bottom:2px;}
-  table{width:100%;border-collapse:collapse;margin-bottom:16px;}
-  thead tr{background:#1e293b;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
-  th{padding:7px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.7);text-align:left;letter-spacing:.3px;}
-  th.r{text-align:right;}
-  td{padding:7px 10px;font-size:11.5px;border-bottom:1px solid #e2e8f0;vertical-align:top;}
-  td.r{text-align:right;}
-  .proj-header td{background:#f8fafc;font-weight:700;font-size:12px;}
-  .ms-row td{font-size:11px;padding:5px 10px 5px 22px;color:#374151;}
-  .ms-meta{font-size:10px;color:#94a3b8;margin-top:1px;}
-  .totals-row td{font-weight:800;font-size:12.5px;border-top:2px solid #1e293b;border-bottom:none;background:#f8fafc;}
-  .balance-box{background:#fef2f2;border:1.5px solid #fecaca;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-  .balance-label{font-size:11px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;}
-  .balance-amount{font-size:20px;font-weight:900;color:#dc2626;}
-  .notes-box{border:1px solid #e2e8f0;border-radius:8px;padding:14px 16px;margin-bottom:16px;}
-  .notes-title{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#1e293b;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e2e8f0;}
-  .thank-you{font-size:11px;color:#374151;line-height:1.7;margin-bottom:10px;}
-  .bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
-  .bank-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;}
-  .bank-name{font-size:10px;font-weight:700;color:#1e293b;margin-bottom:3px;}
-  .bank-acct{font-size:11px;color:#374151;font-weight:600;}
-  .bank-owner{font-size:10px;color:#94a3b8;}
-  .remit-note{font-size:10.5px;color:#64748b;line-height:1.6;}
-  .footer-bar{margin-top:16px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;text-align:center;}
-  .print-btn{text-align:center;margin-top:20px;}
-  .print-btn button{padding:9px 24px;background:#1e293b;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;}
-  @media print{.print-btn{display:none;}}
-</style></head><body><div class="page">
-  <div class="hdr">
-    <div><div class="co-name">GMD PRODUCTIONS INC</div><div class="co-info">32 Santan Unit H Brgy Fortune Marikina, NCR 1802 PH<br/>+63 9189338436 &nbsp;·&nbsp; sales@gmd.ph<br/>TIN 010-063-229-000</div></div>
-    <div style="text-align:right"><div class="doc-title">STATEMENT OF ACCOUNT</div><div class="doc-sub">Client: <strong>${soaClient}</strong></div><div class="doc-sub">As of: ${soaDate}</div></div>
-  </div>
-  <table>
-    <thead><tr><th>Project / Milestone</th><th class="r">Billed</th><th class="r">Collected</th><th class="r">Balance</th></tr></thead>
-    <tbody>
-      ${rows.map(r=>`
-        <tr class="proj-header">
-          <td><strong>${r.d.contact||r.d.client}</strong>${r.d.ceNo?` <span style="color:#64748b;font-weight:400;font-size:10px">(${r.d.ceNo})</span>`:""}</td>
-          <td class="r">${fmt(r.billed)}</td>
-          <td class="r" style="color:#059669">${fmt(r.collected)}</td>
-          <td class="r" style="color:#dc2626;font-weight:800">${fmt(r.balance)}</td>
-        </tr>
-        ${r.ms.map(m=>{
-          const paid=(m.payments||[]).reduce((s,p)=>s+n(p.amount),0);
-          const bal=Math.max(0,n(m.amount)-paid);
-          if(bal===0) return "";
-          const overdue=m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid";
-          return`<tr class="ms-row"><td>${m.name||"Milestone"}${m.invoiceNo?` <span style="color:#94a3b8">· ${m.invoiceNo}</span>`:""}${m.dueDate?` <span style="color:${overdue?"#dc2626":"#94a3b8"}">· Due ${m.dueDate}${overdue?" ⚠":""}` :"</span>"}</td><td class="r">${fmt(m.amount)}</td><td class="r" style="color:${paid>0?"#059669":"#94a3b8"}">${paid>0?fmt(paid):"—"}</td><td class="r" style="color:#dc2626">${fmt(bal)}</td></tr>`;
-        }).join("")}
-      `).join("")}
-      <tr class="totals-row"><td>TOTAL OUTSTANDING</td><td class="r">${fmt(totalBilled)}</td><td class="r" style="color:#059669">${fmt(totalCollected)}</td><td class="r" style="color:#dc2626">${fmt(totalBalance)}</td></tr>
-    </tbody>
-  </table>
-  <div class="balance-box">
-    <div class="balance-label">Total Amount Due</div>
-    <div class="balance-amount">${fmt(totalBalance)}</div>
-  </div>
-  <div class="notes-box">
-    <div class="notes-title">Notes &amp; Payment Details</div>
-    <div class="thank-you">Thank you for choosing <strong>GMD Productions Inc.</strong>! We truly value your partnership and trust in our work.<br/>Kindly remit payment to any of the following accounts:</div>
-    <div class="bank-grid">
-      <div class="bank-card"><div class="bank-name">GMD – BDO CHECKING</div><div class="bank-acct">012758 000 370</div><div class="bank-owner">GMD Productions Inc.</div></div>
-      <div class="bank-card"><div class="bank-name">GMD – BPI CHECKING</div><div class="bank-acct">6011 0482 03</div><div class="bank-owner">GMD Productions Inc.</div></div>
-      <div class="bank-card"><div class="bank-name">GMD – METROBANK</div><div class="bank-acct">382-7-38202059-2</div><div class="bank-owner">GMD Productions Inc.</div></div>
-      <div class="bank-card"><div class="bank-name">GMD – UNIONBANK</div><div class="bank-acct">0018 0000 8603</div><div class="bank-owner">GMD Productions Inc.</div></div>
-    </div>
-    <div class="remit-note">Please send proof of payment to <strong>sales@gmd.ph</strong> or contact us at <strong>+63 9189338436</strong>. Thank you!</div>
-  </div>
-  <div class="footer-bar">This is a system-generated document &nbsp;·&nbsp; As of ${soaDate}</div>
-  <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
-</div></body></html>`);
-          win.document.close();
-        };
-        return(
-          <Modal open title={`📄 Statement of Account — ${soaClient}`} onClose={()=>setSoaClient(null)} wide>
-            <div style={{marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-              <div style={{fontSize:".8rem",color:"#64748b"}}>Open billings as of {soaDate}</div>
-              <button onClick={printSOA}
-                style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>
-                🖨 Print / Save PDF
+            <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>
+              {collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>}
+            </div>
+            <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>
+              {balance>0?fmt(balance):"✓ Clear"}
+            </div>
+            <div>
+              {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
+              {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
+              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
+              {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
+            </div>
+            <div>
+              <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
+                style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
+                Open →
               </button>
             </div>
-            {/* Notes / banking details editor */}
-            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:14}}>
-              <div style={{fontSize:".72rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".6px",marginBottom:8}}>📝 Notes &amp; Payment Details <span style={{color:"#94a3b8",fontWeight:400,textTransform:"none",letterSpacing:0}}>(appears on printed PDF)</span></div>
-              <textarea
-                value={soaNotes}
-                onChange={e=>{setSoaNotes(e.target.value);if(isSupabaseReady()) sbUpsert('app_settings',{key:'soa_notes',value:e.target.value,updated_at:new Date().toISOString()},'key').catch(()=>{});}}
-                rows={6}
-                style={{width:"100%",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",resize:"vertical",outline:"none",background:"#fff",lineHeight:1.6,boxSizing:"border-box"}}
-                placeholder="Add banking details, payment terms, or any notes to include in the PDF…"
-              />
-            </div>
-            {rows.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8"}}>No outstanding balances for this client.</div>}
-            {rows.map(r=>(
-              <div key={r.d.id} style={{marginBottom:12,border:"1.5px solid #e2e8f0",borderRadius:10,overflow:"hidden"}}>
-                <div style={{background:"#f8fafc",padding:"8px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
-                  <div>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{r.d.contact||r.d.client}</span>
-                    {r.d.ceNo&&<span style={{fontSize:".7rem",color:"#94a3b8",marginLeft:6}}>{r.d.ceNo}</span>}
-                  </div>
-                  <div style={{display:"flex",gap:16,fontSize:".75rem"}}>
-                    <span style={{color:"#3b82f6"}}>Billed: <strong>{fmt(r.billed)}</strong></span>
-                    <span style={{color:"#059669"}}>Collected: <strong>{fmt(r.collected)}</strong></span>
-                    <span style={{color:"#dc2626"}}>Due: <strong>{fmt(r.balance)}</strong></span>
-                  </div>
-                </div>
-                {r.ms.filter(m=>{const p=(m.payments||[]).reduce((s,x)=>s+n(x.amount),0);return Math.max(0,n(m.amount)-p)>0;}).map(m=>{
-                  const paid=(m.payments||[]).reduce((s,p)=>s+n(p.amount),0);
-                  const bal=Math.max(0,n(m.amount)-paid);
-                  return(
-                    <div key={m.id} style={{display:"grid",gridTemplateColumns:"1fr auto auto auto",gap:12,padding:"6px 14px",borderBottom:"1px solid #f1f5f9",alignItems:"center"}}>
-                      <div style={{fontSize:".78rem",color:"#0f172a"}}>
-                        {m.name||"Milestone"}
-                        {m.invoiceNo&&<span style={{fontSize:".68rem",color:"#94a3b8",marginLeft:6}}>{m.invoiceNo}</span>}
-                        {m.dueDate&&<span style={{fontSize:".68rem",color:m.dueDate<today?"#ef4444":"#94a3b8",marginLeft:6}}>Due {m.dueDate}</span>}
-                      </div>
-                      <div style={{fontSize:".75rem",color:"#3b82f6",textAlign:"right"}}>{fmt(m.amount)}</div>
-                      <div style={{fontSize:".75rem",color:"#059669",textAlign:"right"}}>{fmt(paid)}</div>
-                      <div style={{fontSize:".75rem",fontWeight:700,color:"#dc2626",textAlign:"right"}}>{fmt(bal)}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-            {rows.length>0&&(
-              <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>TOTAL OUTSTANDING BALANCE</span>
-                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:"#dc2626"}}>{fmt(totalBalance)}</span>
-              </div>
-            )}
-          </Modal>
-        );
-      })()}
+          </div>
+        ))}
+      </div>
 
       {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
       {selDeal&&(
@@ -18460,29 +15264,6 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           {billings.filter(b=>b.dealId===selDeal).length===0&&!showForm&&(
             <div style={{textAlign:"center",padding:"24px",color:"#94a3b8",fontSize:".84rem"}}>No milestones yet. Hit + Add Milestone to create the first billing.</div>
           )}
-          {/* Bulk-select toolbar */}
-          {canEdit&&billings.filter(b=>b.dealId===selDeal).length>0&&(
-            <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6,flexWrap:"wrap"}}>
-              <button onClick={()=>{
-                const ids=billings.filter(b=>b.dealId===selDeal).map(b=>b.id);
-                setSelectedMs(prev=>prev.size===ids.length?new Set():new Set(ids));
-              }} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:600,color:"#475569",cursor:"pointer"}}>
-                {selectedMs.size===billings.filter(b=>b.dealId===selDeal).length?"☑ Deselect All":"☐ Select All"}
-              </button>
-              {selectedMs.size>0&&(
-                <button onClick={()=>{
-                  if(!window.confirm(`Delete ${selectedMs.size} milestone${selectedMs.size!==1?"s":""}? This cannot be undone.`)) return;
-                  selectedMs.forEach(id=>deleteMilestone(id));
-                  setSelectedMs(new Set());
-                }} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#dc2626",cursor:"pointer"}}>
-                  🗑 Delete {selectedMs.size} selected
-                </button>
-              )}
-              {selectedMs.size>0&&(
-                <span style={{fontSize:".72rem",color:"#94a3b8"}}>{selectedMs.size} of {billings.filter(b=>b.dealId===selDeal).length} selected</span>
-              )}
-            </div>
-          )}
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {billings.filter(b=>b.dealId===selDeal).map(ms=>{
               const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
@@ -18492,9 +15273,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
               const isOverdue=ms.dueDate&&ms.dueDate<today&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled";
               return(
-                <div key={ms.id} style={{background:selectedMs.has(ms.id)?"#fef2f2":"#f8fafc",borderRadius:10,border:`1.5px solid ${selectedMs.has(ms.id)?"#fca5a5":isOverdue?"#fecaca":sClr+"33"}`,padding:"12px 16px"}}>
+                <div key={ms.id} style={{background:"#f8fafc",borderRadius:10,border:`1.5px solid ${isOverdue?"#fecaca":sClr+"33"}`,padding:"12px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
-                    {canEdit&&<input type="checkbox" checked={selectedMs.has(ms.id)} onChange={e=>{setSelectedMs(prev=>{const n=new Set(prev);e.target.checked?n.add(ms.id):n.delete(ms.id);return n;});}} style={{marginTop:3,flexShrink:0,width:15,height:15,cursor:"pointer"}} onClick={e=>e.stopPropagation()}/>}
                     <div style={{flex:1}}>
                       <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
                         <span style={{fontWeight:700,color:"#0f172a"}}>{ms.name}</span>
@@ -18639,88 +15419,6 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               );
             })}
           </div>
-
-          {/* ── Addendum / child deal milestones ── */}
-          {(()=>{
-            const children=deals.filter(c=>c.parentDealId===selDeal);
-            if(children.length===0) return null;
-            return(
-              <div style={{marginTop:20}}>
-                {children.map(child=>{
-                  const cMs=billings.filter(b=>b.dealId===child.id);
-                  const rt=child.receiptType||deal?.receiptType||"OR";
-                  const wh=child.withholding??deal?.withholding??false;
-                  const cBilled=cMs.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
-                  const cCollected=cMs.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
-                  return(
-                    <div key={child.id} style={{marginBottom:16,borderRadius:12,border:"2px solid #e9d5ff",overflow:"hidden"}}>
-                      {/* Addendum header */}
-                      <div style={{background:"#f5f3ff",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-                        <div>
-                          <span style={{fontWeight:700,color:"#7c3aed",fontSize:".85rem"}}>📎 Addendum — {child.contact||child.ceNo||child.id.slice(-6)}</span>
-                          {child.ceNo&&<span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:8}}>{child.ceNo}</span>}
-                        </div>
-                        <div style={{display:"flex",gap:16,fontSize:".78rem"}}>
-                          <span style={{color:"#3b82f6",fontWeight:600}}>Billed: {fmt(cBilled)}</span>
-                          <span style={{color:"#059669",fontWeight:600}}>Collected: {fmt(cCollected)}</span>
-                          {cBilled>cCollected&&<span style={{color:"#ef4444",fontWeight:700}}>Due: {fmt(cBilled-cCollected)}</span>}
-                        </div>
-                      </div>
-                      {/* Addendum milestones */}
-                      <div style={{padding:"8px 16px",background:"#faf5ff"}}>
-                        {cMs.length===0?(
-                          <div style={{fontSize:".78rem",color:"#94a3b8",fontStyle:"italic",padding:"8px 0"}}>No milestones for this addendum yet.</div>
-                        ):cMs.map(ms=>{
-                          const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
-                          const tx=calcTax(ms.amount,ms.receiptType??rt,ms.withholding??wh);
-                          const balance=Math.max(0,tx.netReceivable-paidTotal);
-                          const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
-                          return(
-                            <div key={ms.id} style={{background:"#fff",borderRadius:8,border:`1px solid ${sClr}33`,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
-                              <div style={{flex:1}}>
-                                <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
-                                  <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{ms.name}</span>
-                                  <span style={{fontSize:".65rem",background:sClr+"22",color:sClr,border:`1px solid ${sClr}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{ms.status}</span>
-                                </div>
-                                <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
-                                  <span>{fmt(tx.netReceivable)}</span>
-                                  {ms.dueDate&&<span>Due: {ms.dueDate}</span>}
-                                  {balance>0&&<span style={{color:"#ef4444",fontWeight:700}}>Balance: {fmt(balance)}</span>}
-                                </div>
-                              </div>
-                              <div style={{display:"flex",gap:5,flexShrink:0}}>
-                                {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
-                                  <button onClick={()=>setShowPay(showPay===ms.id?null:ms.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",color:"#059669",cursor:"pointer"}}>+ Pay</button>
-                                )}
-                                {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 7px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
-                                {canEdit&&<button onClick={()=>{if(window.confirm("Delete?"))deleteMilestone(ms.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px",fontFamily:"inherit",fontSize:".68rem",color:"#dc2626",cursor:"pointer"}}>✕</button>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {/* Payment form for addendum milestones */}
-                        {showPay&&cMs.some(m=>m.id===showPay)&&(
-                          <div style={{background:"#f0fdf4",borderRadius:8,border:"1.5px solid #6ee7b7",padding:14,marginTop:8}}>
-                            <div style={{fontWeight:700,color:"#059669",marginBottom:10,fontSize:".82rem"}}>Log Payment</div>
-                            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8}}>
-                              <Fld label="Amount (₱)"><Inp type="number" value={payForm.amount} onChange={e=>fp("amount",e.target.value)} placeholder="0.00"/></Fld>
-                              <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
-                              <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque / transfer ref…"/></Fld>
-                              <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. BPI transfer"/></Fld>
-                            </div>
-                            <div style={{display:"flex",gap:8,marginTop:8}}>
-                              <button onClick={submitPay} disabled={!payForm.amount} style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>✓ Save Payment</button>
-                              <button onClick={()=>setShowPay(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".78rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
         </Modal>
       )}
     </div>
@@ -19253,7 +15951,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
                     toastEmit(`Stage → ${st}`,"success");
-                    if(STAGE_PROCESS_REMINDERS[st]) setTimeout(()=>setStageReminderModal({dealId:selDeal,stage:st,client:deal.client}),200);
                   };
                   const stageOpts=[...WON_STAGES,"14 · Completed"];
                   return(
@@ -20086,7 +16783,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
 }
 
 // ─── CONSTRUCTION CALENDAR ────────────────────────────────────────────────────
-function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap}){
+function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,setPage,setJumpDeal,today,Wrap}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
@@ -20110,11 +16807,8 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,ceReq
       const deal=wonDeals.find(x=>x.id===d.dealId);
       list.push({date:d.designDeadline,type:"drf",label:deal?.client||d.client||"?",sub:d.drfNo||"DRF",detail:d.projectTitle||"",color:"#ec4899",icon:"📝",dealId:d.dealId});
     });
-    (ceReqs||[]).filter(r=>r.targetDeadline&&r.status!=="Done").forEach(r=>{
-      list.push({date:r.targetDeadline,type:"ce",label:r.clientName||"?",sub:r.projectName||"CE Request",detail:`${r.priority} priority · ${r.status}`,color:"#8b5cf6",icon:"📐",ceId:r.id});
-    });
     return list;
-  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs]);
+  },[wonDeals,pcards,jos,prs,billings,drfs]);
 
   const eventsByDate=React.useMemo(()=>{
     const map={};events.forEach(e=>{if(!map[e.date])map[e.date]=[];map[e.date].push(e);});return map;
@@ -20562,7 +17256,7 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,ceReq
 
 // ─── BOT SETTINGS VIEW ────────────────────────────────────────────────────────
 function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,Wrap}){
-  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:"",financialcontrol:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false,poApprovers:botSettings.poApprovers||""});
+  const[form,setForm]=React.useState({token:botSettings.token||"",chatIds:{...{general:"",ops:"",design:"",procurement:"",sales:"",management:""},...(botSettings.chatIds||{})},hideValueInBots:botSettings.hideValueInBots||false});
   const[testing,setTesting]=React.useState(null);
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
@@ -20574,7 +17268,6 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
     {id:"procurement",label:"📦 Procurement",   hint:"MRs, deliveries, swatch approvals"},
     {id:"sales",      label:"💼 Sales",          hint:"Swatch approvals, deal updates"},
     {id:"management", label:"👔 Management",    hint:"High-level overdue alerts only"},
-    {id:"financialcontrol", label:"💼 Financial Control", hint:"Approved POs/WOs, accounting checks, payment orders — leave empty to use the Management chat"},
   ];
 
   const testChannel=async(chId)=>{
@@ -20593,13 +17286,6 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
   };
 
   const doSave=()=>{saveBotSettings(form);setSaved(true);setTimeout(()=>setSaved(false),2500);};
-  const approversField=(
-    <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:14}}>
-      <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>🛡 PO / WO Approvers</div>
-      <Inp value={form.poApprovers||""} onChange={e=>setForm(p=>({...p,poApprovers:e.target.value}))} placeholder="e.g. Marian Prile (comma-separated names)"/>
-      <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:5}}>Only these Procurement users (and Managers) can approve & issue POs and Subcon Work Orders. Names must match the account name exactly. Leave empty to allow any Procurement officer to approve a colleague's PO.</div>
-    </div>
-  );
 
   return(
     <Wrap>
@@ -20682,8 +17368,6 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
             </div>
           </label>
         </div>
-
-        {approversField}
 
         <button onClick={doSave}
           style={{background:saved?"#059669":"#1e293b",border:"none",borderRadius:10,padding:"12px 28px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",cursor:"pointer",width:"100%",transition:"background .3s"}}>
@@ -21360,7 +18044,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   );
 }
 
-function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit,suppliers,poApprovers}){
+function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit}){
   const[tab,setTab]=useState("Material Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
@@ -21370,7 +18054,7 @@ function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breq
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={poApprovers||""}/>}
+      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
       {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
@@ -21388,6 +18072,246 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
       </div>
       {tab==="Suppliers"&&<SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/>}
       {tab==="Subcontractors"&&<SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/>}
+    </div>
+  );
+}
+
+// ─── BOQ BUILDER ─────────────────────────────────────────────────────────────
+const BOQ_CATS=["Materials","Labor","Subcon","Overhead"];
+const BOQ_CAT_CLR={Materials:"#3b82f6",Labor:"#8b5cf6",Subcon:"#f59e0b",Overhead:"#64748b"};
+const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
+
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
+  const[selDeal,setSelDeal]=useState("");
+  const[form,setForm]=useState({area:"",finishLevel:"Mid-range",scopeNotes:"",ceType:"Fabrication / General",location:""});
+  const[items,setItems]=useState([]);
+  const[aiNotes,setAiNotes]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[error,setError]=useState("");
+  const[boqTitle,setBoqTitle]=useState("");
+  const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+  const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
+  const jo=jos.find(j=>j.dealId===selDeal);
+
+  // When a deal is selected, pre-fill from its data
+  React.useEffect(()=>{
+    if(!deal) return;
+    setForm(p=>({
+      ...p,
+      ceType:deal.ceType||p.ceType,
+      location:deal.location||p.location,
+      scopeNotes:jo?.scopeNotes||deal.awardRequestData?.scopeNotes||p.scopeNotes,
+    }));
+    setBoqTitle(`BOQ — ${deal.client||""}${deal.contact?" · "+deal.contact:""}`);
+  },[selDeal]);
+
+  const generate=async()=>{
+    if(!form.scopeNotes&&!form.area){setError("Please enter at least a scope description or area.");return;}
+    setLoading(true);setError("");setItems([]);setAiNotes("");
+    try{
+      const res=await fetch("/api/boq",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+          client:deal?.client||"",
+          ceType:form.ceType,
+          area:form.area,
+          finishLevel:form.finishLevel,
+          scopeNotes:form.scopeNotes,
+          location:form.location,
+        }),
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data.error||"Generation failed");
+      setItems(data.items.map((it,i)=>({...it,_id:i})));
+      setAiNotes(data.notes||"");
+      toastEmit("BOQ generated — review and adjust quantities/rates before saving.");
+    }catch(e){
+      setError(e.message);
+    }finally{
+      setLoading(false);
+    }
+  };
+
+  const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
+    if(it._id!==id) return it;
+    const upd={...it,[key]:key==="item"||key==="unit"||key==="category"?val:Number(val)||0};
+    upd.total=(upd.qty||0)*(upd.unitCost||0);
+    return upd;
+  }));
+  const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
+  const addRow=()=>setItems(its=>[...its,{_id:Date.now(),category:"Materials",item:"",unit:"lot",qty:1,unitCost:0,total:0}]);
+
+  const grandTotal=items.reduce((s,it)=>s+it.total,0);
+  const byCategory=BOQ_CAT_CLR&&BOQ_CATS.map(c=>({
+    cat:c,total:items.filter(it=>it.category===c).reduce((s,it)=>s+it.total,0),
+    count:items.filter(it=>it.category===c).length,
+  }));
+
+  const exportCSV=()=>{
+    const rows=[["Category","Item","Unit","Qty","Unit Cost","Total"]];
+    items.forEach(it=>rows.push([it.category,it.item,it.unit,it.qty,it.unitCost,it.total]));
+    rows.push(["","","","","GRAND TOTAL",grandTotal]);
+    const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+    const a=document.createElement("a");
+    a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
+    a.download=`BOQ_${(boqTitle||"draft").replace(/[^a-zA-Z0-9]/g,"_")}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  };
+
+  const mob=window.innerWidth<768;
+  const inpSt={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",width:"100%",outline:"none",background:"#fff"};
+
+  return(
+    <div>
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🧮 BOQ Builder</h2>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>AI-assisted Bill of Quantities — review all figures before use</div>
+        </div>
+        {items.length>0&&(
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
+          </div>
+        )}
+      </div>
+
+      {/* Input panel */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16}}>
+        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:14}}>Project Details</div>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":deal?"1fr 1fr 1fr":"1fr 1fr",gap:12,marginBottom:12}}>
+          {/* Project selector */}
+          <div>
+            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Link to Project (optional)</div>
+            <select value={selDeal} onChange={e=>setSelDeal(e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
+              <option value="">— Select a project —</option>
+              {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
+            </select>
+          </div>
+          {/* CE Type */}
+          <div>
+            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Project Type</div>
+            <select value={form.ceType} onChange={e=>ff("ceType",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
+              {CE_TYPES.map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+          {/* Finish Level */}
+          <div>
+            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Finish Level</div>
+            <select value={form.finishLevel} onChange={e=>ff("finishLevel",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
+              {FINISH_LEVELS.map(f=><option key={f}>{f}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginBottom:12}}>
+          <div>
+            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Area / Size (sqm or dimensions)</div>
+            <input value={form.area} onChange={e=>ff("area",e.target.value)} placeholder="e.g. 120 sqm or 4m × 8m lightbox" style={{...inpSt,padding:"7px 10px"}}/>
+          </div>
+          <div>
+            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Location</div>
+            <input value={form.location} onChange={e=>ff("location",e.target.value)} placeholder="e.g. SM North EDSA, 3F Activity Center" style={{...inpSt,padding:"7px 10px"}}/>
+          </div>
+        </div>
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Scope Description <span style={{color:"#94a3b8",fontWeight:400}}>(the more detail, the better the output)</span></div>
+          <textarea value={form.scopeNotes} onChange={e=>ff("scopeNotes",e.target.value)} rows={4}
+            placeholder="e.g. Full retail fit-out for a 120sqm pop-up store. Includes: custom fabricated display gondolas (×6), 2 lightbox headers (3m×1.5m each), vinyl wrapped cashier counter, track lighting (12 units), ceiling works with gypsum board, full perimeter wallpaper application, electrical rough-in and outlets."
+            style={{...inpSt,resize:"vertical"}}/>
+        </div>
+        {error&&<div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:8,padding:"8px 14px",color:"#dc2626",fontSize:".8rem",marginBottom:12}}>{error}</div>}
+        <button onClick={generate} disabled={loading}
+          style={{background:loading?"#e2e8f0":"#1e293b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",color:loading?"#94a3b8":"#fff",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
+          {loading?(
+            <><span style={{display:"inline-block",width:14,height:14,border:"2px solid #94a3b8",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>Generating BOQ…</>
+          ):"✨ Generate BOQ with AI"}
+        </button>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+
+      {/* Results */}
+      {items.length>0&&(
+        <>
+          {/* Title bar */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+            <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)}
+              style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:280,background:"transparent"}}/>
+            <button onClick={addRow} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>+ Add Row</button>
+          </div>
+
+          {/* Category summary pills */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+            {byCategory.filter(b=>b.count>0).map(b=>(
+              <div key={b.cat} style={{background:BOQ_CAT_CLR[b.cat]+"18",border:`1px solid ${BOQ_CAT_CLR[b.cat]}44`,borderRadius:20,padding:"4px 12px",display:"flex",gap:8,alignItems:"center"}}>
+                <span style={{fontWeight:700,fontSize:".72rem",color:BOQ_CAT_CLR[b.cat]}}>{b.cat}</span>
+                <span style={{fontSize:".72rem",color:"#475569",fontWeight:600}}>₱{b.total.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+                <span style={{fontSize:".65rem",color:"#94a3b8"}}>{b.count} item{b.count!==1?"s":""}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:12}}>
+            {/* Column headers */}
+            <div style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
+              {["Category","Item Description","Unit","Qty","Unit Cost (₱)","Total (₱)",""].map((h,i)=>(
+                <div key={i} style={{fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:i>=3&&i<=5?"right":"left",paddingRight:i<5?6:0}}>{h}</div>
+              ))}
+            </div>
+            {/* Rows grouped by category */}
+            {BOQ_CATS.map(cat=>{
+              const catItems=items.filter(it=>it.category===cat);
+              if(!catItems.length) return null;
+              return(
+                <React.Fragment key={cat}>
+                  <div style={{background:BOQ_CAT_CLR[cat]+"12",padding:"4px 12px",borderTop:"1px solid #f1f5f9"}}>
+                    <span style={{fontSize:".68rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:BOQ_CAT_CLR[cat]}}>{cat}</span>
+                  </div>
+                  {catItems.map((it,idx)=>(
+                    <div key={it._id} style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",gap:0,padding:"5px 12px",borderBottom:"1px solid #f8fafc",alignItems:"center",background:idx%2?"#fafafa":"#fff"}}>
+                      <select value={it.category} onChange={e=>updateItem(it._id,"category",e.target.value)}
+                        style={{fontSize:".72rem",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"3px 4px",fontFamily:"inherit",width:"100%",color:BOQ_CAT_CLR[it.category]}}>
+                        {BOQ_CATS.map(c=><option key={c}>{c}</option>)}
+                      </select>
+                      <input value={it.item} onChange={e=>updateItem(it._id,"item",e.target.value)}
+                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",margin:"0 4px"}}/>
+                      <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)}
+                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"center"}}/>
+                      <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)}
+                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"right"}}/>
+                      <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)}
+                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"right",margin:"0 4px"}}/>
+                      <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".8rem",paddingRight:4}}>
+                        {it.total.toLocaleString("en-PH",{minimumFractionDigits:0})}
+                      </div>
+                      <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
+                    </div>
+                  ))}
+                </React.Fragment>
+              );
+            })}
+            {/* Grand total */}
+            <div style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",padding:"10px 12px",background:"#1e293b",borderTop:"2px solid #334155",alignItems:"center"}}>
+              <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
+              <div style={{textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#f59e0b",fontSize:"1.1rem"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+              <div/>
+            </div>
+          </div>
+
+          {/* AI notes */}
+          {aiNotes&&(
+            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#92400e",display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
+              <span style={{fontSize:".9rem",flexShrink:0}}>🤖</span>
+              <span><strong>QS Note:</strong> {aiNotes}</span>
+            </div>
+          )}
+          <div style={{background:"#f0f9ff",border:"1.5px solid #bae6fd",borderRadius:10,padding:"10px 14px",fontSize:".75rem",color:"#0369a1"}}>
+            ⚠ AI-generated quantities and rates are estimates based on typical Philippine market values. Always verify against supplier quotes, site conditions, and project specifications before presenting to a client.
+          </div>
+        </>
+      )}
     </div>
   );
 }
