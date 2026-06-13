@@ -4084,6 +4084,8 @@ export default function App(){
 
   const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
 
+  // ── Warehouse delivery receipt state ──────────────────────────────────────
+  const[whDeliveryEdit,setWhDeliveryEdit]=useState({}); // {[pr.id]: {qty,date,note}}
 
   // ── Auth helpers ───────────────────────────────────────────────────────────
   const login=async(username,password)=>{
@@ -8837,7 +8839,7 @@ export default function App(){
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
     if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
@@ -9012,7 +9014,7 @@ export default function App(){
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
@@ -9100,29 +9102,66 @@ export default function App(){
                   <div style={{background:"#dc2626",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Due Today — Receive and Inspect ({arrivedToday.length})</span></div>
                   {arrivedToday.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
+                    const n2=v=>Number(String(v||"").replace(/,/g,""))||0;
+                    const confirmFull=()=>{
+                      const dr=`Received by ${session?.name||"Warehouse"} on ${today}`;
+                      updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:dr});
+                      sendTelegramNotification("procurement",`📦 <b>Delivery Confirmed (Full)</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
+                      const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
+                      if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Auto-logged from PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});toastEmit(`Stock updated: +${pr.qty} ${pr.unit||""} of ${invMatch.name}`,"success");}
+                      else toastEmit(`Delivery recorded. "${pr.itemName}" not found in inventory — log manually if needed.`,"info");
+                    };
+                    const editing=whDeliveryEdit[pr.id];
                     return(
-                      <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<arrivedToday.length-1?"1px solid #fee2e2":"",background:"#fff"}}>
+                      <React.Fragment key={pr.id}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:editing?"none":"1px solid #fee2e2",background:"#fff",flexWrap:"wrap",gap:8}}>
                         <div>
                           <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{pr.itemName}</div>
                           <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {pr.qty} {pr.unit} · {pr.supplier||"No supplier"}</div>
                           {pr.poNumber&&<div style={{fontSize:".68rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
                         </div>
-                        <button onClick={()=>{
-                          updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:`Received by ${session?.name||"Warehouse"} on ${today}`});
-                          sendTelegramNotification("procurement",`📦 <b>Delivery Confirmed</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
-                          // Auto-log stock IN movement if item exists in inventory
-                          const invMatch=inventory.find(i=>i.name?.toLowerCase()===pr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
-                          if(invMatch){
-                            logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Auto-logged from PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});
-                            toastEmit(`Stock updated: +${pr.qty} ${pr.unit||""} of ${invMatch.name}`,"success");
-                          } else {
-                            toastEmit(`Delivery recorded. "${pr.itemName}" not found in inventory — log manually in Stock Movements if needed.`,"info");
-                          }
-                        }}
-                          style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
-                          ✓ Mark Received
-                        </button>
+                        <div style={{display:"flex",gap:6,flexShrink:0}}>
+                          <button onClick={confirmFull} style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>✓ Full</button>
+                          <button onClick={()=>setWhDeliveryEdit(p=>({...p,[pr.id]:{qty:"",date:today,note:""}}))} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",color:"#475569",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>↳ Partial</button>
+                        </div>
                       </div>
+                      {editing&&(
+                        <div style={{background:"#f0fdf4",borderBottom:"1px solid #fee2e2",padding:"10px 16px",display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+                          <div style={{fontSize:".72rem",fontWeight:700,color:"#166534",minWidth:"100%",marginBottom:2}}>Record partial receipt for <em>{pr.itemName}</em> (ordered: {pr.qty} {pr.unit})</div>
+                          <div>
+                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Qty Received</div>
+                            <input type="number" min={1} max={n2(pr.qty)} value={editing.qty}
+                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],qty:e.target.value}}))}
+                              style={{width:80,border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                          </div>
+                          <div>
+                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Date Received</div>
+                            <input type="date" value={editing.date}
+                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],date:e.target.value}}))}
+                              style={{border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                          </div>
+                          <div style={{flex:1,minWidth:120}}>
+                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>DR / Delivery Note</div>
+                            <input type="text" value={editing.note} placeholder="e.g. DR-2024-0087"
+                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],note:e.target.value}}))}
+                              style={{width:"100%",border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                          </div>
+                          <button disabled={!editing.qty||n2(editing.qty)<=0} onClick={()=>{
+                            const qRec=n2(editing.qty);
+                            const isFullNow=qRec>=n2(pr.qty);
+                            const st=isFullNow?"Delivered":"Partially Delivered";
+                            const dr=editing.note||`Partial receipt by ${session?.name||"Warehouse"} · ${editing.date}`;
+                            updatePR(pr.id,{status:st,qtyDelivered:qRec,deliveryDate:editing.date,deliveryNote:dr});
+                            sendTelegramNotification("procurement",`📦 <b>${isFullNow?"Delivery Confirmed":"Partial Delivery"}</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nReceived: ${qRec} / ${pr.qty} ${pr.unit||""}\nBy: ${session?.name||"Warehouse"} · ${editing.date}${editing.note?"\nDR: "+editing.note:""}`);
+                            const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
+                            if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:qRec,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`${isFullNow?"Full":"Partial"} delivery · PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:editing.date});toastEmit(`Stock updated: +${qRec} ${pr.unit||""} of ${invMatch.name}`,"success");}
+                            else toastEmit(`Receipt recorded (${qRec}/${pr.qty}). Not in inventory — log stock manually if needed.`,"info");
+                            setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;});
+                          }} style={{background:editing.qty&&n2(editing.qty)>0?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontSize:".75rem",color:editing.qty&&n2(editing.qty)>0?"#fff":"#94a3b8",cursor:editing.qty&&n2(editing.qty)>0?"pointer":"not-allowed",fontWeight:700}}>Save Receipt</button>
+                          <button onClick={()=>setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;})} style={{background:"transparent",border:"1px solid #bbf7d0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#166534",cursor:"pointer"}}>Cancel</button>
+                        </div>
+                      )}
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -9131,18 +9170,70 @@ export default function App(){
               {/* Overdue deliveries */}
               {overdueDeliveries.length>0&&(
                 <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fed7aa",overflow:"hidden"}}>
-                  <div style={{background:"#d97706",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ Overdue — Follow Up with Procurement ({overdueDeliveries.length})</span></div>
+                  <div style={{background:"#d97706",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ Overdue — Contact Procurement to follow up ({overdueDeliveries.length})</span></div>
                   {overdueDeliveries.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
                     const daysLate=Math.ceil((now-new Date(pr.deliveryDate))/(1000*60*60*24));
+                    const n2=v=>Number(String(v||"").replace(/,/g,""))||0;
+                    const editing=whDeliveryEdit[pr.id];
                     return(
-                      <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<overdueDeliveries.length-1?"1px solid #fef3c7":"",background:"#fff"}}>
+                      <React.Fragment key={pr.id}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:editing?"none":"1px solid #fef3c7",background:"#fff",flexWrap:"wrap",gap:8}}>
                         <div>
                           <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</div>
                           <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · Expected {pr.deliveryDate} · {pr.supplier||"No supplier"}</div>
+                          {pr.poNumber&&<div style={{fontSize:".68rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
                         </div>
-                        <span style={{fontSize:".72rem",background:"#fff7ed",color:"#d97706",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
+                        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
+                          <span style={{fontSize:".72rem",background:"#fff7ed",color:"#d97706",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
+                          <button onClick={()=>{
+                            const dr=`Received by ${session?.name||"Warehouse"} on ${today}`;
+                            updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:dr});
+                            sendTelegramNotification("procurement",`📦 <b>Late Delivery Confirmed</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
+                            const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
+                            if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Late delivery · PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});}
+                            toastEmit(`Late delivery recorded for ${pr.itemName}`,"success");
+                          }} style={{background:"#059669",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>✓ Received</button>
+                          <button onClick={()=>setWhDeliveryEdit(p=>({...p,[pr.id]:{qty:"",date:today,note:""}}))} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 10px",color:"#475569",fontFamily:"inherit",fontWeight:600,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>↳ Partial</button>
+                        </div>
                       </div>
+                      {editing&&(
+                        <div style={{background:"#f0fdf4",borderBottom:"1px solid #fef3c7",padding:"10px 16px",display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+                          <div style={{fontSize:".72rem",fontWeight:700,color:"#166534",minWidth:"100%",marginBottom:2}}>Record partial receipt for <em>{pr.itemName}</em> (ordered: {pr.qty} {pr.unit})</div>
+                          <div>
+                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Qty Received</div>
+                            <input type="number" min={1} max={n2(pr.qty)} value={editing.qty}
+                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],qty:e.target.value}}))}
+                              style={{width:80,border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                          </div>
+                          <div>
+                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Date Received</div>
+                            <input type="date" value={editing.date}
+                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],date:e.target.value}}))}
+                              style={{border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                          </div>
+                          <div style={{flex:1,minWidth:120}}>
+                            <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>DR / Delivery Note</div>
+                            <input type="text" value={editing.note} placeholder="e.g. DR-2024-0087"
+                              onChange={e=>setWhDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],note:e.target.value}}))}
+                              style={{width:"100%",border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                          </div>
+                          <button disabled={!editing.qty||n2(editing.qty)<=0} onClick={()=>{
+                            const qRec=n2(editing.qty);
+                            const isFullNow=qRec>=n2(pr.qty);
+                            const st=isFullNow?"Delivered":"Partially Delivered";
+                            const dr=editing.note||`Partial receipt by ${session?.name||"Warehouse"} · ${editing.date}`;
+                            updatePR(pr.id,{status:st,qtyDelivered:qRec,deliveryDate:editing.date,deliveryNote:dr});
+                            sendTelegramNotification("procurement",`📦 <b>${isFullNow?"Late Delivery Confirmed":"Partial Delivery"}</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nReceived: ${qRec} / ${pr.qty} ${pr.unit||""}\nBy: ${session?.name||"Warehouse"} · ${editing.date}${editing.note?"\nDR: "+editing.note:""}`);
+                            const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===pr.itemName?.toLowerCase()||inv.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
+                            if(invMatch){logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:qRec,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Late delivery · PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:editing.date});}
+                            toastEmit(`Receipt recorded (${qRec}/${pr.qty} ${pr.unit||""})`,"success");
+                            setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;});
+                          }} style={{background:editing.qty&&n2(editing.qty)>0?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontSize:".75rem",color:editing.qty&&n2(editing.qty)>0?"#fff":"#94a3b8",cursor:editing.qty&&n2(editing.qty)>0?"pointer":"not-allowed",fontWeight:700}}>Save Receipt</button>
+                          <button onClick={()=>setWhDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;})} style={{background:"transparent",border:"1px solid #bbf7d0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#166534",cursor:"pointer"}}>Cancel</button>
+                        </div>
+                      )}
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -9195,7 +9286,7 @@ export default function App(){
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
   }
 
@@ -9257,11 +9348,11 @@ export default function App(){
     );
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/>;
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+    if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} deals={deals} session={session} role={role}/></Wrap>);
   }
 
   // ── GLOBAL DRF PAGE (Sales / Manager) ───────────────────────────────────
-  if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} session={session} role={role}/></Wrap>);
+  if(page==="drf") return(<Wrap><DRFView drfs={drfs} addDRF={addDRF} updateDRF={updateDRF} deleteDRF={deleteDRF} wonDeals={wonDeals} deals={deals} session={session} role={role}/></Wrap>);
 
   // ── PROJECT CARDS ────────────────────────────────────────────────────────────
   // ── TEAM ACTIVITY DASHBOARD ──────────────────────────────────────────────
@@ -11005,7 +11096,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 }
 
 // ─── DESIGN REQUEST FORM (DRF) VIEW ──────────────────────────────────────────
-function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
+function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,deals,session,role}){
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
   const[form,setForm]=useState(emptyDRF());
@@ -15316,11 +15407,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   const[discEditType,setDiscEditType]=useState("amt");
   const[discEditVal,setDiscEditVal]=useState("");
   const[expandedPOs,setExpandedPOs]=useState({});
+  const[deliveryEdit,setDeliveryEdit]=useState({});  // {[pr.id]: {qty,date,note}}
+  const[poHeaderEdit,setPoHeaderEdit]=useState(null); // poNo being edited
+  const[poHeaderForm,setPoHeaderForm]=useState({supplier:"",date:""});
+  const[filterSupplier,setFilterSupplier]=useState("");
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
   // Managers and designated approvers issue directly; everyone else submits for approval
   const directIssue=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
+  // Delivery receipt is Warehouse's job — Procurement should not mark their own POs as received
+  const canReceiveDelivery=role==="Manager"||role==="Operations";
 
   // ── Budget guard: live remaining per project budget line ──
   const rootOf=id=>{const d=wonDeals.find(x=>x.id===id);return d?.parentDealId||id;};
@@ -15471,6 +15568,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   const filteredAll=prs.filter(p=>{
     if(filterProj!=="all"&&p.projectId!==filterProj) return false;
     if(filterStat!=="all"&&p.status!==filterStat) return false;
+    if(filterSupplier.trim()&&!(p.supplier||"").toLowerCase().includes(filterSupplier.trim().toLowerCase())) return false;
     return true;
   });
 
@@ -15535,11 +15633,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
             <Fld label="Unit"><Sel value={editForm.unit} onChange={e=>ef("unit",e.target.value)}>{["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}</Sel></Fld>
             <Fld label="Est Unit Cost (₱)"><Inp type="number" value={editForm.estUnitCost} onChange={e=>ef("estUnitCost",e.target.value)}/></Fld>
             <Fld label="Actual Unit Cost (₱)"><Inp type="number" value={editForm.actUnitCost} onChange={e=>ef("actUnitCost",e.target.value)}/></Fld>
-            <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PR_STATUSES.filter(s=>canReceiveDelivery||s!=="Partially Delivered"&&s!=="Delivered").map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
             <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
             <Fld label="Requested By"><Inp value={editForm.requestedBy} onChange={e=>ef("requestedBy",e.target.value)}/></Fld>
-            {(editForm.status==="Partially Delivered"||editForm.status==="Delivered")&&(<>
+            {(editForm.status==="Partially Delivered"||editForm.status==="Delivered")&&canReceiveDelivery&&(<>
               <Fld label="Qty Delivered"><Inp type="number" value={editForm.qtyDelivered} onChange={e=>ef("qtyDelivered",e.target.value)}/></Fld>
               <Fld label="Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
               <div style={{gridColumn:"1/-1"}}><Fld label="DR / Delivery Note"><Inp value={editForm.deliveryNote} onChange={e=>ef("deliveryNote",e.target.value)}/></Fld></div>
@@ -15700,14 +15798,15 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
 
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
         {[
-          {l:"Total POs",       v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a"},
-          {l:"Pending Approval",v:prs.filter(p=>p.status==="Pending Approval").length,                                            c:"#f59e0b"},
-          {l:"PO Issued",       v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length,           c:"#3b82f6"},
-          {l:"Total Value",     v:"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),   c:"#10b981"},
+          {l:"Total POs",          v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length,                                    c:"#0f172a"},
+          {l:"Pending Approval",   v:prs.filter(p=>p.status==="Pending Approval").length,                                                                               c:"#f59e0b"},
+          {l:"Awaiting Delivery",  v:[...new Set(prs.filter(p=>p.status==="PO Issued"||p.status==="Partially Delivered").map(p=>p.poNumber||p.id))].length,             c:"#8b5cf6"},
+          {l:"Total Value",        v:"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),                                       c:"#10b981"},
         ].map(({l,v,c},i)=>(
-          <div key={l} style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
+          <div key={l} onClick={l==="Awaiting Delivery"?()=>setFilterStat(filterStat==="PO Issued"?"all":"PO Issued"):undefined}
+            style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16,cursor:l==="Awaiting Delivery"?"pointer":"default"}}>
             <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
-            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}{l==="Awaiting Delivery"&&<span style={{marginLeft:4,color:"#8b5cf6",fontSize:".55rem"}}>↑ click to filter</span>}</div>
           </div>
         ))}
       </div>
@@ -15727,6 +15826,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
           <option value="all">All Statuses</option>
           {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
+        <input value={filterSupplier} onChange={e=>setFilterSupplier(e.target.value)} placeholder="Search supplier…"
+          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",minWidth:160,flex:"0 1 200px",boxSizing:"border-box"}}/>
       </div>
 
       {grouped.length===0?(
@@ -15776,7 +15877,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                         const deal=wonDeals.find(d=>d.id===pr.projectId);
                         const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
                         return(
-                          <div key={pr.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 16px",borderBottom:"1px solid #f1f5f9",flexWrap:"wrap"}}>
+                          <React.Fragment key={pr.id}>
+                          <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"8px 16px",borderBottom:deliveryEdit[pr.id]?"none":"1px solid #f1f5f9",flexWrap:"wrap"}}>
                             <div style={{flex:1,minWidth:0}}>
                               <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
                                 <span style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{pr.itemName}</span>
@@ -15802,13 +15904,49 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                               <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{fmt(actTotal)}</span>
                               <select value={pr.status} onChange={e=>{const st=e.target.value;
                                 if(st==="PO Issued"&&(pr.status==="Pending Approval"||pr.status==="Draft")&&!canApprovePO(role,session?.name||"",pr.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or another Procurement officer) to approve.","error");return;}
-                                const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                                {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                                const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};
+                                if(canReceiveDelivery&&(st==="Partially Delivered"||st==="Delivered")&&pr.status!==st){
+                                  updatePR(pr.id,{status:st,...extra});
+                                  setDeliveryEdit(p=>({...p,[pr.id]:{qty:String(st==="Delivered"?pr.qty:(pr.qtyDelivered||"")),date:pr.deliveryDate||today,note:pr.deliveryNote||""}}));
+                                  return;
+                                }
+                                updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                                {PR_STATUSES.filter(s=>canReceiveDelivery||s!=="Partially Delivered"&&s!=="Delivered").map(s=><option key={s}>{s}</option>)}
                               </select>
                               <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"3px 9px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                               {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"3px 9px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                             </div>
                           </div>
+                          {deliveryEdit[pr.id]&&canReceiveDelivery&&(
+                            <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderBottomLeftRadius:8,borderBottomRightRadius:8,padding:"10px 14px",margin:"0 0 0 0",borderBottom:"1px solid #f1f5f9",display:"flex",gap:10,alignItems:"flex-end",flexWrap:"wrap"}}>
+                              <div style={{fontSize:".72rem",fontWeight:700,color:"#166534",minWidth:"100%",marginBottom:2}}>📦 Record delivery for <em>{pr.itemName}</em></div>
+                              <div>
+                                <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Qty Delivered</div>
+                                <input type="number" min={0} max={n(pr.qty)} value={deliveryEdit[pr.id].qty}
+                                  onChange={e=>setDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],qty:e.target.value}}))}
+                                  style={{width:80,border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                              </div>
+                              <div>
+                                <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>Date Received</div>
+                                <input type="date" value={deliveryEdit[pr.id].date}
+                                  onChange={e=>setDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],date:e.target.value}}))}
+                                  style={{border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                              </div>
+                              <div style={{flex:1,minWidth:120}}>
+                                <div style={{fontSize:".62rem",color:"#64748b",marginBottom:2}}>DR / Delivery Note</div>
+                                <input type="text" value={deliveryEdit[pr.id].note} placeholder="e.g. DR-2024-0087"
+                                  onChange={e=>setDeliveryEdit(p=>({...p,[pr.id]:{...p[pr.id],note:e.target.value}}))}
+                                  style={{width:"100%",border:"1.5px solid #bbf7d0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                              </div>
+                              <button onClick={()=>{
+                                updatePR(pr.id,{qtyDelivered:n(deliveryEdit[pr.id].qty),deliveryDate:deliveryEdit[pr.id].date,deliveryNote:deliveryEdit[pr.id].note});
+                                setDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;});
+                                toastEmit&&toastEmit("Delivery recorded","success");
+                              }} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Save</button>
+                              <button onClick={()=>setDeliveryEdit(p=>{const q={...p};delete q[pr.id];return q;})} style={{background:"transparent",border:"1px solid #bbf7d0",borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#166534",cursor:"pointer"}}>Skip</button>
+                            </div>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                       <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 16px",flexWrap:"wrap"}}>
@@ -15832,10 +15970,34 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval{items[0]?.requestedBy===session?.name?" — requested by you":""}</span>
                           )}
                           {isPo&&<button onClick={()=>printPO(g.poNo,supplier,date,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>}
+                          {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(poHeaderEdit===g.poNo){setPoHeaderEdit(null);}else{setPoHeaderEdit(g.poNo);setPoHeaderForm({supplier:supplier||"",date:date||""});}}} style={{background:"#f0f9ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#0369a1",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏ Header</button>}
                           {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(discEditPo===g.poNo){setDiscEditPo(null);}else{setDiscEditPo(g.poNo);setDiscEditType(g.discType||"amt");setDiscEditVal(g.discValue>0?String(g.discValue):"");}}} style={{background:"#fff7ed",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>% Disc</button>}
                           {isPo&&(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+g.poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
                         </div>
                       </div>
+                      {isPo&&poHeaderEdit===g.poNo&&(
+                        <div style={{display:"flex",gap:8,alignItems:"flex-end",padding:"10px 16px",background:"#f0f9ff",borderTop:"1px solid #bae6fd",flexWrap:"wrap"}}>
+                          <span style={{fontSize:".75rem",fontWeight:700,color:"#0369a1",alignSelf:"center"}}>Edit PO Header</span>
+                          <div>
+                            <div style={{fontSize:".6rem",color:"#64748b",marginBottom:2}}>Supplier</div>
+                            <div style={{minWidth:200}}>
+                              <SearchCombo value={poHeaderForm.supplier} onChange={v=>setPoHeaderForm(p=>({...p,supplier:v}))}
+                                options={supplierNameOptions(suppliers)} placeholder="Search or type supplier…"/>
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{fontSize:".6rem",color:"#64748b",marginBottom:2}}>PO Date</div>
+                            <input type="date" value={poHeaderForm.date} onChange={e=>setPoHeaderForm(p=>({...p,date:e.target.value}))}
+                              style={{border:"1.5px solid #bae6fd",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".78rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                          </div>
+                          <button onClick={()=>{
+                            items.forEach(i=>updatePR(i.id,{supplier:poHeaderForm.supplier,poDate:poHeaderForm.date}));
+                            setPoHeaderEdit(null);
+                            toastEmit&&toastEmit(`${g.poNo} header updated`,"success");
+                          }} style={{background:"#0369a1",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".75rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Save</button>
+                          <button onClick={()=>setPoHeaderEdit(null)} style={{background:"transparent",border:"1px solid #bae6fd",borderRadius:7,padding:"5px 10px",fontSize:".75rem",color:"#0369a1",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+                        </div>
+                      )}
                       {isPo&&discEditPo===g.poNo&&(
                         <div style={{display:"flex",gap:8,alignItems:"center",padding:"10px 16px",background:"#fff7ed",borderTop:"1px solid #fed7aa",flexWrap:"wrap"}}>
                           <span style={{fontSize:".75rem",fontWeight:700,color:"#9a3412"}}>PO Discount</span>
@@ -21147,7 +21309,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   );
 }
 
-function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit,suppliers}){
+function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit,suppliers,poApprovers}){
   const[tab,setTab]=useState("Material Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
@@ -21157,7 +21319,7 @@ function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breq
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/>}
+      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={poApprovers||""}/>}
       {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
