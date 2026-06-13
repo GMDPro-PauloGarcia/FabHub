@@ -8705,9 +8705,9 @@ export default function App(){
     );
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos} session={session}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} budgets={budgets} swos={swos}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
@@ -8821,7 +8821,7 @@ export default function App(){
             </div>
           ):null;
         })()}
-        <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/>
+        <BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos} session={session}/>
       </Wrap>
     );
     if(page==="home"&&role==="Procurement") return(
@@ -8878,11 +8878,11 @@ export default function App(){
         />
       </Wrap>
     );
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos} session={session}/></Wrap>);
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} budgets={budgets} swos={swos}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
@@ -9064,8 +9064,8 @@ export default function App(){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/></Wrap>);
-    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
+    if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos} session={session}/></Wrap>);
+    if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} budgets={budgets} swos={swos}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
@@ -9657,7 +9657,7 @@ export default function App(){
         ))}
       </div>
       {costTab==="budget"
-        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos}/>
+        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role} swos={swos} session={session}/>
         :<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role} swos={swos}/>
       }
     </Wrap>
@@ -13523,17 +13523,19 @@ function ExportImportPanel({KEYS, onClose}){
 }
 
 // ─── BUDGET VIEW ──────────────────────────────────────────────────────────────
-function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos}){
+function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos,session}){
   const[selDeal,setSelDeal]=useState(null);
   const deal=wonDeals.find(d=>d.id===selDeal);
   const budget=budgets[selDeal]||emptyBudget();
   const[form,setForm]=useState(budget);
   const[saved,setSaved]=useState(false);
   const[drillCat,setDrillCat]=useState(null);
+  const[showSuppliers,setShowSuppliers]=useState(false);
+  const[showHistory,setShowHistory]=useState(false);
 
   useEffect(()=>{
     const b=budgets[selDeal]||emptyBudget();
-    setForm(b);setSaved(!!budgets[selDeal]?.savedAt);setDrillCat(null);
+    setForm(b);setSaved(!!budgets[selDeal]?.savedAt);setDrillCat(null);setShowSuppliers(false);setShowHistory(false);
   },[selDeal,budgets]);
 
   const f=(k,v)=>{setSaved(false);setForm(p=>({...p,[k]:v}));};
@@ -13631,6 +13633,45 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos}){
     const catSWOs=drillCat==="Subcon"?(swos||[]).filter(w=>relIds.has(w.projectId)&&w.status!=="Cancelled"):[];
     return{catPRs,catExps,catSWOs};
   },[drillCat,selDeal,wonDeals,prs,exps,swos]);
+
+  // Supplier spend concentration for the selected deal
+  const supplierData=useMemo(()=>{
+    if(!selDeal)return{bySupplier:[],grandTotal:0};
+    const relIds=new Set([selDeal,...wonDeals.filter(cd=>cd.parentDealId===selDeal).map(cd=>cd.id)]);
+    const map={};
+    prs.filter(p=>relIds.has(p.projectId)&&p.status!=="Cancelled").forEach(p=>{
+      const sup=(p.supplier||"Unknown").trim();
+      if(!map[sup])map[sup]={supplier:sup,estTotal:0,actTotal:0,count:0,cats:{}};
+      const cat=BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials";
+      const est=n(p.estUnitCost)*n(p.qty);
+      const act=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+      map[sup].estTotal+=est;map[sup].actTotal+=act;map[sup].count++;
+      map[sup].cats[cat]=(map[sup].cats[cat]||0)+act;
+    });
+    (swos||[]).filter(w=>relIds.has(w.projectId)&&w.status!=="Cancelled").forEach(w=>{
+      const sup=(w.subcontractor||"Unknown Subcon").trim();
+      if(!map[sup])map[sup]={supplier:sup,estTotal:0,actTotal:0,count:0,cats:{}};
+      const amt=n(w.contractAmount);
+      map[sup].estTotal+=amt;map[sup].actTotal+=amt;map[sup].count++;
+      map[sup].cats["Subcon"]=(map[sup].cats["Subcon"]||0)+amt;
+    });
+    const arr=Object.values(map).sort((a,b)=>b.actTotal-a.actTotal);
+    const grandTotal=arr.reduce((s,x)=>s+x.actTotal,0);
+    return{bySupplier:arr,grandTotal};
+  },[selDeal,prs,swos,wonDeals]);
+
+  // Save handler — logs a history entry inside the budget object (localStorage only)
+  const handleSave=()=>{
+    const entry={
+      changedAt:new Date().toISOString(),
+      changedBy:session?.name||role||"User",
+      Materials:n(form.Materials),Labor:n(form.Labor),Overhead:n(form.Overhead),Subcon:n(form.Subcon),
+      note:form.notes||""
+    };
+    const prev=budgets[selDeal]?.history||[];
+    saveBudget(selDeal,{...form,history:[entry,...prev].slice(0,25)});
+    setSaved(true);
+  };
 
   // Summary KPIs across all projects
   const overBudgetCount=allProjectData.filter(p=>p.isOver).length;
@@ -13982,12 +14023,18 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos}){
           placeholder="e.g. Includes mobilization, based on approved CE dated…"
           rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".85rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
       </div>
-      <div style={{display:"flex",gap:10,alignItems:"center"}}>
-        <button onClick={()=>{saveBudget(selDeal,form);setSaved(true);}}
+      <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+        <button onClick={handleSave}
           style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>
           {saved?"✓ Saved":"Save Budget"}
         </button>
         {budget.savedAt&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Last saved {new Date(budget.savedAt).toLocaleDateString("en-PH")}</span>}
+        {(budget.history||[]).length>0&&(
+          <button onClick={()=>setShowHistory(h=>!h)}
+            style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>
+            📋 {showHistory?"Hide":"Show"} History ({(budget.history||[]).length})
+          </button>
+        )}
         {totalActual>totalBudget&&totalBudget>0&&(
           <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>🚨 Already over budget by {fmtPHP(totalActual-totalBudget)}</span>
         )}
@@ -13995,6 +14042,92 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role,swos}){
           <span style={{fontSize:".78rem",color:"#f59e0b",fontWeight:700}}>⚠️ Forecast to exceed budget by {fmtPHP(totalAtCompletion-totalBudget)} once committed POs land</span>
         )}
       </div>
+
+      {/* Budget Revision History */}
+      {showHistory&&(budget.history||[]).length>0&&(
+        <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginTop:12}}>
+          <div style={{fontWeight:700,color:"#475569",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:12}}>Budget Revision History</div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {(budget.history||[]).map((h,hi)=>{
+              const prev=(budget.history||[])[hi+1];
+              return(
+                <div key={hi} style={{display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <div style={{flexShrink:0,width:10,height:10,borderRadius:"50%",background:hi===0?"#3b82f6":"#cbd5e1",marginTop:4}}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:4,marginBottom:5}}>
+                      <span style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{h.changedBy||"User"}</span>
+                      <span style={{fontSize:".72rem",color:"#94a3b8"}}>{new Date(h.changedAt).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric",hour:"2-digit",minute:"2-digit"})}</span>
+                    </div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {BUDGET_CATS.map(cat=>{
+                        const cur=h[cat]||0;
+                        const was=prev?.[cat]||0;
+                        const diff=cur-was;
+                        return(
+                          <span key={cat} style={{fontSize:".72rem",background:"#fff",border:"1px solid #e2e8f0",borderRadius:6,padding:"2px 8px",color:"#475569"}}>
+                            {cat}: {fmtPHP(cur)}{prev&&diff!==0&&<span style={{color:diff>0?"#ef4444":"#059669",fontWeight:700}}> ({diff>0?"+":""}{fmtPHP(diff)})</span>}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    {h.note&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:4,fontStyle:"italic"}}>"{h.note}"</div>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Supplier Spend Concentration */}
+      {supplierData.bySupplier.length>0&&(
+        <div style={{marginTop:16,marginBottom:4}}>
+          <button onClick={()=>setShowSuppliers(s=>!s)}
+            style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 16px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600,width:"100%",textAlign:"left",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>🏭 Supplier Spend Breakdown ({supplierData.bySupplier.length} supplier{supplierData.bySupplier.length!==1?"s":""})</span>
+            <span style={{color:"#94a3b8"}}>{showSuppliers?"▲":"▼"}</span>
+          </button>
+          {showSuppliers&&(
+            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginTop:8}}>
+              <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 80px",background:"#334155",padding:"9px 16px",gap:10}}>
+                {["Supplier / Subcon","Categories","Est. Total","Actual / Committed","Concentration"].map(h=>(
+                  <div key={h} style={{fontSize:".63rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
+                ))}
+              </div>
+              {supplierData.bySupplier.map((s,si)=>{
+                const share=supplierData.grandTotal>0?Math.round(s.actTotal/supplierData.grandTotal*100):0;
+                const priceVar=s.actTotal-s.estTotal;
+                const topCats=Object.entries(s.cats).sort((a,b)=>b[1]-a[1]).map(([c])=>c);
+                const isConc=share>=40;
+                return(
+                  <div key={si} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 80px",padding:"10px 16px",gap:10,borderBottom:"1px solid #f1f5f9",background:si%2?"#fafafa":"#fff",alignItems:"center"}}>
+                    <div>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{s.supplier}</div>
+                      <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{s.count} PO{s.count!==1?"s/SWOs":""}</div>
+                    </div>
+                    <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                      {topCats.map(c=><span key={c} style={{fontSize:".6rem",background:BUDGET_CAT_CLR[c]+"18",color:BUDGET_CAT_CLR[c],border:`1px solid ${BUDGET_CAT_CLR[c]}33`,borderRadius:20,padding:"1px 6px",fontWeight:600}}>{c}</span>)}
+                    </div>
+                    <div style={{fontSize:".8rem",color:"#64748b"}}>{fmtPHP(s.estTotal)}</div>
+                    <div>
+                      <div style={{fontSize:".8rem",fontWeight:600,color:"#0f172a"}}>{fmtPHP(s.actTotal)}</div>
+                      {priceVar>50&&<div style={{fontSize:".68rem",color:"#ef4444",fontWeight:600,marginTop:1}}>▲ {fmtPHP(priceVar)} vs est.</div>}
+                      {priceVar<-50&&<div style={{fontSize:".68rem",color:"#059669",fontWeight:600,marginTop:1}}>▼ {fmtPHP(Math.abs(priceVar))} savings</div>}
+                    </div>
+                    <div style={{textAlign:"center"}}>
+                      <div style={{height:5,background:"#f1f5f9",borderRadius:3,overflow:"hidden",marginBottom:3}}>
+                        <div style={{height:"100%",width:share+"%",background:isConc?"#ef4444":share>=25?"#f59e0b":"#10b981",borderRadius:3}}/>
+                      </div>
+                      <span style={{fontSize:".75rem",fontWeight:700,color:isConc?"#ef4444":share>=25?"#f59e0b":"#059669"}}>{share}%</span>
+                      {isConc&&<div style={{fontSize:".58rem",color:"#ef4444",marginTop:1}}>High risk</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -14258,7 +14391,28 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,session,
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-                    <Fld label="Budget Line"><Sel value={item.budgetCategory} onChange={e=>updatePoItem(item._id,"budgetCategory",e.target.value)}>{BUDGET_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+                    <Fld label="Budget Line"><Sel value={item.budgetCategory} onChange={e=>updatePoItem(item._id,"budgetCategory",e.target.value)}>{BUDGET_CATS.map(c=><option key={c}>{c}</option>)}</Sel>
+                      {(()=>{
+                        if(!item.projectId||!item.budgetCategory)return null;
+                        const relIds=new Set([item.projectId,...wonDeals.filter(cd=>cd.parentDealId===item.projectId).map(cd=>cd.id)]);
+                        const budgeted=n(budgets[item.projectId]?.[item.budgetCategory]||0);
+                        if(!budgeted)return<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:4}}>No budget set for this category</div>;
+                        let spent=0,committed2=0;
+                        prs.filter(p=>relIds.has(p.projectId)&&(BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials")===item.budgetCategory&&p.status!=="Cancelled").forEach(p=>{
+                          const est=n(p.estUnitCost)*n(p.qty);const act=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+                          if(p.status==="Delivered"||p.status==="Partially Delivered")spent+=act;else committed2+=est;
+                        });
+                        const remaining=budgeted-spent-committed2;
+                        const clr=remaining<0?"#ef4444":remaining<budgeted*0.1?"#f59e0b":"#059669";
+                        return(
+                          <div style={{background:clr+"0f",border:`1px solid ${clr}33`,borderRadius:6,padding:"4px 8px",marginTop:4,fontSize:".68rem"}}>
+                            <span style={{color:"#64748b"}}>Budget left: </span>
+                            <span style={{fontWeight:700,color:clr}}>{remaining<0?"Over by ":""}{fmtPHP(Math.abs(remaining))}</span>
+                            <span style={{color:"#94a3b8"}}> of {fmtPHP(budgeted)}</span>
+                          </div>
+                        );
+                      })()}
+                    </Fld>
                     <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1}/></Fld>
                     <Fld label="Unit"><Sel value={item.unit} onChange={e=>updatePoItem(item._id,"unit",e.target.value)}>{["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}</Sel></Fld>
                     <Fld label="Est Unit Cost (₱)"><Inp type="number" value={item.estUnitCost} onChange={e=>updatePoItem(item._id,"estUnitCost",e.target.value)} placeholder="0"/></Fld>
@@ -15045,7 +15199,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role,swos}){
 }
 
 // ─── MATERIAL REQUEST VIEW ────────────────────────────────────────────────────
-function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers}){
+function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,toastEmit,suppliers,budgets,swos}){
   const[showForm,setShowForm]=useState(false);
   const[form,setForm]=useState({projectId:"",itemName:"",category:"Materials",qty:1,unit:"pcs",estUnitCost:"",urgency:"Normal",purpose:"",requestedBy:session?.name||"",notes:""});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -15270,6 +15424,30 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
               <Sel value={form.category} onChange={e=>f("category",e.target.value)}>
                 {PR_CATS.map(c=><option key={c}>{c}</option>)}
               </Sel>
+              {(()=>{
+                if(!form.projectId)return null;
+                const budCat=form.category==="Labor"?"Labor":form.category==="Subcon"?"Subcon":form.category==="Overhead"?"Overhead":"Materials";
+                const relIds=new Set([form.projectId,...wonDeals.filter(cd=>cd.parentDealId===form.projectId).map(cd=>cd.id)]);
+                const budgeted=Number((budgets||{})[form.projectId]?.[budCat]||0);
+                if(!budgeted)return<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:4}}>No {budCat} budget set for this project</div>;
+                let spent=0,comm=0;
+                (prs||[]).filter(p=>relIds.has(p.projectId)&&(BUDGET_CATS.includes(p.budgetCategory||"")?p.budgetCategory:"Materials")===budCat&&p.status!=="Cancelled").forEach(p=>{
+                  const est=Number(p.estUnitCost||0)*Number(p.qty||0);const act=(Number(p.actUnitCost||0)||Number(p.estUnitCost||0))*Number(p.qty||0);
+                  if(p.status==="Delivered"||p.status==="Partially Delivered")spent+=act;else comm+=est;
+                });
+                (swos||[]).filter(w=>relIds.has(w.projectId)&&budCat==="Subcon"&&w.status!=="Cancelled").forEach(w=>{
+                  if(w.status==="Completed")spent+=Number(w.contractAmount||0);else comm+=Number(w.contractAmount||0);
+                });
+                const remaining=budgeted-spent-comm;
+                const clr=remaining<0?"#ef4444":remaining<budgeted*0.15?"#f59e0b":"#059669";
+                return(
+                  <div style={{background:clr+"0f",border:`1px solid ${clr}33`,borderRadius:6,padding:"4px 8px",marginTop:4,fontSize:".68rem"}}>
+                    <span style={{color:"#64748b"}}>{budCat} budget left: </span>
+                    <span style={{fontWeight:700,color:clr}}>{remaining<0?"Over by ":""}{("₱"+Math.abs(remaining).toLocaleString("en-PH",{minimumFractionDigits:0}))}</span>
+                    <span style={{color:"#94a3b8"}}> of {"₱"+budgeted.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
+                  </div>
+                );
+              })()}
             </Fld>
             <Fld label="Qty & Unit">
               <div style={{display:"flex",gap:8}}>
@@ -19473,7 +19651,7 @@ function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breq
           <button key={t} onClick={()=>setTab(t)} style={tabStyle(tab===t)}>{t}</button>
         ))}
       </div>
-      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}/>}
+      {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} budgets={budgets} swos={swos}/>}
       {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
