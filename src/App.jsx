@@ -14498,7 +14498,12 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
   const[showGenForm,setShowGenForm]=useState(false);
   const[genParams,setGenParams]=useState({area:"",type:"retail",finish:"standard"});
   const[genBanner,setGenBanner]=useState(null);
+  const[fpAnalyzing,setFpAnalyzing]=useState(false);
+  const[fpResult,setFpResult]=useState(null);
+  const[fpError,setFpError]=useState(null);
+  const[fpPreview,setFpPreview]=useState(null);
   const boqFileRef=useRef(null);
+  const fpFileRef=useRef(null);
   const boqGrandTotal=boqSecs.reduce((s,sec)=>s+sec.items.reduce((ss,it)=>ss+n(it.qty)*n(it.unitCost),0),0);
   const boqVat=boqGrandTotal*0.12;const boqGrandVat=boqGrandTotal+boqVat;
   const handleSave=()=>saveBudget(dealId,{...budget,boq:{date:boqDate,quotationNo:boqQuotNo,sections:boqSecs}});
@@ -14535,6 +14540,35 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
         setBoqSecs(ns2);const first=ns2.find(s=>s.items.length>0);if(first)setBoqExp(first.id);
       }catch(err){alert("Error: "+err.message);}
     };reader.readAsArrayBuffer(file);e.target.value="";
+  };
+  const handleFloorPlan=e=>{
+    const file=e.target.files[0];if(!file)return;
+    e.target.value="";
+    if(!supabase){setFpError("Supabase not configured. Add REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_ANON_KEY to your .env, then deploy the analyze-floor-plan Edge Function.");return;}
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const dataUrl=ev.target.result;
+      setFpPreview(dataUrl);
+      setFpResult(null);setFpError(null);
+      const base64=dataUrl.split(",")[1];
+      const mime=file.type||"image/jpeg";
+      setFpAnalyzing(true);
+      supabase.functions.invoke("analyze-floor-plan",{body:{imageBase64:base64,mimeType:mime}})
+        .then(({data,error})=>{
+          if(error){setFpError(String(error.message||error));return;}
+          if(data?.error){setFpError(data.error);return;}
+          setFpResult(data);
+          setGenParams(p=>({
+            ...p,
+            area:data.totalArea?String(Math.round(data.totalArea)):"",
+            type:(data.projectType&&["kiosk","retail","office","fnb"].includes(data.projectType))?data.projectType:"retail",
+          }));
+          setShowGenForm(true);
+        })
+        .catch(err=>setFpError(String(err)))
+        .finally(()=>setFpAnalyzing(false));
+    };
+    reader.readAsDataURL(file);
   };
   const BOQ_RATES={
     kiosk:{
@@ -14640,8 +14674,10 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
               <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>BOQ Date</div><input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/></div>
               <div><div style={{fontSize:".63rem",color:"#64748b",fontWeight:600,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Quotation No.</div><input value={boqQuotNo} onChange={e=>setBoqQuotNo(e.target.value)} placeholder="e.g. 0051" style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".82rem",width:130,outline:"none"}}/></div>
               <button onClick={()=>boqFileRef.current?.click()} style={{marginLeft:"auto",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>⬆ Import Excel</button>
+              <button onClick={()=>fpFileRef.current?.click()} disabled={fpAnalyzing} title="Upload a floor plan image — AI will extract the area and auto-fill the BOQ generator" style={{background:fpAnalyzing?"#f0fdf4":fpResult?"#ecfdf5":"#f0fdf4",border:`1.5px solid ${fpResult?"#34d399":"#6ee7b7"}`,borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:fpAnalyzing?"#059669":fpResult?"#059669":"#059669",cursor:fpAnalyzing?"wait":"pointer",fontWeight:600,opacity:fpAnalyzing?0.7:1}}>{fpAnalyzing?"⏳ Analyzing…":fpResult?"🗺 Re-scan Floor Plan":"🗺 Scan Floor Plan"}</button>
               <button onClick={()=>setShowGenForm(g=>!g)} style={{background:showGenForm?"#7c3aed":"#f5f3ff",border:"1.5px solid #c4b5fd",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:showGenForm?"#fff":"#7c3aed",cursor:"pointer",fontWeight:600}}>✨ Generate BOQ</button>
               <input ref={boqFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={handleImport}/>
+              <input ref={fpFileRef} type="file" accept="image/*,.pdf" style={{display:"none"}} onChange={handleFloorPlan}/>
             </div>
           ):(
             <div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"center",marginBottom:14,padding:"10px 14px",background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",fontSize:".82rem",color:"#475569"}}>
@@ -14650,6 +14686,38 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
               {boqDate&&<span>📅 {boqDate}</span>}
               {boqQuotNo&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:5,padding:"2px 8px",fontWeight:700}}>Q-No: {boqQuotNo}</span>}
               {boqGrandTotal===0&&<span style={{color:"#ef4444",fontWeight:600}}>⚠ No items yet — switch to Edit to add line items.</span>}
+            </div>
+          )}
+
+          {/* ── FLOOR PLAN AI RESULT ─────────────────────────────────── */}
+          {viewMode==="edit"&&fpError&&(
+            <div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:10,padding:"10px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
+              <span style={{fontSize:".78rem",color:"#991b1b",fontWeight:600}}>⚠ Floor plan scan failed: {fpError}</span>
+              <button onClick={()=>{setFpError(null);setFpPreview(null);}} style={{background:"none",border:"none",cursor:"pointer",color:"#b91c1c",fontWeight:700,padding:"2px 6px"}}>✕</button>
+            </div>
+          )}
+          {viewMode==="edit"&&fpResult&&!fpError&&(
+            <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"12px 16px",marginBottom:12,display:"flex",gap:14,flexWrap:"wrap",alignItems:"flex-start"}}>
+              {fpPreview&&<img src={fpPreview} alt="floor plan" style={{width:80,height:80,objectFit:"cover",borderRadius:8,border:"1.5px solid #a7f3d0",flexShrink:0}}/>}
+              <div style={{flex:1,minWidth:200}}>
+                <div style={{fontWeight:700,color:"#065f46",fontSize:".82rem",marginBottom:6}}>🗺 AI Floor Plan Analysis</div>
+                <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem",color:"#047857"}}>
+                  {fpResult.totalArea&&<span><b>Area:</b> {Math.round(fpResult.totalArea)} sqm</span>}
+                  {fpResult.projectType&&fpResult.projectType!=="unknown"&&<span><b>Type detected:</b> {{kiosk:"Kiosk",retail:"Retail",office:"Office",fnb:"F&B"}[fpResult.projectType]||fpResult.projectType}</span>}
+                </div>
+                {fpResult.spaces?.length>0&&(
+                  <div style={{marginTop:6,display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {fpResult.spaces.slice(0,8).map((sp,i)=>(
+                      <span key={i} style={{background:"#d1fae5",color:"#065f46",borderRadius:5,padding:"2px 8px",fontSize:".72rem",fontWeight:600}}>
+                        {sp.name}{sp.area?` · ${Math.round(sp.area)} sqm`:""}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {fpResult.notes&&<div style={{marginTop:6,fontSize:".72rem",color:"#6b7280",fontStyle:"italic"}}>{fpResult.notes}</div>}
+                <div style={{marginTop:8,fontSize:".72rem",color:"#059669",fontWeight:600}}>✓ Area pre-filled in Generate BOQ below — review and adjust before generating.</div>
+              </div>
+              <button onClick={()=>{setFpResult(null);setFpPreview(null);}} style={{background:"none",border:"none",cursor:"pointer",color:"#6b7280",fontWeight:700,padding:"2px 6px",flexShrink:0}}>✕</button>
             </div>
           )}
 
