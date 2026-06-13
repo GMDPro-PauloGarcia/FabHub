@@ -15054,7 +15054,7 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
     setFpResult(null);setFpError(null);setFpAnalyzing(true);
     const isPdf=file.type==="application/pdf"||file.name.toLowerCase().endsWith(".pdf");
     if(isPdf){
-      // Render first page of PDF to JPEG via PDF.js — avoids payload size limits
+      // Render first page of PDF to JPEG via PDF.js, capped at 1600px to stay under Edge Function payload limits
       const reader=new FileReader();
       reader.onload=async ev=>{
         try{
@@ -15062,11 +15062,18 @@ function BOQModal({dealId,deal,budgets,saveBudget,onClose,session,role,wonDeals}
           window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
           const pdf=await window.pdfjsLib.getDocument({data:new Uint8Array(ev.target.result)}).promise;
           const page=await pdf.getPage(1);
-          const vp=page.getViewport({scale:2});
+          // Start at scale 1.5, then clamp so longest side ≤ 1600px
+          const vpRaw=page.getViewport({scale:1.5});
+          const maxSide=1600;
+          const scaleFactor=Math.min(1,maxSide/Math.max(vpRaw.width,vpRaw.height));
+          const vp=page.getViewport({scale:1.5*scaleFactor});
           const canvas=document.createElement("canvas");
-          canvas.width=vp.width;canvas.height=vp.height;
+          canvas.width=Math.round(vp.width);canvas.height=Math.round(vp.height);
           await page.render({canvasContext:canvas.getContext("2d"),viewport:vp}).promise;
-          const dataUrl=canvas.toDataURL("image/jpeg",0.85);
+          // Compress to JPEG; if still >1.5MB reduce quality further
+          let dataUrl=canvas.toDataURL("image/jpeg",0.82);
+          const approxKB=Math.round(dataUrl.length*0.75/1024);
+          if(approxKB>1500) dataUrl=canvas.toDataURL("image/jpeg",0.60);
           setFpPreview(dataUrl);
           const base64=dataUrl.split(",")[1];
           supabase.functions.invoke("analyze-floor-plan",{body:{imageBase64:base64,mimeType:"image/jpeg"}})
