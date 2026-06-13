@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/boq.js": {
+      "maxDuration": 30
+    }
+  }
+}
