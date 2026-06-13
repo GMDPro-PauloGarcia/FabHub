@@ -17915,21 +17915,20 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,ceReq
           {Array.from({length:Math.ceil(cells.length/7)},(_,wi)=>(
             <div key={wi} style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",borderBottom:wi<Math.ceil(cells.length/7)-1?"1px solid #f1f5f9":""}}>
               {cells.slice(wi*7,(wi+1)*7).map((day,di)=>{
-                if(!day)return<div key={di} style={{minHeight:70,background:"#fafafa",borderRight:"1px solid #f1f5f9"}}/>;
+                if(!day)return<div key={di} style={{minHeight:60,background:"#fafafa",borderRight:"1px solid #f1f5f9"}}/>;
                 const ds=dateStr(day);const dayEvents=eventsByDate[ds]||[];
                 const isToday=ds===today;const isSel=selectedDay===ds;
                 return(
                   <div key={di} onClick={()=>setSelectedDay(isSel?null:ds)}
-                    style={{minHeight:70,padding:"4px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":"#fff",cursor:"pointer"}}>
-                    <div style={{fontWeight:isToday?800:500,fontSize:".75rem",color:isToday?"#f59e0b":"#0f172a",marginBottom:2,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined}}>{day}</div>
-                    {dayEvents.slice(0,3).map((e,ei)=>(
+                    style={{minHeight:60,padding:"3px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":"#fff",cursor:"pointer",overflow:"hidden",boxSizing:"border-box"}}>
+                    <div style={{fontWeight:isToday?800:500,fontSize:".7rem",color:isToday?"#f59e0b":"#0f172a",marginBottom:2,width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined}}>{day}</div>
+                    {dayEvents.slice(0,2).map((e,ei)=>(
                       <div key={ei} onClick={ev=>{ev.stopPropagation();setEventModal(e);}}
-                        style={{background:e.color+"22",border:`1px solid ${e.color}44`,borderRadius:4,padding:"2px 4px",marginBottom:1,fontSize:".6rem",color:e.color,fontWeight:600,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer"}}>
+                        style={{background:e.color+"22",borderLeft:`2px solid ${e.color}`,borderRadius:3,padding:"1px 3px",marginBottom:1,fontSize:".55rem",color:e.color,fontWeight:700,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",maxWidth:"100%",boxSizing:"border-box"}}>
                         {e.icon} {e.label}
-                        {e.sub&&<span style={{opacity:.75,fontWeight:400}}> · {e.sub}</span>}
                       </div>
                     ))}
-                    {dayEvents.length>3&&<div style={{fontSize:".58rem",color:"#94a3b8",paddingLeft:2}}>+{dayEvents.length-3}</div>}
+                    {dayEvents.length>2&&<div style={{fontSize:".52rem",color:"#94a3b8",paddingLeft:2}}>+{dayEvents.length-2} more</div>}
                   </div>
                 );
               })}
