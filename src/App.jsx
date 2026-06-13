@@ -987,6 +987,8 @@ const emptyDeal={
   // Design Request (inline DRF)
   designRequestDate:"",designRequestNote:"",designApprovalDate:"",
   drfProjectTitle:"",drfSize:"",drfDescription:"",drfAccessories:[],drfRefLinks:["","",""],drfDeadline:"",drfDesigner:"",drfNotes:"",
+  // CE/QS Request (inline — auto-creates a CE request for Rodney's queue)
+  ceReqCreate:false,ceReqType:"retail",ceReqPriority:"Normal",ceReqDeadline:"",ceReqSubmitDeadline:"",ceReqBudget:"",ceReqMargin:"",ceReqPlansLink:"",ceReqSkpLink:"",ceReqSchedule:"",ceReqNotes:"",
   // Comms
   commsGroup:"",commsGroupLink:"",
   // Addenda
@@ -1917,6 +1919,40 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.drfNotes||""} onChange={e=>f("drfNotes",e.target.value)} placeholder="Brand guidelines, restrictions, additional references…"/></Fld></div>
         </div>
       </div>
+
+      {/* CE/QS Request — auto-creates a cost-estimation request for Rodney's queue */}
+      {!editId&&(
+      <div style={{background:"#f5f3ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #c4b5fd"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem"}}>📐 Send to CE/QS for Costing</div>
+            <div style={{fontSize:".72rem",color:"#a78bfa",marginTop:2}}>Tick to send this project to Rodney's cost-estimation queue when the deal is saved.</div>
+          </div>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:".8rem",fontWeight:700,color:"#6d28d9"}}>
+            <input type="checkbox" checked={!!form.ceReqCreate} onChange={e=>f("ceReqCreate",e.target.checked)} style={{width:18,height:18,cursor:"pointer",accentColor:"#7c3aed"}}/>
+            {form.ceReqCreate?"Will create CE request":"Create CE request"}
+          </label>
+        </div>
+        {form.ceReqCreate&&(
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginTop:12}}>
+            <Fld label="Project Type">
+              <Sel value={form.ceReqType||"retail"} onChange={e=>f("ceReqType",e.target.value)}>
+                <option value="kiosk">Kiosk</option><option value="retail">Retail Fit-out</option><option value="office">Office</option><option value="fnb">F&B / Restaurant</option><option value="signage">Signage</option><option value="event">Event / Activation</option><option value="repair">Repair / Refurb</option><option value="other">Other</option>
+              </Sel>
+            </Fld>
+            <Fld label="Priority"><Sel value={form.ceReqPriority||"Normal"} onChange={e=>f("ceReqPriority",e.target.value)}><option>High</option><option>Normal</option><option>Low</option></Sel></Fld>
+            <Fld label="CE Deadline" hint="When does CE/QS need to finish costing?"><Inp type="date" value={form.ceReqDeadline||""} onChange={e=>f("ceReqDeadline",e.target.value)}/></Fld>
+            <Fld label="Proposal Submission Deadline"><Inp type="date" value={form.ceReqSubmitDeadline||""} onChange={e=>f("ceReqSubmitDeadline",e.target.value)}/></Fld>
+            <Fld label="Target Budget (₱)"><Inp type="number" min={0} value={form.ceReqBudget||""} onChange={e=>f("ceReqBudget",e.target.value)} placeholder="If applicable"/></Fld>
+            <Fld label="Target Margin (%)"><Inp type="number" min={0} max={100} value={form.ceReqMargin||""} onChange={e=>f("ceReqMargin",e.target.value)} placeholder="e.g. 25"/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Plans Link" hint="Google Drive folder with the complete set of plans"><Inp type="url" value={form.ceReqPlansLink||""} onChange={e=>f("ceReqPlansLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld></div>
+            <Fld label="SKP File Link"><Inp type="url" value={form.ceReqSkpLink||""} onChange={e=>f("ceReqSkpLink",e.target.value)} placeholder="https://…"/></Fld>
+            <Fld label="Schedule of Finish"><Inp value={form.ceReqSchedule||""} onChange={e=>f("ceReqSchedule",e.target.value)} placeholder="e.g. Standard finish, no special cladding"/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Notes for CE/QS" hint="Scope clarifications, special requirements, client preferences"><Inp rows={2} value={form.ceReqNotes||""} onChange={e=>f("ceReqNotes",e.target.value)} placeholder="Anything that helps Rodney cost this accurately…"/></Fld></div>
+          </div>
+        )}
+      </div>
+      )}
       {PAULO_GATE.includes(form.stage)&&(
         <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"12px 16px",marginTop:8,fontSize:".82rem",color:"#92400e"}}>
           ⚠️ <strong>Paulo Gate:</strong> Stage {form.stage} requires Paulo Garcia's review and sign-off before proceeding to the next stage.
@@ -4476,6 +4512,21 @@ export default function App(){
         notes:data.drfNotes||"", approvedLink:"", status:"New",
         createdBy:session?.name||""
       });
+    }
+    // Auto-create CE/QS request if the Sales rep ticked "Send to CE/QS for Costing"
+    if(!editDeal && data.ceReqCreate){
+      const num=v=>Number(String(v||0).replace(/,/g,""))||0;
+      addCEReq({
+        client_name:rec.client, project_name:rec.contact||"", location:rec.location||"",
+        project_type:data.ceReqType||"retail", priority:data.ceReqPriority||"Normal", status:"Pending",
+        submitted_by:session?.name||"", target_deadline:data.ceReqDeadline||null,
+        submission_deadline:data.ceReqSubmitDeadline||null,
+        target_budget:num(data.ceReqBudget)||null, target_margin:num(data.ceReqMargin)||null,
+        plans_link:data.ceReqPlansLink||rec.salesRepoLink||"", skp_link:data.ceReqSkpLink||"",
+        schedule_of_finish:data.ceReqSchedule||"", notes:data.ceReqNotes||"",
+        deal_id:String(rec.id), updated_at:new Date().toISOString(),
+      }).catch(()=>{});
+      sendTelegramNotification("management",`📐 <b>New CE Request</b>\nClient: <b>${rec.client}</b>${rec.contact?`\nProject: ${rec.contact}`:""}\nType: ${data.ceReqType||"retail"} · ${data.ceReqPriority||"Normal"} priority${data.ceReqDeadline?`\nCE Deadline: ${data.ceReqDeadline}`:""}\nFor: Rodney (CE/QS)\nFrom: ${session?.name||"Sales"}`);
     }
     if(!editDeal){
       logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
