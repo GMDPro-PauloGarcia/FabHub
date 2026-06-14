@@ -17423,8 +17423,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       onChange={e=>{
                         const v=Number(e.target.value);
                         upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:v}}));
-                        const cid=pcards[selDeal]?.id;
-                        if(isSupabaseReady()&&cid&&isUUID(cid)) sbUpdate('project_cards',cid,{manual_progress:v}).catch(()=>{});
+                        if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,manual_progress:v},'deal_id').catch(()=>{});
                       }}
                       style={{width:"100%",accentColor:"#3b82f6",cursor:"pointer"}}/>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:".62rem",color:"#94a3b8",marginTop:2}}>
