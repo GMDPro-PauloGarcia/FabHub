@@ -168,6 +168,10 @@ export const sbClear = async (table) => {
 
 export const sbSubscribe = (channel, table, callback) => {
   if (!supabase) return null
+  // Remove any existing channel with this name before re-subscribing to avoid
+  // "cannot add postgres_changes callbacks after subscribe()" crash on re-render
+  const existing = supabase.getChannels().find(c => c.topic === `realtime:${channel}`)
+  if (existing) supabase.removeChannel(existing)
   return supabase.channel(channel)
     .on('postgres_changes', { event: '*', schema: 'public', table }, callback)
     .subscribe()
