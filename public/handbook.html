@@ -1067,22 +1067,22 @@
         <span class="role-badge" style="background:#10b981">Operations</span>
         <span class="role-badge" style="background:#3b82f6">All Roles</span>
       </div>
-      <p>This chapter documents how every role engages with FabHub, where data flows between teams, and where workflow gaps exist. Use it as a reference for onboarding, process audits, and deciding what to improve next.</p>
+      <p>This chapter documents how every role engages with FabHub and how data flows between teams. Use it as an onboarding and process reference.</p>
 
       <h3>Role Engagement Map</h3>
-      <p>What each role owns inside FabHub — their primary function, pages accessible, and write-access level.</p>
+      <p>What each role owns inside FabHub — their primary function, write access, and pages. <em>Finance = Cost Control (Paulo &amp; Mar approve MRs, BRs, and POs).</em></p>
       <table class="data-table">
         <thead><tr><th>Role</th><th>Primary Function</th><th>Write Access</th><th>Pages</th></tr></thead>
         <tbody>
           <tr><td><b>Manager</b></td><td>Super-admin, all gates, overrides</td><td>Full</td><td>All pages</td></tr>
-          <tr><td><b>Sales</b></td><td>Create &amp; move deals in pipeline</td><td>Deals + DRF only</td><td>Pipeline, Projects, DRF, Reports, Calendar, Clients</td></tr>
-          <tr><td><b>QS</b></td><td>Price deals, create BOQ &amp; cost estimates</td><td>Pricing + CE Queue</td><td>Home, Pipeline (RO), CE/QS, BOQ, Cost Analysis</td></tr>
+          <tr><td><b>Sales</b></td><td>Create &amp; move deals, client communication</td><td>Deals + DRF + Scope Changes (view)</td><td>Pipeline, Projects, Scope Changes, DRF, Reports, Calendar, Clients</td></tr>
+          <tr><td><b>QS</b></td><td>Price deals, create BOQ &amp; cost estimates</td><td>Pricing + CE Queue</td><td>Home (with unpriced deal alerts), Pipeline, CE/QS, BOQ, Cost Analysis</td></tr>
           <tr><td><b>Operations</b></td><td>Execute projects, submit MRs/BRs</td><td>Project cards + requests</td><td>Home, Calendar, Projects, Swatchboard, Requests, Cost Analysis</td></tr>
           <tr><td><b>Design</b></td><td>Handle design requests &amp; dept tasks</td><td>DRF + dept tasks</td><td>Home, Pipeline (RO), DRF, Projects, Swatchboard</td></tr>
           <tr><td><b>Procurement</b></td><td>Issue POs, subcon WOs, manage suppliers</td><td>POs + inventory</td><td>Home, Orders, Projects, Clients, Masters</td></tr>
-          <tr><td><b>Finance</b></td><td>Billing milestones, payment tracking</td><td>Billing only</td><td>Home, Billing, Accounting, Reports, Projects, Clients</td></tr>
-          <tr><td><b>ProjectMover</b></td><td>Log daily PM updates, track scope changes</td><td>Updates + addenda</td><td>My Projects, PM Updates, Addenda</td></tr>
-          <tr><td><b>Warehouse</b></td><td>Confirm deliveries, manage stock</td><td>Inventory only</td><td>Home, Deliveries, Inventory, Stock Moves</td></tr>
+          <tr><td><b>Finance</b></td><td>Approve MRs/BRs/POs, billing, collections</td><td>Approvals + Billing + Scope Changes (view)</td><td>Home (with approval alerts), MR/BR Queue, Purchase Orders, Billing, Accounting, Reports, Projects, Scope Changes</td></tr>
+          <tr><td><b>ProjectMover</b></td><td>Log daily PM updates, track scope changes, manage site</td><td>Updates + Addenda + Project Cards</td><td>My Projects, PM Updates, Scope Changes, Project Cards</td></tr>
+          <tr><td><b>Warehouse</b></td><td>Confirm deliveries with project context, manage stock</td><td>Inventory + deliveries</td><td>Home (with project + PM on each delivery), Deliveries, Inventory, Stock Moves</td></tr>
         </tbody>
       </table>
 
@@ -1090,14 +1090,14 @@
       <p>The full deal-to-completion lifecycle and who owns each step.</p>
       <div class="steps">
         <div class="step"><div class="step-num">1</div><div class="step-content"><b>Sales creates deal &amp; submits CE request</b><span>Sales logs the client in the pipeline and requests a cost estimate. Telegram fires to management.</span></div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-content"><b>QS sets the contract price</b><span>Sales <em>cannot</em> set the price — QS must price the deal via the CE Queue. Telegram notifies the sales channel when done.</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>QS sets the contract price</b><span>Sales cannot set the price — QS must price the deal via the CE Queue. The QS home dashboard now flags all unpriced pipeline deals with how many days old they are. Telegram notifies the sales channel when done.</span></div></div>
         <div class="step"><div class="step-num">3</div><div class="step-content"><b>Manager reviews at "For Approval" stage (Paulo gate)</b><span>Only Manager or Sales can push a deal past this stage. Non-management roles can only request an award — not grant it.</span></div></div>
         <div class="step"><div class="step-num">4</div><div class="step-content"><b>Deal awarded → Project Card auto-created</b><span>Once awarded, a Project Card is automatically generated with empty department tasks. Team is assigned in Project Cards → Project Team → Edit.</span></div></div>
-        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Operations executes: submits MRs &amp; BRs</b><span>Operations submits Material Requests and Budget Requests. Cost Control (Finance) must approve before Procurement can issue any PO.</span></div></div>
-        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Procurement issues POs &amp; subcon WOs</b><span>After Cost Control approval, Procurement issues the PO. Designated approvers list (set in Bot Settings) controls who in Procurement can approve their own POs.</span></div></div>
-        <div class="step"><div class="step-num">7</div><div class="step-content"><b>Warehouse confirms material deliveries</b><span>Warehouse receives goods and logs the delivery confirmation in FabHub. Telegram fires to procurement channel.</span></div></div>
-        <div class="step"><div class="step-num">8</div><div class="step-content"><b>Finance tracks billing milestones &amp; collections</b><span>Finance logs billing milestones (DP, progress, final billing) and records payments. Reports are available to Sales and Manager.</span></div></div>
-        <div class="step"><div class="step-num">9</div><div class="step-content"><b>ProjectMover logs daily PM updates &amp; scope changes</b><span>Assigned PMs post daily updates on the Project Card. Addenda capture approved scope changes that affect the contract value.</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Operations executes: submits MRs &amp; BRs</b><span>Operations submits Material Requests and Budget Requests. Finance (Paulo &amp; Mar) must approve before Procurement can issue any PO. Finance home shows a pending-approvals banner on login.</span></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Procurement issues POs &amp; subcon WOs</b><span>After Finance approval, Procurement issues the PO. Designated approvers list (set in Bot Settings) controls who in Procurement can approve their own POs.</span></div></div>
+        <div class="step"><div class="step-num">7</div><div class="step-content"><b>Warehouse confirms material deliveries</b><span>Warehouse sees the project name, contact, and PM name on every delivery card — no more Viber side-channels needed for context. Confirming receipt auto-logs a stock-in movement.</span></div></div>
+        <div class="step"><div class="step-num">8</div><div class="step-content"><b>Finance tracks billing milestones &amp; collections</b><span>Finance logs billing milestones (DP, progress, final billing) and records payments. Scope Changes are now visible to Finance so billing always reflects the latest contract value.</span></div></div>
+        <div class="step"><div class="step-num">9</div><div class="step-content"><b>ProjectMover logs daily PM updates &amp; scope changes</b><span>Assigned PMs post daily updates on the Project Card. Addenda capture approved scope changes. Sales can now view Scope Changes directly — no more AE blind spots on change orders.</span></div></div>
         <div class="step"><div class="step-num">10</div><div class="step-content"><b>Close-Out &amp; completion</b><span>When all departments mark done (or PM sets 100%), Manager/Sales can move the project to Close-Out. Final billing is collected and the project is archived.</span></div></div>
       </div>
 
@@ -1133,7 +1133,7 @@
           </tr>
           <tr>
             <td><span class="channel-tag" style="background:#3b82f6">financialcontrol</span></td>
-            <td>Finance / Cost Control</td>
+            <td>Finance (Paulo &amp; Mar)</td>
             <td>PO approvals, check verifications, payment orders ready</td>
           </tr>
           <tr>
@@ -1144,72 +1144,8 @@
         </tbody>
       </table>
 
-      <h3>Identified Gaps</h3>
-
-      <div class="note" style="background:#fef2f2;border-color:#fecaca;color:#991b1b;">
-        <b>🔴 Critical — Code Bug: "Cost Control" role has no nav page.</b><br>
-        The system checks <code>role === "Cost Control"</code> in at least 5 places to gate MR/BR/PO approvals, but the nav map has no entry for this role. A user logging in as Cost Control would land on a blank dashboard with no pages. In practice, Finance and Cost Control are used interchangeably — whoever handles procurement approvals should log in as Finance, and Finance should be confirmed to have access to the procurement approval page.
-      </div>
-
-      <div class="note" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
-        <b>🟠 QS is a hard blocker for deal progress.</b><br>
-        Sales creates the deal but cannot set the price — QS must do it. If QS is unavailable, deals queue up with no SLA reminder or escalation path. Recommended fix: surface overdue-pricing deals on the QS home dashboard with an age indicator.
-      </div>
-
-      <div class="note" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
-        <b>🟠 Warehouse staff have no project context.</b><br>
-        Warehouse confirms deliveries but cannot see which project or priority the delivery belongs to. They rely on Viber/WhatsApp for that context, outside FabHub. Recommended fix: show the project name and PM name on the delivery confirmation screen.
-      </div>
-
-      <div class="note" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
-        <b>🟠 Finance cannot see scope changes (addenda).</b><br>
-        Finance sees billing milestones but not the addenda that affect what should be invoiced. Billing disputes are likely when scope changes are not visible to the team preparing the invoice. Recommended fix: add addenda read-only access to Finance.
-      </div>
-
-      <div class="note" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
-        <b>🟠 Sales is locked out of addenda.</b><br>
-        Sales cannot see scope changes in FabHub, yet they are the ones communicating change orders to the client. This creates a blind spot in client communication. Recommended fix: add addenda read-only access to Sales.
-      </div>
-
-      <div class="note" style="background:#fffbeb;border-color:#fde68a;color:#92400e;">
-        <b>🟡 ProjectMover is a thin role.</b><br>
-        ProjectMovers (on-site PMs) only have access to 2 pages: PM Updates and Addenda. If these are the people managing day-to-day site work, they should at minimum have read access to their own project card.
-      </div>
-
-      <div class="note" style="background:#fffbeb;border-color:#fde68a;color:#92400e;">
-        <b>🟡 Design Requests are not gatekept.</b><br>
-        Any role can create a DRF, but only Design sees the full queue. DRFs created by Operations or Sales from other pages may be missed if Design is not explicitly notified. The Telegram notification to the design channel is the only safeguard.
-      </div>
-
-      <div class="note" style="background:#fffbeb;border-color:#fde68a;color:#92400e;">
-        <b>🟡 No MR → PO auto-link.</b><br>
-        Cost Control manually approves a Material Request and then separately creates a PO. There is no automatic linkage — an approved MR that is never converted to a PO can slip through unnoticed.
-      </div>
-
-      <h3>Who Is Under-Utilizing FabHub</h3>
-      <table class="data-table">
-        <thead><tr><th>Role</th><th>Under-Use Signal</th><th>Likely Workaround</th></tr></thead>
-        <tbody>
-          <tr><td><b>Warehouse</b></td><td>No project context — delivery confirmation is blind</td><td>Viber/WhatsApp with Ops or PM</td></tr>
-          <tr><td><b>Finance</b></td><td>Cannot see addenda; billing page exists but scope changes are invisible</td><td>Separate spreadsheet for addenda tracking</td></tr>
-          <tr><td><b>ProjectMover</b></td><td>2-page role is too narrow for site PMs managing daily work</td><td>Reporting via Telegram or manual forms</td></tr>
-          <tr><td><b>QS</b></td><td>BOQ builder and cost analysis exist but no reminder system prompts timely pricing</td><td>Email/Slack reminders from Manager</td></tr>
-        </tbody>
-      </table>
-
-      <h3>Recommendations Summary</h3>
-      <ul>
-        <li><b>Immediate (code fix):</b> Add a proper nav page for the "Cost Control" role, or fully merge it with Finance and audit all approval gates.</li>
-        <li><b>Quick win:</b> Give Warehouse read-only access to project name + PM name on the deliveries screen.</li>
-        <li><b>Quick win:</b> Add addenda read-only access to both Sales and Finance.</li>
-        <li><b>Quick win:</b> Expand ProjectMover nav to include their assigned project cards (read-only or restricted edit).</li>
-        <li><b>Process:</b> Establish an SLA for QS pricing (e.g., 2 business days after Sales creates deal) and surface overdue-pricing deals on QS home.</li>
-        <li><b>Feature:</b> Auto-link MR → PO on approval so orphaned approved MRs are visible.</li>
-        <li><b>Feature:</b> Show project name + PM name on Warehouse delivery confirmation screen.</li>
-      </ul>
-
       <div class="note">
-        <b>Audit Date:</b> June 14, 2026 &nbsp;·&nbsp; <b>Audited by:</b> Claude (AI Workflow Analysis) &nbsp;·&nbsp; <b>Source:</b> FabHub src/App.jsx codebase review
+        <b>Last updated:</b> June 14, 2026 &nbsp;·&nbsp; <b>Source:</b> FabHub v1.6 codebase
       </div>
     </div>
     <!-- END CH26 -->
