@@ -19891,7 +19891,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Link to Project (optional)</div>
             <select value={selDeal} onChange={e=>setSelDeal(e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
               <option value="">— Select a project —</option>
-              {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
+              {deals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
             </select>
           </div>
           <div>
