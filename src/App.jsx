@@ -4216,7 +4216,6 @@ export default function App(){
     // Only trigger award logic for NEW deals entering won stages — never on edit
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
-    if(data.stage==="06 · Kickoff" && !editDeal && !wasAlreadyAwarded) setTimeout(()=>loadChecklistTemplate(rec.id,data.client),200);
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
     if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
     // Save new client to master list if not already present
@@ -4318,7 +4317,6 @@ export default function App(){
 
   const stageQ=(id,st)=>{
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
-    if(st==="06 · Kickoff") setTimeout(()=>loadChecklistTemplate(id, deals.find(d=>d.id===id)?.client||""),150);
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
       const missing=[];
@@ -4430,8 +4428,6 @@ export default function App(){
       coordinator:jo.coordinator||"",
       awardDate:form.triggerDate||today,
     });
-    // Load checklist
-    setTimeout(()=>loadChecklistTemplate(id,awardModal.client),200);
     // Auto-set QS budget at 30% margin target (70% cost of contract value)
     const contractVal=Number(awardModal.value||0);
     if(contractVal>0){
@@ -9335,6 +9331,7 @@ export default function App(){
         initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}
         initialFilter={jumpFilter} clearJumpFilter={()=>setJumpFilter(null)}
         checklist={checklist}
+        loadChecklistTemplate={loadChecklistTemplate}
         openAddCl={openAddCl}
         openEditCl={openEditCl}
         delCl={delCl}
@@ -16766,7 +16763,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
@@ -17657,7 +17654,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     ✅ Checklist
                     {projCl.filter(c=>c.status!=="Done").length>0&&<span style={{background:"#f59e0b",color:"#fff",borderRadius:20,fontSize:".6rem",padding:"1px 7px",marginLeft:5}}>{projCl.filter(c=>c.status!=="Done").length}</span>}
                   </div>
-                  <button onClick={()=>openAddCl&&openAddCl(selDeal,role==="Design"?"Design":"Operations")} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:700}}>+ Add Task</button>
+                  <div style={{display:"flex",gap:6}}>
+                    {projCl.length===0&&loadChecklistTemplate&&<button onClick={()=>{const d=deal;if(d)loadChecklistTemplate(d.id,d.client);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700}}>📋 Load Template</button>}
+                    <button onClick={()=>openAddCl&&openAddCl(selDeal,role==="Design"?"Design":"Operations")} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:700}}>+ Add Task</button>
+                  </div>
                 </div>
                 {projCl.length===0?(
                   <div style={{padding:"14px 20px",color:"#94a3b8",fontSize:".78rem",textAlign:"center"}}>No checklist tasks yet for this project.</div>
