@@ -19650,9 +19650,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   useEffect(()=>{if(initialDealId){setSelDeal(initialDealId);clearBoqDeal&&clearBoqDeal();}},[initialDealId]);
   const[form,setForm]=useState({area:"",finishLevel:"Mid-range",scopeNotes:"",ceType:"Fabrication / General",location:""});
   const[items,setItems]=useState([]);
-  const[aiNotes,setAiNotes]=useState("");
-  const[loading,setLoading]=useState(false);
-  const[error,setError]=useState("");
   const[boqTitle,setBoqTitle]=useState("");
   const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
 
@@ -19742,21 +19739,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setBoqTitle(`BOQ — ${deal.client||""}${deal.contact?" · "+deal.contact:""}`);
   },[selDeal]);
 
-  const catToSec=(cat)=>({Materials:"B",Labor:"B",Subcon:"I",Overhead:"A","General Requirements":"A",Architectural:"B",Electrical:"C",Electronics:"D",Mechanical:"E",Plumbing:"F",FDAS:"G","Fire Protection":"G",Signages:"H","Built Ins":"I",Furnitures:"I","Built Ins / Furnitures":"I"}[cat]||"B");
-
-  const generate=async()=>{
-    if(!form.scopeNotes&&!form.area){setError("Please enter at least a scope description or area.");return;}
-    setLoading(true);setError("");setItems([]);setAiNotes("");
-    try{
-      const res=await fetch("/api/boq",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client:deal?.client||"",ceType:form.ceType,area:form.area,finishLevel:form.finishLevel,scopeNotes:form.scopeNotes,location:form.location,sections:sections.map(s=>`${s.id}. ${s.label}`)})});
-      const data=await res.json();
-      if(!res.ok) throw new Error(data.error||"Generation failed");
-      setItems(data.items.map((it,i)=>({_id:i,section:it.section||catToSec(it.category||""),itemCode:it.itemCode||it.item_code||"",description:it.description||it.item||"",unit:it.unit||"lot",qty:Number(it.qty)||1,unitCost:Number(it.unitCost||it.unit_cost||0),total:Number(it.total||0)||Number(it.qty||1)*Number(it.unitCost||it.unit_cost||0),remarks:it.remarks||""})));
-      setAiNotes(data.notes||"");
-      toastEmit("BOQ generated — review and adjust before presenting to client.");
-    }catch(e){setError(e.message);}
-    finally{setLoading(false);}
-  };
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
@@ -19941,12 +19923,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             placeholder="e.g. Full retail fit-out, 120sqm. Includes: display gondolas ×6, lightbox headers 3m×1.5m each, vinyl wrapped cashier counter, track lighting ×12, gypsum board ceiling, electrical rough-in and outlets."
             style={{...inpSt,resize:"vertical"}}/>
         </div>
-        {error&&<div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:8,padding:"8px 14px",color:"#dc2626",fontSize:".8rem",marginBottom:12}}>{error}</div>}
-        <button onClick={generate} disabled={loading}
-          style={{background:loading?"#e2e8f0":"#1e293b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",color:loading?"#94a3b8":"#fff",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
-          {loading?(<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #94a3b8",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>Generating BOQ…</>):"✨ Generate BOQ with AI"}
-        </button>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
 
       {/* Results */}
@@ -20065,12 +20041,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </div>
           </div>
 
-          {aiNotes&&(
-            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#92400e",display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
-              <span style={{fontSize:".9rem",flexShrink:0}}>🤖</span>
-              <span><strong>QS Note:</strong> {aiNotes}</span>
-            </div>
-          )}
           <div style={{background:"#f0f9ff",border:"1.5px solid #bae6fd",borderRadius:10,padding:"10px 14px",fontSize:".75rem",color:"#0369a1"}}>
             ⚠ AI-generated quantities and rates are estimates. Always verify against supplier quotes, site conditions, and project specifications before presenting to a client.
           </div>
