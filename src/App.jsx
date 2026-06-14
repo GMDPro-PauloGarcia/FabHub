@@ -4044,6 +4044,7 @@ export default function App(){
   const[infForm,   setInfForm]  =useState({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
   const[selProj,   setSelProj]  =useState(null);
   const[jumpDeal,  setJumpDeal] =useState(null);
+  const[jumpFilter,setJumpFilter]=useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("overview");
   const[payables,  setPayables] =useState([]);
@@ -6443,7 +6444,7 @@ export default function App(){
           const alerts=[];
           if(awardReqCnt)     alerts.push({icon:"🏆",msg:`${awardReqCnt} deal${awardReqCnt>1?"s":""} flagged for award`,color:"#f59e0b",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
           if(overdueInvCnt)   alerts.push({icon:"🚨",msg:`${overdueInvCnt} overdue invoice${overdueInvCnt>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
-          if(overdueTATCnt)   alerts.push({icon:"⏰",msg:`${overdueTATCnt} project${overdueTATCnt>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>setPage("projects")});
+          if(overdueTATCnt)   alerts.push({icon:"⏰",msg:`${overdueTATCnt} project${overdueTATCnt>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>{setJumpFilter("overdue");setPage("projects");}});
           if(qsPendingCnt)    alerts.push({icon:"⚠️",msg:`${qsPendingCnt} project${qsPendingCnt>1?"s":""} need QS budget`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("costanalysis")});
           if(mrPendingCnt)    alerts.push({icon:"📋",msg:`${mrPendingCnt} material request${mrPendingCnt>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("procurement")});
           if(addendaAlertCnt) alerts.push({icon:"⚠️",msg:`${addendaAlertCnt} scope change${addendaAlertCnt>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
@@ -6500,14 +6501,22 @@ export default function App(){
                 {highCount>0&&<span style={{fontSize:".72rem",color:"#fecaca",fontWeight:600}}>{highCount} high severity</span>}
               </div>
               {grouped.map((g,i)=>(
-                <div key={g.type} onClick={()=>setPage(g.dest)}
-                  style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",borderBottom:i<grouped.length-1?"1px solid #fecaca":"",cursor:"pointer",background:"#fff"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="#fef2f2"}
-                  onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
-                  <span style={{background:g.amber?"#f59e0b":"#dc2626",color:"#fff",borderRadius:6,padding:"2px 8px",fontWeight:800,fontSize:".7rem",flexShrink:0,minWidth:36,textAlign:"center"}}>{g.type}</span>
-                  <span style={{flex:1,fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{g.label}</span>
-                  <span style={{fontWeight:800,color:g.amber?"#92400e":"#dc2626",fontSize:".88rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{g.items.length}</span>
-                  <span style={{color:"#94a3b8",fontSize:".72rem"}}>›</span>
+                <div key={g.type} style={{borderBottom:i<grouped.length-1?"1px solid #fecaca":"",background:"#fff"}}>
+                  <div onClick={()=>setPage(g.dest)}
+                    style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",cursor:"pointer"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="#fef2f2"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span style={{background:g.amber?"#f59e0b":"#dc2626",color:"#fff",borderRadius:6,padding:"2px 8px",fontWeight:800,fontSize:".7rem",flexShrink:0,minWidth:36,textAlign:"center"}}>{g.type}</span>
+                    <span style={{flex:1,fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{g.label}</span>
+                    <span style={{fontWeight:800,color:g.amber?"#92400e":"#dc2626",fontSize:".88rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{g.items.length}</span>
+                    <span style={{color:"#94a3b8",fontSize:".72rem"}}>›</span>
+                  </div>
+                  {g.items.map((e,ei)=>(
+                    <div key={ei} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"5px 16px 5px 52px",borderTop:"1px solid #fef2f2",background:"#fffafa"}}>
+                      <span style={{fontSize:".72rem",fontWeight:700,color:"#ef4444",flexShrink:0,marginTop:1}}>▸</span>
+                      <span style={{fontSize:".72rem",color:"#374151",lineHeight:1.4}}>{e.label}</span>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -9266,6 +9275,7 @@ export default function App(){
         updateJO={updateJO} upPcards={upPcards}
         addAddendum2={addAddendum2}
         initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}
+        initialFilter={jumpFilter} clearJumpFilter={()=>setJumpFilter(null)}
         checklist={checklist}
         openAddCl={openAddCl}
         openEditCl={openEditCl}
@@ -16611,10 +16621,11 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification,initialDeal,clearJump}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
+  useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
@@ -16693,6 +16704,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             {l:"Completed",    v:wonDeals.filter(d=>d.stage==="12 · Close-Out").length+completedDeals.length, c:"#059669", f:"completed"},
             {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
+            {l:"Past Deadline",v:wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today).length,c:"#c2410c",f:"overdue"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
             <div key={l} onClick={()=>setPcFilter(x=>x===f?null:f)}
@@ -16737,6 +16749,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
             if(pcFilter==="attention") list=list.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";});
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
+            if(pcFilter==="overdue") list=list.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today);
             if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
