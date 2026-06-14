@@ -158,7 +158,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -4119,6 +4119,7 @@ export default function App(){
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   const mobileNavRef = React.useRef(null);
   const[blockers,     setBlockers]     = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.blockers)||"[]");}catch{return [];}});
+  const[boqLibrary,  setBoqLibrary]   = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.boqLibrary)||"[]");}catch{return [];}});
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
@@ -8724,7 +8725,7 @@ export default function App(){
   if(role==="Warehouse"){
     if(page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(page==="boq") return(<Wrap><BOQBuilder wonDeals={[...wonDeals,...completedDeals]} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
+    if(page==="boq") return(<Wrap><BOQBuilder wonDeals={[...wonDeals,...completedDeals]} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -19233,7 +19234,7 @@ const BOQ_CATS=["Materials","Labor","Subcon","Overhead"];
 const BOQ_CAT_CLR={Materials:"#3b82f6",Labor:"#8b5cf6",Subcon:"#f59e0b",Overhead:"#64748b"};
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary}){
   const[selDeal,setSelDeal]=useState("");
   const[form,setForm]=useState({area:"",finishLevel:"Mid-range",scopeNotes:"",ceType:"Fabrication / General",location:""});
   const[items,setItems]=useState([]);
@@ -19242,6 +19243,62 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
   const[error,setError]=useState("");
   const[boqTitle,setBoqTitle]=useState("");
   const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+  // Library state
+  const[libOpen,setLibOpen]=useState(false);
+  const[libSearch,setLibSearch]=useState("");
+  const[libTab,setLibTab]=useState("search"); // "search" | "manage"
+  const[libForm,setLibForm]=useState({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});
+  const[libEditId,setLibEditId]=useState(null);
+  const canManageLib=["Manager","QS"].includes(role);
+
+  const saveLibrary=(newLib)=>{
+    setBoqLibrary(newLib);
+    localStorage.setItem("gmdv5:boqLibrary",JSON.stringify(newLib));
+  };
+
+  const filteredLib=boqLibrary.filter(it=>{
+    if(!libSearch) return true;
+    const q=libSearch.toLowerCase();
+    return(it.name||"").toLowerCase().includes(q)||(it.category||"").toLowerCase().includes(q)||(it.description||"").toLowerCase().includes(q)||(it.tags||[]).some(t=>t.toLowerCase().includes(q));
+  });
+
+  const addLibItemToBoq=(libIt)=>{
+    setItems(its=>[...its,{_id:Date.now(),category:libIt.category||"Materials",item:libIt.name,unit:libIt.unit||"lot",qty:1,unitCost:libIt.unitCost||0,total:libIt.unitCost||0}]);
+    toastEmit(`"${libIt.name}" added to BOQ`);
+  };
+
+  const saveLibItem=()=>{
+    if(!libForm.name.trim()){toastEmit("Item name is required.");return;}
+    const entry={
+      id:libEditId||uid(),
+      name:libForm.name.trim(),
+      description:libForm.description.trim(),
+      category:libForm.category,
+      unit:libForm.unit||"lot",
+      unitCost:Number(libForm.unitCost)||0,
+      tags:libForm.tags.split(",").map(t=>t.trim()).filter(Boolean),
+      createdBy:session?.name||"",
+      createdAt:libEditId?(boqLibrary.find(x=>x.id===libEditId)?.createdAt||new Date().toISOString()):new Date().toISOString(),
+      updatedAt:new Date().toISOString(),
+    };
+    const newLib=libEditId?boqLibrary.map(x=>x.id===libEditId?entry:x):[...boqLibrary,entry];
+    saveLibrary(newLib);
+    setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});
+    setLibEditId(null);
+    toastEmit(libEditId?"Library item updated.":"Library item saved.");
+  };
+
+  const startEditLib=(it)=>{
+    setLibEditId(it.id);
+    setLibForm({name:it.name,description:it.description||"",category:it.category,unit:it.unit,unitCost:String(it.unitCost||""),tags:(it.tags||[]).join(", ")});
+    setLibTab("manage");
+  };
+
+  const deleteLibItem=(id)=>{
+    saveLibrary(boqLibrary.filter(x=>x.id!==id));
+    if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});}
+  };
 
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
   const jo=jos.find(j=>j.dealId===selDeal);
@@ -19323,12 +19380,138 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🧮 BOQ Builder</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>AI-assisted Bill of Quantities — review all figures before use</div>
         </div>
-        {items.length>0&&(
-          <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setLibOpen(o=>!o)}
+            style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#5b21b6",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            📚 {libOpen?"Hide Library":"Line-Item Library"}
+            {boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:".65rem",fontWeight:800}}>{boqLibrary.length}</span>}
+          </button>
+          {items.length>0&&(
             <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Library Panel */}
+      {libOpen&&(
+        <div style={{background:"#faf5ff",border:"1.5px solid #c4b5fd",borderRadius:14,padding:18,marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+            <div style={{fontWeight:800,color:"#4c1d95",fontSize:".9rem"}}>📚 Standard Line-Item Library</div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>setLibTab("search")} style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid "+(libTab==="search"?"#7c3aed":"#e2e8f0"),background:libTab==="search"?"#7c3aed":"#fff",color:libTab==="search"?"#fff":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>🔍 Search</button>
+              {canManageLib&&<button onClick={()=>setLibTab("manage")} style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid "+(libTab==="manage"?"#7c3aed":"#e2e8f0"),background:libTab==="manage"?"#7c3aed":"#fff",color:libTab==="manage"?"#fff":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>⚙ Manage</button>}
+            </div>
+          </div>
+
+          {/* Search tab */}
+          {libTab==="search"&&(
+            <>
+              <input value={libSearch} onChange={e=>setLibSearch(e.target.value)} placeholder="Search by name, category, or tag…"
+                style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",outline:"none",background:"#fff",marginBottom:10,boxSizing:"border-box"}}/>
+              {filteredLib.length===0?(
+                <div style={{textAlign:"center",color:"#94a3b8",fontSize:".78rem",padding:"20px 0"}}>
+                  {boqLibrary.length===0?"No library items yet."+(canManageLib?" Switch to Manage to add your first item.":""):"No items match your search."}
+                </div>
+              ):(
+                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:8,maxHeight:320,overflowY:"auto"}}>
+                  {filteredLib.map(it=>(
+                    <div key={it.id} style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.name}</div>
+                        {it.description&&<div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,lineHeight:1.4}}>{it.description}</div>}
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                          <span style={{background:BOQ_CAT_CLR[it.category]+"18",color:BOQ_CAT_CLR[it.category],border:`1px solid ${BOQ_CAT_CLR[it.category]}44`,borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>{it.category}</span>
+                          <span style={{fontSize:".68rem",color:"#94a3b8"}}>/{it.unit}</span>
+                          {it.unitCost>0&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669"}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
+                        </div>
+                        {(it.tags||[]).length>0&&<div style={{marginTop:4,display:"flex",gap:4,flexWrap:"wrap"}}>{it.tags.map(t=><span key={t} style={{background:"#f1f5f9",color:"#475569",borderRadius:20,padding:"1px 7px",fontSize:".6rem"}}>{t}</span>)}</div>}
+                      </div>
+                      <button onClick={()=>addLibItemToBoq(it)}
+                        style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:800,color:"#fff",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
+                        + Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Manage tab — Manager / QS only */}
+          {libTab==="manage"&&canManageLib&&(
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16}}>
+              {/* Form */}
+              <div style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:14}}>
+                <div style={{fontWeight:700,color:"#4c1d95",fontSize:".8rem",marginBottom:10}}>{libEditId?"Edit Item":"New Library Item"}</div>
+                {[
+                  {label:"Item Name *",key:"name",type:"text",placeholder:"e.g. Mobilization Fee"},
+                  {label:"Description",key:"description",type:"text",placeholder:"Short description or scope note"},
+                ].map(f=>(
+                  <div key={f.key} style={{marginBottom:8}}>
+                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>{f.label}</div>
+                    <input value={libForm[f.key]} onChange={e=>setLibForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder}
+                      style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                ))}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                  <div>
+                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Category</div>
+                    <select value={libForm.category} onChange={e=>setLibForm(p=>({...p,category:e.target.value}))}
+                      style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none"}}>
+                      {BOQ_CATS.map(c=><option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Default Unit</div>
+                    <input value={libForm.unit} onChange={e=>setLibForm(p=>({...p,unit:e.target.value}))} placeholder="lot, sqm, pc…"
+                      style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                </div>
+                <div style={{marginBottom:8}}>
+                  <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Typical Unit Cost (₱)</div>
+                  <input type="number" value={libForm.unitCost} onChange={e=>setLibForm(p=>({...p,unitCost:e.target.value}))} placeholder="0"
+                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Tags (comma-separated)</div>
+                  <input value={libForm.tags} onChange={e=>setLibForm(p=>({...p,tags:e.target.value}))} placeholder="e.g. mobilization, setup, glass"
+                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={saveLibItem}
+                    style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>
+                    {libEditId?"💾 Update":"➕ Save Item"}
+                  </button>
+                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""}); }}
+                    style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#64748b",cursor:"pointer"}}>
+                    Cancel
+                  </button>}
+                </div>
+              </div>
+              {/* Saved items list */}
+              <div style={{maxHeight:380,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+                {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No library items yet. Add your first one.</div>}
+                {boqLibrary.map(it=>(
+                  <div key={it.id} style={{background:"#fff",border:`1.5px solid ${libEditId===it.id?"#7c3aed":"#ede9fe"}`,borderRadius:8,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{it.name}</div>
+                      <div style={{fontSize:".68rem",color:"#64748b",display:"flex",gap:8,marginTop:2}}>
+                        <span style={{color:BOQ_CAT_CLR[it.category],fontWeight:700}}>{it.category}</span>
+                        <span>/{it.unit}</span>
+                        {it.unitCost>0&&<span style={{color:"#059669",fontWeight:700}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:6,flexShrink:0}}>
+                      <button onClick={()=>startEditLib(it)} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>Edit</button>
+                      <button onClick={()=>deleteLibItem(it.id)} style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:6,padding:"3px 9px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer"}}>✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Input panel */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16}}>
