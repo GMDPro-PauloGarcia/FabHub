@@ -2435,6 +2435,8 @@ export default function App(){
             if(_suppliers){setSuppliers(_suppliers);idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
             if(_subcons){setSubcons(_subcons);idbE.push([KEYS.subcons,_subcons]);}
+            const _boqLib=data.boqLibrary?.length?data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",category:it.category||"Materials",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""})):null;
+            if(_boqLib){setBoqLibrary(_boqLib);idbE.push([KEYS.boqLibrary,_boqLib]);}
             const _users=data.users?.length?data.users.map(u=>{
               // If Supabase row has no password_hash, fall back to the DEFAULT_USERS hash
               // so existing users can still log in while hashes are being migrated
@@ -19270,6 +19272,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const saveLibItem=()=>{
     if(!libForm.name.trim()){toastEmit("Item name is required.");return;}
+    const isNew=!libEditId;
     const entry={
       id:libEditId||uid(),
       name:libForm.name.trim(),
@@ -19284,9 +19287,14 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     };
     const newLib=libEditId?boqLibrary.map(x=>x.id===libEditId?entry:x):[...boqLibrary,entry];
     saveLibrary(newLib);
+    if(isSupabaseReady()){
+      const sbRow={id:entry.id,name:entry.name,description:entry.description,category:entry.category,unit:entry.unit,unit_cost:entry.unitCost,tags:entry.tags,created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt};
+      if(isNew) sbInsert('boq_library',sbRow).catch(()=>{});
+      else sbUpdate('boq_library',entry.id,sbRow).catch(()=>{});
+    }
     setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});
     setLibEditId(null);
-    toastEmit(libEditId?"Library item updated.":"Library item saved.");
+    toastEmit(isNew?"Library item saved.":"Library item updated.");
   };
 
   const startEditLib=(it)=>{
@@ -19297,6 +19305,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const deleteLibItem=(id)=>{
     saveLibrary(boqLibrary.filter(x=>x.id!==id));
+    if(isSupabaseReady()) sbDelete('boq_library',id).catch(()=>{});
     if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});}
   };
 
