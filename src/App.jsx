@@ -4108,7 +4108,7 @@ export default function App(){
   const[swModal,   setSwModal]  =useState(false);
   const[swForm,    setSwForm]   =useState({projectId:null,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:"Design",status:"To Buy",notes:""});
   const[editSw,    setEditSw]   =useState(null);
-  const openAddSwatch=(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Furniture/Fixture",spec:"",qty:1,unit:"pcs",status:"To Buy",addedBy:by||session?.name||"",refLink:""});setEditSw(null);setSwModal(true);};
+  const openAddSwatch=(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Furniture/Fixture",spec:"",qty:1,unit:"pcs",status:"To Buy",addedBy:session?.name||by||"",refLink:""});setEditSw(null);setSwModal(true);};
   const openEditSwatch=(sw)=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);};
   const[designModal,setDesignModal]=useState(false);
   const[designForm, setDesignForm] =useState({});
@@ -5004,7 +5004,9 @@ export default function App(){
         <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
           <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={swForm.name} onChange={e=>setSwForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Walnut veneer, Brass pulls 96mm"/></Fld></div>
           <Fld label="Category"><Sel value={swForm.category} onChange={e=>setSwForm(p=>({...p,category:e.target.value}))}>{SWATCH_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-          <Fld label="Added By"><Sel value={swForm.addedBy} onChange={e=>setSwForm(p=>({...p,addedBy:e.target.value}))}><option>Design</option><option>Ops</option></Sel></Fld>
+          <Fld label="Added By" hint="Auto-set to your name">
+            <div style={{padding:"8px 12px",borderRadius:8,background:"#f8fafc",fontSize:".85rem",color:"#475569",border:"1.5px solid #e2e8f0"}}>{swForm.addedBy||session?.name||"—"}</div>
+          </Fld>
           <Fld label="Quantity"><Inp type="number" value={swForm.qty} onChange={e=>setSwForm(p=>({...p,qty:e.target.value}))}/></Fld>
           <Fld label="Unit"><Sel value={swForm.unit} onChange={e=>setSwForm(p=>({...p,unit:e.target.value}))}>{MAT_UNITS.map(u=><option key={u}>{u}</option>)}</Sel></Fld>
           <Fld label="Supplier"><Inp value={swForm.supplier} onChange={e=>setSwForm(p=>({...p,supplier:e.target.value}))} placeholder="e.g. Casa Hardware"/></Fld>
@@ -5029,9 +5031,15 @@ export default function App(){
               </div>
             </Fld>
           </div>
-          <Fld label="Designer"><Sel value={designForm.designer||""} onChange={e=>setDesignForm(p=>({...p,designer:e.target.value}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+          <Fld label="Designer">
+            <Sel value={designForm.designer||""} onChange={e=>setDesignForm(p=>({...p,designer:e.target.value}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel>
+            {!designForm.designer&&designForm.status&&designForm.status!=="Briefing"&&<div style={{fontSize:".72rem",color:"#f59e0b",marginTop:3,fontWeight:600}}>⚠ No designer assigned — who owns this design?</div>}
+          </Fld>
           <Fld label="Type"><Sel value={designForm.designerType||"in-house"} onChange={e=>setDesignForm(p=>({...p,designerType:e.target.value}))}><option value="in-house">In-house</option><option value="outsourced">Outsourced</option></Sel></Fld>
-          <Fld label="Due Date"><Inp type="date" value={designForm.dueDate||""} onChange={e=>setDesignForm(p=>({...p,dueDate:e.target.value}))}/></Fld>
+          <Fld label="Due Date">
+            <Inp type="date" value={designForm.dueDate||""} onChange={e=>setDesignForm(p=>({...p,dueDate:e.target.value}))}/>
+            {!designForm.dueDate&&designForm.status&&designForm.status!=="Briefing"&&designForm.status!=="Done"&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>No due date set — consider adding one to track progress.</div>}
+          </Fld>
           <div style={{gridColumn:"1/-1"}}><Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={designForm.link||""} onChange={e=>setDesignForm(p=>({...p,link:e.target.value}))} placeholder="https://…"/></Fld></div>
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={3} value={designForm.notes||""} onChange={e=>setDesignForm(p=>({...p,notes:e.target.value}))}/></Fld></div>
         </div>
@@ -8528,7 +8536,10 @@ export default function App(){
                   <Fld key={k} label={l}><Inp value={payForm[k]||""} onChange={e=>setPayForm(p=>({...p,[k]:e.target.value}))} placeholder={ph}/></Fld>
                 ))}
                 <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
-                <Fld label="Due Date"><Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/></Fld>
+                <Fld label="Due Date">
+                  <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
+                  {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
+                </Fld>
                 <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
                 <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
                 <Fld label="Notes"><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder="Optional details"/></Fld>
@@ -8657,7 +8668,21 @@ export default function App(){
                 </div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
                   <Fld label="Interest Rate (% p.a.)"><Inp type="number" value={loanForm.interestRate} onChange={e=>setLoanForm(p=>({...p,interestRate:e.target.value}))} placeholder="e.g. 8"/></Fld>
-                  <Fld label="Monthly Payment (₱)"><Inp type="number" value={loanForm.monthlyPayment} onChange={e=>setLoanForm(p=>({...p,monthlyPayment:e.target.value}))} placeholder="0"/></Fld>
+                  <Fld label="Monthly Payment (₱)">
+                    <Inp type="number" value={loanForm.monthlyPayment} onChange={e=>setLoanForm(p=>({...p,monthlyPayment:e.target.value}))} placeholder="0"/>
+                    {(()=>{
+                      const P=Number(loanForm.principal);const n=Number(loanForm.termMonths);const r=Number(loanForm.interestRate)/100/12;
+                      if(P>0&&n>0&&r>0){
+                        const computed=P*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+                        const entered=Number(loanForm.monthlyPayment);
+                        if(entered>0&&Math.abs(entered-computed)>computed*0.05)
+                          return<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:3}}>⚠ Computed monthly payment: ₱{computed.toLocaleString("en-PH",{maximumFractionDigits:0})} — entered differs by more than 5%.</div>;
+                        if(!entered)
+                          return<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>Suggested: ₱{computed.toLocaleString("en-PH",{maximumFractionDigits:0})}/mo</div>;
+                      }
+                      return null;
+                    })()}
+                  </Fld>
                 </div>
                 <Fld label="Notes"><Inp value={loanForm.notes} onChange={e=>setLoanForm(p=>({...p,notes:e.target.value}))} placeholder="Purpose, collateral, terms, etc."/></Fld>
                 <div style={{display:"flex",gap:10,marginTop:18}}>
