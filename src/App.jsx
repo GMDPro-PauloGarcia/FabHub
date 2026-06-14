@@ -19256,6 +19256,27 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[boqTitle,setBoqTitle]=useState("");
   const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
 
+  // Dynamic sections — start from GMD defaults, fully editable per BOQ
+  const SEC_COLORS=["#64748b","#3b82f6","#f59e0b","#8b5cf6","#06b6d4","#10b981","#ef4444","#f97316","#ec4899","#0ea5e9","#14b8a6","#a855f7","#e11d48","#84cc16","#d97706","#6366f1"];
+  const[sections,setSections]=useState(BOQ_SECTIONS);
+  const[editingSecId,setEditingSecId]=useState(null);
+  const[addSecOpen,setAddSecOpen]=useState(false);
+  const[newSecForm,setNewSecForm]=useState({id:"",label:""});
+
+  const renameSection=(id,label)=>setSections(ss=>ss.map(s=>s.id===id?{...s,label}:s));
+  const addSection=()=>{
+    const sid=newSecForm.id.trim().toUpperCase()||String.fromCharCode(65+sections.length);
+    if(!newSecForm.label.trim()){toastEmit("Section name is required.");return;}
+    if(sections.find(s=>s.id===sid)){toastEmit(`Section "${sid}" already exists.`);return;}
+    setSections(ss=>[...ss,{id:sid,label:newSecForm.label.trim(),color:SEC_COLORS[ss.length%SEC_COLORS.length]}]);
+    setNewSecForm({id:"",label:""});
+    setAddSecOpen(false);
+  };
+  const deleteSection=(id)=>{
+    if(items.some(it=>it.section===id)){toastEmit("Move or delete all items in this section first.");return;}
+    setSections(ss=>ss.filter(s=>s.id!==id));
+  };
+
   // Library state
   const[libOpen,setLibOpen]=useState(false);
   const[libSearch,setLibSearch]=useState("");
@@ -19269,7 +19290,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const filteredLib=boqLibrary.filter(it=>{
     if(!libSearch) return true;
     const q=libSearch.toLowerCase();
-    const sec=BOQ_SECTIONS.find(s=>s.id===it.section);
+    const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section);
     return(it.name||"").toLowerCase().includes(q)||(sec?.label||"").toLowerCase().includes(q)||(it.description||"").toLowerCase().includes(q)||(it.tags||[]).some(t=>t.toLowerCase().includes(q));
   });
 
@@ -19327,7 +19348,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(!form.scopeNotes&&!form.area){setError("Please enter at least a scope description or area.");return;}
     setLoading(true);setError("");setItems([]);setAiNotes("");
     try{
-      const res=await fetch("/api/boq",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client:deal?.client||"",ceType:form.ceType,area:form.area,finishLevel:form.finishLevel,scopeNotes:form.scopeNotes,location:form.location,sections:BOQ_SECTIONS.map(s=>`${s.id}. ${s.label}`)})});
+      const res=await fetch("/api/boq",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client:deal?.client||"",ceType:form.ceType,area:form.area,finishLevel:form.finishLevel,scopeNotes:form.scopeNotes,location:form.location,sections:sections.map(s=>`${s.id}. ${s.label}`)})});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Generation failed");
       setItems(data.items.map((it,i)=>({_id:i,section:it.section||catToSec(it.category||""),itemCode:it.itemCode||it.item_code||"",description:it.description||it.item||"",unit:it.unit||"lot",qty:Number(it.qty)||1,unitCost:Number(it.unitCost||it.unit_cost||0),total:Number(it.total||0)||Number(it.qty||1)*Number(it.unitCost||it.unit_cost||0),remarks:it.remarks||""})));
@@ -19347,11 +19368,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const addRow=(sec)=>setItems(its=>[...its,{_id:Date.now(),section:sec||"B",itemCode:"",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
 
   const grandTotal=items.reduce((s,it)=>s+it.total,0);
-  const bySec=BOQ_SECTIONS.map(s=>({...s,total:items.filter(it=>it.section===s.id).reduce((t,it)=>t+it.total,0),count:items.filter(it=>it.section===s.id).length}));
+  const bySec=sections.map(s=>({...s,total:items.filter(it=>it.section===s.id).reduce((t,it)=>t+it.total,0),count:items.filter(it=>it.section===s.id).length}));
 
   const exportCSV=()=>{
     const rows=[["Section","Code","Description","Unit","Qty","Unit Cost (₱)","Total (₱)","Remarks"]];
-    BOQ_SECTIONS.forEach(sec=>{
+    sections.forEach(sec=>{
       const si=items.filter(it=>it.section===sec.id);
       if(!si.length) return;
       rows.push([`${sec.id}. ${sec.label}`,"","","","","","",""]);
@@ -19376,7 +19397,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🧮 BOQ Builder</h2>
-          <div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>A. General Requirements · B. Architectural · C. Electrical · D. Electronics · E. Mechanical · F. Plumbing · G. FDAS · H. Signages · I. Built Ins</div>
+          <div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>{sections.map(s=>`${s.id}. ${s.label}`).join(" · ")}</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#5b21b6",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
@@ -19402,7 +19423,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <input value={libSearch} onChange={e=>setLibSearch(e.target.value)} placeholder="Search by name, section, or tag…" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",outline:"none",background:"#fff",marginBottom:10,boxSizing:"border-box"}}/>
               {filteredLib.length===0?(<div style={{textAlign:"center",color:"#94a3b8",fontSize:".78rem",padding:"20px 0"}}>{boqLibrary.length===0?"No library items yet."+(canManageLib?" Switch to Manage to add your first item.":""):"No items match."}</div>):(
                 <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:8,maxHeight:320,overflowY:"auto"}}>
-                  {filteredLib.map(it=>{const sec=BOQ_SECTIONS.find(s=>s.id===it.section)||BOQ_SECTIONS[1];return(
+                  {filteredLib.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[1]||BOQ_SECTIONS[1];return(
                     <div key={it.id} style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.name}</div>
@@ -19435,7 +19456,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                   <div>
                     <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section</div>
                     <select value={libForm.section} onChange={e=>setLibForm(p=>({...p,section:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none"}}>
-                      {BOQ_SECTIONS.map(s=><option key={s.id} value={s.id}>{s.id}. {s.label}</option>)}
+                      {[...new Map([...BOQ_SECTIONS,...sections].map(s=>[s.id,s])).values()].map(s=><option key={s.id} value={s.id}>{s.id}. {s.label}</option>)}
                     </select>
                   </div>
                   <div>
@@ -19458,7 +19479,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               </div>
               <div style={{maxHeight:380,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
                 {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No library items yet. Add your first one.</div>}
-                {boqLibrary.map(it=>{const sec=BOQ_SECTIONS.find(s=>s.id===it.section)||BOQ_SECTIONS[1];return(
+                {boqLibrary.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[1]||BOQ_SECTIONS[1];return(
                   <div key={it.id} style={{background:"#fff",border:`1.5px solid ${libEditId===it.id?"#7c3aed":"#ede9fe"}`,borderRadius:8,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{it.name}</div>
@@ -19532,18 +19553,40 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       {items.length>0&&(
         <>
           {/* Title + Add Row buttons per section */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}>
             <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)}
               style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:260,background:"transparent"}}/>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {BOQ_SECTIONS.map(s=>(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+              {sections.map(s=>(
                 <button key={s.id} onClick={()=>addRow(s.id)}
                   style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:s.color,cursor:"pointer"}}>
                   +{s.id}
                 </button>
               ))}
+              <button onClick={()=>setAddSecOpen(o=>!o)}
+                style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>
+                ✚ Section
+              </button>
             </div>
           </div>
+          {/* Add Section Form */}
+          {addSecOpen&&(
+            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>ID (1–3 chars)</div>
+                <input value={newSecForm.id} onChange={e=>setNewSecForm(p=>({...p,id:e.target.value.toUpperCase().slice(0,3)}))} placeholder={String.fromCharCode(65+sections.length)}
+                  style={{width:56,border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",textAlign:"center",fontWeight:700}}/>
+              </div>
+              <div style={{flex:1,minWidth:160}}>
+                <div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section Name</div>
+                <input value={newSecForm.label} onChange={e=>setNewSecForm(p=>({...p,label:e.target.value}))} placeholder="e.g. Special Works, Landscaping…"
+                  onKeyDown={e=>e.key==="Enter"&&addSection()}
+                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <button onClick={addSection} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Add</button>
+              <button onClick={()=>setAddSecOpen(false)} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
+            </div>
+          )}
 
           {/* Section summary pills */}
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
@@ -19566,21 +19609,31 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                 ))}
               </div>
               {/* Rows by section */}
-              {BOQ_SECTIONS.map(sec=>{
+              {sections.map(sec=>{
                 const si=items.filter(it=>it.section===sec.id);
                 if(!si.length) return null;
                 const secTotal=si.reduce((t,it)=>t+it.total,0);
                 return(
                   <React.Fragment key={sec.id}>
                     <div style={{background:sec.color+"12",padding:"5px 12px",borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <span style={{fontSize:".7rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:sec.color}}>{sec.id}. {sec.label}</span>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {editingSecId===sec.id
+                          ?<input autoFocus defaultValue={sec.label}
+                              onBlur={e=>{renameSection(sec.id,e.target.value||sec.label);setEditingSecId(null);}}
+                              onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape"){renameSection(sec.id,e.target.value||sec.label);setEditingSecId(null);}}}
+                              style={{fontSize:".7rem",fontWeight:800,border:"none",borderBottom:"2px solid "+sec.color,background:"transparent",color:sec.color,outline:"none",letterSpacing:"1px",textTransform:"uppercase",padding:"0 2px",minWidth:180}}/>
+                          :<span onClick={()=>setEditingSecId(sec.id)} style={{fontSize:".7rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:sec.color,cursor:"pointer"}} title="Click to rename">{sec.id}. {sec.label} ✎</span>
+                        }
+                        <button onClick={()=>deleteSection(sec.id)} title="Delete section (must be empty)"
+                          style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:"0 2px",opacity:.5}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=.5}>🗑</button>
+                      </div>
                       <span style={{fontSize:".7rem",fontWeight:700,color:sec.color}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
                     </div>
                     {si.map((it,idx)=>(
                       <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,gap:0,padding:"4px 12px",borderBottom:"1px solid #f8fafc",alignItems:"center",background:idx%2?"#fafafa":"#fff"}}>
                         <select value={it.section} onChange={e=>updateItem(it._id,"section",e.target.value)}
                           style={{fontSize:".68rem",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 3px",fontFamily:"inherit",width:"100%",color:sec.color,fontWeight:700}}>
-                          {BOQ_SECTIONS.map(s=><option key={s.id} value={s.id}>{s.id}</option>)}
+                          {sections.map(s=><option key={s.id} value={s.id}>{s.id}</option>)}
                         </select>
                         <input value={it.itemCode} onChange={e=>updateItem(it._id,"itemCode",e.target.value)} placeholder="FF-01"
                           style={{...inpSt,fontSize:".7rem",padding:"3px 5px",margin:"0 3px"}}/>
