@@ -19925,28 +19925,26 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         </div>
       </div>
 
-      {/* Results */}
-      {items.length>0&&(
-        <>
-          {/* Title + Add Row buttons per section */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}>
-            <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)}
-              style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:260,background:"transparent"}}/>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-              {sections.map(s=>(
-                <button key={s.id} onClick={()=>addRow(s.id)}
-                  style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:s.color,cursor:"pointer"}}>
-                  +{s.id}
-                </button>
-              ))}
-              <button onClick={()=>setAddSecOpen(o=>!o)}
-                style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>
-                ✚ Section
-              </button>
-            </div>
-          </div>
-          {/* Add Section Form */}
-          {addSecOpen&&(
+      {/* Title + Add Row buttons — always visible */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}>
+        <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)}
+          style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:260,background:"transparent"}}/>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+          {sections.map(s=>(
+            <button key={s.id} onClick={()=>addRow(s.id)}
+              style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:s.color,cursor:"pointer"}}>
+              + {s.id}
+            </button>
+          ))}
+          <button onClick={()=>setAddSecOpen(o=>!o)}
+            style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>
+            ✚ Section
+          </button>
+        </div>
+      </div>
+
+      {/* Add Section Form */}
+      {addSecOpen&&(
             <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
               <div>
                 <div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>ID (1–3 chars)</div>
@@ -19962,8 +19960,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <button onClick={addSection} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Add</button>
               <button onClick={()=>setAddSecOpen(false)} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
             </div>
-          )}
+      )}
 
+      {/* Results */}
+      {items.length>0&&(
+        <>
           {/* Section summary pills */}
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
             {bySec.filter(b=>b.count>0).map(b=>(
@@ -20042,7 +20043,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </div>
 
           <div style={{background:"#f0f9ff",border:"1.5px solid #bae6fd",borderRadius:10,padding:"10px 14px",fontSize:".75rem",color:"#0369a1"}}>
-            ⚠ AI-generated quantities and rates are estimates. Always verify against supplier quotes, site conditions, and project specifications before presenting to a client.
+            ⚠ Review all quantities and rates against supplier quotes, site conditions, and project specifications before presenting to a client.
           </div>
         </>
       )}
