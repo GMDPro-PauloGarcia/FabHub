@@ -1237,7 +1237,10 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
               {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
             </Sel>
           </Fld>
-          <Fld label="Target Turnover Date" hint="When do we hand over the project to the client?"><Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/></Fld>
+          <Fld label="Target Turnover Date" hint="When do we hand over the project to the client?">
+            <Inp type="date" value={form.startDate} onChange={e=>f("startDate",e.target.value)}/>
+            {form.startDate&&form.startDate<today&&<div style={{fontSize:".7rem",color:"#f59e0b",marginTop:3,fontWeight:600}}>⚠ Date is in the past — please confirm this is correct.</div>}
+          </Fld>
           <div style={{gridColumn:"1/-1"}}>
             <Fld label="Comms Group Link" hint="WhatsApp or Viber group — add all stakeholders">
               <Inp value={form.commsLink} onChange={e=>f("commsLink",e.target.value)} placeholder="https://chat.whatsapp.com/…"/>
@@ -2232,7 +2235,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 
 }
 
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp}){
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate}){
   const[note,setNote]=useState("");
   const[stage,setStage]=useState("");
   const[pct,setPct]=useState("");
@@ -2269,6 +2272,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             if(!note.trim()){toastEmit("Please enter an update note.","warning");return;}
             const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
             logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",updateText);
+            addPmUpdate&&addPmUpdate(pmUpdateModal.dealId,updateText,session?.name);
             setPmUpdateModal(null);
             toastEmit("Update logged!");
           }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
@@ -4075,8 +4079,11 @@ export default function App(){
   const[matForm,   setMatForm]  =useState({projectId:"",name:"",category:"Materials",qty:1,unit:"pcs",cost:0,supplier:"",note:""});
   const[editMat,   setEditMat]  =useState(null);
   const saveMat=(mat)=>{
+    if(!mat.name?.trim()){toastEmit("Material name is required.","warning");return;}
+    if(!mat.qty||Number(mat.qty)<=0){toastEmit("Quantity must be greater than 0.","warning");return;}
+    if(!mat.cost||Number(mat.cost)<=0){toastEmit("Unit cost must be greater than 0.","warning");return;}
     const isEdit=editMat!=null;
-    const rec={...mat,id:isEdit?editMat:uid(),createdAt:today,by:session?.name||""};
+    const rec={...mat,name:mat.name.trim(),qty:Number(mat.qty),cost:Number(mat.cost),id:isEdit?editMat:uid(),createdAt:today,by:session?.name||""};
     upProjs(ps=>{
       const p=ps[mat.projectId]||emptyProject();
       const mats=isEdit?p.materials.map(m=>m.id===editMat?rec:m):[...(p.materials||[]),rec];
@@ -6000,7 +6007,7 @@ export default function App(){
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate}/>}
     </Wrap>
   );
 
@@ -9145,7 +9152,7 @@ export default function App(){
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate}/>}
     </Wrap>
   );
 
@@ -15883,6 +15890,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   };
   const submitPay=()=>{
     if(!payForm.amount||!showPay) return;
+    const ms=billings.find(b=>b.id===showPay);
+    if(ms){
+      const alreadyPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+      const msBalance=Math.max(0,Number(ms.amount||0)-alreadyPaid);
+      if(Number(payForm.amount)>msBalance+0.01){
+        toastEmit(`Payment ₱${Number(payForm.amount).toLocaleString("en-PH")} exceeds balance of ₱${msBalance.toLocaleString("en-PH")}. Please check the amount.`,"warning");
+        return;
+      }
+    }
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
     setPayForm({amount:"",date:today,refNo:"",note:""});
     setShowPay(null);
