@@ -6654,7 +6654,7 @@ export default function App(){
     <Wrap><SalesCalendarView deals={deals} session={session} role={role} pcards={pcards} jos={jos} billings={billings}/></Wrap>
   ):(
     <ConstructionCalendar
-      wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos}
+      wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos}
       prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
     />
@@ -9058,7 +9058,7 @@ export default function App(){
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -18057,7 +18057,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
 }
 
 // ─── CONSTRUCTION CALENDAR ────────────────────────────────────────────────────
-function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap}){
+function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
@@ -18065,9 +18065,9 @@ function ConstructionCalendar({wonDeals,deals,pcards,jos,prs,billings,drfs,ceReq
 
   const events=React.useMemo(()=>{
     const list=[];
-    wonDeals.forEach(d=>{
+    [...wonDeals,...(completedDeals||[])].forEach(d=>{
       const pc=pcards[d.id];const jo=jos.find(j=>j.dealId===d.id);
-      if(pc?.targetEndDate) list.push({date:pc.targetEndDate,type:"end",label:d.client,sub:d.ceNo||"",detail:"PM: "+(jo?.pm1||"—"),color:"#3b82f6",icon:"🏗",dealId:d.id});
+      if(pc?.targetEndDate) list.push({date:pc.targetEndDate,type:"end",label:d.client,sub:d.ceNo||"",detail:"PM: "+(jo?.pm1||"—"),color:d.stage==="14 · Completed"?"#059669":"#3b82f6",icon:d.stage==="14 · Completed"?"✅":"🏗",dealId:d.id});
     });
     prs.filter(p=>p.deliveryDate&&!["Delivered","Cancelled"].includes(p.status)).forEach(p=>{
       const d=wonDeals.find(x=>x.id===(p.projectId||p.dealId));
