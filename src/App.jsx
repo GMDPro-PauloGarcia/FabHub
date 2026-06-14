@@ -2761,7 +2761,7 @@ export default function App(){
   // ── PERSIST — updates save indicator; Supabase is the write target ──
   const persist=useCallback((_key,_val)=>{
     setSync("saving");
-    setTimeout(()=>setSync("saved"),300);
+    idbSetMany([[_key,_val]]).then(()=>setSync("saved")).catch(()=>setSync("saved"));
   },[]);
 
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
