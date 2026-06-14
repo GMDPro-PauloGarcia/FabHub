@@ -1515,7 +1515,7 @@ function ClientAutocomplete({value:initVal, onChange}){
 }
 
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
-function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[]}){
+function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],role}){
   // Local state — prevents App re-render on every keystroke (fixes focus bug)
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1611,7 +1611,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
           <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)} min={today}/></Fld>
           <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
-          <Fld label="Discount %" hint="Paulo sets this only"><Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/></Fld>
+          {role==="Manager"
+            ?<Fld label="Discount %" hint="Manager only"><Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/></Fld>
+            :<Fld label="Discount %"><div style={{padding:"8px 12px",borderRadius:8,background:"#f1f5f9",fontSize:".85rem",color:"#94a3b8"}}>{form.discount||0}% (set by Manager)</div></Fld>
+          }
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
         </div>
       </div>
@@ -1787,9 +1790,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,editId,projList,clientName}){
   const[form,setForm]=useState(initialExpForm||{});
   const[step,setStep]=useState(1);
+  const[errors,setErrors]=useState({});
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const expFormKey=`exp-${open}-${editId||"new"}`;
-  useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});}},[open,editId]);
+  useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});setErrors({});}},[open,editId]);
   const handleExpSave=()=>{_setExpForm(()=>form);onSave(form);};
   const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
   const bankName=form.bankAccount?BANKS.find(b=>b.id===form.bankAccount)?.short||form.bankAccount:"Not specified";
@@ -1804,10 +1808,12 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
             <Sel value={form.category} onChange={e=>f("category",e.target.value)}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</Sel>
           </Fld>
           <Fld label="Amount (₱)" required>
-            <Inp type="number" value={form.amount} onChange={e=>f("amount",e.target.value)} placeholder="e.g. 15000"/>
+            <Inp type="number" value={form.amount} onChange={e=>{f("amount",e.target.value);setErrors(p=>({...p,amount:null}));}} placeholder="e.g. 15000" style={errors.amount?{border:"1.5px solid #ef4444"}:undefined}/>
+            {errors.amount&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3}}>{errors.amount}</div>}
           </Fld>
           <Fld label="Description" required hint="Be specific — e.g. 'Steel tubes for TechZone kiosks'">
-            <Inp value={form.note} onChange={e=>f("note",e.target.value)} placeholder="What was this expense for?"/>
+            <Inp value={form.note} onChange={e=>{f("note",e.target.value);setErrors(p=>({...p,note:null}));}} placeholder="What was this expense for?" style={errors.note?{border:"1.5px solid #ef4444"}:undefined}/>
+            {errors.note&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3}}>{errors.note}</div>}
           </Fld>
           <Fld label="Payee" hint="Vendor, supplier, or person paid">
             <Inp value={form.payee||""} onChange={e=>f("payee",e.target.value)} placeholder="e.g. ABC Supplies Inc."/>
@@ -1832,7 +1838,13 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
             <Inp type="url" value={form.receipt||""} onChange={e=>f("receipt",e.target.value)} placeholder="https://drive.google.com/… (optional)"/>
           </Fld>
           <div style={{display:"flex",gap:10,marginTop:20}}>
-            <Btn full onClick={()=>{if(!form.amount||!form.note) return;setStep(2);}}>Review →</Btn>
+            <Btn full onClick={()=>{
+              const errs={};
+              if(!form.amount||Number(form.amount)<=0) errs.amount="Amount is required and must be greater than 0.";
+              if(!form.note?.trim()) errs.note="Description is required.";
+              if(Object.keys(errs).length){setErrors(errs);return;}
+              setStep(2);
+            }}>Review →</Btn>
             <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
           </div>
         </>
@@ -3820,7 +3832,8 @@ export default function App(){
   const saveCl=()=>{
     if(!clForm.title||!clForm.title.trim()){toastEmit("Task title is required.","error");return;}
     if(!clForm.dept){toastEmit("Department is required.","error");return;}
-    const finalType=clForm.type==="Custom"&&clForm.customType?clForm.customType:clForm.type;
+    if(clForm.type==="Custom"&&!clForm.customType?.trim()){toastEmit("Please describe the custom task type.","error");return;}
+    const finalType=clForm.type==="Custom"&&clForm.customType?clForm.customType.trim():clForm.type;
     if(!finalType){toastEmit("Task type is required.","error");return;}
     const rec={...clForm,type:finalType,id:editCl||uid(),createdDate:today,createdBy:role};
     upChecklist(cs=>editCl?cs.map(c=>c.id===editCl?rec:c):[...cs,rec]);
@@ -4968,11 +4981,24 @@ export default function App(){
         </div>
       )}
       {/* Global Modals */}
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
+      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} role={role}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
-        <p style={{color:"#64748b",marginBottom:20}}>This removes the deal and its project from Operations. This cannot be undone.</p>
-        <div style={{display:"flex",gap:10}}><Btn variant="danger" onClick={()=>delDeal(confirmDel)}>Yes, Delete</Btn><Btn variant="ghost" onClick={()=>setConfirmDel(null)}>Cancel</Btn></div>
+        {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
+          <>
+            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
+              <div style={{fontWeight:700,color:"#dc2626",marginBottom:6,fontSize:".88rem"}}>⚠ This will permanently delete:</div>
+              <ul style={{margin:0,paddingLeft:18,fontSize:".82rem",color:"#7f1d1d",lineHeight:2}}>
+                <li>Deal: <strong>{d?.client}{d?.ceNo?" · "+d.ceNo:""}</strong></li>
+                <li>Project card, JO, and all department checklists</li>
+                <li>All billing milestones and payment records</li>
+                <li>All linked expenses, PRs, DRFs, and addenda</li>
+              </ul>
+            </div>
+            <p style={{color:"#64748b",marginBottom:20,fontSize:".85rem"}}>This cannot be undone. Make sure you have a data backup first.</p>
+            <div style={{display:"flex",gap:10}}><Btn variant="danger" onClick={()=>delDeal(confirmDel)}>Yes, Delete Everything</Btn><Btn variant="ghost" onClick={()=>setConfirmDel(null)}>Cancel</Btn></div>
+          </>
+        );})()}
       </Modal>
       <Modal open={swModal} onClose={()=>setSwModal(false)} title={editSw?"Edit Swatch Item":"Add to Swatchboard"} wide>
         <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
@@ -7839,7 +7865,7 @@ export default function App(){
           );
         })()}
 
-        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals}/>
+        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} role={role}/>
       </Wrap>
       {awardReqModal&&<AwardReqModal deal={awardReqModal} session={session} today={today} onClose={()=>setAwardReqModal(null)} onSubmit={formData=>{
           const d=awardReqModal;
