@@ -6539,7 +6539,7 @@ export default function App(){
             {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects",             click:()=>setPage("projects")},
             {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`,           click:()=>setPage("billing")},
             {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
-            {l:"Active JOs",    v:activeJOCnt,       c:"#f97316", sub:"job orders issued",                    click:()=>setPage("projects")},
+            {l:"Active Projects", v:wonDeals.length,    c:"#f97316", sub:"project cards ongoing",                click:()=>setPage("projects")},
             {l:"Pending PRs",   v:pendingPRCnt,      c:"#8b5cf6", sub:"awaiting approval",                    click:()=>setPage("procurement")},
             {l:"Escalations",   v:escalations.length>0?"⚠️ "+escalations.length:escalations.length, c:escalations.length>0?"#ef4444":"#94a3b8", sub:escalations.length>0?escalations.filter(e=>e.severity==="high").length+" high severity":"all clear"},
           ].map(({l,v,c,sub,click})=>(
