@@ -16970,7 +16970,13 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
-                    toastEmit(`Stage → ${st}`,"success");
+                    if(st==="14 · Completed"){
+                      setPcFilter("completed");
+                      setSelDeal(null);
+                      toastEmit(`✅ ${deal.client} marked Completed — showing Completed tab`,"success");
+                    } else {
+                      toastEmit(`Stage → ${st}`,"success");
+                    }
                   };
                   const stageOpts=[...WON_STAGES,"14 · Completed"];
                   return(
