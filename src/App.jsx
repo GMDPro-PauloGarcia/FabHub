@@ -158,7 +158,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -2451,6 +2451,8 @@ export default function App(){
             if(_suppliers){setSuppliers(_suppliers);idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
             if(_subcons){setSubcons(_subcons);idbE.push([KEYS.subcons,_subcons]);}
+            const _boqLib=data.boqLibrary?.length?data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",category:it.category||"Materials",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""})):null;
+            if(_boqLib){setBoqLibrary(_boqLib);idbE.push([KEYS.boqLibrary,_boqLib]);}
             const _users=data.users?.length?data.users.map(u=>{
               // If Supabase row has no password_hash, fall back to the DEFAULT_USERS hash
               // so existing users can still log in while hashes are being migrated
@@ -4140,6 +4142,7 @@ export default function App(){
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   const mobileNavRef = React.useRef(null);
   const[blockers,     setBlockers]     = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.blockers)||"[]");}catch{return [];}});
+  const[boqLibrary,  setBoqLibrary]   = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.boqLibrary)||"[]");}catch{return [];}});
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
@@ -4605,14 +4608,15 @@ export default function App(){
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
-      {group:"Projects",     items:[{id:"projects",l:"📋 Projects"}]},
+      {group:"Projects",     items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"}]},
+      {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"},{id:"boq",l:"🧮 BOQ Builder"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
+      {group:"Approvals",  items:[{id:"requests",l:"📋 MR / BR Queue"},{id:"procurement",l:"Purchase Orders"}]},
       {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"accounting",l:"Accounting"},{id:"reports",l:"📊 Reports"}]},
-      {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"},{id:"addenda",l:"⚠️ Scope Changes"}]},
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
@@ -4639,7 +4643,7 @@ export default function App(){
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"}]},
       {group:"Updates",  items:[{id:"pmupdates",l:"📝 PM Updates"},{id:"addenda",l:"⚠️ Scope Changes"}]},
-      {group:"Work",     items:[]},
+      {group:"Work",     items:[{id:"projects",l:"📋 Project Cards"}]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
@@ -5227,6 +5231,9 @@ export default function App(){
       {(()=>{
         const noBudget=wonDeals.filter(d=>!budgets[d.id]||(!budgets[d.id].Materials&&!budgets[d.id].Labor&&!budgets[d.id].Overhead&&!budgets[d.id].Subcon));
         const autoBudgets=wonDeals.filter(d=>budgets[d.id]?.autoGenerated);
+        // Unpriced pipeline deals — Sales created but QS has not set value yet
+        const wonIds=new Set(wonDeals.map(d=>d.id));
+        const unpricedDeals=deals.filter(d=>!wonIds.has(d.id)&&(!Number(d.value)||Number(d.value)===0)&&d.stage&&!["12 · Close-Out","14 · Completed"].includes(d.stage));
         const withBudget=wonDeals.filter(d=>budgets[d.id]);
         const overBudget=withBudget.filter(d=>{
           const b=budgets[d.id];const total=(b.Materials||0)+(b.Labor||0)+(b.Overhead||0)+(b.Subcon||0);
@@ -5251,6 +5258,31 @@ export default function App(){
         const healthRed=marginHealth.filter(x=>x.margin!==null&&x.margin<20);
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
+          {/* Unpriced pipeline deals alert */}
+          {unpricedDeals.length>0&&(
+            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fecaca",overflow:"hidden"}}>
+              <div style={{background:"#dc2626",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⚠️ {unpricedDeals.length} Unpriced Pipeline Deal{unpricedDeals.length!==1?"s":""} — Action Needed</span>
+                <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)"}}>Sales created · awaiting QS price</span>
+              </div>
+              {unpricedDeals.slice(0,5).map((d,i)=>{
+                const age=d.createdAt?Math.ceil((new Date()-new Date(d.createdAt))/86400000):null;
+                return(
+                  <div key={d.id} onClick={()=>setPage("pipeline")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<Math.min(unpricedDeals.length,5)-1?"1px solid #fee2e2":"",cursor:"pointer",background:"#fff"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="#fef2f2"}
+                    onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                    <div>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".84rem"}}>{d.client}</div>
+                      <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d.ceNo||"No CE"} · {d.stage?.replace(/^\d+ · /,"")||"Pipeline"} · AE: {d.salesOwner||"—"}</div>
+                    </div>
+                    {age!==null&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{age}d old</span>}
+                  </div>
+                );
+              })}
+              {unpricedDeals.length>5&&<div style={{padding:"8px 16px",fontSize:".72rem",color:"#94a3b8",textAlign:"center"}}>+{unpricedDeals.length-5} more · go to Pipeline to set prices</div>}
+            </div>
+          )}
+
           {/* KPI Row */}
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
             {[
@@ -8815,7 +8847,7 @@ export default function App(){
   }
 
   // ─── FINANCE ──────────────────────────────────────────────────────────────
-  if(role==="Finance"||role==="Cost Control"||role==="Procurement"||role==="QS"){
+  if(["Finance","Cost Control","Procurement","QS"].includes(role)){
     const grossPro=totRev-totExp;
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
     if(page==="home"&&role==="QS") return(
@@ -8866,6 +8898,25 @@ export default function App(){
     );
     if(page==="home") return(
       <Wrap>
+        {/* Finance: pending MR/BR approvals banner */}
+        {(()=>{
+          const pendingMR=mreqs.filter(m=>m.status==="Submitted"||m.status==="Reviewed");
+          const pendingBR=breqs.filter(b=>b.status==="Submitted"||b.status==="Under Review");
+          const total=pendingMR.length+pendingBR.length;
+          if(!total) return null;
+          return(
+            <div style={{background:"#fff",border:"1.5px solid #fde68a",borderRadius:12,padding:"14px 18px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{fontWeight:700,color:"#92400e",fontSize:".9rem"}}>⏳ {total} Pending Approval{total!==1?"s":""}</div>
+                <div style={{fontSize:".75rem",color:"#b45309",marginTop:2}}>
+                  {pendingMR.length>0&&<span style={{marginRight:10}}>📋 {pendingMR.length} Material Request{pendingMR.length!==1?"s":""}</span>}
+                  {pendingBR.length>0&&<span>💳 {pendingBR.length} Budget Request{pendingBR.length!==1?"s":""}</span>}
+                </div>
+              </div>
+              <button onClick={()=>setPage("requests")} style={{background:"#f59e0b",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>Review Now →</button>
+            </div>
+          );
+        })()}
         {/* Finance: new awarded projects needing billing milestones */}
         {(()=>{
           const needsBilling=wonDeals.filter(d=>{
@@ -8948,7 +8999,6 @@ export default function App(){
   if(role==="Warehouse"){
     if(page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(page==="boq") return(<Wrap><BOQBuilder wonDeals={[...wonDeals,...completedDeals]} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -8993,12 +9043,15 @@ export default function App(){
                   <div style={{background:"#dc2626",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>🚨 Due Today — Receive and Inspect ({arrivedToday.length})</span></div>
                   {arrivedToday.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
+                    const joW=jos.find(j=>j.dealId===pr.projectId);
+                    const pmW=pcards[pr.projectId]?.pm1||joW?.pm1;
                     return(
                       <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<arrivedToday.length-1?"1px solid #fee2e2":"",background:"#fff"}}>
                         <div>
                           <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{pr.itemName}</div>
-                          <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {pr.qty} {pr.unit} · {pr.supplier||"No supplier"}</div>
-                          {pr.poNumber&&<div style={{fontSize:".68rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
+                          <div style={{fontSize:".72rem",color:"#64748b"}}>{d?.contact||d?.client||"?"} <span style={{color:"#94a3b8"}}>({d?.client||""})</span></div>
+                          <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{pr.qty} {pr.unit} · {pr.supplier||"No supplier"}{pmW?` · PM: ${pmW}`:""}</div>
+                          {pr.poNumber&&<div style={{fontSize:".65rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
                         </div>
                         <button onClick={()=>{
                           updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:`Received by ${session?.name||"Warehouse"} on ${today}`});
@@ -9027,12 +9080,15 @@ export default function App(){
                   <div style={{background:"#d97706",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏰ Overdue — Follow Up with Procurement ({overdueDeliveries.length})</span></div>
                   {overdueDeliveries.map((pr,i)=>{
                     const d=wonDeals.find(x=>x.id===pr.projectId);
+                    const joW=jos.find(j=>j.dealId===pr.projectId);
+                    const pmW=pcards[pr.projectId]?.pm1||joW?.pm1;
                     const daysLate=Math.ceil((now-new Date(pr.deliveryDate))/(1000*60*60*24));
                     return(
                       <div key={pr.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<overdueDeliveries.length-1?"1px solid #fef3c7":"",background:"#fff"}}>
                         <div>
                           <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</div>
-                          <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · Expected {pr.deliveryDate} · {pr.supplier||"No supplier"}</div>
+                          <div style={{fontSize:".72rem",color:"#64748b"}}>{d?.contact||d?.client||"?"}</div>
+                          <div style={{fontSize:".68rem",color:"#94a3b8"}}>Expected {pr.deliveryDate} · {pr.supplier||"No supplier"}{pmW?` · PM: ${pmW}`:""}</div>
                         </div>
                         <span style={{fontSize:".72rem",background:"#fff7ed",color:"#d97706",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
                       </div>
@@ -9234,24 +9290,68 @@ export default function App(){
     </Wrap>
   );
 
-  // ── ADDENDA PAGE FOR PROJECT MOVERS ───────────────────────────────────────
+  // ── ADDENDA PAGE ───────────────────────────────────────────────────────────
   if(page==="addenda") return(
     <Wrap>
-      <SecHead title="⚠️ Scope Changes" sub="Flag addenda discovered on site — AE and Paolo will be notified"/>
+      <SecHead title="⚠️ Scope Changes" sub={["Sales","Finance"].includes(role)?"View all scope changes across active projects":"Flag addenda discovered on site — AE and Paolo will be notified"}/>
       {(()=>{
+        const canCreate=!["Sales","Finance"].includes(role);
         const myName=session?.name||"";
         const myProjects=wonDeals.filter(d=>{
           const jo=jos.find(j=>j.dealId===d.id);
           return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
             p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
         });
-        const[selDealId,setSelDealId]=React.useState(myProjects[0]?.id||"");
+        const[selDealId,setSelDealId]=React.useState(myProjects[0]?.id||wonDeals[0]?.id||"");
         const[title,setTitle]=React.useState("");
         const[desc,setDesc]=React.useState("");
         const[value,setValue]=React.useState("");
-        const[submitting,setSubmitting]=React.useState(false);
+        const[addSearch,setAddSearch]=React.useState("");
 
-        const myAddenda=addenda.filter(a=>myProjects.find(d=>d.id===a.dealId));
+        // Read-only roles see all addenda; PM roles see their project addenda
+        const visibleAddenda=canCreate
+          ?(role==="Manager"?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
+          :addenda;
+        const filteredAddenda=addSearch
+          ?visibleAddenda.filter(a=>{const d=wonDeals.find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
+          :visibleAddenda;
+
+        const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
+        const totalValue=filteredAddenda.reduce((s,a)=>s+Number(a.value||0),0);
+
+        const AddendaList=()=>(
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".9rem"}}>📋 Scope Change Log ({filteredAddenda.length}){totalValue>0&&<span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:8,fontWeight:400}}>₱{Number(totalValue).toLocaleString("en-PH")} total additional value</span>}</span>
+            </div>
+            <div style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9"}}>
+              <input value={addSearch} onChange={e=>setAddSearch(e.target.value)} placeholder="Search by project, client, status…"
+                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
+            </div>
+            {filteredAddenda.length===0
+              ? <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No scope changes found.</div>
+              : filteredAddenda.slice(0,12).map((a,i)=>{
+                  const d=wonDeals.find(x=>x.id===a.dealId);
+                  return(
+                    <div key={a.id} style={{padding:"11px 16px",borderBottom:i<filteredAddenda.length-1?"1px solid #f8fafc":""}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
+                          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d?.client||"?"} · {d?.ceNo||"?"} · By {a.discoveredBy||"—"}</div>
+                          {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
+                        </div>
+                        <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{a.status}</span>
+                      </div>
+                      {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3,fontWeight:600}}>+₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+                    </div>
+                  );
+                })
+            }
+            {filteredAddenda.length>12&&<div style={{padding:"10px 16px",fontSize:".72rem",color:"#94a3b8",textAlign:"center"}}>+{filteredAddenda.length-12} more — use search to narrow down</div>}
+          </div>
+        );
+
+        if(!canCreate) return <AddendaList/>;
 
         return(
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:20}}>
@@ -9265,7 +9365,7 @@ export default function App(){
                   <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
                   <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
                     style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-                    {myProjects.map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
+                    {(role==="Manager"?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
                   </select>
                 </div>
                 <div>
@@ -9290,7 +9390,6 @@ export default function App(){
                   onClick={()=>{
                     if(!title.trim()||!desc.trim()||!selDealId){toastEmit("Please fill in all required fields.","warning");return;}
                     const deal=wonDeals.find(d=>d.id===selDealId);
-                    const jo=jos.find(j=>j.dealId===selDealId);
                     const newAdd={
                       id:"add"+Date.now(),dealId:selDealId,
                       title:title.trim(),description:desc.trim(),
@@ -9302,7 +9401,6 @@ export default function App(){
                       discoveredBy:session?.name||role,
                     };
                     upAddenda(as=>[...as,newAdd]);
-                    // Notify AE + Paolo via activity log (banner will appear on their screens)
                     const ae=deal?.salesOwner||"AE";
                     logActivity(selDealId,"Scope Change Flagged",`${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`);
                     setTitle(""); setDesc(""); setValue("");
@@ -9313,32 +9411,7 @@ export default function App(){
                 </button>
               </div>
             </div>
-
-            {/* My addenda history */}
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#1e293b",padding:"12px 16px"}}>
-                <span style={{fontWeight:700,color:"#f59e0b",fontSize:".9rem"}}>📋 Your Scope Change History ({myAddenda.length})</span>
-              </div>
-              {myAddenda.length===0
-                ? <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No scope changes logged yet.</div>
-                : myAddenda.slice(0,8).map((a,i)=>{
-                    const d=wonDeals.find(x=>x.id===a.dealId);
-                    const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
-                    return(
-                      <div key={a.id} style={{padding:"11px 16px",borderBottom:i<myAddenda.length-1?"1px solid #f8fafc":""}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
-                            <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d?.client||"?"} · {d?.ceNo||"?"}</div>
-                          </div>
-                          <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
-                        </div>
-                        {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3}}>Est. value: ₱{Number(a.value).toLocaleString("en-PH")}</div>}
-                      </div>
-                    );
-                  })
-              }
-            </div>
+            <AddendaList/>
           </div>
         );
       })()}
@@ -9668,6 +9741,7 @@ export default function App(){
   if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
+  if(page==="boq") return(<Wrap><BOQBuilder wonDeals={[...wonDeals,...completedDeals]} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary}/></Wrap>);
 
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
@@ -9976,7 +10050,7 @@ First few:
   );
 
   // ── PROCUREMENT PAGE (Cost Control) ───────────────────────────────────────
-  if((role==="Cost Control"||role==="Manager"||role==="Operations")&&page==="procurement") return(
+  if((["Cost Control","Finance","Manager","Operations"].includes(role))&&page==="procurement") return(
     <Wrap>
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
@@ -15522,7 +15596,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,ro
     setShowForm(false);
   };
 
-  const canApprove = role==="Cost Control"||role==="Manager";
+  const canApprove = ["Finance","Cost Control","Manager"].includes(role);
   const pending = mreqs.filter(m=>m.status==="Submitted"||m.status==="Reviewed");
 
   return(
@@ -16817,6 +16891,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[showDateEdit,setShowDateEdit]=useState(false);
   const[dateForm,setDateForm]=useState({awardDate:"",targetEndDate:""});
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
+  const[pmUpdateModal,setPmUpdateModal]=useState(null);
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
@@ -16853,12 +16928,63 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   };
   const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Overdue"],none:["#94a3b8","No TAT"]};
 
+  const calcCardGrade=(deal,pc)=>{
+    if(!pc||!deal) return{score:0,grade:"F",color:"#ef4444",gcolor:"#fef2f2",breakdown:{}};
+    let score=0;
+    // ─ Completeness (40pts) ────────────────────────────────────────────────
+    const joR=jos.find(j=>j.dealId===deal.id);
+    const hasPM=!!(pc.pm1||joR?.pm1);
+    const hasDate=!!pc.targetEndDate;
+    const b=budgets[deal.id];
+    const hasBudget=b&&["Materials","Labor","Overhead","Subcon"].some(k=>Number(b[k]||0)>0);
+    const hasDesigner=!!(pc.designer||joR?.designer);
+    const hasCE=!!deal.ceNo;
+    const completeness=(hasPM?10:0)+(hasDate?12:0)+(hasBudget?10:0)+(hasDesigner?5:0)+(hasCE?3:0);
+    score+=completeness;
+    // ─ Update recency (30pts) ─────────────────────────────────────────────
+    const updates=(actLog||[]).filter(a=>a.dealId===deal.id&&a.action==="PM Update");
+    const lastUpd=updates[0];
+    let recency=0,recencyLabel="No updates yet";
+    if(lastUpd){
+      const ds=Math.ceil((today2-new Date(lastUpd.date))/86400000);
+      if(ds<=2){recency=30;recencyLabel=ds===0?"Today":ds===1?"Yesterday":`${ds}d ago`;}
+      else if(ds<=7){recency=22;recencyLabel=`${ds}d ago`;}
+      else if(ds<=14){recency=12;recencyLabel=`${ds}d ago`;}
+      else if(ds<=30){recency=5;recencyLabel=`${ds}d ago`;}
+      else{recency=0;recencyLabel=`${ds}d ago (stale)`;}
+    }
+    score+=recency;
+    // ─ Timeline health (30pts) ────────────────────────────────────────────
+    let timeline=10,timelineLabel="No target date";
+    const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
+    if(end){
+      const dl=Math.ceil((end-today2)/86400000);
+      if(dl<0){timeline=0;timelineLabel=`${Math.abs(dl)}d overdue`;}
+      else if(dl===0){timeline=5;timelineLabel="Due today";}
+      else if(dl<=7){timeline=10;timelineLabel=`${dl}d left`;}
+      else if(dl<=14){timeline=18;timelineLabel=`${dl}d left`;}
+      else if(dl<=30){timeline=24;timelineLabel=`${dl}d left`;}
+      else{timeline=30;timelineLabel=`${dl}d left`;}
+    }
+    score+=timeline;
+    // ─ Grade ─────────────────────────────────────────────────────────────
+    let grade,color,gcolor;
+    if(score>=85){grade="A+";color="#059669";gcolor="#dcfce7";}
+    else if(score>=75){grade="A";color="#10b981";gcolor="#d1fae5";}
+    else if(score>=65){grade="B";color="#3b82f6";gcolor="#dbeafe";}
+    else if(score>=50){grade="C";color="#f59e0b";gcolor="#fef3c7";}
+    else if(score>=30){grade="D";color="#f97316";gcolor="#ffedd5";}
+    else{grade="F";color="#ef4444";gcolor="#fef2f2";}
+    return{score,grade,color,gcolor,breakdown:{completeness:{earned:completeness,max:40,items:{hasPM,hasDate,hasBudget,hasDesigner,hasCE}},recency:{earned:recency,max:30,label:recencyLabel,count:updates.length},timeline:{earned:timeline,max:30,label:timelineLabel}}};
+  };
+
   const totalCards=Object.keys(pcards).length;
   const fullyDone=Object.values(pcards).filter(p=>DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length;
   const needsAttn=wonDeals.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";}).length;
   const openBCount=(blockers||[]).filter(b=>b.status==="Open").length;
 
   return(
+    <>
     <div>
       {/* Page header */}
       <div style={{marginBottom:20,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
@@ -16942,7 +17068,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             const parentList=list.filter(d=>!d.parentDealId);
             const renderPCRow=(d,idx,total,isChild=false)=>{
               const pc=pcards[d.id];
-              const h=getHealth(d,pc);const[hc,hl]=HC[h];
+              const g=calcCardGrade(d,pc);
+              const h=getHealth(d,pc);const[hc]=HC[h];
               const joR=jos.find(j=>j.dealId===d.id);
               const projB=(blockers||[]).filter(b=>b.dealId===d.id&&b.status==="Open").length;
               const pct=projPct(pc,d);
@@ -16951,7 +17078,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
               return(
                 <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
-                  style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":hc}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:720}}
+                  style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":g.color}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:720}}
                   onMouseEnter={e=>e.currentTarget.style.background=isChild?"#fef3c7":"#f8fafc"}
                   onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":"#fff"}>
                   <div style={{paddingRight:10,minWidth:0}}>
@@ -16962,7 +17089,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client}</div>
                   <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{ae==="—"?<span style={{color:"#cbd5e1"}}>—</span>:ae}</div>
                   <div style={{fontSize:".76rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{pm==="—"?<span style={{color:"#cbd5e1"}}>Unassigned</span>:pm}</div>
-                  <div><span style={{fontSize:".64rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"2px 7px",whiteSpace:"nowrap"}}>{pct===100?"✅ Done":hl}</span></div>
+                  <div style={{lineHeight:1.2}}>
+                    <span style={{fontSize:".72rem",fontWeight:800,color:g.color,background:g.gcolor,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",letterSpacing:".3px",display:"inline-block"}}>{pct===100?"✅":g.grade}</span>
+                    <div style={{fontSize:".55rem",color:g.color,marginTop:2,paddingLeft:2,fontWeight:600}}>{g.score}pts</div>
+                  </div>
                   <div style={{fontSize:".74rem",fontWeight:dLeft!==null&&dLeft<0?700:400,color:dLeft===null?"#cbd5e1":dLeft<0?"#ef4444":dLeft<=7?"#f59e0b":"#64748b"}}>
                     {dLeft===null?"—":dLeft<0?`${Math.abs(dLeft)}d over`:`${dLeft}d left`}
                   </div>
@@ -16975,7 +17105,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{overflowX:"auto"}}>
                 {/* Table header */}
                 <div style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center",minWidth:720}}>
-                  {["Project","Client","AE","PM","Health","Due"].map((h,i)=>(
+                  {["Project","Client","AE","PM","Grade","Due"].map((h,i)=>(
                     <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
                   ))}
                 </div>
@@ -16999,6 +17129,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         (()=>{
           const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
+          const cardGrade=calcCardGrade(deal,card);
           const pi=phaseIdx(deal?.stage);
           const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
@@ -17338,6 +17469,56 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   </div>
                 )}
               </div>
+
+              {/* ── Card Grade ── */}
+              {(()=>{
+                const{score,grade,color,gcolor,breakdown}=cardGrade;
+                const{completeness,recency,timeline}=breakdown;
+                const missingItems=[];
+                if(!completeness.items.hasPM) missingItems.push("Assign a PM");
+                if(!completeness.items.hasDate) missingItems.push("Set target date");
+                if(!completeness.items.hasBudget) missingItems.push("Enter budget");
+                if(!completeness.items.hasDesigner) missingItems.push("Assign designer");
+                if(!completeness.items.hasCE) missingItems.push("Set CE number");
+                return(
+                  <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${color}44`,padding:isMobile?"12px 14px":"14px 20px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:8}}>🏅 Card Score</div>
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+                          {[
+                            {label:"Completeness",earned:completeness.earned,max:40,hint:completeness.items.hasPM&&completeness.items.hasDate&&completeness.items.hasBudget?"All filled":"Missing info",color:"#8b5cf6"},
+                            {label:"Update Recency",earned:recency.earned,max:30,hint:recency.label,color:"#0ea5e9"},
+                            {label:"Timeline",earned:timeline.earned,max:30,hint:timeline.label,color:"#f59e0b"},
+                          ].map(({label,earned,max,hint,color:c})=>(
+                            <div key={label} style={{background:"#f8fafc",borderRadius:10,padding:"10px 12px"}}>
+                              <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>{label}</div>
+                              <div style={{display:"flex",alignItems:"baseline",gap:4}}>
+                                <span style={{fontWeight:800,fontSize:"1.1rem",color:c}}>{earned}</span>
+                                <span style={{fontSize:".7rem",color:"#94a3b8"}}>/{max}</span>
+                              </div>
+                              <div style={{height:4,background:"#e2e8f0",borderRadius:2,marginTop:4,overflow:"hidden"}}>
+                                <div style={{height:"100%",width:(earned/max*100)+"%",background:c,borderRadius:2}}/>
+                              </div>
+                              <div style={{fontSize:".6rem",color:"#64748b",marginTop:3}}>{hint}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {missingItems.length>0&&(
+                          <div style={{marginTop:8,fontSize:".68rem",color:"#64748b"}}>
+                            <span style={{fontWeight:700,color:"#94a3b8"}}>To improve: </span>
+                            {missingItems.map((m,i)=><span key={i}><span style={{color:"#ef4444"}}>•</span> {m}{i<missingItems.length-1?" ":""}</span>)}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
+                        <div style={{width:62,height:62,borderRadius:14,background:gcolor,border:`2.5px solid ${color}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:"1.7rem",color,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"-1px"}}>{pct===100?"✅":grade}</div>
+                        <div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>{score}/100</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* ── Project Team ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -17739,6 +17920,46 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
               </div>
 
+              {/* ── PM Updates ── */}
+              {(()=>{
+                const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date));
+                const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
+                const canPost=role==="Manager"||role==="Operations"||isPM;
+                return(
+                  <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                    <div style={{padding:"12px 18px",background:"#0ea5e9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div>
+                        <span style={{fontWeight:700,color:"#fff",fontSize:".84rem"}}>📝 PM Updates</span>
+                        <span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>{allProjUpdates.length} total</span>
+                        {allProjUpdates[0]&&<span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>· last: {allProjUpdates[0].date}</span>}
+                      </div>
+                      {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})}
+                        style={{background:"#fff",border:"none",borderRadius:8,padding:"5px 13px",fontFamily:"inherit",fontSize:".75rem",color:"#0ea5e9",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
+                    </div>
+                    {allProjUpdates.length===0
+                      ?<div style={{padding:"14px 18px",fontSize:".8rem",color:"#94a3b8",textAlign:"center"}}>No updates yet.{canPost&&" Be the first to post one!"}</div>
+                      :<div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
+                        {allProjUpdates.slice(0,5).map((u,i)=>{
+                          const match=u.detail?.match(/^\[([^\]]+)\]:\s*(.*)/s);
+                          const meta=match?match[1]:"";
+                          const text=match?match[2].trim():(u.detail||"");
+                          const isToday=u.date===today;
+                          return(
+                            <div key={u.id||i} style={{padding:"9px 12px",borderRadius:9,background:i===0?"#f0f9ff":"#f8fafc",border:i===0?"1.5px solid #bae6fd":"1px solid #f1f5f9"}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                                <span style={{fontSize:".65rem",fontWeight:700,color:isToday?"#0ea5e9":"#94a3b8"}}>{isToday?"Today":u.date} · {u.by}</span>
+                                {meta&&<span style={{fontSize:".6rem",color:"#8b5cf6",background:"#f5f3ff",borderRadius:4,padding:"1px 6px"}}>{meta.split("·")[0]?.trim()}</span>}
+                              </div>
+                              <div style={{fontSize:".78rem",color:"#0f172a",lineHeight:1.45}}>{text}</div>
+                            </div>
+                          );
+                        })}
+                        {allProjUpdates.length>5&&<div style={{fontSize:".68rem",color:"#94a3b8",textAlign:"center",padding:"2px 0"}}>+{allProjUpdates.length-5} older updates</div>}
+                      </div>}
+                  </div>
+                );
+              })()}
+
               {/* ── Finance Snapshot ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>💰 Finance Snapshot</div>
@@ -17768,6 +17989,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         })()
       )}
     </div>
+    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
+    </>
   );
 }
 
@@ -19384,11 +19607,21 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
 }
 
 // ─── BOQ BUILDER ─────────────────────────────────────────────────────────────
-const BOQ_CATS=["Materials","Labor","Subcon","Overhead"];
-const BOQ_CAT_CLR={Materials:"#3b82f6",Labor:"#8b5cf6",Subcon:"#f59e0b",Overhead:"#64748b"};
+const BOQ_SECTIONS=[
+  {id:"A",label:"General Requirements",color:"#64748b"},
+  {id:"B",label:"Architectural",color:"#3b82f6"},
+  {id:"C",label:"Electrical",color:"#f59e0b"},
+  {id:"D",label:"Electronics",color:"#8b5cf6"},
+  {id:"E",label:"Mechanical",color:"#06b6d4"},
+  {id:"F",label:"Plumbing",color:"#10b981"},
+  {id:"G",label:"FDAS / Fire Protection",color:"#ef4444"},
+  {id:"H",label:"Signages",color:"#f97316"},
+  {id:"I",label:"Built Ins / Furnitures",color:"#ec4899"},
+];
+const BOQ_SEC_CLR=Object.fromEntries(BOQ_SECTIONS.map(s=>[s.id,s.color]));
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary}){
   const[selDeal,setSelDeal]=useState("");
   const[form,setForm]=useState({area:"",finishLevel:"Mid-range",scopeNotes:"",ceType:"Fabrication / General",location:""});
   const[items,setItems]=useState([]);
@@ -19397,6 +19630,77 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
   const[error,setError]=useState("");
   const[boqTitle,setBoqTitle]=useState("");
   const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+  // Dynamic sections — start from GMD defaults, fully editable per BOQ
+  const SEC_COLORS=["#64748b","#3b82f6","#f59e0b","#8b5cf6","#06b6d4","#10b981","#ef4444","#f97316","#ec4899","#0ea5e9","#14b8a6","#a855f7","#e11d48","#84cc16","#d97706","#6366f1"];
+  const[sections,setSections]=useState(BOQ_SECTIONS);
+  const[editingSecId,setEditingSecId]=useState(null);
+  const[addSecOpen,setAddSecOpen]=useState(false);
+  const[newSecForm,setNewSecForm]=useState({id:"",label:""});
+
+  const renameSection=(id,label)=>setSections(ss=>ss.map(s=>s.id===id?{...s,label}:s));
+  const addSection=()=>{
+    const sid=newSecForm.id.trim().toUpperCase()||String.fromCharCode(65+sections.length);
+    if(!newSecForm.label.trim()){toastEmit("Section name is required.");return;}
+    if(sections.find(s=>s.id===sid)){toastEmit(`Section "${sid}" already exists.`);return;}
+    setSections(ss=>[...ss,{id:sid,label:newSecForm.label.trim(),color:SEC_COLORS[ss.length%SEC_COLORS.length]}]);
+    setNewSecForm({id:"",label:""});
+    setAddSecOpen(false);
+  };
+  const deleteSection=(id)=>{
+    if(items.some(it=>it.section===id)){toastEmit("Move or delete all items in this section first.");return;}
+    setSections(ss=>ss.filter(s=>s.id!==id));
+  };
+
+  // Library state
+  const[libOpen,setLibOpen]=useState(false);
+  const[libSearch,setLibSearch]=useState("");
+  const[libTab,setLibTab]=useState("search");
+  const[libForm,setLibForm]=useState({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});
+  const[libEditId,setLibEditId]=useState(null);
+  const canManageLib=["Manager","QS"].includes(role);
+
+  const saveLibrary=(newLib)=>{setBoqLibrary(newLib);localStorage.setItem("gmdv5:boqLibrary",JSON.stringify(newLib));};
+
+  const filteredLib=boqLibrary.filter(it=>{
+    if(!libSearch) return true;
+    const q=libSearch.toLowerCase();
+    const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section);
+    return(it.name||"").toLowerCase().includes(q)||(sec?.label||"").toLowerCase().includes(q)||(it.description||"").toLowerCase().includes(q)||(it.tags||[]).some(t=>t.toLowerCase().includes(q));
+  });
+
+  const addLibItemToBoq=(libIt)=>{
+    setItems(its=>[...its,{_id:Date.now(),section:libIt.section||"B",itemCode:"",description:libIt.name,unit:libIt.unit||"lot",qty:1,unitCost:libIt.unitCost||0,total:libIt.unitCost||0,remarks:""}]);
+    toastEmit(`"${libIt.name}" added to BOQ`);
+  };
+
+  const saveLibItem=()=>{
+    if(!libForm.name.trim()){toastEmit("Item name is required.");return;}
+    const isNew=!libEditId;
+    const entry={id:libEditId||uid(),name:libForm.name.trim(),description:libForm.description.trim(),section:libForm.section,unit:libForm.unit||"lot",unitCost:Number(libForm.unitCost)||0,tags:libForm.tags.split(",").map(t=>t.trim()).filter(Boolean),createdBy:session?.name||"",createdAt:libEditId?(boqLibrary.find(x=>x.id===libEditId)?.createdAt||new Date().toISOString()):new Date().toISOString(),updatedAt:new Date().toISOString()};
+    const newLib=libEditId?boqLibrary.map(x=>x.id===libEditId?entry:x):[...boqLibrary,entry];
+    saveLibrary(newLib);
+    if(isSupabaseReady()){
+      const sbRow={id:entry.id,name:entry.name,description:entry.description,category:entry.section,unit:entry.unit,unit_cost:entry.unitCost,tags:entry.tags,created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt};
+      if(isNew) sbInsert('boq_library',sbRow).catch(()=>{});
+      else sbUpdate('boq_library',entry.id,sbRow).catch(()=>{});
+    }
+    setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});
+    setLibEditId(null);
+    toastEmit(isNew?"Library item saved.":"Library item updated.");
+  };
+
+  const startEditLib=(it)=>{
+    setLibEditId(it.id);
+    setLibForm({name:it.name,description:it.description||"",section:it.section||"B",unit:it.unit,unitCost:String(it.unitCost||""),tags:(it.tags||[]).join(", ")});
+    setLibTab("manage");
+  };
+
+  const deleteLibItem=(id)=>{
+    saveLibrary(boqLibrary.filter(x=>x.id!==id));
+    if(isSupabaseReady()) sbDelete('boq_library',id).catch(()=>{});
+    if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}
+  };
 
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
   const jo=jos.find(j=>j.dealId===selDeal);
@@ -19413,53 +19717,44 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
     setBoqTitle(`BOQ — ${deal.client||""}${deal.contact?" · "+deal.contact:""}`);
   },[selDeal]);
 
+  const catToSec=(cat)=>({Materials:"B",Labor:"B",Subcon:"I",Overhead:"A","General Requirements":"A",Architectural:"B",Electrical:"C",Electronics:"D",Mechanical:"E",Plumbing:"F",FDAS:"G","Fire Protection":"G",Signages:"H","Built Ins":"I",Furnitures:"I","Built Ins / Furnitures":"I"}[cat]||"B");
+
   const generate=async()=>{
     if(!form.scopeNotes&&!form.area){setError("Please enter at least a scope description or area.");return;}
     setLoading(true);setError("");setItems([]);setAiNotes("");
     try{
-      const res=await fetch("/api/boq",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          client:deal?.client||"",
-          ceType:form.ceType,
-          area:form.area,
-          finishLevel:form.finishLevel,
-          scopeNotes:form.scopeNotes,
-          location:form.location,
-        }),
-      });
+      const res=await fetch("/api/boq",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client:deal?.client||"",ceType:form.ceType,area:form.area,finishLevel:form.finishLevel,scopeNotes:form.scopeNotes,location:form.location,sections:sections.map(s=>`${s.id}. ${s.label}`)})});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Generation failed");
-      setItems(data.items.map((it,i)=>({...it,_id:i})));
+      setItems(data.items.map((it,i)=>({_id:i,section:it.section||catToSec(it.category||""),itemCode:it.itemCode||it.item_code||"",description:it.description||it.item||"",unit:it.unit||"lot",qty:Number(it.qty)||1,unitCost:Number(it.unitCost||it.unit_cost||0),total:Number(it.total||0)||Number(it.qty||1)*Number(it.unitCost||it.unit_cost||0),remarks:it.remarks||""})));
       setAiNotes(data.notes||"");
-      toastEmit("BOQ generated — review and adjust quantities/rates before saving.");
-    }catch(e){
-      setError(e.message);
-    }finally{
-      setLoading(false);
-    }
+      toastEmit("BOQ generated — review and adjust before presenting to client.");
+    }catch(e){setError(e.message);}
+    finally{setLoading(false);}
   };
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
-    const upd={...it,[key]:key==="item"||key==="unit"||key==="category"?val:Number(val)||0};
+    const upd={...it,[key]:["description","unit","section","itemCode","remarks"].includes(key)?val:Number(val)||0};
     upd.total=(upd.qty||0)*(upd.unitCost||0);
     return upd;
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
-  const addRow=()=>setItems(its=>[...its,{_id:Date.now(),category:"Materials",item:"",unit:"lot",qty:1,unitCost:0,total:0}]);
+  const addRow=(sec)=>setItems(its=>[...its,{_id:Date.now(),section:sec||"B",itemCode:"",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
 
   const grandTotal=items.reduce((s,it)=>s+it.total,0);
-  const byCategory=BOQ_CAT_CLR&&BOQ_CATS.map(c=>({
-    cat:c,total:items.filter(it=>it.category===c).reduce((s,it)=>s+it.total,0),
-    count:items.filter(it=>it.category===c).length,
-  }));
+  const bySec=sections.map(s=>({...s,total:items.filter(it=>it.section===s.id).reduce((t,it)=>t+it.total,0),count:items.filter(it=>it.section===s.id).length}));
 
   const exportCSV=()=>{
-    const rows=[["Category","Item","Unit","Qty","Unit Cost","Total"]];
-    items.forEach(it=>rows.push([it.category,it.item,it.unit,it.qty,it.unitCost,it.total]));
-    rows.push(["","","","","GRAND TOTAL",grandTotal]);
+    const rows=[["Section","Code","Description","Unit","Qty","Unit Cost (₱)","Total (₱)","Remarks"]];
+    sections.forEach(sec=>{
+      const si=items.filter(it=>it.section===sec.id);
+      if(!si.length) return;
+      rows.push([`${sec.id}. ${sec.label}`,"","","","","","",""]);
+      si.forEach(it=>rows.push([sec.id,it.itemCode,it.description,it.unit,it.qty,it.unitCost,it.total,it.remarks||""]));
+    });
+    const grand=items.reduce((s,it)=>s+it.total,0);
+    rows.push(["","","","","","","GRAND TOTAL",grand]);
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a");
     a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
@@ -19469,6 +19764,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
 
   const mob=window.innerWidth<768;
   const inpSt={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",width:"100%",outline:"none",background:"#fff"};
+  const GRID="44px 72px 1fr 58px 58px 100px 100px 120px 32px";
 
   return(
     <div>
@@ -19476,20 +19772,114 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🧮 BOQ Builder</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>AI-assisted Bill of Quantities — review all figures before use</div>
+          <div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>{sections.map(s=>`${s.id}. ${s.label}`).join(" · ")}</div>
         </div>
-        {items.length>0&&(
-          <div style={{display:"flex",gap:8}}>
-            <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
-          </div>
-        )}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#5b21b6",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+            📚 {libOpen?"Hide Library":"Line-Item Library"}
+            {boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:".65rem",fontWeight:800}}>{boqLibrary.length}</span>}
+          </button>
+          {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
+        </div>
       </div>
+
+      {/* Library Panel */}
+      {libOpen&&(
+        <div style={{background:"#faf5ff",border:"1.5px solid #c4b5fd",borderRadius:14,padding:18,marginBottom:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+            <div style={{fontWeight:800,color:"#4c1d95",fontSize:".9rem"}}>📚 Standard Line-Item Library</div>
+            <div style={{display:"flex",gap:6}}>
+              <button onClick={()=>setLibTab("search")} style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid "+(libTab==="search"?"#7c3aed":"#e2e8f0"),background:libTab==="search"?"#7c3aed":"#fff",color:libTab==="search"?"#fff":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>🔍 Search</button>
+              {canManageLib&&<button onClick={()=>setLibTab("manage")} style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid "+(libTab==="manage"?"#7c3aed":"#e2e8f0"),background:libTab==="manage"?"#7c3aed":"#fff",color:libTab==="manage"?"#fff":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>⚙ Manage</button>}
+            </div>
+          </div>
+          {libTab==="search"&&(
+            <>
+              <input value={libSearch} onChange={e=>setLibSearch(e.target.value)} placeholder="Search by name, section, or tag…" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",outline:"none",background:"#fff",marginBottom:10,boxSizing:"border-box"}}/>
+              {filteredLib.length===0?(<div style={{textAlign:"center",color:"#94a3b8",fontSize:".78rem",padding:"20px 0"}}>{boqLibrary.length===0?"No library items yet."+(canManageLib?" Switch to Manage to add your first item.":""):"No items match."}</div>):(
+                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:8,maxHeight:320,overflowY:"auto"}}>
+                  {filteredLib.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[1]||BOQ_SECTIONS[1];return(
+                    <div key={it.id} style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.name}</div>
+                        {it.description&&<div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,lineHeight:1.4}}>{it.description}</div>}
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                          <span style={{background:sec.color+"18",color:sec.color,border:`1px solid ${sec.color}44`,borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>{sec.id}. {sec.label}</span>
+                          <span style={{fontSize:".68rem",color:"#94a3b8"}}>/{it.unit}</span>
+                          {it.unitCost>0&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669"}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
+                        </div>
+                        {(it.tags||[]).length>0&&<div style={{marginTop:4,display:"flex",gap:4,flexWrap:"wrap"}}>{it.tags.map(t=><span key={t} style={{background:"#f1f5f9",color:"#475569",borderRadius:20,padding:"1px 7px",fontSize:".6rem"}}>{t}</span>)}</div>}
+                      </div>
+                      <button onClick={()=>addLibItemToBoq(it)} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:800,color:"#fff",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>+ Add</button>
+                    </div>
+                  );})}
+                </div>
+              )}
+            </>
+          )}
+          {libTab==="manage"&&canManageLib&&(
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16}}>
+              <div style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:14}}>
+                <div style={{fontWeight:700,color:"#4c1d95",fontSize:".8rem",marginBottom:10}}>{libEditId?"Edit Item":"New Library Item"}</div>
+                {[{label:"Item Name *",key:"name",placeholder:"e.g. Mobilization Fee"},{label:"Description",key:"description",placeholder:"Short scope note"}].map(f=>(
+                  <div key={f.key} style={{marginBottom:8}}>
+                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>{f.label}</div>
+                    <input value={libForm[f.key]} onChange={e=>setLibForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                ))}
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                  <div>
+                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section</div>
+                    <select value={libForm.section} onChange={e=>setLibForm(p=>({...p,section:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none"}}>
+                      {[...new Map([...BOQ_SECTIONS,...sections].map(s=>[s.id,s])).values()].map(s=><option key={s.id} value={s.id}>{s.id}. {s.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Default Unit</div>
+                    <input value={libForm.unit} onChange={e=>setLibForm(p=>({...p,unit:e.target.value}))} placeholder="lot, sqm, pc…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                  </div>
+                </div>
+                <div style={{marginBottom:8}}>
+                  <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Typical Unit Cost (₱)</div>
+                  <input type="number" value={libForm.unitCost} onChange={e=>setLibForm(p=>({...p,unitCost:e.target.value}))} placeholder="0" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Tags (comma-separated)</div>
+                  <input value={libForm.tags} onChange={e=>setLibForm(p=>({...p,tags:e.target.value}))} placeholder="e.g. mobilization, glass, electrical" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={saveLibItem} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>{libEditId?"💾 Update":"➕ Save Item"}</button>
+                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#64748b",cursor:"pointer"}}>Cancel</button>}
+                </div>
+              </div>
+              <div style={{maxHeight:380,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+                {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No library items yet. Add your first one.</div>}
+                {boqLibrary.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[1]||BOQ_SECTIONS[1];return(
+                  <div key={it.id} style={{background:"#fff",border:`1.5px solid ${libEditId===it.id?"#7c3aed":"#ede9fe"}`,borderRadius:8,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{it.name}</div>
+                      <div style={{fontSize:".68rem",color:"#64748b",display:"flex",gap:8,marginTop:2}}>
+                        <span style={{color:sec.color,fontWeight:700}}>{sec.id}. {sec.label}</span>
+                        <span>/{it.unit}</span>
+                        {it.unitCost>0&&<span style={{color:"#059669",fontWeight:700}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:6,flexShrink:0}}>
+                      <button onClick={()=>startEditLib(it)} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>Edit</button>
+                      <button onClick={()=>deleteLibItem(it.id)} style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:6,padding:"3px 9px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer"}}>✕</button>
+                    </div>
+                  </div>
+                );})}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Input panel */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16}}>
         <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:14}}>Project Details</div>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":deal?"1fr 1fr 1fr":"1fr 1fr",gap:12,marginBottom:12}}>
-          {/* Project selector */}
           <div>
             <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Link to Project (optional)</div>
             <select value={selDeal} onChange={e=>setSelDeal(e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
@@ -19497,14 +19887,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
               {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
             </select>
           </div>
-          {/* CE Type */}
           <div>
             <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Project Type</div>
             <select value={form.ceType} onChange={e=>ff("ceType",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
               {CE_TYPES.map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
-          {/* Finish Level */}
           <div>
             <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Finish Level</div>
             <select value={form.finishLevel} onChange={e=>ff("finishLevel",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
@@ -19525,15 +19913,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
         <div style={{marginBottom:14}}>
           <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Scope Description <span style={{color:"#94a3b8",fontWeight:400}}>(the more detail, the better the output)</span></div>
           <textarea value={form.scopeNotes} onChange={e=>ff("scopeNotes",e.target.value)} rows={4}
-            placeholder="e.g. Full retail fit-out for a 120sqm pop-up store. Includes: custom fabricated display gondolas (×6), 2 lightbox headers (3m×1.5m each), vinyl wrapped cashier counter, track lighting (12 units), ceiling works with gypsum board, full perimeter wallpaper application, electrical rough-in and outlets."
+            placeholder="e.g. Full retail fit-out, 120sqm. Includes: display gondolas ×6, lightbox headers 3m×1.5m each, vinyl wrapped cashier counter, track lighting ×12, gypsum board ceiling, electrical rough-in and outlets."
             style={{...inpSt,resize:"vertical"}}/>
         </div>
         {error&&<div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:8,padding:"8px 14px",color:"#dc2626",fontSize:".8rem",marginBottom:12}}>{error}</div>}
         <button onClick={generate} disabled={loading}
           style={{background:loading?"#e2e8f0":"#1e293b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",color:loading?"#94a3b8":"#fff",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
-          {loading?(
-            <><span style={{display:"inline-block",width:14,height:14,border:"2px solid #94a3b8",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>Generating BOQ…</>
-          ):"✨ Generate BOQ with AI"}
+          {loading?(<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #94a3b8",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>Generating BOQ…</>):"✨ Generate BOQ with AI"}
         </button>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
@@ -19541,18 +19927,47 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
       {/* Results */}
       {items.length>0&&(
         <>
-          {/* Title bar */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+          {/* Title + Add Row buttons per section */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}>
             <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)}
-              style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:280,background:"transparent"}}/>
-            <button onClick={addRow} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>+ Add Row</button>
+              style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:260,background:"transparent"}}/>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+              {sections.map(s=>(
+                <button key={s.id} onClick={()=>addRow(s.id)}
+                  style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:s.color,cursor:"pointer"}}>
+                  +{s.id}
+                </button>
+              ))}
+              <button onClick={()=>setAddSecOpen(o=>!o)}
+                style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>
+                ✚ Section
+              </button>
+            </div>
           </div>
+          {/* Add Section Form */}
+          {addSecOpen&&(
+            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+              <div>
+                <div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>ID (1–3 chars)</div>
+                <input value={newSecForm.id} onChange={e=>setNewSecForm(p=>({...p,id:e.target.value.toUpperCase().slice(0,3)}))} placeholder={String.fromCharCode(65+sections.length)}
+                  style={{width:56,border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",textAlign:"center",fontWeight:700}}/>
+              </div>
+              <div style={{flex:1,minWidth:160}}>
+                <div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section Name</div>
+                <input value={newSecForm.label} onChange={e=>setNewSecForm(p=>({...p,label:e.target.value}))} placeholder="e.g. Special Works, Landscaping…"
+                  onKeyDown={e=>e.key==="Enter"&&addSection()}
+                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",boxSizing:"border-box"}}/>
+              </div>
+              <button onClick={addSection} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Add</button>
+              <button onClick={()=>setAddSecOpen(false)} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
+            </div>
+          )}
 
-          {/* Category summary pills */}
+          {/* Section summary pills */}
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-            {byCategory.filter(b=>b.count>0).map(b=>(
-              <div key={b.cat} style={{background:BOQ_CAT_CLR[b.cat]+"18",border:`1px solid ${BOQ_CAT_CLR[b.cat]}44`,borderRadius:20,padding:"4px 12px",display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontWeight:700,fontSize:".72rem",color:BOQ_CAT_CLR[b.cat]}}>{b.cat}</span>
+            {bySec.filter(b=>b.count>0).map(b=>(
+              <div key={b.id} style={{background:b.color+"18",border:`1px solid ${b.color}44`,borderRadius:20,padding:"4px 12px",display:"flex",gap:6,alignItems:"center"}}>
+                <span style={{fontWeight:700,fontSize:".7rem",color:b.color}}>{b.id}. {b.label}</span>
                 <span style={{fontSize:".72rem",color:"#475569",fontWeight:600}}>₱{b.total.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
                 <span style={{fontSize:".65rem",color:"#94a3b8"}}>{b.count} item{b.count!==1?"s":""}</span>
               </div>
@@ -19560,54 +19975,71 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
           </div>
 
           {/* Table */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:12}}>
-            {/* Column headers */}
-            <div style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
-              {["Category","Item Description","Unit","Qty","Unit Cost (₱)","Total (₱)",""].map((h,i)=>(
-                <div key={i} style={{fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:i>=3&&i<=5?"right":"left",paddingRight:i<5?6:0}}>{h}</div>
-              ))}
-            </div>
-            {/* Rows grouped by category */}
-            {BOQ_CATS.map(cat=>{
-              const catItems=items.filter(it=>it.category===cat);
-              if(!catItems.length) return null;
-              return(
-                <React.Fragment key={cat}>
-                  <div style={{background:BOQ_CAT_CLR[cat]+"12",padding:"4px 12px",borderTop:"1px solid #f1f5f9"}}>
-                    <span style={{fontSize:".68rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:BOQ_CAT_CLR[cat]}}>{cat}</span>
-                  </div>
-                  {catItems.map((it,idx)=>(
-                    <div key={it._id} style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",gap:0,padding:"5px 12px",borderBottom:"1px solid #f8fafc",alignItems:"center",background:idx%2?"#fafafa":"#fff"}}>
-                      <select value={it.category} onChange={e=>updateItem(it._id,"category",e.target.value)}
-                        style={{fontSize:".72rem",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"3px 4px",fontFamily:"inherit",width:"100%",color:BOQ_CAT_CLR[it.category]}}>
-                        {BOQ_CATS.map(c=><option key={c}>{c}</option>)}
-                      </select>
-                      <input value={it.item} onChange={e=>updateItem(it._id,"item",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",margin:"0 4px"}}/>
-                      <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"center"}}/>
-                      <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"right"}}/>
-                      <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"right",margin:"0 4px"}}/>
-                      <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".8rem",paddingRight:4}}>
-                        {it.total.toLocaleString("en-PH",{minimumFractionDigits:0})}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"auto",marginBottom:12}}>
+            <div style={{minWidth:900}}>
+              {/* Column headers */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
+                {["§","Code","Description","Unit","Qty","Unit Cost (₱)","Total (₱)","Remarks",""].map((h,i)=>(
+                  <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:[4,5,6].includes(i)?"right":"left"}}>{h}</div>
+                ))}
+              </div>
+              {/* Rows by section */}
+              {sections.map(sec=>{
+                const si=items.filter(it=>it.section===sec.id);
+                if(!si.length) return null;
+                const secTotal=si.reduce((t,it)=>t+it.total,0);
+                return(
+                  <React.Fragment key={sec.id}>
+                    <div style={{background:sec.color+"12",padding:"5px 12px",borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {editingSecId===sec.id
+                          ?<input autoFocus defaultValue={sec.label}
+                              onBlur={e=>{renameSection(sec.id,e.target.value||sec.label);setEditingSecId(null);}}
+                              onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape"){renameSection(sec.id,e.target.value||sec.label);setEditingSecId(null);}}}
+                              style={{fontSize:".7rem",fontWeight:800,border:"none",borderBottom:"2px solid "+sec.color,background:"transparent",color:sec.color,outline:"none",letterSpacing:"1px",textTransform:"uppercase",padding:"0 2px",minWidth:180}}/>
+                          :<span onClick={()=>setEditingSecId(sec.id)} style={{fontSize:".7rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:sec.color,cursor:"pointer"}} title="Click to rename">{sec.id}. {sec.label} ✎</span>
+                        }
+                        <button onClick={()=>deleteSection(sec.id)} title="Delete section (must be empty)"
+                          style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:"0 2px",opacity:.5}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=.5}>🗑</button>
                       </div>
-                      <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
+                      <span style={{fontSize:".7rem",fontWeight:700,color:sec.color}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
                     </div>
-                  ))}
-                </React.Fragment>
-              );
-            })}
-            {/* Grand total */}
-            <div style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",padding:"10px 12px",background:"#1e293b",borderTop:"2px solid #334155",alignItems:"center"}}>
-              <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
-              <div style={{textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#f59e0b",fontSize:"1.1rem"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-              <div/>
+                    {si.map((it,idx)=>(
+                      <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,gap:0,padding:"4px 12px",borderBottom:"1px solid #f8fafc",alignItems:"center",background:idx%2?"#fafafa":"#fff"}}>
+                        <select value={it.section} onChange={e=>updateItem(it._id,"section",e.target.value)}
+                          style={{fontSize:".68rem",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 3px",fontFamily:"inherit",width:"100%",color:sec.color,fontWeight:700}}>
+                          {sections.map(s=><option key={s.id} value={s.id}>{s.id}</option>)}
+                        </select>
+                        <input value={it.itemCode} onChange={e=>updateItem(it._id,"itemCode",e.target.value)} placeholder="FF-01"
+                          style={{...inpSt,fontSize:".7rem",padding:"3px 5px",margin:"0 3px"}}/>
+                        <input value={it.description} onChange={e=>updateItem(it._id,"description",e.target.value)}
+                          style={{...inpSt,fontSize:".78rem",padding:"3px 6px"}}/>
+                        <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)}
+                          style={{...inpSt,fontSize:".72rem",padding:"3px 5px",textAlign:"center",margin:"0 3px"}}/>
+                        <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)}
+                          style={{...inpSt,fontSize:".78rem",padding:"3px 5px",textAlign:"right"}}/>
+                        <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)}
+                          style={{...inpSt,fontSize:".78rem",padding:"3px 5px",textAlign:"right",margin:"0 3px"}}/>
+                        <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".8rem",paddingRight:4}}>
+                          {it.total.toLocaleString("en-PH",{minimumFractionDigits:0})}
+                        </div>
+                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM, c/o owner…"
+                          style={{...inpSt,fontSize:".68rem",padding:"3px 5px",color:"#64748b",margin:"0 3px"}}/>
+                        <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
+                      </div>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {/* Grand total */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#1e293b",borderTop:"2px solid #334155",alignItems:"center"}}>
+                <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
+                <div style={{textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#f59e0b",fontSize:"1.1rem"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                <div/><div/>
+              </div>
             </div>
           </div>
 
-          {/* AI notes */}
           {aiNotes&&(
             <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#92400e",display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
               <span style={{fontSize:".9rem",flexShrink:0}}>🤖</span>
@@ -19615,7 +20047,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit}){
             </div>
           )}
           <div style={{background:"#f0f9ff",border:"1.5px solid #bae6fd",borderRadius:10,padding:"10px 14px",fontSize:".75rem",color:"#0369a1"}}>
-            ⚠ AI-generated quantities and rates are estimates based on typical Philippine market values. Always verify against supplier quotes, site conditions, and project specifications before presenting to a client.
+            ⚠ AI-generated quantities and rates are estimates. Always verify against supplier quotes, site conditions, and project specifications before presenting to a client.
           </div>
         </>
       )}

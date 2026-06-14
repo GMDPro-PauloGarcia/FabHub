@@ -101,8 +101,8 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="gmd">GMD <span>PROD</span></div>
-    <div class="sub">FabHub Team Handbook v1.5</div>
-    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: June 7, 2026</div>
+    <div class="sub">FabHub Team Handbook v1.6</div>
+    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: June 14, 2026</div>
   </div>
   <nav>
     <div class="nav-group">General</div>
@@ -134,6 +134,7 @@
     <a href="#ch20"><span class="nav-num">20</span> 🚨 Process Compliance</a>
     <a href="#ch21"><span class="nav-num">21</span> 📥 Smart Import Guide</a>
     <a href="#ch22"><span class="nav-num">22</span> 📖 Example Walkthrough</a>
+    <a href="#ch26"><span class="nav-num">26</span> 🔍 Workflow Gap Inspection</a>
     <a href="#ch18"><span class="nav-num">18</span> Coming Soon</a>
   </nav>
 </div>
@@ -143,11 +144,11 @@
     <h1>FabHub <span>Handbook</span></h1>
     <p>GMD Productions Inc. — Internal Operations Platform</p>
     <div class="meta">
-      <span class="badge">Version 1.5</span>
-      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: June 7, 2026</span>
+      <span class="badge">Version 1.6</span>
+      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: June 14, 2026</span>
       <span class="badge">fab-hub.vercel.app</span>
       <span class="badge">9 Roles</span>
-      <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">v1.5 — PM Assignment Flow, Manual Progress, Telegram Alerts</span>
+      <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">v1.6 — Card Grades, PM Updates, Workflow Gap Inspection</span>
     </div>
   </div>
 
@@ -1056,8 +1057,101 @@
       </div>
     </div>
 
+    <!-- CH26 — WORKFLOW GAP INSPECTION -->
+    <div class="chapter" id="ch26">
+      <div class="chapter-header" style="background:linear-gradient(135deg,#0f172a,#1e3a5f)">
+        <span class="ch-num">26</span><h2>🔍 Workflow Gap Inspection</h2>
+      </div>
+      <div class="roles">
+        <span class="role-badge" style="background:#f59e0b">Manager</span>
+        <span class="role-badge" style="background:#10b981">Operations</span>
+        <span class="role-badge" style="background:#3b82f6">All Roles</span>
+      </div>
+      <p>This chapter documents how every role engages with FabHub and how data flows between teams. Use it as an onboarding and process reference.</p>
+
+      <h3>Role Engagement Map</h3>
+      <p>What each role owns inside FabHub — their primary function, write access, and pages. <em>Finance = Cost Control (Paulo &amp; Mar approve MRs, BRs, and POs).</em></p>
+      <table class="data-table">
+        <thead><tr><th>Role</th><th>Primary Function</th><th>Write Access</th><th>Pages</th></tr></thead>
+        <tbody>
+          <tr><td><b>Manager</b></td><td>Super-admin, all gates, overrides</td><td>Full</td><td>All pages</td></tr>
+          <tr><td><b>Sales</b></td><td>Create &amp; move deals, client communication</td><td>Deals + DRF + Scope Changes (view)</td><td>Pipeline, Projects, Scope Changes, DRF, Reports, Calendar, Clients</td></tr>
+          <tr><td><b>QS</b></td><td>Price deals, create BOQ &amp; cost estimates</td><td>Pricing + CE Queue</td><td>Home (with unpriced deal alerts), Pipeline, CE/QS, BOQ, Cost Analysis</td></tr>
+          <tr><td><b>Operations</b></td><td>Execute projects, submit MRs/BRs</td><td>Project cards + requests</td><td>Home, Calendar, Projects, Swatchboard, Requests, Cost Analysis</td></tr>
+          <tr><td><b>Design</b></td><td>Handle design requests &amp; dept tasks</td><td>DRF + dept tasks</td><td>Home, Pipeline (RO), DRF, Projects, Swatchboard</td></tr>
+          <tr><td><b>Procurement</b></td><td>Issue POs, subcon WOs, manage suppliers</td><td>POs + inventory</td><td>Home, Orders, Projects, Clients, Masters</td></tr>
+          <tr><td><b>Finance</b></td><td>Approve MRs/BRs/POs, billing, collections</td><td>Approvals + Billing + Scope Changes (view)</td><td>Home (with approval alerts), MR/BR Queue, Purchase Orders, Billing, Accounting, Reports, Projects, Scope Changes</td></tr>
+          <tr><td><b>ProjectMover</b></td><td>Log daily PM updates, track scope changes, manage site</td><td>Updates + Addenda + Project Cards</td><td>My Projects, PM Updates, Scope Changes, Project Cards</td></tr>
+          <tr><td><b>Warehouse</b></td><td>Confirm deliveries with project context, manage stock</td><td>Inventory + deliveries</td><td>Home (with project + PM on each delivery), Deliveries, Inventory, Stock Moves</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Workflow Handoff Chain</h3>
+      <p>The full deal-to-completion lifecycle and who owns each step.</p>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-content"><b>Sales creates deal &amp; submits CE request</b><span>Sales logs the client in the pipeline and requests a cost estimate. Telegram fires to management.</span></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-content"><b>QS sets the contract price</b><span>Sales cannot set the price — QS must price the deal via the CE Queue. The QS home dashboard now flags all unpriced pipeline deals with how many days old they are. Telegram notifies the sales channel when done.</span></div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-content"><b>Manager reviews at "For Approval" stage (Paulo gate)</b><span>Only Manager or Sales can push a deal past this stage. Non-management roles can only request an award — not grant it.</span></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-content"><b>Deal awarded → Project Card auto-created</b><span>Once awarded, a Project Card is automatically generated with empty department tasks. Team is assigned in Project Cards → Project Team → Edit.</span></div></div>
+        <div class="step"><div class="step-num">5</div><div class="step-content"><b>Operations executes: submits MRs &amp; BRs</b><span>Operations submits Material Requests and Budget Requests. Finance (Paulo &amp; Mar) must approve before Procurement can issue any PO. Finance home shows a pending-approvals banner on login.</span></div></div>
+        <div class="step"><div class="step-num">6</div><div class="step-content"><b>Procurement issues POs &amp; subcon WOs</b><span>After Finance approval, Procurement issues the PO. Designated approvers list (set in Bot Settings) controls who in Procurement can approve their own POs.</span></div></div>
+        <div class="step"><div class="step-num">7</div><div class="step-content"><b>Warehouse confirms material deliveries</b><span>Warehouse sees the project name, contact, and PM name on every delivery card — no more Viber side-channels needed for context. Confirming receipt auto-logs a stock-in movement.</span></div></div>
+        <div class="step"><div class="step-num">8</div><div class="step-content"><b>Finance tracks billing milestones &amp; collections</b><span>Finance logs billing milestones (DP, progress, final billing) and records payments. Scope Changes are now visible to Finance so billing always reflects the latest contract value.</span></div></div>
+        <div class="step"><div class="step-num">9</div><div class="step-content"><b>ProjectMover logs daily PM updates &amp; scope changes</b><span>Assigned PMs post daily updates on the Project Card. Addenda capture approved scope changes. Sales can now view Scope Changes directly — no more AE blind spots on change orders.</span></div></div>
+        <div class="step"><div class="step-num">10</div><div class="step-content"><b>Close-Out &amp; completion</b><span>When all departments mark done (or PM sets 100%), Manager/Sales can move the project to Close-Out. Final billing is collected and the project is archived.</span></div></div>
+      </div>
+
+      <h3>Telegram Notification Map</h3>
+      <p>Every Telegram channel and the events that trigger a message to it.</p>
+      <table class="trigger-table">
+        <thead><tr><th>Channel</th><th>Who Receives</th><th>Triggered By</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><span class="channel-tag" style="background:#1e293b">management</span></td>
+            <td>Manager / Paulo</td>
+            <td>New deals, award requests, stage changes, blockers opened/resolved, budget requests submitted</td>
+          </tr>
+          <tr>
+            <td><span class="channel-tag" style="background:#10b981">sales</span></td>
+            <td>Sales team</td>
+            <td>Price set by QS, award request outcomes, project stage changes</td>
+          </tr>
+          <tr>
+            <td><span class="channel-tag" style="background:#f97316">ops</span></td>
+            <td>Operations</td>
+            <td>PM updates logged, MR approvals, blockers, stage changes</td>
+          </tr>
+          <tr>
+            <td><span class="channel-tag" style="background:#8b5cf6">design</span></td>
+            <td>Design team</td>
+            <td>New Design Requests (DRFs) created, design-dept blockers flagged</td>
+          </tr>
+          <tr>
+            <td><span class="channel-tag" style="background:#06b6d4">procurement</span></td>
+            <td>Procurement</td>
+            <td>New MRs submitted, MR approvals, PO approvals, delivery confirmations</td>
+          </tr>
+          <tr>
+            <td><span class="channel-tag" style="background:#3b82f6">financialcontrol</span></td>
+            <td>Finance (Paulo &amp; Mar)</td>
+            <td>PO approvals, check verifications, payment orders ready</td>
+          </tr>
+          <tr>
+            <td><span class="channel-tag" style="background:#64748b">general</span></td>
+            <td>All-hands</td>
+            <td>Critical system-wide broadcasts</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <b>Last updated:</b> June 14, 2026 &nbsp;·&nbsp; <b>Source:</b> FabHub v1.6 codebase
+      </div>
+    </div>
+    <!-- END CH26 -->
+
     <div style="text-align:center;padding:40px 0;color:#94a3b8;font-size:13px;border-top:1px solid #e2e8f0;margin-top:20px">
-      GMD Productions Inc. — FabHub Handbook v1.5 — Last Updated: June 7, 2026<br>
+      GMD Productions Inc. — FabHub Handbook v1.6 — Last Updated: June 14, 2026<br>
       Confidential — Internal Use Only — fab-hub.vercel.app
     </div>
 
