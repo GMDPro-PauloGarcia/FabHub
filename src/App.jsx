@@ -8134,10 +8134,41 @@ export default function App(){
 
           const sendDigest=async()=>{
             const dateStr=now.toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+            // Fetch AI analysis from Vercel function
+            let aiAnalysis="";
+            try{
+              const payload={
+                date:dateStr,
+                totalBilled:totalBilled.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                totalCollected:totalCollected.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                collectionRate,outstanding:outstanding.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                dso,overdueCount:overdueBillings.length,
+                overdueAmt:arOverdueAmt.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                age30:arAge30,age60:arAge60,age90p:arAge90p,
+                cpTotalBeg:cpTotalBeg.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                cpTotalEnd:cpTotalEnd.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                cpCollections:cpCollections.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                cpNetMove:cpNetMove.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                bankSummary:cpBanks.map(b=>`${b.label}: ₱${(b.end||b.book||b.beg).toLocaleString("en-PH",{maximumFractionDigits:0})}`).join(", ")||"Not logged",
+                noCashPos:!todayPos,
+                totalPayables:totalPayables.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                overduePayables,overduePayablesAmt:overduePayablesAmt.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                unbilledCount:unbilledProjects.length,
+                backlog:backlog.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                grossMargin,grossProfit:grossProfit.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                totalExpenses:totalExpenses.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                thisMonthRev:thisMonthRev.toLocaleString("en-PH",{maximumFractionDigits:0}),
+                revTrend,winRate,avgDeal:avgDeal.toLocaleString("en-PH",{maximumFractionDigits:0}),
+              };
+              const r=await fetch("/api/digest-analysis",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+              const j=await r.json();
+              if(j.analysis) aiAnalysis=j.analysis;
+            }catch(e){console.warn("AI analysis unavailable:",e);}
             const lines=[
               `💼 <b>GMD Finance Daily Digest</b>`,
               `📅 ${dateStr}`,
               ``,
+              ...(aiAnalysis?[`🤖 <b>AI ANALYSIS</b>`,aiAnalysis,``]:[]),
               `━━━━━━━━━━━━━━━━━━━━━━`,
               `🧾 <b>COLLECTIONS / AR</b>  ${arStatus==="ok"?"✅":arStatus==="danger"?"🔴":"⚠️"}`,
               `• Total Billed: ${fmtM(totalBilled)}`,
