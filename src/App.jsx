@@ -14428,8 +14428,10 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   prs.forEach(p=>{ if(p.acctStatus){const key=p.poNumber||p.id;(byPO[key]=byPO[key]||[]).push(p);} });
   Object.entries(byPO).forEach(([key,items])=>{
     const gross=items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
-    const d=items.find(i=>(n(i.poDiscValue))>0);
-    const discount=poDiscountAmt(d?.poDiscType,d?.poDiscValue,gross);
+    const lineDiscTotal=items.reduce((s,p)=>{const base=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);if(p.discType==="pct")return s+base*(n(p.discValue)/100);if(p.discType==="fixed")return s+Math.min(n(p.discValue),base);return s;},0);
+    const afterLines=gross-lineDiscTotal;
+    const d=items.find(i=>n(i.poDiscValue)>0);
+    const discount=(()=>{if(!d)return 0;if(d.poDiscType==="pct")return afterLines*(n(d.poDiscValue)/100);if(d.poDiscType==="fixed")return Math.min(n(d.poDiscValue),afterLines);return 0;})();
     const a=items.find(i=>i.acctStatus)||items[0];
     docs.push({kind:"PO",key:"po:"+key,number:items[0].poNumber||"(no PO #)",payee:items[0].supplier||"—",
       projects:[...new Set(items.map(i=>i.projectName).filter(Boolean))].join(", ")||"—",
@@ -14613,12 +14615,14 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
   const[poStatus,setPoStatus]=useState("Draft");
   const[poItems,setPoItems]=useState([emptyPoItem()]);
+  const[poLevelDiscType,setPoLevelDiscType]=useState("none");
+  const[poLevelDiscValue,setPoLevelDiscValue]=useState("");
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
 
   function emptyPoItem(){
-    return {_id:Math.random().toString(36).slice(2),projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0};
+    return {_id:Math.random().toString(36).slice(2),projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
   }
 
   const nextPoNo=()=>{
@@ -14630,17 +14634,27 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
 
   const openNewPO=()=>{
     setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
-    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]); setMode("newpo");
+    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]);
+    setPoLevelDiscType("none"); setPoLevelDiscValue(""); setMode("newpo");
   };
 
-  const printPO=(poNo,supplierName,poD,items)=>{
+  const printPO=(poNo,supplierName,poD,items,poDiscType,poDiscVal)=>{
     const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const grandTotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
+    const calcLD=(i)=>{const base=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);if(i.discType==="pct")return base*(Number(i.discValue||0)/100);if(i.discType==="fixed")return Math.min(Number(i.discValue||0),base);return 0;};
+    const subtotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
+    const totalLineDisc=items.reduce((s,i)=>s+calcLD(i),0);
+    const afterLineDisc=subtotal-totalLineDisc;
+    const poDisc=poDiscType==="pct"?afterLineDisc*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),afterLineDisc):0;
+    const grandTotal=afterLineDisc-poDisc;
+    const hasDiscount=totalLineDisc>0||poDisc>0;
     const rows=items.map((i,idx)=>{
       const deal=wonDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
-      const lineTotal=unitCost*Number(i.qty||1);
-      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?deal.client+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineTotal)}</td></tr>`;
+      const lineGross=unitCost*Number(i.qty||1);
+      const lineDisc=calcLD(i);
+      const lineNet=lineGross-lineDisc;
+      const discCell=lineDisc>0?`<span style="color:#059669;font-size:10px"> −${fmt(lineDisc)}</span>`:"";
+      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?deal.client+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineGross)}${discCell}</td><td style="text-align:right;font-weight:700">${fmt(lineNet)}</td></tr>`;
     }).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
 <style>
@@ -14673,9 +14687,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
 </div>
 <table>
-  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Line Total</th></tr></thead>
+  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Gross</th><th style="text-align:right">Net</th></tr></thead>
   <tbody>${rows}</tbody>
-  <tr class="total-row"><td colspan="6" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>
+  ${hasDiscount&&totalLineDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">Line Item Discounts</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(totalLineDisc)}</td></tr>`:""}
+  ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
+  <tr class="total-row"><td colspan="7" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br>_______________________</div>
@@ -14690,6 +14706,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   const addPoItem=()=>setPoItems(p=>[...p,emptyPoItem()]);
   const removePoItem=(id)=>setPoItems(p=>p.filter(i=>i._id!==id));
   const updatePoItem=(id,k,v)=>setPoItems(p=>p.map(i=>i._id===id?{...i,[k]:v}:i));
+  const calcLineDisc=(item)=>{
+    const base=n(item.estUnitCost)*n(item.qty);
+    if(item.discType==="pct") return base*(n(item.discValue)/100);
+    if(item.discType==="fixed") return Math.min(n(item.discValue),base);
+    return 0;
+  };
+  const calcPoLevelDisc=(subtotal)=>{
+    if(poLevelDiscType==="pct") return subtotal*(n(poLevelDiscValue)/100);
+    if(poLevelDiscType==="fixed") return Math.min(n(poLevelDiscValue),subtotal);
+    return 0;
+  };
 
   const submitPO=()=>{
     if(!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
@@ -14700,6 +14727,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
         ...emptyPR(),
         itemName:item.itemName, category:item.category, budgetCategory:item.budgetCategory,
         qty:item.qty, unit:item.unit, estUnitCost:item.estUnitCost,
+        discType:item.discType||"none", discValue:item.discValue||0,
+        poDiscType:poLevelDiscType, poDiscValue:poLevelDiscValue,
         projectId:item.projectId, projectName:deal?.client||item.projectName||"",
         supplier:poSupplier, poNumber:poNo, poDate:poDate,
         status:poStatus, requestedBy:session?.name||"",
@@ -14789,7 +14818,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   // New PO form
   if(mode==="newpo"){
     const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectId&&i.itemName.trim());
-    const grandTotal=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
+    const subtotalGross=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
+    const totalLineDiscAmt=poItems.reduce((s,i)=>s+calcLineDisc(i),0);
+    const afterLines=subtotalGross-totalLineDiscAmt;
+    const poLevelDiscAmt=calcPoLevelDisc(afterLines);
+    const grandTotal=afterLines-poLevelDiscAmt;
     return(
       <div>
         <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
@@ -14843,11 +14876,24 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                     <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1}/></Fld>
                     <Fld label="Unit"><Sel value={item.unit} onChange={e=>updatePoItem(item._id,"unit",e.target.value)}>{["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots"].map(u=><option key={u}>{u}</option>)}</Sel></Fld>
                     <Fld label="Est Unit Cost (₱)"><Inp type="number" value={item.estUnitCost} onChange={e=>updatePoItem(item._id,"estUnitCost",e.target.value)} placeholder="0"/></Fld>
-                    <div style={{display:"flex",alignItems:"flex-end",paddingBottom:2}}>
-                      <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 12px",width:"100%"}}>
-                        <div style={{fontSize:".63rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Line Total</div>
-                        <div style={{fontWeight:700,color:"#3b82f6",fontSize:".9rem"}}>{fmt(lineTotal)}</div>
+                    <Fld label="Item Discount">
+                      <div style={{display:"flex",gap:6}}>
+                        <Sel value={item.discType||"none"} onChange={e=>updatePoItem(item._id,"discType",e.target.value)} style={{flex:"0 0 80px"}}>
+                          <option value="none">None</option>
+                          <option value="pct">%</option>
+                          <option value="fixed">₱</option>
+                        </Sel>
+                        {item.discType!=="none"&&<Inp type="number" value={item.discValue||""} onChange={e=>updatePoItem(item._id,"discValue",e.target.value)} placeholder={item.discType==="pct"?"e.g. 10":"e.g. 500"} style={{flex:1}}/>}
                       </div>
+                    </Fld>
+                    <div style={{display:"flex",alignItems:"flex-end",paddingBottom:2}}>
+                      {(()=>{const disc=calcLineDisc(item);const net=lineTotal-disc;return(
+                        <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 12px",width:"100%"}}>
+                          <div style={{fontSize:".63rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Net Line Total</div>
+                          <div style={{fontWeight:700,color:"#3b82f6",fontSize:".9rem"}}>{fmt(net)}</div>
+                          {disc>0&&<div style={{fontSize:".63rem",color:"#059669",marginTop:1}}>−{fmt(disc)} off</div>}
+                        </div>
+                      );})()}
                     </div>
                   </div>
                 </div>
@@ -14855,9 +14901,41 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
             })}
           </div>
           <button onClick={addPoItem} style={{background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:700,width:"100%",marginBottom:16}}>+ Add Item</button>
-          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
-            <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
+          {/* PO-level discount */}
+          <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"12px 16px",marginBottom:12}}>
+            <div style={{fontWeight:700,color:"#065f46",fontSize:".8rem",marginBottom:8}}>PO-Level Discount (applied to entire order)</div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <Sel value={poLevelDiscType} onChange={e=>{setPoLevelDiscType(e.target.value);setPoLevelDiscValue("");}} style={{flex:"0 0 120px"}}>
+                <option value="none">No discount</option>
+                <option value="pct">Percentage (%)</option>
+                <option value="fixed">Fixed Amount (₱)</option>
+              </Sel>
+              {poLevelDiscType!=="none"&&(
+                <Inp type="number" value={poLevelDiscValue} onChange={e=>setPoLevelDiscValue(e.target.value)} placeholder={poLevelDiscType==="pct"?"e.g. 5":"e.g. 2000"} style={{flex:1,maxWidth:160}}/>
+              )}
+              {poLevelDiscAmt>0&&<span style={{fontSize:".82rem",color:"#059669",fontWeight:700}}>= −{fmt(poLevelDiscAmt)}</span>}
+            </div>
+          </div>
+          {/* Totals summary */}
+          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
+            {(totalLineDiscAmt>0||poLevelDiscAmt>0)&&(
+              <>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#64748b",marginBottom:4}}>
+                  <span>Subtotal (gross)</span><span>{fmt(subtotalGross)}</span>
+                </div>
+                {totalLineDiscAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
+                  <span>Line item discounts</span><span>−{fmt(totalLineDiscAmt)}</span>
+                </div>}
+                {poLevelDiscAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
+                  <span>PO-level discount</span><span>−{fmt(poLevelDiscAmt)}</span>
+                </div>}
+                <div style={{borderTop:"1.5px solid #bfdbfe",marginTop:6,paddingTop:6}}/>
+              </>
+            )}
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
+            </div>
           </div>
           <div style={{display:"flex",gap:10}}>
             <button onClick={submitPO} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
@@ -14924,7 +15002,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#10b981"}}>{fmt(total)}</span>
                     <span style={{fontSize:".7rem",color:"#94a3b8"}}>{items.length} item{items.length>1?"s":""}</span>
-                    <button onClick={()=>printPO(poNo,supplier,poD,items)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                    <button onClick={()=>printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
                     {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
                   </div>
                 </div>
