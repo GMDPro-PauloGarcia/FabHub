@@ -16704,7 +16704,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             {l:"Completed",    v:wonDeals.filter(d=>d.stage==="12 · Close-Out").length+completedDeals.length, c:"#059669", f:"completed"},
             {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
-            {l:"Past Deadline",v:wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today).length,c:"#c2410c",f:"overdue"},
+            {l:"Past Deadline",v:[...wonDeals,...completedDeals].filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today).length,c:"#c2410c",f:"overdue"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
             <div key={l} onClick={()=>setPcFilter(x=>x===f?null:f)}
@@ -16741,7 +16741,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           </div>
           {(()=>{
             // "completed" tab = Close-Out wonDeals + completedDeals; default = active (exclude Close-Out)
-            let list=pcFilter==="completed"
+            let list=pcFilter==="overdue"
+              ?[...wonDeals,...completedDeals]
+              :pcFilter==="completed"
               ?[...wonDeals.filter(d=>d.stage==="12 · Close-Out"),...completedDeals]
               :pcFilter==="all"
                 ?wonDeals
