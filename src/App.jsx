@@ -4593,7 +4593,7 @@ export default function App(){
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
       {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"}]},
+      {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"},{id:"boq",l:"🧮 BOQ Builder"}]},
     ],
     Finance:[
       {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
@@ -8727,7 +8727,6 @@ export default function App(){
   if(role==="Warehouse"){
     if(page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(page==="boq") return(<Wrap><BOQBuilder wonDeals={[...wonDeals,...completedDeals]} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -19233,8 +19232,18 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
 }
 
 // ─── BOQ BUILDER ─────────────────────────────────────────────────────────────
-const BOQ_CATS=["Materials","Labor","Subcon","Overhead"];
-const BOQ_CAT_CLR={Materials:"#3b82f6",Labor:"#8b5cf6",Subcon:"#f59e0b",Overhead:"#64748b"};
+const BOQ_SECTIONS=[
+  {id:"A",label:"General Requirements",color:"#64748b"},
+  {id:"B",label:"Architectural",color:"#3b82f6"},
+  {id:"C",label:"Electrical",color:"#f59e0b"},
+  {id:"D",label:"Electronics",color:"#8b5cf6"},
+  {id:"E",label:"Mechanical",color:"#06b6d4"},
+  {id:"F",label:"Plumbing",color:"#10b981"},
+  {id:"G",label:"FDAS / Fire Protection",color:"#ef4444"},
+  {id:"H",label:"Signages",color:"#f97316"},
+  {id:"I",label:"Built Ins / Furnitures",color:"#ec4899"},
+];
+const BOQ_SEC_CLR=Object.fromEntries(BOQ_SECTIONS.map(s=>[s.id,s.color]));
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 
 function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary}){
@@ -19250,64 +19259,51 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // Library state
   const[libOpen,setLibOpen]=useState(false);
   const[libSearch,setLibSearch]=useState("");
-  const[libTab,setLibTab]=useState("search"); // "search" | "manage"
-  const[libForm,setLibForm]=useState({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});
+  const[libTab,setLibTab]=useState("search");
+  const[libForm,setLibForm]=useState({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});
   const[libEditId,setLibEditId]=useState(null);
   const canManageLib=["Manager","QS"].includes(role);
 
-  const saveLibrary=(newLib)=>{
-    setBoqLibrary(newLib);
-    localStorage.setItem("gmdv5:boqLibrary",JSON.stringify(newLib));
-  };
+  const saveLibrary=(newLib)=>{setBoqLibrary(newLib);localStorage.setItem("gmdv5:boqLibrary",JSON.stringify(newLib));};
 
   const filteredLib=boqLibrary.filter(it=>{
     if(!libSearch) return true;
     const q=libSearch.toLowerCase();
-    return(it.name||"").toLowerCase().includes(q)||(it.category||"").toLowerCase().includes(q)||(it.description||"").toLowerCase().includes(q)||(it.tags||[]).some(t=>t.toLowerCase().includes(q));
+    const sec=BOQ_SECTIONS.find(s=>s.id===it.section);
+    return(it.name||"").toLowerCase().includes(q)||(sec?.label||"").toLowerCase().includes(q)||(it.description||"").toLowerCase().includes(q)||(it.tags||[]).some(t=>t.toLowerCase().includes(q));
   });
 
   const addLibItemToBoq=(libIt)=>{
-    setItems(its=>[...its,{_id:Date.now(),category:libIt.category||"Materials",item:libIt.name,unit:libIt.unit||"lot",qty:1,unitCost:libIt.unitCost||0,total:libIt.unitCost||0}]);
+    setItems(its=>[...its,{_id:Date.now(),section:libIt.section||"B",itemCode:"",description:libIt.name,unit:libIt.unit||"lot",qty:1,unitCost:libIt.unitCost||0,total:libIt.unitCost||0,remarks:""}]);
     toastEmit(`"${libIt.name}" added to BOQ`);
   };
 
   const saveLibItem=()=>{
     if(!libForm.name.trim()){toastEmit("Item name is required.");return;}
     const isNew=!libEditId;
-    const entry={
-      id:libEditId||uid(),
-      name:libForm.name.trim(),
-      description:libForm.description.trim(),
-      category:libForm.category,
-      unit:libForm.unit||"lot",
-      unitCost:Number(libForm.unitCost)||0,
-      tags:libForm.tags.split(",").map(t=>t.trim()).filter(Boolean),
-      createdBy:session?.name||"",
-      createdAt:libEditId?(boqLibrary.find(x=>x.id===libEditId)?.createdAt||new Date().toISOString()):new Date().toISOString(),
-      updatedAt:new Date().toISOString(),
-    };
+    const entry={id:libEditId||uid(),name:libForm.name.trim(),description:libForm.description.trim(),section:libForm.section,unit:libForm.unit||"lot",unitCost:Number(libForm.unitCost)||0,tags:libForm.tags.split(",").map(t=>t.trim()).filter(Boolean),createdBy:session?.name||"",createdAt:libEditId?(boqLibrary.find(x=>x.id===libEditId)?.createdAt||new Date().toISOString()):new Date().toISOString(),updatedAt:new Date().toISOString()};
     const newLib=libEditId?boqLibrary.map(x=>x.id===libEditId?entry:x):[...boqLibrary,entry];
     saveLibrary(newLib);
     if(isSupabaseReady()){
-      const sbRow={id:entry.id,name:entry.name,description:entry.description,category:entry.category,unit:entry.unit,unit_cost:entry.unitCost,tags:entry.tags,created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt};
+      const sbRow={id:entry.id,name:entry.name,description:entry.description,category:entry.section,unit:entry.unit,unit_cost:entry.unitCost,tags:entry.tags,created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt};
       if(isNew) sbInsert('boq_library',sbRow).catch(()=>{});
       else sbUpdate('boq_library',entry.id,sbRow).catch(()=>{});
     }
-    setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});
+    setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});
     setLibEditId(null);
     toastEmit(isNew?"Library item saved.":"Library item updated.");
   };
 
   const startEditLib=(it)=>{
     setLibEditId(it.id);
-    setLibForm({name:it.name,description:it.description||"",category:it.category,unit:it.unit,unitCost:String(it.unitCost||""),tags:(it.tags||[]).join(", ")});
+    setLibForm({name:it.name,description:it.description||"",section:it.section||"B",unit:it.unit,unitCost:String(it.unitCost||""),tags:(it.tags||[]).join(", ")});
     setLibTab("manage");
   };
 
   const deleteLibItem=(id)=>{
     saveLibrary(boqLibrary.filter(x=>x.id!==id));
     if(isSupabaseReady()) sbDelete('boq_library',id).catch(()=>{});
-    if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""});}
+    if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}
   };
 
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
@@ -19325,53 +19321,44 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setBoqTitle(`BOQ — ${deal.client||""}${deal.contact?" · "+deal.contact:""}`);
   },[selDeal]);
 
+  const catToSec=(cat)=>({Materials:"B",Labor:"B",Subcon:"I",Overhead:"A","General Requirements":"A",Architectural:"B",Electrical:"C",Electronics:"D",Mechanical:"E",Plumbing:"F",FDAS:"G","Fire Protection":"G",Signages:"H","Built Ins":"I",Furnitures:"I","Built Ins / Furnitures":"I"}[cat]||"B");
+
   const generate=async()=>{
     if(!form.scopeNotes&&!form.area){setError("Please enter at least a scope description or area.");return;}
     setLoading(true);setError("");setItems([]);setAiNotes("");
     try{
-      const res=await fetch("/api/boq",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({
-          client:deal?.client||"",
-          ceType:form.ceType,
-          area:form.area,
-          finishLevel:form.finishLevel,
-          scopeNotes:form.scopeNotes,
-          location:form.location,
-        }),
-      });
+      const res=await fetch("/api/boq",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({client:deal?.client||"",ceType:form.ceType,area:form.area,finishLevel:form.finishLevel,scopeNotes:form.scopeNotes,location:form.location,sections:BOQ_SECTIONS.map(s=>`${s.id}. ${s.label}`)})});
       const data=await res.json();
       if(!res.ok) throw new Error(data.error||"Generation failed");
-      setItems(data.items.map((it,i)=>({...it,_id:i})));
+      setItems(data.items.map((it,i)=>({_id:i,section:it.section||catToSec(it.category||""),itemCode:it.itemCode||it.item_code||"",description:it.description||it.item||"",unit:it.unit||"lot",qty:Number(it.qty)||1,unitCost:Number(it.unitCost||it.unit_cost||0),total:Number(it.total||0)||Number(it.qty||1)*Number(it.unitCost||it.unit_cost||0),remarks:it.remarks||""})));
       setAiNotes(data.notes||"");
-      toastEmit("BOQ generated — review and adjust quantities/rates before saving.");
-    }catch(e){
-      setError(e.message);
-    }finally{
-      setLoading(false);
-    }
+      toastEmit("BOQ generated — review and adjust before presenting to client.");
+    }catch(e){setError(e.message);}
+    finally{setLoading(false);}
   };
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
-    const upd={...it,[key]:key==="item"||key==="unit"||key==="category"?val:Number(val)||0};
+    const upd={...it,[key]:["description","unit","section","itemCode","remarks"].includes(key)?val:Number(val)||0};
     upd.total=(upd.qty||0)*(upd.unitCost||0);
     return upd;
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
-  const addRow=()=>setItems(its=>[...its,{_id:Date.now(),category:"Materials",item:"",unit:"lot",qty:1,unitCost:0,total:0}]);
+  const addRow=(sec)=>setItems(its=>[...its,{_id:Date.now(),section:sec||"B",itemCode:"",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
 
   const grandTotal=items.reduce((s,it)=>s+it.total,0);
-  const byCategory=BOQ_CAT_CLR&&BOQ_CATS.map(c=>({
-    cat:c,total:items.filter(it=>it.category===c).reduce((s,it)=>s+it.total,0),
-    count:items.filter(it=>it.category===c).length,
-  }));
+  const bySec=BOQ_SECTIONS.map(s=>({...s,total:items.filter(it=>it.section===s.id).reduce((t,it)=>t+it.total,0),count:items.filter(it=>it.section===s.id).length}));
 
   const exportCSV=()=>{
-    const rows=[["Category","Item","Unit","Qty","Unit Cost","Total"]];
-    items.forEach(it=>rows.push([it.category,it.item,it.unit,it.qty,it.unitCost,it.total]));
-    rows.push(["","","","","GRAND TOTAL",grandTotal]);
+    const rows=[["Section","Code","Description","Unit","Qty","Unit Cost (₱)","Total (₱)","Remarks"]];
+    BOQ_SECTIONS.forEach(sec=>{
+      const si=items.filter(it=>it.section===sec.id);
+      if(!si.length) return;
+      rows.push([`${sec.id}. ${sec.label}`,"","","","","","",""]);
+      si.forEach(it=>rows.push([sec.id,it.itemCode,it.description,it.unit,it.qty,it.unitCost,it.total,it.remarks||""]));
+    });
+    const grand=items.reduce((s,it)=>s+it.total,0);
+    rows.push(["","","","","","","GRAND TOTAL",grand]);
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a");
     a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
@@ -19381,6 +19368,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const mob=window.innerWidth<768;
   const inpSt={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",width:"100%",outline:"none",background:"#fff"};
+  const GRID="44px 72px 1fr 58px 58px 100px 100px 120px 32px";
 
   return(
     <div>
@@ -19388,17 +19376,14 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
         <div>
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🧮 BOQ Builder</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>AI-assisted Bill of Quantities — review all figures before use</div>
+          <div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>A. General Requirements · B. Architectural · C. Electrical · D. Electronics · E. Mechanical · F. Plumbing · G. FDAS · H. Signages · I. Built Ins</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={()=>setLibOpen(o=>!o)}
-            style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#5b21b6",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#5b21b6",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
             📚 {libOpen?"Hide Library":"Line-Item Library"}
             {boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:".65rem",fontWeight:800}}>{boqLibrary.length}</span>}
           </button>
-          {items.length>0&&(
-            <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
-          )}
+          {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
         </div>
       </div>
 
@@ -19412,101 +19397,73 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               {canManageLib&&<button onClick={()=>setLibTab("manage")} style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid "+(libTab==="manage"?"#7c3aed":"#e2e8f0"),background:libTab==="manage"?"#7c3aed":"#fff",color:libTab==="manage"?"#fff":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>⚙ Manage</button>}
             </div>
           </div>
-
-          {/* Search tab */}
           {libTab==="search"&&(
             <>
-              <input value={libSearch} onChange={e=>setLibSearch(e.target.value)} placeholder="Search by name, category, or tag…"
-                style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",outline:"none",background:"#fff",marginBottom:10,boxSizing:"border-box"}}/>
-              {filteredLib.length===0?(
-                <div style={{textAlign:"center",color:"#94a3b8",fontSize:".78rem",padding:"20px 0"}}>
-                  {boqLibrary.length===0?"No library items yet."+(canManageLib?" Switch to Manage to add your first item.":""):"No items match your search."}
-                </div>
-              ):(
+              <input value={libSearch} onChange={e=>setLibSearch(e.target.value)} placeholder="Search by name, section, or tag…" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",outline:"none",background:"#fff",marginBottom:10,boxSizing:"border-box"}}/>
+              {filteredLib.length===0?(<div style={{textAlign:"center",color:"#94a3b8",fontSize:".78rem",padding:"20px 0"}}>{boqLibrary.length===0?"No library items yet."+(canManageLib?" Switch to Manage to add your first item.":""):"No items match."}</div>):(
                 <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:8,maxHeight:320,overflowY:"auto"}}>
-                  {filteredLib.map(it=>(
+                  {filteredLib.map(it=>{const sec=BOQ_SECTIONS.find(s=>s.id===it.section)||BOQ_SECTIONS[1];return(
                     <div key={it.id} style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.name}</div>
                         {it.description&&<div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,lineHeight:1.4}}>{it.description}</div>}
                         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                          <span style={{background:BOQ_CAT_CLR[it.category]+"18",color:BOQ_CAT_CLR[it.category],border:`1px solid ${BOQ_CAT_CLR[it.category]}44`,borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>{it.category}</span>
+                          <span style={{background:sec.color+"18",color:sec.color,border:`1px solid ${sec.color}44`,borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>{sec.id}. {sec.label}</span>
                           <span style={{fontSize:".68rem",color:"#94a3b8"}}>/{it.unit}</span>
                           {it.unitCost>0&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669"}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
                         </div>
                         {(it.tags||[]).length>0&&<div style={{marginTop:4,display:"flex",gap:4,flexWrap:"wrap"}}>{it.tags.map(t=><span key={t} style={{background:"#f1f5f9",color:"#475569",borderRadius:20,padding:"1px 7px",fontSize:".6rem"}}>{t}</span>)}</div>}
                       </div>
-                      <button onClick={()=>addLibItemToBoq(it)}
-                        style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:800,color:"#fff",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
-                        + Add
-                      </button>
+                      <button onClick={()=>addLibItemToBoq(it)} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:800,color:"#fff",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>+ Add</button>
                     </div>
-                  ))}
+                  );})}
                 </div>
               )}
             </>
           )}
-
-          {/* Manage tab — Manager / QS only */}
           {libTab==="manage"&&canManageLib&&(
             <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16}}>
-              {/* Form */}
               <div style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:14}}>
                 <div style={{fontWeight:700,color:"#4c1d95",fontSize:".8rem",marginBottom:10}}>{libEditId?"Edit Item":"New Library Item"}</div>
-                {[
-                  {label:"Item Name *",key:"name",type:"text",placeholder:"e.g. Mobilization Fee"},
-                  {label:"Description",key:"description",type:"text",placeholder:"Short description or scope note"},
-                ].map(f=>(
+                {[{label:"Item Name *",key:"name",placeholder:"e.g. Mobilization Fee"},{label:"Description",key:"description",placeholder:"Short scope note"}].map(f=>(
                   <div key={f.key} style={{marginBottom:8}}>
                     <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>{f.label}</div>
-                    <input value={libForm[f.key]} onChange={e=>setLibForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder}
-                      style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                    <input value={libForm[f.key]} onChange={e=>setLibForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
                   </div>
                 ))}
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
                   <div>
-                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Category</div>
-                    <select value={libForm.category} onChange={e=>setLibForm(p=>({...p,category:e.target.value}))}
-                      style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none"}}>
-                      {BOQ_CATS.map(c=><option key={c}>{c}</option>)}
+                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section</div>
+                    <select value={libForm.section} onChange={e=>setLibForm(p=>({...p,section:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none"}}>
+                      {BOQ_SECTIONS.map(s=><option key={s.id} value={s.id}>{s.id}. {s.label}</option>)}
                     </select>
                   </div>
                   <div>
                     <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Default Unit</div>
-                    <input value={libForm.unit} onChange={e=>setLibForm(p=>({...p,unit:e.target.value}))} placeholder="lot, sqm, pc…"
-                      style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                    <input value={libForm.unit} onChange={e=>setLibForm(p=>({...p,unit:e.target.value}))} placeholder="lot, sqm, pc…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
                   </div>
                 </div>
                 <div style={{marginBottom:8}}>
                   <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Typical Unit Cost (₱)</div>
-                  <input type="number" value={libForm.unitCost} onChange={e=>setLibForm(p=>({...p,unitCost:e.target.value}))} placeholder="0"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                  <input type="number" value={libForm.unitCost} onChange={e=>setLibForm(p=>({...p,unitCost:e.target.value}))} placeholder="0" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
                 </div>
                 <div style={{marginBottom:12}}>
                   <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Tags (comma-separated)</div>
-                  <input value={libForm.tags} onChange={e=>setLibForm(p=>({...p,tags:e.target.value}))} placeholder="e.g. mobilization, setup, glass"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                  <input value={libForm.tags} onChange={e=>setLibForm(p=>({...p,tags:e.target.value}))} placeholder="e.g. mobilization, glass, electrical" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={saveLibItem}
-                    style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>
-                    {libEditId?"💾 Update":"➕ Save Item"}
-                  </button>
-                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",category:"Materials",unit:"lot",unitCost:"",tags:""}); }}
-                    style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#64748b",cursor:"pointer"}}>
-                    Cancel
-                  </button>}
+                  <button onClick={saveLibItem} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>{libEditId?"💾 Update":"➕ Save Item"}</button>
+                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#64748b",cursor:"pointer"}}>Cancel</button>}
                 </div>
               </div>
-              {/* Saved items list */}
               <div style={{maxHeight:380,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
                 {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No library items yet. Add your first one.</div>}
-                {boqLibrary.map(it=>(
+                {boqLibrary.map(it=>{const sec=BOQ_SECTIONS.find(s=>s.id===it.section)||BOQ_SECTIONS[1];return(
                   <div key={it.id} style={{background:"#fff",border:`1.5px solid ${libEditId===it.id?"#7c3aed":"#ede9fe"}`,borderRadius:8,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{it.name}</div>
                       <div style={{fontSize:".68rem",color:"#64748b",display:"flex",gap:8,marginTop:2}}>
-                        <span style={{color:BOQ_CAT_CLR[it.category],fontWeight:700}}>{it.category}</span>
+                        <span style={{color:sec.color,fontWeight:700}}>{sec.id}. {sec.label}</span>
                         <span>/{it.unit}</span>
                         {it.unitCost>0&&<span style={{color:"#059669",fontWeight:700}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
                       </div>
@@ -19516,7 +19473,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                       <button onClick={()=>deleteLibItem(it.id)} style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:6,padding:"3px 9px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer"}}>✕</button>
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
             </div>
           )}
@@ -19527,7 +19484,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16}}>
         <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:14}}>Project Details</div>
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":deal?"1fr 1fr 1fr":"1fr 1fr",gap:12,marginBottom:12}}>
-          {/* Project selector */}
           <div>
             <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Link to Project (optional)</div>
             <select value={selDeal} onChange={e=>setSelDeal(e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
@@ -19535,14 +19491,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
             </select>
           </div>
-          {/* CE Type */}
           <div>
             <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Project Type</div>
             <select value={form.ceType} onChange={e=>ff("ceType",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
               {CE_TYPES.map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
-          {/* Finish Level */}
           <div>
             <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Finish Level</div>
             <select value={form.finishLevel} onChange={e=>ff("finishLevel",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
@@ -19563,15 +19517,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         <div style={{marginBottom:14}}>
           <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Scope Description <span style={{color:"#94a3b8",fontWeight:400}}>(the more detail, the better the output)</span></div>
           <textarea value={form.scopeNotes} onChange={e=>ff("scopeNotes",e.target.value)} rows={4}
-            placeholder="e.g. Full retail fit-out for a 120sqm pop-up store. Includes: custom fabricated display gondolas (×6), 2 lightbox headers (3m×1.5m each), vinyl wrapped cashier counter, track lighting (12 units), ceiling works with gypsum board, full perimeter wallpaper application, electrical rough-in and outlets."
+            placeholder="e.g. Full retail fit-out, 120sqm. Includes: display gondolas ×6, lightbox headers 3m×1.5m each, vinyl wrapped cashier counter, track lighting ×12, gypsum board ceiling, electrical rough-in and outlets."
             style={{...inpSt,resize:"vertical"}}/>
         </div>
         {error&&<div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:8,padding:"8px 14px",color:"#dc2626",fontSize:".8rem",marginBottom:12}}>{error}</div>}
         <button onClick={generate} disabled={loading}
           style={{background:loading?"#e2e8f0":"#1e293b",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",color:loading?"#94a3b8":"#fff",cursor:loading?"not-allowed":"pointer",display:"flex",alignItems:"center",gap:8}}>
-          {loading?(
-            <><span style={{display:"inline-block",width:14,height:14,border:"2px solid #94a3b8",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>Generating BOQ…</>
-          ):"✨ Generate BOQ with AI"}
+          {loading?(<><span style={{display:"inline-block",width:14,height:14,border:"2px solid #94a3b8",borderTopColor:"transparent",borderRadius:"50%",animation:"spin .7s linear infinite"}}/>Generating BOQ…</>):"✨ Generate BOQ with AI"}
         </button>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
@@ -19579,18 +19531,25 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       {/* Results */}
       {items.length>0&&(
         <>
-          {/* Title bar */}
+          {/* Title + Add Row buttons per section */}
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
             <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)}
-              style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:280,background:"transparent"}}/>
-            <button onClick={addRow} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>+ Add Row</button>
+              style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:260,background:"transparent"}}/>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {BOQ_SECTIONS.map(s=>(
+                <button key={s.id} onClick={()=>addRow(s.id)}
+                  style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:s.color,cursor:"pointer"}}>
+                  +{s.id}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Category summary pills */}
+          {/* Section summary pills */}
           <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-            {byCategory.filter(b=>b.count>0).map(b=>(
-              <div key={b.cat} style={{background:BOQ_CAT_CLR[b.cat]+"18",border:`1px solid ${BOQ_CAT_CLR[b.cat]}44`,borderRadius:20,padding:"4px 12px",display:"flex",gap:8,alignItems:"center"}}>
-                <span style={{fontWeight:700,fontSize:".72rem",color:BOQ_CAT_CLR[b.cat]}}>{b.cat}</span>
+            {bySec.filter(b=>b.count>0).map(b=>(
+              <div key={b.id} style={{background:b.color+"18",border:`1px solid ${b.color}44`,borderRadius:20,padding:"4px 12px",display:"flex",gap:6,alignItems:"center"}}>
+                <span style={{fontWeight:700,fontSize:".7rem",color:b.color}}>{b.id}. {b.label}</span>
                 <span style={{fontSize:".72rem",color:"#475569",fontWeight:600}}>₱{b.total.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
                 <span style={{fontSize:".65rem",color:"#94a3b8"}}>{b.count} item{b.count!==1?"s":""}</span>
               </div>
@@ -19598,54 +19557,61 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </div>
 
           {/* Table */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:12}}>
-            {/* Column headers */}
-            <div style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
-              {["Category","Item Description","Unit","Qty","Unit Cost (₱)","Total (₱)",""].map((h,i)=>(
-                <div key={i} style={{fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:i>=3&&i<=5?"right":"left",paddingRight:i<5?6:0}}>{h}</div>
-              ))}
-            </div>
-            {/* Rows grouped by category */}
-            {BOQ_CATS.map(cat=>{
-              const catItems=items.filter(it=>it.category===cat);
-              if(!catItems.length) return null;
-              return(
-                <React.Fragment key={cat}>
-                  <div style={{background:BOQ_CAT_CLR[cat]+"12",padding:"4px 12px",borderTop:"1px solid #f1f5f9"}}>
-                    <span style={{fontSize:".68rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:BOQ_CAT_CLR[cat]}}>{cat}</span>
-                  </div>
-                  {catItems.map((it,idx)=>(
-                    <div key={it._id} style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",gap:0,padding:"5px 12px",borderBottom:"1px solid #f8fafc",alignItems:"center",background:idx%2?"#fafafa":"#fff"}}>
-                      <select value={it.category} onChange={e=>updateItem(it._id,"category",e.target.value)}
-                        style={{fontSize:".72rem",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"3px 4px",fontFamily:"inherit",width:"100%",color:BOQ_CAT_CLR[it.category]}}>
-                        {BOQ_CATS.map(c=><option key={c}>{c}</option>)}
-                      </select>
-                      <input value={it.item} onChange={e=>updateItem(it._id,"item",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",margin:"0 4px"}}/>
-                      <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"center"}}/>
-                      <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"right"}}/>
-                      <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)}
-                        style={{...inpSt,fontSize:".78rem",padding:"3px 6px",textAlign:"right",margin:"0 4px"}}/>
-                      <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".8rem",paddingRight:4}}>
-                        {it.total.toLocaleString("en-PH",{minimumFractionDigits:0})}
-                      </div>
-                      <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"auto",marginBottom:12}}>
+            <div style={{minWidth:900}}>
+              {/* Column headers */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
+                {["§","Code","Description","Unit","Qty","Unit Cost (₱)","Total (₱)","Remarks",""].map((h,i)=>(
+                  <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:[4,5,6].includes(i)?"right":"left"}}>{h}</div>
+                ))}
+              </div>
+              {/* Rows by section */}
+              {BOQ_SECTIONS.map(sec=>{
+                const si=items.filter(it=>it.section===sec.id);
+                if(!si.length) return null;
+                const secTotal=si.reduce((t,it)=>t+it.total,0);
+                return(
+                  <React.Fragment key={sec.id}>
+                    <div style={{background:sec.color+"12",padding:"5px 12px",borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontSize:".7rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:sec.color}}>{sec.id}. {sec.label}</span>
+                      <span style={{fontSize:".7rem",fontWeight:700,color:sec.color}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
                     </div>
-                  ))}
-                </React.Fragment>
-              );
-            })}
-            {/* Grand total */}
-            <div style={{display:"grid",gridTemplateColumns:"90px 1fr 70px 70px 100px 100px 36px",padding:"10px 12px",background:"#1e293b",borderTop:"2px solid #334155",alignItems:"center"}}>
-              <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
-              <div style={{textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#f59e0b",fontSize:"1.1rem"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-              <div/>
+                    {si.map((it,idx)=>(
+                      <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,gap:0,padding:"4px 12px",borderBottom:"1px solid #f8fafc",alignItems:"center",background:idx%2?"#fafafa":"#fff"}}>
+                        <select value={it.section} onChange={e=>updateItem(it._id,"section",e.target.value)}
+                          style={{fontSize:".68rem",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 3px",fontFamily:"inherit",width:"100%",color:sec.color,fontWeight:700}}>
+                          {BOQ_SECTIONS.map(s=><option key={s.id} value={s.id}>{s.id}</option>)}
+                        </select>
+                        <input value={it.itemCode} onChange={e=>updateItem(it._id,"itemCode",e.target.value)} placeholder="FF-01"
+                          style={{...inpSt,fontSize:".7rem",padding:"3px 5px",margin:"0 3px"}}/>
+                        <input value={it.description} onChange={e=>updateItem(it._id,"description",e.target.value)}
+                          style={{...inpSt,fontSize:".78rem",padding:"3px 6px"}}/>
+                        <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)}
+                          style={{...inpSt,fontSize:".72rem",padding:"3px 5px",textAlign:"center",margin:"0 3px"}}/>
+                        <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)}
+                          style={{...inpSt,fontSize:".78rem",padding:"3px 5px",textAlign:"right"}}/>
+                        <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)}
+                          style={{...inpSt,fontSize:".78rem",padding:"3px 5px",textAlign:"right",margin:"0 3px"}}/>
+                        <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".8rem",paddingRight:4}}>
+                          {it.total.toLocaleString("en-PH",{minimumFractionDigits:0})}
+                        </div>
+                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM, c/o owner…"
+                          style={{...inpSt,fontSize:".68rem",padding:"3px 5px",color:"#64748b",margin:"0 3px"}}/>
+                        <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
+                      </div>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {/* Grand total */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#1e293b",borderTop:"2px solid #334155",alignItems:"center"}}>
+                <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
+                <div style={{textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#f59e0b",fontSize:"1.1rem"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                <div/><div/>
+              </div>
             </div>
           </div>
 
-          {/* AI notes */}
           {aiNotes&&(
             <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#92400e",display:"flex",gap:8,alignItems:"flex-start",marginBottom:12}}>
               <span style={{fontSize:".9rem",flexShrink:0}}>🤖</span>
@@ -19653,7 +19619,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </div>
           )}
           <div style={{background:"#f0f9ff",border:"1.5px solid #bae6fd",borderRadius:10,padding:"10px 14px",fontSize:".75rem",color:"#0369a1"}}>
-            ⚠ AI-generated quantities and rates are estimates based on typical Philippine market values. Always verify against supplier quotes, site conditions, and project specifications before presenting to a client.
+            ⚠ AI-generated quantities and rates are estimates. Always verify against supplier quotes, site conditions, and project specifications before presenting to a client.
           </div>
         </>
       )}
