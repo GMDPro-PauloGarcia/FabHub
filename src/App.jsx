@@ -6580,12 +6580,25 @@ export default function App(){
                     <span style={{fontWeight:800,color:g.amber?"#92400e":"#dc2626",fontSize:".88rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{g.items.length}</span>
                     <span style={{color:"#94a3b8",fontSize:".72rem"}}>›</span>
                   </div>
-                  {g.items.map((e,ei)=>(
-                    <div key={ei} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"5px 16px 5px 52px",borderTop:"1px solid #fef2f2",background:"#fffafa"}}>
-                      <span style={{fontSize:".72rem",fontWeight:700,color:"#ef4444",flexShrink:0,marginTop:1}}>▸</span>
-                      <span style={{fontSize:".72rem",color:"#374151",lineHeight:1.4}}>{e.label}</span>
-                    </div>
-                  ))}
+                  {(()=>{
+                    // Dedupe identical labels — no point showing 102 identical rows
+                    const unique=[...new Map(g.items.map(e=>[e.label,e])).values()];
+                    const shown=unique.slice(0,3);
+                    const remaining=g.items.length-shown.length;
+                    return(<>
+                      {shown.map((e,ei)=>(
+                        <div key={ei} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"5px 16px 5px 52px",borderTop:"1px solid #fef2f2",background:"#fffafa"}}>
+                          <span style={{fontSize:".72rem",fontWeight:700,color:"#ef4444",flexShrink:0,marginTop:1}}>▸</span>
+                          <span style={{fontSize:".72rem",color:"#374151",lineHeight:1.4}}>{e.label}</span>
+                        </div>
+                      ))}
+                      {remaining>0&&(
+                        <div onClick={()=>setPage(g.dest)} style={{padding:"4px 16px 6px 52px",borderTop:"1px solid #fef2f2",background:"#fffafa",cursor:"pointer"}}>
+                          <span style={{fontSize:".7rem",color:"#94a3b8",fontStyle:"italic"}}>and {remaining} more… tap to view</span>
+                        </div>
+                      )}
+                    </>);
+                  })()}
                 </div>
               ))}
             </div>
