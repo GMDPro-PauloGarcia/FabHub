@@ -8059,37 +8059,79 @@ export default function App(){
           }
           if(digestAlerts.length===0) digestAlerts.push({icon:"✅",level:"ok",text:"All financial indicators are on track — no alerts today."});
 
+          // ── 4 REVIEW SECTIONS ────────────────────────────────────────────
+          // 1. Collections / AR
+          const arOverdueAmt=overdueBillings.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,x)=>ps+Number(x.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+          const arAge30 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d<=30;}).length;
+          const arAge60 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>30&&d<=60;}).length;
+          const arAge90p=overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>60;}).length;
+          const arStatus=overdueBillings.length===0?"ok":arAge90p>0?"danger":"warning";
+
+          // 2. Cash Position
+          const cpStatus=!todayPos?"warning":cpTotalEnd<500000?"danger":cpNetMove<0?"warning":"ok";
+
+          // 3. Billing / Payables
+          const overduePayablesAmt=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).reduce((s,p)=>s+Number(p.amount||0),0);
+          const billStatus=overduePayables>0?"danger":unbilledProjects.length>0?"warning":"ok";
+
+          // 4. Profitability
+          const profStatus=grossMargin<20?"danger":grossMargin<30?"warning":"ok";
+          const prevMonthIdx=now.getMonth()===0?11:now.getMonth()-1;
+          const prevMonthRev=monthlyRev[monthlyRev.length-2]||0;
+          const thisMonthRev=monthlyRev[monthlyRev.length-1]||0;
+          const revTrend=prevMonthRev>0?Math.round((thisMonthRev-prevMonthRev)/prevMonthRev*100):0;
+
+          const statusColor={ok:"#059669",warning:"#d97706",danger:"#dc2626"};
+          const statusBg={ok:"#f0fdf4",warning:"#fffbeb",danger:"#fef2f2"};
+          const statusBorder={ok:"#bbf7d0",warning:"#fde68a",danger:"#fecaca"};
+          const statusLabel={ok:"✅ Good",warning:"⚠️ Watch",danger:"🔴 Action Needed"};
+
           const sendDigest=async()=>{
             const dateStr=now.toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
             const lines=[
               `💼 <b>GMD Finance Daily Digest</b>`,
               `📅 ${dateStr}`,
               ``,
-              `📊 <b>Key Metrics</b>`,
+              `━━━━━━━━━━━━━━━━━━━━━━`,
+              `🧾 <b>COLLECTIONS / AR</b>  ${arStatus==="ok"?"✅":arStatus==="danger"?"🔴":"⚠️"}`,
               `• Total Billed: ${fmtM(totalBilled)}`,
-              `• Total Collected: ${fmtM(totalCollected)} (${collectionRate}% rate)`,
+              `• Collected: ${fmtM(totalCollected)} (${collectionRate}% rate)`,
               `• Outstanding AR: ${fmtM(outstanding)}`,
-              `• Gross Margin: ${grossMargin}%`,
               `• DSO: ${dso} days`,
-              `• Contract Backlog: ${fmtM(backlog)}`,
+              ...(overdueBillings.length>0?[
+                `• Overdue Invoices: ${overdueBillings.length} — ${fmtM(arOverdueAmt)}`,
+                `  1–30d: ${arAge30}  |  31–60d: ${arAge60}  |  60d+: ${arAge90p}`,
+              ]:[`• No overdue invoices ✅`]),
+              ...(topClients.length>0?[`• Top Client: ${topClients[0][0]} (${fmtM(topClients[0][1])} collected)`]:[]),
               ``,
-              `🚦 <b>Alerts</b>`,
-              ...digestAlerts.map(a=>`${a.icon} ${a.text}`),
-              ``,
-              `💵 <b>Daily Cash Position</b>`,
+              `━━━━━━━━━━━━━━━━━━━━━━`,
+              `💵 <b>DAILY CASH POSITION</b>  ${cpStatus==="ok"?"✅":cpStatus==="danger"?"🔴":"⚠️"}`,
               ...(todayPos?[
                 `• Opening Balance: ${fmtM(cpTotalBeg)}`,
                 `• Closing Balance: ${fmtM(cpTotalEnd)}`,
                 `• Collections Today: ${fmtM(cpCollections)}`,
-                `• Net Movement: ${cpNetMove>=0?"+":""}${fmtM(cpNetMove)}`,
+                `• Net Movement: ${cpNetMove>=0?"▲":"▼"} ${fmtM(Math.abs(cpNetMove))}`,
                 ...cpBanks.map(b=>`  — ${b.label}: ${fmtM(b.end||b.book||b.beg)}`),
               ]:[`• ⚠️ No cash position logged for today`]),
               ``,
-              `📤 <b>Payables</b>`,
-              `• Unpaid: ${fmtM(totalPayables)}${overduePayables>0?` | ${overduePayables} overdue`:""}`,
+              `━━━━━━━━━━━━━━━━━━━━━━`,
+              `📤 <b>BILLING / PAYABLES</b>  ${billStatus==="ok"?"✅":billStatus==="danger"?"🔴":"⚠️"}`,
+              `• Unpaid Payables: ${fmtM(totalPayables)}`,
+              ...(overduePayables>0?[`• Overdue Payables: ${overduePayables} items — ${fmtM(overduePayablesAmt)}`]:[`• No overdue payables ✅`]),
+              ...(unbilledProjects.length>0?[`• Unbilled Projects: ${unbilledProjects.length} awarded with no invoice yet`]:[]),
+              `• Contract Backlog: ${fmtM(backlog)}`,
               ``,
-              `🏆 <b>Top Collectors</b>`,
-              ...topClients.slice(0,3).map(([c,v],i)=>`${i+1}. ${c}: ${fmtM(v)}`),
+              `━━━━━━━━━━━━━━━━━━━━━━`,
+              `📈 <b>PROFITABILITY</b>  ${profStatus==="ok"?"✅":profStatus==="danger"?"🔴":"⚠️"}`,
+              `• Gross Margin: ${grossMargin}%${grossMargin>=30?" ✅":grossMargin>=20?" ⚠️":" 🔴"}`,
+              `• Gross Profit: ${fmtM(grossProfit)}`,
+              `• Total Expenses: ${fmtM(totalExpenses)}`,
+              `• This Month Revenue: ${fmtM(thisMonthRev)}${revTrend!==0?` (${revTrend>0?"+":""}${revTrend}% vs last month)`:""}`,
+              `• Win Rate: ${winRate}% | Avg Deal: ${fmtM(avgDeal)}`,
+              ``,
+              `━━━━━━━━━━━━━━━━━━━━━━`,
+              `🚦 <b>ALERTS</b>`,
+              ...digestAlerts.map(a=>`${a.icon} ${a.text}`),
               ``,
               `<i>Sent from FabHub Finance · ${dateStr}</i>`,
             ];
@@ -8097,11 +8139,28 @@ export default function App(){
             toastEmit("Daily digest sent to Financial Control ✅","success");
           };
 
+          // Section card component (inline)
+          const ReviewSection=({icon,title,status,children})=>(
+            <div style={{background:statusBg[status],border:`1.5px solid ${statusBorder[status]}`,borderRadius:10,padding:"12px 14px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{icon} {title}</span>
+                <span style={{fontSize:".68rem",fontWeight:700,color:statusColor[status],background:"#fff",border:`1px solid ${statusBorder[status]}`,borderRadius:20,padding:"2px 8px"}}>{statusLabel[status]}</span>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:3}}>{children}</div>
+            </div>
+          );
+          const Row=({label,value,color})=>(
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:".75rem",color:"#64748b"}}>{label}</span>
+              <span style={{fontSize:".78rem",fontWeight:600,color:color||"#0f172a"}}>{value}</span>
+            </div>
+          );
+
           return(
             <div>
               {/* ── Daily Digest Panel ── */}
               <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
                   <div style={{display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontSize:"1rem"}}>📡</span>
                     <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Finance Daily Digest</span>
@@ -8112,13 +8171,42 @@ export default function App(){
                     <span>📲</span> Send to Telegram
                   </button>
                 </div>
-                <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                  {digestAlerts.map((a,i)=>(
-                    <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"6px 10px",borderRadius:7,background:a.level==="danger"?"#fef2f2":a.level==="warning"?"#fffbeb":a.level==="ok"?"#f0fdf4":"#f8fafc",border:`1px solid ${a.level==="danger"?"#fecaca":a.level==="warning"?"#fde68a":a.level==="ok"?"#bbf7d0":"#e2e8f0"}`}}>
-                      <span style={{fontSize:".85rem",flexShrink:0}}>{a.icon}</span>
-                      <span style={{fontSize:".78rem",color:a.level==="danger"?"#dc2626":a.level==="warning"?"#92400e":a.level==="ok"?"#059669":"#475569",fontWeight:a.level==="danger"||a.level==="warning"?600:400}}>{a.text}</span>
-                    </div>
-                  ))}
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+                  {/* 1. Collections / AR */}
+                  <ReviewSection icon="🧾" title="Collections / AR" status={arStatus}>
+                    <Row label="Outstanding AR" value={fmtM(outstanding)} color={outstanding>0?"#ef4444":"#059669"}/>
+                    <Row label="Collection Rate" value={collectionRate+"%"} color={collectionRate>=50?"#059669":"#d97706"}/>
+                    <Row label="DSO" value={dso+" days"} color={dso>90?"#dc2626":dso>60?"#d97706":"#059669"}/>
+                    {overdueBillings.length>0&&<Row label="Overdue Invoices" value={`${overdueBillings.length} — ${fmtM(arOverdueAmt)}`} color="#dc2626"/>}
+                    {arAge90p>0&&<Row label="60d+ overdue" value={arAge90p+" invoices"} color="#dc2626"/>}
+                    {overdueBillings.length===0&&<Row label="Overdue" value="None ✅" color="#059669"/>}
+                  </ReviewSection>
+                  {/* 2. Cash Position */}
+                  <ReviewSection icon="💵" title="Daily Cash Position" status={cpStatus}>
+                    {todayPos?<>
+                      <Row label="Opening Balance" value={fmtM(cpTotalBeg)}/>
+                      <Row label="Closing Balance" value={fmtM(cpTotalEnd)} color={cpTotalEnd<500000?"#dc2626":"#059669"}/>
+                      <Row label="Collections Today" value={fmtM(cpCollections)} color="#059669"/>
+                      <Row label="Net Movement" value={(cpNetMove>=0?"+":"")+fmtM(cpNetMove)} color={cpNetMove>=0?"#059669":"#dc2626"}/>
+                      {cpBanks.map(b=>{const end=b.end||b.book||b.beg;return <Row key={b.id} label={b.label} value={fmtM(end)} color={end<0?"#dc2626":"#475569"}/>;})}</> :
+                      <Row label="Status" value="⚠️ Not logged today" color="#d97706"/>}
+                  </ReviewSection>
+                  {/* 3. Billing / Payables */}
+                  <ReviewSection icon="📤" title="Billing / Payables" status={billStatus}>
+                    <Row label="Unpaid Payables" value={fmtM(totalPayables)} color={totalPayables>0?"#ef4444":"#059669"}/>
+                    <Row label="Overdue Payables" value={overduePayables>0?`${overduePayables} — ${fmtM(overduePayablesAmt)}`:"None ✅"} color={overduePayables>0?"#dc2626":"#059669"}/>
+                    <Row label="Unbilled Projects" value={unbilledProjects.length>0?`${unbilledProjects.length} projects`:"None ✅"} color={unbilledProjects.length>0?"#d97706":"#059669"}/>
+                    <Row label="Contract Backlog" value={fmtM(backlog)} color="#8b5cf6"/>
+                  </ReviewSection>
+                  {/* 4. Profitability */}
+                  <ReviewSection icon="📈" title="Profitability" status={profStatus}>
+                    <Row label="Gross Margin" value={grossMargin+"%"} color={grossMargin>=30?"#059669":grossMargin>=20?"#d97706":"#dc2626"}/>
+                    <Row label="Gross Profit" value={fmtM(grossProfit)} color={grossProfit>=0?"#059669":"#dc2626"}/>
+                    <Row label="Total Expenses" value={fmtM(totalExpenses)} color="#ef4444"/>
+                    <Row label="This Month Rev." value={fmtM(thisMonthRev)} color="#3b82f6"/>
+                    {revTrend!==0&&<Row label="vs Last Month" value={(revTrend>0?"+":"")+revTrend+"%"} color={revTrend>0?"#059669":"#dc2626"}/>}
+                    <Row label="Win Rate" value={winRate+"%"} color={winRate>=40?"#059669":"#d97706"}/>
+                  </ReviewSection>
                 </div>
               </div>
 
