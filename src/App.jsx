@@ -4045,7 +4045,7 @@ export default function App(){
   const breqPendingCnt =useMemo(()=>breqs.filter(b=>b.status==="Pending").length,[breqs]);
   const openPOCnt      =useMemo(()=>prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status)).length,[prs]);
   const toBuyCnt       =useMemo(()=>swatches.filter(s=>s.status==="To Buy").length,[swatches]);
-  const overdueProjectCnt=useMemo(()=>wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today).length,[wonDeals,pcards]);
+  const overdueProjectCnt=useMemo(()=>wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,[wonDeals,pcards]);
 
   // ── Modals ────────────────────────────────────────────────────────────────
   const[dealModal,  setDealModal] =useState(false);
@@ -16849,7 +16849,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             {l:"Completed",    v:wonDeals.filter(d=>d.stage==="12 · Close-Out").length+completedDeals.length, c:"#059669", f:"completed"},
             {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
-            {l:"Past Deadline",v:[...wonDeals,...completedDeals].filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today).length,c:"#c2410c",f:"overdue"},
+            {l:"Past Deadline",v:[...wonDeals,...completedDeals].filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,c:"#c2410c",f:"overdue"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
             <div key={l} onClick={()=>setPcFilter(x=>x===f?null:f)}
@@ -16896,7 +16896,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
             if(pcFilter==="attention") list=list.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";});
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
-            if(pcFilter==="overdue") list=list.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today);
+            if(pcFilter==="overdue") list=list.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done));
             if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
