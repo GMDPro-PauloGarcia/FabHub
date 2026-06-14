@@ -4692,7 +4692,7 @@ export default function App(){
       <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
         {/* Logo + collapse toggle */}
         <div style={{display:"flex",alignItems:"center",justifyContent:navCollapsed?"center":"space-between",padding:navCollapsed?"16px 0":"14px 16px",borderBottom:"1px solid rgba(255,255,255,.08)",minHeight:56,flexShrink:0}}>
-          {!navCollapsed&&<div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"#fff",letterSpacing:-.5}}>GMD <span style={{color:"#f59e0b"}}>PROD</span></div>}
+          {!navCollapsed&&<img src="/gmd-logo.png" alt="GMD" style={{height:28,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>}
           <button onClick={()=>setNavCollapsed(c=>!c)} style={{background:"rgba(255,255,255,.08)",border:"none",borderRadius:6,width:28,height:28,cursor:"pointer",color:"#94a3b8",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
             {navCollapsed?"→":"←"}
           </button>
@@ -4768,9 +4768,7 @@ export default function App(){
     if(!isMobile) return null;
     return(
       <div style={{position:"fixed",top:0,left:0,right:0,height:48,background:"#1e293b",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:300,boxShadow:"0 2px 8px rgba(0,0,0,.25)"}} className="noprint">
-        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"#fff",letterSpacing:-.5}}>
-          GMD <span style={{color:"#f59e0b"}}>FabHub</span>
-        </div>
+        <img src="/gmd-logo.png" alt="GMD" style={{height:30,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
             {session?.name?.split(" ")[0]} · {session?.title||role}
