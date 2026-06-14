@@ -4022,9 +4022,11 @@ export default function App(){
         }
       }
     });
-    // E-7: Won projects with no billing milestones (O(1) Set lookup)
+    // E-7: Won projects with no billing milestones — only flag from Fabrication stage onwards
+    // Kickoff & Briefing are too early to require milestones
+    const BILLING_REQUIRED_STAGES=["08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out"];
     wonDeals.forEach(d=>{
-      if(!billedDealIds.has(d.id)) list.push({type:'E-7',dealId:d.id,client:d.client,label:`No billing milestone set for active project`,severity:'high'});
+      if(!billedDealIds.has(d.id)&&BILLING_REQUIRED_STAGES.includes(d.stage)) list.push({type:'E-7',dealId:d.id,client:d.client,label:`No billing milestone set for active project`,severity:'medium'});
     });
     return list;
   },[billings,addenda,wonDeals,projs,drfs,prs,breqs,deals,today]);
