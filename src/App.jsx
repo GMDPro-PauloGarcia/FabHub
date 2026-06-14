@@ -8030,6 +8030,17 @@ export default function App(){
           const unbilledProjects=wonDeals.filter(d=>billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").length===0);
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
 
+          // ── CASH POSITION (today) ─────────────────────────────────────────
+          const todayPos=cashPositions[today]||null;
+          const BANK_LABELS={bpi:"BPI",metro:"Metrobank",china:"Chinabank",bdo:"BDO",security:"Security Bank",union:"UnionBank"};
+          const cpBanks=todayPos?Object.entries(todayPos.banks||{}).map(([id,r])=>({id,label:BANK_LABELS[id]||id,beg:Number(r.beg||0),book:Number(r.book||0),end:Number(r.end||0)})).filter(b=>b.beg>0||b.book>0||b.end>0):[];
+          const cpTotalBeg=cpBanks.reduce((s,b)=>s+b.beg,0);
+          const cpTotalEnd=cpBanks.reduce((s,b)=>s+(b.end||b.book||b.beg),0);
+          const cpTxns=todayPos?.transactions||[];
+          const cpCollections=(todayPos?.collections?.manualCollections||[]).reduce((s,c)=>s+Number(c.amount||0),0);
+          const cpExpenses=cpTxns.filter(t=>t.type==="expense"||t.amount<0).reduce((s,t)=>s+Math.abs(Number(t.amount||0)),0);
+          const cpNetMove=cpTotalEnd-cpTotalBeg;
+
           // Build digest alerts list
           const digestAlerts=[];
           if(overdueBillings.length>0) digestAlerts.push({icon:"🚨",level:"danger",text:`${overdueBillings.length} overdue invoice${overdueBillings.length!==1?"s":""} — ₱${Number(overdueBillings.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,x)=>ps+Number(x.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0)).toLocaleString("en-PH",{maximumFractionDigits:0})} uncollected`});
@@ -8039,6 +8050,13 @@ export default function App(){
           if(unbilledProjects.length>0) digestAlerts.push({icon:"📋",level:"warning",text:`${unbilledProjects.length} awarded project${unbilledProjects.length!==1?"s":""} with no milestones billed yet`});
           if(overduePayables>0) digestAlerts.push({icon:"📤",level:"warning",text:`${overduePayables} overdue payable${overduePayables!==1?"s":""} — ₱${Number(payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).reduce((s,p)=>s+Number(p.amount||0),0)).toLocaleString("en-PH",{maximumFractionDigits:0})}`});
           if(backlog>0) digestAlerts.push({icon:"🏗",level:"info",text:`Contract backlog: ${fmtM(backlog)} in awarded work not yet billed`});
+          // Cash position alerts
+          if(!todayPos) digestAlerts.push({icon:"⚠️",level:"warning",text:"No cash position entry for today — please update Daily Cash Position"});
+          else{
+            if(cpTotalEnd<500000) digestAlerts.push({icon:"🔴",level:"danger",text:`Total bank balance is low — ${fmtM(cpTotalEnd)} ending balance today`});
+            if(cpNetMove<0) digestAlerts.push({icon:"📉",level:"warning",text:`Net cash movement today: ${fmtM(cpNetMove)} (outflows exceeded inflows)`});
+            cpBanks.forEach(b=>{const end=b.end||b.book||b.beg;if(end<0) digestAlerts.push({icon:"🔴",level:"danger",text:`${b.label} is in negative balance: ${fmtM(end)}`});});
+          }
           if(digestAlerts.length===0) digestAlerts.push({icon:"✅",level:"ok",text:"All financial indicators are on track — no alerts today."});
 
           const sendDigest=async()=>{
@@ -8057,6 +8075,15 @@ export default function App(){
               ``,
               `🚦 <b>Alerts</b>`,
               ...digestAlerts.map(a=>`${a.icon} ${a.text}`),
+              ``,
+              `💵 <b>Daily Cash Position</b>`,
+              ...(todayPos?[
+                `• Opening Balance: ${fmtM(cpTotalBeg)}`,
+                `• Closing Balance: ${fmtM(cpTotalEnd)}`,
+                `• Collections Today: ${fmtM(cpCollections)}`,
+                `• Net Movement: ${cpNetMove>=0?"+":""}${fmtM(cpNetMove)}`,
+                ...cpBanks.map(b=>`  — ${b.label}: ${fmtM(b.end||b.book||b.beg)}`),
+              ]:[`• ⚠️ No cash position logged for today`]),
               ``,
               `📤 <b>Payables</b>`,
               `• Unpaid: ${fmtM(totalPayables)}${overduePayables>0?` | ${overduePayables} overdue`:""}`,
