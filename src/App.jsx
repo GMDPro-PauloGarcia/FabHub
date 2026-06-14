@@ -3647,7 +3647,16 @@ export default function App(){
   const deletePR   =(id)=>{
     const pr=prs.find(p=>p.id===id);
     if(pr&&role!=="Manager"&&role!=="Procurement"&&pr.createdBy!==session?.name) return toastEmit("Only Managers, Procurement, or the creator can delete purchase requests.","error");
-    upPrs(ps=>ps.filter(p=>p.id!==id));if(isSupabaseReady()) sbDelete('purchase_requests',id).catch(()=>{});
+    upPrs(ps=>ps.filter(p=>p.id!==id));
+    if(isSupabaseReady()&&isUUID(id)){
+      sbDelete('purchase_requests',id).catch(()=>{
+        // Re-add if Supabase delete failed so the record is not lost
+        if(pr) upPrs(ps=>[pr,...ps]);
+        toastEmit("Delete failed — check your connection and try again.","error");
+      });
+    } else if(!isUUID(id)){
+      // Non-UUID id was never in Supabase — local-only record, just remove from localStorage (already done via upPrs)
+    }
   };
   const saveDayPos=(date,pos)=>{
     upCashPos(cp=>({...cp,[date]:{...pos,savedAt:new Date().toISOString()}}));
