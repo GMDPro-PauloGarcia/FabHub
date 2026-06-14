@@ -16636,7 +16636,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
-  const deal=wonDeals.find(d=>d.id===selDeal);
+  const deal=wonDeals.find(d=>d.id===selDeal)||completedDeals.find(d=>d.id===selDeal);
   const jo=jos.find(j=>j.dealId===selDeal);
 
   const PHASES=[
