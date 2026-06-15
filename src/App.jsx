@@ -19872,6 +19872,107 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const grandTotal=items.reduce((s,it)=>s+it.total,0);
   const vatAmount=grandTotal*0.12;
 
+  const printBOQ=()=>{
+    const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const fmtP=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
+    const dateStr=boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"-";
+    let rows="";
+    sections.forEach(sec=>{
+      const si=items.filter(it=>it.section===sec.id);
+      if(!si.length) return;
+      const secTotal=si.reduce((s,it)=>s+it.total,0);
+      rows+=`<tr style="background:#f1f5f9"><td colspan="2" style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px;color:#1e293b">${esc(sec.id)}. ${esc(sec.label)}</td><td colspan="5" style="text-align:right;padding:8px 10px;font-size:10px;color:#64748b"></td></tr>`;
+      si.forEach((it,idx)=>{rows+=`<tr style="background:${idx%2===0?"#fff":"#f8fafc"}"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap">${esc(sec.id)}.${idx+1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b">${esc(it.remarks||"")}</td></tr>`;});
+      rows+=`<tr style="background:${sec.color?sec.color+"11":"#f0fdf4"}"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
+    });
+    const vatAmt=grandTotal*0.12;
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc(boqTitle||"Draft")}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
+  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:3px solid #1e293b;padding-bottom:14px}
+  .co{font-size:22px;font-weight:800;letter-spacing:-.5px;color:#1e293b}
+  .co-sub{font-size:10px;color:#64748b;margin-top:2px}
+  .doc-label{font-size:9px;text-transform:uppercase;letter-spacing:2px;color:#94a3b8;margin-bottom:4px}
+  .doc-title{font-size:18px;font-weight:800;color:#1e293b;text-align:right}
+  .meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin-bottom:20px;display:grid;grid-template-columns:1fr 1fr;gap:10px 32px}
+  .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:2px}
+  .meta-item span{font-weight:700;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-bottom:0}
+  th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
+  th.r{text-align:right}
+  td{border-bottom:1px solid #f1f5f9;vertical-align:middle}
+  .tot-row td{background:#1e293b;color:#f1f5f9;font-weight:800;font-size:13px;padding:9px 10px}
+  .vat-row td{background:#f8fafc;color:#475569;font-size:12px;padding:7px 10px}
+  .gtvat-row td{background:#0f172a;color:#fff;font-weight:800;font-size:13px;padding:9px 10px}
+  .disc-row td{background:#fffbeb;color:#92400e;font-size:12px;padding:7px 10px}
+  .notes-section{margin-top:22px;padding:16px 18px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}
+  .notes-section h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#1e293b;margin-bottom:8px}
+  .notes-section ul{padding-left:18px;font-size:11px;line-height:1.7;color:#475569}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:18px}
+  .two-col h3{font-size:11px;text-transform:uppercase;letter-spacing:.8px;color:#1e293b;margin-bottom:8px}
+  .two-col p{font-size:11px;line-height:1.7;color:#475569}
+  .sig-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:36px}
+  .sig-box .label{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;font-weight:600;margin-bottom:28px}
+  .sig-box .line{border-top:1.5px solid #1e293b;padding-top:6px;margin-top:4px}
+  .sig-box .name{font-weight:800;font-size:12px;color:#0f172a}
+  .sig-box .role{font-size:10px;color:#64748b}
+  .print-btn{text-align:center;margin:20px 0 0}
+  .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:8px;padding:11px 28px;font-size:13px;font-weight:700;cursor:pointer}
+  @media print{.print-btn{display:none}body{padding:18px}}
+</style></head><body>
+<div class="hdr">
+  <div><div class="co">GMD Productions Inc.</div><div class="co-sub">Fabrication &amp; Project Management</div></div>
+  <div><div class="doc-label">Bill of Quantities</div><div class="doc-title">QUOTATION</div><div style="font-size:11px;color:#64748b;text-align:right;margin-top:3px">${quotationNo?`No. ${esc(quotationNo)}`:""} &nbsp; ${dateStr}</div></div>
+</div>
+<div class="meta-box">
+  <div class="meta-item"><label>Project</label><span>${esc(boqTitle||"—")}</span></div>
+  <div class="meta-item"><label>Location</label><span>${esc(location||"—")}</span></div>
+  <div class="meta-item"><label>Contractor</label><span>GMD Productions Inc.</span></div>
+  <div class="meta-item"><label>Date</label><span>${dateStr}</span></div>
+</div>
+<table>
+  <thead><tr><th style="width:68px">Item No.</th><th>Description</th><th style="text-align:center;width:48px">Qty</th><th style="width:56px">Unit</th><th class="r" style="width:110px">Unit Cost</th><th class="r" style="width:120px">Total Amount</th><th style="width:110px">Remarks</th></tr></thead>
+  <tbody>${rows}</tbody>
+  <tr class="tot-row"><td colspan="5" style="text-align:right">Grand Total</td><td style="text-align:right">${fmtP(grandTotal)}</td><td></td></tr>
+  ${vatEnabled?`<tr class="vat-row"><td colspan="5" style="text-align:right">VAT 12%</td><td style="text-align:right">${fmtP(vatAmt)}</td><td></td></tr><tr class="gtvat-row"><td colspan="5" style="text-align:right">Grand Total w/ VAT</td><td style="text-align:right">${fmtP(grandTotal+vatAmt)}</td><td></td></tr>`:""}
+  ${discountedTotal?`<tr class="disc-row"><td colspan="5" style="text-align:right">Discounted Total w/o VAT</td><td style="text-align:right">${fmtP(discountedTotal)}</td><td></td></tr>`:""}
+</table>
+<div class="notes-section">
+  <h3>General Notes</h3>
+  <ul>
+    <li>Inclusive of Labor Fees (Inclusive of Night Differential)</li>
+    <li>Inclusive of Contingency Fee &amp; Indirect Cost Fee</li>
+    <li>Inclusive of Value Added Taxes</li>
+    <li>Price Validity: 30 Days after Receiving</li>
+    <li>If the quotation is approved, Quotation Number must be indicated at Purchase Orders (PO)</li>
+    <li>Any alteration of the design and additional items not included in the contract will be billed accordingly.</li>
+    <li>GMD reserves the right to hold, pull-out, or suspend delivery if payments and other conditions are not met.</li>
+    <li>GMD Productions has a NO DP &amp; NO Signed Contract = NO Production Policy.</li>
+    <li>Cost is based on specified requirements; additional requirements other than stated above shall be billed separately.</li>
+  </ul>
+  <div class="two-col">
+    <div>
+      <h3>Bank Details</h3>
+      <p>Account Name: <strong>GMD PRODUCTIONS INC</strong><br>BDO CHECKING — 012758000370<br>BPI CHECKING — 6011 04 82 03<br>METROBANK — 382-7-38202059-2</p>
+    </div>
+    <div>
+      <h3>Payment Terms</h3>
+      <p>50% Down Payment to start project<br>Billing of 40% up until installation<br>Retention of 10% upon certificate of completion</p>
+    </div>
+  </div>
+  <div class="sig-row">
+    <div class="sig-box"><div class="label">Prepared by</div><div class="line"><div class="name">Rodney Erpe</div><div class="role">Quantity Surveyor</div></div></div>
+    <div class="sig-box"><div class="label">Approved &amp; Submitted by</div><div class="line"><div class="name">Paulo Miguel Garcia</div><div class="role">President</div></div></div>
+    <div class="sig-box"><div class="label">Accepted by</div><div class="line"><div class="name">${esc(deal?.client||"Client Name / Representative")}</div><div class="role">Signature over Printed Name</div></div></div>
+  </div>
+</div>
+<div class="print-btn"><button onclick="window.print()">🖨️ Print / Save as PDF</button></div>
+</body></html>`;
+    const w=window.open("","_blank","width=1000,height=780");
+    if(w){w.document.write(html);w.document.close();}
+  };
+
   const exportCSV=()=>{
     const rows=[["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks"]];
     sections.forEach(sec=>{
@@ -19947,6 +20048,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>
+          {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
         </div>
       </div>
@@ -20183,7 +20285,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <div>
                 <div style={{fontSize:".7rem",fontWeight:600,color:"#94a3b8",marginBottom:28}}>Prepared by:</div>
                 <div style={{borderBottom:"1.5px solid #0f172a",marginBottom:5}}/>
-                <div style={{fontWeight:700,color:"#0f172a"}}>{session?.name||"QS"}</div>
+                <div style={{fontWeight:700,color:"#0f172a"}}>Rodney Erpe</div>
                 <div style={{fontSize:".7rem",color:"#64748b"}}>Quantity Surveyor</div>
               </div>
               <div>
