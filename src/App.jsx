@@ -19737,6 +19737,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[items,setItems]=useState(()=>BOQ_SECTIONS.map((s,i)=>({_id:i+1,section:s.id,description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""})));
   const[vatEnabled,setVatEnabled]=useState(true);
   const[discountedTotal,setDiscountedTotal]=useState("");
+  const[suggest,setSuggest]=useState({id:null,matches:[]});
   const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
 
   // Dynamic sections — start from GMD defaults, fully editable per BOQ
@@ -19841,6 +19842,15 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
   const addRow=(sec)=>setItems(its=>[...its,{_id:Date.now(),section:sec||sections[0]?.id||"A",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
+  const applyLibItem=(rowId,lib)=>{
+    setItems(its=>its.map(it=>{
+      if(it._id!==rowId) return it;
+      const upd={...it,description:lib.name,unit:lib.unit||it.unit,unitCost:lib.unitCost>0?lib.unitCost:it.unitCost};
+      upd.total=(upd.qty||0)*(upd.unitCost||0);
+      return upd;
+    }));
+    setSuggest({id:null,matches:[]});
+  };
 
   const grandTotal=items.reduce((s,it)=>s+it.total,0);
   const vatAmount=grandTotal*0.12;
@@ -20040,7 +20050,41 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                     {si.map((it,idx)=>(
                       <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,padding:"3px 12px",borderBottom:"1px solid #f1f5f9",alignItems:"center",background:idx%2===0?"#fff":"#fafafa"}}>
                         <div style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8"}}>{sec.id}.{idx+1}</div>
-                        <input value={it.description} onChange={e=>updateItem(it._id,"description",e.target.value)} placeholder="Description" style={{...inpSt,fontSize:".78rem",padding:"4px 6px"}}/>
+                        <div style={{position:"relative"}}>
+                          <input value={it.description}
+                            onChange={e=>{
+                              updateItem(it._id,"description",e.target.value);
+                              const q=e.target.value;
+                              if(q.length>=2){
+                                const ql=q.toLowerCase();
+                                const matches=boqLibrary.filter(lib=>lib.name.toLowerCase().includes(ql)||(lib.tags||[]).some(t=>t.toLowerCase().includes(ql))).slice(0,7);
+                                setSuggest({id:it._id,matches});
+                              } else setSuggest({id:null,matches:[]});
+                            }}
+                            onFocus={e=>{
+                              const q=e.target.value;
+                              if(q.length>=2){const ql=q.toLowerCase();setSuggest({id:it._id,matches:boqLibrary.filter(lib=>lib.name.toLowerCase().includes(ql)||(lib.tags||[]).some(t=>t.toLowerCase().includes(ql))).slice(0,7)});}
+                            }}
+                            onBlur={()=>setTimeout(()=>setSuggest({id:null,matches:[]}),160)}
+                            placeholder="Type to search library or enter description"
+                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",width:"100%"}}/>
+                          {suggest.id===it._id&&suggest.matches.length>0&&(
+                            <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #7c3aed",borderRadius:8,zIndex:1000,boxShadow:"0 8px 24px #0003",overflow:"hidden",minWidth:220}}>
+                              {suggest.matches.map(lib=>{
+                                const lsec=sections.find(s=>s.id===lib.section)||BOQ_SECTIONS.find(s=>s.id===lib.section)||sections[0];
+                                return(
+                                  <div key={lib.id} onMouseDown={()=>applyLibItem(it._id,lib)}
+                                    style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #f5f3ff",background:"#fff"}}
+                                    onMouseEnter={e=>e.currentTarget.style.background="#f5f3ff"}
+                                    onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                                    <div style={{fontWeight:700,fontSize:".78rem",color:"#0f172a"}}>{lib.name}</div>
+                                    <div style={{fontSize:".65rem",color:lsec?.color||"#64748b",fontWeight:600,marginTop:1}}>{lsec?.label} · {lib.unit}{lib.unitCost>0?` · ₱${lib.unitCost.toLocaleString("en-PH")}`:""}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
                         <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
                         <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)} placeholder="lot" style={{...inpSt,fontSize:".72rem",padding:"4px 4px",textAlign:"center"}}/>
                         <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
