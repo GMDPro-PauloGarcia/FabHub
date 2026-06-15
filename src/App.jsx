@@ -2310,6 +2310,9 @@ export default function App(){
   const[pcards,      setPcards]    = useState({});
   const[inventory,   setInventory] = useState([]);  // Inventory items
   const[stocklog,    setStocklog]  = useState([]);  // Stock movement log // Set of client names marked VVIP
+  const[receivingPr, setReceivingPr]=useState(null);  // PR being received (partial receiving modal)
+  const[rxQty,       setRxQty]     =useState("");
+  const[rxDrNo,      setRxDrNo]    =useState("");
   const[prs,         setPrs]       = useState([]);   // Purchase Requests
   const[addenda,     setAddenda]   = useState([]);   // Project Addenda
   const[billings,    setBillings]  = useState([]);   // Billing milestones
@@ -3020,6 +3023,75 @@ export default function App(){
       if(isSupabaseReady()) sbUpdate('inventory_items',i.id,invToSb(updated)).catch(()=>{});
       return updated;
     }));
+  };
+
+  const printDR=(pr,qty,drNo,deal)=>{
+    const recvDate=today;
+    const projName=pr.projectId==="__gmd_stocks__"||pr.projectName==="GMD Stocks"?"GMD Stocks":(deal?projDisplayName(deal):(pr.projectName||"—"));
+    const html=`<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Delivery Receipt — ${drNo||"GRN"}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Arial',sans-serif;font-size:12px;color:#1a1a2e;background:#fff;padding:20px}
+  .logo-area{display:flex;align-items:center;gap:14px;margin-bottom:4px}
+  .co-name{font-size:20px;font-weight:900;color:#0f172a;letter-spacing:-0.5px}
+  .co-sub{font-size:10px;color:#64748b;margin-top:2px}
+  .doc-title{font-size:22px;font-weight:900;color:#0f172a;margin-top:16px;border-bottom:3px solid #0f172a;padding-bottom:8px;letter-spacing:1px}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;margin:14px 0;font-size:11px}
+  .meta-row{display:flex;gap:6px;align-items:flex-start}
+  .meta-label{font-weight:700;color:#475569;min-width:80px;flex-shrink:0}
+  .meta-val{color:#0f172a}
+  .section-head{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#475569;margin:16px 0 8px;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:16px}
+  th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.8px;font-weight:700}
+  td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  .sig-row{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:30px}
+  .sig-box{text-align:center;font-size:10px;color:#475569}
+  .sig-line{border-top:1px solid #94a3b8;padding-top:6px;margin-top:36px}
+  .sig-name{font-weight:700;font-size:11px;color:#0f172a}
+  .status-badge{display:inline-block;background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;border-radius:12px;padding:2px 10px;font-weight:700;font-size:10px}
+  .notes-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px;font-size:11px;color:#475569;margin-top:8px}
+  @media print{body{padding:10px}}
+</style></head><body>
+<div class="logo-area"><div><div class="co-name">GMD Pro Solutions</div><div class="co-sub">Interior Design & Fabrication · info@gmdpro.com.ph</div></div></div>
+<div class="doc-title">GOODS RECEIVING NOTE</div>
+<div class="meta-grid">
+  <div class="meta-row"><span class="meta-label">GRN / DR No.:</span><span class="meta-val"><strong>${drNo||"— (none)"}</strong></span></div>
+  <div class="meta-row"><span class="meta-label">Date Received:</span><span class="meta-val">${recvDate}</span></div>
+  <div class="meta-row"><span class="meta-label">PO Reference:</span><span class="meta-val">${pr.poNumber||pr.id?.slice(-8)||"—"}</span></div>
+  <div class="meta-row"><span class="meta-label">Supplier:</span><span class="meta-val">${pr.supplier||"—"}</span></div>
+  <div class="meta-row"><span class="meta-label">Project:</span><span class="meta-val">${projName}</span></div>
+  <div class="meta-row"><span class="meta-label">Received By:</span><span class="meta-val">${session?.name||"Warehouse"}</span></div>
+</div>
+<div class="section-head">Items Received</div>
+<table>
+  <thead><tr><th>Description</th><th style="width:90px">PO Qty</th><th style="width:90px">Qty Received</th><th style="width:80px">Unit</th><th>Condition</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>${pr.itemName||"—"}</td>
+      <td>${pr.qty||"—"}</td>
+      <td><strong>${qty}</strong></td>
+      <td>${pr.unit||"pcs"}</td>
+      <td><span class="status-badge">✓ Good</span></td>
+    </tr>
+  </tbody>
+</table>
+${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Delivery:</strong> ${qty} of ${pr.qty} ${pr.unit||""} received. Balance of ${Number(pr.qty)-Number(qty)} ${pr.unit||""} pending.</div>`:""}
+<div class="notes-box" style="margin-top:8px">Notes: ${pr.deliveryNote||"No additional notes."}</div>
+<div class="sig-row">
+  <div class="sig-box"><div class="sig-line"><span class="sig-name">${session?.name||"Warehouse Staff"}</span></div>Received By / Warehouse</div>
+  <div class="sig-box"><div class="sig-line"><span class="sig-name">&nbsp;</span></div>Checked By / QC</div>
+  <div class="sig-box"><div class="sig-line"><span class="sig-name">&nbsp;</span></div>Supplier Representative</div>
+</div>
+<div style="margin-top:20px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #f1f5f9;padding-top:8px">
+  This document serves as official receiving record. Any discrepancies must be reported within 24 hours. · GMD Pro Solutions · ${recvDate}
+</div>
+</body></html>`;
+    const w=window.open("","_blank","width=800,height=600");
+    if(!w){toastEmit("Popup blocked — allow popups to print.","error");return;}
+    w.document.write(html);w.document.close();
+    setTimeout(()=>w.print(),400);
   };
 
   const createProjectCard=(dealId,dealData)=>{
@@ -9070,6 +9142,18 @@ export default function App(){
                 ))}
               </div>
 
+              {/* Low stock banner */}
+              {(()=>{const lowStock=inventory.filter(i=>Number(i.qtyOnHand)<=Number(i.reorderPoint)&&Number(i.reorderPoint)>0);return lowStock.length>0?(
+                <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                  <span style={{fontSize:"1rem"}}>⚠️</span>
+                  <div style={{flex:1}}>
+                    <strong style={{fontSize:".84rem",color:"#92400e"}}>{lowStock.length} item{lowStock.length>1?"s":""} at or below reorder point</strong>
+                    <div style={{fontSize:".75rem",color:"#b45309",marginTop:2}}>{lowStock.slice(0,5).map(i=>`${i.name} (${i.qtyOnHand} ${i.unit||""} left)`).join(" · ")}{lowStock.length>5&&` +${lowStock.length-5} more`}</div>
+                  </div>
+                  <button onClick={()=>setPage("inventory")} style={{background:"#f59e0b",border:"none",borderRadius:8,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>View Inventory</button>
+                </div>
+              ):null;})()}
+
               {/* Arriving today — most urgent */}
               {arrivedToday.length>0&&(
                 <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fecaca",overflow:"hidden"}}>
@@ -9086,20 +9170,9 @@ export default function App(){
                           <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{pr.qty} {pr.unit} · {pr.supplier||"No supplier"}{pmW?` · PM: ${pmW}`:""}</div>
                           {pr.poNumber&&<div style={{fontSize:".65rem",color:"#64748b"}}>PO: {pr.poNumber}</div>}
                         </div>
-                        <button onClick={()=>{
-                          updatePR(pr.id,{status:"Delivered",qtyDelivered:pr.qty,deliveryDate:today,deliveryNote:`Received by ${session?.name||"Warehouse"} on ${today}`});
-                          sendTelegramNotification("procurement",`📦 <b>Delivery Confirmed</b>\n${pr.itemName}\nProject: ${d?.client||"?"}\nQty: ${pr.qty} ${pr.unit||""}\nReceived by: ${session?.name||"Warehouse"} · ${today}`);
-                          // Auto-log stock IN movement if item exists in inventory
-                          const invMatch=inventory.find(i=>i.name?.toLowerCase()===pr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(pr.itemName?.toLowerCase()));
-                          if(invMatch){
-                            logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(pr.qty)||0,unitCost:Number(pr.actUnitCost||pr.estUnitCost)||0,projectId:pr.projectId,notes:`Auto-logged from PO ${pr.poNumber||pr.id.slice(-6)} · ${pr.supplier||""}`,date:today});
-                            toastEmit(`Stock updated: +${pr.qty} ${pr.unit||""} of ${invMatch.name}`,"success");
-                          } else {
-                            toastEmit(`Delivery recorded. "${pr.itemName}" not found in inventory — log manually in Stock Movements if needed.`,"info");
-                          }
-                        }}
+                        <button onClick={()=>{setReceivingPr({...pr,_deal:d});setRxQty(String(pr.qty||""));setRxDrNo("");}}
                           style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
-                          ✓ Mark Received
+                          ✓ Receive
                         </button>
                       </div>
                     );
@@ -9123,7 +9196,13 @@ export default function App(){
                           <div style={{fontSize:".72rem",color:"#64748b"}}>{d?.contact||d?.client||"?"}</div>
                           <div style={{fontSize:".68rem",color:"#94a3b8"}}>Expected {pr.deliveryDate} · {pr.supplier||"No supplier"}{pmW?` · PM: ${pmW}`:""}</div>
                         </div>
-                        <span style={{fontSize:".72rem",background:"#fff7ed",color:"#d97706",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
+                        <div style={{display:"flex",flexDirection:"column",gap:5,alignItems:"flex-end"}}>
+                          <span style={{fontSize:".72rem",background:"#fff7ed",color:"#d97706",border:"1px solid #fed7aa",borderRadius:20,padding:"2px 9px",fontWeight:700,whiteSpace:"nowrap"}}>{daysLate}d late</span>
+                          <button onClick={()=>{setReceivingPr({...pr,_deal:d});setRxQty(String(pr.qty||""));setRxDrNo("");}}
+                            style={{background:"#059669",border:"none",borderRadius:8,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                            ✓ Receive
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -9166,6 +9245,73 @@ export default function App(){
             </div>
           );
         })()}
+
+        {/* ── Partial Receiving Modal ─────────────────────────── */}
+        {receivingPr&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget)setReceivingPr(null);}}>
+            <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.25rem",color:"#0f172a",marginBottom:4}}>📦 Receive Delivery</div>
+              <div style={{fontSize:".8rem",color:"#64748b",marginBottom:18,paddingBottom:14,borderBottom:"1px solid #f1f5f9"}}>Confirm receipt and log into inventory</div>
+
+              <div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".83rem"}}>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:4}}>{receivingPr.itemName}</div>
+                <div style={{color:"#64748b"}}>Supplier: <strong>{receivingPr.supplier||"—"}</strong></div>
+                <div style={{color:"#64748b"}}>PO: <strong>{receivingPr.poNumber||"—"}</strong> · Expected: <strong>{receivingPr.qty} {receivingPr.unit||""}</strong></div>
+                {receivingPr._deal&&<div style={{color:"#64748b",marginTop:2}}>Project: <strong>{projDisplayName(receivingPr._deal)}</strong></div>}
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+                <div>
+                  <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Qty Received *</label>
+                  <input type="number" value={rxQty} onChange={e=>setRxQty(e.target.value)} min={0.01} step="any"
+                    style={{width:"100%",border:"1.5px solid #3b82f6",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".92rem",fontWeight:700,color:"#0f172a",textAlign:"center"}}/>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3}}>PO qty: {receivingPr.qty} {receivingPr.unit||""}</div>
+                </div>
+                <div>
+                  <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>DR / Reference No.</label>
+                  <input type="text" value={rxDrNo} onChange={e=>setRxDrNo(e.target.value)} placeholder="e.g. DR-2024-001"
+                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a"}}/>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3}}>Supplier's delivery note #</div>
+                </div>
+              </div>
+
+              {rxQty&&Number(rxQty)<Number(receivingPr.qty)&&(
+                <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:8,padding:"8px 12px",marginBottom:14,fontSize:".78rem",color:"#92400e"}}>
+                  ⚠️ Partial receipt — balance of <strong>{Number(receivingPr.qty)-Number(rxQty)} {receivingPr.unit||""}</strong> remains outstanding
+                </div>
+              )}
+
+              <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                <button disabled={!rxQty||Number(rxQty)<=0} onClick={()=>{
+                  const isPartial=Number(rxQty)<Number(receivingPr.qty);
+                  const newStatus=isPartial?"Partially Delivered":"Delivered";
+                  const noteStr=`${rxDrNo?`DR: ${rxDrNo} · `:""}Received ${rxQty} ${receivingPr.unit||""} by ${session?.name||"Warehouse"} on ${today}`;
+                  updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr});
+                  sendTelegramNotification("procurement",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
+                  const invMatch=inventory.find(i=>i.name?.toLowerCase()===receivingPr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(receivingPr.itemName?.toLowerCase()));
+                  if(invMatch){
+                    logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(rxQty),unitCost:Number(receivingPr.actUnitCost||receivingPr.estUnitCost)||0,projectId:receivingPr.projectId,notes:`${rxDrNo?`DR ${rxDrNo} · `:""}PO ${receivingPr.poNumber||receivingPr.id.slice(-6)} · ${receivingPr.supplier||""}`,date:today});
+                    toastEmit(`Stock updated: +${rxQty} ${receivingPr.unit||""} of ${invMatch.name}`,"success");
+                  } else {
+                    toastEmit(`Delivery recorded${isPartial?" (partial)":""}. Add "${receivingPr.itemName}" to Inventory to auto-track stock.`,"info");
+                  }
+                  setReceivingPr(null);
+                }}
+                  style={{flex:1,background:rxQty&&Number(rxQty)>0?"#059669":"#e2e8f0",border:"none",borderRadius:9,padding:"11px 0",color:rxQty&&Number(rxQty)>0?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",cursor:rxQty&&Number(rxQty)>0?"pointer":"not-allowed"}}>
+                  ✓ Confirm Receipt
+                </button>
+                <button onClick={()=>printDR(receivingPr,rxQty||receivingPr.qty,rxDrNo,receivingPr._deal)}
+                  style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:9,padding:"11px 14px",color:"#1d4ed8",fontFamily:"inherit",fontWeight:700,fontSize:".83rem",cursor:"pointer"}}>
+                  🖨 Print DR
+                </button>
+                <button onClick={()=>setReceivingPr(null)}
+                  style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 14px",color:"#64748b",fontFamily:"inherit",fontWeight:600,fontSize:".83rem",cursor:"pointer"}}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </Wrap>
     );
   }
@@ -18206,8 +18352,9 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
                     {isOut&&<div style={{fontSize:".68rem",color:"#ef4444",fontWeight:700}}>OUT OF STOCK</div>}
                     {isLow&&!isOut&&<div style={{fontSize:".68rem",color:"#f59e0b",fontWeight:700}}>LOW STOCK</div>}
                   </div>
-                  <div style={{display:"flex",gap:6}}>
-                    {canEdit&&<button onClick={()=>setShowMove(showMove===item.id?null:item.id)} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>± Stock</button>}
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                    {canEdit&&<button onClick={()=>{setMoveForm({moveType:"OUT — Project Issue",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id&&moveForm.moveType.startsWith("OUT")?null:item.id);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#c2410c",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>↑ Issue</button>}
+                    {canEdit&&<button onClick={()=>{setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id&&moveForm.moveType.startsWith("IN")?null:item.id);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>↓ IN</button>}
                     {canEdit&&<button onClick={()=>openEdit(item)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>}
                     {canDelete&&<button onClick={()=>{if(window.confirm("Delete this item?"))deleteInventoryItem(item.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
                   </div>
