@@ -408,6 +408,9 @@ const claimWoNumber=async({typed,suggested,swos})=>{
   return `WO-${String(nn).padStart(4,"0")}`;
 };
 const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
+const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
+const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
+const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:0,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:""});
 
 const emptyBudget = () => ({
   Materials:0, Labor:0, Overhead:0, Subcon:0,
