@@ -19652,6 +19652,81 @@ const BOQ_SECTIONS=[
 const BOQ_SEC_CLR=Object.fromEntries(BOQ_SECTIONS.map(s=>[s.id,s.color]));
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 
+const GMD_DEFAULT_LIBRARY=[
+  // A. General Requirements
+  {name:"Mobilization / Demobilization",section:"A",unit:"lot",unitCost:0,tags:["mobilization","general"]},
+  {name:"Bonds and Insurance (CARI)",section:"A",unit:"lot",unitCost:0,tags:["insurance","general"]},
+  {name:"Supervision — Project-In-Charge (PIC)",section:"A",unit:"lot",unitCost:0,tags:["supervision","general"]},
+  {name:"Supervision — Safety Officer",section:"A",unit:"lot",unitCost:0,tags:["supervision","general"]},
+  {name:"Permits and Clearances — Processing Fee",section:"A",unit:"lot",unitCost:0,tags:["permits","general"]},
+  {name:"Permits and Clearances — Building Permit Fee",section:"A",unit:"lot",unitCost:0,tags:["permits","general"]},
+  {name:"Permits and Clearances — Occupancy Permit",section:"A",unit:"lot",unitCost:0,tags:["permits","general"]},
+  {name:"Permits and Clearances — Others",section:"A",unit:"lot",unitCost:5000,tags:["permits","general"]},
+  {name:"Temporary Utilities",section:"A",unit:"lot",unitCost:0,tags:["utilities","general"]},
+  {name:"Board Up",section:"A",unit:"lot",unitCost:0,tags:["board up","general"]},
+  {name:"Clean Up",section:"A",unit:"lot",unitCost:0,tags:["clean up","general"]},
+  {name:"As-Built Drawings — Architectural",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Electrical",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Electronics",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Mechanical",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Plumbing",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Fire Protection",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  // B. Architectural
+  {name:"Floor Tiles (60×60cm Non-Skid Cement Finish)",section:"B",unit:"sqm",unitCost:0,tags:["floor","tiles","architectural"]},
+  {name:"Single Face Drywall with Paint Finish",section:"B",unit:"sqm",unitCost:0,tags:["wall","drywall","architectural"]},
+  {name:"Double Face Drywall with Paint Finish",section:"B",unit:"sqm",unitCost:0,tags:["wall","drywall","architectural"]},
+  {name:"CHB Wall with Firebricks",section:"B",unit:"sqm",unitCost:0,tags:["wall","chb","architectural"]},
+  {name:"Mirror",section:"B",unit:"sqm",unitCost:0,tags:["mirror","architectural"]},
+  {name:"Paint — White Satin",section:"B",unit:"sqm",unitCost:0,tags:["paint","architectural"]},
+  {name:"Paint — White Textured",section:"B",unit:"sqm",unitCost:0,tags:["paint","architectural"]},
+  {name:"Stainless Steel Brushed Finish",section:"B",unit:"sqm",unitCost:0,tags:["stainless","architectural"]},
+  {name:"Gypsum Ceiling with Paint Finish",section:"B",unit:"sqm",unitCost:0,tags:["ceiling","gypsum","architectural"]},
+  {name:"Stainless Steel Finish Ceiling Panel",section:"B",unit:"sqm",unitCost:0,tags:["ceiling","stainless","architectural"]},
+  {name:"Flush Door with Complete Accessories",section:"B",unit:"unit/s",unitCost:0,tags:["door","architectural"]},
+  {name:"Polycarbonate Roll-Up Door (Supervision Only)",section:"B",unit:"lot",unitCost:0,tags:["door","architectural"]},
+  {name:"Demolition Works",section:"B",unit:"lot",unitCost:0,tags:["demolition","architectural"]},
+  {name:"Working Drawings / Design Fee",section:"B",unit:"lot",unitCost:0,tags:["design","drawings"]},
+  // C. Electrical
+  {name:"Panel Board",section:"C",unit:"lot",unitCost:0,tags:["panel board","electrical"]},
+  {name:"Roughing-In",section:"C",unit:"lot",unitCost:0,tags:["roughing in","electrical"]},
+  {name:"Electrical Wiring",section:"C",unit:"lot",unitCost:0,tags:["wiring","electrical"]},
+  {name:"Outlet and Switches",section:"C",unit:"lot",unitCost:0,tags:["outlet","switches","electrical"]},
+  {name:"Lighting Fixtures",section:"C",unit:"lot",unitCost:0,tags:["lighting","electrical"]},
+  {name:"Testing and Commissioning",section:"C",unit:"lot",unitCost:0,tags:["testing","electrical"]},
+  // D. Electronics
+  {name:"Smoke Detector",section:"D",unit:"lot",unitCost:0,tags:["smoke detector","electronics"]},
+  {name:"CCTV",section:"D",unit:"lot",unitCost:0,tags:["cctv","electronics"]},
+  {name:"DATA / TEL Roughing-In",section:"D",unit:"lot",unitCost:0,tags:["data","tel","electronics"]},
+  // E. Mechanical
+  {name:"HVAC (FCU, Ducting, CHW Pipe, Cat Walk)",section:"E",unit:"lot",unitCost:0,tags:["hvac","mechanical","aircon"]},
+  // F. Plumbing
+  {name:"Cold Water Line (incl. water filter)",section:"F",unit:"lot",unitCost:0,tags:["water","plumbing"]},
+  {name:"Sewage Line (incl. grease trap)",section:"F",unit:"lot",unitCost:0,tags:["sewage","plumbing"]},
+  // G. FDAS / Fire Protection
+  {name:"Sprinkler System",section:"G",unit:"lot",unitCost:0,tags:["sprinkler","fdas","fire"]},
+  {name:"Fire Suppression System",section:"G",unit:"lot",unitCost:0,tags:["fire suppression","fdas"]},
+  // H. Signages
+  {name:"Storefront Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","storefront"]},
+  {name:"Lightbox Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","lightbox"]},
+  {name:"Cube / 3D Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","cube"]},
+  {name:"Logo Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","logo"]},
+  {name:"Wall Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","wall"]},
+  // I. Built-Ins / Furniture
+  {name:"Front Counter",section:"I",unit:"lot",unitCost:0,tags:["counter","built-in","furniture"]},
+  {name:"Back Counter",section:"I",unit:"lot",unitCost:0,tags:["counter","built-in","furniture"]},
+  {name:"Display Module",section:"I",unit:"unit/s",unitCost:0,tags:["display","built-in","furniture"]},
+  {name:"Display Table",section:"I",unit:"unit/s",unitCost:0,tags:["table","built-in","furniture"]},
+  {name:"Wall Module",section:"I",unit:"unit/s",unitCost:0,tags:["wall module","built-in","furniture"]},
+  {name:"Storage Cabinet",section:"I",unit:"unit/s",unitCost:0,tags:["cabinet","built-in","furniture"]},
+  {name:"Pantry Counter",section:"I",unit:"lot",unitCost:0,tags:["pantry","built-in","furniture"]},
+  {name:"Overhead Cabinet",section:"I",unit:"unit/s",unitCost:0,tags:["cabinet","built-in","furniture"]},
+  {name:"Stainless Steel Table",section:"I",unit:"pcs",unitCost:0,tags:["table","stainless","furniture"]},
+  {name:"Stainless Steel Chair",section:"I",unit:"pcs",unitCost:0,tags:["chair","stainless","furniture"]},
+  {name:"Stainless Steel Bench",section:"I",unit:"pcs",unitCost:0,tags:["bench","stainless","furniture"]},
+  {name:"Stainless Steel Sink",section:"I",unit:"set",unitCost:0,tags:["sink","stainless","furniture"]},
+  {name:"Low Partition",section:"I",unit:"sets",unitCost:0,tags:["partition","built-in","furniture"]},
+];
+
 function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal}){
   const[selDeal,setSelDeal]=useState(initialDealId||"");
   useEffect(()=>{if(initialDealId){setSelDeal(initialDealId);clearBoqDeal&&clearBoqDeal();}},[initialDealId]);
@@ -19721,6 +19796,19 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});
     setLibEditId(null);
     toastEmit(isNew?"Library item saved.":"Library item updated.");
+  };
+
+  const loadGMDDefaults=()=>{
+    const existing=new Set(boqLibrary.map(x=>x.name.toLowerCase()));
+    const toAdd=GMD_DEFAULT_LIBRARY.filter(d=>!existing.has(d.name.toLowerCase())).map(d=>({
+      id:uid(),name:d.name,description:"",section:d.section,unit:d.unit,unitCost:d.unitCost||0,
+      tags:d.tags||[],createdBy:session?.name||"GMD",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()
+    }));
+    if(!toAdd.length){toastEmit("All GMD default items are already in the library.");return;}
+    const newLib=[...boqLibrary,...toAdd];
+    saveLibrary(newLib);
+    if(isSupabaseReady()) toAdd.forEach(e=>sbInsert('boq_library',{id:e.id,name:e.name,description:e.description,category:e.section,unit:e.unit,unit_cost:e.unitCost,tags:e.tags,created_by:e.createdBy,created_at:e.createdAt,updated_at:e.updatedAt}).catch(()=>{}));
+    toastEmit(`${toAdd.length} GMD standard items added to library.`,"success");
   };
 
   const startEditLib=(it)=>{
@@ -19884,8 +19972,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                   {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>}
                 </div>
               </div>
-              <div style={{maxHeight:300,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
-                {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No items yet.</div>}
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                <button onClick={loadGMDDefaults} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#166534",cursor:"pointer",textAlign:"left"}}>
+                  🏗 Load GMD Standard Items <span style={{fontWeight:400,color:"#15803d",fontSize:".72rem"}}>({GMD_DEFAULT_LIBRARY.length} items — skips duplicates)</span>
+                </button>
+              </div>
+              <div style={{maxHeight:300,overflowY:"auto",display:"flex",flexDirection:"column",gap:6,marginTop:8}}>
+                {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No items yet. Click "Load GMD Standard Items" to get started.</div>}
                 {boqLibrary.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[0]||BOQ_SECTIONS[0];return(
                   <div key={it.id} style={{background:"#fff",border:`1.5px solid ${libEditId===it.id?"#7c3aed":"#ede9fe"}`,borderRadius:8,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
                     <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{it.name}</div><div style={{fontSize:".65rem",color:sec.color,fontWeight:700}}>{sec.id}. {sec.label} · /{it.unit}{it.unitCost>0&&` · ₱${it.unitCost.toLocaleString("en-PH")}`}</div></div>
