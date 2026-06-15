@@ -15137,106 +15137,77 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
       </div>
 
       {grouped.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>}
-      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        {/* Table header */}
+        {grouped.length>0&&<div style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"7px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8,alignItems:"center"}}>
+          {["PO #","Supplier","Project","Amount","Status",""].map((h,i)=>(
+            <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:i===3?"right":"left"}}>{h}</div>
+          ))}
+        </div>}
         {grouped.map((g,gi)=>{
           if(g.type==="po"){
             const {poNo,items,supplier,status,poDate:poD,total}=g;
-            const allSameStatus=items.every(i=>i.status===status);
+            const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
+            const[open,setOpen]=React.useState(false);
             return(
-              <div key={poNo} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 16px",background:"#f8fafc",flexWrap:"wrap",gap:8}}>
-                  <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontWeight:800,color:"#0f172a",fontSize:".9rem"}}>📄 {poNo}</span>
-                    {supplier&&<span style={{fontWeight:600,color:"#475569",fontSize:".82rem"}}>🏭 {supplier}</span>}
-                    {poD&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>{poD}</span>}
-                    <span style={{fontSize:".68rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{status}</span>
-                  </div>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#10b981"}}>{fmt(total)}</span>
-                    <span style={{fontSize:".7rem",color:"#94a3b8"}}>{items.length} item{items.length>1?"s":""}</span>
-                    <button onClick={()=>printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
-                    {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete all items in PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕ PO</button>}
+              <div key={poNo} style={{borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none"}}>
+                {/* Compact row */}
+                <div onClick={()=>setOpen(o=>!o)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
+                  onMouseEnter={e=>{if(!open)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=open?"#f8fafc":"#fff";}}>
+                  <div style={{fontWeight:700,color:"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{poNo}</div>
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supplier||"—"}</div>
+                  <div style={{fontSize:".75rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projects}</div>
+                  <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
+                  <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
+                  <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
+                    <button onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
+                    {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                   </div>
                 </div>
-                <div>
-                  {items.map((pr,ii)=>{
-                    const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-                    const deal=wonDeals.find(d=>d.id===pr.projectId);
-                    const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
-                    return(
-                      <div key={pr.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 16px",borderTop:"1px solid #f1f5f9",flexWrap:"wrap"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginBottom:2}}>
-                            <span style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</span>
-                            {!allSameStatus&&<span style={{fontSize:".65rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 7px",fontWeight:700}}>{pr.status}</span>}
-                            <span style={{fontSize:".65rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 7px",borderRadius:20}}>{pr.category}</span>
-                            <span style={{fontSize:".65rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 7px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
+                {/* Expanded line items */}
+                {open&&(
+                  <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"8px 14px 10px"}}>
+                    {items.map((pr,ii)=>{
+                      const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
+                      const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
+                      return(
+                        <div key={pr.id} style={{display:"flex",alignItems:"center",gap:10,padding:"5px 0",borderBottom:ii<items.length-1?"1px solid #f1f5f9":"none",flexWrap:"wrap"}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <span style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{pr.itemName}</span>
+                            <span style={{fontSize:".7rem",color:"#94a3b8",marginLeft:8}}>{pr.qty} {pr.unit}</span>
+                            {delivPct>0&&delivPct<100&&<span style={{fontSize:".68rem",color:"#f59e0b",fontWeight:600,marginLeft:8}}>{delivPct}% delivered</span>}
                           </div>
-                          <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:10,flexWrap:"wrap"}}>
-                            {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
-                            <span>{pr.qty} {pr.unit}</span>
-                            {pr.deliveryNote&&<span>DR: {pr.deliveryNote}</span>}
-                          </div>
-                          {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&delivPct<100&&(
-                            <div style={{marginTop:4,display:"flex",alignItems:"center",gap:6}}>
-                              <div style={{flex:1,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden",maxWidth:120}}><div style={{height:"100%",width:delivPct+"%",background:"#f59e0b",borderRadius:2}}/></div>
-                              <span style={{fontSize:".65rem",color:"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
-                            </div>
-                          )}
-                        </div>
-                        <div style={{display:"flex",gap:6,alignItems:"center",flexShrink:0}}>
-                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{fmt(actTotal)}</span>
-                          <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 7px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",flexShrink:0}}>{fmt(actTotal)}</span>
+                          <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
                             {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
                           </select>
-                          <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                          {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                          <button onClick={e=>{e.stopPropagation();setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
+                          {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           } else {
             const {pr}=g;
             const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-            const deal=wonDeals.find(d=>d.id===pr.projectId);
-            const delivPct=n(pr.qty)>0?Math.round(n(pr.qtyDelivered)/n(pr.qty)*100):0;
+            const projName=pr.projectName||activeDeals.find(d=>d.id===pr.projectId)?.contact||activeDeals.find(d=>d.id===pr.projectId)?.client||"—";
             return(
-              <div key={pr.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                  <div style={{flex:1,minWidth:180}}>
-                    <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{pr.itemName}</span>
-                      <span style={{fontSize:".68rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{pr.status}</span>
-                      <span style={{fontSize:".68rem",color:"#94a3b8",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{pr.category}</span>
-                      <span style={{fontSize:".68rem",color:BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8",background:(BUDGET_CAT_CLR[pr.budgetCategory]||"#94a3b8")+"18",padding:"1px 8px",borderRadius:20,fontWeight:600}}>{pr.budgetCategory}</span>
-                    </div>
-                    <div style={{fontSize:".75rem",color:"#64748b",display:"flex",gap:12,flexWrap:"wrap"}}>
-                      {deal&&<span>📁 {deal.client}{deal.contact?` — ${deal.contact}`:""}</span>}
-                      <span>Qty: {pr.qty} {pr.unit}</span>
-                      {pr.supplier&&<span>🏭 {pr.supplier}</span>}
-                      <span>By: {pr.requestedBy||"—"}</span>
-                      {pr.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {pr.approvedBy}</span>}
-                    </div>
-                    {pr.status!=="Draft"&&pr.status!=="Pending Approval"&&pr.status!=="Cancelled"&&(
-                      <div style={{marginTop:6,display:"flex",alignItems:"center",gap:6}}>
-                        <div style={{width:100,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:delivPct+"%",background:delivPct===100?"#10b981":"#f59e0b",borderRadius:2}}/></div>
-                        <span style={{fontSize:".67rem",color:delivPct===100?"#059669":"#f59e0b",fontWeight:700}}>{delivPct}% delivered</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{display:"flex",gap:10,alignItems:"flex-start",flexShrink:0,flexWrap:"wrap"}}>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{fmt(actTotal)}</span>
-                    <div style={{display:"flex",gap:6}}>
-                      <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".75rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                        {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
-                      </select>
-                      <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                      {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete this PR?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
-                    </div>
-                  </div>
+              <div key={pr.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                <div style={{fontWeight:600,color:"#94a3b8",fontSize:".72rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>—</div>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.supplier||pr.itemName||"—"}</div>
+                <div style={{fontSize:".75rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projName}</div>
+                <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(actTotal)}</div>
+                <div><span style={{fontSize:".62rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{pr.status}</span></div>
+                <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                  <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 4px",fontFamily:"inherit",fontSize:".65rem",color:"#0f172a",background:"#fff",cursor:"pointer",maxWidth:40}}>
+                    {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                  </select>
+                  <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                  {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                 </div>
               </div>
             );
