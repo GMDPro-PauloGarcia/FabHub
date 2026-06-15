@@ -14776,8 +14776,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
     const poDisc=poDiscType==="pct"?afterLineDisc*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),afterLineDisc):0;
     const grandTotal=afterLineDisc-poDisc;
     const hasDiscount=totalLineDisc>0||poDisc>0;
+    const projectList=[...new Set(items.map(i=>{const d=wonDeals.find(x=>x.id===i.projectId)||completedDeals.find(x=>x.id===i.projectId);return d?(d.client+(d.ceNo?` · ${d.ceNo}`:"")):i.projectName||"—";}).filter(Boolean))].join(", ")||"—";
     const rows=items.map((i,idx)=>{
-      const deal=wonDeals.find(d=>d.id===i.projectId);
+      const deal=wonDeals.find(d=>d.id===i.projectId)||completedDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
       const lineGross=unitCost*Number(i.qty||1);
       const lineDisc=calcLD(i);
@@ -14794,9 +14795,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   .co-sub{font-size:11px;color:#64748b;margin-top:2px}
   .po-title{font-size:20px;font-weight:800;color:#1e293b}
   .po-sub{font-size:11px;color:#64748b;margin-top:3px}
-  .meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid #e2e8f0}
+  .meta{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:20px;background:#f8fafc;padding:14px 16px;border-radius:8px;border:1px solid #e2e8f0}
   .meta-item label{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:#94a3b8;margin-bottom:3px}
   .meta-item span{font-weight:700;font-size:13px}
+  .meta-wide{grid-column:span 4;border-top:1px solid #e2e8f0;padding-top:12px;margin-top:4px}
   table{width:100%;border-collapse:collapse;margin-top:8px}
   th{background:#1e293b;color:#fff;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px}
   td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
@@ -14814,6 +14816,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
   <div class="meta-item"><label>Supplier</label><span>${supplierName||"—"}</span></div>
   <div class="meta-item"><label>PO Number</label><span>${poNo}</span></div>
   <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
+  <div class="meta-item"><label>Total Items</label><span>${items.length}</span></div>
+  <div class="meta-item meta-wide"><label>Project(s)</label><span style="font-size:12px">${projectList}</span></div>
 </div>
 <table>
   <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Gross</th><th style="text-align:right">Net</th></tr></thead>
