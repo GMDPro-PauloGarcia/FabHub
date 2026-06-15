@@ -3622,14 +3622,16 @@ export default function App(){
     upBudgets(bs=>({...bs,[dealId]:saved}));
     if(isSupabaseReady()) sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id").catch(e=>console.error("budget sync:",e.message));
   };
-  const addPR=(pr)=>{
+  const addPR=(pr,{silent=false}={})=>{
     const rec={...pr,id:uid(),createdDate:today};
     upPrs(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbSyncOne("purchase_requests",rec,toSbPR);
-    const deal=deals.find(d=>d.id===(pr.projectId||pr.dealId));
-    const msg=`🛒 <b>New Purchase Request</b>\n${pr.itemName||pr.item||"?"}\nProject: ${deal?.client||pr.dealId||"?"}\nQty: ${pr.qty||"?"} ${pr.unit||""}\nCategory: ${pr.category||"—"}\nUrgency: ${pr.urgency||"Normal"}\nBy: ${pr.requestedBy||session?.name||"?"}`;
-    sendTelegramNotification("procurement",msg);
-    sendTelegramNotification("management",msg);
+    if(!silent){
+      const deal=deals.find(d=>d.id===(pr.projectId||pr.dealId));
+      const msg=`🛒 <b>New Purchase Request</b>\n${pr.itemName||pr.item||"?"}\nProject: ${deal?.client||pr.dealId||"?"}\nQty: ${pr.qty||"?"} ${pr.unit||""}\nCategory: ${pr.category||"—"}\nUrgency: ${pr.urgency||"Normal"}\nBy: ${pr.requestedBy||session?.name||"?"}`;
+      sendTelegramNotification("procurement",msg);
+      sendTelegramNotification("management",msg);
+    }
   };
   const updatePR=(id,changes)=>{
     if(changes.status==="PO Issued"&&changes.approvedBy){
@@ -14860,8 +14862,13 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,budgets,exps,swo
         supplier:poSupplier, poNumber:poNo, poDate:poDate,
         status:poStatus, requestedBy:session?.name||"",
         approvedBy:poStatus==="PO Issued"?session?.name||"":""
-      });
+      },{silent:true});
     });
+    const itemLines=poItems.map(item=>`  • ${item.itemName||"?"} — ${item.qty||"?"} ${item.unit||""} @ ₱${Number(item.estUnitCost||0).toLocaleString("en-PH")}`).join("\n");
+    const projects=[...new Set(poItems.map(item=>{const d=wonDeals.find(x=>x.id===item.projectId);return d?.client||item.projectName||item.projectId||"?";}).filter(Boolean))].join(", ");
+    const poMsg=`🛒 <b>New Purchase Order ${poNo}</b>\nSupplier: ${poSupplier}\nProject: ${projects}\n\n${itemLines}\n\nBy: ${session?.name||"?"}`;
+    sendTelegramNotification("procurement",poMsg);
+    sendTelegramNotification("management",poMsg);
     toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     setMode("list");
   };
