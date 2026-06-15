@@ -14962,7 +14962,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
 
   // New PO form
   if(mode==="newpo"){
-    const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectId&&i.itemName.trim());
+    const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectName?.trim()&&i.itemName.trim());
     const subtotalGross=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
     const totalLineDiscAmt=poItems.reduce((s,i)=>s+calcLineDisc(i),0);
     const afterLines=subtotalGross-totalLineDiscAmt;
@@ -15006,17 +15006,15 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                           if(name==="GMD Stocks"){updatePoItem(item._id,"projectName","GMD Stocks");updatePoItem(item._id,"projectId","__gmd_stocks__");return;}
                           const deal=activeDeals.find(d=>`${d.client}${d.ceNo?` · ${d.ceNo}`:""}` === name);
                           updatePoItem(item._id,"projectName",name);
-                          if(deal) updatePoItem(item._id,"projectId",deal.id);
-                          else if(!name) updatePoItem(item._id,"projectId","");
+                          updatePoItem(item._id,"projectId",deal?deal.id:name||"");
                         }}
-                        placeholder="Search project…"
-                        style={{width:"100%",border:`1.5px solid ${item.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
+                        placeholder="Search or type project name…"
+                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
                       />
                       <datalist id={`proj-list-${item._id}`}>
                         <option value="GMD Stocks"/>
                         {activeDeals.map(d=><option key={d.id} value={`${d.client}${d.ceNo?` · ${d.ceNo}`:""}`}/>)}
                       </datalist>
-                      {item.projectName&&!item.projectId&&<div style={{fontSize:".68rem",color:"#ef4444",marginTop:3}}>No matching project — select from the list</div>}
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
