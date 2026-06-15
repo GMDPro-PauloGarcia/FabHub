@@ -20094,9 +20094,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                       </div>
                     ))}
                     {/* Sub-total row */}
-                    <div style={{display:"grid",gridTemplateColumns:GRID,padding:"5px 12px",background:sec.color+"0a",borderBottom:"1.5px solid "+sec.color+"22",alignItems:"center"}}>
-                      <div style={{gridColumn:"1/6",fontSize:".68rem",color:"#64748b",fontStyle:"italic"}}>Sub-total {sec.label}</div>
-                      <div style={{textAlign:"right",fontWeight:700,fontSize:".78rem",color:sec.color}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                    <div style={{display:"grid",gridTemplateColumns:GRID,background:sec.color+"0a",borderBottom:"1.5px solid "+sec.color+"22",alignItems:"center"}}>
+                      <div style={{gridColumn:"1/6",display:"flex",alignItems:"center"}}>
+                        <button onClick={()=>addRow(sec.id)} style={{background:"none",border:"none",color:sec.color,cursor:"pointer",fontSize:".72rem",fontWeight:700,padding:"5px 12px",opacity:.7}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.7}>+ Add row</button>
+                        <span style={{fontSize:".68rem",color:"#94a3b8",fontStyle:"italic"}}>Sub-total {sec.label}</span>
+                      </div>
+                      <div style={{textAlign:"right",fontWeight:700,fontSize:".78rem",color:sec.color,paddingRight:4}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
                       <div/><div/>
                     </div>
                   </React.Fragment>
