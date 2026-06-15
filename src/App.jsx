@@ -412,6 +412,8 @@ const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.co
 const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
 const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
 const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:0,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:""});
+const projDisplayName=d=>d?(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:""):"";
+const projOptions=deals=>(deals||[]).map(d=>({value:d.id,label:projDisplayName(d)}));
 
 const emptyBudget = () => ({
   Materials:0, Labor:0, Overhead:0, Subcon:0,
@@ -14922,10 +14924,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>Edit Purchase Request</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Project" required>
-              <Sel value={editForm.projectId} onChange={e=>{const v=e.target.value;if(v==="__gmd_stocks__"){ef("projectId","__gmd_stocks__");ef("projectName","GMD Stocks");return;}const d=activeDeals.find(x=>x.id===v);ef("projectId",v);ef("projectName",d?.client||"");}}>
+              <Sel value={editForm.projectId} onChange={e=>{const v=e.target.value;if(v==="__gmd_stocks__"){ef("projectId","__gmd_stocks__");ef("projectName","GMD Stocks");return;}const d=activeDeals.find(x=>x.id===v);ef("projectId",v);ef("projectName",projDisplayName(d));}}>
                 <option value="">— Select Project —</option>
                 <option value="__gmd_stocks__">GMD Stocks</option>
-                {activeDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+                {activeDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
               </Sel>
             </Fld>
             <Fld label="Budget Category">
@@ -15004,7 +15006,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                         onChange={e=>{
                           const name=e.target.value;
                           if(name==="GMD Stocks"){updatePoItem(item._id,"projectName","GMD Stocks");updatePoItem(item._id,"projectId","__gmd_stocks__");return;}
-                          const deal=activeDeals.find(d=>`${d.client}${d.ceNo?` · ${d.ceNo}`:""}` === name);
+                          const deal=activeDeals.find(d=>projDisplayName(d)===name);
                           updatePoItem(item._id,"projectName",name);
                           updatePoItem(item._id,"projectId",deal?deal.id:name||"");
                         }}
@@ -15013,7 +15015,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                       />
                       <datalist id={`proj-list-${item._id}`}>
                         <option value="GMD Stocks"/>
-                        {activeDeals.map(d=><option key={d.id} value={`${d.client}${d.ceNo?` · ${d.ceNo}`:""}`}/>)}
+                        {activeDeals.map(d=><option key={d.id} value={projDisplayName(d)}/>)}
                       </datalist>
                     </Fld>
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
