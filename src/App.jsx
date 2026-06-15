@@ -364,7 +364,7 @@ const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
 };
 
 const swoToSb=r=>({
-  id:r.id, wo_number:r.woNumber||"", deal_id:r.projectId||r.dealId||null,
+  id:r.id, wo_number:r.woNumber||"", deal_id:(r.projectId==="__gmd_stocks__"||r.dealId==="__gmd_stocks__")?null:(r.projectId||r.dealId||null),
   project_name:r.projectName||"", subcontractor:r.subcontractor||"",
   specialty:r.specialty||"", scope_of_work:r.scopeOfWork||"",
   wo_date:r.woDate||null, start_date:r.startDate||null, target_end_date:r.targetEndDate||null,
@@ -2665,7 +2665,7 @@ export default function App(){
       bank_account:r.bankAccount||null};
   };
   const toSbPR = r=>({
-    id:r.id, deal_id:r.projectId||r.dealId||null, item:r.itemName||r.item||"",
+    id:r.id, deal_id:(r.projectId==="__gmd_stocks__"||r.dealId==="__gmd_stocks__")?null:(r.projectId||r.dealId||null), item:r.itemName||r.item||"",
     supplier:r.supplier||"", qty:Number(r.qty)||0, unit:r.unit||"",
     estimated_cost:Number(r.estUnitCost||r.estimatedCost)||0,
     actual_cost:Number(r.actUnitCost||r.actualCost)||0,
@@ -14783,15 +14783,16 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
     const poDisc=poDiscType==="pct"?afterLineDisc*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),afterLineDisc):0;
     const grandTotal=afterLineDisc-poDisc;
     const hasDiscount=totalLineDisc>0||poDisc>0;
-    const projectList=[...new Set(items.map(i=>{const d=wonDeals.find(x=>x.id===i.projectId)||completedDeals.find(x=>x.id===i.projectId);return d?(d.client+(d.ceNo?` · ${d.ceNo}`:"")):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
+    const allProjDeals=[...activeDeals,...(wonDeals||[])];
+    const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
     const rows=items.map((i,idx)=>{
-      const deal=wonDeals.find(d=>d.id===i.projectId)||completedDeals.find(d=>d.id===i.projectId);
+      const deal=i.projectId==="__gmd_stocks__"?null:allProjDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
       const lineGross=unitCost*Number(i.qty||1);
       const lineDisc=calcLD(i);
       const lineNet=lineGross-lineDisc;
       const discCell=lineDisc>0?`<span style="color:#059669;font-size:10px"> −${fmt(lineDisc)}</span>`:"";
-      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?deal.client+(deal.ceNo?` · ${deal.ceNo}`:""):"—"}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineGross)}${discCell}</td><td style="text-align:right;font-weight:700">${fmt(lineNet)}</td></tr>`;
+      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal):(i.projectName||"—")}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineGross)}${discCell}</td><td style="text-align:right;font-weight:700">${fmt(lineNet)}</td></tr>`;
     }).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
 <style>
