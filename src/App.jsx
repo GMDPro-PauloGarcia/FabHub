@@ -14783,6 +14783,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
     const poDisc=poDiscType==="pct"?afterLineDisc*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),afterLineDisc):0;
     const grandTotal=afterLineDisc-poDisc;
     const hasDiscount=totalLineDisc>0||poDisc>0;
+    const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
+    const approvedBy=items[0]?.approvedBy||"";
+    const receivedBy=supplierName||"";
     const allProjDeals=[...activeDeals,...(wonDeals||[])];
     const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
     const rows=items.map((i,idx)=>{
@@ -14814,8 +14817,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top}
   tr:nth-child(even) td{background:#f8fafc}
   .total-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b}
-  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:40px}
-  .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:48px}
+  .sig-box{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
   @media print{body{padding:20px}}
 </style></head><body>
 <div class="hdr">
@@ -14836,9 +14839,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   <tr class="total-row"><td colspan="7" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>
 </table>
 <div class="sig">
-  <div class="sig-box">Prepared by<br><br><br>_______________________</div>
-  <div class="sig-box">Approved by<br><br><br>_______________________</div>
-  <div class="sig-box">Received by<br><br><br>_______________________</div>
+  <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
+  <div class="sig-box">Approved by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${approvedBy||"&nbsp;"}</strong><br>Manager / Authorized</div></div>
+  <div class="sig-box">Received by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${receivedBy||"&nbsp;"}</strong><br>Supplier / Vendor</div></div>
 </div>
 </body></html>`;
     const w=window.open("","_blank","width=900,height=700");
