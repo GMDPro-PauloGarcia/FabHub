@@ -19648,9 +19648,13 @@ const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal}){
   const[selDeal,setSelDeal]=useState(initialDealId||"");
   useEffect(()=>{if(initialDealId){setSelDeal(initialDealId);clearBoqDeal&&clearBoqDeal();}},[initialDealId]);
-  const[form,setForm]=useState({area:"",finishLevel:"Mid-range",scopeNotes:"",ceType:"Fabrication / General",location:""});
-  const[items,setItems]=useState([]);
   const[boqTitle,setBoqTitle]=useState("");
+  const[location,setLocation]=useState("");
+  const[quotationNo,setQuotationNo]=useState("");
+  const[boqDate,setBoqDate]=useState(today);
+  const[items,setItems]=useState([]);
+  const[vatEnabled,setVatEnabled]=useState(true);
+  const[discountedTotal,setDiscountedTotal]=useState("");
   const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
 
   // Dynamic sections — start from GMD defaults, fully editable per BOQ
@@ -19725,43 +19729,39 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   };
 
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
-  const jo=jos.find(j=>j.dealId===selDeal);
 
-  // When a deal is selected, pre-fill from its data
   React.useEffect(()=>{
     if(!deal) return;
-    setForm(p=>({
-      ...p,
-      ceType:deal.ceType||p.ceType,
-      location:deal.location||p.location,
-      scopeNotes:jo?.scopeNotes||deal.awardRequestData?.scopeNotes||p.scopeNotes,
-    }));
-    setBoqTitle(`BOQ — ${deal.client||""}${deal.contact?" · "+deal.contact:""}`);
+    setLocation(prev=>prev||deal.location||"");
+    setBoqTitle(`${deal.client||""}${deal.contact?" · "+deal.contact:""}${deal.ceNo?" ("+deal.ceNo+")":""}`);
+    if(!quotationNo&&deal.ceNo) setQuotationNo(deal.ceNo);
   },[selDeal]);
 
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
-    const upd={...it,[key]:["description","unit","section","itemCode","remarks"].includes(key)?val:Number(val)||0};
+    const upd={...it,[key]:["description","unit","section","remarks"].includes(key)?val:Number(val)||0};
     upd.total=(upd.qty||0)*(upd.unitCost||0);
     return upd;
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
-  const addRow=(sec)=>setItems(its=>[...its,{_id:Date.now(),section:sec||"B",itemCode:"",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
+  const addRow=(sec)=>setItems(its=>[...its,{_id:Date.now(),section:sec||sections[0]?.id||"A",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
 
   const grandTotal=items.reduce((s,it)=>s+it.total,0);
-  const bySec=sections.map(s=>({...s,total:items.filter(it=>it.section===s.id).reduce((t,it)=>t+it.total,0),count:items.filter(it=>it.section===s.id).length}));
+  const vatAmount=grandTotal*0.12;
 
   const exportCSV=()=>{
-    const rows=[["Section","Code","Description","Unit","Qty","Unit Cost (₱)","Total (₱)","Remarks"]];
+    const rows=[["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks"]];
     sections.forEach(sec=>{
       const si=items.filter(it=>it.section===sec.id);
       if(!si.length) return;
-      rows.push([`${sec.id}. ${sec.label}`,"","","","","","",""]);
-      si.forEach(it=>rows.push([sec.id,it.itemCode,it.description,it.unit,it.qty,it.unitCost,it.total,it.remarks||""]));
+      rows.push([sec.id,sec.label,"","","","",""]);
+      si.forEach((it,idx)=>rows.push([`${sec.id}.${idx+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
+      rows.push(["",`Sub-total ${sec.label}`,"","","","",si.reduce((s,it)=>s+it.total,0)]);
     });
-    const grand=items.reduce((s,it)=>s+it.total,0);
-    rows.push(["","","","","","","GRAND TOTAL",grand]);
+    rows.push(["","GRAND TOTAL","","","","",grandTotal]);
+    if(vatEnabled){rows.push(["","VAT 12%","","","","",vatAmount]);rows.push(["","GRAND TOTAL w/ VAT","","","","",grandTotal+vatAmount]);}
+    if(discountedTotal) rows.push(["","DISCOUNTED TOTAL w/o VAT","","","","",discountedTotal]);
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a");
     a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
@@ -19770,31 +19770,70 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   };
 
   const mob=window.innerWidth<768;
-  const inpSt={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",width:"100%",outline:"none",background:"#fff"};
-  const GRID="44px 72px 1fr 58px 58px 100px 100px 120px 32px";
+  const inpSt={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",width:"100%",outline:"none",background:"#fff",boxSizing:"border-box"};
+  const GRID="76px 1fr 58px 62px 110px 110px 118px 30px";
 
   return(
     <div>
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
-        <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🧮 BOQ Builder</h2>
-          <div style={{fontSize:".72rem",color:"#64748b",marginTop:3}}>{sections.map(s=>`${s.id}. ${s.label}`).join(" · ")}</div>
+      {/* GMD-style BOQ Header Card */}
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:14}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:14,gap:12}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:"2px",color:"#94a3b8",marginBottom:3}}>BILL OF QUANTITIES</div>
+            <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)} placeholder="Project Name"
+              style={{fontWeight:800,fontSize:mob?"1rem":"1.15rem",color:"#0f172a",border:"none",outline:"none",fontFamily:"inherit",background:"transparent",width:"100%",padding:0}}/>
+          </div>
+          <img src="/gmd-logo.png" alt="GMD" style={{height:34,objectFit:"contain",flexShrink:0}}/>
         </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#5b21b6",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-            📚 {libOpen?"Hide Library":"Line-Item Library"}
-            {boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 7px",fontSize:".65rem",fontWeight:800}}>{boqLibrary.length}</span>}
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"6px 24px",fontSize:".8rem",color:"#0f172a"}}>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Project:</span>
+            <select value={selDeal} onChange={e=>setSelDeal(e.target.value)} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
+              <option value="">— Select —</option>
+              {deals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
+            </select>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Location:</span>
+            <input value={location} onChange={e=>setLocation(e.target.value)} placeholder="e.g. SM Mall of Asia" style={{border:"none",borderBottom:"1px dashed #cbd5e1",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}/>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Contractor:</span>
+            <span>GMD Productions Inc.</span>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Date:</span>
+            <input type="date" value={boqDate} onChange={e=>setBoqDate(e.target.value)} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent"}}/>
+          </div>
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Quotation No.:</span>
+            <input value={quotationNo} onChange={e=>setQuotationNo(e.target.value)} placeholder="e.g. 0012" style={{border:"none",borderBottom:"1px dashed #cbd5e1",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",width:80}}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Toolbar */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:".7rem",fontWeight:600,color:"#64748b"}}>Add row:</span>
+          {sections.map(s=>(
+            <button key={s.id} onClick={()=>addRow(s.id)} style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:s.color,cursor:"pointer"}}>+ {s.id}</button>
+          ))}
+          <button onClick={()=>setAddSecOpen(o=>!o)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>✚ Section</button>
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
+            📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>
-          {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
+          {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
         </div>
       </div>
 
       {/* Library Panel */}
       {libOpen&&(
-        <div style={{background:"#faf5ff",border:"1.5px solid #c4b5fd",borderRadius:14,padding:18,marginBottom:16}}>
+        <div style={{background:"#faf5ff",border:"1.5px solid #c4b5fd",borderRadius:14,padding:18,marginBottom:14}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
-            <div style={{fontWeight:800,color:"#4c1d95",fontSize:".9rem"}}>📚 Standard Line-Item Library</div>
+            <div style={{fontWeight:800,color:"#4c1d95",fontSize:".88rem"}}>📚 Line-Item Library</div>
             <div style={{display:"flex",gap:6}}>
               <button onClick={()=>setLibTab("search")} style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid "+(libTab==="search"?"#7c3aed":"#e2e8f0"),background:libTab==="search"?"#7c3aed":"#fff",color:libTab==="search"?"#fff":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>🔍 Search</button>
               {canManageLib&&<button onClick={()=>setLibTab("manage")} style={{padding:"4px 12px",borderRadius:20,border:"1.5px solid "+(libTab==="manage"?"#7c3aed":"#e2e8f0"),background:libTab==="manage"?"#7c3aed":"#fff",color:libTab==="manage"?"#fff":"#64748b",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,cursor:"pointer"}}>⚙ Manage</button>}
@@ -19804,20 +19843,18 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             <>
               <input value={libSearch} onChange={e=>setLibSearch(e.target.value)} placeholder="Search by name, section, or tag…" style={{width:"100%",border:"1.5px solid #c4b5fd",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",outline:"none",background:"#fff",marginBottom:10,boxSizing:"border-box"}}/>
               {filteredLib.length===0?(<div style={{textAlign:"center",color:"#94a3b8",fontSize:".78rem",padding:"20px 0"}}>{boqLibrary.length===0?"No library items yet."+(canManageLib?" Switch to Manage to add your first item.":""):"No items match."}</div>):(
-                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:8,maxHeight:320,overflowY:"auto"}}>
-                  {filteredLib.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[1]||BOQ_SECTIONS[1];return(
-                    <div key={it.id} style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:"10px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:8,maxHeight:300,overflowY:"auto"}}>
+                  {filteredLib.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[0]||BOQ_SECTIONS[0];return(
+                    <div key={it.id} style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.name}</div>
-                        {it.description&&<div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,lineHeight:1.4}}>{it.description}</div>}
-                        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-                          <span style={{background:sec.color+"18",color:sec.color,border:`1px solid ${sec.color}44`,borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>{sec.id}. {sec.label}</span>
-                          <span style={{fontSize:".68rem",color:"#94a3b8"}}>/{it.unit}</span>
-                          {it.unitCost>0&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669"}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{it.name}</div>
+                        <div style={{display:"flex",gap:6,alignItems:"center",marginTop:2}}>
+                          <span style={{fontSize:".65rem",fontWeight:700,color:sec.color}}>{sec.id}. {sec.label}</span>
+                          <span style={{fontSize:".65rem",color:"#94a3b8"}}>/{it.unit}</span>
+                          {it.unitCost>0&&<span style={{fontSize:".65rem",fontWeight:700,color:"#059669"}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
                         </div>
-                        {(it.tags||[]).length>0&&<div style={{marginTop:4,display:"flex",gap:4,flexWrap:"wrap"}}>{it.tags.map(t=><span key={t} style={{background:"#f1f5f9",color:"#475569",borderRadius:20,padding:"1px 7px",fontSize:".6rem"}}>{t}</span>)}</div>}
                       </div>
-                      <button onClick={()=>addLibItemToBoq(it)} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:800,color:"#fff",cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>+ Add</button>
+                      <button onClick={()=>addLibItemToBoq(it)} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:800,color:"#fff",cursor:"pointer",flexShrink:0}}>+ Add</button>
                     </div>
                   );})}
                 </div>
@@ -19825,53 +19862,27 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             </>
           )}
           {libTab==="manage"&&canManageLib&&(
-            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16}}>
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
               <div style={{background:"#fff",border:"1.5px solid #ede9fe",borderRadius:10,padding:14}}>
                 <div style={{fontWeight:700,color:"#4c1d95",fontSize:".8rem",marginBottom:10}}>{libEditId?"Edit Item":"New Library Item"}</div>
-                {[{label:"Item Name *",key:"name",placeholder:"e.g. Mobilization Fee"},{label:"Description",key:"description",placeholder:"Short scope note"}].map(f=>(
-                  <div key={f.key} style={{marginBottom:8}}>
-                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>{f.label}</div>
-                    <input value={libForm[f.key]} onChange={e=>setLibForm(p=>({...p,[f.key]:e.target.value}))} placeholder={f.placeholder} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
-                  </div>
-                ))}
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                  <div>
-                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section</div>
-                    <select value={libForm.section} onChange={e=>setLibForm(p=>({...p,section:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none"}}>
-                      {[...new Map([...BOQ_SECTIONS,...sections].map(s=>[s.id,s])).values()].map(s=><option key={s.id} value={s.id}>{s.id}. {s.label}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Default Unit</div>
-                    <input value={libForm.unit} onChange={e=>setLibForm(p=>({...p,unit:e.target.value}))} placeholder="lot, sqm, pc…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
-                  </div>
-                </div>
-                <div style={{marginBottom:8}}>
-                  <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Typical Unit Cost (₱)</div>
-                  <input type="number" value={libForm.unitCost} onChange={e=>setLibForm(p=>({...p,unitCost:e.target.value}))} placeholder="0" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
-                </div>
-                <div style={{marginBottom:12}}>
-                  <div style={{fontSize:".68rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Tags (comma-separated)</div>
-                  <input value={libForm.tags} onChange={e=>setLibForm(p=>({...p,tags:e.target.value}))} placeholder="e.g. mobilization, glass, electrical" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".78rem",outline:"none",boxSizing:"border-box"}}/>
+                  <div style={{gridColumn:"1/-1"}}><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Item Name *</div><input value={libForm.name} onChange={e=>setLibForm(p=>({...p,name:e.target.value}))} placeholder="e.g. Mobilization Fee" style={{...inpSt}}/></div>
+                  <div><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section</div><select value={libForm.section} onChange={e=>setLibForm(p=>({...p,section:e.target.value}))} style={{...inpSt}}>{[...new Map([...BOQ_SECTIONS,...sections].map(s=>[s.id,s])).values()].map(s=><option key={s.id} value={s.id}>{s.id}. {s.label}</option>)}</select></div>
+                  <div><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Unit</div><input value={libForm.unit} onChange={e=>setLibForm(p=>({...p,unit:e.target.value}))} placeholder="lot, sqm, pc…" style={{...inpSt}}/></div>
+                  <div><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Unit Cost (₱)</div><input type="number" value={libForm.unitCost} onChange={e=>setLibForm(p=>({...p,unitCost:e.target.value}))} placeholder="0" style={{...inpSt}}/></div>
+                  <div><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Tags (comma-sep)</div><input value={libForm.tags} onChange={e=>setLibForm(p=>({...p,tags:e.target.value}))} placeholder="e.g. ceiling, electrical" style={{...inpSt}}/></div>
                 </div>
                 <div style={{display:"flex",gap:8}}>
-                  <button onClick={saveLibItem} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>{libEditId?"💾 Update":"➕ Save Item"}</button>
-                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#64748b",cursor:"pointer"}}>Cancel</button>}
+                  <button onClick={saveLibItem} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>{libEditId?"Update":"Save"}</button>
+                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>}
                 </div>
               </div>
-              <div style={{maxHeight:380,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
-                {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No library items yet. Add your first one.</div>}
-                {boqLibrary.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[1]||BOQ_SECTIONS[1];return(
+              <div style={{maxHeight:300,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+                {boqLibrary.length===0&&<div style={{color:"#94a3b8",fontSize:".78rem",textAlign:"center",padding:"20px 0"}}>No items yet.</div>}
+                {boqLibrary.map(it=>{const sec=sections.find(s=>s.id===it.section)||BOQ_SECTIONS.find(s=>s.id===it.section)||sections[0]||BOQ_SECTIONS[0];return(
                   <div key={it.id} style={{background:"#fff",border:`1.5px solid ${libEditId===it.id?"#7c3aed":"#ede9fe"}`,borderRadius:8,padding:"9px 12px",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{it.name}</div>
-                      <div style={{fontSize:".68rem",color:"#64748b",display:"flex",gap:8,marginTop:2}}>
-                        <span style={{color:sec.color,fontWeight:700}}>{sec.id}. {sec.label}</span>
-                        <span>/{it.unit}</span>
-                        {it.unitCost>0&&<span style={{color:"#059669",fontWeight:700}}>₱{it.unitCost.toLocaleString("en-PH")}</span>}
-                      </div>
-                    </div>
-                    <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <div style={{flex:1,minWidth:0}}><div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{it.name}</div><div style={{fontSize:".65rem",color:sec.color,fontWeight:700}}>{sec.id}. {sec.label} · /{it.unit}{it.unitCost>0&&` · ₱${it.unitCost.toLocaleString("en-PH")}`}</div></div>
+                    <div style={{display:"flex",gap:5,flexShrink:0}}>
                       <button onClick={()=>startEditLib(it)} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>Edit</button>
                       <button onClick={()=>deleteLibItem(it.id)} style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:6,padding:"3px 9px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer"}}>✕</button>
                     </div>
@@ -19883,106 +19894,25 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         </div>
       )}
 
-      {/* Input panel */}
-      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16}}>
-        <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:14}}>Project Details</div>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":deal?"1fr 1fr 1fr":"1fr 1fr",gap:12,marginBottom:12}}>
-          <div>
-            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Link to Project (optional)</div>
-            <select value={selDeal} onChange={e=>setSelDeal(e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
-              <option value="">— Select a project —</option>
-              {deals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
-            </select>
-          </div>
-          <div>
-            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Project Type</div>
-            <select value={form.ceType} onChange={e=>ff("ceType",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
-              {CE_TYPES.map(t=><option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Finish Level</div>
-            <select value={form.finishLevel} onChange={e=>ff("finishLevel",e.target.value)} style={{...inpSt,padding:"7px 10px"}}>
-              {FINISH_LEVELS.map(f=><option key={f}>{f}</option>)}
-            </select>
-          </div>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginBottom:12}}>
-          <div>
-            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Area / Size (sqm or dimensions)</div>
-            <input value={form.area} onChange={e=>ff("area",e.target.value)} placeholder="e.g. 120 sqm or 4m × 8m lightbox" style={{...inpSt,padding:"7px 10px"}}/>
-          </div>
-          <div>
-            <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Location</div>
-            <input value={form.location} onChange={e=>ff("location",e.target.value)} placeholder="e.g. SM North EDSA, 3F Activity Center" style={{...inpSt,padding:"7px 10px"}}/>
-          </div>
-        </div>
-        <div style={{marginBottom:14}}>
-          <div style={{fontSize:".72rem",fontWeight:600,color:"#64748b",marginBottom:4}}>Scope Description <span style={{color:"#94a3b8",fontWeight:400}}>(the more detail, the better the output)</span></div>
-          <textarea value={form.scopeNotes} onChange={e=>ff("scopeNotes",e.target.value)} rows={4}
-            placeholder="e.g. Full retail fit-out, 120sqm. Includes: display gondolas ×6, lightbox headers 3m×1.5m each, vinyl wrapped cashier counter, track lighting ×12, gypsum board ceiling, electrical rough-in and outlets."
-            style={{...inpSt,resize:"vertical"}}/>
-        </div>
-      </div>
-
-      {/* Title + Add Row buttons — always visible */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}>
-        <input value={boqTitle} onChange={e=>setBoqTitle(e.target.value)}
-          style={{fontWeight:800,fontSize:"1rem",color:"#0f172a",border:"none",borderBottom:"1.5px dashed #e2e8f0",padding:"2px 4px",fontFamily:"inherit",outline:"none",minWidth:260,background:"transparent"}}/>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-          {sections.map(s=>(
-            <button key={s.id} onClick={()=>addRow(s.id)}
-              style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:s.color,cursor:"pointer"}}>
-              + {s.id}
-            </button>
-          ))}
-          <button onClick={()=>setAddSecOpen(o=>!o)}
-            style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".7rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>
-            ✚ Section
-          </button>
-        </div>
-      </div>
-
       {/* Add Section Form */}
       {addSecOpen&&(
-            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
-              <div>
-                <div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>ID (1–3 chars)</div>
-                <input value={newSecForm.id} onChange={e=>setNewSecForm(p=>({...p,id:e.target.value.toUpperCase().slice(0,3)}))} placeholder={String.fromCharCode(65+sections.length)}
-                  style={{width:56,border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",textAlign:"center",fontWeight:700}}/>
-              </div>
-              <div style={{flex:1,minWidth:160}}>
-                <div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section Name</div>
-                <input value={newSecForm.label} onChange={e=>setNewSecForm(p=>({...p,label:e.target.value}))} placeholder="e.g. Special Works, Landscaping…"
-                  onKeyDown={e=>e.key==="Enter"&&addSection()}
-                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",boxSizing:"border-box"}}/>
-              </div>
-              <button onClick={addSection} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Add</button>
-              <button onClick={()=>setAddSecOpen(false)} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
-            </div>
+        <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+          <div><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>ID</div><input value={newSecForm.id} onChange={e=>setNewSecForm(p=>({...p,id:e.target.value.toUpperCase().slice(0,3)}))} placeholder={String.fromCharCode(65+sections.length)} style={{width:52,border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",textAlign:"center",fontWeight:700}}/></div>
+          <div style={{flex:1,minWidth:140}}><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section Name</div><input value={newSecForm.label} onChange={e=>setNewSecForm(p=>({...p,label:e.target.value}))} placeholder="e.g. Special Works…" onKeyDown={e=>e.key==="Enter"&&addSection()} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",boxSizing:"border-box"}}/></div>
+          <button onClick={addSection} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Add</button>
+          <button onClick={()=>setAddSecOpen(false)} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
+        </div>
       )}
 
-      {/* Results */}
+      {/* BOQ Table */}
       {items.length>0&&(
         <>
-          {/* Section summary pills */}
-          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-            {bySec.filter(b=>b.count>0).map(b=>(
-              <div key={b.id} style={{background:b.color+"18",border:`1px solid ${b.color}44`,borderRadius:20,padding:"4px 12px",display:"flex",gap:6,alignItems:"center"}}>
-                <span style={{fontWeight:700,fontSize:".7rem",color:b.color}}>{b.id}. {b.label}</span>
-                <span style={{fontSize:".72rem",color:"#475569",fontWeight:600}}>₱{b.total.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
-                <span style={{fontSize:".65rem",color:"#94a3b8"}}>{b.count} item{b.count!==1?"s":""}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Table */}
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"auto",marginBottom:12}}>
-            <div style={{minWidth:900}}>
+            <div style={{minWidth:760}}>
               {/* Column headers */}
-              <div style={{display:"grid",gridTemplateColumns:GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
-                {["§","Code","Description","Unit","Qty","Unit Cost (₱)","Total (₱)","Remarks",""].map((h,i)=>(
-                  <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:[4,5,6].includes(i)?"right":"left"}}>{h}</div>
+              <div style={{display:"grid",gridTemplateColumns:GRID,background:"#f8fafc",borderBottom:"2px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
+                {["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks",""].map((h,i)=>(
+                  <div key={i} style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",textAlign:[4,5].includes(i)?"right":"left"}}>{h}</div>
                 ))}
               </div>
               {/* Rows by section */}
@@ -19992,58 +19922,119 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                 const secTotal=si.reduce((t,it)=>t+it.total,0);
                 return(
                   <React.Fragment key={sec.id}>
-                    <div style={{background:sec.color+"12",padding:"5px 12px",borderTop:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    {/* Section header */}
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:sec.color+"18",borderTop:"1.5px solid "+sec.color+"44",padding:"6px 12px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontWeight:800,fontSize:".72rem",color:sec.color,letterSpacing:".5px"}}>{sec.id}.</span>
                         {editingSecId===sec.id
                           ?<input autoFocus defaultValue={sec.label}
                               onBlur={e=>{renameSection(sec.id,e.target.value||sec.label);setEditingSecId(null);}}
                               onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape"){renameSection(sec.id,e.target.value||sec.label);setEditingSecId(null);}}}
-                              style={{fontSize:".7rem",fontWeight:800,border:"none",borderBottom:"2px solid "+sec.color,background:"transparent",color:sec.color,outline:"none",letterSpacing:"1px",textTransform:"uppercase",padding:"0 2px",minWidth:180}}/>
-                          :<span onClick={()=>setEditingSecId(sec.id)} style={{fontSize:".7rem",fontWeight:800,textTransform:"uppercase",letterSpacing:"1px",color:sec.color,cursor:"pointer"}} title="Click to rename">{sec.id}. {sec.label} ✎</span>
+                              style={{fontSize:".78rem",fontWeight:800,border:"none",borderBottom:"2px solid "+sec.color,background:"transparent",color:sec.color,outline:"none",textTransform:"uppercase",letterSpacing:".5px",padding:"0 2px",minWidth:160}}/>
+                          :<span onClick={()=>setEditingSecId(sec.id)} style={{fontSize:".78rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",color:sec.color,cursor:"pointer"}} title="Click to rename">{sec.label} ✎</span>
                         }
-                        <button onClick={()=>deleteSection(sec.id)} title="Delete section (must be empty)"
-                          style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:"0 2px",opacity:.5}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=.5}>🗑</button>
+                        <button onClick={()=>deleteSection(sec.id)} title="Delete section (must be empty first)" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:"0 2px",opacity:.4}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=.4}>🗑</button>
                       </div>
-                      <span style={{fontSize:".7rem",fontWeight:700,color:sec.color}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
                     </div>
+                    {/* Item rows */}
                     {si.map((it,idx)=>(
-                      <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,gap:0,padding:"4px 12px",borderBottom:"1px solid #f8fafc",alignItems:"center",background:idx%2?"#fafafa":"#fff"}}>
-                        <select value={it.section} onChange={e=>updateItem(it._id,"section",e.target.value)}
-                          style={{fontSize:".68rem",border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 3px",fontFamily:"inherit",width:"100%",color:sec.color,fontWeight:700}}>
-                          {sections.map(s=><option key={s.id} value={s.id}>{s.id}</option>)}
-                        </select>
-                        <input value={it.itemCode} onChange={e=>updateItem(it._id,"itemCode",e.target.value)} placeholder="FF-01"
-                          style={{...inpSt,fontSize:".7rem",padding:"3px 5px",margin:"0 3px"}}/>
-                        <input value={it.description} onChange={e=>updateItem(it._id,"description",e.target.value)}
-                          style={{...inpSt,fontSize:".78rem",padding:"3px 6px"}}/>
-                        <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)}
-                          style={{...inpSt,fontSize:".72rem",padding:"3px 5px",textAlign:"center",margin:"0 3px"}}/>
-                        <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)}
-                          style={{...inpSt,fontSize:".78rem",padding:"3px 5px",textAlign:"right"}}/>
-                        <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)}
-                          style={{...inpSt,fontSize:".78rem",padding:"3px 5px",textAlign:"right",margin:"0 3px"}}/>
-                        <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".8rem",paddingRight:4}}>
-                          {it.total.toLocaleString("en-PH",{minimumFractionDigits:0})}
-                        </div>
-                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM, c/o owner…"
-                          style={{...inpSt,fontSize:".68rem",padding:"3px 5px",color:"#64748b",margin:"0 3px"}}/>
+                      <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,padding:"3px 12px",borderBottom:"1px solid #f1f5f9",alignItems:"center",background:idx%2===0?"#fff":"#fafafa"}}>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8"}}>{sec.id}.{idx+1}</div>
+                        <input value={it.description} onChange={e=>updateItem(it._id,"description",e.target.value)} placeholder="Description" style={{...inpSt,fontSize:".78rem",padding:"4px 6px"}}/>
+                        <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
+                        <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)} placeholder="lot" style={{...inpSt,fontSize:".72rem",padding:"4px 4px",textAlign:"center"}}/>
+                        <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
+                        <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".82rem",paddingRight:4}}>{it.total.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM, c/o owner…" style={{...inpSt,fontSize:".68rem",padding:"4px 5px",color:"#64748b"}}/>
                         <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
                       </div>
                     ))}
+                    {/* Sub-total row */}
+                    <div style={{display:"grid",gridTemplateColumns:GRID,padding:"5px 12px",background:sec.color+"0a",borderBottom:"1.5px solid "+sec.color+"22",alignItems:"center"}}>
+                      <div style={{gridColumn:"1/6",fontSize:".68rem",color:"#64748b",fontStyle:"italic"}}>Sub-total {sec.label}</div>
+                      <div style={{textAlign:"right",fontWeight:700,fontSize:".78rem",color:sec.color}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                      <div/><div/>
+                    </div>
                   </React.Fragment>
                 );
               })}
-              {/* Grand total */}
-              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#1e293b",borderTop:"2px solid #334155",alignItems:"center"}}>
-                <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
-                <div style={{textAlign:"right",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,color:"#f59e0b",fontSize:"1.1rem"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+              {/* Grand Total */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#1e293b",alignItems:"center"}}>
+                <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
+                <div style={{textAlign:"right",fontWeight:900,color:"#f59e0b",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                <div/><div/>
+              </div>
+              {/* VAT */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",alignItems:"center"}}>
+                <div style={{gridColumn:"1/6",display:"flex",alignItems:"center",gap:8}}>
+                  <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:".78rem",color:"#64748b",fontWeight:600}}>
+                    <input type="checkbox" checked={vatEnabled} onChange={e=>setVatEnabled(e.target.checked)} style={{cursor:"pointer"}}/>
+                    VAT 12%
+                  </label>
+                </div>
+                <div style={{textAlign:"right",fontWeight:700,color:vatEnabled?"#475569":"#cbd5e1",fontSize:".85rem"}}>{vatEnabled?`₱${vatAmount.toLocaleString("en-PH",{minimumFractionDigits:2})}`:"-"}</div>
+                <div/><div/>
+              </div>
+              {vatEnabled&&(
+                <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#0f172a",alignItems:"center"}}>
+                  <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total w/ VAT</div>
+                  <div style={{textAlign:"right",fontWeight:900,color:"#34d399",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{(grandTotal+vatAmount).toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                  <div/><div/>
+                </div>
+              )}
+              {/* Discounted Total */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#fffbeb",borderTop:"1px solid #fde68a",alignItems:"center"}}>
+                <div style={{gridColumn:"1/6",fontSize:".76rem",fontWeight:600,color:"#92400e"}}>Discounted Total w/o VAT <span style={{fontWeight:400,color:"#a16207"}}>(optional override)</span></div>
+                <div style={{textAlign:"right"}}>
+                  <input type="number" value={discountedTotal} onChange={e=>setDiscountedTotal(e.target.value)} placeholder="—"
+                    style={{border:"none",borderBottom:"1.5px solid #fde68a",background:"transparent",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#92400e",textAlign:"right",width:130,outline:"none"}}/>
+                </div>
                 <div/><div/>
               </div>
             </div>
           </div>
 
-          <div style={{background:"#f0f9ff",border:"1.5px solid #bae6fd",borderRadius:10,padding:"10px 14px",fontSize:".75rem",color:"#0369a1"}}>
-            ⚠ Review all quantities and rates against supplier quotes, site conditions, and project specifications before presenting to a client.
+          {/* General Notes + Bank Details + Signatures */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20,marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.75}}>
+            <div style={{fontWeight:700,color:"#0f172a",marginBottom:8,fontSize:".85rem"}}>General Notes</div>
+            <ul style={{margin:"0 0 18px 0",paddingLeft:18,color:"#475569"}}>
+              {["Inclusive of Labor Fees (Inclusive of Night Differential)","Inclusive of Contingency Fee","Inclusive of Indirect Cost Fee","Inclusive of Value Added Taxes","Price Validity: 30 Days after Receiving","If the quotation is approved, Quotation Number must be indicated at Purchase Orders (PO)","Any alteration of the design and additional items not included in the contract will be billed accordingly.","GMD reserves the right to hold, pullout, suspend delivery if payments and other conditions are not met.","GMD Productions has a NO DP & NO Signed Contract = NO Production Policy.","Cost is based on specified requirements; additional requirements other than stated above shall be billed separately."].map((n,i)=><li key={i}>{n}</li>)}
+            </ul>
+            <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:20,marginBottom:24}}>
+              <div>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:6}}>Bank Details</div>
+                <div>Account Name: <strong>GMD PRODUCTIONS INC</strong></div>
+                <div>BDO CHECKING — 012758000370</div>
+                <div>BPI CHECKING — 6011 04 82 03</div>
+                <div>METROBANK — 382-7-38202059-2</div>
+              </div>
+              <div>
+                <div style={{fontWeight:700,color:"#0f172a",marginBottom:6}}>Payment Terms</div>
+                <div>50% DP to start project</div>
+                <div>Billing of 40% up until installation</div>
+                <div>Retention of 10% upon certificate of completion</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:20,borderTop:"1px solid #e2e8f0",paddingTop:20}}>
+              <div>
+                <div style={{fontSize:".7rem",fontWeight:600,color:"#94a3b8",marginBottom:28}}>Prepared by:</div>
+                <div style={{borderBottom:"1.5px solid #0f172a",marginBottom:5}}/>
+                <div style={{fontWeight:700,color:"#0f172a"}}>{session?.name||"QS"}</div>
+                <div style={{fontSize:".7rem",color:"#64748b"}}>Quantity Surveyor</div>
+              </div>
+              <div>
+                <div style={{fontSize:".7rem",fontWeight:600,color:"#94a3b8",marginBottom:28}}>Approved and Submitted by:</div>
+                <div style={{borderBottom:"1.5px solid #0f172a",marginBottom:5}}/>
+                <div style={{fontWeight:700,color:"#0f172a"}}>Paulo Miguel Garcia</div>
+                <div style={{fontSize:".7rem",color:"#64748b"}}>President</div>
+              </div>
+              <div>
+                <div style={{fontSize:".7rem",fontWeight:600,color:"#94a3b8",marginBottom:28}}>Accepted by:</div>
+                <div style={{borderBottom:"1.5px solid #0f172a",marginBottom:5}}/>
+                <div style={{fontWeight:700,color:"#0f172a"}}>{deal?.client||"Client Name / Representative"}</div>
+                <div style={{fontSize:".7rem",color:"#64748b"}}>Signature</div>
+              </div>
+            </div>
           </div>
         </>
       )}
