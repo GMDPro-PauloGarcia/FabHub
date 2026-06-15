@@ -19734,7 +19734,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[location,setLocation]=useState("");
   const[quotationNo,setQuotationNo]=useState("");
   const[boqDate,setBoqDate]=useState(today);
-  const[items,setItems]=useState([]);
+  const[items,setItems]=useState(()=>BOQ_SECTIONS.map((s,i)=>({_id:i+1,section:s.id,description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""})));
   const[vatEnabled,setVatEnabled]=useState(true);
   const[discountedTotal,setDiscountedTotal]=useState("");
   const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
