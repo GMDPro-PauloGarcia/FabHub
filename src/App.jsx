@@ -18193,19 +18193,25 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
 function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
-  const mob=window.innerWidth<768;
+  // ── theme colours matching the warehouse standalone app ─────────────────
+  const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
+
+  // ── state ─────────────────────────────────────────────────────────────
+  const[tab,setTab]=useState("dashboard");
+  const[search,setSearch]=useState("");
+  const[filterStatus,setFilterStatus]=useState("");
+  const[sortK,setSortK]=useState("name");
+  const[sortD,setSortD]=useState(1);
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
   const[form,setForm]=useState(emptyItem());
-  const[filterCat,setFilterCat]=useState("all");
-  const[filterLoc,setFilterLoc]=useState("all");
-  const[search,setSearch]=useState("");
   const[showMove,setShowMove]=useState(null);
   const[moveForm,setMoveForm]=useState({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});
   const[showImport,setShowImport]=useState(false);
   const[importText,setImportText]=useState("");
   const[importPreview,setImportPreview]=useState([]);
   const[importErr,setImportErr]=useState("");
+  const[qtyMap,setQtyMap]=useState({});
   const csvFileRef=useRef(null);
 
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
