@@ -2678,6 +2678,7 @@ export default function App(){
     po_number:r.poNumber||"", po_date:r.poDate||null,
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
+    with_vat:r.withVat||false,
   });
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
@@ -14900,6 +14901,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const[poItems,setPoItems]=useState([emptyPoItem()]);
   const[poLevelDiscType,setPoLevelDiscType]=useState("none");
   const[poLevelDiscValue,setPoLevelDiscValue]=useState("");
+  const[poWithVat,setPoWithVat]=useState(false);
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -14921,7 +14923,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
     setPoLevelDiscType("none"); setPoLevelDiscValue(""); setMode("newpo");
   };
 
-  const printPO=(poNo,supplierName,poD,items,poDiscType,poDiscVal)=>{
+  const printPO=(poNo,supplierName,poD,items,poDiscType,poDiscVal,withVat)=>{
     const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
     const calcLD=(i)=>{const base=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);if(i.discType==="pct")return base*(Number(i.discValue||0)/100);if(i.discType==="fixed")return Math.min(Number(i.discValue||0),base);return 0;};
     const subtotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
@@ -14929,6 +14931,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
     const afterLineDisc=subtotal-totalLineDisc;
     const poDisc=poDiscType==="pct"?afterLineDisc*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),afterLineDisc):0;
     const grandTotal=afterLineDisc-poDisc;
+    const vatAmt=withVat?grandTotal*0.12:0;
+    const totalWithVat=grandTotal+vatAmt;
     const hasDiscount=totalLineDisc>0||poDisc>0;
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
     const approvedBy="Marian Prile";
@@ -14983,7 +14987,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   <tbody>${rows}</tbody>
   ${hasDiscount&&totalLineDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">Line Item Discounts</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(totalLineDisc)}</td></tr>`:""}
   ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
-  <tr class="total-row"><td colspan="7" style="text-align:right">Grand Total</td><td style="text-align:right">${fmt(grandTotal)}</td></tr>
+  ${withVat?`<tr style="background:#f8fafc"><td colspan="7" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="7" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
+  <tr class="total-row"><td colspan="7" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
+  ${withVat?`<tr><td colspan="8" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
@@ -15020,7 +15026,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
         itemName:item.itemName, category:item.category, budgetCategory:item.budgetCategory,
         qty:item.qty, unit:item.unit, estUnitCost:item.estUnitCost,
         discType:item.discType||"none", discValue:item.discValue||0,
-        poDiscType:poLevelDiscType, poDiscValue:poLevelDiscValue,
+        poDiscType:poLevelDiscType, poDiscValue:poLevelDiscValue, withVat:poWithVat,
         projectId:item.projectId, projectName:deal?.client||item.projectName||"",
         supplier:poSupplier, poNumber:poNo, poDate:poDate,
         status:poStatus, requestedBy:session?.name||"",
@@ -15215,7 +15221,20 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
               {poLevelDiscAmt>0&&<span style={{fontSize:".82rem",color:"#059669",fontWeight:700}}>= −{fmt(poLevelDiscAmt)}</span>}
             </div>
           </div>
+          {/* VAT toggle */}
+          <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 16px",marginBottom:12,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",userSelect:"none"}}>
+              <input type="checkbox" checked={poWithVat} onChange={e=>setPoWithVat(e.target.checked)}
+                style={{width:16,height:16,accentColor:"#1e293b",cursor:"pointer"}}/>
+              <span style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>With VAT (Official Receipt)</span>
+            </label>
+            {poWithVat
+              ?<span style={{fontSize:".78rem",color:"#059669",fontWeight:600}}>🧾 OR — 12% VAT will be added on top of ex-VAT prices</span>
+              :<span style={{fontSize:".78rem",color:"#94a3b8"}}>📄 No OR — cash / no receipt, amount is as quoted</span>}
+          </div>
+
           {/* Totals summary */}
+          {(()=>{const vat=poWithVat?grandTotal*0.12:0;const totalWithVat=grandTotal+vat;return(
           <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
             {(totalLineDiscAmt>0||poLevelDiscAmt>0)&&(
               <>
@@ -15231,11 +15250,23 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                 <div style={{borderTop:"1.5px solid #bfdbfe",marginTop:6,paddingTop:6}}/>
               </>
             )}
+            {poWithVat&&(
+              <>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#64748b",marginBottom:4}}>
+                  <span>Ex-VAT Amount</span><span>{fmt(grandTotal)}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#f59e0b",marginBottom:4}}>
+                  <span>VAT 12%</span><span>+{fmt(vat)}</span>
+                </div>
+                <div style={{borderTop:"1.5px solid #bfdbfe",marginTop:6,paddingTop:6}}/>
+              </>
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>Grand Total (est.)</span>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(grandTotal)}</span>
+              <span style={{fontWeight:700,color:"#1e40af",fontSize:".88rem"}}>{poWithVat?"Total (VAT Inclusive)":"Grand Total (est.)"}</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:"#1e40af"}}>{fmt(totalWithVat)}</span>
             </div>
           </div>
+          );})()}
           <div style={{display:"flex",gap:10}}>
             <button onClick={submitPO} disabled={!canSubmit} style={{background:canSubmit?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:canSubmit?"#fff":"#94a3b8",cursor:canSubmit?"pointer":"not-allowed"}}>
               📦 Submit Purchase Order ({poItems.length} item{poItems.length>1?"s":""})
@@ -15307,7 +15338,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
                   <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                    <button onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
+                    <button onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
                     {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                   </div>
                 </div>
