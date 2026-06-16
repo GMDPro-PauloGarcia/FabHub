@@ -12879,7 +12879,10 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     const newBanks={};
     BANKS.forEach(b=>{
       const r=prev.banks?.[b.id]||{};
-      newBanks[b.id]={beg:r.end||r.book||"",book:"",end:""};
+      const endN=Number(r.end)||0;
+      const bookN=Number(r.book)||0;
+      const begVal=endN||bookN;
+      newBanks[b.id]={beg:begVal?String(begVal):"",book:"",end:""};
     });
     setPos(p=>({...p,banks:newBanks}));
     setSaved(false);
@@ -12995,7 +12998,10 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         const newBanks={};
         BANKS.forEach(b=>{
           const r=prev.banks?.[b.id]||{};
-          newBanks[b.id]={beg:r.end||r.book||"",book:"",end:""};
+          const endN=Number(r.end)||0;
+          const bookN=Number(r.book)||0;
+          const begVal=endN||bookN;
+          newBanks[b.id]={beg:begVal?String(begVal):"",book:"",end:""};
         });
         setPos({...emptyDayPosition(d),banks:newBanks});
       } else {
@@ -13550,51 +13556,24 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               );
             })()}
 
-            {/* ── 5. TODAY'S TRANSACTIONS header ── */}
+            {/* ── 5. TODAY'S TRANSACTIONS — single summary row ── */}
             <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #fee2e2",background:"#fff7f7",borderTop:"2px solid #f87171"}}>
-              <div style={{...labelCell,background:"#fef2f2",color:"#dc2626",fontStyle:"normal",fontWeight:700,fontSize:".78rem"}}>📤 Today's Transactions</div>
-              <div style={{gridColumn:"2/7",padding:"7px 12px",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <span style={{fontSize:".72rem",color:"#dc2626",fontWeight:600}}>From Accounting module</span>
-                {untaggedExps.length>0&&<span style={{fontSize:".68rem",background:"#fffbeb",color:"#b45309",borderRadius:20,padding:"1px 8px",fontWeight:700,border:"1px solid #fde68a"}}>⚠ {untaggedExps.length} need bank tag</span>}
+              <div style={{...labelCell,background:"#fef2f2",color:"#dc2626",fontStyle:"normal",fontWeight:700,fontSize:".78rem"}}>
+                📤 Today's Transactions
+                <span style={{display:"block",fontSize:".65rem",color:"#94a3b8",fontWeight:400,marginTop:1}}>{dateExps.length} expense{dateExps.length!==1?"s":""} · Accounting</span>
               </div>
+              {workingBanks.map(b=>{
+                const bankTotal=dateExps.filter(e=>e.bankAccount===b.id).reduce((s,e)=>s+Number(e.amount||0),0);
+                return(
+                  <div key={b.id} style={{padding:"7px 8px",borderRight:"1px solid #f1f5f9",textAlign:"right",fontSize:".8rem",fontWeight:bankTotal>0?700:400,color:bankTotal>0?"#dc2626":"#cbd5e1"}}>
+                    {bankTotal>0?`−${fmt2(bankTotal)}`:"—"}
+                  </div>
+                );
+              })}
               <div style={{padding:"7px 12px",textAlign:"right",fontWeight:800,color:"#dc2626",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
                 {totalLess>0?`−${fmt2(totalLess)}`:"—"}
               </div>
             </div>
-            {dateExps.length===0?(
-              <div style={{padding:"12px 16px",fontSize:".75rem",color:"#94a3b8",borderBottom:"1px solid #fee2e2",fontStyle:"italic"}}>No expenses for {selDate}. Log an expense in Accounting with this date to see it here.</div>
-            ):dateExps.map((e,i)=>{
-              const tagged=!!e.bankAccount;
-              return(
-                <div key={e.id} style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #f1f5f9",background:tagged?(i%2?"#fafafa":"#fff"):"#fffbeb"}}>
-                  <div style={{...labelCell,background:tagged?"#fff7f7":"#fef3c7",color:tagged?"#dc2626":"#b45309",fontStyle:"normal",fontSize:".73rem",paddingLeft:28}}>
-                    {!tagged&&<span style={{fontSize:".65rem",fontWeight:700,color:"#dc2626",display:"block",marginBottom:2}}>⚠ Assign bank</span>}
-                    <span style={{fontWeight:600}}>{e.note||e.description||e.category}</span>
-                    <span style={{display:"block",fontSize:".65rem",color:"#94a3b8",marginTop:1}}>{e.category}</span>
-                  </div>
-                  {!tagged?(
-                    <div style={{gridColumn:"2/7",padding:"7px 12px",display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:".7rem",color:"#92400e",fontWeight:700}}>Which bank?</span>
-                      {workingBanks.map(b=>bankBtn(b.short,()=>assignExpBank(e.id,b.id)))}
-                    </div>
-                  ):(
-                    workingBanks.map(b=>(
-                      <div key={b.id} style={{padding:"7px 8px",borderRight:"1px solid #f1f5f9",textAlign:"right",fontSize:".8rem",fontWeight:e.bankAccount===b.id?700:400,color:e.bankAccount===b.id?"#dc2626":"#cbd5e1"}}>
-                        {e.bankAccount===b.id?fmt2(Number(e.amount||0)):"—"}
-                      </div>
-                    ))
-                  )}
-                  <div style={{padding:"7px 12px",textAlign:"right",fontWeight:700,color:"#dc2626",fontSize:".82rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-                    {fmt2(Number(e.amount||0))}
-                  </div>
-                </div>
-              );
-            })}
-            {untaggedExps.length>0&&(
-              <div style={{padding:"7px 16px",background:"#fffbeb",borderBottom:"1.5px solid #fde68a",fontSize:".75rem",color:"#92400e",fontWeight:600}}>
-                ⚠️ {untaggedExps.length} expense(s) (₱{fmt2(untaggedExps.reduce((s,e)=>s+Number(e.amount||0),0))}) untagged — per-bank ending balance incomplete until assigned.
-              </div>
-            )}
 
             {/* ── 6. BANK ENDING BALANCE (auto-computed) ── */}
             <div style={{display:"grid",gridTemplateColumns:COL,borderTop:"2px solid #6ee7b7",borderBottom:"1px solid #6ee7b7",background:"#f0fdf4"}}>
