@@ -340,6 +340,7 @@ const MR_STATUSES  = ["Submitted","Reviewed","Converted to PR","Rejected"];
 const BR_STATUSES  = ["Submitted","Under Review","Approved","Released","Rejected"];
 const BR_PURPOSES  = ["Installation","Mobilization","Site Expenses","Equipment Rental","Permits & Fees","Labor Additional","Emergency","Other"];
 const PR_STATUSES  = ["Draft","Pending Approval","PO Issued","Partially Delivered","Delivered","Cancelled"];
+const PROC_STATUSES = ["Draft","Pending Approval","PO Issued","Cancelled"]; // Procurement only; delivery statuses owned by Warehouse
 const PR_CATS      = ["Materials","Hardware","Fixtures","Signage","Electrical","Structural","Finishing","Tools & Equipment","Subcon","Other"];
 const BUDGET_CATS  = ["Materials","Labor","Overhead","Subcon"];
 const BUDGET_CAT_CLR = {Materials:"#3b82f6",Labor:"#10b981",Overhead:"#f59e0b",Subcon:"#8b5cf6"};
@@ -9229,7 +9230,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"){
     if(page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
+    if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -10028,7 +10029,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="inventory"||(role==="Warehouse"&&page==="home")) return(
     <Wrap>
       <InventoryView
-        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs}
+        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
         deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove}
         session={session} role={role}/>
@@ -15226,7 +15227,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
             <Fld label="Unit"><input list="po-units-dl" value={editForm.unit} onChange={e=>ef("unit",e.target.value)} placeholder="pcs, meters, sqm…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/><datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist></Fld>
             <Fld label="Est Unit Cost (₱)"><Inp type="number" value={editForm.estUnitCost} onChange={e=>ef("estUnitCost",e.target.value)}/></Fld>
             <Fld label="Actual Unit Cost (₱)"><Inp type="number" value={editForm.actUnitCost} onChange={e=>ef("actUnitCost",e.target.value)}/></Fld>
-            <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PROC_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
             <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
             <Fld label="Requested By"><Inp value={editForm.requestedBy} onChange={e=>ef("requestedBy",e.target.value)}/></Fld>
@@ -15273,7 +15274,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
             </Fld>
             <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
-            <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PROC_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="Expected Delivery"><Inp type="date" value={poExpectedDelivery} onChange={e=>setPoExpectedDelivery(e.target.value)}/></Fld>
           </div>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Line Items</div>
@@ -15488,7 +15489,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                           </div>
                           <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",flexShrink:0}}>{fmt(actTotal)}</span>
                           <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
-                            {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                            {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                           </select>
                           <button onClick={e=>{e.stopPropagation();setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
                           {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
@@ -15513,7 +15514,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                 <div><span style={{fontSize:".62rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{pr.status}</span></div>
                 <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
                   <select value={pr.status} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:5,padding:"2px 4px",fontFamily:"inherit",fontSize:".65rem",color:"#0f172a",background:"#fff",cursor:"pointer",maxWidth:40}}>
-                    {PR_STATUSES.map(s=><option key={s}>{s}</option>)}
+                    {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                   </select>
                   <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                   {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
@@ -18323,7 +18324,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 }
 
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -18623,6 +18624,12 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,upda
                         </span>
                       </div>
                       <div style={{fontSize:9,color:C.muted,marginTop:2}}>Qty: {pr.qty||1} · Status: {pr.status}{pr.poNumber?` · ${pr.poNumber}`:""}</div>
+                      {updatePR&&pr.status!=="Delivered"&&(
+                        <div style={{display:"flex",gap:4,marginTop:5}}>
+                          <button onClick={()=>updatePR(pr.id,{status:"Delivered",deliveryDate:today,qtyDelivered:pr.qty})} style={{fontSize:9,padding:"2px 8px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Received</button>
+                          {pr.status!=="Partially Delivered"&&<button onClick={()=>updatePR(pr.id,{status:"Partially Delivered"})} style={{fontSize:9,padding:"2px 8px",border:`1px solid ${C.teal}`,borderRadius:5,background:"#fff",color:C.teal,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Partial</button>}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
