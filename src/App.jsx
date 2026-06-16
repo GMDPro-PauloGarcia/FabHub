@@ -8646,11 +8646,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
         {/* ── PAYABLES TAB ── */}
         {finTab==="payables"&&(()=>{
+          const n=v=>Number(v)||0;
+          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+          // PO-derived payables — group by poNumber
+          const openPOs=prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status));
+          const poGroups={};
+          openPOs.forEach(pr=>{
+            const key=pr.poNumber||pr.id;
+            if(!poGroups[key]) poGroups[key]={poNumber:pr.poNumber||"",supplier:pr.supplier||"—",items:[],dealId:pr.dealId||pr.projectId,deliveryDate:pr.deliveryDate||null,poDate:pr.poDate||null,status:pr.status};
+            poGroups[key].items.push(pr);
+          });
+          const poPayables=Object.values(poGroups).map(g=>({
+            ...g,
+            total:g.items.reduce((s,pr)=>{
+              const unitCost=n(pr.actUnitCost)||n(pr.estUnitCost)||n(pr.actualCost)||n(pr.estimatedCost);
+              return s+unitCost*n(pr.qty);
+            },0)
+          })).filter(g=>g.total>0||g.items.length>0).sort((a,b)=>(a.deliveryDate||"9999").localeCompare(b.deliveryDate||"9999"));
+          const totalPOPayables=poPayables.reduce((s,g)=>s+g.total,0);
+
           const unpaid=payables.filter(p=>p.status==="Unpaid");
           const paid=payables.filter(p=>p.status==="Paid");
           const totalUnpaid=unpaid.reduce((s,p)=>s+Number(p.amount||0),0);
+          const grandTotal=totalPOPayables+totalUnpaid;
+          const overdueCount=poPayables.filter(g=>g.deliveryDate&&g.deliveryDate<today).length+unpaid.filter(p=>p.dueDate&&p.dueDate<today).length;
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
-          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
           return(
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
@@ -8663,15 +8683,54 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
               {/* Summary */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
-                {[{l:"Total Unpaid",v:fmtM(totalUnpaid),c:"#ef4444"},{l:"Overdue",v:unpaid.filter(p=>p.dueDate&&p.dueDate<today).length+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0)),c:"#059669"}].map(({l,v,c})=>(
+                {[{l:"Total Unpaid",v:fmtM(grandTotal),c:"#ef4444"},{l:"Overdue",v:overdueCount+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0)),c:"#059669"}].map(({l,v,c})=>(
                   <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
                     <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
                   </div>
                 ))}
               </div>
-              {/* Unpaid list */}
-              {unpaid.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No outstanding payables — all clear! ✓</div>}
+              {/* PO-derived payables */}
+              {poPayables.length>0&&(
+                <div style={{marginBottom:20}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                    <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px"}}>🛒 Purchase Orders — Pending Payment</div>
+                    <span style={{fontSize:".65rem",background:"#fef3c7",color:"#92400e",borderRadius:20,padding:"1px 8px",fontWeight:700}}>{poPayables.length} POs · {fmtM(totalPOPayables)}</span>
+                  </div>
+                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"110px 1fr 1fr 120px 110px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
+                      {["PO #","Supplier","Project","Expected Del.","Amount"].map((h,i)=>(
+                        <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===4?"right":"left"}}>{h}</div>
+                      ))}
+                    </div>
+                    {poPayables.map((g,idx)=>{
+                      const proj=wonDeals.find(d=>d.id===g.dealId)||completedDeals.find(d=>d.id===g.dealId);
+                      const isOverdue=g.deliveryDate&&g.deliveryDate<today;
+                      const isPartial=g.status==="Partially Delivered";
+                      return(
+                        <div key={g.poNumber||idx} style={{display:"grid",gridTemplateColumns:"110px 1fr 1fr 120px 110px",padding:"8px 14px",gap:8,alignItems:"center",borderBottom:idx<poPayables.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
+                          onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+                          <div style={{display:"flex",flexDirection:"column",gap:2}}>
+                            <span style={{fontSize:".75rem",fontWeight:700,color:"#1e293b",fontFamily:"monospace"}}>{g.poNumber||"—"}</span>
+                            <span style={{fontSize:".63rem",padding:"1px 6px",borderRadius:20,background:isPartial?"#fef3c7":isOverdue?"#fef2f2":"#f0fdf4",color:isPartial?"#92400e":isOverdue?"#dc2626":"#059669",fontWeight:600,display:"inline-block"}}>{g.status}</span>
+                          </div>
+                          <div style={{fontSize:".8rem",color:"#0f172a",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{g.supplier}</div>
+                          <div style={{fontSize:".75rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?proj.client:g.items[0]?.projectName||"—"}</div>
+                          <div style={{fontSize:".75rem",color:isOverdue?"#ef4444":"#64748b",fontWeight:isOverdue?700:400}}>{g.deliveryDate||<span style={{color:"#94a3b8",fontStyle:"italic"}}>No date</span>}</div>
+                          <div style={{textAlign:"right",fontWeight:800,color:"#0f172a",fontSize:".85rem",fontFamily:"monospace"}}>{fmtM(g.total)}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {/* Manual unpaid list */}
+              {unpaid.length>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>📋 Other Payables</div>
+                </div>
+              )}
+              {unpaid.length===0&&poPayables.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No outstanding payables — all clear! ✓</div>}
               {unpaid.sort((a,b)=>(a.dueDate||"9999").localeCompare(b.dueDate||"9999")).map(p=>{
                 const isOverdue=p.dueDate&&p.dueDate<today;
                 const proj=wonDeals.find(d=>d.id===p.projectId)||completedDeals.find(d=>d.id===p.projectId);
