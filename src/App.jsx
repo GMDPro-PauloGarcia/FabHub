@@ -14892,6 +14892,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const[editForm,setEditForm]=useState(emptyPR());
   const[filterProj,setFilterProj]=useState("all");
   const[filterStat,setFilterStat]=useState("all");
+  const[expandedPo,setExpandedPo]=useState(null);
   const[poSupplier,setPoSupplier]=useState("");
   const[poNumber,setPoNumber]=useState("");
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
@@ -15294,11 +15295,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
           if(g.type==="po"){
             const {poNo,items,supplier,status,poDate:poD,total}=g;
             const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
-            const[open,setOpen]=React.useState(false);
+            const open=expandedPo===poNo;
             return(
               <div key={poNo} style={{borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none"}}>
                 {/* Compact row */}
-                <div onClick={()=>setOpen(o=>!o)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
+                <div onClick={()=>setExpandedPo(o=>o===poNo?null:poNo)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
                   onMouseEnter={e=>{if(!open)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=open?"#f8fafc":"#fff";}}>
                   <div style={{fontWeight:700,color:"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{poNo}</div>
                   <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supplier||"—"}</div>
