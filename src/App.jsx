@@ -159,7 +159,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -20434,17 +20434,35 @@ const GMD_DEFAULT_LIBRARY=[
 ];
 
 function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal}){
+  const BLANK_ITEMS=()=>BOQ_SECTIONS.map((s,i)=>({_id:i+1,section:s.id,description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}));
+  const loadDraft=(dealId)=>{
+    if(!dealId) return null;
+    try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");return drafts[dealId]||null;}
+    catch{return null;}
+  };
+  const saveDraft=(dealId,data)=>{
+    if(!dealId) return;
+    try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=data;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}
+    catch{}
+  };
+  const deleteDraft=(dealId)=>{
+    if(!dealId) return;
+    try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[dealId];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}
+    catch{}
+  };
+
   const[selDeal,setSelDeal]=useState(initialDealId||"");
   useEffect(()=>{if(initialDealId){setSelDeal(initialDealId);clearBoqDeal&&clearBoqDeal();}},[initialDealId]);
   const[boqTitle,setBoqTitle]=useState("");
   const[location,setLocation]=useState("");
   const[quotationNo,setQuotationNo]=useState("");
   const[boqDate,setBoqDate]=useState(today);
-  const[items,setItems]=useState(()=>BOQ_SECTIONS.map((s,i)=>({_id:i+1,section:s.id,description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""})));
+  const[items,setItems]=useState(BLANK_ITEMS);
   const[vatEnabled,setVatEnabled]=useState(true);
   const[discountedTotal,setDiscountedTotal]=useState("");
   const[suggest,setSuggest]=useState({id:null,matches:[]});
-  const ff=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const[draftSaved,setDraftSaved]=useState(false);
+  const draftTimerRef=useRef(null);
 
   // Dynamic sections — start from GMD defaults, fully editable per BOQ
   const SEC_COLORS=["#64748b","#3b82f6","#f59e0b","#8b5cf6","#06b6d4","#10b981","#ef4444","#f97316","#ec4899","#0ea5e9","#14b8a6","#a855f7","#e11d48","#84cc16","#d97706","#6366f1"];
@@ -20533,11 +20551,41 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
 
   React.useEffect(()=>{
-    if(!deal) return;
-    setLocation(prev=>prev||deal.location||"");
-    setBoqTitle(`${deal.client||""}${deal.contact?" · "+deal.contact:""}${deal.ceNo?" ("+deal.ceNo+")":""}`);
-    if(!quotationNo&&deal.ceNo) setQuotationNo(deal.ceNo);
+    if(!selDeal) return;
+    const draft=loadDraft(selDeal);
+    if(draft){
+      if(draft.items) setItems(draft.items);
+      if(draft.sections) setSections(draft.sections);
+      if(draft.boqTitle!==undefined) setBoqTitle(draft.boqTitle);
+      if(draft.location!==undefined) setLocation(draft.location);
+      if(draft.quotationNo!==undefined) setQuotationNo(draft.quotationNo);
+      if(draft.boqDate!==undefined) setBoqDate(draft.boqDate);
+      if(draft.vatEnabled!==undefined) setVatEnabled(draft.vatEnabled);
+      if(draft.discountedTotal!==undefined) setDiscountedTotal(draft.discountedTotal);
+      setDraftSaved(true);
+    } else {
+      setItems(BLANK_ITEMS());
+      setSections(BOQ_SECTIONS);
+      setDiscountedTotal("");
+      setDraftSaved(false);
+      const d=deal;
+      if(!d) return;
+      setLocation(d.location||"");
+      setBoqTitle(`${d.client||""}${d.contact?" · "+d.contact:""}${d.ceNo?" ("+d.ceNo+")":""}`);
+      if(d.ceNo) setQuotationNo(d.ceNo);
+    }
   },[selDeal]);
+
+  React.useEffect(()=>{
+    if(!selDeal) return;
+    setDraftSaved(false);
+    clearTimeout(draftTimerRef.current);
+    draftTimerRef.current=setTimeout(()=>{
+      saveDraft(selDeal,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal});
+      setDraftSaved(true);
+    },1200);
+    return()=>clearTimeout(draftTimerRef.current);
+  },[selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal]);
 
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
@@ -20739,6 +20787,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
+          {selDeal&&<button onClick={()=>{deleteDraft(selDeal);setItems(BLANK_ITEMS());setSections(BOQ_SECTIONS);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {selDeal&&draftSaved&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ Draft saved</span>}
         </div>
       </div>
 
