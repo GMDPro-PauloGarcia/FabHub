@@ -2557,7 +2557,7 @@ export default function App(){
     const data = await sbLoadAll();
     if(!data) return;
     const idbE=[];
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null}));setDeals(ds);idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null}));setDeals(ds);idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
@@ -20552,16 +20552,17 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   React.useEffect(()=>{
     if(!selDeal) return;
-    const draft=loadDraft(selDeal);
-    if(draft){
-      if(draft.items) setItems(draft.items);
-      if(draft.sections) setSections(draft.sections);
-      if(draft.boqTitle!==undefined) setBoqTitle(draft.boqTitle);
-      if(draft.location!==undefined) setLocation(draft.location);
-      if(draft.quotationNo!==undefined) setQuotationNo(draft.quotationNo);
-      if(draft.boqDate!==undefined) setBoqDate(draft.boqDate);
-      if(draft.vatEnabled!==undefined) setVatEnabled(draft.vatEnabled);
-      if(draft.discountedTotal!==undefined) setDiscountedTotal(draft.discountedTotal);
+    // Prefer Supabase-stored BOQ (deal.boqData), fall back to localStorage draft
+    const src=deal?.boqData||loadDraft(selDeal);
+    if(src){
+      if(src.items) setItems(src.items);
+      if(src.sections) setSections(src.sections);
+      if(src.boqTitle!==undefined) setBoqTitle(src.boqTitle);
+      if(src.location!==undefined) setLocation(src.location);
+      if(src.quotationNo!==undefined) setQuotationNo(src.quotationNo);
+      if(src.boqDate!==undefined) setBoqDate(src.boqDate);
+      if(src.vatEnabled!==undefined) setVatEnabled(src.vatEnabled);
+      if(src.discountedTotal!==undefined) setDiscountedTotal(src.discountedTotal);
       setDraftSaved(true);
     } else {
       setItems(BLANK_ITEMS());
@@ -20581,7 +20582,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setDraftSaved(false);
     clearTimeout(draftTimerRef.current);
     draftTimerRef.current=setTimeout(()=>{
-      saveDraft(selDeal,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal});
+      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal};
+      saveDraft(selDeal,boqData);
+      if(isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
       setDraftSaved(true);
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
@@ -20787,7 +20790,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {selDeal&&<button onClick={()=>{deleteDraft(selDeal);setItems(BLANK_ITEMS());setSections(BOQ_SECTIONS);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {selDeal&&<button onClick={()=>{deleteDraft(selDeal);if(isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections(BOQ_SECTIONS);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {selDeal&&draftSaved&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ Draft saved</span>}
         </div>
       </div>
