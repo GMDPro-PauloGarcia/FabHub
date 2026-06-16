@@ -4171,6 +4171,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[acctSearch,setAcctSearch]=useState("");
   const[acctCat,   setAcctCat]  =useState("All");
   const[acctProj,  setAcctProj] =useState("all");
+  const[acctMonth, setAcctMonth]=useState(today.slice(0,7)); // default = current month YYYY-MM
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -10249,24 +10250,27 @@ First few:
           </label>
         </div>
       </div>
-      <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-        <div style={{position:"relative",flex:1,minWidth:180}}>
+      <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
+        <input type="month" value={acctMonth} onChange={e=>setAcctMonth(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}/>
+        <button onClick={()=>setAcctMonth("")} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",background:acctMonth?"#fff":"#1e293b",color:acctMonth?"#64748b":"#fff",cursor:"pointer",fontWeight:700}}>All dates</button>
+        <div style={{position:"relative",flex:1,minWidth:160}}>
           <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".8rem"}}>🔍</span>
-          <input value={acctSearch} onChange={e=>setAcctSearch(e.target.value)} placeholder="Search expenses…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px 7px 28px",fontFamily:"inherit",fontSize:".83rem",boxSizing:"border-box"}}/>
+          <input value={acctSearch} onChange={e=>setAcctSearch(e.target.value)} placeholder="Search…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px 6px 28px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
         </div>
-        <select value={acctCat} onChange={e=>setAcctCat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}>
+        <select value={acctCat} onChange={e=>setAcctCat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}>
           <option value="All">All Categories</option>
           {EXP_CATS.map(c=><option key={c}>{c}</option>)}
         </select>
-        <select value={acctProj} onChange={e=>setAcctProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer",maxWidth:180}}>
+        <select value={acctProj} onChange={e=>setAcctProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer",maxWidth:180}}>
           <option value="all">All Projects</option>
-          <option value="company">Company-wide only</option>
+          <option value="company">Company-wide</option>
           {[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
         </select>
-        {(acctSearch||acctCat!=="All"||acctProj!=="all")&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
+        {(acctSearch||acctCat!=="All"||acctProj!=="all")&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕</button>}
       </div>
       {(()=>{
-        let list=[...exps].sort((a,b)=>(b.date||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}`).localeCompare(a.date||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}`));
+        let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
+        if(acctMonth) list=list.filter(e=>(e.expDate||"").startsWith(acctMonth));
         if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
         if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
         if(acctProj==="company") list=list.filter(e=>!e.projectId);
@@ -10274,35 +10278,38 @@ First few:
         const total=list.reduce((s,e)=>s+Number(e.amount||0),0);
         return(
           <>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"8px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
-              <span style={{fontSize:".78rem",color:"#64748b"}}>{list.length} expense{list.length!==1?"s":""}{(acctSearch||acctCat!=="All"||acctProj!=="all")?" matching filter":""}</span>
-              <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{total.toLocaleString("en-PH",{maximumFractionDigits:0})} total</span>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,padding:"6px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+              <span style={{fontSize:".75rem",color:"#64748b"}}>{list.length} expense{list.length!==1?"s":""}</span>
+              <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{total.toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
             </div>
-            {list.length===0&&<EmptyState icon="📋" msg="No expenses match your filter."/>}
-            {list.map(e=>{
-              const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));
-              return(
-                <Card key={e.id}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:700,color:"#0f172a"}}>{e.note}</div>
-                      <div style={{fontSize:".75rem",color:"#64748b",marginTop:3,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-                        <span style={{background:"#f1f5f9",borderRadius:20,padding:"1px 8px",fontWeight:600}}>{e.category}</span>
-                        {proj?<span style={{color:"#8b5cf6"}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</span>:<span style={{color:"#94a3b8"}}>Company-wide</span>}
-                        <span>{e.expDate||MONTHS[e.month]}</span>
-                        {e.bankAccount&&(()=>{const bk=BANKS.find(b=>b.id===e.bankAccount);return bk?<span style={{color:bk.color,fontWeight:600}}>🏦 {bk.short}</span>:null;})()}
-                        {e.receipt&&<a href={e.receipt} target="_blank" rel="noreferrer" style={{color:"#3b82f6",textDecoration:"none",fontWeight:600}}>📎 Receipt</a>}
+            {list.length===0?<EmptyState icon="📋" msg="No expenses match your filter."/>:(
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                {/* Table header */}
+                <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 70px",padding:"7px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
+                  {["Date","Project","Item","Category","Amount",""].map((h,i)=>(
+                    <div key={i} style={{fontSize:".65rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===4?"right":"left"}}>{h}</div>
+                  ))}
+                </div>
+                {list.map((e,idx)=>{
+                  const proj=wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId);
+                  const bk=BANKS.find(b=>b.id===e.bankAccount);
+                  return(
+                    <div key={e.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 70px",padding:"7px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
+                      onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+                      <div style={{fontSize:".75rem",color:"#64748b",fontFamily:"monospace"}}>{e.expDate||`${MONTHS[e.month]} ${e.year||""}`}</div>
+                      <div style={{fontSize:".78rem",color:"#8b5cf6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?proj.client:"—"}{proj?.contact?<span style={{color:"#94a3b8",fontWeight:400}}> · {proj.contact}</span>:null}</div>
+                      <div style={{fontSize:".8rem",color:"#0f172a",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</div>
+                      <div><span style={{fontSize:".7rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></div>
+                      <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".85rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                      <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                        <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                        <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                       </div>
                     </div>
-                    <div style={{display:"flex",alignItems:"center",gap:10}}>
-                      <span style={{fontWeight:800,color:"#ef4444",fontSize:"1rem"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
-                      <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                      <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </>
         );
       })()}
