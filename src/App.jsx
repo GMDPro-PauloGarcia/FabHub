@@ -8442,6 +8442,30 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 );
               })()}
 
+              {/* KPI Grid Row 0 — Assets (Inventory) */}
+              {(()=>{
+                const invVal=inventory.reduce((s,i)=>s+Number(i.qtyOnHand||0)*Number(i.avgCost||0),0);
+                const lowInvCount=inventory.filter(i=>Number(i.qtyOnHand)<=Number(i.reorderPoint)&&Number(i.reorderPoint)>0).length;
+                const activePOVal=prs.filter(p=>p.status==="PO Issued").reduce((s,p)=>s+Number(p.totalAmount||0),0);
+                if(invVal===0&&activePOVal===0) return null;
+                return(<>
+                  <div style={{marginBottom:8,fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Assets &amp; Procurement</div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
+                    {[
+                      {l:"Inventory (Asset)",      v:fmtPHP(invVal),        sub:inventory.length+" items on hand",  c:"#059669"},
+                      {l:"Active POs (Committed)", v:fmtPHP(activePOVal),   sub:prs.filter(p=>p.status==="PO Issued").length+" open POs", c:"#3b82f6"},
+                      {l:"Low Stock Alerts",        v:lowInvCount,           sub:lowInvCount>0?"needs restocking":"all items ok", c:lowInvCount>0?"#f59e0b":"#94a3b8"},
+                      {l:"Inventory Turnover",      v:inventory.reduce((s,i)=>s+Number(i.qtyOnHand||0),0).toLocaleString(),sub:"total units on hand", c:"#8b5cf6"},
+                    ].map(({l,v,sub,c})=>(
+                      <div key={l} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",borderTop:`3px solid ${c}`}}>
+                        <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:4}}>{l}</div>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
+                        <div style={{fontSize:".68rem",color:"#64748b",marginTop:3}}>{sub}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>);
+              })()}
               {/* KPI Grid Row 1 — Revenue & Profitability */}
               <div style={{marginBottom:8,fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:"1px"}}>Revenue &amp; Profitability</div>
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
@@ -8985,21 +9009,52 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="home"&&role==="Procurement") return(
       <Wrap>
         <SecHead title="Procurement Overview"/>
-        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
-          {[
-            {l:"Pending Material Requests", v:mreqs.filter(m=>m.status==="Submitted").length, c:"#f59e0b", action:()=>setPage("requests")},
-            {l:"Pending Budget Requests",   v:breqs.filter(b=>b.status==="Submitted").length, c:"#ef4444", action:()=>setPage("requests")},
-            {l:"Active POs",               v:prs.filter(p=>p.status==="PO Issued").length,    c:"#3b82f6", action:()=>setPage("procurement")},
-          ].map(({l,v,c,action})=>(
-            <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"18px",border:"1.5px solid #e2e8f0",cursor:"pointer",transition:"all .15s"}}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.boxShadow=`0 4px 16px ${c}22`;}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="none";}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"2rem",color:c}}>{v}</div>
-              <div style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
-              <div style={{fontSize:".72rem",color:c,marginTop:8,fontWeight:600}}>View →</div>
+        {(()=>{
+          const lowInv=inventory.filter(i=>Number(i.qtyOnHand)<=Number(i.reorderPoint)&&Number(i.reorderPoint)>0);
+          const invVal=inventory.reduce((s,i)=>s+Number(i.qtyOnHand||0)*Number(i.avgCost||0),0);
+          const activePOItems=new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.itemName||""));
+          const needsPR=lowInv.filter(i=>![...activePOItems].some(n=>n.toLowerCase().includes(i.name.toLowerCase().slice(0,8))));
+          return(<>
+            {/* KPI tiles */}
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:12,marginBottom:20}}>
+              {[
+                {l:"Pending Material Requests",v:mreqs.filter(m=>m.status==="Submitted").length,c:"#f59e0b",action:()=>setPage("requests")},
+                {l:"Pending Budget Requests",  v:breqs.filter(b=>b.status==="Submitted").length,c:"#ef4444",action:()=>setPage("requests")},
+                {l:"Active POs",              v:prs.filter(p=>p.status==="PO Issued").length,   c:"#3b82f6",action:()=>setPage("procurement")},
+                {l:"Low Stock — Need PR",     v:needsPR.length,c:needsPR.length>0?"#f97316":"#94a3b8",action:()=>setPage("inventory")},
+                {l:"Inventory Value",         v:"₱"+Math.round(invVal).toLocaleString("en-PH"),c:"#059669",action:()=>setPage("inventory")},
+              ].map(({l,v,c,action})=>(
+                <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"18px",border:"1.5px solid #e2e8f0",cursor:"pointer",transition:"all .15s"}}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor=c;e.currentTarget.style.boxShadow=`0 4px 16px ${c}22`;}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="#e2e8f0";e.currentTarget.style.boxShadow="none";}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.9rem",color:c}}>{v}</div>
+                  <div style={{fontSize:".7rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+                  <div style={{fontSize:".72rem",color:c,marginTop:8,fontWeight:600}}>View →</div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+            {/* Low stock → raise PR action list */}
+            {needsPR.length>0&&(
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fed7aa",padding:"14px 18px",marginBottom:16}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+                  <div style={{fontWeight:700,color:"#c2410c",fontSize:".9rem"}}>📦 {needsPR.length} item{needsPR.length!==1?"s":""} need restocking — no active PO</div>
+                  <button onClick={()=>setPage("materialreq")} style={{background:"#f97316",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>+ Raise Material Request</button>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:8}}>
+                  {needsPR.slice(0,9).map(i=>(
+                    <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:8,background:"#fff7ed",border:"1px solid #fed7aa"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:600,fontSize:".8rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{i.name}</div>
+                        <div style={{fontSize:".7rem",color:"#f97316",fontFamily:"monospace"}}>{Number(i.qtyOnHand)} {i.unit} left · reorder at {Number(i.reorderPoint)}</div>
+                      </div>
+                    </div>
+                  ))}
+                  {needsPR.length>9&&<div style={{fontSize:".75rem",color:"#94a3b8",padding:"8px 12px",display:"flex",alignItems:"center"}}>+{needsPR.length-9} more items</div>}
+                </div>
+              </div>
+            )}
+          </>);
+        })()}
       </Wrap>
     );
     if(page==="home") return(
@@ -9041,6 +9096,76 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </button>
             </div>
           ):null;
+        })()}
+        {/* ── Inventory snapshot for Finance/Manager ── */}
+        {(()=>{
+          const invVal=inventory.reduce((s,i)=>s+Number(i.qtyOnHand||0)*Number(i.avgCost||0),0);
+          const lowInv=inventory.filter(i=>Number(i.qtyOnHand)<=Number(i.reorderPoint)&&Number(i.reorderPoint)>0);
+          const outInv=inventory.filter(i=>Number(i.qtyOnHand)===0);
+          const activePOCount=prs.filter(p=>p.status==="PO Issued").length;
+          if(invVal===0&&inventory.length===0) return null;
+          return(
+            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>📦 Warehouse Inventory</div>
+                <button onClick={()=>setPage("inventory")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:"#475569",cursor:"pointer"}}>View Full Inventory →</button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10}}>
+                {[
+                  {l:"Asset Value",     v:"₱"+Math.round(invVal).toLocaleString("en-PH"),c:"#059669"},
+                  {l:"Items on Hand",   v:inventory.length,c:"#3b82f6"},
+                  {l:"Low Stock",       v:lowInv.length, c:lowInv.length>0?"#f59e0b":"#94a3b8"},
+                  {l:"Active POs",      v:activePOCount,  c:activePOCount>0?"#8b5cf6":"#94a3b8"},
+                ].map(({l,v,c})=>(
+                  <div key={l} style={{textAlign:"center",padding:"10px 8px",borderRadius:8,background:"#f8fafc",border:`1px solid #e2e8f0`}}>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
+                    <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginTop:3}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+              {(lowInv.length>0||outInv.length>0)&&(
+                <div style={{marginTop:10,fontSize:".75rem",color:"#92400e",background:"#fffbeb",borderRadius:7,padding:"7px 12px",border:"1px solid #fde68a"}}>
+                  ⚠️ {outInv.length>0&&<span style={{marginRight:8}}><strong>{outInv.length} item{outInv.length!==1?"s":""} depleted</strong></span>}{lowInv.length>0&&<span><strong>{lowInv.length} item{lowInv.length!==1?"s":""} below reorder point</strong> — {lowInv.slice(0,3).map(i=>i.name).join(", ")}{lowInv.length>3?` +${lowInv.length-3} more`:""}</span>}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+        {/* ── Materials issued per project (from stocklog) ── */}
+        {(()=>{
+          const outMoves=stocklog.filter(m=>m.moveType.startsWith("OUT")&&m.projectId);
+          if(!outMoves.length) return null;
+          const projMap={};
+          for(const m of outMoves){
+            if(!projMap[m.projectId])projMap[m.projectId]={qty:0,cost:0,moves:0};
+            projMap[m.projectId].qty+=Number(m.qty||0);
+            projMap[m.projectId].cost+=Number(m.qty||0)*Number(m.unitCost||0);
+            projMap[m.projectId].moves++;
+          }
+          const projRows=Object.entries(projMap).map(([pid,v])=>{
+            const d=wonDeals.find(x=>x.id===pid)||completedDeals.find(x=>x.id===pid);
+            return{pid,name:d?((d.client||"")+(d.ceNo?` (${d.ceNo})`:"")):"Other",qty:v.qty,cost:v.cost,moves:v.moves};
+          }).sort((a,b)=>b.cost-a.cost).slice(0,6);
+          return(
+            <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 18px",marginBottom:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>🏗 Materials Issued to Projects</div>
+                <button onClick={()=>setPage("stockmove")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:"#475569",cursor:"pointer"}}>View Stock Log →</button>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:8}}>
+                {projRows.map(r=>(
+                  <div key={r.pid} style={{padding:"9px 12px",borderRadius:8,background:"#f8fafc",border:"1px solid #e2e8f0"}}>
+                    <div style={{fontWeight:600,fontSize:".8rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
+                    <div style={{display:"flex",gap:12,marginTop:4}}>
+                      <span style={{fontSize:".72rem",color:"#f97316",fontWeight:700}}>{r.qty.toLocaleString()} units out</span>
+                      {r.cost>0&&<span style={{fontSize:".72rem",color:"#059669",fontWeight:700}}>₱{Math.round(r.cost).toLocaleString("en-PH")}</span>}
+                    </div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:2}}>{r.moves} movement{r.moves!==1?"s":""}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
         })()}
         <DailyCashPosition
           cashPositions={cashPositions}
