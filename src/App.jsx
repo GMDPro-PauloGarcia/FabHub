@@ -14931,7 +14931,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
     const grandTotal=afterLineDisc-poDisc;
     const hasDiscount=totalLineDisc>0||poDisc>0;
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
-    const approvedBy=items[0]?.approvedBy||"";
+    const approvedBy="Marian Prile";
     const receivedBy=supplierName||"";
     const allProjDeals=[...activeDeals,...(wonDeals||[])];
     const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
