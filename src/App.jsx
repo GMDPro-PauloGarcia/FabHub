@@ -9229,7 +9229,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"){
     if(page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
+    if(page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -10028,7 +10028,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="inventory"||(role==="Warehouse"&&page==="home")) return(
     <Wrap>
       <InventoryView
-        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals}
+        inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
         deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove}
         session={session} role={role}/>
@@ -18317,7 +18317,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 }
 
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -18528,6 +18528,12 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
     const topVal=[...rows].filter(i=>i._rem>0).sort((a,b)=>b._rem*b._price-a._rem*a._price).slice(0,6);
     const atRisk=[...rows].filter(i=>i._beg>0&&i._rem>=0&&i._rem/i._beg<=0.2).sort((a,b)=>a._rem/Math.max(a._beg,1)-b._rem/Math.max(b._beg,1)).slice(0,7);
     const depleted=[...rows].filter(i=>i._rem<=0).sort((a,b)=>b._beg*b._price-a._beg*a._price).slice(0,7);
+    // Expected deliveries from POs
+    const nowD=new Date(today);
+    const pendingPOs=prs.filter(p=>p.deliveryDate&&!["Delivered","Cancelled"].includes(p.status)).sort((a,b)=>a.deliveryDate>b.deliveryDate?1:-1);
+    const overdueD=pendingPOs.filter(p=>p.deliveryDate<today);
+    const todayD=pendingPOs.filter(p=>p.deliveryDate===today);
+    const upcomingD=pendingPOs.filter(p=>p.deliveryDate>today);
     const recentMv=[...stocklog].sort((a,b)=>b.date>a.date?1:-1).slice(0,10);
     const fmtV=v=>v>=1000000?"₱"+(v/1000000).toFixed(1)+"M":v>=1000?"₱"+(v/1000).toFixed(0)+"k":fp(v);
     return(
@@ -18542,12 +18548,13 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
           </div>
         )}
         {/* KPI strip */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(110px,1fr))",gap:8,marginBottom:10}}>
           {[
             {lbl:"Total SKUs",    val:rows.length,             sub:"inventory items",       c:C.blue},
             {lbl:"Remaining Value",val:fmtV(totalVal),         sub:"on hand",               c:C.accent},
             {lbl:"Low / Depleted",val:lowStock.length+outOfStk.length, sub:"need restocking",c:(lowStock.length+outOfStk.length)>0?C.yellow:C.muted},
             {lbl:"Negative Stock",val:negStock.length,         sub:negStock.length>0?"restock immediately":"all ok", c:negStock.length>0?C.red:C.muted},
+            {lbl:"Expected Deliveries",val:pendingPOs.length,  sub:overdueD.length>0?`${overdueD.length} overdue!`:todayD.length>0?`${todayD.length} arriving today`:upcomingD.length>0?`next: ${upcomingD[0]?.deliveryDate}`:"no scheduled POs", c:overdueD.length>0?C.red:todayD.length>0?C.accent:pendingPOs.length>0?C.teal:C.muted},
           ].map(k=>(
             <div key={k.lbl} style={{...cardS,borderTop:`3px solid ${k.c}`}}>
               <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".7px",marginBottom:5,fontWeight:600}}>{k.lbl}</div>
@@ -18573,6 +18580,46 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
             ))}
           </div>
         </div>
+        {/* Incoming PO Deliveries */}
+        {pendingPOs.length>0&&(
+          <div style={{...cardS,marginBottom:10}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.text}}>🚚 Incoming PO Deliveries</div>
+              <div style={{display:"flex",gap:6}}>
+                {overdueD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.red+"18",color:C.red}}>{overdueD.length} overdue</span>}
+                {todayD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.accent+"18",color:C.accent}}>{todayD.length} today</span>}
+                {upcomingD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.teal+"18",color:C.teal}}>{upcomingD.length} upcoming</span>}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:6}}>
+              {pendingPOs.slice(0,12).map(pr=>{
+                const isOv=pr.deliveryDate<today;
+                const isTd=pr.deliveryDate===today;
+                const cc=isOv?C.red:isTd?C.accent:C.teal;
+                const daysAway=Math.ceil((new Date(pr.deliveryDate)-nowD)/(1000*60*60*24));
+                const deal=wonDeals.find(d=>d.id===pr.dealId||d.id===pr.projectId);
+                return(
+                  <div key={pr.id} style={{display:"flex",gap:8,padding:"8px 10px",borderRadius:8,background:cc+"08",border:`1px solid ${cc}25`}}>
+                    <div style={{flexShrink:0,marginTop:1}}>
+                      <div style={{width:8,height:8,borderRadius:"50%",background:cc}}/>
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:11,color:C.text,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.itemName||pr.item||"Item"}</div>
+                      <div style={{fontSize:10,color:C.muted,marginTop:1}}>
+                        {pr.supplier&&<span>{pr.supplier} · </span>}
+                        {deal&&<span style={{color:C.blue}}>{deal.client} · </span>}
+                        <span style={{fontFamily:"monospace",fontWeight:700,color:cc}}>
+                          {isOv?`${Math.abs(daysAway)}d overdue`:isTd?"arriving today":`in ${daysAway}d · ${pr.deliveryDate}`}
+                        </span>
+                      </div>
+                      <div style={{fontSize:9,color:C.muted,marginTop:2}}>Qty: {pr.qty||1} · Status: {pr.status}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {/* 3-column bottom panels */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           {/* Top value items */}
