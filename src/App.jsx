@@ -18534,9 +18534,11 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,upda
     const topVal=[...rows].filter(i=>i._rem>0).sort((a,b)=>b._rem*b._price-a._rem*a._price).slice(0,6);
     const atRisk=[...rows].filter(i=>i._beg>0&&i._rem>=0&&i._rem/i._beg<=0.2).sort((a,b)=>a._rem/Math.max(a._beg,1)-b._rem/Math.max(b._beg,1)).slice(0,7);
     const depleted=[...rows].filter(i=>i._rem<=0).sort((a,b)=>b._beg*b._price-a._beg*a._price).slice(0,7);
-    // Expected deliveries from POs
+    // Expected deliveries from POs — include ALL non-delivered POs, date optional
     const nowD=new Date(today);
-    const pendingPOs=prs.filter(p=>p.deliveryDate&&!["Delivered","Cancelled"].includes(p.status)).sort((a,b)=>a.deliveryDate>b.deliveryDate?1:-1);
+    const allOpenPOs=prs.filter(p=>!["Delivered","Cancelled"].includes(p.status));
+    const pendingPOs=allOpenPOs.filter(p=>p.deliveryDate).sort((a,b)=>a.deliveryDate>b.deliveryDate?1:-1);
+    const noDatPOs=allOpenPOs.filter(p=>!p.deliveryDate);
     const overdueD=pendingPOs.filter(p=>p.deliveryDate<today);
     const todayD=pendingPOs.filter(p=>p.deliveryDate===today);
     const upcomingD=pendingPOs.filter(p=>p.deliveryDate>today);
@@ -18560,7 +18562,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,upda
             {lbl:"Remaining Value",val:fmtV(totalVal),         sub:"on hand",               c:C.accent},
             {lbl:"Low / Depleted",val:lowStock.length+outOfStk.length, sub:"need restocking",c:(lowStock.length+outOfStk.length)>0?C.yellow:C.muted},
             {lbl:"Negative Stock",val:negStock.length,         sub:negStock.length>0?"restock immediately":"all ok", c:negStock.length>0?C.red:C.muted},
-            {lbl:"Expected Deliveries",val:pendingPOs.length,  sub:overdueD.length>0?`${overdueD.length} overdue!`:todayD.length>0?`${todayD.length} arriving today`:upcomingD.length>0?`next: ${upcomingD[0]?.deliveryDate}`:"no scheduled POs", c:overdueD.length>0?C.red:todayD.length>0?C.accent:pendingPOs.length>0?C.teal:C.muted},
+            {lbl:"Expected Deliveries",val:allOpenPOs.length,  sub:overdueD.length>0?`${overdueD.length} overdue!`:todayD.length>0?`${todayD.length} arriving today`:noDatPOs.length>0?`${noDatPOs.length} no date set`:upcomingD.length>0?`next: ${upcomingD[0]?.deliveryDate}`:"none open", c:overdueD.length>0?C.red:todayD.length>0?C.accent:allOpenPOs.length>0?C.teal:C.muted},
           ].map(k=>(
             <div key={k.lbl} style={{...cardS,borderTop:`3px solid ${k.c}`}}>
               <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".7px",marginBottom:5,fontWeight:600}}>{k.lbl}</div>
@@ -18587,7 +18589,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,upda
           </div>
         </div>
         {/* Incoming PO Deliveries */}
-        {pendingPOs.length>0&&(
+        {allOpenPOs.length>0&&(
           <div style={{...cardS,marginBottom:10}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{fontSize:11,fontWeight:700,color:C.text}}>🚚 Incoming PO Deliveries</div>
@@ -18595,14 +18597,16 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,upda
                 {overdueD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.red+"18",color:C.red}}>{overdueD.length} overdue</span>}
                 {todayD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.accent+"18",color:C.accent}}>{todayD.length} today</span>}
                 {upcomingD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.teal+"18",color:C.teal}}>{upcomingD.length} upcoming</span>}
+                {noDatPOs.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.muted+"18",color:C.muted}}>{noDatPOs.length} no date</span>}
               </div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:6}}>
-              {pendingPOs.slice(0,12).map(pr=>{
-                const isOv=pr.deliveryDate<today;
-                const isTd=pr.deliveryDate===today;
-                const cc=isOv?C.red:isTd?C.accent:C.teal;
-                const daysAway=Math.ceil((new Date(pr.deliveryDate)-nowD)/(1000*60*60*24));
+              {[...pendingPOs,...noDatPOs].slice(0,18).map(pr=>{
+                const hasDate=!!pr.deliveryDate;
+                const isOv=hasDate&&pr.deliveryDate<today;
+                const isTd=hasDate&&pr.deliveryDate===today;
+                const cc=isOv?C.red:isTd?C.accent:hasDate?C.teal:C.muted;
+                const daysAway=hasDate?Math.ceil((new Date(pr.deliveryDate)-nowD)/(1000*60*60*24)):null;
                 const deal=wonDeals.find(d=>d.id===pr.dealId||d.id===pr.projectId);
                 return(
                   <div key={pr.id} style={{display:"flex",gap:8,padding:"8px 10px",borderRadius:8,background:cc+"08",border:`1px solid ${cc}25`}}>
@@ -18615,10 +18619,10 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],addInventoryItem,upda
                         {pr.supplier&&<span>{pr.supplier} · </span>}
                         {deal&&<span style={{color:C.blue}}>{deal.client} · </span>}
                         <span style={{fontFamily:"monospace",fontWeight:700,color:cc}}>
-                          {isOv?`${Math.abs(daysAway)}d overdue`:isTd?"arriving today":`in ${daysAway}d · ${pr.deliveryDate}`}
+                          {!hasDate?"no date set":isOv?`${Math.abs(daysAway)}d overdue`:isTd?"arriving today":`in ${daysAway}d · ${pr.deliveryDate}`}
                         </span>
                       </div>
-                      <div style={{fontSize:9,color:C.muted,marginTop:2}}>Qty: {pr.qty||1} · Status: {pr.status}</div>
+                      <div style={{fontSize:9,color:C.muted,marginTop:2}}>Qty: {pr.qty||1} · Status: {pr.status}{pr.poNumber?` · ${pr.poNumber}`:""}</div>
                     </div>
                   </div>
                 );
