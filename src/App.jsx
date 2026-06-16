@@ -15023,6 +15023,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const[poNumber,setPoNumber]=useState("");
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
   const[poStatus,setPoStatus]=useState("Draft");
+  const[poExpectedDelivery,setPoExpectedDelivery]=useState("");
   const[poItems,setPoItems]=useState([emptyPoItem()]);
   const[poLevelDiscType,setPoLevelDiscType]=useState("none");
   const[poLevelDiscValue,setPoLevelDiscValue]=useState("");
@@ -15044,7 +15045,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
 
   const openNewPO=()=>{
     setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
-    setPoStatus("PO Issued"); setPoItems([emptyPoItem()]);
+    setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
     setPoLevelDiscType("none"); setPoLevelDiscValue(""); setMode("newpo");
   };
 
@@ -15154,7 +15155,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
         poDiscType:poLevelDiscType, poDiscValue:poLevelDiscValue, withVat:poWithVat,
         projectId:item.projectId, projectName:deal?.client||item.projectName||"",
         supplier:poSupplier, poNumber:poNo, poDate:poDate,
-        status:poStatus, requestedBy:session?.name||"",
+        status:poStatus, deliveryDate:poExpectedDelivery||"",
+        requestedBy:session?.name||"",
         approvedBy:poStatus==="PO Issued"?session?.name||"":""
       },{silent:true});
     });
@@ -15228,6 +15230,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
             <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
             <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
             <Fld label="Requested By"><Inp value={editForm.requestedBy} onChange={e=>ef("requestedBy",e.target.value)}/></Fld>
+            {["PO Issued","Approved"].includes(editForm.status)&&(
+              <Fld label="Expected Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
+            )}
             {(editForm.status==="Partially Delivered"||editForm.status==="Delivered")&&(<>
               <Fld label="Qty Delivered"><Inp type="number" value={editForm.qtyDelivered} onChange={e=>ef("qtyDelivered",e.target.value)}/></Fld>
               <Fld label="Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
@@ -15258,7 +15263,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>📦 New Purchase Order</div>
           <datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist>
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(4,1fr)",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #f1f5f9"}}>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(5,1fr)",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #f1f5f9"}}>
             <Fld label="Supplier" required>
               <input list="po-supplier-list" value={poSupplier} onChange={e=>setPoSupplier(e.target.value)} placeholder="Type or select supplier…"
                 style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
@@ -15269,6 +15274,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
             <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
             <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PR_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Expected Delivery"><Inp type="date" value={poExpectedDelivery} onChange={e=>setPoExpectedDelivery(e.target.value)}/></Fld>
           </div>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>Line Items</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
