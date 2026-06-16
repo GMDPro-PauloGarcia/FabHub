@@ -18200,8 +18200,13 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
   const[filterCat,setFilterCat]=useState("all");
   const[filterLoc,setFilterLoc]=useState("all");
   const[search,setSearch]=useState("");
-  const[showMove,setShowMove]=useState(null); // item id for quick stock move
+  const[showMove,setShowMove]=useState(null);
   const[moveForm,setMoveForm]=useState({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});
+  const[showImport,setShowImport]=useState(false);
+  const[importText,setImportText]=useState("");
+  const[importPreview,setImportPreview]=useState([]);
+  const[importErr,setImportErr]=useState("");
+  const csvFileRef=useRef(null);
 
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const fm=(k,v)=>setMoveForm(p=>({...p,[k]:v}));
@@ -18244,6 +18249,89 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
     setShowMove(null);
   };
 
+  const quickAdjust=(item,delta)=>{
+    logStockMove({itemId:item.id,moveType:"ADJUST — Stock Count",qty:Math.max(0,n(item.qtyOnHand)+delta),unitCost:n(item.avgCost),projectId:"",notes:delta>0?`Quick +${delta}`:`Quick ${delta}`,date:today});
+  };
+
+  function autoCategory(name){
+    const nm=name.toUpperCase();
+    if(/\b(BOARD|SHEET|PLYWOOD|PLYBOARD|ACRYLIC|GLASS|FOAM|MIKA|LAMINATE)\b/.test(nm)) return{main:"Sheet Materials",sub:"Board / Panel"};
+    if(/\b(STUD|TRUCK|TUBULAR|STEEL|IRON|SCREW|RIVET|BOLT|NUT|CLAMP)\b/.test(nm)) return{main:"Metal Works",sub:"Fasteners"};
+    if(/\b(HINGE|HANDLE|DRAWER|GUIDE|CONCEALED|LOCK)\b/.test(nm)) return{main:"Hardware",sub:"Tracks & Slides"};
+    if(/\b(PAINT|PRIMER|LACQUER|THINNER|PUTTY|SEALANT|EPOXY|SEAL|BOYSEN|SPHERO|LATEX)\b/.test(nm)) return{main:"Finishing",sub:"Paint"};
+    if(/\b(LED|LIGHT|STRIP|COB|BULB|DOWNLIGHT|LIHA)\b/.test(nm)) return{main:"Lighting",sub:"LED Strips"};
+    if(/\b(WIRE|OUTLET|SWITCH|BREAKER|CONDUIT|EMT|JUNCTION|CABLE|ELECTRICAL|GI COUPLING|IMC|ELBOW)\b/.test(nm)) return{main:"Electrical",sub:"Wiring & Conduit"};
+    if(/\b(DISC|TAPE|GLOVES|GOGGLES|BRUSH|TRAY|BLADE|BUBBLE WRAP|STOCKING)\b/.test(nm)) return{main:"Consumables",sub:"Abrasives"};
+    return{main:"Other",sub:"Other"};
+  }
+
+  function parseInvCSV(text){
+    const rows=[];
+    for(const raw of text.split(/\r?\n/)){
+      const line=raw.trim(); if(!line) continue;
+      const low=line.toLowerCase();
+      if(low.startsWith("item")||low.startsWith("desc")||low.startsWith("no.")||low.startsWith("#")||low.startsWith("name")) continue;
+      const cols=[];let cur="",inQ=false;
+      for(let ci=0;ci<line.length;ci++){const ch=line[ci];if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else{cur+=ch;}}
+      cols.push(cur.trim());
+      const name=(cols[0]||"").replace(/^"|"$/g,"").trim().toUpperCase();
+      if(!name) continue;
+      const unit=(cols[1]||"pcs").replace(/^"|"$/g,"").trim().toLowerCase()||"pcs";
+      const price=parseFloat((cols[2]||"0").replace(/[₱,]/g,""))||0;
+      const beg=parseInt((cols[3]||"0").replace(/,/g,""))||0;
+      const recv=parseInt((cols[4]||"0").replace(/,/g,""))||0;
+      const out=parseInt((cols[5]||"0").replace(/,/g,""))||0;
+      const notes=(cols[6]||"").replace(/^"|"$/g,"").trim();
+      const qty=beg+recv-out;
+      rows.push({name,unit,price,qty,notes,beg,recv,out});
+    }
+    return rows;
+  }
+
+  function handleImportText(val){
+    setImportText(val);setImportErr("");
+    if(!val.trim()){setImportPreview([]);return;}
+    try{const r=parseInvCSV(val);if(!r.length){setImportErr("No valid rows — check format.");setImportPreview([]);return;}setImportPreview(r);}
+    catch(e){setImportErr("Parse error: "+e.message);setImportPreview([]);}
+  }
+
+  function commitImport(){
+    if(!importPreview.length) return;
+    let added=0,merged=0;
+    for(const row of importPreview){
+      const existing=inventory.find(i=>i.name.toUpperCase()===row.name);
+      if(existing){
+        updateInventoryItem(existing.id,{...existing,qtyOnHand:row.qty,lastPurchasePrice:row.price||existing.lastPurchasePrice,avgCost:row.price||existing.avgCost,unit:row.unit||existing.unit,notes:row.notes||existing.notes,lastUpdated:today});
+        merged++;
+      }else{
+        const cat=autoCategory(row.name);
+        addInventoryItem({...emptyItem(),name:row.name,unit:row.unit||"pcs",qtyOnHand:row.qty,lastPurchasePrice:row.price,avgCost:row.price,category:cat.main,subCategory:cat.sub,notes:row.notes,lastUpdated:today});
+        added++;
+      }
+    }
+    setShowImport(false);setImportText("");setImportPreview([]);
+    toastEmit(`Imported ${added} new + ${merged} updated items`,"success");
+  }
+
+  function exportInvXLSX(){
+    if(!window.XLSX){toastEmit("Excel library not loaded — please refresh","error");return;}
+    const wb=window.XLSX.utils.book_new();
+    const hdr=["Code","Name","Category","Sub-Category","Unit","Qty On Hand","Avg Cost","Stock Value","Reorder Pt","Last Price","Supplier","Location","Status","Notes"];
+    const rows=inventory.map(i=>[i.code,i.name,i.category,i.subCategory||"",i.unit,n(i.qtyOnHand),n(i.avgCost),+(n(i.qtyOnHand)*n(i.avgCost)).toFixed(2),n(i.reorderPoint),n(i.lastPurchasePrice),i.supplier,i.location,i.status,i.notes||""]);
+    const totalVal=inventory.reduce((s,i)=>s+n(i.qtyOnHand)*n(i.avgCost),0);
+    const ws=window.XLSX.utils.aoa_to_sheet([["GMD PRO INC. — INVENTORY"],["Exported: "+new Date().toLocaleString("en-PH")+"   Items: "+inventory.length],[],hdr,...rows,["","TOTAL","","","",inventory.reduce((s,i)=>s+n(i.qtyOnHand),0),"",+totalVal.toFixed(2)]]);
+    ws["!cols"]=[{wch:10},{wch:40},{wch:18},{wch:18},{wch:8},{wch:12},{wch:12},{wch:14},{wch:10},{wch:12},{wch:24},{wch:16},{wch:10},{wch:30}];
+    window.XLSX.utils.book_append_sheet(wb,ws,"Inventory");
+    const lowS=inventory.filter(i=>n(i.qtyOnHand)<=n(i.reorderPoint)&&n(i.reorderPoint)>0);
+    if(lowS.length){
+      const ws2=window.XLSX.utils.aoa_to_sheet([["REORDER LIST"],[],["Name","Unit","Qty On Hand","Reorder Pt","Supplier","Location"],...lowS.map(i=>[i.name,i.unit,n(i.qtyOnHand),n(i.reorderPoint),i.supplier,i.location])]);
+      ws2["!cols"]=[{wch:40},{wch:8},{wch:12},{wch:10},{wch:24},{wch:16}];
+      window.XLSX.utils.book_append_sheet(wb,ws2,"Reorder List");
+    }
+    window.XLSX.writeFile(wb,`GMD-Inventory-${today}.xlsx`);
+    toastEmit("Excel downloaded","success");
+  }
+
   return(
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
@@ -18251,7 +18339,11 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📦 Inventory</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Materials on hand — every item is cash sitting in your warehouse</div>
         </div>
-        {canEdit&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Add Item</button>}
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={exportInvXLSX} style={{background:"#059669",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>⬇ Excel</button>
+          {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
+          {canEdit&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Add Item</button>}
+        </div>
       </div>
 
       {/* KPIs */}
@@ -18385,6 +18477,8 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
                     {isLow&&!isOut&&<div style={{fontSize:".68rem",color:"#f59e0b",fontWeight:700}}>LOW STOCK</div>}
                   </div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
+                    {canEdit&&<button onClick={()=>quickAdjust(item,-1)} title="Remove 1" style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 10px",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:800,fontFamily:"monospace"}}>−1</button>}
+                    {canEdit&&<button onClick={()=>quickAdjust(item,1)} title="Add 1" style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:7,padding:"5px 10px",fontSize:".78rem",color:"#16a34a",cursor:"pointer",fontWeight:800,fontFamily:"monospace"}}>+1</button>}
                     {canEdit&&<button onClick={()=>{setMoveForm({moveType:"OUT — Used in Project",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id&&moveForm.moveType.startsWith("OUT")?null:item.id);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#c2410c",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>↑ Issue</button>}
                     {canEdit&&<button onClick={()=>{setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id&&moveForm.moveType.startsWith("IN")?null:item.id);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>↓ IN</button>}
                     {canEdit&&<button onClick={()=>openEdit(item)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>}
@@ -18396,6 +18490,45 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
           );
         })}
       </div>
+
+      {/* ── IMPORT CSV MODAL ─────────────────────────────────── */}
+      {showImport&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget)setShowImport(false);}}>
+          <div style={{background:"#fff",borderRadius:14,padding:24,width:540,maxWidth:"96vw",boxShadow:"0 20px 60px rgba(0,0,0,.2)",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>⬆ Import Inventory CSV</div>
+              <button onClick={()=>setShowImport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:"#64748b",fontWeight:700}}>✕</button>
+            </div>
+            <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".78rem",color:"#1d4ed8"}}>
+              <strong>Format (one item per line):</strong><br/>
+              <code style={{fontSize:".73rem",color:"#475569"}}>Name, Unit, Price, Beg Qty, Recv Qty, Out Qty [, Notes]</code><br/>
+              <span style={{color:"#64748b",fontSize:".72rem"}}>Matches the GMD warehouse app's export. Existing items (same name) will be updated — quantities overwritten with Remaining (Beg+Recv−Out).</span>
+            </div>
+            <div style={{marginBottom:10}}>
+              <button onClick={()=>csvFileRef.current?.click()} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#475569",cursor:"pointer",fontWeight:600}}>📂 Upload .csv file</button>
+              <input ref={csvFileRef} type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>handleImportText(ev.target.result);r.readAsText(f);e.target.value="";}}/>
+            </div>
+            <label style={{display:"block",fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginBottom:5,fontWeight:700}}>Or paste CSV text</label>
+            <textarea value={importText} onChange={e=>handleImportText(e.target.value)} rows={7} placeholder={"CUTTING DISC,BOX,2375,10,0,2\nGRINDING DISC,BOX,180,13,0,2,Extra stock\nPAINT BRUSH #1,PCS,25,30,0,0"} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"monospace",fontSize:".78rem",color:"#0f172a",resize:"vertical",boxSizing:"border-box"}}/>
+            {importErr&&<div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"8px 12px",marginTop:8,fontSize:".78rem",color:"#dc2626"}}>⚠ {importErr}</div>}
+            {importPreview.length>0&&(
+              <div style={{marginTop:12}}>
+                <div style={{fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",color:"#64748b",fontWeight:700,marginBottom:6}}>{importPreview.length} item{importPreview.length!==1?"s":""} detected</div>
+                <div style={{maxHeight:180,overflowY:"auto",border:"1.5px solid #e2e8f0",borderRadius:8}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:".75rem"}}>
+                    <thead><tr style={{background:"#f8fafc"}}>{["Name","Unit","Price","Beg","Recv","Out","Rem","Action"].map(h=><th key={h} style={{padding:"5px 8px",textAlign:"left",color:"#94a3b8",fontWeight:700,fontSize:".68rem",textTransform:"uppercase",borderBottom:"1px solid #e2e8f0"}}>{h}</th>)}</tr></thead>
+                    <tbody>{importPreview.slice(0,25).map((row,i)=>{const ex=inventory.find(inv=>inv.name.toUpperCase()===row.name);return(<tr key={i} style={{background:i%2?"#fafbfc":"#fff"}}><td style={{padding:"4px 8px",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.name}</td><td style={{padding:"4px 8px",color:"#64748b"}}>{row.unit}</td><td style={{padding:"4px 8px",fontFamily:"monospace",color:"#64748b"}}>{row.price||"—"}</td><td style={{padding:"4px 8px",fontFamily:"monospace"}}>{row.beg}</td><td style={{padding:"4px 8px",fontFamily:"monospace",color:"#059669"}}>{row.recv}</td><td style={{padding:"4px 8px",fontFamily:"monospace",color:"#f97316"}}>{row.out}</td><td style={{padding:"4px 8px",fontFamily:"monospace",fontWeight:700,color:row.qty>0?"#059669":row.qty<0?"#dc2626":"#94a3b8"}}>{row.qty}</td><td style={{padding:"4px 8px"}}><span style={{fontSize:".68rem",fontWeight:700,color:ex?"#d97706":"#059669"}}>{ex?"UPDATE":"NEW"}</span></td></tr>);})}{importPreview.length>25&&<tr><td colSpan={8} style={{padding:"4px 8px",color:"#94a3b8",fontSize:".72rem",textAlign:"center"}}>… and {importPreview.length-25} more</td></tr>}</tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
+              <button onClick={()=>setShowImport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+              <button onClick={commitImport} disabled={!importPreview.length} style={{background:importPreview.length?"#7c3aed":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:importPreview.length?"#fff":"#94a3b8",cursor:importPreview.length?"pointer":"not-allowed"}}>⬆ Import {importPreview.length>0?importPreview.length+" items":""}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
