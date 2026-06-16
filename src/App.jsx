@@ -12855,6 +12855,28 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
   const[histOpen,setHistOpen]=useState(false);
+
+  // Re-run carry-forward after Supabase loads — initial useState runs before data arrives
+  React.useEffect(()=>{
+    if(!cashPositions) return;
+    // If today already has a saved position, load it
+    if(cashPositions[selDate]){
+      setPos(cashPositions[selDate]);
+      setSaved(true);
+      return;
+    }
+    // Today has no saved entry — carry ending balance from the most recent prior day
+    const prevDay=Object.keys(cashPositions).filter(k=>k<selDate).sort().reverse()[0];
+    if(!prevDay) return;
+    const prev=cashPositions[prevDay];
+    const newBanks={};
+    BANKS.forEach(b=>{
+      const r=prev.banks?.[b.id]||{};
+      newBanks[b.id]={beg:r.end||r.book||"",book:"",end:""};
+    });
+    setPos(p=>({...p,banks:newBanks}));
+    setSaved(false);
+  },[cashPositions]);
   const mob=window.innerWidth<768;
 
   // Billing-derived metrics
