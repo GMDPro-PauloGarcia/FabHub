@@ -18339,305 +18339,580 @@ function InventoryView({inventory,stocklog,wonDeals,addInventoryItem,updateInven
   const[qtyMap,setQtyMap]=useState({});
   const csvFileRef=useRef(null);
 
-  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const fm=(k,v)=>setMoveForm(p=>({...p,[k]:v}));
   const n=v=>Number(v)||0;
-  const fmt=v=>"₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:2});
-
+  const fp=v=>v?("₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:2})):"—";
   const canEdit=role==="Manager"||role==="Procurement"||role==="Warehouse";
   const canDelete=role==="Manager"||role==="Procurement";
 
-  const subs=useMemo(()=>{
-    const cat=INV_CATEGORIES.find(c=>c.main===form.category);
-    return cat?.subs||["Other"];
-  },[form.category]);
+  // ── derive BEG/RECV/OUT from stock movements ──────────────────────────
+  const mvMap=useMemo(()=>{
+    const m={};
+    for(const s of stocklog){
+      if(!m[s.itemId])m[s.itemId]={recv:0,out:0};
+      if(s.moveType.startsWith("IN"))m[s.itemId].recv+=n(s.qty);
+      else if(s.moveType.startsWith("OUT"))m[s.itemId].out+=n(s.qty);
+    }
+    return m;
+  },[stocklog]);
 
+  const rows=useMemo(()=>inventory.map(i=>{
+    const mv=mvMap[i.id]||{recv:0,out:0};
+    const rem=n(i.qtyOnHand);
+    const recv=mv.recv, out=mv.out;
+    const beg=Math.max(0,rem+out-recv);
+    const price=n(i.avgCost)||n(i.lastPurchasePrice);
+    const isLow=n(i.reorderPoint)>0&&rem<=n(i.reorderPoint);
+    const isOut=rem===0;
+    return{...i,_beg:beg,_recv:recv,_out:out,_rem:rem,_price:price,_isLow:isLow,_isOut:isOut};
+  }),[inventory,mvMap]);
+
+  // ── KPIs ──────────────────────────────────────────────────────────────
+  const totalVal=rows.reduce((s,i)=>s+i._rem*i._price,0);
+  const recvVal =rows.reduce((s,i)=>s+i._recv*i._price,0);
+  const outVal  =rows.reduce((s,i)=>s+i._out*i._price,0);
+  const begVal  =rows.reduce((s,i)=>s+i._beg*i._price,0);
+  const inStock =rows.filter(i=>i._rem>0).length;
+  const lowStock=rows.filter(i=>i._isLow);
+  const outOfStk=rows.filter(i=>i._isOut);
+  const negStock=rows.filter(i=>i._rem<0);
+
+  // ── filtered / sorted inventory ───────────────────────────────────────
   const filtered=useMemo(()=>{
-    let list=inventory;
-    if(filterCat!=="all") list=list.filter(i=>i.category===filterCat);
-    if(filterLoc!=="all") list=list.filter(i=>i.location===filterLoc);
-    if(search) list=list.filter(i=>i.name.toLowerCase().includes(search.toLowerCase())||i.code.toLowerCase().includes(search.toLowerCase())||i.supplier.toLowerCase().includes(search.toLowerCase()));
+    let list=[...rows];
+    if(search)list=list.filter(i=>i.name.toLowerCase().includes(search.toLowerCase())||i.code.toLowerCase().includes(search.toLowerCase())||i.supplier.toLowerCase().includes(search.toLowerCase()));
+    if(filterStatus==="ok")list=list.filter(i=>i._rem>0);
+    else if(filterStatus==="low")list=list.filter(i=>i._isLow);
+    else if(filterStatus==="zero")list=list.filter(i=>i._isOut);
+    else if(filterStatus==="neg")list=list.filter(i=>i._rem<0);
+    list.sort((a,b)=>{
+      let av=a[sortK],bv=b[sortK];
+      if(sortK==="name"){av=a.name;bv=b.name;}
+      else if(sortK==="rem"){av=a._rem;bv=b._rem;}
+      else if(sortK==="price"){av=a._price;bv=b._price;}
+      else if(sortK==="beg"){av=a._beg;bv=b._beg;}
+      else if(sortK==="recv"){av=a._recv;bv=b._recv;}
+      else if(sortK==="out"){av=a._out;bv=b._out;}
+      if(typeof av==="string"){av=av.toLowerCase();bv=bv.toLowerCase();}
+      return sortD*(av<bv?-1:av>bv?1:0);
+    });
     return list;
-  },[inventory,filterCat,filterLoc,search]);
+  },[rows,search,filterStatus,sortK,sortD]);
 
-  // KPIs
-  const totalValue=inventory.reduce((s,i)=>s+n(i.qtyOnHand)*n(i.avgCost),0);
-  const lowStock=inventory.filter(i=>n(i.qtyOnHand)<=n(i.reorderPoint)&&n(i.reorderPoint)>0);
-  const outOfStock=inventory.filter(i=>n(i.qtyOnHand)===0);
+  function sortBy(k){if(sortK===k)setSortD(d=>d*-1);else{setSortK(k);setSortD(1);}}
 
+  // ── form helpers ──────────────────────────────────────────────────────
+  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
+  const fm=(k,v)=>setMoveForm(p=>({...p,[k]:v}));
+  const subs=useMemo(()=>(INV_CATEGORIES.find(c=>c.main===form.category)?.subs||["Other"]),[form.category]);
   const openEdit=(item)=>{setForm({...item});setEditId(item.id);setShowForm(true);};
   const openNew=()=>{setForm(emptyItem());setEditId(null);setShowForm(true);};
   const saveItem=()=>{
-    if(!form.name) return;
-    if(editId) updateInventoryItem(editId,form);
+    if(!form.name)return;
+    if(editId)updateInventoryItem(editId,form);
     else addInventoryItem(form);
-    setShowForm(false); setEditId(null);
+    setShowForm(false);setEditId(null);
   };
   const submitMove=()=>{
-    if(!moveForm.qty||!showMove) return;
+    if(!moveForm.qty||!showMove)return;
     logStockMove({...moveForm,itemId:showMove});
     setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});
     setShowMove(null);
   };
-
   const quickAdjust=(item,delta)=>{
     logStockMove({itemId:item.id,moveType:"ADJUST — Stock Count",qty:Math.max(0,n(item.qtyOnHand)+delta),unitCost:n(item.avgCost),projectId:"",notes:delta>0?`Quick +${delta}`:`Quick ${delta}`,date:today});
   };
 
-  function autoCategory(name){
-    const nm=name.toUpperCase();
-    if(/\b(BOARD|SHEET|PLYWOOD|PLYBOARD|ACRYLIC|GLASS|FOAM|MIKA|LAMINATE)\b/.test(nm)) return{main:"Sheet Materials",sub:"Board / Panel"};
-    if(/\b(STUD|TRUCK|TUBULAR|STEEL|IRON|SCREW|RIVET|BOLT|NUT|CLAMP)\b/.test(nm)) return{main:"Metal Works",sub:"Fasteners"};
-    if(/\b(HINGE|HANDLE|DRAWER|GUIDE|CONCEALED|LOCK)\b/.test(nm)) return{main:"Hardware",sub:"Tracks & Slides"};
-    if(/\b(PAINT|PRIMER|LACQUER|THINNER|PUTTY|SEALANT|EPOXY|SEAL|BOYSEN|SPHERO|LATEX)\b/.test(nm)) return{main:"Finishing",sub:"Paint"};
-    if(/\b(LED|LIGHT|STRIP|COB|BULB|DOWNLIGHT|LIHA)\b/.test(nm)) return{main:"Lighting",sub:"LED Strips"};
-    if(/\b(WIRE|OUTLET|SWITCH|BREAKER|CONDUIT|EMT|JUNCTION|CABLE|ELECTRICAL|GI COUPLING|IMC|ELBOW)\b/.test(nm)) return{main:"Electrical",sub:"Wiring & Conduit"};
-    if(/\b(DISC|TAPE|GLOVES|GOGGLES|BRUSH|TRAY|BLADE|BUBBLE WRAP|STOCKING)\b/.test(nm)) return{main:"Consumables",sub:"Abrasives"};
+  // ── CSV import helpers ────────────────────────────────────────────────
+  function autoCategory(nm){
+    const s=nm.toUpperCase();
+    if(/\b(BOARD|SHEET|PLYWOOD|PLYBOARD|ACRYLIC|GLASS|FOAM|MIKA|LAMINATE)\b/.test(s))return{main:"Sheet Materials",sub:"Board / Panel"};
+    if(/\b(STUD|TRUCK|TUBULAR|STEEL|IRON|SCREW|RIVET|BOLT|NUT|CLAMP)\b/.test(s))return{main:"Metal Works",sub:"Fasteners"};
+    if(/\b(HINGE|HANDLE|DRAWER|GUIDE|CONCEALED|LOCK)\b/.test(s))return{main:"Hardware",sub:"Tracks & Slides"};
+    if(/\b(PAINT|PRIMER|LACQUER|THINNER|PUTTY|SEALANT|EPOXY|SEAL|BOYSEN|SPHERO|LATEX)\b/.test(s))return{main:"Finishing",sub:"Paint"};
+    if(/\b(LED|LIGHT|STRIP|COB|BULB|DOWNLIGHT|LIHA)\b/.test(s))return{main:"Lighting",sub:"LED Strips"};
+    if(/\b(WIRE|OUTLET|SWITCH|BREAKER|CONDUIT|EMT|JUNCTION|CABLE|ELECTRICAL|GI COUPLING|IMC|ELBOW)\b/.test(s))return{main:"Electrical",sub:"Wiring & Conduit"};
+    if(/\b(DISC|TAPE|GLOVES|GOGGLES|BRUSH|TRAY|BLADE|BUBBLE WRAP|STOCKING)\b/.test(s))return{main:"Consumables",sub:"Abrasives"};
     return{main:"Other",sub:"Other"};
   }
-
   function parseInvCSV(text){
-    const rows=[];
+    const result=[];
     for(const raw of text.split(/\r?\n/)){
-      const line=raw.trim(); if(!line) continue;
+      const line=raw.trim();if(!line)continue;
       const low=line.toLowerCase();
-      if(low.startsWith("item")||low.startsWith("desc")||low.startsWith("no.")||low.startsWith("#")||low.startsWith("name")) continue;
+      if(low.startsWith("item")||low.startsWith("desc")||low.startsWith("no.")||low.startsWith("#")||low.startsWith("name"))continue;
       const cols=[];let cur="",inQ=false;
       for(let ci=0;ci<line.length;ci++){const ch=line[ci];if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else{cur+=ch;}}
       cols.push(cur.trim());
-      const name=(cols[0]||"").replace(/^"|"$/g,"").trim().toUpperCase();
-      if(!name) continue;
+      const name=(cols[0]||"").replace(/^"|"$/g,"").trim().toUpperCase();if(!name)continue;
       const unit=(cols[1]||"pcs").replace(/^"|"$/g,"").trim().toLowerCase()||"pcs";
       const price=parseFloat((cols[2]||"0").replace(/[₱,]/g,""))||0;
       const beg=parseInt((cols[3]||"0").replace(/,/g,""))||0;
       const recv=parseInt((cols[4]||"0").replace(/,/g,""))||0;
       const out=parseInt((cols[5]||"0").replace(/,/g,""))||0;
       const notes=(cols[6]||"").replace(/^"|"$/g,"").trim();
-      const qty=beg+recv-out;
-      rows.push({name,unit,price,qty,notes,beg,recv,out});
+      result.push({name,unit,price,qty:beg+recv-out,notes,beg,recv,out});
     }
-    return rows;
+    return result;
   }
-
   function handleImportText(val){
     setImportText(val);setImportErr("");
     if(!val.trim()){setImportPreview([]);return;}
     try{const r=parseInvCSV(val);if(!r.length){setImportErr("No valid rows — check format.");setImportPreview([]);return;}setImportPreview(r);}
     catch(e){setImportErr("Parse error: "+e.message);setImportPreview([]);}
   }
-
   function commitImport(){
-    if(!importPreview.length) return;
+    if(!importPreview.length)return;
     let added=0,merged=0;
     for(const row of importPreview){
-      const existing=inventory.find(i=>i.name.toUpperCase()===row.name);
-      if(existing){
-        updateInventoryItem(existing.id,{...existing,qtyOnHand:row.qty,lastPurchasePrice:row.price||existing.lastPurchasePrice,avgCost:row.price||existing.avgCost,unit:row.unit||existing.unit,notes:row.notes||existing.notes,lastUpdated:today});
-        merged++;
-      }else{
-        const cat=autoCategory(row.name);
-        addInventoryItem({...emptyItem(),name:row.name,unit:row.unit||"pcs",qtyOnHand:row.qty,lastPurchasePrice:row.price,avgCost:row.price,category:cat.main,subCategory:cat.sub,notes:row.notes,lastUpdated:today});
-        added++;
-      }
+      const ex=inventory.find(i=>i.name.toUpperCase()===row.name);
+      if(ex){updateInventoryItem(ex.id,{...ex,qtyOnHand:row.qty,lastPurchasePrice:row.price||ex.lastPurchasePrice,avgCost:row.price||ex.avgCost,unit:row.unit||ex.unit,notes:row.notes||ex.notes,lastUpdated:today});merged++;}
+      else{const cat=autoCategory(row.name);addInventoryItem({...emptyItem(),name:row.name,unit:row.unit||"pcs",qtyOnHand:row.qty,lastPurchasePrice:row.price,avgCost:row.price,category:cat.main,subCategory:cat.sub,notes:row.notes,lastUpdated:today});added++;}
     }
     setShowImport(false);setImportText("");setImportPreview([]);
     toastEmit(`Imported ${added} new + ${merged} updated items`,"success");
   }
 
+  // ── XLSX export ───────────────────────────────────────────────────────
   function exportInvXLSX(){
     if(!window.XLSX){toastEmit("Excel library not loaded — please refresh","error");return;}
     const wb=window.XLSX.utils.book_new();
-    const hdr=["Code","Name","Category","Sub-Category","Unit","Qty On Hand","Avg Cost","Stock Value","Reorder Pt","Last Price","Supplier","Location","Status","Notes"];
-    const rows=inventory.map(i=>[i.code,i.name,i.category,i.subCategory||"",i.unit,n(i.qtyOnHand),n(i.avgCost),+(n(i.qtyOnHand)*n(i.avgCost)).toFixed(2),n(i.reorderPoint),n(i.lastPurchasePrice),i.supplier,i.location,i.status,i.notes||""]);
-    const totalVal=inventory.reduce((s,i)=>s+n(i.qtyOnHand)*n(i.avgCost),0);
-    const ws=window.XLSX.utils.aoa_to_sheet([["GMD PRO INC. — INVENTORY"],["Exported: "+new Date().toLocaleString("en-PH")+"   Items: "+inventory.length],[],hdr,...rows,["","TOTAL","","","",inventory.reduce((s,i)=>s+n(i.qtyOnHand),0),"",+totalVal.toFixed(2)]]);
-    ws["!cols"]=[{wch:10},{wch:40},{wch:18},{wch:18},{wch:8},{wch:12},{wch:12},{wch:14},{wch:10},{wch:12},{wch:24},{wch:16},{wch:10},{wch:30}];
+    const hdr=["Code","Name","Category","Unit","Beg Qty","Recv Qty","Out Qty","Rem Qty","Unit Price","Stock Value","Reorder Pt","Supplier","Location","Status","Notes"];
+    const rs=rows.map(i=>[i.code,i.name,i.category,i.unit,i._beg,i._recv,i._out,i._rem,i._price,+(i._rem*i._price).toFixed(2),n(i.reorderPoint),i.supplier,i.location,i._isOut?"DEPLETED":i._isLow?"LOW STOCK":"IN STOCK",i.notes||""]);
+    const ws=window.XLSX.utils.aoa_to_sheet([["GMD PRO INC. — INVENTORY"],["Exported: "+new Date().toLocaleString("en-PH")+"   Items: "+rows.length],[],hdr,...rs]);
+    ws["!cols"]=[{wch:10},{wch:38},{wch:16},{wch:8},{wch:9},{wch:9},{wch:9},{wch:9},{wch:12},{wch:14},{wch:10},{wch:24},{wch:14},{wch:12},{wch:28}];
     window.XLSX.utils.book_append_sheet(wb,ws,"Inventory");
-    const lowS=inventory.filter(i=>n(i.qtyOnHand)<=n(i.reorderPoint)&&n(i.reorderPoint)>0);
-    if(lowS.length){
-      const ws2=window.XLSX.utils.aoa_to_sheet([["REORDER LIST"],[],["Name","Unit","Qty On Hand","Reorder Pt","Supplier","Location"],...lowS.map(i=>[i.name,i.unit,n(i.qtyOnHand),n(i.reorderPoint),i.supplier,i.location])]);
-      ws2["!cols"]=[{wch:40},{wch:8},{wch:12},{wch:10},{wch:24},{wch:16}];
+    if(lowStock.length){
+      const ws2=window.XLSX.utils.aoa_to_sheet([["REORDER LIST"],[],["Name","Unit","On Hand","Reorder Pt","Supplier"],...lowStock.map(i=>[i.name,i.unit,i._rem,n(i.reorderPoint),i.supplier])]);
+      ws2["!cols"]=[{wch:38},{wch:8},{wch:10},{wch:10},{wch:24}];
       window.XLSX.utils.book_append_sheet(wb,ws2,"Reorder List");
     }
     window.XLSX.writeFile(wb,`GMD-Inventory-${today}.xlsx`);
     toastEmit("Excel downloaded","success");
   }
 
-  return(
-    <div>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
-        <div>
-          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📦 Inventory</h2>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Materials on hand — every item is cash sitting in your warehouse</div>
+  // ── shared card style ─────────────────────────────────────────────────
+  const cardS={background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.05)"};
+  const thS=(extra)=>({background:"#f8fafc",padding:"7px 10px",textAlign:"left",fontSize:10,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap",cursor:"pointer",userSelect:"none",...(extra||{})});
+  const tdS=(extra)=>({padding:"6px 10px",borderBottom:`1px solid ${C.border}`,fontSize:12,...(extra||{})});
+
+  // ── inline editable cell ──────────────────────────────────────────────
+  function InlineCell({value,onSave,isNum,color,mono}){
+    const[on,setOn]=useState(false);
+    const[draft,setDraft]=useState("");
+    const ref=useRef();
+    const start=()=>{setDraft(String(value));setOn(true);setTimeout(()=>ref.current?.select(),0);};
+    const commit=()=>{
+      setOn(false);
+      const raw=String(draft).trim().replace(/[₱,]/g,"");
+      const nv=isNum?(isNum==="f"?parseFloat(raw):parseInt(raw)):raw.toUpperCase();
+      if((!isNum||!isNaN(nv))&&nv!==value)onSave(isNum?(isNaN(nv)?value:nv):(nv||value));
+    };
+    const onKey=(e)=>{if(e.key==="Enter"){e.preventDefault();commit();}if(e.key==="Escape")setOn(false);};
+    if(on)return(
+      <td style={tdS({padding:0,...(color?{borderLeft:`1px solid ${C.border}`}:{})})}>
+        <input ref={ref} value={draft} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={onKey}
+          style={{display:"block",width:"100%",padding:"6px 10px",minHeight:32,background:"#fffbf5",border:"none",outline:`2px solid ${C.accent}`,outlineOffset:-2,color:C.text,fontSize:12,fontFamily:mono?"monospace":"inherit"}}/>
+      </td>
+    );
+    return(
+      <td style={tdS({...(color?{borderLeft:`1px solid ${C.border}`}:{})})} onClick={canEdit?start:undefined} title={canEdit?"Click to edit":undefined}
+        onMouseEnter={canEdit?e=>{e.currentTarget.style.background="#fffbf5";}:undefined}
+        onMouseLeave={canEdit?e=>{e.currentTarget.style.background="";}:undefined}>
+        <span style={{display:"block",padding:"0",fontSize:12,color:color||C.text,fontFamily:mono?"monospace":"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:220,cursor:canEdit?"text":"default"}}>{value}</span>
+      </td>
+    );
+  }
+
+  // ── DASHBOARD ─────────────────────────────────────────────────────────
+  function Dashboard(){
+    const topVal=[...rows].filter(i=>i._rem>0).sort((a,b)=>b._rem*b._price-a._rem*a._price).slice(0,6);
+    const atRisk=[...rows].filter(i=>i._beg>0&&i._rem>=0&&i._rem/i._beg<=0.2).sort((a,b)=>a._rem/Math.max(a._beg,1)-b._rem/Math.max(b._beg,1)).slice(0,7);
+    const depleted=[...rows].filter(i=>i._rem<=0).sort((a,b)=>b._beg*b._price-a._beg*a._price).slice(0,7);
+    const recentMv=[...stocklog].sort((a,b)=>b.date>a.date?1:-1).slice(0,10);
+    const fmtV=v=>v>=1000000?"₱"+(v/1000000).toFixed(1)+"M":v>=1000?"₱"+(v/1000).toFixed(0)+"k":fp(v);
+    return(
+      <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
+        {negStock.length>0&&(
+          <div style={{background:C.red,borderRadius:10,padding:"11px 16px",marginBottom:10,display:"flex",alignItems:"center",gap:10}}>
+            <span>⚠️</span>
+            <div style={{flex:1,color:"#fff",fontSize:13}}>
+              <strong>{negStock.length} item{negStock.length>1?"s":""} with negative stock</strong>
+              <span style={{fontSize:11,marginLeft:8,opacity:.85}}>— {negStock.map(i=>i.name).join(", ")}</span>
+            </div>
+          </div>
+        )}
+        {/* KPI strip */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:10}}>
+          {[
+            {lbl:"Total SKUs",    val:rows.length,             sub:"inventory items",       c:C.blue},
+            {lbl:"Remaining Value",val:fmtV(totalVal),         sub:"on hand",               c:C.accent},
+            {lbl:"Low / Depleted",val:lowStock.length+outOfStk.length, sub:"need restocking",c:(lowStock.length+outOfStk.length)>0?C.yellow:C.muted},
+            {lbl:"Negative Stock",val:negStock.length,         sub:negStock.length>0?"restock immediately":"all ok", c:negStock.length>0?C.red:C.muted},
+          ].map(k=>(
+            <div key={k.lbl} style={{...cardS,borderTop:`3px solid ${k.c}`}}>
+              <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".7px",marginBottom:5,fontWeight:600}}>{k.lbl}</div>
+              <div style={{fontSize:22,fontWeight:800,color:k.c,lineHeight:1,fontFamily:"monospace"}}>{k.val}</div>
+              <div style={{fontSize:10,color:C.muted,marginTop:4}}>{k.sub}</div>
+            </div>
+          ))}
         </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={exportInvXLSX} style={{background:"#059669",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>⬇ Excel</button>
-          {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
-          {canEdit&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Add Item</button>}
+        {/* Value Flow */}
+        <div style={{...cardS,marginBottom:10}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.text,marginBottom:12}}>Value Flow Pipeline</div>
+          <div style={{display:"flex",gap:0,marginBottom:8}}>
+            {[
+              {lbl:"Beginning",  val:fmtV(begVal),  c:C.accent},
+              {lbl:"+ Received", val:"+"+fmtV(recvVal), c:C.green},
+              {lbl:"− Issued",   val:"−"+fmtV(outVal),  c:C.red},
+              {lbl:"= On Hand",  val:fmtV(totalVal), c:C.blue},
+            ].map((seg,i)=>(
+              <div key={i} style={{flex:1,background:seg.c+"12",borderTop:`3px solid ${seg.c}`,borderRadius:i===0?"8px 0 0 8px":i===3?"0 8px 8px 0":"0",padding:"10px",textAlign:"center",borderRight:i<3?`1px solid #fff`:undefined}}>
+                <div style={{fontSize:8,color:seg.c,textTransform:"uppercase",letterSpacing:".5px",fontWeight:700,marginBottom:4}}>{seg.lbl}</div>
+                <div style={{fontSize:14,fontWeight:800,color:seg.c,fontFamily:"monospace"}}>{seg.val}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* 3-column bottom panels */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+          {/* Top value items */}
+          <div style={cardS}>
+            <div style={{fontSize:11,fontWeight:700,color:C.text,marginBottom:10}}>Highest Value on Hand</div>
+            {topVal.length===0?<div style={{color:C.muted,fontSize:12,textAlign:"center",padding:"12px 0"}}>No stock yet</div>
+            :topVal.map((item,i)=>(
+              <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <div style={{width:18,height:18,borderRadius:4,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,background:i<3?C.accent+"18":"#f0f2f5",color:i<3?C.accent:C.muted}}>{i+1}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:11,color:C.text,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
+                  <div style={{height:4,background:"#e4e8ef",borderRadius:2,marginTop:3,overflow:"hidden"}}><div style={{width:Math.round(item._rem*item._price/Math.max(topVal[0]._rem*topVal[0]._price,1)*100)+"%",height:"100%",background:i===0?C.accent:C.accent+"80",borderRadius:2}}/></div>
+                </div>
+                <div style={{fontSize:10,fontWeight:700,color:i<3?C.accent:C.muted,fontFamily:"monospace",flexShrink:0}}>{item._rem} {item.unit}</div>
+              </div>
+            ))}
+          </div>
+          {/* Depletion Risk */}
+          <div style={cardS}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.text}}>Depletion Risk</div>
+              <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:atRisk.length>0?C.red+"15":C.green+"15",color:atRisk.length>0?C.red:C.green}}>{atRisk.length} at risk</span>
+            </div>
+            {atRisk.length===0?<div style={{textAlign:"center",padding:"12px 0",color:C.green,fontSize:12}}>✓ No depletion risk</div>
+            :atRisk.map(item=>{
+              const pct=item._beg>0?Math.round(item._rem/item._beg*100):0;
+              const cc=pct<10?C.red:pct<20?C.yellow:C.blue;
+              return(
+                <div key={item.id} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <div style={{width:30,textAlign:"right",fontSize:10,fontWeight:700,color:cc,fontFamily:"monospace",flexShrink:0}}>{pct}%</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
+                    <div style={{height:4,background:"#e4e8ef",borderRadius:2,marginTop:3,overflow:"hidden"}}><div style={{width:pct+"%",height:"100%",background:cc,borderRadius:2}}/></div>
+                  </div>
+                  <div style={{fontSize:10,color:C.muted,flexShrink:0}}>{item._rem}/{item._beg}</div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Depleted / Critical */}
+          <div style={cardS}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <div style={{fontSize:11,fontWeight:700,color:C.text}}>Depleted / Critical</div>
+              <span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:(outOfStk.length+negStock.length)>0?C.red+"15":C.green+"15",color:(outOfStk.length+negStock.length)>0?C.red:C.green}}>{outOfStk.length+negStock.length} items</span>
+            </div>
+            {depleted.length===0?<div style={{textAlign:"center",padding:"12px 0",color:C.green,fontSize:12}}>✓ All items in stock</div>
+            :depleted.map(item=>(
+              <div key={item.id} style={{display:"flex",alignItems:"center",gap:7,padding:"5px 8px",borderRadius:7,marginBottom:5,background:item._rem<0?C.red+"0a":C.yellow+"0a",border:`1px solid ${item._rem<0?C.red+"25":C.yellow+"25"}`}}>
+                <span style={{fontSize:11,flexShrink:0}}>{item._rem<0?"🔴":"🟡"}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:10,color:C.text,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.name}</div>
+                  <div style={{fontSize:9,color:item._rem<0?C.red:C.yellow,fontFamily:"monospace"}}>{item._rem<0?`NEG: ${item._rem} ${item.unit}`:"DEPLETED"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        {/* Recent movements */}
+        <div style={{...cardS,marginTop:10}}>
+          <div style={{fontSize:11,fontWeight:700,color:C.text,marginBottom:10}}>Recent Stock Movements</div>
+          {stocklog.length===0?<div style={{color:C.muted,fontSize:12,textAlign:"center",padding:"12px 0"}}>No movements yet</div>
+          :[...stocklog].sort((a,b)=>b.date>a.date?1:-1).slice(0,8).map((mv,i)=>{
+            const item=inventory.find(x=>x.id===mv.itemId);
+            const clr=mv.moveType.startsWith("IN")?C.green:mv.moveType.startsWith("OUT")?C.yellow:C.muted;
+            return(
+              <div key={mv.id||i} style={{display:"flex",gap:9,padding:"6px 0",borderBottom:i<7?`1px solid ${C.border}`:"none"}}>
+                <div style={{width:6,height:6,borderRadius:"50%",flexShrink:0,marginTop:5,background:clr}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:11,color:C.text}}>{item?.name||"Unknown"} <span style={{color:clr,fontWeight:700}}>{mv.moveType.startsWith("IN")?"+":"-"}{mv.qty} {item?.unit||""}</span></div>
+                  <div style={{fontSize:10,color:C.muted,marginTop:1}}>{mv.moveType} · {mv.date}{mv.notes?` · ${mv.notes}`:""}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── tab bar ───────────────────────────────────────────────────────────
+  const TABS=[["dashboard","📊 Dashboard"],["inventory",`≡ Inventory (${rows.length})`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",gap:0,height:"100%"}}>
+      {/* Topbar */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+        <div>
+          <div style={{fontWeight:800,fontSize:"1.1rem",color:C.text}}>📦 GMD Inventory</div>
+          <div style={{fontSize:".72rem",color:C.muted,marginTop:1}}>Live · Every item is cash in the warehouse</div>
+        </div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          <button onClick={exportInvXLSX} style={{background:C.green,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬇ Excel</button>
+          {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
+          {canEdit&&<button onClick={openNew} style={{background:C.accent,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>＋ Add Item</button>}
         </div>
       </div>
 
-      {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
-        {[
-          {l:"Total Inventory Value", v:"₱"+Math.round(totalValue).toLocaleString("en-PH"), c:"#059669"},
-          {l:"Total Items",           v:inventory.length,                                     c:"#3b82f6"},
-          {l:"Low Stock Alerts",      v:lowStock.length,                                      c:lowStock.length>0?"#f59e0b":"#94a3b8"},
-          {l:"Out of Stock",          v:outOfStock.length,                                    c:outOfStock.length>0?"#ef4444":"#94a3b8"},
-        ].map(({l,v,c})=>(
-          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
-            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
-          </div>
+      {/* Tab bar */}
+      <div style={{display:"flex",background:C.card,border:`1px solid ${C.border}`,borderRadius:8,padding:3,gap:2,marginBottom:10,width:"fit-content",boxShadow:"0 1px 3px rgba(0,0,0,.05)"}}>
+        {TABS.map(([id,lbl])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            style={{padding:"6px 16px",borderRadius:6,background:tab===id?C.accent:"transparent",border:"none",color:tab===id?"#fff":C.muted,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:tab===id?700:500,transition:"all .12s",whiteSpace:"nowrap"}}>
+            {lbl}
+          </button>
         ))}
       </div>
 
-      {/* Finance note */}
-      {(role==="Finance"||role==="Manager")&&(
-        <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".8rem",color:"#1d4ed8"}}>
-          💰 <strong>Inventory = Cash Asset:</strong> Total value of ₱{Math.round(totalValue).toLocaleString("en-PH")} represents materials purchased and sitting in the warehouse. Reconcile with total POs paid. Any discrepancy = investigate.
-        </div>
-      )}
+      {/* ── DASHBOARD TAB ─────────────────────────────────────────────── */}
+      {tab==="dashboard"&&<Dashboard/>}
 
-      {/* Low stock alert */}
-      {lowStock.length>0&&(
-        <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",marginBottom:14,fontSize:".8rem",color:"#92400e"}}>
-          ⚠️ <strong>{lowStock.length} item{lowStock.length>1?"s":""} at or below reorder point:</strong> {lowStock.slice(0,4).map(i=>i.name).join(", ")}{lowStock.length>4&&` +${lowStock.length-4} more`}
-        </div>
-      )}
-
-      {/* Filters + Search */}
-      <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
-        <FInp value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search item, code, supplier…"
-          style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 13px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a"}}/>
-        <select value={filterCat} onChange={e=>setFilterCat(e.target.value)}
-          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-          <option value="all">All Categories</option>
-          {INV_CATEGORIES.map(c=><option key={c.main}>{c.main}</option>)}
-        </select>
-        <select value={filterLoc} onChange={e=>setFilterLoc(e.target.value)}
-          style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-          <option value="all">All Locations</option>
-          {INV_LOCATIONS.map(l=><option key={l}>{l}</option>)}
-        </select>
-      </div>
-
-      {/* Add / Edit Form */}
-      {showForm&&canEdit&&(
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
-          <div style={{fontWeight:800,color:"#0f172a",marginBottom:14}}>{editId?"Edit Item":"Add Inventory Item"}</div>
-          <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
-            <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={form.name} onChange={e=>f("name",e.target.value)} placeholder="e.g. Melamine Board 18mm White 4x8 ft"/></Fld></div>
-            <Fld label="Category"><Sel value={form.category} onChange={e=>{f("category",e.target.value);f("subCategory",INV_CATEGORIES.find(c=>c.main===e.target.value)?.subs[0]||"Other");}}>
-              {INV_CATEGORIES.map(c=><option key={c.main}>{c.main}</option>)}</Sel></Fld>
-            <Fld label="Sub-Category"><Sel value={form.subCategory} onChange={e=>f("subCategory",e.target.value)}>
-              {subs.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
-            <Fld label="Brand / Supplier"><Inp value={form.supplier} onChange={e=>f("supplier",e.target.value)} placeholder="Supplier name"/></Fld>
-            <Fld label="Warehouse Location"><Sel value={form.location} onChange={e=>f("location",e.target.value)}>
-              {INV_LOCATIONS.map(l=><option key={l}>{l}</option>)}</Sel></Fld>
-            <Fld label="Unit of Measure"><Sel value={form.unit} onChange={e=>f("unit",e.target.value)}>
-              {INV_UNITS.map(u=><option key={u}>{u}</option>)}</Sel></Fld>
-            <Fld label="Standard Unit Size" hint="e.g. 4x8 ft, 1 liter, per piece"><Inp value={form.unitSize} onChange={e=>f("unitSize",e.target.value)} placeholder="e.g. 4x8 ft"/></Fld>
-            <Fld label="Qty On Hand"><Inp type="number" value={form.qtyOnHand} onChange={e=>f("qtyOnHand",e.target.value)} min={0}/></Fld>
-            <Fld label="Reorder Point" hint="Alert when stock drops to this level"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
-            <Fld label="Last Purchase Price (₱)" hint="VAT-exclusive"><Inp type="number" value={form.lastPurchasePrice} onChange={e=>{f("lastPurchasePrice",e.target.value);f("avgCost",e.target.value);}}/></Fld>
-            <Fld label="Average Cost (₱)" hint="Running average — auto-updates on stock IN"><Inp type="number" value={form.avgCost} onChange={e=>f("avgCost",e.target.value)}/></Fld>
-            <div style={{gridColumn:"1/-1"}}><Fld label="Notes / Specs"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Technical specs, color, grade, thickness…"/></Fld></div>
+      {/* ── INVENTORY TABLE TAB ──────────────────────────────────────── */}
+      {tab==="inventory"&&(
+        <div style={{display:"flex",flexDirection:"column",gap:8,flex:1,minHeight:0}}>
+          {/* Finance note */}
+          {(role==="Finance"||role==="Manager")&&(
+            <div style={{background:"#eff6ff",border:"1px solid #93c5fd",borderRadius:8,padding:"9px 14px",fontSize:".78rem",color:"#1d4ed8"}}>
+              💰 <strong>Inventory = Cash Asset:</strong> ₱{Math.round(totalVal).toLocaleString("en-PH")} in stock. Reconcile with total POs paid. Discrepancy = investigate.
+            </div>
+          )}
+          {/* Search / filter bar */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{flex:1,minWidth:160,position:"relative"}}>
+              <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:C.muted,fontSize:12,pointerEvents:"none"}}>🔍</span>
+              <input value={search} onChange={e=>{setSearch(e.target.value);}} placeholder="Search items…"
+                style={{width:"100%",background:"#fff",border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 11px 7px 28px",fontFamily:"inherit",fontSize:12,color:C.text,outline:"none",boxSizing:"border-box"}}/>
+            </div>
+            <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}
+              style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:12,color:C.text,cursor:"pointer"}}>
+              <option value="">All status</option>
+              <option value="ok">In stock</option>
+              <option value="low">Low stock</option>
+              <option value="zero">Depleted</option>
+              <option value="neg">Negative</option>
+            </select>
           </div>
-          <div style={{display:"flex",gap:10,marginTop:14}}>
-            <button onClick={saveItem} disabled={!form.name} style={{background:form.name?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:form.name?"#fff":"#94a3b8",cursor:form.name?"pointer":"not-allowed"}}>{editId?"Save Changes":"Add Item"}</button>
-            <button onClick={()=>{setShowForm(false);setEditId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-          </div>
-        </div>
-      )}
 
-      {inventory.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No inventory items yet. Add items or upload via the inventory template.</div>}
-
-      {/* Item list */}
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
-        {filtered.map(item=>{
-          const totalItemVal=n(item.qtyOnHand)*n(item.avgCost);
-          const isLow=n(item.reorderPoint)>0&&n(item.qtyOnHand)<=n(item.reorderPoint);
-          const isOut=n(item.qtyOnHand)===0;
-          const statusClr=isOut?"#ef4444":isLow?"#f59e0b":"#10b981";
-          return(
-            <div key={item.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isOut?"#fecaca":isLow?"#fde68a":"#e2e8f0"}`,padding:"14px 18px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
-                <div style={{flex:1}}>
-                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
-                    <span style={{fontSize:".68rem",color:"#94a3b8",fontFamily:"monospace",background:"#f1f5f9",padding:"1px 7px",borderRadius:5}}>{item.code}</span>
-                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".92rem"}}>{item.name}</span>
-                    <span style={{fontSize:".68rem",color:"#64748b",background:"#f1f5f9",padding:"1px 8px",borderRadius:20}}>{item.category}</span>
-                    {item.subCategory&&<span style={{fontSize:".68rem",color:"#94a3b8"}}>{item.subCategory}</span>}
-                  </div>
-                  <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".78rem",color:"#64748b"}}>
-                    {item.supplier&&<span>🏭 {item.supplier}</span>}
-                    <span>📍 {item.location||"Warehouse"}</span>
-                    <span>Last price: {fmt(item.lastPurchasePrice)}/{item.unit}</span>
-                    <span>Avg cost: {fmt(item.avgCost)}/{item.unit}</span>
-                    {item.unitSize&&<span>Size: {item.unitSize}</span>}
-                    <span>Updated: {item.lastUpdated}</span>
-                  </div>
-                  {/* Quick stock move form */}
-                  {showMove===item.id&&canEdit&&(
-                    <div style={{background:"#eff6ff",borderRadius:8,padding:"12px 14px",border:"1.5px solid #93c5fd",marginTop:10}}>
-                      <div style={{fontWeight:700,color:"#1d4ed8",marginBottom:10,fontSize:".84rem"}}>Log Stock Movement</div>
-                      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"1fr 1fr 1fr",gap:10}}>
-                        <Fld label="Type"><Sel value={moveForm.moveType} onChange={e=>fm("moveType",e.target.value)}>{STOCK_MOVE_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
-                        <Fld label="Qty">{moveForm.moveType.startsWith("ADJUST")
-                          ?<Inp type="number" value={moveForm.qty} onChange={e=>fm("qty",e.target.value)} placeholder="New total count"/>
-                          :<Inp type="number" value={moveForm.qty} onChange={e=>fm("qty",e.target.value)} placeholder="0" min={0}/>}
-                        </Fld>
-                        <Fld label="Date"><Inp type="date" value={moveForm.date} onChange={e=>fm("date",e.target.value)}/></Fld>
-                        {moveForm.moveType.startsWith("IN")&&<Fld label="Unit Cost (₱)"><Inp type="number" value={moveForm.unitCost} onChange={e=>fm("unitCost",e.target.value)} placeholder="0.00"/></Fld>}
-                        {moveForm.moveType.startsWith("OUT")&&<Fld label="Project / CE No."><Sel value={moveForm.projectId} onChange={e=>fm("projectId",e.target.value)}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</Sel></Fld>}
-                        <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={moveForm.notes} onChange={e=>fm("notes",e.target.value)} placeholder="DR number, PO reference, project site…"/></Fld></div>
-                      </div>
-                      <div style={{display:"flex",gap:8,marginTop:10}}>
-                        <button onClick={submitMove} disabled={!moveForm.qty} style={{background:moveForm.qty?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:moveForm.qty?"#fff":"#94a3b8",cursor:moveForm.qty?"pointer":"not-allowed"}}>Save Movement</button>
-                        <button onClick={()=>setShowMove(null)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:statusClr}}>{n(item.qtyOnHand).toLocaleString()} <span style={{fontSize:".75rem",fontWeight:400,color:"#94a3b8"}}>{item.unit}</span></div>
-                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>Value: <strong style={{color:"#059669"}}>₱{Math.round(totalItemVal).toLocaleString()}</strong></div>
-                    {isOut&&<div style={{fontSize:".68rem",color:"#ef4444",fontWeight:700}}>OUT OF STOCK</div>}
-                    {isLow&&!isOut&&<div style={{fontSize:".68rem",color:"#f59e0b",fontWeight:700}}>LOW STOCK</div>}
-                  </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"flex-end"}}>
-                    {canEdit&&<button onClick={()=>quickAdjust(item,-1)} title="Remove 1" style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 10px",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:800,fontFamily:"monospace"}}>−1</button>}
-                    {canEdit&&<button onClick={()=>quickAdjust(item,1)} title="Add 1" style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:7,padding:"5px 10px",fontSize:".78rem",color:"#16a34a",cursor:"pointer",fontWeight:800,fontFamily:"monospace"}}>+1</button>}
-                    {canEdit&&<button onClick={()=>{setMoveForm({moveType:"OUT — Used in Project",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id&&moveForm.moveType.startsWith("OUT")?null:item.id);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#c2410c",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>↑ Issue</button>}
-                    {canEdit&&<button onClick={()=>{setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id&&moveForm.moveType.startsWith("IN")?null:item.id);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>↓ IN</button>}
-                    {canEdit&&<button onClick={()=>openEdit(item)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>}
-                    {canDelete&&<button onClick={()=>{if(window.confirm("Delete this item?"))deleteInventoryItem(item.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>}
-                  </div>
-                </div>
+          {/* Add / Edit form */}
+          {showForm&&canEdit&&(
+            <div style={{background:"#fff",borderRadius:10,border:`1px solid ${C.border}`,padding:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
+              <div style={{fontWeight:800,color:C.text,marginBottom:12,fontSize:".92rem"}}>{editId?"✏ Edit Item":"＋ Add Inventory Item"}</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={form.name} onChange={e=>f("name",e.target.value)} placeholder="e.g. CUTTING DISC"/></Fld></div>
+                <Fld label="Category"><Sel value={form.category} onChange={e=>{f("category",e.target.value);f("subCategory",INV_CATEGORIES.find(c=>c.main===e.target.value)?.subs[0]||"Other");}}>
+                  {INV_CATEGORIES.map(c=><option key={c.main}>{c.main}</option>)}</Sel></Fld>
+                <Fld label="Unit"><Sel value={form.unit} onChange={e=>f("unit",e.target.value)}>{INV_UNITS.map(u=><option key={u}>{u}</option>)}</Sel></Fld>
+                <Fld label="Qty On Hand"><Inp type="number" value={form.qtyOnHand} onChange={e=>f("qtyOnHand",e.target.value)} min={0}/></Fld>
+                <Fld label="Unit Price (₱)"><Inp type="number" value={form.lastPurchasePrice} onChange={e=>{f("lastPurchasePrice",e.target.value);f("avgCost",e.target.value);}}/></Fld>
+                <Fld label="Reorder Point"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
+                <Fld label="Supplier"><Inp value={form.supplier} onChange={e=>f("supplier",e.target.value)} placeholder="Supplier name"/></Fld>
+                <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={saveItem} disabled={!form.name} style={{background:form.name?C.accent:"#e2e8f0",border:"none",borderRadius:7,padding:"8px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:form.name?"#fff":"#94a3b8",cursor:form.name?"pointer":"not-allowed"}}>{editId?"Save Changes":"Add Item"}</button>
+                <button onClick={()=>{setShowForm(false);setEditId(null);}} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
               </div>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {/* ── IMPORT CSV MODAL ─────────────────────────────────── */}
+          {/* Table */}
+          <div style={{flex:1,overflow:"auto",border:`1px solid ${C.border}`,borderRadius:10,background:C.card,boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
+              <thead style={{position:"sticky",top:0,zIndex:10}}>
+                <tr>
+                  <th onClick={()=>sortBy("name")}  style={thS({minWidth:160,verticalAlign:"bottom",paddingBottom:6})} rowSpan={2}>Item{sortK==="name"?(sortD===1?" ↑":" ↓"):""}</th>
+                  <th onClick={()=>sortBy("unit")}  style={thS({width:55,verticalAlign:"bottom",paddingBottom:6})} rowSpan={2}>Unit{sortK==="unit"?(sortD===1?" ↑":" ↓"):""}</th>
+                  <th onClick={()=>sortBy("price")} style={thS({width:80,verticalAlign:"bottom",paddingBottom:6})} rowSpan={2}>Price{sortK==="price"?(sortD===1?" ↑":" ↓"):""}</th>
+                  <th colSpan={2} style={thS({textAlign:"center",color:C.accent,borderLeft:`1px solid ${C.border}`})}>── BEG ──</th>
+                  <th colSpan={2} style={thS({textAlign:"center",color:C.green,borderLeft:`1px solid ${C.border}`})}>── RECV ──</th>
+                  <th colSpan={2} style={thS({textAlign:"center",color:C.yellow,borderLeft:`1px solid ${C.border}`})}>── OUT ──</th>
+                  <th colSpan={2} style={thS({textAlign:"center",borderLeft:`1px solid ${C.border}`})}>── REM ──</th>
+                  <th style={thS({width:90,verticalAlign:"bottom",paddingBottom:6})} rowSpan={2}>Status</th>
+                  {canEdit&&<th style={thS({width:130,verticalAlign:"bottom",paddingBottom:6})} rowSpan={2}>Actions</th>}
+                </tr>
+                <tr>
+                  <th onClick={()=>sortBy("beg")}  style={thS({color:C.accent,borderLeft:`1px solid ${C.border}`,width:48})}>Qty{sortK==="beg"?(sortD===1?" ↑":" ↓"):""}</th>
+                  <th style={thS({color:C.accent,width:72})}>Val</th>
+                  <th onClick={()=>sortBy("recv")} style={thS({color:C.green,borderLeft:`1px solid ${C.border}`,width:48})}>Qty{sortK==="recv"?(sortD===1?" ↑":" ↓"):""}</th>
+                  <th style={thS({color:C.green,width:72})}>Val</th>
+                  <th onClick={()=>sortBy("out")}  style={thS({color:C.yellow,borderLeft:`1px solid ${C.border}`,width:48})}>Qty{sortK==="out"?(sortD===1?" ↑":" ↓"):""}</th>
+                  <th style={thS({color:C.yellow,width:72})}>Val</th>
+                  <th onClick={()=>sortBy("rem")}  style={thS({borderLeft:`1px solid ${C.border}`,width:48})}>Qty{sortK==="rem"?(sortD===1?" ↑":" ↓"):""}</th>
+                  <th style={thS({width:80})}>Bal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length===0?(
+                  <tr><td colSpan={canEdit?13:12} style={{textAlign:"center",padding:"2.5rem",color:C.muted,fontSize:12}}>
+                    {inventory.length===0?"No inventory items yet — add items or import CSV.":"No items match the current filter."}
+                  </td></tr>
+                ):filtered.map(item=>{
+                  const price=item._price;
+                  const bdg=item._rem<0?{bg:C.red+"15",c:C.red,lbl:"NEGATIVE"}:item._isOut?{bg:C.yellow+"15",c:C.yellow,lbl:"DEPLETED"}:item._isLow?{bg:C.yellow+"10",c:"#b45309",lbl:"LOW"}:{bg:C.green+"15",c:C.green,lbl:"IN STOCK"};
+                  const qv=qtyMap[item.id]||1;
+                  return(
+                    <tr key={item.id} style={{background:"#fff"}}>
+                      <InlineCell value={item.name} onSave={v=>updateInventoryItem(item.id,{...item,name:v,lastUpdated:today})} color={C.text}/>
+                      <InlineCell value={item.unit} onSave={v=>updateInventoryItem(item.id,{...item,unit:v.toLowerCase(),lastUpdated:today})} color={C.muted} mono/>
+                      <InlineCell value={price} onSave={v=>updateInventoryItem(item.id,{...item,lastPurchasePrice:v,avgCost:v,lastUpdated:today})} isNum="f" color={C.muted} mono/>
+                      {/* BEG */}
+                      <td style={tdS({fontFamily:"monospace",color:C.accent,fontWeight:700,borderLeft:`1px solid ${C.border}`})}>{item._beg}</td>
+                      <td style={tdS({fontFamily:"monospace",color:C.accent+"80",fontSize:11})}>{item._beg&&price?fp(item._beg*price):"—"}</td>
+                      {/* RECV */}
+                      <td style={tdS({fontFamily:"monospace",color:C.green,fontWeight:700,borderLeft:`1px solid ${C.border}`})}>{item._recv}</td>
+                      <td style={tdS({fontFamily:"monospace",color:C.green+"80",fontSize:11})}>{item._recv&&price?fp(item._recv*price):"—"}</td>
+                      {/* OUT */}
+                      <td style={tdS({fontFamily:"monospace",color:C.yellow,fontWeight:700,borderLeft:`1px solid ${C.border}`})}>{item._out}</td>
+                      <td style={tdS({fontFamily:"monospace",color:C.yellow+"80",fontSize:11})}>{item._out&&price?fp(item._out*price):"—"}</td>
+                      {/* REM */}
+                      <td style={tdS({fontFamily:"monospace",fontWeight:800,color:item._rem<0?C.red:item._rem===0?C.yellow:C.green,borderLeft:`1px solid ${C.border}`})}>{item._rem}</td>
+                      <td style={tdS({fontFamily:"monospace",color:C.muted,fontSize:11})}>{item._rem>0&&price?fp(item._rem*price):"—"}</td>
+                      {/* Status */}
+                      <td style={tdS()}>
+                        <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 8px",borderRadius:20,fontSize:9,fontWeight:700,background:bdg.bg,color:bdg.c}}>
+                          <span style={{width:5,height:5,borderRadius:"50%",background:bdg.c,flexShrink:0}}/>
+                          {bdg.lbl}
+                        </span>
+                      </td>
+                      {/* Actions */}
+                      {canEdit&&(
+                        <td style={tdS({padding:"3px 6px"})}>
+                          <div style={{display:"flex",alignItems:"center",gap:2,flexWrap:"wrap"}}>
+                            <button onClick={()=>quickAdjust(item,-1)} style={{padding:"3px 6px",border:`1px solid ${C.red}30`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,fontWeight:800,color:C.red,fontFamily:"monospace"}}>−1</button>
+                            <input type="number" min="1" value={qv} onChange={e=>setQtyMap(p=>({...p,[item.id]:+e.target.value||1}))}
+                              style={{width:32,background:"#fff",border:`1px solid ${C.border}`,borderRadius:4,padding:"3px 4px",color:C.text,fontSize:10,textAlign:"center",fontFamily:"monospace",outline:"none"}}/>
+                            <button onClick={()=>quickAdjust(item,qv)} style={{padding:"3px 6px",border:`1px solid ${C.green}30`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,fontWeight:800,color:C.green,fontFamily:"monospace"}}>+</button>
+                            <button onClick={()=>{setMoveForm({moveType:"OUT — Used in Project",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id?null:item.id);}} title="Issue to project"
+                              style={{padding:"3px 7px",border:`1px solid ${C.yellow}40`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,fontWeight:700,color:"#b45309"}}>↑</button>
+                            <button onClick={()=>{setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id?null:item.id);}} title="Receive stock"
+                              style={{padding:"3px 7px",border:`1px solid ${C.blue}40`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,fontWeight:700,color:C.blue}}>↓</button>
+                            <button onClick={()=>openEdit(item)} style={{padding:"3px 7px",border:`1px solid ${C.border}`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,color:C.muted}}>✏</button>
+                            {canDelete&&<button onClick={()=>{if(window.confirm("Delete "+item.name+"?"))deleteInventoryItem(item.id);}} style={{padding:"3px 7px",border:`1px solid ${C.red}30`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,color:C.red}}>✕</button>}
+                          </div>
+                          {/* Inline move form */}
+                          {showMove===item.id&&(
+                            <div style={{background:"#eff6ff",borderRadius:7,padding:"10px 12px",border:`1px solid #93c5fd`,marginTop:6,minWidth:260}}>
+                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                                <Fld label="Type"><Sel value={moveForm.moveType} onChange={e=>fm("moveType",e.target.value)} style={{fontSize:11,padding:"5px 8px"}}>{STOCK_MOVE_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
+                                <Fld label="Qty"><Inp type="number" value={moveForm.qty} onChange={e=>fm("qty",e.target.value)} placeholder="0" min={0} style={{fontSize:11,padding:"5px 8px"}}/></Fld>
+                                {moveForm.moveType.startsWith("IN")&&<Fld label="Unit Cost (₱)"><Inp type="number" value={moveForm.unitCost} onChange={e=>fm("unitCost",e.target.value)} placeholder="0.00" style={{fontSize:11,padding:"5px 8px"}}/></Fld>}
+                                {moveForm.moveType.startsWith("OUT")&&<Fld label="Project"><Sel value={moveForm.projectId} onChange={e=>fm("projectId",e.target.value)} style={{fontSize:11,padding:"5px 8px"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</Sel></Fld>}
+                                <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={moveForm.notes} onChange={e=>fm("notes",e.target.value)} placeholder="DR #, PO ref…" style={{fontSize:11,padding:"5px 8px"}}/></Fld></div>
+                              </div>
+                              <div style={{display:"flex",gap:6}}>
+                                <button onClick={submitMove} disabled={!moveForm.qty} style={{background:moveForm.qty?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:6,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:moveForm.qty?"#fff":"#94a3b8",cursor:moveForm.qty?"pointer":"not-allowed"}}>Save</button>
+                                <button onClick={()=>setShowMove(null)} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:6,padding:"6px 10px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+                {canEdit&&filtered.length>0&&(
+                  <tr><td colSpan={canEdit?13:12} style={{padding:"7px 10px",color:C.muted,fontSize:11,cursor:"pointer",fontStyle:"italic",borderTop:`1px dashed ${C.border}`}} onClick={openNew}>＋ Click to add a new item…</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── ALERTS TAB ──────────────────────────────────────────────────── */}
+      {tab==="alerts"&&(
+        <div style={{overflowY:"auto",flex:1}}>
+          {(lowStock.length+outOfStk.length+negStock.length)===0?(
+            <div style={{textAlign:"center",padding:"3rem",color:C.green,fontSize:14}}>✅ All items are in stock</div>
+          ):<>
+            {negStock.length>0&&(
+              <><div style={{fontSize:10,color:C.red,textTransform:"uppercase",letterSpacing:".6px",fontWeight:700,marginBottom:8}}>Negative Stock ({negStock.length})</div>
+              {negStock.map(i=>(
+                <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:C.red+"0a",border:`1px solid ${C.red}25`}}>
+                  <span>🔴</span>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:C.red,fontFamily:"monospace"}}>Stock: {i._rem} {i.unit} — RESTOCK IMMEDIATELY</div></div>
+                  {canEdit&&<button onClick={()=>{setTab("inventory");setShowMove(i.id);setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:String(i._price),projectId:"",notes:"",date:today});}} style={{background:C.green,border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>↓ Receive</button>}
+                </div>
+              ))}</>
+            )}
+            {outOfStk.length>0&&(
+              <><div style={{fontSize:10,color:C.yellow,textTransform:"uppercase",letterSpacing:".6px",fontWeight:700,margin:"12px 0 8px"}}>Depleted — Zero Stock ({outOfStk.length})</div>
+              {outOfStk.map(i=>(
+                <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:C.yellow+"0a",border:`1px solid ${C.yellow}25`}}>
+                  <span>🟡</span>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:"#b45309",fontFamily:"monospace"}}>Depleted · Beginning: {i._beg} {i.unit}</div></div>
+                  {canEdit&&<button onClick={()=>{setTab("inventory");setShowMove(i.id);setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:String(i._price),projectId:"",notes:"",date:today});}} style={{background:C.green,border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>↓ Receive</button>}
+                </div>
+              ))}</>
+            )}
+            {lowStock.length>0&&(
+              <><div style={{fontSize:10,color:"#b45309",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700,margin:"12px 0 8px"}}>Low Stock — Below Reorder Point ({lowStock.length})</div>
+              {lowStock.map(i=>(
+                <div key={i.id} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:9,marginBottom:7,background:"#fffbeb",border:"1px solid #fde68a"}}>
+                  <span>⚠️</span>
+                  <div style={{flex:1}}><div style={{fontWeight:700,fontSize:12,color:C.text}}>{i.name}</div><div style={{fontSize:10,color:"#b45309",fontFamily:"monospace"}}>{i._rem} {i.unit} remaining · Reorder at {n(i.reorderPoint)}</div></div>
+                </div>
+              ))}</>
+            )}
+          </>}
+        </div>
+      )}
+
+      {/* ── LOG TAB ─────────────────────────────────────────────────────── */}
+      {tab==="log"&&(
+        <div style={{flex:1,overflowY:"auto",background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"4px 0"}}>
+          {stocklog.length===0?(
+            <div style={{textAlign:"center",padding:"3rem",color:C.muted}}>No stock movements yet</div>
+          ):[...stocklog].sort((a,b)=>b.date>a.date?1:-1).map((mv,i)=>{
+            const item=inventory.find(x=>x.id===mv.itemId);
+            const clr=mv.moveType.startsWith("IN")?C.green:mv.moveType.startsWith("OUT")?C.yellow:C.muted;
+            const proj=wonDeals.find(d=>d.id===mv.projectId);
+            return(
+              <div key={mv.id||i} style={{display:"flex",gap:10,padding:"8px 16px",borderBottom:`1px solid ${C.border}`}}>
+                <div style={{width:7,height:7,borderRadius:"50%",flexShrink:0,marginTop:5,background:clr}}/>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:12,color:C.text,fontWeight:600}}>{item?.name||"Unknown item"} <span style={{color:clr}}>× {mv.qty} {item?.unit||""}</span></div>
+                  <div style={{fontSize:10,color:C.muted,marginTop:1}}>{mv.moveType}{proj?` · ${proj.client}`:""}{mv.notes?` · ${mv.notes}`:""} · {mv.date}</div>
+                </div>
+                <div style={{fontSize:11,fontFamily:"monospace",color:clr,fontWeight:700}}>{mv.moveType.startsWith("IN")?"+":"-"}{mv.qty}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── IMPORT CSV MODAL ─────────────────────────────────────────── */}
       {showImport&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget)setShowImport(false);}}>
           <div style={{background:"#fff",borderRadius:14,padding:24,width:540,maxWidth:"96vw",boxShadow:"0 20px 60px rgba(0,0,0,.2)",maxHeight:"90vh",overflowY:"auto"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-              <div style={{fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>⬆ Import Inventory CSV</div>
-              <button onClick={()=>setShowImport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:"#64748b",fontWeight:700}}>✕</button>
+              <div style={{fontWeight:800,fontSize:"1rem",color:C.text}}>⬆ Import Inventory CSV</div>
+              <button onClick={()=>setShowImport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",cursor:"pointer",color:C.muted,fontWeight:700}}>✕</button>
             </div>
             <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".78rem",color:"#1d4ed8"}}>
               <strong>Format (one item per line):</strong><br/>
               <code style={{fontSize:".73rem",color:"#475569"}}>Name, Unit, Price, Beg Qty, Recv Qty, Out Qty [, Notes]</code><br/>
-              <span style={{color:"#64748b",fontSize:".72rem"}}>Matches the GMD warehouse app's export. Existing items (same name) will be updated — quantities overwritten with Remaining (Beg+Recv−Out).</span>
+              <span style={{color:"#64748b",fontSize:".72rem"}}>Matches the GMD warehouse app export. Existing items (matched by name) are updated — qty set to Beg+Recv−Out.</span>
             </div>
             <div style={{marginBottom:10}}>
               <button onClick={()=>csvFileRef.current?.click()} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".8rem",color:"#475569",cursor:"pointer",fontWeight:600}}>📂 Upload .csv file</button>
-              <input ref={csvFileRef} type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>handleImportText(ev.target.result);r.readAsText(f);e.target.value="";}}/>
+              <input ref={csvFileRef} type="file" accept=".csv,.txt" style={{display:"none"}} onChange={e=>{const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>handleImportText(ev.target.result);r.readAsText(file);e.target.value="";}}/>
             </div>
             <label style={{display:"block",fontSize:".72rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginBottom:5,fontWeight:700}}>Or paste CSV text</label>
             <textarea value={importText} onChange={e=>handleImportText(e.target.value)} rows={7} placeholder={"CUTTING DISC,BOX,2375,10,0,2\nGRINDING DISC,BOX,180,13,0,2,Extra stock\nPAINT BRUSH #1,PCS,25,30,0,0"} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"monospace",fontSize:".78rem",color:"#0f172a",resize:"vertical",boxSizing:"border-box"}}/>
