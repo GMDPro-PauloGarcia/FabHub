@@ -16779,7 +16779,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const printSOA=(clientName)=>{
     const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const clientDeals=[...wonDeals,...(completedDeals||[])].filter(d=>d.client===clientName);
+    const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>d.client===clientName);
     const rows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
       const rt=d.receiptType||"OR",wh=d.withholding||false;
@@ -16912,8 +16912,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     setTimeout(()=>w.print(),600);
   };
 
-  // Per-project summary for list
-  const projectSummaries=[...wonDeals,...completedDeals].map(d=>{
+  // Per-project summary for list — includes addendum child deals
+  const _baseDeals=[...wonDeals,...completedDeals];
+  const _baseIds=new Set(_baseDeals.map(d=>d.id));
+  const _addendumDeals=deals.filter(d=>d.parentDealId&&_baseIds.has(d.parentDealId)&&!_baseIds.has(d.id));
+  const projectSummaries=[..._baseDeals,..._addendumDeals].map(d=>{
     const ms=billings.filter(b=>b.dealId===d.id);
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
