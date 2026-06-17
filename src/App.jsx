@@ -172,6 +172,7 @@ const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.ratin
 const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||""});
 const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
 const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
+const cvToSb=v=>({id:v.id,cv_no:v.cvNo||"",date:v.date||null,payee:v.payee||"",amount:Number(v.amount)||0,description:v.description||"",project_id:v.projectId||null,bank:v.bank||"",notes:v.notes||"",status:v.status||"Draft",released_by:v.releasedBy||null,released_date:v.releasedDate||null,created_by:v.createdBy||"",created_at:v.createdAt||null});
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
@@ -2451,6 +2452,8 @@ export default function App(){
             if(_payables){setPayables(_payables);idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans?.length?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans){setLoans(_loans);idbE.push(["gmdv5:loans",_loans]);}
+            const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null})):null;
+            if(_vouchers){setVouchers(_vouchers);idbE.push([KEYS.vouchers,_vouchers]);}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);idbE.push([KEYS.botsettings,bs]);}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
             if(_drfs){setDrfs(_drfs);idbE.push([KEYS.drfs,_drfs]);}
@@ -4617,12 +4620,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!cvForm.payee||!cvForm.amount) return;
     const rec={...cvForm,amount:Number(cvForm.amount),id:editCvId||uid(),createdBy:session?.name||role,createdAt:editCvId?(cvForm.createdAt||today):today};
     upVouchers(vs=>editCvId?vs.map(v=>v.id===editCvId?rec:v):[rec,...vs]);
+    if(isSupabaseReady()) sbUpsert("check_vouchers",cvToSb(rec),"id").catch(()=>{});
     setEditCvId(null);setCvModal(false);
   };
-  const delCv=id=>upVouchers(vs=>vs.filter(v=>v.id!==id));
-  const releaseCv=id=>upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Released",releasedBy:session?.name||role,releasedDate:today}:v));
-  const submitCvForRelease=id=>upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"For Release"}:v));
-  const voidCv=id=>upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Void"}:v));
+  const delCv=id=>{upVouchers(vs=>vs.filter(v=>v.id!==id));if(isSupabaseReady()) sbDelete("check_vouchers",id).catch(()=>{});};
+  const releaseCv=id=>{
+    const releasedBy=session?.name||role;
+    upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Released",releasedBy,releasedDate:today}:v));
+    if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"Released",released_by:releasedBy,released_date:today},"id").catch(()=>{});
+  };
+  const submitCvForRelease=id=>{
+    upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"For Release"}:v));
+    if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"For Release"},"id").catch(()=>{});
+  };
+  const voidCv=id=>{
+    upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Void"}:v));
+    if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"Void"},"id").catch(()=>{});
+  };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next)};
   const savePayable=(data)=>{
