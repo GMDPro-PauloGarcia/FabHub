@@ -13400,12 +13400,12 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       })()}
 
       {/* ── MAIN BANK TABLE (Excel-style vertical flow, banks as columns) ── */}
-      <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
-      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",borderRadius:14,overflow:"hidden"}}>
+      <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)",overflow:"hidden"}}>
+      <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
       {/* ─── TABLE INNER ─── */}
-      <div style={{background:"#fff",minWidth:mob?760:undefined}}>
+      <div style={{background:"#fff",minWidth:mob?680:undefined}}>
         {(()=>{
-          const COL="200px repeat(5,1fr) 130px";
+          const COL=mob?"130px repeat(5,minmax(80px,1fr)) 100px":"200px repeat(5,1fr) 130px";
           const assignBank=(paymentId,bankId,msId)=>{
             const ms=billings.find(b=>(b.payments||[]).some(px=>px.id===paymentId));
             if(ms&&updateMilestone)
