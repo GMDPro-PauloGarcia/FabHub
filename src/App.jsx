@@ -4171,7 +4171,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[acctSearch,setAcctSearch]=useState("");
   const[acctCat,   setAcctCat]  =useState("All");
   const[acctProj,  setAcctProj] =useState("all");
-  const[acctMonth, setAcctMonth]=useState(today.slice(0,7));
+  const[acctMonth, setAcctMonth]=useState("");
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -10319,7 +10319,7 @@ First few:
         </div>
       </div>
       <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-        <input type="month" value={acctMonth} onChange={e=>setAcctMonth(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}/>
+        <input type="date" value={acctMonth} onChange={e=>setAcctMonth(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}/>
         <button onClick={()=>setAcctMonth("")} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",background:acctMonth?"#fff":"#1e293b",color:acctMonth?"#64748b":"#fff",cursor:"pointer",fontWeight:700}}>All dates</button>
         <div style={{position:"relative",flex:1,minWidth:140}}>
           <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".8rem"}}>🔍</span>
@@ -10338,7 +10338,7 @@ First few:
       </div>
       {(()=>{
         let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
-        if(acctMonth) list=list.filter(e=>(e.expDate||"").startsWith(acctMonth));
+        if(acctMonth) list=list.filter(e=>e.expDate===acctMonth);
         if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
         if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
         if(acctProj==="company") list=list.filter(e=>!e.projectId);
