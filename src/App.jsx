@@ -4903,82 +4903,83 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const greeting=hr<12?"morning":hr<17?"afternoon":"evening";
   const navMap={
     Manager:[
-      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"📊 Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"📒 Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"}]},
-      {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
-      {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
+      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"},{id:"reconc",l:"Bank Reconciliation"}]},
+      {group:"Operations",  items:[{id:"projects",l:"Projects"}]},
+      {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"🧮 BOQ Builder"},{id:"inventory",l:"Inventory"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"},{id:"inventory",l:"Inventory"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
-      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"📅 Calendar"},{id:"clients",l:"🏢 Clients"},{id:"reports",l:"📊 Reports"}]},
-      {group:"Projects",     items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
-      {group:"Deliverables", items:[{id:"drf",l:"📝 Design Requests"}]},
-      {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"},{id:"boq",l:"🧮 BOQ Builder"}]},
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"reports",l:"Reports"}]},
+      {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Deliverables", items:[{id:"drf",l:"Design Requests"}]},
+      {group:"QS",           items:[{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ Builder"}]},
     ],
     Finance:[
-      {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"📅 Calendar"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"📊 Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"📒 Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"}]},
-      {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
-      {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
+      {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"},{id:"reconc",l:"Bank Reconciliation"}]},
+      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"🧮 BOQ Builder"},{id:"inventory",l:"Inventory"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"},{id:"inventory",l:"Inventory"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
-      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"📒 Dashboard"}]},
-      {group:"Accounting",  items:[{id:"accounting",l:"📒 Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"}]},
+      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Acct Dashboard"}]},
+      {group:"Accounting",  items:[{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"},{id:"reconc",l:"Bank Reconciliation"}]},
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
-      {group:"Orders",    items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Orders",     items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"Projects",   items:[{id:"projects",l:"Projects"},{id:"clients",l:"Clients"}]},
     ],
     QS:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"CE / QS",  items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"🧮 BOQ Builder"}]},
+      {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"}]},
     ],
     Operations:[
-      {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
+      {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"On-Site",   items:[{id:"projects",l:"📋 Project Cards"}]},
+      {group:"On-Site",   items:[{id:"projects",l:"Project Cards"}]},
       {group:"Materials", items:[{id:"swatchboard",l:"Swatchboard"}]},
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"requests",l:"Requests"}]},
     ],
     Design:[
       {group:"Overview",    items:[{id:"home",l:"Projects"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"Design Work", items:[{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"swatchboard",l:"Swatchboard"}]},
+      {group:"Design Work", items:[{id:"drf",l:"Design Requests"},{id:"projects",l:"Project Cards"},{id:"swatchboard",l:"Swatchboard"}]},
     ],
     ProjectMover:[
-      {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"📅 Calendar"}]},
-      {group:"Updates",  items:[{id:"pmupdates",l:"📝 PM Updates"},{id:"addenda",l:"⚠️ Scope Changes"}]},
-      {group:"Work",     items:[{id:"projects",l:"📋 Project Cards"}]},
+      {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
+      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
-      {group:"Stock",    items:[{id:"deliveries",l:"📦 Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
+      {group:"Stock",    items:[{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
     ],
   };
   const Nav=()=>{
     const NAV_ICONS={
-      home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
-      checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",checkvouchers:"📄",
-      procurement:"📦",clients:"🏢",datamanagement:"⚙",accounts:"👥",
-      collections:"💵",materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",
-      drf:"📝",deliveries:"🚚",stockmove:"📦",reports:"📊",
-      suppliers:"🏭",subcontractors:"👷",requests:"📋",masters:"🗂",
-      "Sales Pipeline":"📊","My Pipeline":"📊",
+      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", reconc:"🏦",
+      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
+      drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
+      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  suppliers:"🏭",
+      subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
+      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️",
     };
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
-    const pauloExtra=session?.username==="paulo"?[{id:"datamanagement",l:"⚙ Data"}]:[];
+    const pauloExtra=session?.username==="paulo"?[{id:"datamanagement",l:"Data"}]:[];
     const NavBtn=({id,l,collapsed})=>{
       const active=page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
@@ -5090,13 +5091,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
-      home:"🏠",pipeline:"📊",projects:"📋",finance:"💰",billing:"🧾",ops:"⚙️",
-      checklist:"✅",joborders:"📄",costanalysis:"📈",accounting:"📒",
-      procurement:"📦",clients:"🏢",accounts:"👥",collections:"💵",
-      materialreq:"🔧",budgetreq:"💳",swatchboard:"🎨",drf:"📝",
-      deliveries:"🚚",stockmove:"📦",reports:"📊",suppliers:"🏭",
-      subcontractors:"👷",calendar:"📅",inventory:"📦",pmupdates:"📝",addenda:"⚠️",
-      activity:"🏆",requests:"📋",masters:"🗂️",
+      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", reconc:"🏦",
+      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
+      drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
+      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  suppliers:"🏭",
+      subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
+      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️",
     };
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",
