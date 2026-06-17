@@ -4880,7 +4880,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"acctdash",l:"📒 Accounting"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -4896,7 +4896,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"acctdash",l:"📒 Accounting"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -10740,6 +10740,84 @@ First few:
           </div>
         </div>
       )}
+    </Wrap>
+  );
+
+  // ── ACCOUNTING DASHBOARD (accessible from Finance & Manager navs) ────────────
+  if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Accounting Overview</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Expenses · Vouchers · Reconciliation · {todayL}</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📒 Expenses</button>
+          <button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>
+        </div>
+      </div>
+      {(()=>{
+        const pendingCv=vouchers.filter(v=>v.status==="For Release");
+        const draftCv=vouchers.filter(v=>v.status==="Draft");
+        const releasedCv=vouchers.filter(v=>v.status==="Released"&&!v.isCleared);
+        const totalExp=exps.reduce((s,e)=>s+Number(e.amount||0),0);
+        const thisMonthExp=exps.filter(e=>{const d=new Date(e.expDate||`${e.year}-${String((e.month||0)+1).padStart(2,"0")}-01`);return d.getMonth()===new Date().getMonth()&&d.getFullYear()===new Date().getFullYear();}).reduce((s,e)=>s+Number(e.amount||0),0);
+        const outstandingChkAmt=releasedCv.reduce((s,v)=>s+Number(v.amount||0),0);
+        return(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+            {[
+              {l:"Expenses This Month",      v:fmt(thisMonthExp),             c:"#6366f1",icon:"📒"},
+              {l:"Total Expenses YTD",        v:fmt(totalExp),                 c:"#3b82f6",icon:"💸"},
+              {l:"Pending For Release",       v:pendingCv.length+" vouchers",  c:"#f59e0b",icon:"⏳"},
+              {l:"Outstanding Checks",        v:fmt(outstandingChkAmt),        c:"#ef4444",icon:"🏦"},
+            ].map(({l,v,c,icon})=>(
+              <div key={l} style={{background:"#fff",borderRadius:12,padding:"16px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
+                <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
+                <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#f59e0b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏳ For Release</span>
+            <button onClick={()=>setPage("checkvouchers")} style={{background:"rgba(255,255,255,.25)",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View All →</button>
+          </div>
+          <div style={{maxHeight:220,overflowY:"auto"}}>
+            {vouchers.filter(v=>v.status==="For Release").length===0
+              ? <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No vouchers pending release.</div>
+              : vouchers.filter(v=>v.status==="For Release").map(v=>(
+                <div key={v.id} style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontWeight:600,fontSize:".82rem",color:"#0f172a"}}>{v.cvNo} · {v.payee}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>{v.date}</div>
+                  </div>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{fmt(v.amount)}</div>
+                </div>
+              ))}
+          </div>
+        </div>
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#6366f1",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📒 Recent Expenses</span>
+            <button onClick={()=>setPage("accounting")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View All →</button>
+          </div>
+          <div style={{maxHeight:220,overflowY:"auto"}}>
+            {[...exps].sort((a,b)=>(b.expDate||"").localeCompare(a.expDate||"")).slice(0,8).map(e=>(
+              <div key={e.id} style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <div style={{fontWeight:600,fontSize:".82rem",color:"#0f172a"}}>{e.note||e.category}</div>
+                  <div style={{fontSize:".7rem",color:"#94a3b8"}}>{e.expDate||`${e.year}-${String((e.month||0)+1).padStart(2,"0")}`} · {e.category}</div>
+                </div>
+                <div style={{fontWeight:700,color:"#dc2626",fontSize:".85rem"}}>{fmt(e.amount)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </Wrap>
   );
 
