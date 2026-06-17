@@ -169,10 +169,10 @@ const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyO
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
 const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
-const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||""});
+const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||"",po_number:p.poNumber||"",po_id:p.poId||null});
 const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
 const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
-const cvToSb=v=>({id:v.id,cv_no:v.cvNo||"",date:v.date||null,payee:v.payee||"",amount:Number(v.amount)||0,description:v.description||"",project_id:v.projectId||null,bank:v.bank||"",notes:v.notes||"",status:v.status||"Draft",released_by:v.releasedBy||null,released_date:v.releasedDate||null,created_by:v.createdBy||"",created_at:v.createdAt||null});
+const cvToSb=v=>({id:v.id,cv_no:v.cvNo||"",date:v.date||null,payee:v.payee||"",amount:Number(v.amount)||0,description:v.description||"",project_id:v.projectId||null,bank:v.bank||"",notes:v.notes||"",status:v.status||"Draft",released_by:v.releasedBy||null,released_date:v.releasedDate||null,created_by:v.createdBy||"",created_at:v.createdAt||null,po_ref:v.poRef||"",payable_id:v.payableId||null,check_no:v.checkNo||"",cleared_date:v.clearedDate||null,is_cleared:v.isCleared||false});
 
 // ─── PROCUREMENT CONSTANTS ────────────────────────────────────────────────────
 const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
@@ -1846,6 +1846,9 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
           <Fld label="Receipt / Invoice Link" hint="Paste a Google Drive, email, or any URL link to the receipt">
             <Inp type="url" value={form.receipt||""} onChange={e=>f("receipt",e.target.value)} placeholder="https://drive.google.com/… (optional)"/>
           </Fld>
+          <Fld label="Bank Cleared Date" hint="Date this expense cleared in your bank statement (optional — for reconciliation)">
+            <Inp type="date" value={form.clearedDate||""} onChange={e=>f("clearedDate",e.target.value)}/>
+          </Fld>
           <div style={{display:"flex",gap:10,marginTop:20}}>
             <Btn full onClick={()=>{
               const errs={};
@@ -2571,11 +2574,11 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(_budgets);idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows?.length){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables?.length?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""})):null;
+            const _payables=data.payables?.length?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null})):null;
             if(_payables){setPayables(_payables);idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans?.length?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans){setLoans(_loans);idbE.push(["gmdv5:loans",_loans]);}
-            const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null})):null;
+            const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
             if(_vouchers){setVouchers(_vouchers);idbE.push([KEYS.vouchers,_vouchers]);}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);idbE.push([KEYS.botsettings,bs]);}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
@@ -2702,7 +2705,7 @@ export default function App(){
     if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(us);idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||""}));setPayables(ps);idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null}));setPayables(ps);idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);idbE.push(["gmdv5:loans",ls]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
@@ -2784,7 +2787,8 @@ export default function App(){
   const toSbPayment = r=>({
     id:r.id, milestone_id:r.milestoneId, amount:Number(r.amount)||0,
     date:r.date||null, ref_no:r.refNo||"", note:r.note||"",
-    recorded_by:r.recordedBy||"",
+    recorded_by:r.recordedBy||"", bank:r.bank||"",
+    value_date:r.valueDate||null,
   });
   const toSbExpense = r=>{
     let date=r.expDate||null;
@@ -2793,7 +2797,7 @@ export default function App(){
     return{id:r.id,deal_id:r.dealId||r.projectId||null,date,
       category:r.category||"",description:desc,note:desc,
       amount:Number(r.amount)||0,supplier:r.payee||r.supplier||"",receipt_no:r.receiptNo||"",
-      bank_account:r.bankAccount||null};
+      bank_account:r.bankAccount||null,cleared_date:r.clearedDate||null};
   };
   const toSbPR = r=>({
     id:r.id, deal_id:(r.projectId==="__gmd_stocks__"||r.dealId==="__gmd_stocks__")?null:(r.projectId||r.dealId||null), item:r.itemName||r.item||"",
@@ -4303,9 +4307,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[vouchers,  setVouchers] =useState([]);
   const[cvModal,   setCvModal]  =useState(false);
   const[editCvId,  setEditCvId] =useState(null);
-  const[cvForm,    setCvForm]   =useState({date:today,cvNo:"",payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft"});
+  const[cvForm,    setCvForm]   =useState({date:today,cvNo:"",payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
   const[cvSearch,  setCvSearch] =useState("");
   const[cvStatus,  setCvStatus] =useState("All");
+  const[reconBank, setReconBank]=useState(BANKS[0].id);
+  const[stmtBal,   setStmtBal]  =useState("");
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -4744,7 +4750,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   const openAddCv=()=>{
     const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
-    setCvForm({date:today,cvNo:nextNo,payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft"});
+    setCvForm({date:today,cvNo:nextNo,payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
     setEditCvId(null);setCvModal(true);
   };
   const openEditCv=cv=>{setCvForm({...cv});setEditCvId(cv.id);setCvModal(true);};
@@ -4758,8 +4764,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const delCv=id=>{upVouchers(vs=>vs.filter(v=>v.id!==id));if(isSupabaseReady()) sbDelete("check_vouchers",id).catch(()=>{});};
   const releaseCv=id=>{
     const releasedBy=session?.name||role;
+    const cv=vouchers.find(v=>v.id===id);
     upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Released",releasedBy,releasedDate:today}:v));
     if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"Released",released_by:releasedBy,released_date:today},"id").catch(()=>{});
+    if(cv?.payableId){
+      upPayables(ps=>ps.map(p=>p.id===cv.payableId?{...p,status:"Paid",paidDate:today}:p));
+      if(isSupabaseReady()) sbUpsert("payables",{id:cv.payableId,status:"Paid",paid_date:today},"id").catch(()=>{});
+    }
+  };
+  const clearCv=id=>{
+    upVouchers(vs=>vs.map(v=>v.id===id?{...v,isCleared:true,clearedDate:today}:v));
+    if(isSupabaseReady()) sbUpsert("check_vouchers",{id,is_cleared:true,cleared_date:today},"id").catch(()=>{});
   };
   const submitCvForRelease=id=>{
     upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"For Release"}:v));
@@ -4865,7 +4880,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -4881,7 +4896,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -4890,7 +4905,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
-      {group:"Accounting",  items:[{id:"accounting",l:"📒 Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"}]},
+      {group:"Accounting",  items:[{id:"accounting",l:"📒 Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"}]},
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
@@ -8847,7 +8862,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── CASH POSITION TAB ── */}
         {finTab==="cash"&&(
           <>
-            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert}/>
+            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers}/>
           </>
         )}
 
@@ -10637,6 +10652,7 @@ First few:
                     {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
                     {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Submit</button>}
                     {canRelease&&<button onClick={()=>releaseCv(v.id)} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Release</button>}
+                    {v.status==="Released"&&!v.isCleared&&(role==="Finance"||role==="Manager")&&<button onClick={()=>clearCv(v.id)} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🏦 Cleared</button>}
                     {canVoid&&<button onClick={()=>{if(window.confirm("Void this voucher?")) voidCv(v.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>Void</button>}
                   </div>
                 </div>
@@ -10683,8 +10699,28 @@ First few:
               </div>
               <div>
                 <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Bank Account</label>
-                <input value={cvForm.bank} onChange={e=>setCvForm(f=>({...f,bank:e.target.value}))} placeholder="e.g. BPI, Metrobank" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+                <select value={cvForm.bank||""} onChange={e=>setCvForm(f=>({...f,bank:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
+                  <option value="">— Select Bank —</option>
+                  {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
+                </select>
               </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+              <div>
+                <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Check No.</label>
+                <input value={cvForm.checkNo||""} onChange={e=>setCvForm(f=>({...f,checkNo:e.target.value}))} placeholder="e.g. 0012345" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+              </div>
+              <div>
+                <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>PO Reference</label>
+                <input value={cvForm.poRef||""} onChange={e=>setCvForm(f=>({...f,poRef:e.target.value}))} placeholder="e.g. PO-0042" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:12}}>
+              <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Link to Payable (optional)</label>
+              <select value={cvForm.payableId||""} onChange={e=>setCvForm(f=>({...f,payableId:e.target.value||null}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
+                <option value="">— Not linked to a payable —</option>
+                {payables.filter(p=>p.status==="Unpaid").map(p=><option key={p.id} value={p.id}>{p.vendor} — ₱{Number(p.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}{p.invoiceRef?" · "+p.invoiceRef:""}</option>)}
+              </select>
             </div>
             <div style={{marginBottom:12}}>
               <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project (optional)</label>
@@ -10706,6 +10742,123 @@ First few:
       )}
     </Wrap>
   );
+
+  // ── BANK RECONCILIATION ───────────────────────────────────────────────────────
+  if(page==="reconc"&&(role==="Finance"||role==="Manager"||role==="Accounting")) {
+    const fmtR=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const outstandingCvs=vouchers.filter(v=>v.status==="Released"&&!v.isCleared&&(v.bank===reconBank||BANKS.find(b=>b.id===reconBank)?.short===v.bank));
+    const outstandingAmt=outstandingCvs.reduce((s,v)=>s+Number(v.amount||0),0);
+    const transitPayments=billings.flatMap(m=>(m.payments||[]).filter(p=>p.bank===reconBank&&p.valueDate&&p.valueDate>today));
+    const transitAmt=transitPayments.reduce((s,p)=>s+Number(p.amount||0),0);
+    const adjBankBal=Number(stmtBal||0)-outstandingAmt+transitAmt;
+    const bookCredits=billings.flatMap(m=>(m.payments||[]).filter(p=>p.bank===reconBank)).reduce((s,p)=>s+Number(p.amount||0),0);
+    const bookDebits=exps.filter(e=>e.bankAccount===reconBank).reduce((s,e)=>s+Number(e.amount||0),0);
+    const bookDebits2=vouchers.filter(v=>v.status==="Released"&&v.bank===reconBank).reduce((s,v)=>s+Number(v.amount||0),0);
+    return(
+      <Wrap>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem",marginBottom:4}}>🏦 Bank Reconciliation</div>
+        <div style={{fontSize:".82rem",color:"#64748b",marginBottom:20}}>Compare FabHub book balance vs. bank statement. Outstanding checks and deposits in transit explain any timing differences.</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
+          {BANKS.map(b=>(
+            <button key={b.id} onClick={()=>setReconBank(b.id)} style={{background:reconBank===b.id?b.color:"#f1f5f9",color:reconBank===b.id?"#fff":"#475569",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>
+              {b.short}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginBottom:20}}>
+          {/* BANK SIDE */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem"}}>🏛 Bank Statement</span>
+            </div>
+            <div style={{padding:16}}>
+              <div style={{marginBottom:12}}>
+                <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Bank Statement Balance (₱)</label>
+                <input type="number" value={stmtBal} onChange={e=>setStmtBal(e.target.value)} placeholder="Enter balance from bank statement" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".88rem",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
+                <span style={{color:"#64748b"}}>Less: Outstanding Checks</span>
+                <span style={{fontWeight:700,color:"#ef4444"}}>({fmtR(outstandingAmt)})</span>
+              </div>
+              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
+                <span style={{color:"#64748b"}}>Add: Deposits in Transit</span>
+                <span style={{fontWeight:700,color:"#10b981"}}>{fmtR(transitAmt)}</span>
+              </div>
+              <div style={{padding:"10px 0 0",display:"flex",justifyContent:"space-between",fontSize:".9rem",fontWeight:800}}>
+                <span>Adjusted Bank Balance</span>
+                <span style={{color:"#1d4ed8"}}>{fmtR(adjBankBal)}</span>
+              </div>
+            </div>
+          </div>
+          {/* BOOK SIDE */}
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+            <div style={{background:"#1e293b",padding:"12px 16px"}}>
+              <span style={{fontWeight:700,color:"#93c5fd",fontSize:".88rem"}}>📒 FabHub Book Balance</span>
+            </div>
+            <div style={{padding:16}}>
+              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
+                <span style={{color:"#64748b"}}>Collections received</span>
+                <span style={{fontWeight:700,color:"#10b981"}}>{fmtR(bookCredits)}</span>
+              </div>
+              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
+                <span style={{color:"#64748b"}}>Expenses logged</span>
+                <span style={{fontWeight:700,color:"#ef4444"}}>({fmtR(bookDebits)})</span>
+              </div>
+              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
+                <span style={{color:"#64748b"}}>Check vouchers released</span>
+                <span style={{fontWeight:700,color:"#ef4444"}}>({fmtR(bookDebits2)})</span>
+              </div>
+              <div style={{padding:"10px 0 0",display:"flex",justifyContent:"space-between",fontSize:".9rem",fontWeight:800}}>
+                <span>Net Book Balance</span>
+                <span style={{color:bookCredits-bookDebits-bookDebits2>=0?"#059669":"#ef4444"}}>{fmtR(bookCredits-bookDebits-bookDebits2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Outstanding Checks Detail */}
+        {outstandingCvs.length>0&&(
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #fde68a",overflow:"hidden",marginBottom:16}}>
+            <div style={{background:"#fef3c7",padding:"10px 16px"}}>
+              <span style={{fontWeight:700,color:"#92400e",fontSize:".85rem"}}>📋 Outstanding Checks — {BANKS.find(b=>b.id===reconBank)?.short}</span>
+            </div>
+            {outstandingCvs.map(cv=>(
+              <div key={cv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #fef9c3",fontSize:".82rem"}}>
+                <div>
+                  <span style={{fontWeight:700,color:"#0f172a"}}>{cv.cvNo}</span>
+                  <span style={{color:"#64748b",marginLeft:8}}>{cv.payee}</span>
+                  {cv.checkNo&&<span style={{marginLeft:6,fontSize:".72rem",color:"#94a3b8"}}>Check #{cv.checkNo}</span>}
+                  <span style={{marginLeft:6,fontSize:".72rem",color:"#94a3b8"}}>{cv.releasedDate||cv.date||"—"}</span>
+                </div>
+                <span style={{fontWeight:700,color:"#b45309"}}>{fmtR(cv.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Deposits in Transit Detail */}
+        {transitPayments.length>0&&(
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #bbf7d0",overflow:"hidden",marginBottom:16}}>
+            <div style={{background:"#dcfce7",padding:"10px 16px"}}>
+              <span style={{fontWeight:700,color:"#15803d",fontSize:".85rem"}}>💰 Deposits in Transit — {BANKS.find(b=>b.id===reconBank)?.short}</span>
+            </div>
+            {transitPayments.map((p,i)=>(
+              <div key={p.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #f0fdf4",fontSize:".82rem"}}>
+                <div>
+                  <span style={{fontWeight:600,color:"#0f172a"}}>{p.refNo||"—"}</span>
+                  <span style={{color:"#64748b",marginLeft:8}}>Recorded: {p.date} | Value Date: {p.valueDate}</span>
+                </div>
+                <span style={{fontWeight:700,color:"#059669"}}>{fmtR(p.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {!stmtBal&&(
+          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",fontSize:".82rem",color:"#3b82f6"}}>
+            💡 Enter your bank statement balance above to compute the adjusted bank balance and check if it matches FabHub's book balance.
+          </div>
+        )}
+      </Wrap>
+    );
+  }
 
   // ── MATERIAL REQUESTS ────────────────────────────────────────────────────────
   if(page==="materialreq") return(
@@ -13247,7 +13400,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
 
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
-function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[],updateMilestone,upExps,toSbExpense,isSupabaseReady,sbUpsert}){
+function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[],updateMilestone,upExps,toSbExpense,isSupabaseReady,sbUpsert,vouchers=[]}){
   const[selDate,setSelDate]=useState(today);
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
@@ -14168,6 +14321,33 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
         </div>
       </div>
+
+      {/* ── OUTSTANDING CHECKS ── */}
+      {(()=>{
+        const uncleared=vouchers.filter(v=>v.status==="Released"&&!v.isCleared);
+        if(!uncleared.length) return null;
+        return(
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fde68a",padding:16,marginBottom:12}}>
+            <div style={{fontWeight:700,color:"#b45309",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🏦 Outstanding Checks ({uncleared.length})</div>
+            <div style={{fontSize:".72rem",color:"#92400e",marginBottom:10}}>Released check vouchers not yet cleared in the bank — these reduce your effective bank balance.</div>
+            {uncleared.map(cv=>(
+              <div key={cv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #fef3c7",fontSize:".82rem"}}>
+                <div>
+                  <span style={{fontWeight:700,color:"#0f172a"}}>{cv.cvNo||"CV"}</span>
+                  <span style={{color:"#64748b",marginLeft:8}}>{cv.payee}</span>
+                  {cv.checkNo&&<span style={{marginLeft:6,fontSize:".72rem",color:"#94a3b8"}}>#{cv.checkNo}</span>}
+                  <span style={{marginLeft:6,fontSize:".72rem",color:"#64748b"}}>{cv.bank||"—"}</span>
+                </div>
+                <span style={{fontWeight:700,color:"#b45309"}}>₱{Number(cv.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+              </div>
+            ))}
+            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0 0",fontWeight:700,fontSize:".85rem"}}>
+              <span style={{color:"#b45309"}}>Total Outstanding</span>
+              <span style={{color:"#b45309"}}>₱{uncleared.reduce((s,cv)=>s+Number(cv.amount||0),0).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── NOTES ── */}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:8}}>
@@ -15623,6 +15803,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
       const poMsg=`🛒 <b>New Purchase Order ${poNo}</b>\nSupplier: ${poSupplier}\nProject: ${projects}\n\n${itemLines}\n\nBy: ${session?.name||"?"}`;
       sendTelegramNotification("procurement",poMsg);
       sendTelegramNotification("management",poMsg);
+      if(poStatus==="PO Issued"){
+        const poTotal=poItems.reduce((s,i)=>s+Number(i.qty||0)*Number(i.estUnitCost||0),0);
+        if(poTotal>0){
+          const newPayable={id:uid(),vendor:poSupplier,amount:poTotal,dueDate:"",category:"Supplier",
+            invoiceRef:poNo,notes:`Auto-created from PO ${poNo}`,
+            projectId:poItems.find(x=>x.projectId&&x.projectId!=="__gmd_stocks__")?.projectId||null,
+            poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+          upPayables(ps=>[newPayable,...ps]);
+          if(isSupabaseReady()) sbUpsert("payables",payableToSb(newPayable),"id").catch(()=>{});
+        }
+      }
       toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     }
     setMode("list");
@@ -16909,7 +17100,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
   const[editMsForm,setEditMsForm]=useState({});
   const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
-  const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:""});
+  const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:""});
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
@@ -17715,6 +17906,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                               </Sel>
                             </Fld>
                             <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
+                            <Fld label="Value Date" hint="Date bank actually credits (if different)"><Inp type="date" value={payForm.valueDate||""} onChange={e=>fp("valueDate",e.target.value)}/></Fld>
                             <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque / transfer ref…"/></Fld>
                             <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. BPI online transfer"/></Fld>
                           </div>
