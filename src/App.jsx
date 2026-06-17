@@ -19234,7 +19234,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   const[schedForm,setSchedForm]=React.useState({date:today,type:"Repair",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});
   const[editSchedId,setEditSchedId]=React.useState(null);
 
-  const opsEvents=React.useMemo(()=>checklist.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status!=="Done"),[checklists]);
+  const opsEvents=React.useMemo(()=>checklists.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status!=="Done"),[checklists]);
 
   const openSched=(date=today,ev=null)=>{
     if(ev){setSchedForm({date:ev.dueDate||today,type:ev.type||"Repair",projectId:ev.projectId||"",title:ev.title||"",assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setEditSchedId(ev.id);}
