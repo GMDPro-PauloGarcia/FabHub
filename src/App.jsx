@@ -10387,20 +10387,21 @@ First few:
             </div>
             {list.length===0?<EmptyState icon="📋" msg="No expenses match your filter."/>:(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 64px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
-                  {["Date","Project","Item","Category","Amount",""].map((h,i)=>(
-                    <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===4?"right":"left"}}>{h}</div>
+                <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 110px 100px 100px 64px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
+                  {["Date","Project","Item","Category","Bank","Amount",""].map((h,i)=>(
+                    <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===5?"right":"left"}}>{h}</div>
                   ))}
                 </div>
                 {list.map((e,idx)=>{
                   const proj=wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId);
                   return(
-                    <div key={e.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 64px",padding:"7px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
+                    <div key={e.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 110px 100px 100px 64px",padding:"7px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
                       onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
                       <div style={{fontSize:".73rem",color:"#64748b",fontFamily:"monospace"}}>{e.expDate||`${MONTHS[e.month]} ${e.year||""}`}</div>
                       <div style={{fontSize:".78rem",color:"#8b5cf6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?proj.client:<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
                       <div style={{fontSize:".8rem",color:"#0f172a",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</div>
                       <div><span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></div>
+                      <div style={{fontSize:".73rem",color:"#0369a1",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.bankAccount||<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
                       <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".83rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
                       <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
                         <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
