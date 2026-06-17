@@ -4733,10 +4733,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"QS",           items:[{id:"ceqs",l:"📐 CE Requests"},{id:"boq",l:"🧮 BOQ Builder"}]},
     ],
     Finance:[
-      {group:"Overview",   items:[{id:"home",l:"Cash Position"}]},
-      {group:"Approvals",  items:[{id:"requests",l:"📋 MR / BR Queue"},{id:"procurement",l:"Purchase Orders"}]},
-      {group:"Financials", items:[{id:"billing",l:"Billing"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reports",l:"📊 Reports"}]},
-      {group:"Projects",   items:[{id:"projects",l:"📋 Projects"},{id:"clients",l:"🏢 Clients"},{id:"addenda",l:"⚠️ Scope Changes"}]},
+      {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"📅 Calendar"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
+      {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
+      {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"📐 CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"🧮 BOQ Builder"},{id:"inventory",l:"Inventory"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
@@ -6910,8 +6914,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     />
   );
 
-  // ── BOT SETTINGS (Manager only) ───────────────────────────────────────────
-  if(page==="botsettings"&&role==="Manager") return(
+  // ── BOT SETTINGS (Manager / Finance) ─────────────────────────────────────
+  if(page==="botsettings"&&(role==="Manager"||role==="Finance")) return(
     <BotSettingsView botSettings={botSettings} saveBotSettings={saveBotSettings} sendTelegramNotification={sendTelegramNotification} Wrap={Wrap}/>
   );
 
@@ -9101,7 +9105,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse'];
-    if(page==="accounts"&&role==="Manager") return(
+    if(page==="accounts"&&(role==="Manager"||role==="Finance")) return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
       </Wrap>
