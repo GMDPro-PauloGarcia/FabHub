@@ -18846,54 +18846,6 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
             ))}
           </div>
         </div>
-        {/* Incoming PO Deliveries */}
-        {allOpenPOs.length>0&&(
-          <div style={{...cardS,marginBottom:10}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontSize:11,fontWeight:700,color:C.text}}>🚚 Incoming PO Deliveries</div>
-              <div style={{display:"flex",gap:6}}>
-                {overdueD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.red+"18",color:C.red}}>{overdueD.length} overdue</span>}
-                {todayD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.accent+"18",color:C.accent}}>{todayD.length} today</span>}
-                {upcomingD.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.teal+"18",color:C.teal}}>{upcomingD.length} upcoming</span>}
-                {noDatPOs.length>0&&<span style={{fontSize:9,fontWeight:700,padding:"2px 7px",borderRadius:20,background:C.muted+"18",color:C.muted}}>{noDatPOs.length} no date</span>}
-              </div>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:6}}>
-              {[...pendingPOs,...noDatPOs].slice(0,18).map(pr=>{
-                const hasDate=!!pr.deliveryDate;
-                const isOv=hasDate&&pr.deliveryDate<today;
-                const isTd=hasDate&&pr.deliveryDate===today;
-                const cc=isOv?C.red:isTd?C.accent:hasDate?C.teal:C.muted;
-                const daysAway=hasDate?Math.ceil((new Date(pr.deliveryDate)-nowD)/(1000*60*60*24)):null;
-                const deal=wonDeals.find(d=>d.id===pr.dealId||d.id===pr.projectId);
-                return(
-                  <div key={pr.id} style={{display:"flex",gap:8,padding:"8px 10px",borderRadius:8,background:cc+"08",border:`1px solid ${cc}25`}}>
-                    <div style={{flexShrink:0,marginTop:1}}>
-                      <div style={{width:8,height:8,borderRadius:"50%",background:cc}}/>
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:11,color:C.text,fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.itemName||pr.item||"Item"}</div>
-                      <div style={{fontSize:10,color:C.muted,marginTop:1}}>
-                        {pr.supplier&&<span>{pr.supplier} · </span>}
-                        {deal&&<span style={{color:C.blue}}>{deal.client} · </span>}
-                        <span style={{fontFamily:"monospace",fontWeight:700,color:cc}}>
-                          {!hasDate?"no date set":isOv?`${Math.abs(daysAway)}d overdue`:isTd?"arriving today":`in ${daysAway}d · ${pr.deliveryDate}`}
-                        </span>
-                      </div>
-                      <div style={{fontSize:9,color:C.muted,marginTop:2}}>Qty: {pr.qty||1} · Status: {pr.status}{pr.poNumber?` · ${pr.poNumber}`:""}</div>
-                      {updatePR&&pr.status!=="Delivered"&&(
-                        <div style={{display:"flex",gap:4,marginTop:5}}>
-                          <button onClick={()=>updatePR(pr.id,{status:"Delivered",deliveryDate:today,qtyDelivered:pr.qty})} style={{fontSize:9,padding:"2px 8px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Received</button>
-                          {pr.status!=="Partially Delivered"&&<button onClick={()=>updatePR(pr.id,{status:"Partially Delivered"})} style={{fontSize:9,padding:"2px 8px",border:`1px solid ${C.teal}`,borderRadius:5,background:"#fff",color:C.teal,cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Partial</button>}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
         {/* 3-column bottom panels */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
           {/* Top value items */}
