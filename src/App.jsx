@@ -18601,6 +18601,10 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const[qtyMap,setQtyMap]=useState({});
   const[dispatchModal,setDispatchModal]=useState(null);
   const[dispatchForm,setDispatchForm]=useState({itemId:"",qty:"",projectId:"",notes:""});
+  const[delivFilterSupplier,setDelivFilterSupplier]=useState("");
+  const[delivFilterProject,setDelivFilterProject]=useState("");
+  const[delivFilterDateFrom,setDelivFilterDateFrom]=useState("");
+  const[delivFilterDateTo,setDelivFilterDateTo]=useState("");
   const csvFileRef=useRef(null);
 
   const n=v=>Number(v)||0;
@@ -18962,7 +18966,19 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
         const openPOs=prs.filter(p=>!["Delivered","Cancelled"].includes(p.status));
         const withDate=openPOs.filter(p=>p.deliveryDate).sort((a,b)=>a.deliveryDate>b.deliveryDate?1:-1);
         const noDate=openPOs.filter(p=>!p.deliveryDate);
-        const all=[...withDate,...noDate];
+        const allUnfiltered=[...withDate,...noDate];
+        // Unique suppliers and projects for dropdowns
+        const supplierOpts=[...new Set(allUnfiltered.map(p=>p.supplier).filter(Boolean))].sort();
+        const projectOpts=[...new Set(allUnfiltered.map(p=>p.dealId||p.projectId).filter(Boolean))].map(id=>wonDeals.find(d=>d.id===id)).filter(Boolean);
+        // Apply filters
+        const all=allUnfiltered.filter(p=>{
+          if(delivFilterSupplier&&(p.supplier||"").toLowerCase().indexOf(delivFilterSupplier.toLowerCase())<0) return false;
+          if(delivFilterProject&&p.dealId!==delivFilterProject&&p.projectId!==delivFilterProject) return false;
+          if(delivFilterDateFrom&&p.deliveryDate&&p.deliveryDate<delivFilterDateFrom) return false;
+          if(delivFilterDateTo&&p.deliveryDate&&p.deliveryDate>delivFilterDateTo) return false;
+          return true;
+        });
+        const hasFilter=delivFilterSupplier||delivFilterProject||delivFilterDateFrom||delivFilterDateTo;
         const totalValue=all.reduce((s,p)=>{const uc=Number(p.actUnitCost||p.estUnitCost||p.estimatedCost||0);return s+uc*Number(p.qty||1);},0);
         const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
         return(
@@ -18981,6 +18997,40 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                   <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".6px",marginTop:3}}>{l}</div>
                 </div>
               ))}
+            </div>
+            {/* Filter bar */}
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
+              <div style={{flex:"1 1 160px",minWidth:140}}>
+                <div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Supplier</div>
+                <input value={delivFilterSupplier} onChange={e=>setDelivFilterSupplier(e.target.value)} placeholder="Search supplier…" list="supp-opts"
+                  style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/>
+                <datalist id="supp-opts">{supplierOpts.map(s=><option key={s} value={s}/>)}</datalist>
+              </div>
+              <div style={{flex:"1 1 160px",minWidth:140}}>
+                <div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Project</div>
+                <select value={delivFilterProject} onChange={e=>setDelivFilterProject(e.target.value)}
+                  style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}>
+                  <option value="">All projects</option>
+                  {projectOpts.map(d=><option key={d.id} value={d.id}>{d.client}</option>)}
+                </select>
+              </div>
+              <div style={{flex:"1 1 130px",minWidth:120}}>
+                <div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Date From</div>
+                <input type="date" value={delivFilterDateFrom} onChange={e=>setDelivFilterDateFrom(e.target.value)}
+                  style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/>
+              </div>
+              <div style={{flex:"1 1 130px",minWidth:120}}>
+                <div style={{fontSize:9,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Date To</div>
+                <input type="date" value={delivFilterDateTo} onChange={e=>setDelivFilterDateTo(e.target.value)}
+                  style={{width:"100%",border:`1px solid ${C.border}`,borderRadius:7,padding:"6px 10px",fontFamily:"inherit",fontSize:12,color:C.text,background:"#fff",boxSizing:"border-box"}}/>
+              </div>
+              {hasFilter&&(
+                <button onClick={()=>{setDelivFilterSupplier("");setDelivFilterProject("");setDelivFilterDateFrom("");setDelivFilterDateTo("");}}
+                  style={{padding:"6px 14px",border:`1px solid ${C.red}`,borderRadius:7,background:"#fff",color:C.red,fontFamily:"inherit",fontSize:12,fontWeight:700,cursor:"pointer",alignSelf:"flex-end",whiteSpace:"nowrap"}}>
+                  ✕ Clear
+                </button>
+              )}
+              {hasFilter&&<div style={{alignSelf:"flex-end",fontSize:11,color:C.muted,paddingBottom:6}}>{all.length} of {allUnfiltered.length} shown</div>}
             </div>
             {/* Table */}
             <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
