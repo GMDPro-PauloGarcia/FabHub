@@ -16800,6 +16800,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
     const dateStr=new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
     const preparedBy=session?.name||"";
+    const invoiceNos=[...new Set(billings.filter(b=>clientDeals.some(d=>d.id===b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
     const rowsHtml=rows.map((r,i)=>`<tr>
       <td style="text-align:center;color:#64748b">${i+1}</td>
       <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
@@ -16862,7 +16863,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     </div>
     <div class="sub-bar">
       <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
-      <span class="tagline">REF NO.:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+      <span class="tagline">REF NO.: ${esc(invoiceNos)||"—"}</span>
     </div>
     <div class="soa-wrap">
       <div class="soa-title">Statement of Account</div>
@@ -16904,8 +16905,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
       </div>
       <div class="sig">
-        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)}</div><div class="sc">GMD Productions Inc.</div></div>
-        <div><div class="sl2">Approved by:</div><div class="sn">&nbsp;</div></div>
+        <div><div class="sl2">Prepared by:</div><div class="sn">Aerwin Del Rosario</div><div class="sc">GMD Productions Inc.</div></div>
+        <div><div class="sl2">Approved by:</div><div class="sn">Paulo Garcia</div><div class="sc">GMD Productions Inc.</div></div>
       </div>
     </div>
     </body></html>`;
