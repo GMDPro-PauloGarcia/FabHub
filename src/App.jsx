@@ -4905,7 +4905,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"acctdash",l:"📒 Accounting"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"📒 Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -4921,7 +4922,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"🏢 Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"acctdash",l:"📒 Accounting"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"📊 Reports"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"📒 Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"}]},
       {group:"Operations",  items:[{id:"projects",l:"📋 Projects"},{id:"addenda",l:"⚠️ Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"📝 Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
