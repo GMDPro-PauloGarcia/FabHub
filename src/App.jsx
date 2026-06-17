@@ -3717,7 +3717,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(changes.status==="PO Issued"&&changes.approvedBy){
       const pr=prs.find(p=>p.id===id);
       const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
-      sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"?"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
+      sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"GMD Stock"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
     }
     upPrs(ps=>ps.map(p=>{
       if(p.id!==id) return p;
@@ -4171,7 +4171,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[acctSearch,setAcctSearch]=useState("");
   const[acctCat,   setAcctCat]  =useState("All");
   const[acctProj,  setAcctProj] =useState("all");
-  const[acctMonth, setAcctMonth]=useState(today.slice(0,7)); // default = current month YYYY-MM
+  const[acctMonth, setAcctMonth]=useState(today.slice(0,7));
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -8648,11 +8648,38 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
         {/* ── PAYABLES TAB ── */}
         {finTab==="payables"&&(()=>{
+          const n=v=>Number(v)||0;
+          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+          // PO-derived payables — group by supplier
+          const openPOs=prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status));
+          const supplierGroups={};
+          openPOs.forEach(pr=>{
+            const key=(pr.supplier||"Unknown").trim();
+            if(!supplierGroups[key]) supplierGroups[key]={supplier:key,items:[],poNumbers:new Set(),earliestDelivery:null};
+            supplierGroups[key].items.push(pr);
+            if(pr.poNumber) supplierGroups[key].poNumbers.add(pr.poNumber);
+            if(pr.deliveryDate){
+              if(!supplierGroups[key].earliestDelivery||pr.deliveryDate<supplierGroups[key].earliestDelivery)
+                supplierGroups[key].earliestDelivery=pr.deliveryDate;
+            }
+          });
+          const poPayables=Object.values(supplierGroups).map(g=>({
+            ...g,
+            poCount:g.poNumbers.size,
+            itemCount:g.items.length,
+            total:g.items.reduce((s,pr)=>{
+              const unitCost=n(pr.actUnitCost)||n(pr.estUnitCost)||n(pr.actualCost)||n(pr.estimatedCost);
+              return s+unitCost*n(pr.qty);
+            },0)
+          })).filter(g=>g.total>0).sort((a,b)=>b.total-a.total);
+          const totalPOPayables=poPayables.reduce((s,g)=>s+g.total,0);
+
           const unpaid=payables.filter(p=>p.status==="Unpaid");
           const paid=payables.filter(p=>p.status==="Paid");
           const totalUnpaid=unpaid.reduce((s,p)=>s+Number(p.amount||0),0);
+          const grandTotal=totalPOPayables+totalUnpaid;
+          const overdueCount=poPayables.filter(g=>g.deliveryDate&&g.deliveryDate<today).length+unpaid.filter(p=>p.dueDate&&p.dueDate<today).length;
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
-          const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
           return(
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
@@ -8665,15 +8692,56 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
               {/* Summary */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
-                {[{l:"Total Unpaid",v:fmtM(totalUnpaid),c:"#ef4444"},{l:"Overdue",v:unpaid.filter(p=>p.dueDate&&p.dueDate<today).length+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0)),c:"#059669"}].map(({l,v,c})=>(
+                {[{l:"Total Unpaid",v:fmtM(grandTotal),c:"#ef4444"},{l:"Overdue",v:overdueCount+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0)),c:"#059669"}].map(({l,v,c})=>(
                   <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
                     <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
                   </div>
                 ))}
               </div>
-              {/* Unpaid list */}
-              {unpaid.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No outstanding payables — all clear! ✓</div>}
+              {/* PO-derived payables — by supplier */}
+              {poPayables.length>0&&(
+                <div style={{marginBottom:20}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                    <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px"}}>🛒 Supplier Payables — Open POs</div>
+                    <span style={{fontSize:".65rem",background:"#fef3c7",color:"#92400e",borderRadius:20,padding:"1px 8px",fontWeight:700}}>{poPayables.length} supplier{poPayables.length!==1?"s":""} · {fmtM(totalPOPayables)}</span>
+                  </div>
+                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
+                      {["Supplier","POs","Items","Total Owed"].map((h,i)=>(
+                        <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===3?"right":"left"}}>{h}</div>
+                      ))}
+                    </div>
+                    {poPayables.map((g,idx)=>{
+                      const isOverdue=g.earliestDelivery&&g.earliestDelivery<today;
+                      return(
+                        <div key={g.supplier} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"8px 14px",gap:8,alignItems:"center",borderBottom:idx<poPayables.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
+                          onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+                          <div>
+                            <div style={{fontSize:".82rem",color:"#0f172a",fontWeight:700}}>{g.supplier}</div>
+                            {g.earliestDelivery&&<div style={{fontSize:".65rem",color:isOverdue?"#ef4444":"#94a3b8",marginTop:1}}>{isOverdue?"⚠ Overdue: ":"Expected: "}{g.earliestDelivery}</div>}
+                          </div>
+                          <div style={{fontSize:".78rem",color:"#64748b",textAlign:"center"}}>{g.poCount||g.itemCount}</div>
+                          <div style={{fontSize:".78rem",color:"#64748b",textAlign:"center"}}>{g.itemCount}</div>
+                          <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".87rem",fontFamily:"monospace"}}>{fmtM(g.total)}</div>
+                        </div>
+                      );
+                    })}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"8px 14px",gap:8,alignItems:"center",background:"#f8fafc",borderTop:"2px solid #e2e8f0"}}>
+                      <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a"}}>Total</div>
+                      <div/><div/>
+                      <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".9rem",fontFamily:"monospace"}}>{fmtM(totalPOPayables)}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Manual unpaid list */}
+              {unpaid.length>0&&(
+                <div style={{marginBottom:8}}>
+                  <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>📋 Other Payables</div>
+                </div>
+              )}
+              {unpaid.length===0&&poPayables.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No outstanding payables — all clear! ✓</div>}
               {unpaid.sort((a,b)=>(a.dueDate||"9999").localeCompare(b.dueDate||"9999")).map(p=>{
                 const isOverdue=p.dueDate&&p.dueDate<today;
                 const proj=wonDeals.find(d=>d.id===p.projectId)||completedDeals.find(d=>d.id===p.projectId);
@@ -10253,7 +10321,7 @@ First few:
       <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
         <input type="month" value={acctMonth} onChange={e=>setAcctMonth(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}/>
         <button onClick={()=>setAcctMonth("")} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",background:acctMonth?"#fff":"#1e293b",color:acctMonth?"#64748b":"#fff",cursor:"pointer",fontWeight:700}}>All dates</button>
-        <div style={{position:"relative",flex:1,minWidth:160}}>
+        <div style={{position:"relative",flex:1,minWidth:140}}>
           <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".8rem"}}>🔍</span>
           <input value={acctSearch} onChange={e=>setAcctSearch(e.target.value)} placeholder="Search…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px 6px 28px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
         </div>
@@ -10261,12 +10329,12 @@ First few:
           <option value="All">All Categories</option>
           {EXP_CATS.map(c=><option key={c}>{c}</option>)}
         </select>
-        <select value={acctProj} onChange={e=>setAcctProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer",maxWidth:180}}>
+        <select value={acctProj} onChange={e=>setAcctProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer",maxWidth:160}}>
           <option value="all">All Projects</option>
           <option value="company">Company-wide</option>
           {[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
         </select>
-        {(acctSearch||acctCat!=="All"||acctProj!=="all")&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕</button>}
+        {(acctSearch||acctCat!=="All"||acctProj!=="all"||acctMonth)&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");setAcctMonth("");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
       </div>
       {(()=>{
         let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
@@ -10284,26 +10352,24 @@ First few:
             </div>
             {list.length===0?<EmptyState icon="📋" msg="No expenses match your filter."/>:(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                {/* Table header */}
-                <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 70px",padding:"7px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
+                <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 64px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
                   {["Date","Project","Item","Category","Amount",""].map((h,i)=>(
-                    <div key={i} style={{fontSize:".65rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===4?"right":"left"}}>{h}</div>
+                    <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===4?"right":"left"}}>{h}</div>
                   ))}
                 </div>
                 {list.map((e,idx)=>{
                   const proj=wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId);
-                  const bk=BANKS.find(b=>b.id===e.bankAccount);
                   return(
-                    <div key={e.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 70px",padding:"7px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
+                    <div key={e.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 120px 110px 64px",padding:"7px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
                       onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
-                      <div style={{fontSize:".75rem",color:"#64748b",fontFamily:"monospace"}}>{e.expDate||`${MONTHS[e.month]} ${e.year||""}`}</div>
-                      <div style={{fontSize:".78rem",color:"#8b5cf6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?proj.client:"—"}{proj?.contact?<span style={{color:"#94a3b8",fontWeight:400}}> · {proj.contact}</span>:null}</div>
+                      <div style={{fontSize:".73rem",color:"#64748b",fontFamily:"monospace"}}>{e.expDate||`${MONTHS[e.month]} ${e.year||""}`}</div>
+                      <div style={{fontSize:".78rem",color:"#8b5cf6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?proj.client:<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
                       <div style={{fontSize:".8rem",color:"#0f172a",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</div>
-                      <div><span style={{fontSize:".7rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></div>
-                      <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".85rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                      <div><span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></div>
+                      <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".83rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
                       <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                        <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                        <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                        <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                        <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                       </div>
                     </div>
                   );
@@ -12998,10 +13064,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         const newBanks={};
         BANKS.forEach(b=>{
           const r=prev.banks?.[b.id]||{};
-          const endN=Number(r.end)||0;
-          const bookN=Number(r.book)||0;
-          const begVal=endN||bookN;
-          newBanks[b.id]={beg:begVal?String(begVal):"",book:"",end:""};
+          newBanks[b.id]={beg:r.book||r.end||"",book:"",end:""};
         });
         setPos({...emptyDayPosition(d),banks:newBanks});
       } else {
@@ -13574,6 +13637,27 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
                 {totalLess>0?`−${fmt2(totalLess)}`:"—"}
               </div>
             </div>
+            {dateExps.length===0?(
+              <div style={{padding:"10px 16px",fontSize:".73rem",color:"#94a3b8",borderBottom:"1px solid #fee2e2",fontStyle:"italic"}}>No expenses for {selDate}.</div>
+            ):(
+              <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #f1f5f9",background:"#fff"}}>
+                <div style={{...labelCell,background:"#fff7f7",color:"#dc2626",fontStyle:"normal",fontSize:".73rem",paddingLeft:28}}>
+                  <span style={{fontWeight:600}}>{dateExps.length} expense{dateExps.length!==1?"s":""}</span>
+                  {untaggedExps.length>0&&<span style={{display:"block",fontSize:".62rem",color:"#b45309",fontWeight:700,marginTop:1}}>⚠ {untaggedExps.length} untagged</span>}
+                </div>
+                {workingBanks.map(b=>{
+                  const bankTotal=dateExps.filter(e=>e.bankAccount===b.id).reduce((s,e)=>s+Number(e.amount||0),0);
+                  return(
+                    <div key={b.id} style={{padding:"7px 8px",borderRight:"1px solid #f1f5f9",textAlign:"right",fontSize:".8rem",fontWeight:bankTotal>0?700:400,color:bankTotal>0?"#dc2626":"#cbd5e1"}}>
+                      {bankTotal>0?`−${fmt2(bankTotal)}`:"—"}
+                    </div>
+                  );
+                })}
+                <div style={{padding:"7px 12px",textAlign:"right",fontWeight:800,color:"#dc2626",fontSize:".82rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+                  {totalLess>0?`−${fmt2(totalLess)}`:"—"}
+                </div>
+              </div>
+            )}
 
             {/* ── 6. BANK ENDING BALANCE (auto-computed) ── */}
             <div style={{display:"grid",gridTemplateColumns:COL,borderTop:"2px solid #6ee7b7",borderBottom:"1px solid #6ee7b7",background:"#f0fdf4"}}>
