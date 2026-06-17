@@ -2303,6 +2303,128 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
   );
 }
 
+// ─── ADDENDA PAGE CONTENT ─────────────────────────────────────────────────────
+// Extracted from App IIFE to fix React hooks #310 — hooks must be at top level
+function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActivity}){
+  const canCreate=!["Sales","Finance"].includes(role);
+  const myName=session?.name||"";
+  const myProjects=wonDeals.filter(d=>{
+    const jo=jos.find(j=>j.dealId===d.id);
+    return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
+      p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
+  });
+  const[selDealId,setSelDealId]=React.useState(myProjects[0]?.id||wonDeals[0]?.id||"");
+  const[title,setTitle]=React.useState("");
+  const[desc,setDesc]=React.useState("");
+  const[value,setValue]=React.useState("");
+  const[addSearch,setAddSearch]=React.useState("");
+
+  const visibleAddenda=canCreate
+    ?(role==="Manager"?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
+    :addenda;
+  const filteredAddenda=addSearch
+    ?visibleAddenda.filter(a=>{const d=wonDeals.find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
+    :visibleAddenda;
+
+  const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
+  const totalValue=filteredAddenda.reduce((s,a)=>s+Number(a.value||0),0);
+
+  const AddendaList=()=>(
+    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+      <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontWeight:700,color:"#f59e0b",fontSize:".9rem"}}>📋 Scope Change Log ({filteredAddenda.length}){totalValue>0&&<span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:8,fontWeight:400}}>₱{Number(totalValue).toLocaleString("en-PH")} total additional value</span>}</span>
+      </div>
+      <div style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9"}}>
+        <input value={addSearch} onChange={e=>setAddSearch(e.target.value)} placeholder="Search by project, client, status…"
+          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
+      </div>
+      {filteredAddenda.length===0
+        ? <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No scope changes found.</div>
+        : filteredAddenda.slice(0,12).map((a,i)=>{
+            const d=wonDeals.find(x=>x.id===a.dealId);
+            return(
+              <div key={a.id} style={{padding:"11px 16px",borderBottom:i<filteredAddenda.length-1?"1px solid #f8fafc":""}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
+                    <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d?.client||"?"} · {d?.ceNo||"?"} · By {a.discoveredBy||"—"}</div>
+                    {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
+                  </div>
+                  <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{a.status}</span>
+                </div>
+                {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3,fontWeight:600}}>+₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+              </div>
+            );
+          })
+      }
+      {filteredAddenda.length>12&&<div style={{padding:"10px 16px",fontSize:".72rem",color:"#94a3b8",textAlign:"center"}}>+{filteredAddenda.length-12} more — use search to narrow down</div>}
+    </div>
+  );
+
+  if(!canCreate) return <AddendaList/>;
+
+  return(
+    <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:20}}>
+      <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{background:"#dc2626",padding:"12px 16px"}}>
+          <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>⚠️ Flag New Scope Change</span>
+        </div>
+        <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
+          <div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
+            <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
+              {(role==="Manager"?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Scope Change Title <span style={{color:"#ef4444"}}>*</span></label>
+            <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Additional wall cladding — Unit B"
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
+          </div>
+          <div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Description <span style={{color:"#ef4444"}}>*</span></label>
+            <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3} placeholder="What changed? Where? Who requested it? Client verbal approval received?"
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
+          </div>
+          <div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Estimated Additional Value (₱)</label>
+            <input type="number" value={value} onChange={e=>setValue(e.target.value)} placeholder="0 if unknown"
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
+          </div>
+          <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 12px",fontSize:".8rem",color:"#92400e"}}>
+            📣 Submitting this will notify: <strong>{wonDeals.find(d=>d.id===selDealId)?.salesOwner||"AE"}</strong> (AE) and <strong>Paolo Gomez</strong> for coordination.
+          </div>
+          <button
+            onClick={()=>{
+              if(!title.trim()||!desc.trim()||!selDealId){toastEmit("Please fill in all required fields.","warning");return;}
+              const deal=wonDeals.find(d=>d.id===selDealId);
+              const newAdd={
+                id:"add"+Date.now(),dealId:selDealId,
+                title:title.trim(),description:desc.trim(),
+                value:Number(value)||0,
+                ceNo:deal?.ceNo||"",
+                receiptType:deal?.receiptType||"OR",
+                withholding:deal?.withholding||false,
+                status:"Discovered",salesNotified:true,
+                discoveredBy:session?.name||role,
+              };
+              upAddenda(as=>[...as,newAdd]);
+              const ae=deal?.salesOwner||"AE";
+              logActivity(selDealId,"Scope Change Flagged",`${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`);
+              setTitle(""); setDesc(""); setValue("");
+              toastEmit("Scope change logged! Notified Sales.","success");
+            }}
+            style={{background:"#dc2626",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
+            ⚠️ Submit Scope Change
+          </button>
+        </div>
+      </div>
+      <AddendaList/>
+    </div>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -9688,127 +9810,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="addenda") return(
     <Wrap>
       <SecHead title="⚠️ Scope Changes" sub={["Sales","Finance"].includes(role)?"View all scope changes across active projects":"Flag addenda discovered on site — AE and Paolo will be notified"}/>
-      {(()=>{
-        const canCreate=!["Sales","Finance"].includes(role);
-        const myName=session?.name||"";
-        const myProjects=wonDeals.filter(d=>{
-          const jo=jos.find(j=>j.dealId===d.id);
-          return jo&&[jo.pm1,jo.pm2,jo.pm3,jo.coordinator].filter(Boolean).some(p=>
-            p===myName||p.toLowerCase().includes((myName||"").split(" ")[0]?.toLowerCase()||""));
-        });
-        const[selDealId,setSelDealId]=React.useState(myProjects[0]?.id||wonDeals[0]?.id||"");
-        const[title,setTitle]=React.useState("");
-        const[desc,setDesc]=React.useState("");
-        const[value,setValue]=React.useState("");
-        const[addSearch,setAddSearch]=React.useState("");
-
-        // Read-only roles see all addenda; PM roles see their project addenda
-        const visibleAddenda=canCreate
-          ?(role==="Manager"?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
-          :addenda;
-        const filteredAddenda=addSearch
-          ?visibleAddenda.filter(a=>{const d=wonDeals.find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
-          :visibleAddenda;
-
-        const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
-        const totalValue=filteredAddenda.reduce((s,a)=>s+Number(a.value||0),0);
-
-        const AddendaList=()=>(
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".9rem"}}>📋 Scope Change Log ({filteredAddenda.length}){totalValue>0&&<span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:8,fontWeight:400}}>₱{Number(totalValue).toLocaleString("en-PH")} total additional value</span>}</span>
-            </div>
-            <div style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9"}}>
-              <input value={addSearch} onChange={e=>setAddSearch(e.target.value)} placeholder="Search by project, client, status…"
-                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
-            </div>
-            {filteredAddenda.length===0
-              ? <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No scope changes found.</div>
-              : filteredAddenda.slice(0,12).map((a,i)=>{
-                  const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(
-                    <div key={a.id} style={{padding:"11px 16px",borderBottom:i<filteredAddenda.length-1?"1px solid #f8fafc":""}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
-                          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d?.client||"?"} · {d?.ceNo||"?"} · By {a.discoveredBy||"—"}</div>
-                          {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
-                        </div>
-                        <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{a.status}</span>
-                      </div>
-                      {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3,fontWeight:600}}>+₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
-                    </div>
-                  );
-                })
-            }
-            {filteredAddenda.length>12&&<div style={{padding:"10px 16px",fontSize:".72rem",color:"#94a3b8",textAlign:"center"}}>+{filteredAddenda.length-12} more — use search to narrow down</div>}
-          </div>
-        );
-
-        if(!canCreate) return <AddendaList/>;
-
-        return(
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:20}}>
-            {/* Log new addendum */}
-            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-              <div style={{background:"#dc2626",padding:"12px 16px"}}>
-                <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>⚠️ Flag New Scope Change</span>
-              </div>
-              <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
-                  <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-                    {(role==="Manager"?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Scope Change Title <span style={{color:"#ef4444"}}>*</span></label>
-                  <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Additional wall cladding — Unit B"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Description <span style={{color:"#ef4444"}}>*</span></label>
-                  <textarea value={desc} onChange={e=>setDesc(e.target.value)} rows={3} placeholder="What changed? Where? Who requested it? Client verbal approval received?"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
-                </div>
-                <div>
-                  <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Estimated Additional Value (₱)</label>
-                  <input type="number" value={value} onChange={e=>setValue(e.target.value)} placeholder="0 if unknown"
-                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
-                </div>
-                <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 12px",fontSize:".8rem",color:"#92400e"}}>
-                  📣 Submitting this will notify: <strong>{wonDeals.find(d=>d.id===selDealId)?.salesOwner||"AE"}</strong> (AE) and <strong>Paolo Gomez</strong> for coordination.
-                </div>
-                <button
-                  onClick={()=>{
-                    if(!title.trim()||!desc.trim()||!selDealId){toastEmit("Please fill in all required fields.","warning");return;}
-                    const deal=wonDeals.find(d=>d.id===selDealId);
-                    const newAdd={
-                      id:"add"+Date.now(),dealId:selDealId,
-                      title:title.trim(),description:desc.trim(),
-                      value:Number(value)||0,
-                      ceNo:deal?.ceNo||"",
-                      receiptType:deal?.receiptType||"OR",
-                      withholding:deal?.withholding||false,
-                      status:"Discovered",salesNotified:true,
-                      discoveredBy:session?.name||role,
-                    };
-                    upAddenda(as=>[...as,newAdd]);
-                    const ae=deal?.salesOwner||"AE";
-                    logActivity(selDealId,"Scope Change Flagged",`${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`);
-                    setTitle(""); setDesc(""); setValue("");
-                    toastEmit("Scope change logged! Notified Sales.","success");
-                  }}
-                  style={{background:"#dc2626",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
-                  ⚠️ Submit Scope Change
-                </button>
-              </div>
-            </div>
-            <AddendaList/>
-          </div>
-        );
-      })()}
+      <AddendaPageContent role={role} wonDeals={wonDeals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity}/>
     </Wrap>
   );
 
