@@ -10290,7 +10290,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             if(acctProj==="company") list=list.filter(e=>!e.projectId);
             else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
             const rows=[["Date","Category","Description","Amount","Bank Account","Receipt No","Project"]];
-            list.forEach(e=>{const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));rows.push([e.expDate||`${e.year||new Date().getFullYear()}-${String((e.month||0)+1).padStart(2,"0")}-01`,e.category||"",e.note||"",Number(e.amount||0).toFixed(2),e.bankAccount||"",e.receipt||"",proj?.client||""]);});
+            list.forEach(e=>{const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));rows.push([e.expDate||`${e.year||new Date().getFullYear()}-${String((e.month||0)+1).padStart(2,"0")}-01`,e.category||"",e.note||"",Number(e.amount||0).toFixed(2),e.bankAccount||"",e.receipt||"",proj?projDisplayName(proj):""]);});
             const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
             const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);a.download=`GMD_Expenses_${acctMonth||today}.csv`;a.click();
           }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
@@ -10398,7 +10398,7 @@ First few:
                     <div key={e.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 110px 100px 100px 64px",padding:"7px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
                       onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
                       <div style={{fontSize:".73rem",color:"#64748b",fontFamily:"monospace"}}>{e.expDate||`${MONTHS[e.month]} ${e.year||""}`}</div>
-                      <div style={{fontSize:".78rem",color:"#8b5cf6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?proj.client:<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
+                      <div style={{fontSize:".78rem",color:"#8b5cf6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?projDisplayName(proj):<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
                       <div style={{fontSize:".8rem",color:"#0f172a",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</div>
                       <div><span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></div>
                       <div style={{fontSize:".73rem",color:"#0369a1",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.bankAccount||<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
