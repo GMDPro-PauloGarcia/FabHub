@@ -4906,7 +4906,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reconc",l:"Bank Reconciliation"},{id:"reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -4924,7 +4924,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reconc",l:"Bank Reconciliation"},{id:"reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Dashboard"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -4933,7 +4933,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
-      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Acct Dashboard"}]},
+      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
       {group:"Accounting",  items:[{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"},{id:"reconc",l:"Bank Reconciliation"}]},
     ],
     Procurement:[
