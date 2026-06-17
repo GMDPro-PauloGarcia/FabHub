@@ -159,7 +159,7 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",loans:"gmdv5:loans"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -2777,13 +2777,17 @@ export default function App(){
     budget_status:r.budgetStatus||"QS Budget Pending",
     status:r.status||"Active", issued_date:r.issuedDate||r.dateIssued||null,
   });
-  const toSbBilling = r=>({
-    id:r.id, deal_id:r.dealId, name:r.name||"", description:r.description||"",
-    amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
-    invoice_date:r.invoiceDate||null, due_date:r.dueDate||null,
-    status:r.status||"Draft", created_by:r.createdBy||"",
-    receipt_type:r.receiptType||null, withholding:r.withholding??null,
-  });
+  const toSbBilling = r=>{
+    const tx=calcTax(Number(r.amount)||0,r.receiptType||"OR",r.withholding??false);
+    return{
+      id:r.id, deal_id:r.dealId, name:r.name||"", description:r.description||"",
+      amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
+      invoice_date:r.invoiceDate||null, due_date:r.dueDate||null,
+      status:r.status||"Draft", created_by:r.createdBy||"",
+      receipt_type:r.receiptType||null, withholding:r.withholding??null,
+      vat:tx.vat, ewt:tx.ewt, net_receivable:tx.netReceivable,
+    };
+  };
   const toSbPayment = r=>({
     id:r.id, milestone_id:r.milestoneId, amount:Number(r.amount)||0,
     date:r.date||null, ref_no:r.refNo||"", note:r.note||"",
@@ -2836,8 +2840,9 @@ export default function App(){
     id:r.id, deal_id:r.dealId||r.projectId, title:r.title||"", description:r.description||r.desc||"",
     value:Number(r.value)||0, ce_no:r.ceNo||"",
     receipt_type:r.receiptType||"OR", withholding:r.withholding||false,
+    cost_impact:Number(r.costImpact||r.value)||0,
     status:r.status||"Discovered", sales_notified:r.salesNotified||false,
-    discovered_by:r.discoveredBy||"",
+    discovered_by:r.discoveredBy||"", client_approved:r.clientApproved||false,
   });
   const toSbSwatch = r=>({
     id:r.id, deal_id:r.dealId||r.projectId||null, name:r.name||"", category:r.category||"",
@@ -3740,11 +3745,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }
       return{...b,payments,status};
     }));
-    // Reverse the deal.amountPaid so Finance KPIs stay accurate
+    // Recompute deal.amountPaid from all remaining payments across all milestones
     if(dealId){
+      const updatedBillings=billings.map(b=>{
+        if(b.id!==msId) return b;
+        return{...b,payments:(b.payments||[]).filter(p=>p.id!==payId)};
+      });
+      const newPaid=updatedBillings
+        .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
+        .reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
       upDeals(ds=>ds.map(d=>{
         if(d.id!==dealId) return d;
-        const newPaid=Math.max(0,Number(d.amountPaid||0)-Number(payment.amount||0));
         const refVal=Number(d.invoiced||d.value||0);
         const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
         return{...d,amountPaid:newPaid,paymentStatus:newStatus};
@@ -3790,6 +3801,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(a.id!==id) return a;
       const n={...a,...ch};
       if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
+      if(ch.status==="Approved"||ch.clientApproved){
+        const deal=deals.find(d=>d.id===(a.dealId||a.projectId));
+        const costMsg=`⚠️ <b>Scope Change Approved</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nScope: ${a.title||"?"}\nCost Impact: ₱${Number(a.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nApproved by: ${session?.name||"Ops"}\n\n💰 Finance team: please review cost impact and update billing milestones if applicable.`;
+        sendTelegramNotification("finance",costMsg);
+        sendTelegramNotification("management",costMsg);
+      }
       return n;
     }));
   };
@@ -3832,8 +3849,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(isSupabaseReady()) sbSyncOne("material_requests",n,toSbMR);
       if(ch.status==="Approved"){
         const deal=deals.find(d=>d.id===(m.projectId||m.dealId));
-        sendTelegramNotification("procurement",`✅ <b>MR Approved</b>\n${m.itemName||"?"}\nProject: ${deal?.client||m.projectId||"?"}\nApproved by: ${session?.name||"Manager"}`);
+        sendTelegramNotification("procurement",`✅ <b>MR Approved</b>\n${m.itemName||"?"}\nProject: ${deal?.client||m.projectId||"?"}\nApproved by: ${session?.name||"Manager"}\n\n🛒 Proceed to create a PO for this item in Procurement.`);
         sendTelegramNotification("ops",`✅ <b>MR Approved</b>\n${m.itemName||"?"}\nProject: ${deal?.client||m.projectId||"?"}\nApproved by: ${session?.name||"Manager"}`);
+        // Auto-create a draft PO from the approved MR so Procurement has a starting point
+        const draftPR={id:uid(),itemName:m.itemName||"",item:m.itemName||"",qty:Number(m.qty)||1,unit:m.unit||"pcs",estUnitCost:Number(m.estUnitCost||m.estimatedCost)||0,actUnitCost:0,category:"Materials",budgetCategory:m.budgetCategory||"Materials",projectId:m.projectId||m.dealId||null,dealId:m.dealId||m.projectId||null,supplier:"",status:"Pending Approval",urgency:m.urgency||"Normal",requestedBy:m.requestedBy||m.submittedBy||"",approvedBy:session?.name||"",createdDate:today,poNumber:"",fromMrId:m.id,notes:`Auto-created from approved MR: ${m.itemName||"?"}`};
+        upPrs(ps=>[draftPR,...ps]);
+        if(isSupabaseReady()) sbSyncOne("purchase_requests",draftPR,toSbPR);
       }
       return n;
     }));
@@ -4281,6 +4302,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   },[billings,addenda,wonDeals,projs,drfs,prs,breqs,deals,today]);
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
+
+  // Auto-mark overdue billing milestones — runs once when billings load, then daily
+  useEffect(()=>{
+    if(!billings.length) return;
+    const toMark=billings.filter(b=>b.dueDate&&b.dueDate<today&&!['Fully Paid','Cancelled','Overdue'].includes(b.status));
+    if(!toMark.length) return;
+    upBillings(bs=>bs.map(b=>toMark.find(m=>m.id===b.id)?{...b,status:'Overdue'}:b));
+    if(isSupabaseReady()){
+      toMark.forEach(b=>sbUpdate('billing_milestones',b.id,{status:'Overdue',updated_at:new Date().toISOString()}).catch(()=>{}));
+    }
+  },[billings.length,today]); // eslint-disable-line
 
   // ── Dashboard KPI memos — pre-computed so render is instant ──────────────
   const pipeDeals      =useMemo(()=>deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)),[deals]);
@@ -4813,7 +4845,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"Void"},"id").catch(()=>{});
   };
 
-  const upPayables=fn=>{const next=fn(payables);setPayables(next)};
+  const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
   const savePayable=(data)=>{
     if(!data.vendor||!data.amount) return;
     const rec={...data,amount:Number(data.amount),id:editPayId||uid(),status:editPayId?(data.status||"Unpaid"):"Unpaid",createdAt:editPayId?data.createdAt:today,createdBy:session?.name||""};
@@ -4830,7 +4862,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()) sbDelete("payables",id).catch(()=>{});
   };
 
-  const upLoans=fn=>{const next=fn(loans);setLoans(next)};
+  const upLoans=fn=>{const next=fn(loans);setLoans(next);persist(KEYS.loans,next);};
   const saveLoan=(data)=>{
     if(!data.lender||!data.principal) return;
     const rec={...data,principal:Number(data.principal),monthlyPayment:Number(data.monthlyPayment||0),termMonths:Number(data.termMonths||0),interestRate:Number(data.interestRate||0),id:editLoanId||uid(),createdAt:editLoanId?data.createdAt:today,payments:editLoanId?(data.payments||[]):[]};
@@ -7240,8 +7272,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <button onClick={exportReports} style={{background:"#10b981",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>📥 Export Excel</button>
           <button onClick={()=>window.print()} style={{background:"#64748b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
         </div>
-        <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24}}>
-          {[["sales","📊 Sales Report"],["finance","💰 Finance Report"]].map(([t,l])=>(
+        <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,flexWrap:"wrap"}}>
+          {[["sales","📊 Sales Report"],["finance","💰 Finance Report"],["ar-aging","📋 AR Aging"],["ap-aging","📑 AP Aging"]].map(([t,l])=>(
             <button key={t} onClick={()=>setRepTab(t)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:repTab===t?700:500,color:repTab===t?"#3b82f6":"#64748b",borderBottom:repTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
           ))}
         </div>
@@ -7464,6 +7496,114 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
           </div>
         )}
+
+        {repTab==="ar-aging"&&(()=>{
+          const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
+          const msWithBalance=billings.filter(b=>!['Fully Paid','Cancelled'].includes(b.status)&&Number(b.amount||0)>0).map(b=>{
+            const deal=deals.find(d=>d.id===b.dealId);
+            const tx=calcTax(Number(b.amount||0),b.receiptType||b.receipt_type||"OR",b.withholding??false);
+            const totalPaid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+            const balance=Math.max(0,tx.netReceivable-totalPaid);
+            if(balance<=0) return null;
+            const days=b.dueDate?Math.floor((new Date()-new Date(b.dueDate))/(864e5)):null;
+            return{...b,clientName:deal?.client||"Unknown",balance,days};
+          }).filter(Boolean).sort((a,b)=>(b.days||0)-(a.days||0));
+          const buckets=[
+            {label:"Current",color:"#10b981",bg:"#f0fdf4",filter:r=>r.days===null||r.days<=0},
+            {label:"1–30 days",color:"#f59e0b",bg:"#fffbeb",filter:r=>r.days>0&&r.days<=30},
+            {label:"31–60 days",color:"#f97316",bg:"#fff7ed",filter:r=>r.days>30&&r.days<=60},
+            {label:"61–90 days",color:"#ef4444",bg:"#fef2f2",filter:r=>r.days>60&&r.days<=90},
+            {label:"90+ days",color:"#dc2626",bg:"#fef2f2",filter:r=>r.days>90},
+          ];
+          const total=msWithBalance.reduce((s,r)=>s+r.balance,0);
+          return(
+            <div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
+                {buckets.map(bk=>{const amt=msWithBalance.filter(bk.filter).reduce((s,r)=>s+r.balance,0);const pct=total>0?Math.round(amt/total*100):0;return(
+                  <div key={bk.label} style={{background:bk.bg,border:`1.5px solid ${bk.color}33`,borderTop:`3px solid ${bk.color}`,borderRadius:10,padding:"12px 14px"}}>
+                    <div style={{fontSize:".6rem",color:"#64748b",textTransform:"uppercase",letterSpacing:".6px",marginBottom:4}}>{bk.label}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:bk.color}}>{fmtM(amt)}</div>
+                    <div style={{fontSize:".7rem",color:bk.color,fontWeight:600}}>{pct}% of total</div>
+                  </div>);
+                })}
+              </div>
+              <Card>
+                <div style={{fontWeight:700,fontSize:".9rem",marginBottom:12,color:"#0f172a"}}>Outstanding Invoices — {fmtM(total)} total</div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+                    <thead><tr style={{background:"#1e293b"}}>{["Client","Milestone","Due Date","Balance","Age","Status"].map((h,i)=><th key={h} style={{padding:"8px 12px",color:"rgba(255,255,255,.7)",fontSize:".65rem",fontWeight:700,textTransform:"uppercase",textAlign:i>=3?"right":"left"}}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {msWithBalance.map((r,i)=>{
+                        const bk=buckets.find(bk=>bk.filter(r))||buckets[0];
+                        return(<tr key={r.id} style={{background:i%2?"#fafafa":"#fff"}}>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{r.clientName}</td>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",color:"#475569"}}>{r.name||"Invoice"}</td>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",color:"#64748b"}}>{r.dueDate||"—"}</td>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",fontWeight:700,color:bk.color,textAlign:"right"}}>{fmtM(r.balance)}</td>
+                          <td style={{padding:"9px 12px",textAlign:"right"}}><span style={{background:bk.bg,color:bk.color,border:`1px solid ${bk.color}44`,borderRadius:20,padding:"2px 8px",fontSize:".72rem",fontWeight:700}}>{r.days!=null&&r.days>0?r.days+"d overdue":r.days===null?"No due date":"Current"}</span></td>
+                          <td style={{padding:"9px 12px",textAlign:"right"}}><span style={{background:"#f1f5f9",color:"#475569",borderRadius:20,padding:"2px 8px",fontSize:".7rem"}}>{r.status}</span></td>
+                        </tr>);
+                      })}
+                      {msWithBalance.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:24,color:"#94a3b8",fontSize:".82rem"}}>No outstanding AR — all invoices current!</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+          );
+        })()}
+
+        {repTab==="ap-aging"&&(()=>{
+          const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
+          const unpaid=payables.filter(p=>p.status!=="Paid"&&Number(p.amount||0)>0).map(p=>{
+            const deal=deals.find(d=>d.id===p.projectId);
+            const days=p.dueDate?Math.floor((new Date()-new Date(p.dueDate))/(864e5)):null;
+            return{...p,projectName:deal?.client||p.projectName||"—",days};
+          }).sort((a,b)=>(b.days||0)-(a.days||0));
+          const buckets=[
+            {label:"Current",color:"#10b981",bg:"#f0fdf4",filter:r=>r.days===null||r.days<=0},
+            {label:"1–30 days",color:"#f59e0b",bg:"#fffbeb",filter:r=>r.days>0&&r.days<=30},
+            {label:"31–60 days",color:"#f97316",bg:"#fff7ed",filter:r=>r.days>30&&r.days<=60},
+            {label:"61–90 days",color:"#ef4444",bg:"#fef2f2",filter:r=>r.days>60&&r.days<=90},
+            {label:"90+ days",color:"#dc2626",bg:"#fef2f2",filter:r=>r.days>90},
+          ];
+          const total=unpaid.reduce((s,r)=>s+Number(r.amount||0),0);
+          return(
+            <div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
+                {buckets.map(bk=>{const amt=unpaid.filter(bk.filter).reduce((s,r)=>s+Number(r.amount||0),0);const pct=total>0?Math.round(amt/total*100):0;return(
+                  <div key={bk.label} style={{background:bk.bg,border:`1.5px solid ${bk.color}33`,borderTop:`3px solid ${bk.color}`,borderRadius:10,padding:"12px 14px"}}>
+                    <div style={{fontSize:".6rem",color:"#64748b",textTransform:"uppercase",letterSpacing:".6px",marginBottom:4}}>{bk.label}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:bk.color}}>{fmtM(amt)}</div>
+                    <div style={{fontSize:".7rem",color:bk.color,fontWeight:600}}>{pct}% of total</div>
+                  </div>);
+                })}
+              </div>
+              <Card>
+                <div style={{fontWeight:700,fontSize:".9rem",marginBottom:12,color:"#0f172a"}}>Unpaid Payables — {fmtM(total)} total</div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+                    <thead><tr style={{background:"#1e293b"}}>{["Vendor","Project","Invoice Ref","Due Date","Amount","Age"].map((h,i)=><th key={h} style={{padding:"8px 12px",color:"rgba(255,255,255,.7)",fontSize:".65rem",fontWeight:700,textTransform:"uppercase",textAlign:i>=4?"right":"left"}}>{h}</th>)}</tr></thead>
+                    <tbody>
+                      {unpaid.map((r,i)=>{
+                        const bk=buckets.find(bk=>bk.filter(r))||buckets[0];
+                        return(<tr key={r.id} style={{background:i%2?"#fafafa":"#fff"}}>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{r.vendor||"—"}</td>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",color:"#475569"}}>{r.projectName}</td>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",color:"#64748b"}}>{r.invoiceRef||r.poNumber||"—"}</td>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",color:"#64748b"}}>{r.dueDate||"—"}</td>
+                          <td style={{padding:"9px 12px",fontSize:".82rem",fontWeight:700,color:bk.color,textAlign:"right"}}>{fmtM(r.amount)}</td>
+                          <td style={{padding:"9px 12px",textAlign:"right"}}><span style={{background:bk.bg,color:bk.color,border:`1px solid ${bk.color}44`,borderRadius:20,padding:"2px 8px",fontSize:".72rem",fontWeight:700}}>{r.days!=null&&r.days>0?r.days+"d overdue":r.days===null?"No due date":"Current"}</span></td>
+                        </tr>);
+                      })}
+                      {unpaid.length===0&&<tr><td colSpan={6} style={{textAlign:"center",padding:24,color:"#94a3b8",fontSize:".82rem"}}>No unpaid payables — all bills settled!</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+          );
+        })()}
       </Wrap>
     );
   }
@@ -10866,7 +11006,7 @@ First few:
     const adjBankBal=Number(stmtBal||0)-outstandingAmt+transitAmt+adjustmentsNet;
     const bookCredits=billings.flatMap(m=>(m.payments||[]).filter(p=>p.bank===reconBank)).reduce((s,p)=>s+Number(p.amount||0),0);
     const bookDebits=exps.filter(e=>e.bankAccount===reconBank).reduce((s,e)=>s+Number(e.amount||0),0);
-    const bookDebits2=vouchers.filter(v=>v.status==="Released"&&v.bank===reconBank).reduce((s,v)=>s+Number(v.amount||0),0);
+    const bookDebits2=vouchers.filter(v=>v.status==="Released"&&(v.bank===reconBank||BANKS.find(b=>b.id===reconBank)?.short===v.bank)).reduce((s,v)=>s+Number(v.amount||0),0);
     return(
       <Wrap>
         <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem",marginBottom:4}}>🏦 Bank Reconciliation</div>
@@ -15947,7 +16087,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
       sendTelegramNotification("procurement",poMsg);
       sendTelegramNotification("management",poMsg);
       if(poStatus==="PO Issued"){
-        const poTotal=poItems.reduce((s,i)=>s+Number(i.qty||0)*Number(i.estUnitCost||0),0);
+        const poTotal=poItems.reduce((s,i)=>s+Number(i.qty||0)*Number(i.actUnitCost||i.estUnitCost||0),0);
         if(poTotal>0){
           const newPayable={id:uid(),vendor:poSupplier,amount:poTotal,dueDate:"",category:"Supplier",
             invoiceRef:poNo,notes:`Auto-created from PO ${poNo}`,
