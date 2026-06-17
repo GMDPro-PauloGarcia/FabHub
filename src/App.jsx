@@ -4736,7 +4736,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Design Work", items:[{id:"drf",l:"📝 Design Requests"},{id:"projects",l:"📋 Project Cards"},{id:"swatchboard",l:"Swatchboard"}]},
     ],
     ProjectMover:[
-      {group:"Overview", items:[{id:"home",l:"My Projects"}]},
+      {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"📅 Calendar"}]},
       {group:"Updates",  items:[{id:"pmupdates",l:"📝 PM Updates"},{id:"addenda",l:"⚠️ Scope Changes"}]},
       {group:"Work",     items:[{id:"projects",l:"📋 Project Cards"}]},
     ],
@@ -6028,6 +6028,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
 
+  // ── PROJECT MOVER ────────────────────────────────────────────────────────
+  if(role==="ProjectMover"&&page==="calendar") return(
+    <ConstructionCalendar
+      wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos}
+      prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
+      setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
+      checklists={checklist} session={session}
+      addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}}
+      updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
+      deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
+    />
+  );
+
   // ── PROJECT MOVER HOME ───────────────────────────────────────────────────
   if(role==="ProjectMover") return(
     <Wrap>
@@ -6795,9 +6808,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos}
       prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
-      checklists={checklists} session={session}
+      checklists={checklist} session={session}
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}}
-      updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklists.find(c=>c.id===id),...ch})).catch(()=>{});}}
+      updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
     />
   );
@@ -9524,7 +9537,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklists} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklists.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}/>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklist} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -19221,7 +19234,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   const[schedForm,setSchedForm]=React.useState({date:today,type:"Repair",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});
   const[editSchedId,setEditSchedId]=React.useState(null);
 
-  const opsEvents=React.useMemo(()=>checklists.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status!=="Done"),[checklists]);
+  const opsEvents=React.useMemo(()=>checklist.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status!=="Done"),[checklists]);
 
   const openSched=(date=today,ev=null)=>{
     if(ev){setSchedForm({date:ev.dueDate||today,type:ev.type||"Repair",projectId:ev.projectId||"",title:ev.title||"",assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setEditSchedId(ev.id);}
