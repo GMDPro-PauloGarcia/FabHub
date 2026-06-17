@@ -13064,7 +13064,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         const newBanks={};
         BANKS.forEach(b=>{
           const r=prev.banks?.[b.id]||{};
-          newBanks[b.id]={beg:r.book||r.end||"",book:"",end:""};
+          newBanks[b.id]={beg:r.end||r.book||"",book:"",end:""};
         });
         setPos({...emptyDayPosition(d),banks:newBanks});
       } else {
