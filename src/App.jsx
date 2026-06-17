@@ -4910,7 +4910,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Operations",  items:[{id:"projects",l:"Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"},{id:"inventory",l:"Inventory"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"}]},
+      {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
@@ -4927,7 +4928,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"},{id:"inventory",l:"Inventory"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"}]},
+      {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
