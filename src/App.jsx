@@ -89,7 +89,7 @@ const ALL_MEMBERS       = [...new Set([...SALES_TEAM,...COST_CONTROL_TEAM,...OPS
 const PROD_MEMBERS      = ALL_MEMBERS; // backward compat
 const MAT_UNITS       = ["pcs","sheets","meters","kg","sets","rolls","liters","sqm"];
 const PO_UNITS        = ["pcs","sheets","meters","sqm","sqft","lnm","kg","sets","rolls","liters","gallons","bags","boxes","pairs","lengths","bundles","cu.m","lots","units"];
-const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Other"];
+const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Reimbursement","Other"];
 const SWATCH_CATS     = ["Fabric","Paint","Hardware","Wood","Metal","Glass","Laminate","Tile","Lighting","Fixture","Trim","Adhesive","Other"];
 const SWATCH_STATUS   = ["To Buy","Ordered","Received","Client Approved","MR Submitted"];
 const PAY_STATUS      = ["Unpaid","Partial","Deposited","Paid"];
@@ -2446,7 +2446,7 @@ export default function App(){
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[swos,       setSwos]      = useState([]);  // Subcon work orders
   const[ceReqs,     setCeReqs]    = useState([]);  // CE/QS cost estimation requests
-  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""});
+  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""});
   const[customClients,setCustomClients]= useState([]);
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
@@ -4489,6 +4489,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const tgMsg=`📅 <b>Turnover Date Updated</b>\nProject: <b>${rec.contact||rec.client}</b>${rec.ceNo?` — ${rec.ceNo}`:""}\n🏁 Turnover Date: <b>${rec.turnoverDate}</b>\nUpdated by: ${session?.name||"Sales"}`;
           sendTelegramNotification("ops",tgMsg);
           sendTelegramNotification("management",tgMsg);
+          const existingTov=checklist.find(c=>c.type==="Turnover"&&(c.projectId===rec.id||c.dealId===rec.id));
+          if(existingTov){
+            upChecklist(cs=>cs.map(c=>c.id===existingTov.id?{...c,dueDate:rec.turnoverDate}:c));
+            if(isSupabaseReady())sbUpdate('checklists',existingTov.id,{due_date:rec.turnoverDate}).catch(()=>{});
+          }else{
+            const tov={id:uid(),type:"Turnover",title:"Client Turnover",dueDate:rec.turnoverDate,projectId:rec.id,dealId:rec.id,dept:"Operations",status:"Scheduled",priority:"Normal",createdDate:today,createdBy:session?.name||role,notes:""};
+            upChecklist(cs=>[...cs,tov]);
+            if(isSupabaseReady())sbInsert('checklists',toSbChecklist(tov)).catch(()=>{});
+          }
         }
       }
     }
@@ -6157,7 +6166,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
       checklists={checklist} session={session}
-      addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}}
+      addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
       updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
@@ -6923,16 +6932,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     );
   }
 
-  // ── CALENDAR — Sales gets follow-up view; all other roles get ConstructionCalendar
-  if(page==="calendar") return role==="Sales"?(
-    <Wrap><SalesCalendarView deals={deals} session={session} role={role} pcards={pcards} jos={jos} billings={billings}/></Wrap>
-  ):(
+  // ── CALENDAR ────────────────────────────────────────────────────────────────
+  if(page==="calendar") return(
     <ConstructionCalendar
       wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos}
       prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
       checklists={checklist} session={session}
-      addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}}
+      addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
       updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
@@ -9625,6 +9632,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const noteStr=`${rxDrNo?`DR: ${rxDrNo} · `:""}Received ${rxQty} ${receivingPr.unit||""} by ${session?.name||"Warehouse"} on ${today}`;
                   updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr});
                   sendTelegramNotification("procurement",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
+                  sendTelegramNotification("warehouse",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
                   const invMatch=inventory.find(i=>i.name?.toLowerCase()===receivingPr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(receivingPr.itemName?.toLowerCase()));
                   if(invMatch){
                     logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(rxQty),unitCost:Number(receivingPr.actUnitCost||receivingPr.estUnitCost)||0,projectId:receivingPr.projectId,notes:`${rxDrNo?`DR ${rxDrNo} · `:""}PO ${receivingPr.poNumber||receivingPr.id.slice(-6)} · ${receivingPr.supplier||""}`,date:today});
@@ -10275,10 +10283,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <Btn onClick={openAddExp}>+ Log Expense</Btn>
           <button onClick={()=>{
+            let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
+            if(acctMonth) list=list.filter(e=>e.expDate===acctMonth);
+            if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
+            if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
+            if(acctProj==="company") list=list.filter(e=>!e.projectId);
+            else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
             const rows=[["Date","Category","Description","Amount","Bank Account","Receipt No","Project"]];
-            exps.forEach(e=>{const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));rows.push([e.expDate||`${e.year||new Date().getFullYear()}-${String((e.month||0)+1).padStart(2,"0")}-01`,e.category||"",e.note||"",Number(e.amount||0).toFixed(2),e.bankAccount||"",e.receipt||"",proj?.client||""]);});
+            list.forEach(e=>{const proj=(wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId));rows.push([e.expDate||`${e.year||new Date().getFullYear()}-${String((e.month||0)+1).padStart(2,"0")}-01`,e.category||"",e.note||"",Number(e.amount||0).toFixed(2),e.bankAccount||"",e.receipt||"",proj?.client||""]);});
             const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);a.download=`GMD_Expenses_${today}.csv`;a.click();
+            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("\uFEFF"+csv);a.download=`GMD_Expenses_${acctMonth||today}.csv`;a.click();
           }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
           <label style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#166534",cursor:"pointer",display:"inline-block"}}>
             ⬆ Import CSV
@@ -17361,7 +17375,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                     <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
                       <button onClick={()=>printInvoice(ms)} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#fff",cursor:"pointer"}}>🖨 Invoice</button>
                       {canEdit&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled"&&(
-                        <button onClick={()=>setShowPay(showPay===ms.id?null:ms.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
+                        <button onClick={()=>{const opening=showPay!==ms.id;setShowPay(showPay===ms.id?null:ms.id);if(opening){const totalPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);const bal=tx.netReceivable-totalPaid;setPayForm(p=>({...p,amount:bal>0?bal:tx.netReceivable}));}}} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#059669",cursor:"pointer"}}>+ Payment</button>
                       )}
                       {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||"",receiptType:ms.receiptType??null,withholding:ms.withholding??null});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
                       {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
@@ -20143,12 +20157,14 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
   const[saved,setSaved]=React.useState(false);
 
   const CHANNELS=[
-    {id:"general",    label:"🌐 General",       hint:"All-team announcements"},
-    {id:"ops",        label:"🏗 Operations",    hint:"PM updates, project alerts"},
-    {id:"design",     label:"🎨 Design",         hint:"DRF submissions, design deadlines"},
-    {id:"procurement",label:"📦 Procurement",   hint:"MRs, deliveries, swatch approvals"},
-    {id:"sales",      label:"💼 Sales",          hint:"Swatch approvals, deal updates"},
-    {id:"management", label:"👔 Management",    hint:"High-level overdue alerts only"},
+    {id:"general",         label:"🌐 General",          hint:"All-team announcements"},
+    {id:"ops",             label:"🏗 Operations",        hint:"PM updates, project alerts"},
+    {id:"design",          label:"🎨 Design",             hint:"DRF submissions, design deadlines"},
+    {id:"procurement",     label:"📦 Procurement",       hint:"MRs, deliveries, swatch approvals"},
+    {id:"warehouse",       label:"🏭 Warehouse",         hint:"Deliveries, stock movements"},
+    {id:"sales",           label:"💼 Sales",              hint:"Swatch approvals, deal updates"},
+    {id:"management",      label:"👔 Management",        hint:"High-level overdue alerts only"},
+    {id:"financialcontrol",label:"💰 Finance Control",   hint:"Billing due, collections"},
   ];
 
   const testChannel=async(chId)=>{
