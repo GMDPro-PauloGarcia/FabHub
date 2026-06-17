@@ -3716,7 +3716,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(changes.status==="PO Issued"&&changes.approvedBy){
       const pr=prs.find(p=>p.id===id);
       const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
-      sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"?"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
+      sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"GMD Stock"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
     }
     upPrs(ps=>ps.map(p=>{
       if(p.id!==id) return p;
