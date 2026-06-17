@@ -15589,7 +15589,31 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📦 Purchase Orders</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Issue POs to suppliers — each with multiple project-tagged line items</div>
         </div>
-        <button onClick={openNewPO} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+          <button onClick={()=>{
+            const rows=[["PO Number","Date","Supplier","Project","Item Description","Category","Qty","Unit","Est Unit Cost","Act Unit Cost","Line Total","Status","Notes"]];
+            const allProjDeals=[...wonDeals,...(allDeals||[])];
+            grouped.forEach(g=>{
+              if(g.type==="po"){
+                g.items.forEach(pr=>{
+                  const proj=allProjDeals.find(d=>d.id===pr.projectId);
+                  const projName=proj?projDisplayName(proj):(pr.projectName||pr.projectId==="__gmd_stocks__"?"GMD Stocks":pr.projectId||"—");
+                  const unitCostAct=n(pr.actUnitCost)||n(pr.estUnitCost);
+                  rows.push([g.poNo,g.poDate||"",g.supplier,projName,pr.itemName||"",pr.category||"",n(pr.qty),pr.unit||"",n(pr.estUnitCost),n(pr.actUnitCost)||"",+(unitCostAct*n(pr.qty)).toFixed(2),pr.status||"",pr.notes||""]);
+                });
+              } else {
+                const pr=g.pr;
+                const proj=allProjDeals.find(d=>d.id===pr.projectId);
+                const projName=proj?projDisplayName(proj):(pr.projectName||pr.projectId==="__gmd_stocks__"?"GMD Stocks":pr.projectId||"—");
+                const unitCostAct=n(pr.actUnitCost)||n(pr.estUnitCost);
+                rows.push(["(No PO)",pr.createdDate||"",pr.supplier||"",projName,pr.itemName||"",pr.category||"",n(pr.qty),pr.unit||"",n(pr.estUnitCost),n(pr.actUnitCost)||"",+(unitCostAct*n(pr.qty)).toFixed(2),pr.status||"",pr.notes||""]);
+              }
+            });
+            const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+            const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);a.download=`GMD_PurchaseOrders_${today}.csv`;a.click();
+          }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
+          <button onClick={openNewPO} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
+        </div>
       </div>
 
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
