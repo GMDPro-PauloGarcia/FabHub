@@ -6872,7 +6872,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── SECTION SUMMARY CARDS ── */}
           {(()=>{
             const sCards=[
-              {icon:"🏗", label:"Projects",        accent:"#f97316", main:`${wonDeals.length} active`,              sub:overdueProjectCnt>0?`⚠️ ${overdueProjectCnt} overdue`:"All on track",                     subClr:overdueProjectCnt>0?"#ef4444":"#10b981", action:()=>setPage("projects")},
+              {icon:"🏗", label:"Projects",        accent:"#f97316", main:`ALL PROJECTS`,                          sub:overdueProjectCnt>0?`⚠️ ${overdueProjectCnt} overdue`:"All on track",                     subClr:overdueProjectCnt>0?"#ef4444":"#10b981", action:()=>setPage("projects")},
               {icon:"💵", label:"Collections",     accent:"#10b981", main:fmtK(billOutstanding)+" out",             sub:overdueInvMs>0?`${overdueInvMs} overdue invoice${overdueInvMs>1?"s":""}`:"No overdue",    subClr:overdueInvMs>0?"#ef4444":"#10b981",      action:()=>setPage("billing")},
               {icon:"📋", label:"Requests",        accent:"#8b5cf6", main:`${mrPendingCnt+breqPendingCnt} pending`, sub:`${mrPendingCnt} MR · ${breqPendingCnt} Budget`,                                          subClr:"#64748b",                               action:()=>setPage("requests")},
               {icon:"📦", label:"Purchase Orders", accent:"#06b6d4", main:`${openPOCnt} open`,                      sub:openPOCnt===0?"Nothing pending":"Awaiting action",                                         subClr:openPOCnt>0?"#f59e0b":"#10b981",         action:()=>setPage("procurement")},
