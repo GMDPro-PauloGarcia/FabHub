@@ -10632,7 +10632,7 @@ First few:
         const totalPending=pending.reduce((s,v)=>s+Number(v.amount||0),0);
         const totalReleased=released.reduce((s,v)=>s+Number(v.amount||0),0);
         return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
             {[
               {l:"Total Vouchers",v:vouchers.length+" CVs",c:"#6366f1",icon:"📄"},
               {l:"For Release",   v:pending.length+" vouchers",c:"#f59e0b",icon:"⏳"},
@@ -10777,12 +10777,12 @@ First few:
   // ── ACCOUNTING DASHBOARD (accessible from Finance & Manager navs) ────────────
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Accounting Overview</div>
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Expenses · Vouchers · Reconciliation · {todayL}</div>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📒 Expenses</button>
           <button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>
         </div>
@@ -10795,7 +10795,7 @@ First few:
         const thisMonthExp=exps.filter(e=>{const d=new Date(e.expDate||`${e.year}-${String((e.month||0)+1).padStart(2,"0")}-01`);return d.getMonth()===new Date().getMonth()&&d.getFullYear()===new Date().getFullYear();}).reduce((s,e)=>s+Number(e.amount||0),0);
         const outstandingChkAmt=releasedCv.reduce((s,v)=>s+Number(v.amount||0),0);
         return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
             {[
               {l:"Expenses This Month",      v:fmt(thisMonthExp),             c:"#6366f1",icon:"📒"},
               {l:"Total Expenses YTD",        v:fmt(totalExp),                 c:"#3b82f6",icon:"💸"},
@@ -10811,7 +10811,7 @@ First few:
           </div>
         );
       })()}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16}}>
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{background:"#f59e0b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏳ For Release</span>
