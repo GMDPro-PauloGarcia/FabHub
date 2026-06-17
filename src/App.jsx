@@ -4333,8 +4333,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[cvForm,    setCvForm]   =useState({date:today,cvNo:"",payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
   const[cvSearch,  setCvSearch] =useState("");
   const[cvStatus,  setCvStatus] =useState("All");
-  const[reconBank, setReconBank]=useState(BANKS[0].id);
-  const[stmtBal,   setStmtBal]  =useState("");
+  const[reconBank,     setReconBank]    =useState(BANKS[0].id);
+  const[stmtBal,       setStmtBal]      =useState("");
+  const[reconAdjusts,  setReconAdjusts] =useState([]);
+  const[reconAdjForm,  setReconAdjForm] =useState({desc:"",amount:""});
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -4927,7 +4929,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Admin",       items:[{id:"accounts",l:"👥 Accounts"},{id:"botsettings",l:"🤖 Bot Settings"},{id:"activity",l:"📈 Team Activity"}]},
     ],
     Accounting:[
-      {group:"Overview",    items:[{id:"home",l:"Dashboard"}]},
+      {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"📒 Dashboard"}]},
       {group:"Accounting",  items:[{id:"accounting",l:"📒 Expenses"},{id:"checkvouchers",l:"📝 Check Vouchers"},{id:"reconc",l:"🏦 Bank Reconciliation"}]},
     ],
     Procurement:[
@@ -10851,7 +10853,8 @@ First few:
     const outstandingAmt=outstandingCvs.reduce((s,v)=>s+Number(v.amount||0),0);
     const transitPayments=billings.flatMap(m=>(m.payments||[]).filter(p=>p.bank===reconBank&&p.valueDate&&p.valueDate>today));
     const transitAmt=transitPayments.reduce((s,p)=>s+Number(p.amount||0),0);
-    const adjBankBal=Number(stmtBal||0)-outstandingAmt+transitAmt;
+    const adjustmentsNet=reconAdjusts.reduce((s,a)=>s+Number(a.amount||0),0);
+    const adjBankBal=Number(stmtBal||0)-outstandingAmt+transitAmt+adjustmentsNet;
     const bookCredits=billings.flatMap(m=>(m.payments||[]).filter(p=>p.bank===reconBank)).reduce((s,p)=>s+Number(p.amount||0),0);
     const bookDebits=exps.filter(e=>e.bankAccount===reconBank).reduce((s,e)=>s+Number(e.amount||0),0);
     const bookDebits2=vouchers.filter(v=>v.status==="Released"&&v.bank===reconBank).reduce((s,v)=>s+Number(v.amount||0),0);
@@ -10885,6 +10888,12 @@ First few:
                 <span style={{color:"#64748b"}}>Add: Deposits in Transit</span>
                 <span style={{fontWeight:700,color:"#10b981"}}>{fmtR(transitAmt)}</span>
               </div>
+              {adjustmentsNet!==0&&(
+                <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
+                  <span style={{color:"#64748b"}}>Other adjustments</span>
+                  <span style={{fontWeight:700,color:adjustmentsNet>=0?"#10b981":"#ef4444"}}>{adjustmentsNet<0?"("+fmtR(-adjustmentsNet)+")":fmtR(adjustmentsNet)}</span>
+                </div>
+              )}
               <div style={{padding:"10px 0 0",display:"flex",justifyContent:"space-between",fontSize:".9rem",fontWeight:800}}>
                 <span>Adjusted Bank Balance</span>
                 <span style={{color:"#1d4ed8"}}>{fmtR(adjBankBal)}</span>
@@ -10914,6 +10923,30 @@ First few:
                 <span style={{color:bookCredits-bookDebits-bookDebits2>=0?"#059669":"#ef4444"}}>{fmtR(bookCredits-bookDebits-bookDebits2)}</span>
               </div>
             </div>
+          </div>
+        </div>
+        {/* Manual Bank Adjustments */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e0e7ff",overflow:"hidden",marginBottom:16}}>
+          <div style={{background:"#6366f1",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:700,color:"#fff",fontSize:".85rem"}}>🔧 Manual Adjustments (Bank Side)</span>
+            <span style={{fontSize:".72rem",color:"rgba(255,255,255,.75)"}}>Bank charges, interest earned, NSF, etc.</span>
+          </div>
+          {reconAdjusts.length===0&&(
+            <div style={{padding:"10px 16px",fontSize:".75rem",color:"#94a3b8"}}>No adjustments yet — add bank charges, interest, or other items not yet in FabHub.</div>
+          )}
+          {reconAdjusts.map(a=>(
+            <div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 16px",borderBottom:"1px solid #f1f5f9",fontSize:".82rem"}}>
+              <span style={{color:"#0f172a"}}>{a.desc}</span>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontWeight:700,color:Number(a.amount)<0?"#ef4444":"#10b981"}}>{Number(a.amount)<0?"("+fmtR(-Number(a.amount))+")":fmtR(Number(a.amount))}</span>
+                <button onClick={()=>setReconAdjusts(ps=>ps.filter(x=>x.id!==a.id))} style={{background:"#fee2e2",border:"none",borderRadius:5,padding:"2px 7px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              </div>
+            </div>
+          ))}
+          <div style={{padding:"10px 16px",display:"flex",gap:8,borderTop:reconAdjusts.length>0?"1px solid #f1f5f9":"none",flexWrap:"wrap",alignItems:"center"}}>
+            <input type="text" value={reconAdjForm.desc} onChange={e=>setReconAdjForm(p=>({...p,desc:e.target.value}))} placeholder="Description (e.g. Bank charges Jan)" style={{flex:"2 1 140px",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem"}}/>
+            <input type="number" value={reconAdjForm.amount} onChange={e=>setReconAdjForm(p=>({...p,amount:e.target.value}))} placeholder="Amount (negative = debit)" style={{flex:"1 1 120px",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem"}}/>
+            <button onClick={()=>{if(!reconAdjForm.desc||!reconAdjForm.amount)return;setReconAdjusts(ps=>[...ps,{id:Date.now().toString(),...reconAdjForm}]);setReconAdjForm({desc:"",amount:""}); }} style={{background:"#6366f1",color:"#fff",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>+ Add</button>
           </div>
         </div>
         {/* Outstanding Checks Detail */}
@@ -17201,7 +17234,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
   const[editMsForm,setEditMsForm]=useState({});
   const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
-  const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:""});
+  const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:""});
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
@@ -17237,7 +17270,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
       }
     }
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
-    setPayForm({amount:"",date:today,refNo:"",note:""});
+    setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:""});
     setShowPay(null);
   };
   const saveEditMs=()=>{
