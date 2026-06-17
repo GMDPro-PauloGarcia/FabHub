@@ -16893,12 +16893,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         </tr></tfoot>
       </table>
       <div class="notes">
-        <div class="nt">NOTES &amp; LEGEND</div>
-        <p>• <b>Blue text cells:</b>&nbsp; Input fields (editable)</p>
-        <p>• <b>Black text cells:</b>&nbsp; Auto-calculated by formula — do not edit</p>
-        <p>• <b>VAT:</b>&nbsp; Automatically computed at 12% of Vatable Amount</p>
-        <p>• <b>Sales Amount:</b>&nbsp; Vatable Amount + VAT</p>
-        <p>• <b>Total Amount Due:</b>&nbsp; Sales Amount minus Payment Made minus WHT</p>
+        <div class="nt">NOTES</div>
+        <p style="margin-bottom:6px">Thank you for your business! Please send or email (<b>finance@gmd.ph</b>) us a copy of the payment for proper recording.</p>
+        <p style="margin-top:8px;font-weight:700">Payment Details:</p>
+        <p style="margin-top:4px"><b>Account Name:</b>&nbsp; GMD PRODUCTIONS INC</p>
+        <p style="margin-top:3px"><b>BDO CHECKING</b>&nbsp;—&nbsp;012758000370</p>
+        <p style="margin-top:3px"><b>BPI CHECKING</b>&nbsp;—&nbsp;6011 04 82 03</p>
+        <p style="margin-top:3px"><b>METROBANK</b>&nbsp;—&nbsp;382-7-38202059-2</p>
       </div>
       <div class="sig">
         <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)}</div><div class="sc">GMD Productions Inc.</div></div>
