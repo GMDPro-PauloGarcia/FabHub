@@ -6038,6 +6038,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
+      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
     />
   );
 
@@ -6812,6 +6813,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}}
       updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}}
       deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
+      updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}
     />
   );
 
@@ -16774,6 +16776,142 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     win.document.close();
   };
 
+  const printSOA=(clientName)=>{
+    const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const clientDeals=[...wonDeals,...(completedDeals||[])].filter(d=>d.client===clientName);
+    const rows=clientDeals.map(d=>{
+      const ms=billings.filter(b=>b.dealId===d.id);
+      const rt=d.receiptType||"OR",wh=d.withholding||false;
+      const active=ms.filter(m=>m.status!=="Cancelled");
+      const vatable=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).base,0);
+      const vat=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).vat,0);
+      const gross=vatable+vat;
+      const payments=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+      const ewt=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).ewt,0);
+      const due=Math.max(0,gross-payments-ewt);
+      return{d,vatable,vat,gross,payments,ewt,due};
+    }).filter(r=>r.vatable>0||r.payments>0);
+    if(!rows.length){alert("No billing data found for "+clientName);return;}
+    const tV=rows.reduce((s,r)=>s+r.vatable,0),tVat=rows.reduce((s,r)=>s+r.vat,0);
+    const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
+    const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
+    const dateStr=new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
+    const preparedBy=session?.name||"";
+    const rowsHtml=rows.map((r,i)=>`<tr>
+      <td style="text-align:center;color:#64748b">${i+1}</td>
+      <td style="color:#2563eb;font-weight:600">${esc(r.d.client)}</td>
+      <td style="color:#2563eb;font-weight:600">${esc(r.d.ceNo||r.d.contact||"—")}</td>
+      <td style="text-align:right">${f(r.vatable)}</td>
+      <td style="text-align:right">${f(r.vat)}</td>
+      <td style="text-align:right">${f(r.gross)}</td>
+      <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
+      <td style="text-align:right">${f(r.ewt)}</td>
+      <td style="text-align:right;color:#ea580c;font-weight:700">${f(r.due)}</td>
+    </tr>`).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
+      @page{size:A4 landscape;margin:12mm 15mm}
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;background:#fff;padding:0}
+      .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+      .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit}
+      @media print{.print-btn{display:none}}
+      .header{background:#1e293b;padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+      .co-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px}
+      .sub-bar{background:#1e293b;padding:2px 20px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c}
+      .tagline{color:rgba(255,255,255,.45);font-size:9.5px}
+      .soa-wrap{padding:12px 20px 8px}
+      .soa-title{font-size:15px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px}
+      .client-grid{display:grid;grid-template-columns:auto 1fr 40px auto 1fr;gap:6px 10px;align-items:end;margin-bottom:16px}
+      .cl{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;white-space:nowrap}
+      .cv{border-bottom:1.5px solid #0f172a;padding-bottom:2px;font-weight:600;font-size:11px;color:#1e40af}
+      .summary{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #e2e8f0;margin-bottom:16px}
+      .sb{padding:10px 14px;background:#f8fafc;border-right:1px solid #e2e8f0;text-align:center}
+      .sb:last-child{border-right:none;background:#fff7ed}
+      .sl{font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
+      .sv{font-size:16px;font-weight:800;color:#0f172a}
+      .sb:last-child .sv{color:#ea580c}
+      table{width:100%;border-collapse:collapse;margin:0 0 14px;font-size:10px}
+      thead tr{background:#1e293b}
+      thead th{color:rgba(255,255,255,.8);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;text-align:left}
+      thead th:nth-child(n+4){text-align:right}
+      tbody tr:nth-child(even){background:#f9fafb}
+      tbody td{padding:8px 10px;border-bottom:1px solid #f1f5f9}
+      tbody td:nth-child(n+4){text-align:right}
+      tfoot tr{background:#1e293b}
+      tfoot td{color:#fff;font-weight:700;padding:9px 10px;font-size:10px;text-align:right}
+      tfoot td:nth-child(1),tfoot td:nth-child(2),tfoot td:nth-child(3){text-align:center;color:rgba(255,255,255,.7);font-size:9px;font-weight:400}
+      .total-due{color:#f97316!important;font-size:13px!important;font-weight:900!important}
+      .notes{border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:9px;color:#475569}
+      .notes b{color:#0f172a;font-size:9px}
+      .notes .nt{font-weight:700;font-size:10px;color:#0f172a;margin-bottom:6px}
+      .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:10px 0}
+      .sl2{font-size:9px;color:#64748b;margin-bottom:18px}
+      .sn{font-size:11px;font-weight:700}
+      .sc{font-size:9px;color:#64748b}
+    </style></head><body>
+    <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+    <div class="header">
+      <div class="co-name">GMD PRODUCTIONS INC.</div>
+      <div style="text-align:right">
+        <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
+        <span style="color:#f97316;font-weight:700;font-size:12px">${dateStr}</span>
+      </div>
+    </div>
+    <div class="sub-bar">
+      <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
+      <span class="tagline">REF NO.:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>
+    </div>
+    <div class="soa-wrap">
+      <div class="soa-title">Statement of Account</div>
+      <div class="client-grid">
+        <span class="cl">CLIENT NAME:</span>
+        <span class="cv">${esc(clientName)}</span>
+        <span></span>
+        <span class="cl">BILLING ADDRESS:</span>
+        <span class="cv">&nbsp;</span>
+      </div>
+      <div class="summary">
+        <div class="sb"><div class="sl">TOTAL VATABLE AMOUNT</div><div class="sv">${f(tV)}</div></div>
+        <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
+        <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
+        <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
+      </div>
+      <table>
+        <thead><tr>
+          <th style="width:30px;text-align:center">#</th>
+          <th>CLIENT NAME</th><th>PROJECT NAME</th>
+          <th>VATABLE AMOUNT</th><th>VAT</th><th>SALES AMOUNT</th>
+          <th>FOR PAYMENT</th><th>WHT</th><th>TOTAL AMOUNT DUE</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr>
+          <td></td><td colspan="2">TOTAL AMOUNT DUE</td>
+          <td>${f(tV)}</td><td>${f(tVat)}</td><td>${f(tG)}</td>
+          <td>${f(tP)}</td><td>${f(tE)}</td>
+          <td class="total-due">${f(tD)}</td>
+        </tr></tfoot>
+      </table>
+      <div class="notes">
+        <div class="nt">NOTES &amp; LEGEND</div>
+        <p>• <b>Blue text cells:</b>&nbsp; Input fields (editable)</p>
+        <p>• <b>Black text cells:</b>&nbsp; Auto-calculated by formula — do not edit</p>
+        <p>• <b>VAT:</b>&nbsp; Automatically computed at 12% of Vatable Amount</p>
+        <p>• <b>Sales Amount:</b>&nbsp; Vatable Amount + VAT</p>
+        <p>• <b>Total Amount Due:</b>&nbsp; Sales Amount minus Payment Made minus WHT</p>
+      </div>
+      <div class="sig">
+        <div><div class="sl2">Prepared by:</div><div class="sn">${esc(preparedBy)}</div><div class="sc">GMD Productions Inc.</div></div>
+        <div><div class="sl2">Approved by:</div><div class="sn">&nbsp;</div></div>
+      </div>
+    </div>
+    </body></html>`;
+    const w=window.open("","_blank","width=1100,height=780");
+    w.document.write(html);
+    w.document.close();
+    setTimeout(()=>w.print(),600);
+  };
+
   // Per-project summary for list
   const projectSummaries=[...wonDeals,...completedDeals].map(d=>{
     const ms=billings.filter(b=>b.dealId===d.id);
@@ -16895,8 +17033,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
       {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
         {/* Table header */}
-        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",background:"#1e293b",padding:"10px 18px",gap:12}}>
-          {["Project","Billed","Collected","Balance","Status","Action"].map(h=>(
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",background:"#1e293b",padding:"10px 18px",gap:12}}>
+          {["Project","Billed","Collected","Balance","Status","Actions"].map(h=>(
             <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
           ))}
         </div>
@@ -16904,7 +17042,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>(
           <div key={d.id}
             onClick={()=>setSelDeal(d.id)}
-            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 80px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
             onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
             onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
             <div>
@@ -16933,10 +17071,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
               {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
             </div>
-            <div>
+            <div style={{display:"flex",gap:5,alignItems:"center"}}>
               <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
                 style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
                 Open →
+              </button>
+              <button onClick={e=>{e.stopPropagation();printSOA(d.client);}}
+                style={{background:"#f97316",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
+                📄 SOA
               </button>
             </div>
           </div>
@@ -19225,7 +19367,7 @@ const OPS_EVENT_TYPES=["Turnover","PO Delivery","Billing Due","DRF Deadline","Re
 const OPS_EVENT_COLORS={Turnover:"#3b82f6","PO Delivery":"#f97316","Billing Due":"#10b981","DRF Deadline":"#ec4899",Repair:"#ef4444",Backjob:"#dc2626",Maintenance:"#f59e0b","Site Visit":"#0ea5e9",Inspection:"#8b5cf6","Site Meeting":"#059669"};
 const OPS_EVENT_ICONS={Turnover:"🏗","PO Delivery":"📦","Billing Due":"💵","DRF Deadline":"📝",Repair:"🔧",Backjob:"🔄",Maintenance:"⚙️","Site Visit":"🏗","Inspection":"🔍","Site Meeting":"👥"};
 
-function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap,checklists=[],addOpsEvent,updateOpsEvent,deleteOpsEvent,session}){
+function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap,checklists=[],addOpsEvent,updateOpsEvent,deleteOpsEvent,session,updateProjectTurnover}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
@@ -19242,7 +19384,14 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     setSchedModal(true);
   };
   const saveSched=()=>{
-    if(!schedForm.title||!schedForm.date) return;
+    if(!schedForm.date) return;
+    const isTurnover=schedForm.type==="Turnover";
+    if(isTurnover&&schedForm.projectId&&updateProjectTurnover){
+      updateProjectTurnover(schedForm.projectId,schedForm.date);
+      setSchedModal(false);setEditSchedId(null);
+      return;
+    }
+    if(!schedForm.title) return;
     const data={type:schedForm.type,title:schedForm.title,dueDate:schedForm.date,projectId:schedForm.projectId||null,dealId:schedForm.projectId||null,assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
     else addOpsEvent?.(data);
@@ -19518,8 +19667,18 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                 {OPS_EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
               </select>
             </div>
+            {schedForm.type==="Turnover"&&schedForm.projectId&&(
+              <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:".78rem",color:"#3b82f6",fontWeight:600}}>
+                📌 This will update the project's Turnover Date (TAT) in the Projects module
+              </div>
+            )}
+            {schedForm.type==="Turnover"&&!schedForm.projectId&&(
+              <div style={{background:"#fefce8",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:".78rem",color:"#92400e"}}>
+                ⚠ Select a project below to update its TAT, or leave blank to add a general note.
+              </div>
+            )}
             <div style={{marginBottom:10}}>
-              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Description *</div>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>{schedForm.type==="Turnover"?"Description (optional)":"Description *"}</div>
               <input value={schedForm.title||""} onChange={e=>setSchedForm(p=>({...p,title:e.target.value}))} placeholder="e.g. Fix cabinet door hinge — BGC unit" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
             </div>
             <div style={{marginBottom:10}}>
@@ -19544,9 +19703,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
               <textarea value={schedForm.notes||""} onChange={e=>setSchedForm(p=>({...p,notes:e.target.value}))} placeholder="Additional details…" rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box",resize:"vertical"}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={saveSched} disabled={!schedForm.title||!schedForm.date} style={{flex:1,padding:"9px",background:(!schedForm.title||!schedForm.date)?"#cbd5e1":"#ef4444",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:(!schedForm.title||!schedForm.date)?"not-allowed":"pointer"}}>
-                {editSchedId?"Save Changes":"Save Schedule"}
-              </button>
+              {(()=>{const dis=!schedForm.date||(!schedForm.title&&!(schedForm.type==="Turnover"&&schedForm.projectId));return(<button onClick={saveSched} disabled={dis} style={{flex:1,padding:"9px",background:dis?"#cbd5e1":schedForm.type==="Turnover"?"#3b82f6":"#ef4444",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:dis?"not-allowed":"pointer"}}>{editSchedId?"Save Changes":schedForm.type==="Turnover"&&schedForm.projectId?"Set Turnover Date":"Add to Calendar"}</button>);})()}
               <button onClick={()=>{setSchedModal(false);setEditSchedId(null);}} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
