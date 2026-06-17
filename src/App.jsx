@@ -6795,6 +6795,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos}
       prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
+      checklists={checklists} session={session}
+      addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}}
+      updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklists.find(c=>c.id===id),...ch})).catch(()=>{});}}
+      deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}
     />
   );
 
@@ -9520,7 +9524,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
     if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
-    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}/>);
+    if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklists} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklists.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}/>);
   }
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
@@ -19204,11 +19208,33 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
 }
 
 // ─── CONSTRUCTION CALENDAR ────────────────────────────────────────────────────
-function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap}){
+const OPS_EVENT_TYPES=["Repair","Backjob","Maintenance","Site Visit","Inspection","Site Meeting"];
+const OPS_EVENT_COLORS={Repair:"#ef4444",Backjob:"#dc2626",Maintenance:"#f97316","Site Visit":"#0ea5e9",Inspection:"#8b5cf6","Site Meeting":"#059669"};
+const OPS_EVENT_ICONS={Repair:"🔧",Backjob:"🔄",Maintenance:"⚙️","Site Visit":"🏗","Inspection":"🔍","Site Meeting":"👥"};
+
+function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap,checklists=[],addOpsEvent,updateOpsEvent,deleteOpsEvent,session}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
   const[eventModal,setEventModal]=React.useState(null); // {event}
+  const[schedModal,setSchedModal]=React.useState(false);
+  const[schedForm,setSchedForm]=React.useState({date:today,type:"Repair",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});
+  const[editSchedId,setEditSchedId]=React.useState(null);
+
+  const opsEvents=React.useMemo(()=>checklists.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status!=="Done"),[checklists]);
+
+  const openSched=(date=today,ev=null)=>{
+    if(ev){setSchedForm({date:ev.dueDate||today,type:ev.type||"Repair",projectId:ev.projectId||"",title:ev.title||"",assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setEditSchedId(ev.id);}
+    else{setSchedForm({date,type:"Repair",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});setEditSchedId(null);}
+    setSchedModal(true);
+  };
+  const saveSched=()=>{
+    if(!schedForm.title||!schedForm.date) return;
+    const data={type:schedForm.type,title:schedForm.title,dueDate:schedForm.date,projectId:schedForm.projectId||null,dealId:schedForm.projectId||null,assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
+    if(editSchedId) updateOpsEvent?.(editSchedId,data);
+    else addOpsEvent?.(data);
+    setSchedModal(false);setEditSchedId(null);
+  };
 
   const events=React.useMemo(()=>{
     const list=[];
@@ -19231,8 +19257,12 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     (ceReqs||[]).filter(r=>r.targetDeadline&&r.status!=="Done").forEach(r=>{
       list.push({date:r.targetDeadline,type:"ce",label:r.clientName||"?",sub:r.projectName||"CE Request",detail:`${r.priority} priority · ${r.status}`,color:"#8b5cf6",icon:"📐",ceId:r.id});
     });
+    opsEvents.forEach(ev=>{
+      const d=wonDeals.find(x=>x.id===ev.projectId);
+      list.push({date:ev.dueDate,type:"ops",label:ev.title,sub:ev.type,detail:ev.assignedTo?`Assigned: ${ev.assignedTo}`:"",color:OPS_EVENT_COLORS[ev.type]||"#64748b",icon:OPS_EVENT_ICONS[ev.type]||"🔧",opsId:ev.id,opsEvent:ev,dealId:ev.projectId,project:d?.client});
+    });
     return list;
-  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs]);
+  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs,opsEvents]);
 
   const eventsByDate=React.useMemo(()=>{
     const map={};events.forEach(e=>{if(!map[e.date])map[e.date]=[];map[e.date].push(e);});return map;
@@ -19334,7 +19364,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   },[wonDeals,pcards,jos,drfs,prs,billings]);
   const[gapOpen,setGapOpen]=React.useState(false);
 
-  const TABS=[{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"},{id:"gaps",l:`🔍 Data Gaps${calendarGaps.length>0?" ("+calendarGaps.length+")":""}`}];
+  const TABS=[{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"schedule",l:`🔧 Schedule${opsEvents.length>0?" ("+opsEvents.length+")":""}`},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"},{id:"gaps",l:`🔍 Data Gaps${calendarGaps.length>0?" ("+calendarGaps.length+")":""}`}];
   const BTN=(p)=><button onClick={p.onClick} style={{...{background:p.active?"#1e293b":"#f8fafc",color:p.active?"#fff":"#64748b",border:`1.5px solid ${p.active?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"},...(p.style||{})}}>{p.children}</button>;
 
   return(
@@ -19344,7 +19374,10 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
           <h2 style={{margin:0,fontWeight:900,fontSize:"1.4rem",color:"#0f172a",fontFamily:"'Barlow Condensed',sans-serif"}}>📅 Project Calendar</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Conflict detection · cash flow · team capacity</div>
         </div>
-        <button onClick={()=>setPage("home")} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:"#475569",cursor:"pointer"}}>← Dashboard</button>
+        <div style={{display:"flex",gap:8}}>
+          {addOpsEvent&&<button onClick={()=>openSched(today)} style={{background:"#ef4444",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:"pointer"}}>+ Schedule</button>}
+          <button onClick={()=>setPage("home")} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:"#475569",cursor:"pointer"}}>← Dashboard</button>
+        </div>
       </div>
 
       {calendarGaps.length>0&&(
@@ -19391,7 +19424,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
           <BTN onClick={()=>setViewDate(d=>{const n=new Date(d);n.setMonth(n.getMonth()+1);return n;})}>Next ›</BTN>
         </div>
         <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12,padding:"8px 12px",background:"#f8fafc",borderRadius:10,border:"1px solid #e2e8f0"}}>
-          {[{c:"#3b82f6",l:"Turnover"},{c:"#f97316",l:"PO Delivery"},{c:"#10b981",l:"Billing Due"},{c:"#ec4899",l:"DRF Deadline"}].map(({c,l})=>(
+          {[{c:"#3b82f6",l:"Turnover"},{c:"#f97316",l:"PO Delivery"},{c:"#10b981",l:"Billing Due"},{c:"#ec4899",l:"DRF Deadline"},{c:"#ef4444",l:"Repair"},{c:"#dc2626",l:"Backjob"},{c:"#0ea5e9",l:"Site Visit"}].map(({c,l})=>(
             <div key={l} style={{display:"flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#475569"}}>
               <div style={{width:10,height:10,borderRadius:"50%",background:c}}/>{l}
             </div>
@@ -19411,15 +19444,20 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                 const isToday=ds===today;const isSel=selectedDay===ds;
                 return(
                   <div key={di} onClick={()=>setSelectedDay(isSel?null:ds)}
-                    style={{minHeight:60,padding:"3px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":"#fff",cursor:"pointer",overflow:"hidden",boxSizing:"border-box"}}>
-                    <div style={{fontWeight:isToday?800:500,fontSize:".7rem",color:isToday?"#f59e0b":"#0f172a",marginBottom:2,width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined}}>{day}</div>
-                    {dayEvents.slice(0,2).map((e,ei)=>(
-                      <div key={ei} onClick={ev=>{ev.stopPropagation();setEventModal(e);}}
+                    style={{minHeight:60,padding:"3px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":"#fff",cursor:"pointer",overflow:"hidden",boxSizing:"border-box",position:"relative"}}
+                    onMouseEnter={ev=>{if(addOpsEvent){const btn=ev.currentTarget.querySelector('.add-btn');if(btn)btn.style.opacity=1;}}}
+                    onMouseLeave={ev=>{const btn=ev.currentTarget.querySelector('.add-btn');if(btn)btn.style.opacity=0;}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
+                      <div style={{fontWeight:isToday?800:500,fontSize:".7rem",color:isToday?"#f59e0b":"#0f172a",width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined}}>{day}</div>
+                      {addOpsEvent&&<button className="add-btn" onClick={ev=>{ev.stopPropagation();openSched(ds);}} style={{opacity:0,transition:"opacity .15s",background:"#ef4444",border:"none",borderRadius:3,color:"#fff",fontSize:".55rem",fontWeight:700,padding:"1px 4px",cursor:"pointer",lineHeight:1.2,fontFamily:"inherit"}}>+</button>}
+                    </div>
+                    {dayEvents.slice(0,3).map((e,ei)=>(
+                      <div key={ei} onClick={ev=>{ev.stopPropagation();if(e.opsEvent)openSched(e.date,e.opsEvent);else setEventModal(e);}}
                         style={{background:e.color+"22",borderLeft:`2px solid ${e.color}`,borderRadius:3,padding:"1px 3px",marginBottom:1,fontSize:".55rem",color:e.color,fontWeight:700,overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis",cursor:"pointer",maxWidth:"100%",boxSizing:"border-box"}}>
                         {e.icon} {e.label}
                       </div>
                     ))}
-                    {dayEvents.length>2&&<div style={{fontSize:".52rem",color:"#94a3b8",paddingLeft:2}}>+{dayEvents.length-2} more</div>}
+                    {dayEvents.length>3&&<div style={{fontSize:".52rem",color:"#94a3b8",paddingLeft:2}}>+{dayEvents.length-3} more</div>}
                   </div>
                 );
               })}
@@ -19453,6 +19491,55 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
       </>)}
 
       {/* Event detail modal */}
+      {schedModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setSchedModal(false)}>
+          <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,.3)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:16}}>{editSchedId?"✏ Edit Schedule Entry":"🔧 Schedule Repair / Backjob"}</div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Date *</div>
+              <input type="date" value={schedForm.date||""} onChange={e=>setSchedForm(p=>({...p,date:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Type *</div>
+              <select value={schedForm.type||"Repair"} onChange={e=>setSchedForm(p=>({...p,type:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
+                {OPS_EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Description *</div>
+              <input value={schedForm.title||""} onChange={e=>setSchedForm(p=>({...p,title:e.target.value}))} placeholder="e.g. Fix cabinet door hinge — BGC unit" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Project (optional)</div>
+              <select value={schedForm.projectId||""} onChange={e=>setSchedForm(p=>({...p,projectId:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
+                <option value="">— No specific project</option>
+                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Assigned To</div>
+              <input value={schedForm.assignedTo||""} onChange={e=>setSchedForm(p=>({...p,assignedTo:e.target.value}))} placeholder="e.g. Rodel, PM Team" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Status</div>
+              <select value={schedForm.status||"Scheduled"} onChange={e=>setSchedForm(p=>({...p,status:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
+                {["Scheduled","In Progress","Done"].map(s=><option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Notes</div>
+              <textarea value={schedForm.notes||""} onChange={e=>setSchedForm(p=>({...p,notes:e.target.value}))} placeholder="Additional details…" rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box",resize:"vertical"}}/>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={saveSched} disabled={!schedForm.title||!schedForm.date} style={{flex:1,padding:"9px",background:(!schedForm.title||!schedForm.date)?"#cbd5e1":"#ef4444",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:(!schedForm.title||!schedForm.date)?"not-allowed":"pointer"}}>
+                {editSchedId?"Save Changes":"Save Schedule"}
+              </button>
+              <button onClick={()=>{setSchedModal(false);setEditSchedId(null);}} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {eventModal&&(
         <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.6)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setEventModal(null)}>
           <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:420,padding:0,overflow:"hidden",boxShadow:"0 20px 60px rgba(0,0,0,.25)"}} onClick={e=>e.stopPropagation()}>
@@ -19486,6 +19573,64 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
           </div>
         </div>
       )}
+
+      {calTab==="schedule"&&(()=>{
+        const upcoming=opsEvents.filter(e=>e.status!=="Done").sort((a,b)=>a.dueDate.localeCompare(b.dueDate));
+        const done=opsEvents.filter(e=>e.status==="Done").sort((a,b)=>b.dueDate.localeCompare(a.dueDate)).slice(0,10);
+        const STATUS_COLORS={"Scheduled":"#0ea5e9","In Progress":"#f59e0b","Done":"#059669"};
+        return(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem"}}>🔧 Repairs, Backjobs & Site Visits</div>
+              {addOpsEvent&&<button onClick={()=>openSched(today)} style={{background:"#ef4444",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:"pointer"}}>+ Schedule New</button>}
+            </div>
+            {upcoming.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".85rem"}}>No upcoming scheduled items. Click "+ Schedule New" to add one.</div>}
+            {upcoming.map(ev=>{
+              const proj=wonDeals.find(d=>d.id===ev.projectId);
+              const clr=OPS_EVENT_COLORS[ev.type]||"#64748b";
+              const isOverdue=ev.dueDate<today;
+              return(
+                <div key={ev.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isOverdue?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${clr}`,padding:"11px 16px",marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{OPS_EVENT_ICONS[ev.type]||"🔧"} {ev.title}</span>
+                      <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 8px",borderRadius:20,background:clr+"22",color:clr}}>{ev.type}</span>
+                      {isOverdue&&<span style={{fontSize:".65rem",fontWeight:700,padding:"1px 8px",borderRadius:20,background:"#fef2f2",color:"#ef4444"}}>OVERDUE</span>}
+                    </div>
+                    {proj&&<div style={{fontSize:".75rem",color:"#8b5cf6",marginBottom:2}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</div>}
+                    {ev.assignedTo&&<div style={{fontSize:".72rem",color:"#64748b"}}>👤 {ev.assignedTo}</div>}
+                    {ev.notes&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{ev.notes}</div>}
+                    <div style={{fontSize:".7rem",color:isOverdue?"#ef4444":"#94a3b8",marginTop:4}}>{ev.dueDate}</div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5,alignItems:"flex-end"}}>
+                    <select value={ev.status||"Scheduled"} onChange={e=>{e.stopPropagation();updateOpsEvent?.(ev.id,{status:e.target.value});}} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"3px 7px",fontFamily:"inherit",fontSize:".72rem",background:"#fff",cursor:"pointer",color:STATUS_COLORS[ev.status||"Scheduled"]||"#0f172a",fontWeight:700}}>
+                      {["Scheduled","In Progress","Done"].map(s=><option key={s}>{s}</option>)}
+                    </select>
+                    <div style={{display:"flex",gap:5}}>
+                      <button onClick={()=>openSched(ev.dueDate,ev)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 9px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                      <button onClick={()=>deleteOpsEvent?.(ev.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 9px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            {done.length>0&&(
+              <div style={{marginTop:16}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>✅ Completed ({done.length})</div>
+                {done.map(ev=>(
+                  <div key={ev.id} style={{background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",padding:"8px 14px",marginBottom:5,display:"flex",justifyContent:"space-between",alignItems:"center",opacity:.7}}>
+                    <div>
+                      <span style={{fontWeight:600,color:"#64748b",fontSize:".82rem"}}>{OPS_EVENT_ICONS[ev.type]||"🔧"} {ev.title}</span>
+                      <span style={{fontSize:".7rem",color:"#94a3b8",marginLeft:8}}>{ev.dueDate} · {ev.type}</span>
+                    </div>
+                    <button onClick={()=>deleteOpsEvent?.(ev.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {calTab==="thisweek"&&(
         <div>
