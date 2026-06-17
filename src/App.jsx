@@ -18628,7 +18628,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const n=v=>Number(v)||0;
   const fp=v=>v?("₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:2})):"—";
   const canEdit=role==="Manager"||role==="Procurement"||role==="Warehouse";
-  const canDelete=role==="Manager"||role==="Procurement";
+  const canDelete=role==="Manager"||role==="Procurement"||role==="Warehouse";
 
   // ── derive BEG/RECV/OUT from stock movements ──────────────────────────
   const mvMap=useMemo(()=>{
