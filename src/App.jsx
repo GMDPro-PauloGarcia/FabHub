@@ -17269,7 +17269,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     const ms=billings.find(b=>b.id===showPay);
     if(ms){
       const alreadyPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-      const msBalance=Math.max(0,Number(ms.amount||0)-alreadyPaid);
+      const tx=calcTax(ms.amount, ms.receiptType||"OR", ms.withholding||false);
+      const msBalance=Math.max(0, tx.netReceivable - alreadyPaid);
       if(Number(payForm.amount)>msBalance+0.01){
         toastEmit(`Payment ₱${Number(payForm.amount).toLocaleString("en-PH")} exceeds balance of ₱${msBalance.toLocaleString("en-PH")}. Please check the amount.`,"warning");
         return;
