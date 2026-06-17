@@ -3680,8 +3680,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const milestone=billings.find(b=>b.id===msId);
     const dealId=milestone?.dealId;
     const payDeal=dealId?deals.find(d=>d.id===dealId):null;
+    const msTx=calcTax(milestone?.amount||0,milestone?.receiptType||milestone?.receipt_type||"OR",milestone?.withholding??false);
     const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
-    const isFullyPaid=totalPaidAfter>=Number(milestone?.amount||0);
+    const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
     const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
     sendTelegramNotification("sales",payMsg);
     sendTelegramNotification("management",payMsg);
@@ -3689,7 +3690,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
-      const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':b.status;
+      const bTx=calcTax(b.amount||0,b.receiptType||b.receipt_type||"OR",b.withholding??false);
+      const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
       if(isSupabaseReady()){
         sbSyncOne("billing_payments",{...payment,id:payId,milestoneId:msId},toSbPayment);
         sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(e=>{toastEmit("Payment recorded locally — Supabase sync failed. Check connection.","warning");console.error("billing sync:",e);});
@@ -3730,7 +3732,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(b.id!==msId) return b;
       const payments=(b.payments||[]).filter(p=>p.id!==payId);
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
-      const status=totalPaid>=Number(b.amount)?'Paid':totalPaid>0?'Partial':'Unpaid';
+      const bTx=calcTax(b.amount||0,b.receiptType||b.receipt_type||"OR",b.withholding??false);
+      const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':'Unpaid';
       if(isSupabaseReady()){
         sbDelete('billing_payments',payId).catch(()=>{});
         sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(()=>{});
@@ -10683,7 +10686,7 @@ First few:
                     {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
                     {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Submit</button>}
                     {canRelease&&<button onClick={()=>releaseCv(v.id)} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Release</button>}
-                    {v.status==="Released"&&!v.isCleared&&(role==="Finance"||role==="Manager")&&<button onClick={()=>clearCv(v.id)} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🏦 Cleared</button>}
+                    {v.status==="Released"&&!v.isCleared&&(role==="Finance"||role==="Manager"||role==="Accounting")&&<button onClick={()=>clearCv(v.id)} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🏦 Cleared</button>}
                     {canVoid&&<button onClick={()=>{if(window.confirm("Void this voucher?")) voidCv(v.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>Void</button>}
                   </div>
                 </div>
@@ -10875,7 +10878,7 @@ First few:
             </button>
           ))}
         </div>
-        <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginBottom:20}}>
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16,marginBottom:20}}>
           {/* BANK SIDE */}
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
             <div style={{background:"#1e293b",padding:"12px 16px"}}>
@@ -17967,6 +17970,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:6}}>
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
+                                    <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</Sel></Fld>
+                                    <Fld label="Value Date"><Inp type="date" value={editPayForm.valueDate??p.valueDate??""} onChange={e=>setEditPayForm(f=>({...f,valueDate:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
                                     <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
                                   </div>
