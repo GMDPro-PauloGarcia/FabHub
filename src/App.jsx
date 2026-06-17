@@ -18598,6 +18598,8 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const[importPreview,setImportPreview]=useState([]);
   const[importErr,setImportErr]=useState("");
   const[qtyMap,setQtyMap]=useState({});
+  const[dispatchModal,setDispatchModal]=useState(null);
+  const[dispatchForm,setDispatchForm]=useState({itemId:"",qty:"",projectId:"",notes:""});
   const csvFileRef=useRef(null);
 
   const n=v=>Number(v)||0;
@@ -18971,7 +18973,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   }
 
   // ── tab bar ───────────────────────────────────────────────────────────
-  const TABS=[["dashboard","📊 Dashboard"],["inventory",`≡ Inventory (${rows.length})`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
+  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:0,height:"100%"}}>
@@ -19000,6 +19002,96 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
 
       {/* ── DASHBOARD TAB ─────────────────────────────────────────────── */}
       {tab==="dashboard"&&<Dashboard/>}
+
+      {/* ── DELIVERIES TAB ───────────────────────────────────────────────── */}
+      {tab==="deliveries"&&(()=>{
+        const nowDel=new Date(today);
+        const openPOs=prs.filter(p=>!["Delivered","Cancelled"].includes(p.status));
+        const withDate=openPOs.filter(p=>p.deliveryDate).sort((a,b)=>a.deliveryDate>b.deliveryDate?1:-1);
+        const noDate=openPOs.filter(p=>!p.deliveryDate);
+        const all=[...withDate,...noDate];
+        const totalValue=all.reduce((s,p)=>{const uc=Number(p.actUnitCost||p.estUnitCost||p.estimatedCost||0);return s+uc*Number(p.qty||1);},0);
+        const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        return(
+          <div style={{overflowY:"auto",flex:1,paddingBottom:20}}>
+            {/* Summary KPIs */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginBottom:12}}>
+              {[
+                {l:"Pending Deliveries",v:openPOs.length,c:C.text},
+                {l:"Overdue",v:withDate.filter(p=>p.deliveryDate<today).length,c:C.red},
+                {l:"Arriving Today",v:withDate.filter(p=>p.deliveryDate===today).length,c:C.accent},
+                {l:"No Date Set",v:noDate.length,c:C.muted},
+                {l:"Total Incoming Value",v:fmtM(totalValue),c:C.teal},
+              ].map(({l,v,c})=>(
+                <div key={l} style={{background:C.card,borderRadius:8,padding:"10px 14px",border:`1px solid ${C.border}`}}>
+                  <div style={{fontSize:15,fontWeight:800,color:c,fontFamily:"monospace"}}>{v}</div>
+                  <div style={{fontSize:9,color:C.muted,textTransform:"uppercase",letterSpacing:".6px",marginTop:3}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            {/* Table */}
+            <div style={{background:C.card,borderRadius:10,border:`1px solid ${C.border}`,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}>
+                <div style={{minWidth:900}}>
+                  {/* Header */}
+                  <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 60px 90px 100px 110px 150px",background:"#1e293b",padding:"8px 14px",gap:8}}>
+                    {["Item / PO","Supplier","Project","Qty","Unit Cost","Total Value","Delivery Date","Actions"].map(h=>(
+                      <div key={h} style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".5px"}}>{h}</div>
+                    ))}
+                  </div>
+                  {all.length===0&&<div style={{padding:"28px",textAlign:"center",color:C.muted,fontSize:12}}>No pending PO deliveries.</div>}
+                  {all.map((pr,i)=>{
+                    const deal=wonDeals.find(d=>d.id===pr.dealId||d.id===pr.projectId);
+                    const uc=Number(pr.actUnitCost||pr.estUnitCost||pr.estimatedCost||0);
+                    const qty=Number(pr.qty||1);
+                    const rowVal=uc*qty;
+                    const isOv=pr.deliveryDate&&pr.deliveryDate<today;
+                    const isTd=pr.deliveryDate===today;
+                    const isRcvd=["Delivered","Partially Delivered"].includes(pr.status);
+                    const daysAway=pr.deliveryDate?Math.ceil((new Date(pr.deliveryDate)-nowDel)/(1000*60*60*24)):null;
+                    const invMatch=inventory.find(inv=>inv.name?.toLowerCase()===(pr.itemName||pr.item||"").toLowerCase()||inv.name?.toLowerCase().includes((pr.itemName||pr.item||"").toLowerCase().slice(0,8)));
+                    const lastDispatch=invMatch?[...stocklog].filter(s=>s.itemId===invMatch.id&&s.moveType==="OUT — Used in Project").sort((a,b)=>b.date>a.date?1:-1)[0]:null;
+                    return(
+                      <div key={pr.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 60px 90px 100px 110px 150px",padding:"9px 14px",gap:8,borderBottom:`1px solid ${C.border}`,background:isOv?"#fff5f5":i%2?"#fafafa":"#fff",alignItems:"center"}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontSize:11,fontWeight:600,color:C.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.itemName||pr.item||"—"}</div>
+                          <div style={{display:"flex",gap:5,marginTop:2,flexWrap:"wrap"}}>
+                            {pr.poNumber&&<span style={{fontSize:9,color:C.blue,fontWeight:700}}>#{pr.poNumber}</span>}
+                            <span style={{fontSize:9,padding:"1px 6px",borderRadius:10,background:isRcvd?"#dcfce7":isOv?"#fef2f2":"#f1f5f9",color:isRcvd?C.green:isOv?C.red:C.muted,fontWeight:700}}>{pr.status}</span>
+                          </div>
+                          {lastDispatch&&<div style={{fontSize:9,color:C.teal,marginTop:2}}>📤 Last out: {wonDeals.find(d=>d.id===lastDispatch.projectId)?.client||lastDispatch.notes||"Warehouse"} · {lastDispatch.date}</div>}
+                        </div>
+                        <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.supplier||"—"}</div>
+                        <div style={{fontSize:11,color:deal?C.blue:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deal?.client||"GMD Stock"}</div>
+                        <div style={{fontSize:12,fontWeight:700,color:C.text,textAlign:"right"}}>{qty}</div>
+                        <div style={{fontSize:11,fontFamily:"monospace",color:uc>0?C.text:C.muted,textAlign:"right"}}>{uc>0?fmtM(uc):"—"}</div>
+                        <div style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:rowVal>0?C.teal:C.muted,textAlign:"right"}}>{rowVal>0?fmtM(rowVal):"—"}</div>
+                        <div style={{fontSize:10}}>
+                          {pr.deliveryDate?<span style={{color:isOv?C.red:isTd?C.accent:C.teal,fontWeight:700}}>{isOv?`${Math.abs(daysAway)}d overdue`:isTd?"Today":`${daysAway}d`}</span>:<span style={{color:C.muted,fontSize:9}}>No date</span>}
+                          {pr.deliveryDate&&!isOv&&!isTd&&<div style={{fontSize:9,color:C.muted}}>{pr.deliveryDate}</div>}
+                        </div>
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                          {updatePR&&pr.status!=="Delivered"&&<button onClick={()=>updatePR(pr.id,{status:"Delivered",deliveryDate:today,qtyDelivered:pr.qty})} style={{fontSize:9,padding:"3px 7px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Rcvd</button>}
+                          {updatePR&&!["Partially Delivered","Delivered"].includes(pr.status)&&<button onClick={()=>updatePR(pr.id,{status:"Partially Delivered"})} style={{fontSize:9,padding:"3px 7px",border:`1px solid ${C.teal}`,borderRadius:5,background:"#fff",color:C.teal,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>Partial</button>}
+                          {logStockMove&&isRcvd&&<button onClick={()=>{setDispatchModal(pr);setDispatchForm({itemId:invMatch?.id||"",qty:pr.qty||"",projectId:pr.dealId||pr.projectId||"",notes:""});}} style={{fontSize:9,padding:"3px 7px",border:`1px solid ${C.accent}`,borderRadius:5,background:"#fff",color:C.accent,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>📤 Dispatch</button>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* Totals footer */}
+                  {all.length>0&&(
+                    <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 60px 90px 100px 110px 150px",padding:"10px 14px",gap:8,background:"#1e293b",alignItems:"center"}}>
+                      <div style={{gridColumn:"1/6",color:"rgba(255,255,255,.7)",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>Total Incoming Value</div>
+                      <div style={{fontSize:14,fontFamily:"monospace",fontWeight:800,color:C.accent,textAlign:"right"}}>{fmtM(totalValue)}</div>
+                      <div/><div/>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── INVENTORY TABLE TAB ──────────────────────────────────────── */}
       {tab==="inventory"&&(
@@ -19249,6 +19341,48 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
             <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:16}}>
               <button onClick={()=>setShowImport(false)} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
               <button onClick={commitImport} disabled={!importPreview.length} style={{background:importPreview.length?"#7c3aed":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:importPreview.length?"#fff":"#94a3b8",cursor:importPreview.length?"pointer":"not-allowed"}}>⬆ Import {importPreview.length>0?importPreview.length+" items":""}</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── DISPATCH MODAL ──────────────────────────────────────────────── */}
+      {dispatchModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setDispatchModal(null)}>
+          <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:400,boxShadow:"0 20px 60px rgba(0,0,0,.3)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a",marginBottom:4}}>📤 Dispatch to Project</div>
+            <div style={{fontSize:".8rem",color:"#64748b",marginBottom:14,fontStyle:"italic"}}>{dispatchModal.itemName||dispatchModal.item}</div>
+            {!dispatchForm.itemId&&(
+              <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:".78rem",color:"#dc2626"}}>
+                ⚠ No inventory record found for this item. Add it to Inventory first so stock levels update automatically.
+              </div>
+            )}
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Qty to Dispatch *</div>
+              <input type="number" value={dispatchForm.qty} onChange={e=>setDispatchForm(p=>({...p,qty:e.target.value}))} min={1} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Destination Project</div>
+              <select value={dispatchForm.projectId} onChange={e=>setDispatchForm(p=>({...p,projectId:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
+                <option value="">— GMD Warehouse / Internal Use</option>
+                {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Notes (DR #, delivery slip, etc.)</div>
+              <input value={dispatchForm.notes} onChange={e=>setDispatchForm(p=>({...p,notes:e.target.value}))} placeholder="e.g. DR-001 · Site A delivery" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button
+                disabled={!dispatchForm.qty||!dispatchForm.itemId}
+                onClick={()=>{
+                  if(!dispatchForm.qty||!dispatchForm.itemId) return;
+                  logStockMove({itemId:dispatchForm.itemId,moveType:"OUT — Used in Project",qty:Number(dispatchForm.qty),projectId:dispatchForm.projectId||null,dealId:dispatchForm.projectId||null,notes:dispatchForm.notes||(dispatchModal.poNumber?"PO "+dispatchModal.poNumber:"Dispatched"),date:today,recordedBy:session?.name||role});
+                  setDispatchModal(null);
+                }}
+                style={{flex:1,padding:"9px",background:(!dispatchForm.qty||!dispatchForm.itemId)?"#cbd5e1":"#f97316",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:(!dispatchForm.qty||!dispatchForm.itemId)?"not-allowed":"pointer"}}>
+                📤 Log Dispatch
+              </button>
+              <button onClick={()=>setDispatchModal(null)} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
         </div>
