@@ -15157,12 +15157,13 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const[poLevelDiscType,setPoLevelDiscType]=useState("none");
   const[poLevelDiscValue,setPoLevelDiscValue]=useState("");
   const[poWithVat,setPoWithVat]=useState(false);
+  const[editingPrIds,setEditingPrIds]=useState(null);
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
 
   function emptyPoItem(){
-    return {_id:Math.random().toString(36).slice(2),projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
+    return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
   }
 
   const nextPoNo=()=>{
@@ -15175,7 +15176,36 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const openNewPO=()=>{
     setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
-    setPoLevelDiscType("none"); setPoLevelDiscValue(""); setMode("newpo");
+    setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false);
+    setEditingPrIds(null); setMode("newpo");
+  };
+
+  const openEditPO=(poNo,items)=>{
+    const first=items[0]||{};
+    setPoSupplier(first.supplier||"");
+    setPoNumber(poNo);
+    setPoDate(first.poDate||today);
+    setPoStatus(first.status||"Draft");
+    setPoExpectedDelivery(first.deliveryDate||"");
+    setPoLevelDiscType(first.poDiscType||"none");
+    setPoLevelDiscValue(String(first.poDiscValue||""));
+    setPoWithVat(first.withVat||false);
+    setPoItems(items.map(pr=>({
+      _id:Math.random().toString(36).slice(2),
+      _existingId:pr.id,
+      projectId:pr.projectId||"",
+      projectName:pr.projectName||"",
+      itemName:pr.itemName||"",
+      category:pr.category||"Materials",
+      budgetCategory:pr.budgetCategory||"Materials",
+      qty:pr.qty||1,
+      unit:pr.unit||"pcs",
+      estUnitCost:pr.estUnitCost||0,
+      discType:pr.discType||"none",
+      discValue:pr.discValue||0,
+    })));
+    setEditingPrIds(items.map(i=>i.id));
+    setMode("newpo");
   };
 
   const printPO=(poNo,supplierName,poD,items,poDiscType,poDiscVal,withVat)=>{
@@ -15274,27 +15304,39 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const submitPO=()=>{
     if(!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
     const poNo=poNumber.trim();
-    poItems.forEach(item=>{
+    const buildUpdate=(item)=>{
       const deal=wonDeals.find(d=>d.id===item.projectId);
-      addPR({
-        ...emptyPR(),
-        itemName:item.itemName, category:item.category, budgetCategory:item.budgetCategory,
-        qty:item.qty, unit:item.unit, estUnitCost:item.estUnitCost,
-        discType:item.discType||"none", discValue:item.discValue||0,
-        poDiscType:poLevelDiscType, poDiscValue:poLevelDiscValue, withVat:poWithVat,
-        projectId:item.projectId, projectName:deal?.client||item.projectName||"",
-        supplier:poSupplier, poNumber:poNo, poDate:poDate,
-        status:poStatus, deliveryDate:poExpectedDelivery||"",
-        requestedBy:session?.name||"",
-        approvedBy:poStatus==="PO Issued"?session?.name||"":""
-      },{silent:true});
-    });
-    const itemLines=poItems.map(item=>`  • ${item.itemName||"?"} — ${item.qty||"?"} ${item.unit||""} @ ₱${Number(item.estUnitCost||0).toLocaleString("en-PH")}`).join("\n");
-    const projects=[...new Set(poItems.map(item=>{const d=wonDeals.find(x=>x.id===item.projectId);return d?.client||item.projectName||item.projectId||"?";}).filter(Boolean))].join(", ");
-    const poMsg=`🛒 <b>New Purchase Order ${poNo}</b>\nSupplier: ${poSupplier}\nProject: ${projects}\n\n${itemLines}\n\nBy: ${session?.name||"?"}`;
-    sendTelegramNotification("procurement",poMsg);
-    sendTelegramNotification("management",poMsg);
-    toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
+      return{itemName:item.itemName,category:item.category,budgetCategory:item.budgetCategory,
+        qty:item.qty,unit:item.unit,estUnitCost:item.estUnitCost,
+        discType:item.discType||"none",discValue:item.discValue||0,
+        poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
+        projectId:item.projectId,projectName:deal?.client||item.projectName||"",
+        supplier:poSupplier,poNumber:poNo,poDate:poDate,
+        status:poStatus,deliveryDate:poExpectedDelivery||""};
+    };
+    if(editingPrIds){
+      const updatedIds=poItems.filter(i=>i._existingId).map(i=>i._existingId);
+      editingPrIds.filter(id=>!updatedIds.includes(id)).forEach(id=>deletePR(id));
+      poItems.forEach(item=>{
+        if(item._existingId) updatePR(item._existingId,buildUpdate(item));
+        else addPR({...emptyPR(),...buildUpdate(item),requestedBy:session?.name||""},{silent:true});
+      });
+      setEditingPrIds(null);
+      toastEmit&&toastEmit(`PO ${poNo} updated`,"success");
+    }else{
+      poItems.forEach(item=>{
+        addPR({...emptyPR(),...buildUpdate(item),
+          requestedBy:session?.name||"",
+          approvedBy:poStatus==="PO Issued"?session?.name||"":""
+        },{silent:true});
+      });
+      const itemLines=poItems.map(item=>`  • ${item.itemName||"?"} — ${item.qty||"?"} ${item.unit||""} @ ₱${Number(item.estUnitCost||0).toLocaleString("en-PH")}`).join("\n");
+      const projects=[...new Set(poItems.map(item=>{const d=wonDeals.find(x=>x.id===item.projectId);return d?.client||item.projectName||item.projectId||"?";}).filter(Boolean))].join(", ");
+      const poMsg=`🛒 <b>New Purchase Order ${poNo}</b>\nSupplier: ${poSupplier}\nProject: ${projects}\n\n${itemLines}\n\nBy: ${session?.name||"?"}`;
+      sendTelegramNotification("procurement",poMsg);
+      sendTelegramNotification("management",poMsg);
+      toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
+    }
     setMode("list");
   };
 
@@ -15309,13 +15351,14 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
     const solo=[];
     filteredAll.forEach(p=>{
       if(p.poNumber){
-        if(!byPO[p.poNumber]) byPO[p.poNumber]=[];
-        byPO[p.poNumber].push(p);
+        const key=`${p.poNumber}|||${(p.supplier||"").toLowerCase().trim()}`;
+        if(!byPO[key]) byPO[key]=[];
+        byPO[key].push(p);
       } else {
         solo.push(p);
       }
     });
-    const poGroups=Object.entries(byPO).map(([poNo,items])=>({type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)}));
+    const poGroups=Object.entries(byPO).map(([key,items])=>{const poNo=key.split("|||")[0];return{type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)};});
     const soloItems=solo.map(p=>({type:"solo",pr:p}));
     return [...poGroups,...soloItems].sort((a,b)=>{
       const aDate=a.type==="po"?a.poDate:a.pr.createdDate||"";
@@ -15390,7 +15433,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
       <div>
         <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
         <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:20}}>
-          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>📦 New Purchase Order</div>
+          <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>{editingPrIds?"✏ Edit Purchase Order":"📦 New Purchase Order"}</div>
           <datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(5,1fr)",gap:12,marginBottom:20,paddingBottom:16,borderBottom:"1.5px solid #f1f5f9"}}>
             <Fld label="Supplier" required>
@@ -15599,6 +15642,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                   <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
                     <button onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
+                    {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
                     {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                   </div>
                 </div>
