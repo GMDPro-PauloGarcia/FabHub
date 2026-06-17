@@ -3154,6 +3154,29 @@ export default function App(){
         lastPurchasePrice:type.startsWith("IN")&&move.unitCost?Number(move.unitCost):i.lastPurchasePrice,
         lastUpdated:today};
       if(isSupabaseReady()) sbUpdate('inventory_items',i.id,invToSb(updated)).catch(()=>{});
+      // Auto-create project expense when stock is issued to a project
+      if((move.moveType||"").startsWith("OUT")&&(move.dealId||move.projectId)){
+        const costPerUnit=Number(move.unitCost)||Number(i.avgCost)||0;
+        const costAmt=Math.round(qty*costPerUnit*100)/100;
+        if(costAmt>0){
+          const dealId=move.dealId||move.projectId;
+          const expEntry={
+            id:uid(),dealId,projectId:dealId,
+            expDate:move.date||today,
+            category:"Materials",
+            note:`${i.name} × ${qty} ${i.unit||""} — from GMD Stocks`,
+            description:`${i.name} × ${qty} ${i.unit||""} — from GMD Stocks`,
+            amount:costAmt,payee:"GMD Stocks",
+            bankAccount:null, // non-cash stock transfer — excluded from bank flows
+            year:new Date(move.date||today).getFullYear(),
+            month:new Date(move.date||today).getMonth(),
+            receiptNo:"",createdBy:session?.name||role,
+          };
+          upExps(es=>[expEntry,...es]);
+          if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(expEntry),"id").catch(()=>{});
+          toastEmit&&toastEmit(`Expense of ₱${costAmt.toLocaleString("en-PH",{maximumFractionDigits:0})} auto-tagged to project for ${i.name}×${qty}${i.unit||""}`,  "info");
+        }
+      }
       return updated;
     }));
   };
