@@ -18722,20 +18722,53 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   }
   function parseInvCSV(text){
     const result=[];
-    for(const raw of text.split(/\r?\n/)){
+    const allLines=text.split(/\r?\n/);
+    // Detect FabHub export format by finding a header row with "code" and "name"
+    let iName=-1,iUnit=-1,iBeg=-1,iRecv=-1,iOut=-1,iPrice=-1,iNotes=-1;
+    let headerFound=false,startLine=0;
+    for(let li=0;li<allLines.length;li++){
+      const raw=allLines[li].trim();if(!raw)continue;
+      const low=raw.toLowerCase();
+      if(low.startsWith("code")&&low.includes("name")&&low.includes("unit")){
+        const hcols=[];let cur="",inQ=false;
+        for(let ci=0;ci<raw.length;ci++){const ch=raw[ci];if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){hcols.push(cur.trim().toLowerCase());cur="";}else{cur+=ch;}}
+        hcols.push(cur.trim().toLowerCase());
+        iName=hcols.findIndex(c=>c==="name");
+        iUnit=hcols.findIndex(c=>c==="unit");
+        iBeg=hcols.findIndex(c=>c.includes("beg"));
+        iRecv=hcols.findIndex(c=>c.includes("recv"));
+        iOut=hcols.findIndex(c=>c.startsWith("out"));
+        iPrice=hcols.findIndex(c=>c.includes("price")&&!c.includes("stock"));
+        iNotes=hcols.findIndex(c=>c==="notes");
+        headerFound=true;startLine=li+1;break;
+      }
+    }
+    for(const raw of allLines.slice(startLine)){
       const line=raw.trim();if(!line)continue;
       const low=line.toLowerCase();
-      if(low.startsWith("item")||low.startsWith("desc")||low.startsWith("no.")||low.startsWith("#")||low.startsWith("name"))continue;
+      if(!headerFound&&(low.startsWith("item")||low.startsWith("desc")||low.startsWith("no.")||low.startsWith("#")||low.startsWith("name")))continue;
       const cols=[];let cur="",inQ=false;
       for(let ci=0;ci<line.length;ci++){const ch=line[ci];if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){cols.push(cur.trim());cur="";}else{cur+=ch;}}
       cols.push(cur.trim());
-      const name=(cols[0]||"").replace(/^"|"$/g,"").trim().toUpperCase();if(!name)continue;
-      const unit=(cols[1]||"pcs").replace(/^"|"$/g,"").trim().toLowerCase()||"pcs";
-      const price=parseFloat((cols[2]||"0").replace(/[₱,]/g,""))||0;
-      const beg=parseInt((cols[3]||"0").replace(/,/g,""))||0;
-      const recv=parseInt((cols[4]||"0").replace(/,/g,""))||0;
-      const out=parseInt((cols[5]||"0").replace(/,/g,""))||0;
-      const notes=(cols[6]||"").replace(/^"|"$/g,"").trim();
+      let name,unit,price,beg,recv,out,notes;
+      if(headerFound){
+        name=(cols[iName]||"").replace(/^"|"$/g,"").trim().toUpperCase();
+        unit=iUnit>=0?(cols[iUnit]||"pcs").replace(/^"|"$/g,"").trim().toLowerCase()||"pcs":"pcs";
+        price=iPrice>=0?parseFloat((cols[iPrice]||"0").replace(/[₱,]/g,""))||0:0;
+        beg=iBeg>=0?parseInt((cols[iBeg]||"0").replace(/,/g,""))||0:0;
+        recv=iRecv>=0?parseInt((cols[iRecv]||"0").replace(/,/g,""))||0:0;
+        out=iOut>=0?parseInt((cols[iOut]||"0").replace(/,/g,""))||0:0;
+        notes=iNotes>=0?(cols[iNotes]||"").replace(/^"|"$/g,"").trim():"";
+      }else{
+        name=(cols[0]||"").replace(/^"|"$/g,"").trim().toUpperCase();
+        unit=(cols[1]||"pcs").replace(/^"|"$/g,"").trim().toLowerCase()||"pcs";
+        price=parseFloat((cols[2]||"0").replace(/[₱,]/g,""))||0;
+        beg=parseInt((cols[3]||"0").replace(/,/g,""))||0;
+        recv=parseInt((cols[4]||"0").replace(/,/g,""))||0;
+        out=parseInt((cols[5]||"0").replace(/,/g,""))||0;
+        notes=(cols[6]||"").replace(/^"|"$/g,"").trim();
+      }
+      if(!name)continue;
       result.push({name,unit,price,qty:beg+recv-out,notes,beg,recv,out});
     }
     return result;
@@ -19338,7 +19371,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
             </div>
             <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:".78rem",color:"#1d4ed8"}}>
               <strong>Format (one item per line):</strong><br/>
-              <code style={{fontSize:".73rem",color:"#475569"}}>Name, Unit, Price, Beg Qty, Recv Qty, Out Qty [, Notes]</code><br/>
+              <code style={{fontSize:".73rem",color:"#475569"}}>Name, Unit, Price, Beg Qty, Recv Qty, Out Qty [, Notes]</code> — or paste the exported FabHub inventory CSV directly<br/>
               <span style={{color:"#64748b",fontSize:".72rem"}}>Matches the GMD warehouse app export. Existing items (matched by name) are updated — qty set to Beg+Recv−Out.</span>
             </div>
             <div style={{marginBottom:10}}>
