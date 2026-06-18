@@ -2817,8 +2817,8 @@ export default function App(){
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
     with_vat:r.withVat||false,
-    // NOTE: from_mr_id, urgency, approved_at, delivery_history are tracked in local state
-    // only — add these columns to the purchase_requests Supabase table to enable sync
+    // from_mr_id, urgency, approved_at, delivery_history: local-only until Supabase migration runs
+    // ALTER TABLE purchase_requests ADD COLUMN IF NOT EXISTS from_mr_id uuid REFERENCES material_requests(id) ON DELETE SET NULL, ADD COLUMN IF NOT EXISTS urgency text NOT NULL DEFAULT 'Normal', ADD COLUMN IF NOT EXISTS approved_at date, ADD COLUMN IF NOT EXISTS delivery_history jsonb;
   });
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
