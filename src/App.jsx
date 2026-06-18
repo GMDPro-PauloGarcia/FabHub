@@ -14801,15 +14801,15 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               return(<>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
                   <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
-                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#7c3aed",fontSize:"1.05rem",minWidth:18}}>−</span>Monthly Loan Payments
-                  </div>
-                  <div style={{fontWeight:700,color:"#7c3aed",fontSize:".88rem"}}>₱{fmt2(loanMetrics.monthlyPaymentTotal)}</div>
-                </div>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
-                  <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#0e7490",fontSize:"1.05rem",minWidth:18}}>+</span>Save-Up Capital (Unionbank)
                   </div>
                   <div style={{fontWeight:700,color:"#0e7490",fontSize:".88rem"}}>₱{fmt2(saveUp)}</div>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#7c3aed",fontSize:"1.05rem",minWidth:18}}>−</span>Monthly Loan Payments
+                  </div>
+                  <div style={{fontWeight:700,color:"#7c3aed",fontSize:".88rem"}}>₱{fmt2(loanMetrics.monthlyPaymentTotal)}</div>
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 0"}}>
                   <div style={{fontWeight:800,color:"#0f172a",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".4px"}}>=  Total GMD Cash Assets</div>
