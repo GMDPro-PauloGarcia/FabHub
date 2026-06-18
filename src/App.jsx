@@ -14412,7 +14412,11 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
             if(ms&&updateMilestone)
               updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===paymentId?{...px,bank:bankId}:px)});
             const cur=pos.collections?.approvedPayments||[];
-            if(!cur.includes(paymentId)) f("collections.approvedPayments",[...cur,paymentId]);
+            const newApproved=cur.includes(paymentId)?cur:[...cur,paymentId];
+            const newPos={...pos,collections:{...pos.collections,approvedPayments:newApproved}};
+            setPos(newPos);
+            setSaved(false);
+            saveDayPos(selDate,newPos);
           };
           const assignExpBank=(expId,bankId)=>{
             const exp=dateExps.find(e=>e.id===expId);
@@ -14490,7 +14494,11 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               const noBank=!p.bank;
               const toggle=()=>{
                 const cur=pos.collections?.approvedPayments||[];
-                f("collections.approvedPayments",approved?cur.filter(id=>id!==p.id):[...cur,p.id]);
+                const newApproved=approved?cur.filter(id=>id!==p.id):[...cur,p.id];
+                const newPos={...pos,collections:{...pos.collections,approvedPayments:newApproved}};
+                setPos(newPos);
+                setSaved(false);
+                saveDayPos(selDate,newPos);
               };
               return(
                 <div key={p.id} style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #d1fae5",background:approved?"#f0fdf4":noBank?"#fffbeb":"#fef9c3"}}>
