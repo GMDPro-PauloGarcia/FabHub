@@ -2583,6 +2583,7 @@ export default function App(){
             if(_loans){setLoans(_loans);idbE.push(["gmdv5:loans",_loans]);}
             const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
             if(_vouchers){setVouchers(_vouchers);idbE.push([KEYS.vouchers,_vouchers]);}
+            if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(bl);idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);idbE.push([KEYS.botsettings,bs]);}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
             if(_drfs){setDrfs(_drfs);idbE.push([KEYS.drfs,_drfs]);}
@@ -3736,14 +3737,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(payment.bank&&payment.amount){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
-      setCashPos(cp=>{
+      upCashPos(cp=>{
         const existing=cp[pDate]||{date:pDate,bpi_end:0,metrobank_end:0,chinabank_end:0,bdo_end:0,secbank_end:0,unionbank_end:0,notes:""};
         const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
         const field=fieldMap[bankKey]||null;
         if(!field) return cp;
         const updated={...existing,[field]:(Number(existing[field]||0)+Number(payment.amount))};
-        const newNote=`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
-        updated.notes=(updated.notes?updated.notes+" | ":"")+newNote;
+        updated.notes=(updated.notes?updated.notes+" | ":"")+`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
         return{...cp,[pDate]:updated};
       });
     }
@@ -4057,7 +4057,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   const addBlocker=useCallback((dealId,title,dept,detail)=>{
     const entry={id:uid(),dealId,title,dept:dept||"Operations",detail:detail||"",flaggedBy:session?.name||"PM",status:"Open",createdAt:new Date().toISOString(),resolvedBy:null,resolvedAt:null};
-    setBlockers(prev=>{const n=[entry,...prev];localStorage.setItem(KEYS.blockers,JSON.stringify(n));return n;});
+    setBlockers(prev=>{const n=[entry,...prev];localStorage.setItem(KEYS.blockers,JSON.stringify(n));idbSetMany([[KEYS.blockers,n]]).catch(()=>{});return n;});
+    if(isSupabaseReady()) sbInsert('project_blockers',{id:entry.id,deal_id:dealId,title,dept:dept||"Operations",detail:detail||"",flagged_by:session?.name||"PM",status:"Open",created_at:entry.createdAt}).catch(()=>{});
     logActivity(dealId,"Blocker Flagged",`${title} — needs ${dept}`,session?.name);
     const d=deals.find(x=>x.id===dealId);
     const msg=`⛔ <b>Blocker Flagged</b>\n${d?.client||dealId}\n<b>${title}</b>${detail?"\n"+detail:""}\nFlagged by: ${session?.name} · Dept: ${dept}`;
@@ -4070,8 +4071,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const resolveBlocker=useCallback((blockerId)=>{
     setBlockers(prev=>{
       const n=prev.map(b=>b.id===blockerId?{...b,status:"Resolved",resolvedBy:session?.name,resolvedAt:new Date().toISOString()}:b);
-      localStorage.setItem(KEYS.blockers,JSON.stringify(n));
+      localStorage.setItem(KEYS.blockers,JSON.stringify(n));idbSetMany([[KEYS.blockers,n]]).catch(()=>{});
       const resolved=n.find(b=>b.id===blockerId);
+      if(resolved&&isSupabaseReady()) sbUpdate('project_blockers',blockerId,{status:"Resolved",resolved_by:resolved.resolvedBy,resolved_at:resolved.resolvedAt}).catch(()=>{});
       if(resolved){
         const d=deals.find(x=>x.id===resolved.dealId);
         const msg=`✅ <b>Blocker Resolved</b>\n${d?.client||resolved.dealId}\n<b>${resolved.title}</b>\nResolved by: ${session?.name}`;
@@ -4446,6 +4448,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[cvStatus,  setCvStatus] =useState("All");
   const[dpCollapsed,setDpCollapsed]=useState(new Set());
   const[cvCollapsed,setCvCollapsed]=useState(new Set());
+  const[isOnline,   setIsOnline]   =useState(()=>navigator.onLine);
   const[poPayModal, setPoPayModal]=useState(false);
   const[poPayPr,    setPoPayPr]   =useState(null);
   const[poPayStep,  setPoPayStep] =useState(1);
@@ -4521,6 +4524,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[boqLibrary,  setBoqLibrary]   = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.boqLibrary)||"[]");}catch{return [];}});
   const[boqDealId,   setBoqDealId]    = useState(null);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
+  useEffect(()=>{const on=()=>setIsOnline(true);const off=()=>setIsOnline(false);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
   const[dupPrompt,   setDupPrompt]   = useState(null);   // {newData, matches[]} — duplicate deal detection
@@ -5239,7 +5243,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",
       billing:"Billing",checklist:"Checklist",joborders:"JOs",
-      costanalysis:"Costs",accounting:"Accounts",procurement:"Orders",
+      costanalysis:"Costs",accounting:"Daily Payables",procurement:"Orders",
       clients:"Clients",materialreq:"Materials",budgetreq:"Budget",
       swatchboard:"Swatches",drf:"Design",deliveries:"Delivery",
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
@@ -5400,6 +5404,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {!isMobile&&<Nav/>}
         <MobileHeader/>
         <Toaster/>
+        {!isOnline&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#1e293b",color:"#fcd34d",padding:"8px 16px",textAlign:"center",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>⚠️ You're offline — changes are saved locally and will sync when you reconnect.</div>}
         {SyncBanner}
         <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?56:undefined,paddingBottom:isMobile?72:undefined}} className="fi">
           {!isMobile&&!alreadyWrapped&&(
