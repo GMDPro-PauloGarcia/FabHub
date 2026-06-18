@@ -15877,7 +15877,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Subcontractor" required hint="From the Subcontractor Master — terms auto-fill">
               <SearchSelect value={form.subcontractor||""} onChange={pickSubcon}
-                options={(subcons||[]).map(s=>{const n=s.company_name||s.companyName||"";return{value:n,label:n};})}
+                options={[...new Map((subcons||[]).map(s=>{const n=(s.company_name||s.companyName||"").trim();return[n,{value:n,label:n}];})).values()].filter(o=>o.value)}
                 placeholder="Search or type subcontractor…" noneLabel="— Select subcontractor —" noneValue=""/>
             </Fld>
             <Fld label="Project" required>
