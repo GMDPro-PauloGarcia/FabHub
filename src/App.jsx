@@ -5099,7 +5099,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", reconc:"🏦",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", reconc:"🏦",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -5222,7 +5222,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", reconc:"🏦",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", reconc:"🏦",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
