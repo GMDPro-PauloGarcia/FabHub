@@ -7802,7 +7802,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 9px",fontFamily:"inherit",fontSize:".8rem",background:"#f8fafc",color:aeUpdateDealId?"#1d4ed8":"#94a3b8",fontWeight:aeUpdateDealId?700:400,marginBottom:12,boxSizing:"border-box"}}>
               <option value="">— No project tag —</option>
               {aeUpdateDealType==="active"
-                ? wonDeals.filter(d=>d.stage!=="12 · Close-Out").map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
+                ? wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
                 : deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)
               }
             </select>
@@ -15147,7 +15147,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
   // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
-    return wonDeals.filter(d=>d.stage!=="12 · Close-Out").map(d=>{
+    return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=>{
       const b=budgets[d.id]||emptyBudget();
       const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
       prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
