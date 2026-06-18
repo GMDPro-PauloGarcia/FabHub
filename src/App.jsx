@@ -16492,6 +16492,16 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
 
   const STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","PO Issued":"#3b82f6","Partially Delivered":"#8b5cf6","Delivered":"#10b981","Cancelled":"#ef4444"};
   const totalValue=filteredAll.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
+  // Assign a distinct color to each PO number that appears more than once in the list
+  const DUP_PALETTE=["#dc2626","#d97706","#059669","#7c3aed","#db2777","#0891b2","#65a30d","#ea580c"];
+  const dupPoColors=(()=>{
+    const counts={};
+    grouped.forEach(g=>{if(g.type==="po")counts[g.poNo]=(counts[g.poNo]||0)+1;});
+    const dupNos=Object.keys(counts).filter(k=>counts[k]>1).sort();
+    const map={};
+    dupNos.forEach((no,i)=>{map[no]=DUP_PALETTE[i%DUP_PALETTE.length];});
+    return map;
+  })();
 
   // Edit single PR inline
   if(mode==="editpr"&&editingId){
@@ -16868,7 +16878,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                 {/* Compact row */}
                 <div onClick={()=>setExpandedPo(o=>o===poNo?null:poNo)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
                   onMouseEnter={e=>{if(!open)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=open?"#f8fafc":"#fff";}}>
-                  <div style={{fontWeight:700,color:"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{poNo}</div>
+                  <div style={{fontWeight:700,color:dupPoColors[poNo]||"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
+                    {dupPoColors[poNo]&&<span title="Duplicate PO number" style={{width:7,height:7,borderRadius:"50%",background:dupPoColors[poNo],flexShrink:0,display:"inline-block"}}/>}
+                    {poNo}
+                  </div>
                   <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supplier||"—"}</div>
                   <div style={{fontSize:".75rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projects}</div>
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
