@@ -362,7 +362,8 @@ const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
   if(role!=="Procurement"||!sessionName) return false;
   const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
   if(list.length) return list.includes(sessionName.trim().toLowerCase());
-  return sessionName!==(requestedBy||"");
+  // P3: only allow approval when requestedBy is a different known person — empty requestedBy doesn't grant approval
+  return !!requestedBy&&sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
 };
 
 const swoToSb=r=>({
@@ -2557,9 +2558,9 @@ export default function App(){
             if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
             const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?JSON.parse(p.delivery_history):undefined})):null;
             if(_prs){setPrs(_prs);idbE.push([KEYS.prs,_prs]);}
-            const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at})):null;
+            const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
             const _breqs=data.breqs?.length?data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})):null;
             if(_breqs){setBreqs(_breqs);idbE.push([KEYS.breqs,_breqs]);}
@@ -2816,6 +2817,10 @@ export default function App(){
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
     with_vat:r.withVat||false,
+    from_mr_id:r.fromMrId||null,
+    urgency:r.urgency||"Normal",
+    approved_at:r.approvedAt||null,
+    delivery_history:r.deliveryHistory?JSON.stringify(r.deliveryHistory):null,
   });
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
@@ -3136,7 +3141,8 @@ export default function App(){
   const logStockMove=(move)=>{
     if(move.moveType?.startsWith("OUT")){
       const item=inventory.find(i=>i.id===move.itemId);
-      if(item&&Number(item.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${item.qtyOnHand} ${item.unit||""} on hand.`,"error");return;}
+      if(!item){toastEmit("Stock OUT failed — inventory item not found. Check that the item still exists.","error");return;}
+      if(Number(item.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${item.qtyOnHand} ${item.unit||""} on hand.`,"error");return;}
     }
     const entry={...move,id:uid(),date:move.date||today,recordedBy:session?.name||role};
     upStocklog(sl=>[entry,...sl]);
@@ -3151,7 +3157,7 @@ export default function App(){
       if(type.startsWith("ADJUST"))newQty=qty;
       if(type.startsWith("RETURN"))newQty=Math.max(0,newQty-qty);
       let avgCost=Number(i.avgCost)||0;
-      if(type.startsWith("IN")&&move.unitCost){
+      if(type.startsWith("IN")&&Number(move.unitCost)>0){
         const prevTotal=(Number(i.qtyOnHand)||0)*avgCost;
         const newTotal=qty*Number(move.unitCost);
         avgCost=newQty>0?(prevTotal+newTotal)/newQty:Number(move.unitCost);
@@ -3853,10 +3859,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const deal=deals.find(d=>d.id===(m.projectId||m.dealId));
         sendTelegramNotification("procurement",`✅ <b>MR Approved</b>\n${m.itemName||"?"}\nProject: ${deal?.client||m.projectId||"?"}\nApproved by: ${session?.name||"Manager"}\n\n🛒 Proceed to create a PO for this item in Procurement.`);
         sendTelegramNotification("ops",`✅ <b>MR Approved</b>\n${m.itemName||"?"}\nProject: ${deal?.client||m.projectId||"?"}\nApproved by: ${session?.name||"Manager"}`);
-        // Auto-create a draft PO from the approved MR so Procurement has a starting point
-        const draftPR={id:uid(),itemName:m.itemName||"",item:m.itemName||"",qty:Number(m.qty)||1,unit:m.unit||"pcs",estUnitCost:Number(m.estUnitCost||m.estimatedCost)||0,actUnitCost:0,category:"Materials",budgetCategory:m.budgetCategory||"Materials",projectId:m.projectId||m.dealId||null,dealId:m.dealId||m.projectId||null,supplier:"",status:"Pending Approval",urgency:m.urgency||"Normal",requestedBy:m.requestedBy||m.submittedBy||"",approvedBy:session?.name||"",createdDate:today,poNumber:"",fromMrId:m.id,notes:`Auto-created from approved MR: ${m.itemName||"?"}`};
-        upPrs(ps=>[draftPR,...ps]);
-        if(isSupabaseReady()) sbSyncOne("purchase_requests",draftPR,toSbPR);
+        // P6: log MR approval to project activity
+        if(m.projectId||m.dealId) logActivity(m.projectId||m.dealId,"MR Approved",`Material Request approved: ${m.itemName||"?"} × ${m.qty||"?"} ${m.unit||""} (${m.urgency||"Normal"})`,session?.name);
+        // P12: guard against race condition — only create draft PO if one doesn't already exist for this MR
+        const alreadyHasPO=prs.some(p=>p.fromMrId===m.id);
+        if(!alreadyHasPO){
+          const draftPR={id:uid(),itemName:m.itemName||"",item:m.itemName||"",qty:Number(m.qty)||1,unit:m.unit||"pcs",estUnitCost:Number(m.estUnitCost||m.estimatedCost)||0,actUnitCost:0,category:"Materials",budgetCategory:m.budgetCategory||"Materials",projectId:m.projectId||m.dealId||null,dealId:m.dealId||m.projectId||null,supplier:"",status:"Draft",urgency:m.urgency||"Normal",requestedBy:m.requestedBy||m.submittedBy||"",approvedBy:"",createdDate:today,createdBy:session?.name||"",poNumber:"",fromMrId:m.id,notes:`Auto-created from approved MR: ${m.itemName||"?"}`};
+          upPrs(ps=>[draftPR,...ps]);
+          if(isSupabaseReady()) sbSyncOne("purchase_requests",draftPR,toSbPR);
+        }
       }
       return n;
     }));
@@ -3911,15 +3922,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
   const updatePR=(id,changes)=>{
+    const pr=prs.find(p=>p.id===id);
+    const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
     if(changes.status==="PO Issued"&&changes.approvedBy){
-      const pr=prs.find(p=>p.id===id);
-      const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
       sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"GMD Stock"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
+      // P7: log PO issued to project activity
+      if(pr?.projectId||pr?.dealId) logActivity(pr.projectId||pr.dealId,"PO Issued",`PO issued for ${pr.itemName||"?"} × ${pr.qty||"?"} ${pr.unit||""} from ${pr.supplier||"(no supplier)"} — PO# ${changes.poNumber||pr?.poNumber||"—"}`,changes.approvedBy||session?.name);
     }
+    // P9: stamp approvedAt when PO is issued
+    if(changes.status==="PO Issued"&&!changes.approvedAt) changes={...changes,approvedAt:today};
     upPrs(ps=>ps.map(p=>{
       if(p.id!==id) return p;
-      const n={...p,...changes};
-      if(isSupabaseReady()) sbSyncOne("purchase_requests",n,toSbPR);
+      // P11: append delivery history entry when delivery status is set
+      let extraChanges={};
+      if((changes.status==="Partially Delivered"||changes.status==="Delivered")&&changes.qtyDelivered){
+        const shipment={date:changes.deliveryDate||today,qty:Number(changes.qtyDelivered)||0,drNo:changes.drNo||changes.deliveryNote||"",recordedBy:session?.name||""};
+        extraChanges={deliveryHistory:[...(p.deliveryHistory||[]),shipment]};
+        // P8: log delivery to project activity
+        if(p.projectId||p.dealId) logActivity(p.projectId||p.dealId,"Delivery Received",`${changes.status==="Delivered"?"Full":"Partial"} delivery: ${p.itemName||"?"} × ${changes.qtyDelivered} ${p.unit||""} from ${p.supplier||"(no supplier)"}${shipment.drNo?` · DR# ${shipment.drNo}`:""}`,session?.name);
+      }
+      const n={...p,...changes,...extraChanges};
+      // P13: surface sync failures instead of swallowing them silently
+      if(isSupabaseReady()) sbSyncOne("purchase_requests",n,toSbPR).catch(e=>toastEmit(`PR sync failed: ${e?.message||"unknown error"} — data saved locally, retry when online.`,"warn"));
       return n;
     }));
   };
@@ -16493,7 +16517,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
             <Fld label="Qty"><Inp type="number" value={editForm.qty} onChange={e=>ef("qty",e.target.value)}/></Fld>
             <Fld label="Unit"><input list="po-units-dl" value={editForm.unit} onChange={e=>ef("unit",e.target.value)} placeholder="pcs, meters, sqm…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/><datalist id="po-units-dl">{PO_UNITS.map(u=><option key={u} value={u}/>)}</datalist></Fld>
             <Fld label="Est Unit Cost (₱)"><Inp type="number" value={editForm.estUnitCost} onChange={e=>ef("estUnitCost",e.target.value)}/></Fld>
-            <Fld label="Actual Unit Cost (₱)"><Inp type="number" value={editForm.actUnitCost} onChange={e=>ef("actUnitCost",e.target.value)}/></Fld>
+            <Fld label="Actual Unit Cost (₱)">
+              <Inp type="number" value={editForm.actUnitCost} onChange={e=>ef("actUnitCost",e.target.value)}
+                style={{borderColor:["Partially Delivered","Delivered"].includes(editForm.status)?"#f97316":undefined}}/>
+              {["Partially Delivered","Delivered"].includes(editForm.status)&&<div style={{fontSize:".67rem",color:"#c2410c",marginTop:3}}>⚠ P14: Item already delivered — changing this will affect inventory avg cost. Ensure it matches the actual DR/SI.</div>}
+            </Fld>
             <Fld label="Status"><Sel value={editForm.status} onChange={e=>ef("status",e.target.value)}>{PROC_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="PO Number"><Inp value={editForm.poNumber} onChange={e=>ef("poNumber",e.target.value)}/></Fld>
             <Fld label="PO Date"><Inp type="date" value={editForm.poDate} onChange={e=>ef("poDate",e.target.value)}/></Fld>
@@ -16502,7 +16530,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
               <Fld label="Expected Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
             )}
             {(editForm.status==="Partially Delivered"||editForm.status==="Delivered")&&(<>
-              <Fld label="Qty Delivered"><Inp type="number" value={editForm.qtyDelivered} onChange={e=>ef("qtyDelivered",e.target.value)}/></Fld>
+              <Fld label="Qty Delivered">
+                <Inp type="number" value={editForm.qtyDelivered}
+                  onChange={e=>{const v=e.target.value;if(Number(v)>Number(editForm.qty||0)){toastEmit&&toastEmit(`⚠️ Qty delivered (${v}) exceeds PO qty (${editForm.qty}) — over-receive must be approved by Manager.`,"warn");}ef("qtyDelivered",v);}}
+                  style={{borderColor:Number(editForm.qtyDelivered||0)>Number(editForm.qty||0)?"#f97316":undefined}}/>
+                {Number(editForm.qtyDelivered||0)>Number(editForm.qty||0)&&<div style={{fontSize:".68rem",color:"#c2410c",marginTop:3}}>⚠ Over PO qty — ensure Manager approved</div>}
+              </Fld>
               <Fld label="Delivery Date"><Inp type="date" value={editForm.deliveryDate} onChange={e=>ef("deliveryDate",e.target.value)}/></Fld>
               <div style={{gridColumn:"1/-1"}}><Fld label="DR / Delivery Note"><Inp value={editForm.deliveryNote} onChange={e=>ef("deliveryNote",e.target.value)}/></Fld></div>
             </>)}
