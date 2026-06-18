@@ -2559,7 +2559,7 @@ export default function App(){
             const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
             const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?JSON.parse(p.delivery_history):undefined})):null;
-            if(_prs){setPrs(_prs);idbE.push([KEYS.prs,_prs]);}
+            if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
             const _breqs=data.breqs?.length?data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})):null;
@@ -16256,6 +16256,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const[filterProj,setFilterProj]=useState("all");
   const[filterStat,setFilterStat]=useState("all");
   const[expandedPo,setExpandedPo]=useState(null);
+  const[poListTab,setPoListTab]=useState("list");
   const[poSupplier,setPoSupplier]=useState("");
   const[poNumber,setPoNumber]=useState("");
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
@@ -16411,11 +16412,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
 
   const submitPO=()=>{
     if(!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
+    if(poItems.some(i=>!(Number(i.qty)>0))){toastEmit&&toastEmit("Every item must have a quantity greater than 0.","error");return;}
     const poNo=poNumber.trim();
     const buildUpdate=(item)=>{
       const deal=wonDeals.find(d=>d.id===item.projectId);
       return{itemName:item.itemName,category:item.category,budgetCategory:item.budgetCategory,
-        qty:item.qty,unit:item.unit,estUnitCost:item.estUnitCost,
+        qty:Number(item.qty)||1,unit:item.unit,estUnitCost:Number(item.estUnitCost)||0,
         discType:item.discType||"none",discValue:item.discValue||0,
         poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
         projectId:item.projectId,projectName:deal?.client||item.projectName||"",
@@ -16609,7 +16611,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                     <Fld label="Item Name / Description" required><Inp value={item.itemName} onChange={e=>updatePoItem(item._id,"itemName",e.target.value)} placeholder="e.g. 18mm Melamine Board White"/></Fld>
                     <Fld label="Category"><Sel value={item.category} onChange={e=>updatePoItem(item._id,"category",e.target.value)}>{PR_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
                     <Fld label="Budget Line"><Sel value={item.budgetCategory} onChange={e=>updatePoItem(item._id,"budgetCategory",e.target.value)}>{BUDGET_CATS.map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-                    <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1}/></Fld>
+                    <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1} style={{borderColor:!(Number(item.qty)>0)?"#ef4444":undefined}}/>{!(Number(item.qty)>0)&&<div style={{fontSize:".66rem",color:"#ef4444",marginTop:2}}>Required</div>}</Fld>
                     <Fld label="Unit"><input list="po-units-dl" value={item.unit} onChange={e=>updatePoItem(item._id,"unit",e.target.value)} placeholder="pcs, sqm…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/></Fld>
                     <Fld label="Est Unit Cost (₱)"><Inp type="number" value={item.estUnitCost} onChange={e=>updatePoItem(item._id,"estUnitCost",e.target.value)} placeholder="0"/></Fld>
                     <Fld label="Item Discount">
@@ -16718,6 +16720,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Issue POs to suppliers — each with multiple project-tagged line items</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{display:"flex",gap:0,borderRadius:8,overflow:"hidden",border:"1.5px solid #e2e8f0",marginRight:4}}>
+              {[["list","📋 PO List"],["summary","📊 Summary"]].map(([t,l])=>(
+                <button key={t} onClick={()=>setPoListTab(t)} style={{padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,border:"none",background:poListTab===t?"#1e293b":"#fff",color:poListTab===t?"#fff":"#64748b",cursor:"pointer"}}>{l}</button>
+              ))}
+            </div>
           <button onClick={()=>{
             const rows=[["PO Number","Date","Supplier","Project","Item Description","Category","Qty","Unit","Est Unit Cost","Act Unit Cost","Line Total","Status","Notes"]];
             const allProjDeals=[...wonDeals,...(allDeals||[])];
@@ -16777,7 +16784,79 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
             <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:i===3?"right":"left"}}>{h}</div>
           ))}
         </div>}
-        {grouped.map((g,gi)=>{
+          {poListTab==="summary"&&(()=>{
+            const allPoNos=[...new Set(prs.filter(p=>p.poNumber).map(p=>p.poNumber))];
+            const bySupplier={};
+            const byProject={};
+            const byStatus={};
+            filteredAll.forEach(p=>{
+              const sup=p.supplier||"(No supplier)";
+              if(!bySupplier[sup])bySupplier[sup]={count:0,total:0,items:[]};
+              bySupplier[sup].count++;bySupplier[sup].total+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);bySupplier[sup].items.push(p);
+              const proj=p.projectName||p.projectId||"GMD Stocks";
+              if(!byProject[proj])byProject[proj]={count:0,total:0};
+              byProject[proj].count++;byProject[proj].total+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+              const st=p.status||"Draft";
+              if(!byStatus[st])byStatus[st]={count:0,total:0};
+              byStatus[st].count++;byStatus[st].total+=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+            });
+            const supRows=Object.entries(bySupplier).sort((a,b)=>b[1].total-a[1].total);
+            const projRows=Object.entries(byProject).sort((a,b)=>b[1].total-a[1].total);
+            const stRows=Object.entries(byStatus).sort((a,b)=>b[1].total-a[1].total);
+            return(
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
+                {/* By Supplier */}
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  <div style={{background:"#1e293b",padding:"10px 16px",fontWeight:700,color:"#f59e0b",fontSize:".82rem"}}>By Supplier</div>
+                  {supRows.map(([sup,{count,total}])=>(
+                    <div key={sup} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #f1f5f9",gap:8}}>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{sup}</div>
+                        <div style={{fontSize:".65rem",color:"#94a3b8"}}>{count} item{count!==1?"s":""}</div>
+                      </div>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",flexShrink:0}}>{fmt(total)}</div>
+                    </div>
+                  ))}
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"9px 16px",background:"#f8fafc",fontWeight:800,fontSize:".82rem"}}>
+                    <span>TOTAL</span><span style={{color:"#1d4ed8"}}>{fmt(supRows.reduce((s,[,{total}])=>s+total,0))}</span>
+                  </div>
+                </div>
+                {/* By Project */}
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  <div style={{background:"#1e293b",padding:"10px 16px",fontWeight:700,color:"#4ade80",fontSize:".82rem"}}>By Project</div>
+                  {projRows.map(([proj,{count,total}])=>(
+                    <div key={proj} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #f1f5f9",gap:8}}>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj}</div>
+                        <div style={{fontSize:".65rem",color:"#94a3b8"}}>{count} item{count!==1?"s":""}</div>
+                      </div>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",flexShrink:0}}>{fmt(total)}</div>
+                    </div>
+                  ))}
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"9px 16px",background:"#f8fafc",fontWeight:800,fontSize:".82rem"}}>
+                    <span>TOTAL</span><span style={{color:"#059669"}}>{fmt(projRows.reduce((s,[,{total}])=>s+total,0))}</span>
+                  </div>
+                </div>
+                {/* By Status */}
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",gridColumn:"1/-1"}}>
+                  <div style={{background:"#1e293b",padding:"10px 16px",fontWeight:700,color:"#a78bfa",fontSize:".82rem"}}>By Status</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:1,background:"#f1f5f9"}}>
+                    {stRows.map(([st,{count,total}])=>(
+                      <div key={st} style={{background:"#fff",padding:"12px 16px"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                          <span style={{width:8,height:8,borderRadius:"50%",background:STATUS_CLR[st]||"#94a3b8",flexShrink:0,display:"inline-block"}}/>
+                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".78rem"}}>{st}</span>
+                        </div>
+                        <div style={{fontWeight:800,color:STATUS_CLR[st]||"#64748b",fontSize:"1rem"}}>{fmt(total)}</div>
+                        <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:2}}>{count} item{count!==1?"s":""}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+          {poListTab==="list"&&grouped.map((g,gi)=>{
           if(g.type==="po"){
             const {poNo,items,supplier,status,poDate:poD,total}=g;
             const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
@@ -21919,7 +21998,35 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🏭 Supplier Master List</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Approved vendors — rated, categorized, and ready to quote</div>
         </div>
-        {canEdit&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Add Supplier</button>}
+        {canEdit&&(
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <label style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#1d4ed8",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              ⬆ Import CSV
+              <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
+                const file=e.target.files?.[0];if(!file)return;
+                const reader=new FileReader();
+                reader.onload=ev=>{
+                  const lines=ev.target.result.split("\n").map(l=>l.trim()).filter(Boolean);
+                  if(!lines.length)return;
+                  const isHeader=lines[0].toLowerCase().includes("company")||lines[0].toLowerCase().includes("name");
+                  const dataLines=isHeader?lines.slice(1):lines;
+                  let count=0;
+                  dataLines.forEach(line=>{
+                    const cols=line.split(",").map(c=>c.replace(/^"|"$/g,"").trim());
+                    const [companyName="",contactPerson="",contactNos="",email="",address="",materials="",rating="",tinNo="",paymentTerms="",notes=""]=[...cols,...Array(10).fill("")];
+                    if(!companyName)return;
+                    addSupplier({companyName,contactPerson,contactNos,email,address,materials,rating:rating||"4 - GOOD",tinNo,paymentTerms:paymentTerms||"Cash Basis",notes,status:"Active"});
+                    count++;
+                  });
+                  alert(`✓ Imported ${count} supplier${count!==1?"s":""}.`);
+                };
+                reader.readAsText(file);
+                e.target.value="";
+              }}/>
+            </label>
+            <button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Add Supplier</button>
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
