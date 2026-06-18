@@ -2783,6 +2783,7 @@ export default function App(){
       id:r.id, deal_id:r.dealId, name:r.name||"", description:r.description||"",
       amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
       invoice_date:r.invoiceDate||null, due_date:r.dueDate||null,
+      sent_date:r.sentDate||null,
       status:r.status||"Draft", created_by:r.createdBy||"",
       receipt_type:r.receiptType||null, withholding:r.withholding??null,
       vat:tx.vat, ewt:tx.ewt, net_receivable:tx.netReceivable,
@@ -3646,8 +3647,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upBillings(bs=>bs.map(b=>{
       if(b.id!==id) return b;
       const n={...b,...ch};
-      // Fix 3: auto-set invoiceDate when status changes to "Sent to Client"
-      if(ch.status==='Sent to Client'&&!n.invoiceDate) n.invoiceDate=today;
+      // auto-set invoiceDate and sentDate when status changes to "Sent to Client"
+      if(ch.status==='Sent to Client'){if(!n.invoiceDate)n.invoiceDate=today;if(!n.sentDate)n.sentDate=today;}
       if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
       return n;
     }));
@@ -3691,6 +3692,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
     sendTelegramNotification("sales",payMsg);
     sendTelegramNotification("management",payMsg);
+    if(dealId) logActivity(dealId,"Payment Received",`₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} on ${milestone?.name||"milestone"}${payment.refNo?` · Ref: ${payment.refNo}`:""}`,payment.recordedBy||session?.name);
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
@@ -3879,6 +3881,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           }
         }
       }
+    }
+    if(ch.status==="Approved"){
+      const br=breqs.find(b=>b.id===id);
+      if(br?.projectId) logActivity(br.projectId,"BR Approved",`Budget Request approved: ${br.title||br.purpose||"?"} — ₱${Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}`,session?.name);
     }
     upBreqs(bs=>bs.map(b=>{
       if(b.id!==id) return b;
@@ -4326,6 +4332,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       toMark.forEach(b=>sbUpdate('billing_milestones',b.id,{status:'Overdue',updated_at:new Date().toISOString()}).catch(()=>{}));
     }
   },[billings.length,today]); // eslint-disable-line
+
+  // Daily bot alerts: overdue payables + low inventory
+  useEffect(()=>{
+    if(!isSupabaseReady()||!botSettings?.token) return;
+    const overdueP=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today);
+    if(overdueP.length>0){
+      const total=overdueP.reduce((s,p)=>s+Number(p.amount||0),0);
+      const lines=overdueP.slice(0,5).map(p=>`• ${p.payee||p.description||"?"} — ₱${Number(p.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})} (due ${p.dueDate})`).join("\n");
+      const msg=`⚠️ <b>Overdue Payables Alert</b>\n${overdueP.length} payable${overdueP.length!==1?"s":""} overdue — ₱${total.toLocaleString("en-PH",{maximumFractionDigits:0})} total\n\n${lines}${overdueP.length>5?`\n…and ${overdueP.length-5} more`:""}`;
+      sendTelegramNotification("financialcontrol",msg);
+      sendTelegramNotification("management",msg);
+    }
+    const lowStock=inventory.filter(i=>i.status!=="Inactive"&&i.reorderPoint>0&&i.qtyOnHand<=i.reorderPoint);
+    if(lowStock.length>0){
+      const lines=lowStock.slice(0,5).map(i=>`• ${i.name} — ${i.qtyOnHand} ${i.unit} (reorder at ${i.reorderPoint})`).join("\n");
+      const msg=`📦 <b>Low Inventory Alert</b>\n${lowStock.length} item${lowStock.length!==1?"s":""} at or below reorder point\n\n${lines}${lowStock.length>5?`\n…and ${lowStock.length-5} more`:""}`;
+      sendTelegramNotification("warehouse",msg);
+      sendTelegramNotification("procurement",msg);
+    }
+  },[today]); // eslint-disable-line
 
   // ── Dashboard KPI memos — pre-computed so render is instant ──────────────
   const pipeDeals      =useMemo(()=>deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)),[deals]);
@@ -9377,21 +9403,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                             <button onClick={()=>addLoanPayment(loan.id,lp.amount,lp.date)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"5px 12px",fontSize:".75rem",color:"#059669",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Log Payment</button>
                           </div>
                         )}
-                        {/* Payment history */}
-                        {(loan.payments||[]).length>0&&(
-                          <div style={{marginTop:10}}>
-                            <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",marginBottom:4}}>Payment History</div>
-                            {[...(loan.payments||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(pm=>(
-                              <div key={pm.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0",borderBottom:"1px solid #f1f5f9",fontSize:".78rem"}}>
-                                <span style={{color:"#475569"}}>{pm.date}</span>
-                                <div style={{display:"flex",gap:10,alignItems:"center"}}>
-                                  <span style={{fontWeight:700,color:"#059669"}}>{fmtM(pm.amount)}</span>
-                                  <button onClick={()=>delLoanPayment(loan.id,pm.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",fontFamily:"inherit"}}>x</button>
-                                </div>
+                        {/* Payment history with principal/interest breakdown */}
+                        {(loan.payments||[]).length>0&&(()=>{
+                          const r=loan.interestRate>0?loan.interestRate/100/12:0;
+                          let bal=loan.principal;
+                          const sorted=[...(loan.payments||[])].sort((a,b)=>a.date.localeCompare(b.date));
+                          return(
+                            <div style={{marginTop:10}}>
+                              <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",marginBottom:4}}>Payment History</div>
+                              <div style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr 1fr 28px",gap:4,fontSize:".68rem",color:"#94a3b8",padding:"2px 0",borderBottom:"1px solid #f1f5f9"}}>
+                                <span>Date</span><span>Payment</span><span style={{color:"#dc2626"}}>Interest</span><span style={{color:"#7c3aed"}}>Principal</span><span/>
                               </div>
-                            ))}
-                          </div>
-                        )}
+                              {sorted.map(pm=>{
+                                const interest=r>0?Math.round(bal*r*100)/100:0;
+                                const principal=Math.min(bal,Math.max(0,Number(pm.amount)-interest));
+                                bal=Math.max(0,bal-principal);
+                                return(
+                                  <div key={pm.id} style={{display:"grid",gridTemplateColumns:"80px 1fr 1fr 1fr 28px",gap:4,padding:"4px 0",borderBottom:"1px solid #f1f5f9",fontSize:".72rem",alignItems:"center"}}>
+                                    <span style={{color:"#64748b"}}>{pm.date}</span>
+                                    <span style={{fontWeight:700,color:"#059669"}}>{fmtM(pm.amount)}</span>
+                                    <span style={{color:"#dc2626"}}>{r>0?fmtM(interest):"—"}</span>
+                                    <span style={{color:"#7c3aed"}}>{r>0?fmtM(principal):fmtM(pm.amount)}</span>
+                                    <button onClick={()=>delLoanPayment(loan.id,pm.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",fontFamily:"inherit"}}>x</button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </div>
                       {/* Right side: principal + actions */}
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,minWidth:120}}>
@@ -12195,7 +12234,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
               <div style={{gridColumn:"1/-1"}}><Fld label="✅ Approved Files Link" hint="Google Drive / Dropbox link to final approved drawings"><Inp type="url" value={form.approvedLink} onChange={e=>f("approvedLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld></div>
             )}
             {editId&&canAcknowledge&&(
-              <Fld label="Status"><Sel value={form.status} onChange={e=>f("status",e.target.value)}>{DRF_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+              <Fld label="Status"><Sel value={form.status} onChange={e=>f("status",e.target.value)}>{DRF_STATUSES.filter(s=>s!=="Approved"||role==="Manager").map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             )}
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any additional notes, brand guidelines, restrictions…"/></Fld></div>
           </div>
@@ -18841,6 +18880,18 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {/* Stage selector */}
                 {(role==="Manager"||role==="Sales")&&deal&&upDeals&&(()=>{
                   const changeStage=st=>{
+                    const allStages=[...WON_STAGES,"14 · Completed"];
+                    const curIdx=allStages.indexOf(deal.stage||"");
+                    const newIdx=allStages.indexOf(st);
+                    // M8: warn if active CE/QS requests exist for this deal
+                    const activeCE=(ceReqs||[]).filter(r=>r.dealId===selDeal&&!["Done","Cancelled"].includes(r.status));
+                    if(activeCE.length>0&&newIdx>curIdx){
+                      if(!window.confirm(`⚠️ This project has ${activeCE.length} active CE/QS request${activeCE.length!==1?"s":""} not yet completed.\n\nAdvance stage anyway?`)) return;
+                    }
+                    // M1: warn if jumping more than 1 stage ahead
+                    if(newIdx>curIdx+1){
+                      if(!window.confirm(`⚠️ You're skipping ${newIdx-curIdx-1} stage${newIdx-curIdx-1!==1?"s":""} (${deal.stage||"?"} → ${st}).\n\nContinue?`)) return;
+                    }
                     upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
                     if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
