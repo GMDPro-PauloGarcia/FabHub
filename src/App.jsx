@@ -15876,8 +15876,9 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>🛠️ {editingId?"Edit Work Order":"New Subcon Work Order"}</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Subcontractor" required hint="From the Subcontractor Master — terms auto-fill">
-              <SearchCombo value={form.subcontractor} onChange={pickSubcon}
-                options={supplierNameOptions(subcons)} placeholder="Search or type subcontractor…"/>
+              <SearchSelect value={form.subcontractor||""} onChange={pickSubcon}
+                options={(subcons||[]).map(s=>{const n=s.company_name||s.companyName||"";return{value:n,label:n};})}
+                placeholder="Search or type subcontractor…" noneLabel="— Select subcontractor —" noneValue=""/>
             </Fld>
             <Fld label="Project" required>
               <SearchSelect
