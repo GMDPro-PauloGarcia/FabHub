@@ -14007,12 +14007,17 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     }
   };
 
+  // Normalize billing bank display names → Cash Position bank IDs
+  const BILLING_BANK_MAP={"BPI":"bpi","Metrobank":"metro","Chinabank":"china","BDO":"bdo","Security Bank":"security","Unionbank":"union"};
   // All billing payments on selDate — shown for Finance to review (pending)
   const todayPayments=useMemo(()=>{
     const payments=[];
     (billings||[]).forEach(b=>{
       (b.payments||[]).forEach(p=>{
-        if(p.date===selDate) payments.push({...p, milestoneId:b.id, milestoneName:b.name, milestoneBilling:b, dealId:b.dealId, clientName:(wonDeals.find(d=>d.id===b.dealId)||{}).client||b.name||"Unknown"});
+        if(p.date===selDate){
+          const normBank=BILLING_BANK_MAP[p.bank]||p.bank||"";
+          payments.push({...p,bank:normBank,milestoneId:b.id,milestoneName:b.name,milestoneBilling:b,dealId:b.dealId,clientName:(wonDeals.find(d=>d.id===b.dealId)||{}).client||b.name||"Unknown"});
+        }
       });
     });
     return payments;
@@ -18745,7 +18750,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                             <Fld label="Bank Deposited To">
                               <Sel value={payForm.bank||""} onChange={e=>fp("bank",e.target.value)}>
                                 <option value="">— Select Bank —</option>
-                                {["BPI","Metrobank","Chinabank","BDO","Security Bank","Unionbank","Cash"].map(b=><option key={b}>{b}</option>)}
+                                {[{v:"bpi",l:"BPI"},{v:"metro",l:"Metrobank"},{v:"china",l:"Chinabank"},{v:"bdo",l:"BDO"},{v:"security",l:"Security Bank"},{v:"union",l:"Unionbank"},{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
                               </Sel>
                             </Fld>
                             <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
