@@ -55,7 +55,7 @@ const normalizeStage=(s)=>{
   }
   return "01 · BizDev";
 };
-const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out"];
+const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out","14 · Completed"];
 const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];
 const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
 const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
@@ -8343,8 +8343,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* Awarded Projects — active only (stages 06–11) */}
               {(()=>{
                 const matchSearch=d=>!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase());
-                const activeWonBase=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&matchSearch(d));
-                const doneWonBase  =wonDeals.filter(d=>d.stage==="12 · Close-Out"&&matchSearch(d));
+                const activeWonBase=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
+                const doneWonBase  =wonDeals.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
                 // Include addenda linked to won parents even if the addendum itself is in a pipeline stage
                 const wonIds=new Set(wonDeals.map(d=>d.id));
                 const addendaOfWon=deals.filter(d=>d.parentDealId&&wonIds.has(d.parentDealId)&&!wonIds.has(d.id));
@@ -18896,11 +18896,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
       {!selDeal&&(
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:16}}>
           {[
-            {l:"Active",       v:wonDeals.filter(d=>d.stage!=="12 · Close-Out").length, c:"#0f172a",    f:null},
-            {l:"Completed",    v:wonDeals.filter(d=>d.stage==="12 · Close-Out").length+completedDeals.length, c:"#059669", f:"completed"},
+            {l:"Active",       v:wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").length, c:"#0f172a",    f:null},
+            {l:"Completed",    v:wonDeals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="14 · Completed").length, c:"#059669", f:"completed"},
             {l:"Needs Attention",v:needsAttn,c:"#f59e0b",f:"attention"},
             {l:"Open Blockers",v:openBCount,c:openBCount>0?"#ef4444":"#94a3b8",f:"blockers"},
-            {l:"Past Deadline",v:[...wonDeals,...completedDeals].filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,c:"#c2410c",f:"overdue"},
+            {l:"Past Deadline",v:wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,c:"#c2410c",f:"overdue"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
             <div key={l} onClick={()=>setPcFilter(x=>x===f?null:f)}
@@ -18936,14 +18936,14 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             {(pcFilter||pcDeptFilter!=="All"||pcSearch)&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");setPcSearch("");}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
           {(()=>{
-            // "completed" tab = Close-Out wonDeals + completedDeals; default = active (exclude Close-Out)
+            // "completed" = Close-Out + 14·Completed (both now in wonDeals); default = active only
             let list=pcFilter==="overdue"
-              ?[...wonDeals,...completedDeals]
+              ?wonDeals
               :pcFilter==="completed"
-              ?[...wonDeals.filter(d=>d.stage==="12 · Close-Out"),...completedDeals]
+              ?wonDeals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="14 · Completed")
               :pcFilter==="all"
                 ?wonDeals
-                :wonDeals.filter(d=>d.stage!=="12 · Close-Out");
+                :wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed");
             if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
             if(pcFilter==="attention") list=list.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";});
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
