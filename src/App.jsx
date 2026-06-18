@@ -14499,6 +14499,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
                       {approved?"✓ Approved":"Pending"}
                     </button>
                     <span style={{fontWeight:600,color:"#1e293b",fontSize:".73rem",lineHeight:1.2}}>{p.clientName}</span>
+                    {p.milestoneName&&<span style={{color:"#0369a1",fontSize:".65rem",fontWeight:600}}>{p.milestoneName}</span>}
                     <span style={{color:"#64748b",fontSize:".65rem"}}>{p.refNo||"—"}</span>
                   </div>
                   {noBank?(
