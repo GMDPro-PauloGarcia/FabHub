@@ -9092,7 +9092,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── CASH POSITION TAB ── */}
         {finTab==="cash"&&(
           <>
-            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers}/>
+            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory}/>
           </>
         )}
 
@@ -13753,7 +13753,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
 
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
-function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[],updateMilestone,upExps,toSbExpense,isSupabaseReady,sbUpsert,vouchers=[]}){
+function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[],updateMilestone,upExps,toSbExpense,isSupabaseReady,sbUpsert,vouchers=[],payables=[],loans=[],inventory=[]}){
   const[selDate,setSelDate]=useState(today);
   const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
   const[saved,setSaved]    =useState(false);
@@ -13879,6 +13879,65 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     });
     return TYPES.map(t=>({type:t,...totals[t],outstanding:Math.max(0,totals[t].billed-totals[t].collected)}));
   },[billings]);
+
+  // ── Floating checks (Released CVs not yet cleared in bank)
+  const floatingChecks=useMemo(()=>vouchers.filter(v=>v.status==="Released"&&!v.isCleared),[vouchers]);
+  const floatingTotal=useMemo(()=>floatingChecks.reduce((s,v)=>s+Number(v.amount||0),0),[floatingChecks]);
+
+  // ── Payables analytics
+  const payablesMetrics=useMemo(()=>{
+    const now=new Date(today);
+    const in7=new Date(today); in7.setDate(in7.getDate()+7);
+    const in30=new Date(today); in30.setDate(in30.getDate()+30);
+    let overdue=0,due7=0,due30=0,totalUnpaid=0;
+    const overdueList=[];
+    const upcoming=[];
+    payables.filter(p=>!["Paid","Cancelled"].includes(p.status)).forEach(p=>{
+      const amt=Number(p.amount||0);
+      totalUnpaid+=amt;
+      if(p.dueDate){
+        const d=new Date(p.dueDate);
+        if(d<now){overdue+=amt;overdueList.push(p);}
+        else if(d<=in7){due7+=amt;upcoming.push(p);}
+        else if(d<=in30){due30+=amt;upcoming.push(p);}
+      }
+    });
+    return{overdue,due7,due30,totalUnpaid,overdueList,upcoming};
+  },[payables,today]);
+
+  // ── Loan metrics
+  const loanMetrics=useMemo(()=>{
+    const monthlyRate=l=>Number(l.interestRate||0)/100/12;
+    let totalBalance=0,monthlyPaymentTotal=0;
+    const loanRows=[];
+    loans.filter(l=>l.status!=="Paid Off"&&l.status!=="Cancelled").forEach(l=>{
+      const paid=(l.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+      const principal=Number(l.principal||0);
+      // Running balance: approximate remaining principal
+      let balance=principal;
+      const mr=monthlyRate(l);
+      (l.payments||[]).sort((a,b)=>a.date>b.date?1:-1).forEach(p=>{
+        const interest=balance*mr;
+        const principalPaid=Math.max(0,Number(p.amount||0)-interest);
+        balance=Math.max(0,balance-principalPaid);
+      });
+      const monthly=Number(l.monthlyPayment||0);
+      totalBalance+=balance;
+      monthlyPaymentTotal+=monthly;
+      loanRows.push({...l,remainingBalance:balance,monthly});
+    });
+    return{totalBalance,monthlyPaymentTotal,loanRows};
+  },[loans]);
+
+  // ── Inventory asset value
+  const inventoryValue=useMemo(()=>{
+    return inventory.filter(i=>i.status!=="Inactive").reduce((s,i)=>{
+      return s+Number(i.qtyOnHand||0)*Number(i.avgCost||0);
+    },0);
+  },[inventory]);
+
+  // ── Available Standby Funds = Net Cash Available - Floating Checks - Overdue Payables - Due in 7 days - Monthly Loans
+  // (computed after netCashAvail is available; referenced later in render)
 
   // When date changes, load that day's position or start fresh
   const switchDate=(d)=>{
@@ -14140,9 +14199,40 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         </div>
       )}
 
-      {/* KPI strip */}
-      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
+      {/* KPI strip — Row 1: Cash */}
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:10}}>
         {[
+          {l:"Net Cash Available",   v:"₱"+fmt2(netCashAvail),   c:netCashAvail>=0?"#059669":"#ef4444", sub:"Working capital banks"},
+          {l:"Working Capital Book", v:"₱"+fmt2(wcBook),         c:"#1d4ed8",                           sub:"BPI·Metro·China·BDO·Security"},
+          {l:"Collections Today",   v:"₱"+fmt2(totalCollections),c:"#10b981",                           sub:selDate},
+          {l:"Outstanding Invoices",v:"₱"+billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2}),c:billingMetrics.outstanding>0?"#f59e0b":"#059669",sub:"Pending AR"},
+        ].map(({l,v,c,sub})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1}}>{v}</div>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+            <div style={{fontSize:".62rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* KPI strip — Row 2: Obligations & Assets */}
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
+        {[
+          {l:"Floating Checks",      v:"₱"+floatingTotal.toLocaleString("en-PH",{minimumFractionDigits:2}),           c:floatingTotal>0?"#b45309":"#059669",       sub:floatingChecks.length+" released, not cleared"},
+          {l:"Total Loan Balance",   v:"₱"+loanMetrics.totalBalance.toLocaleString("en-PH",{minimumFractionDigits:2}),c:loanMetrics.totalBalance>0?"#7c3aed":"#059669",sub:loanMetrics.loanRows.length+" active loan"+( loanMetrics.loanRows.length!==1?"s":"")},
+          {l:"Inventory Asset Value",v:"₱"+inventoryValue.toLocaleString("en-PH",{minimumFractionDigits:2}),           c:"#0e7490",                                  sub:"On-hand stock at avg cost"},
+          {l:"Payables Overdue",     v:"₱"+payablesMetrics.overdue.toLocaleString("en-PH",{minimumFractionDigits:2}), c:payablesMetrics.overdue>0?"#ef4444":"#059669",sub:payablesMetrics.overdueList.length+" bills past due"},
+        ].map(({l,v,c,sub})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1}}>{v}</div>
+            <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+            <div style={{fontSize:".62rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* HIDDEN — legacy KPI strip kept for reference; replaced by rows above */}
+      {false&&[
           ["Net Cash Available (WC)", "₱"+fmt2(netCashAvail), netCashAvail>=0?"#059669":"#ef4444"],
           ["Working Capital (Book)",  "₱"+fmt2(wcBook), "#1d4ed8"],
           ["Total GMD Cash Assets",   "₱"+fmt2(totalGMDAssets), "#0e7490"],
@@ -14155,7 +14245,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
             <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:6}}>{l}</div>
           </div>
         ))}
-      </div>
 
       {/* 30-Day Working Capital Trend */}
       {histDates.length>1&&(()=>{
@@ -14675,32 +14764,206 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         </div>
       </div>
 
-      {/* ── OUTSTANDING CHECKS ── */}
-      {(()=>{
-        const uncleared=vouchers.filter(v=>v.status==="Released"&&!v.isCleared);
-        if(!uncleared.length) return null;
-        return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #fde68a",padding:16,marginBottom:12}}>
-            <div style={{fontWeight:700,color:"#b45309",fontSize:".78rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🏦 Outstanding Checks ({uncleared.length})</div>
-            <div style={{fontSize:".72rem",color:"#92400e",marginBottom:10}}>Released check vouchers not yet cleared in the bank — these reduce your effective bank balance.</div>
-            {uncleared.map(cv=>(
-              <div key={cv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #fef3c7",fontSize:".82rem"}}>
-                <div>
-                  <span style={{fontWeight:700,color:"#0f172a"}}>{cv.cvNo||"CV"}</span>
-                  <span style={{color:"#64748b",marginLeft:8}}>{cv.payee}</span>
-                  {cv.checkNo&&<span style={{marginLeft:6,fontSize:".72rem",color:"#94a3b8"}}>#{cv.checkNo}</span>}
-                  <span style={{marginLeft:6,fontSize:".72rem",color:"#64748b"}}>{cv.bank||"—"}</span>
+      {/* ── FINANCIAL OBLIGATIONS & RESERVES ── */}
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:14,marginBottom:16}}>
+
+        {/* ── Floating Checks ── */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #fde68a",overflow:"hidden"}}>
+          <div style={{background:"#fef9c3",borderBottom:"2px solid #fde68a",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontWeight:800,color:"#92400e",fontSize:".82rem"}}>🏦 Floating Checks</div>
+              <div style={{fontSize:".66rem",color:"#b45309",marginTop:1}}>Released CVs not yet cleared</div>
+            </div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#b45309"}}>
+              ₱{floatingTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}
+            </div>
+          </div>
+          {floatingChecks.length===0?(
+            <div style={{padding:"14px 16px",fontSize:".76rem",color:"#94a3b8",fontStyle:"italic"}}>No outstanding checks — all cleared.</div>
+          ):(
+            <div style={{maxHeight:200,overflowY:"auto"}}>
+              {floatingChecks.map(cv=>(
+                <div key={cv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #fef3c7",gap:8}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".78rem"}}>{cv.payee||cv.cvNo||"CV"}</div>
+                    <div style={{fontSize:".67rem",color:"#94a3b8"}}>
+                      {cv.cvNo||""}{cv.checkNo?` · #${cv.checkNo}`:""}{cv.bank?` · ${cv.bank}`:""}
+                    </div>
+                  </div>
+                  <span style={{fontWeight:700,color:"#b45309",fontSize:".8rem",flexShrink:0}}>
+                    ₱{Number(cv.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}
+                  </span>
                 </div>
-                <span style={{fontWeight:700,color:"#b45309"}}>₱{Number(cv.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Payables Due ── */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #fecaca",overflow:"hidden"}}>
+          <div style={{background:"#fef2f2",borderBottom:"2px solid #fecaca",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontWeight:800,color:"#dc2626",fontSize:".82rem"}}>💳 Accounts Payable</div>
+              <div style={{fontSize:".66rem",color:"#ef4444",marginTop:1}}>Overdue & upcoming obligations</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#dc2626"}}>
+                ₱{payablesMetrics.totalUnpaid.toLocaleString("en-PH",{minimumFractionDigits:2})}
               </div>
-            ))}
-            <div style={{display:"flex",justifyContent:"space-between",padding:"8px 0 0",fontWeight:700,fontSize:".85rem"}}>
-              <span style={{color:"#b45309"}}>Total Outstanding</span>
-              <span style={{color:"#b45309"}}>₱{uncleared.reduce((s,cv)=>s+Number(cv.amount||0),0).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+              <div style={{fontSize:".62rem",color:"#94a3b8"}}>total unpaid</div>
+            </div>
+          </div>
+          {payables.filter(p=>!["Paid","Cancelled"].includes(p.status)).length===0?(
+            <div style={{padding:"14px 16px",fontSize:".76rem",color:"#94a3b8",fontStyle:"italic"}}>No outstanding payables.</div>
+          ):(
+            <>
+              {payablesMetrics.overdue>0&&(
+                <div style={{padding:"7px 16px",background:"#fff5f5",borderBottom:"1px solid #fecaca",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:".73rem",fontWeight:700,color:"#dc2626"}}>🔴 Overdue ({payablesMetrics.overdueList.length})</span>
+                  <span style={{fontWeight:800,color:"#dc2626",fontSize:".8rem"}}>₱{payablesMetrics.overdue.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                </div>
+              )}
+              {payablesMetrics.due7>0&&(
+                <div style={{padding:"7px 16px",background:"#fff7ed",borderBottom:"1px solid #fed7aa",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:".73rem",fontWeight:700,color:"#c2410c"}}>🟠 Due in 7 days</span>
+                  <span style={{fontWeight:800,color:"#c2410c",fontSize:".8rem"}}>₱{payablesMetrics.due7.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                </div>
+              )}
+              {payablesMetrics.due30>0&&(
+                <div style={{padding:"7px 16px",background:"#fffbeb",borderBottom:"1px solid #fde68a",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:".73rem",fontWeight:700,color:"#92400e"}}>🟡 Due in 30 days</span>
+                  <span style={{fontWeight:800,color:"#92400e",fontSize:".8rem"}}>₱{payablesMetrics.due30.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                </div>
+              )}
+              <div style={{maxHeight:150,overflowY:"auto"}}>
+                {[...payablesMetrics.overdueList,...payablesMetrics.upcoming].slice(0,8).map(p=>(
+                  <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 16px",borderBottom:"1px solid #fef2f2",gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".76rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.payee||p.description||"Payable"}</div>
+                      <div style={{fontSize:".65rem",color:"#94a3b8"}}>{p.dueDate?new Date(p.dueDate).toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"2-digit"}):"No due date"}</div>
+                    </div>
+                    <span style={{fontWeight:700,color:p.dueDate&&p.dueDate<today?"#dc2626":"#64748b",fontSize:".78rem",flexShrink:0}}>
+                      ₱{Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Loans & Monthly Payments ── */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e9d5ff",overflow:"hidden"}}>
+          <div style={{background:"#faf5ff",borderBottom:"2px solid #e9d5ff",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontWeight:800,color:"#7c3aed",fontSize:".82rem"}}>🏛 Loan Obligations</div>
+              <div style={{fontSize:".66rem",color:"#8b5cf6",marginTop:1}}>Outstanding principal & monthly payments</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#7c3aed"}}>
+                ₱{loanMetrics.totalBalance.toLocaleString("en-PH",{minimumFractionDigits:2})}
+              </div>
+              <div style={{fontSize:".62rem",color:"#94a3b8"}}>total balance</div>
+            </div>
+          </div>
+          {loanMetrics.loanRows.length===0?(
+            <div style={{padding:"14px 16px",fontSize:".76rem",color:"#94a3b8",fontStyle:"italic"}}>No active loans.</div>
+          ):(
+            <>
+              <div style={{padding:"8px 16px",borderBottom:"1px solid #f3e8ff",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#fdf4ff"}}>
+                <span style={{fontSize:".73rem",fontWeight:700,color:"#6d28d9"}}>Monthly Payment Total</span>
+                <span style={{fontWeight:800,color:"#7c3aed",fontSize:".82rem"}}>₱{loanMetrics.monthlyPaymentTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+              </div>
+              <div style={{maxHeight:170,overflowY:"auto"}}>
+                {loanMetrics.loanRows.map(l=>{
+                  const pct=Number(l.principal)>0?Math.min(100,Math.round((1-l.remainingBalance/Number(l.principal))*100)):0;
+                  return(
+                    <div key={l.id} style={{padding:"9px 16px",borderBottom:"1px solid #f3e8ff"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:5}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".77rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.lender||l.name||"Loan"}</div>
+                          <div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>₱{Number(l.monthlyPayment||0).toLocaleString("en-PH",{minimumFractionDigits:0})}/mo · {Number(l.interestRate||0)}% p.a.</div>
+                        </div>
+                        <div style={{textAlign:"right",flexShrink:0,marginLeft:8}}>
+                          <div style={{fontWeight:800,color:"#7c3aed",fontSize:".78rem"}}>₱{l.remainingBalance.toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
+                          <div style={{fontSize:".62rem",color:"#94a3b8"}}>{pct}% paid</div>
+                        </div>
+                      </div>
+                      <div style={{height:3,background:"#f3e8ff",borderRadius:2,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:pct+"%",background:"#8b5cf6",borderRadius:2}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── AVAILABLE STANDBY FUNDS ── */}
+      {(()=>{
+        const standby=netCashAvail-floatingTotal-(payablesMetrics.overdue+payablesMetrics.due7)-loanMetrics.monthlyPaymentTotal;
+        return(
+          <div style={{background:standby>=0?"#f0fdf4":"#fef2f2",borderRadius:14,border:`2px solid ${standby>=0?"#6ee7b7":"#fca5a5"}`,padding:"16px 20px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+            <div>
+              <div style={{fontWeight:800,color:standby>=0?"#047857":"#dc2626",fontSize:".92rem"}}>
+                {standby>=0?"✅":"⚠️"} Available Standby Funds
+              </div>
+              <div style={{fontSize:".72rem",color:"#64748b",marginTop:4,lineHeight:1.5}}>
+                Net Cash Available <span style={{color:"#1d4ed8"}}>₱{fmt2(netCashAvail)}</span>
+                {" − "} Floating Checks <span style={{color:"#b45309"}}>₱{floatingTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                {" − "} Overdue+7d Payables <span style={{color:"#dc2626"}}>₱{(payablesMetrics.overdue+payablesMetrics.due7).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                {" − "} Monthly Loans <span style={{color:"#7c3aed"}}>₱{loanMetrics.monthlyPaymentTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+              </div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"2rem",color:standby>=0?"#047857":"#dc2626",lineHeight:1}}>
+                ₱{standby.toLocaleString("en-PH",{minimumFractionDigits:2})}
+              </div>
+              <div style={{fontSize:".63rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".8px"}}>Standby funds</div>
             </div>
           </div>
         );
       })()}
+
+      {/* ── INVENTORY ASSETS ── */}
+      {inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).length>0&&(
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #a5f3fc",overflow:"hidden",marginBottom:16}}>
+          <div style={{background:"#ecfeff",borderBottom:"2px solid #a5f3fc",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontWeight:800,color:"#0e7490",fontSize:".82rem"}}>📦 Inventory Assets</div>
+              <div style={{fontSize:".66rem",color:"#06b6d4",marginTop:1}}>On-hand stock at average cost</div>
+            </div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#0e7490"}}>
+              ₱{inventoryValue.toLocaleString("en-PH",{minimumFractionDigits:2})}
+            </div>
+          </div>
+          <div style={{padding:"10px 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
+            {inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).sort((a,b)=>(Number(b.qtyOnHand||0)*Number(b.avgCost||0))-(Number(a.qtyOnHand||0)*Number(a.avgCost||0))).slice(0,12).map(i=>{
+              const val=Number(i.qtyOnHand||0)*Number(i.avgCost||0);
+              const pct=inventoryValue>0?Math.round(val/inventoryValue*100):0;
+              return(
+                <div key={i.id} style={{padding:"8px 10px",background:"#f8fafc",borderRadius:8,border:"1px solid #e0f7fa"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
+                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".76rem",lineHeight:1.3,flex:1,marginRight:6}}>{i.name||i.sku||"Item"}</div>
+                    <div style={{fontWeight:800,color:"#0e7490",fontSize:".76rem",flexShrink:0}}>₱{val.toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
+                  </div>
+                  <div style={{fontSize:".63rem",color:"#94a3b8",marginBottom:4}}>{Number(i.qtyOnHand||0).toLocaleString("en-PH",{maximumFractionDigits:2})} {i.unit||"pcs"} @ ₱{Number(i.avgCost||0).toLocaleString("en-PH",{maximumFractionDigits:2})}</div>
+                  <div style={{height:3,background:"#e0f7fa",borderRadius:2,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:pct+"%",background:"#06b6d4",borderRadius:2}}/>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).length>12&&(
+            <div style={{padding:"8px 16px",borderTop:"1px solid #a5f3fc",fontSize:".72rem",color:"#0e7490",fontWeight:600}}>
+              +{inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).length-12} more items — see Warehouse → Inventory
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── NOTES ── */}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:8}}>
