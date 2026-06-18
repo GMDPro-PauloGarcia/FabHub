@@ -10058,7 +10058,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const isPartial=Number(rxQty)<Number(receivingPr.qty);
                   const newStatus=isPartial?"Partially Delivered":"Delivered";
                   const noteStr=`${rxDrNo?`DR: ${rxDrNo} · `:""}Received ${rxQty} ${receivingPr.unit||""} by ${session?.name||"Warehouse"} on ${today}`;
-                  updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr});
+                  updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr,paymentStatus:"Pending Payment"});
                   sendTelegramNotification("procurement",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
                   sendTelegramNotification("warehouse",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
                   const invMatch=inventory.find(i=>i.name?.toLowerCase()===receivingPr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(receivingPr.itemName?.toLowerCase()));
@@ -11222,6 +11222,54 @@ First few:
               ))}
             </div>
           </div>
+          {/* POs Pending Payment */}
+          {(()=>{
+            const pendingPOs=prs.filter(p=>p.paymentStatus==="Pending Payment");
+            if(!pendingPOs.length) return null;
+            const makeExp=(pr)=>{
+              const amt=Number(pr.qtyDelivered||pr.qty||0)*Number(pr.actUnitCost||pr.estUnitCost||0);
+              setExpForm({expDate:today,category:"Materials",note:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""} — ${pr.supplier||""}`,amount:amt||"",bankAccount:"",projectId:pr.projectId||null,receipt:pr.deliveryNote||"",acctStatus:"For Payment"});
+              setEditExpId(null);setExpModal(true);
+              updatePR(pr.id,{paymentStatus:"Payable Created"});
+            };
+            const makeCv=(pr)=>{
+              const amt=Number(pr.qtyDelivered||pr.qty||0)*Number(pr.actUnitCost||pr.estUnitCost||0);
+              const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+              setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
+              setEditCvId(null);setCvModal(true);
+              updatePR(pr.id,{paymentStatus:"Payable Created"});
+            };
+            return(
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #f59e0b",overflow:"hidden",marginBottom:16}}>
+                <div style={{background:"#78350f",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:"#fcd34d",fontSize:".84rem"}}>📦 POs Pending Payment — {pendingPOs.length} received item{pendingPOs.length!==1?"s":""}</span>
+                  <span style={{fontSize:".7rem",color:"rgba(255,255,255,.6)"}}>Tap to create a payable entry</span>
+                </div>
+                {pendingPOs.map((pr,idx)=>{
+                  const deal=wonDeals.find(d=>d.id===pr.projectId);
+                  const amt=Number(pr.qtyDelivered||pr.qty||0)*Number(pr.actUnitCost||pr.estUnitCost||0);
+                  return(
+                    <div key={pr.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:idx<pendingPOs.length-1?"1px solid #fef3c7":"none",flexWrap:"wrap",background:idx%2===0?"#fffbeb":"#fff"}}>
+                      <div style={{flex:1,minWidth:160}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{pr.itemName}</div>
+                        <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>
+                          {pr.supplier||"No supplier"} · {pr.poNumber||"No PO#"}{deal?" · "+projDisplayName(deal):""}
+                        </div>
+                        <div style={{fontSize:".7rem",color:"#b45309",marginTop:1}}>
+                          Received: {pr.qtyDelivered||pr.qty} {pr.unit||""} on {pr.deliveryDate||today}
+                        </div>
+                      </div>
+                      <div style={{fontWeight:800,color:"#92400e",fontSize:".9rem",minWidth:80,textAlign:"right"}}>{amt>0?fmt(amt):"—"}</div>
+                      <div style={{display:"flex",gap:6,flexShrink:0}}>
+                        <button onClick={()=>makeExp(pr)} style={{background:"#6366f1",border:"none",borderRadius:7,padding:"6px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>📄 Daily</button>
+                        <button onClick={()=>makeCv(pr)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>✅ Check</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
           {/* Recent Activity */}
           <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
             <div style={{background:"#1e293b",padding:"11px 16px"}}>
