@@ -4888,7 +4888,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!data.amount||!data.note) return;
     const rec={...data,amount:Number(data.amount),id:editExpId||uid()};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
-    if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>console.error("FabHub expense save:",e.message));
+    if(isSupabaseReady()){
+      sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>{
+        console.error("FabHub expense save:",e.message);
+        toastEmit("⚠️ Expense saved locally but NOT synced to server — do not close this tab!","warning",9000);
+      });
+    } else {
+      toastEmit("⚠️ Expense saved locally only — no server connection. Do not close this tab!","warning",9000);
+    }
     setEditExpId(null);
     setExpModal(false);
   };
@@ -4904,7 +4911,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!cvForm.payee||!cvForm.amount) return;
     const rec={...cvForm,amount:Number(cvForm.amount),id:editCvId||uid(),createdBy:session?.name||role,createdAt:editCvId?(cvForm.createdAt||today):today};
     upVouchers(vs=>editCvId?vs.map(v=>v.id===editCvId?rec:v):[rec,...vs]);
-    if(isSupabaseReady()) sbUpsert("check_vouchers",cvToSb(rec),"id").catch(()=>{});
+    if(isSupabaseReady()){
+      sbUpsert("check_vouchers",cvToSb(rec),"id").catch(e=>{
+        console.error("CV save:",e);
+        toastEmit("⚠️ Check Voucher saved locally but NOT synced to server — do not close this tab!","warning",9000);
+      });
+    } else {
+      toastEmit("⚠️ Check Voucher saved locally only — no server connection. Do not close this tab!","warning",9000);
+    }
     setEditCvId(null);setCvModal(false);
   };
   const delCv=id=>{upVouchers(vs=>vs.filter(v=>v.id!==id));if(isSupabaseReady()) sbDelete("check_vouchers",id).catch(()=>{});};
@@ -4944,7 +4958,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!data.vendor||!data.amount) return;
     const rec={...data,amount:Number(data.amount),id:editPayId||uid(),status:editPayId?(data.status||"Unpaid"):"Unpaid",createdAt:editPayId?data.createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
-    if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
+    if(isSupabaseReady()){
+      sbUpsert("payables",payableToSb(rec),"id").catch(e=>{
+        console.error("Payable save:",e);
+        toastEmit("⚠️ Payable saved locally but NOT synced to server — do not close this tab!","warning",9000);
+      });
+    } else {
+      toastEmit("⚠️ Payable saved locally only — no server connection. Do not close this tab!","warning",9000);
+    }
     setPayModal(false);setEditPayId(null);setPayForm({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
   };
   const markPayablePaid=(id)=>{
