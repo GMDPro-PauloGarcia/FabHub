@@ -13961,8 +13961,27 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     },0);
   },[inventory]);
 
-  // ── Available Standby Funds = Net Cash Available - Floating Checks - Overdue Payables - Due in 7 days - Monthly Loans
-  // (computed after netCashAvail is available; referenced later in render)
+  // ── This Week: expected collections & expenses (next 7 days from today)
+  const thisWeek=useMemo(()=>{
+    const now=new Date(today);
+    const in7=new Date(today); in7.setDate(in7.getDate()+7);
+    const collections=(billings||[])
+      .filter(b=>b.status!=="Cancelled"&&b.status!=="Fully Paid"&&b.dueDate&&new Date(b.dueDate)>=now&&new Date(b.dueDate)<=in7)
+      .map(b=>{
+        const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+        const balance=Math.max(0,Number(b.amount||0)-paid);
+        const deal=wonDeals.find(d=>d.id===b.dealId);
+        return{id:b.id,client:deal?.client||"Unknown",name:b.name||"Milestone",dueDate:b.dueDate,balance};
+      })
+      .filter(r=>r.balance>0)
+      .sort((a,b)=>a.dueDate>b.dueDate?1:-1);
+    const expenses=payables
+      .filter(p=>!["Paid","Cancelled"].includes(p.status)&&p.dueDate&&new Date(p.dueDate)>=now&&new Date(p.dueDate)<=in7)
+      .sort((a,b)=>a.dueDate>b.dueDate?1:-1);
+    const collTotal=collections.reduce((s,r)=>s+r.balance,0);
+    const expTotal=expenses.reduce((s,p)=>s+Number(p.amount||0),0);
+    return{collections,expenses,collTotal,expTotal};
+  },[billings,payables,wonDeals,today]);
 
   // When date changes, load that day's position or start fresh
   const switchDate=(d)=>{
@@ -14326,6 +14345,61 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         );
       })()}
 
+      {/* ── THIS WEEK AT A GLANCE ── */}
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginBottom:16}}>
+        {/* Expected Collections */}
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#059669",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:800,color:"#fff",fontSize:".82rem"}}>📥 Expected Collections This Week</span>
+            <span style={{fontWeight:800,color:"#a7f3d0",fontSize:".85rem"}}>₱{thisWeek.collTotal.toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
+          </div>
+          {thisWeek.collections.length===0
+            ? <div style={{padding:"16px",color:"#94a3b8",fontSize:".8rem",textAlign:"center"}}>No billing milestones due in the next 7 days</div>
+            : thisWeek.collections.map((r,i)=>(
+              <div key={r.id} style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,padding:"8px 14px",borderBottom:i<thisWeek.collections.length-1?"1px solid #f1f5f9":"none",alignItems:"center"}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".78rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.client}</div>
+                  <div style={{fontSize:".65rem",color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.name}</div>
+                </div>
+                <div style={{fontSize:".68rem",color:"#64748b",whiteSpace:"nowrap"}}>{r.dueDate}</div>
+                <div style={{fontWeight:700,color:"#059669",fontSize:".78rem",whiteSpace:"nowrap"}}>₱{r.balance.toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
+              </div>
+            ))
+          }
+        </div>
+        {/* Expected Expenses */}
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+          <div style={{background:"#dc2626",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontWeight:800,color:"#fff",fontSize:".82rem"}}>📤 Expected Expenses This Week</span>
+            <span style={{fontWeight:800,color:"#fca5a5",fontSize:".85rem"}}>₱{(thisWeek.expTotal+loanMetrics.monthlyPaymentTotal).toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
+          </div>
+          {/* Loan payments always shown first */}
+          {loanMetrics.loanRows.map(l=>(
+            <div key={l.id} style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,padding:"8px 14px",borderBottom:"1px solid #f1f5f9",alignItems:"center"}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontWeight:600,color:"#0f172a",fontSize:".78rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l.lender}</div>
+                <div style={{fontSize:".65rem",color:"#94a3b8"}}>Monthly loan payment</div>
+              </div>
+              <div style={{fontSize:".68rem",color:"#7c3aed",fontWeight:600,whiteSpace:"nowrap"}}>Loan</div>
+              <div style={{fontWeight:700,color:"#dc2626",fontSize:".78rem",whiteSpace:"nowrap"}}>₱{Number(l.monthly||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
+            </div>
+          ))}
+          {thisWeek.expenses.length===0&&loanMetrics.loanRows.length===0
+            ? <div style={{padding:"16px",color:"#94a3b8",fontSize:".8rem",textAlign:"center"}}>No payables due in the next 7 days</div>
+            : thisWeek.expenses.map((p,i)=>(
+              <div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:8,padding:"8px 14px",borderBottom:i<thisWeek.expenses.length-1?"1px solid #f1f5f9":"none",alignItems:"center"}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".78rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.vendor||p.category||"Payable"}</div>
+                  <div style={{fontSize:".65rem",color:"#94a3b8"}}>{p.category||""}{p.invoiceRef?" · "+p.invoiceRef:""}</div>
+                </div>
+                <div style={{fontSize:".68rem",color:"#64748b",whiteSpace:"nowrap"}}>{p.dueDate}</div>
+                <div style={{fontWeight:700,color:"#dc2626",fontSize:".78rem",whiteSpace:"nowrap"}}>₱{Number(p.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+
       {/* ── MAIN BANK TABLE (Excel-style vertical flow, banks as columns) ── */}
       <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)",overflow:"hidden"}}>
       <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
@@ -14463,8 +14537,13 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
                   <div style={{...labelCell,background:"#faf5ff",fontStyle:"normal",fontSize:".72rem",paddingLeft:32,display:"flex",alignItems:"center",gap:4}}>
                     <button onClick={()=>f("collections.manualCollections",(pos.collections.manualCollections||[]).filter((_,j)=>j!==ri))}
                       style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"1px 6px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".7rem",fontFamily:"inherit",flexShrink:0}}>✕</button>
+                    <select value={row.projectId||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];const d=wonDeals.find(x=>x.id===e.target.value);mc[ri]={...mc[ri],projectId:e.target.value,note:d?d.client+" — "+d.ceNo:mc[ri].note||""};f("collections.manualCollections",mc);}}
+                      style={{...inpStyle,textAlign:"left",borderColor:"#e9d5ff",fontSize:".72rem",padding:"3px 7px",flex:1,minWidth:0,maxWidth:160}}>
+                      <option value="">Select project…</option>
+                      {wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=><option key={d.id} value={d.id}>{d.client}{d.ceNo?" · "+d.ceNo:""}</option>)}
+                    </select>
                     <input type="text" value={row.note||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],note:e.target.value};f("collections.manualCollections",mc);}}
-                      placeholder="Source / note…" style={{...inpStyle,textAlign:"left",borderColor:"#e9d5ff",fontSize:".72rem",padding:"3px 7px",flex:1,minWidth:0}}/>
+                      placeholder="Type / ref…" style={{...inpStyle,textAlign:"left",borderColor:"#e9d5ff",fontSize:".72rem",padding:"3px 7px",minWidth:0,width:80}}/>
                   </div>
                   <div style={{gridColumn:"2/7",padding:"5px 10px",display:"flex",gap:6,alignItems:"center"}}>
                     <select value={row.bank||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],bank:e.target.value};f("collections.manualCollections",mc);}}
@@ -14481,7 +14560,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
                 </div>
               ))}
               <div style={{borderTop:"1px dashed #e9d5ff",padding:"6px 12px 6px 212px"}}>
-                <button onClick={()=>{const mc=[...(pos.collections?.manualCollections||[]),{id:uid(),note:"",bank:"",amount:""}];f("collections.manualCollections",mc);}}
+                <button onClick={()=>{const mc=[...(pos.collections?.manualCollections||[]),{id:uid(),projectId:"",note:"",bank:"",amount:""}];f("collections.manualCollections",mc);}}
                   style={{background:"#faf5ff",border:"1.5px dashed #c4b5fd",borderRadius:8,padding:"4px 14px",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,color:"#7c3aed",cursor:"pointer"}}>+ Add collection</button>
               </div>
             </div>
@@ -14713,6 +14792,12 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               return(<>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
                   <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#7c3aed",fontSize:"1.05rem",minWidth:18}}>−</span>Monthly Loan Payments
+                  </div>
+                  <div style={{fontWeight:700,color:"#7c3aed",fontSize:".88rem"}}>₱{fmt2(loanMetrics.monthlyPaymentTotal)}</div>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid #f1f5f9"}}>
+                  <div style={{fontSize:".82rem",color:"#475569",fontWeight:600,display:"flex",alignItems:"center",gap:8}}>
                     <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,color:"#0e7490",fontSize:"1.05rem",minWidth:18}}>+</span>Save-Up Capital (Unionbank)
                   </div>
                   <div style={{fontWeight:700,color:"#0e7490",fontSize:".88rem"}}>₱{fmt2(saveUp)}</div>
@@ -14793,18 +14878,18 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:14,marginBottom:16}}>
 
         {/* ── Floating Checks ── */}
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #fde68a",overflow:"hidden"}}>
-          <div style={{background:"#fef9c3",borderBottom:"2px solid #fde68a",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${floatingChecks.length===0?"#e2e8f0":"#fde68a"}`,overflow:"hidden"}}>
+          <div style={{background:floatingChecks.length===0?"#f8fafc":"#fef9c3",borderBottom:`2px solid ${floatingChecks.length===0?"#e2e8f0":"#fde68a"}`,padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
             <div>
-              <div style={{fontWeight:800,color:"#92400e",fontSize:".82rem"}}>🏦 Floating Checks</div>
-              <div style={{fontSize:".66rem",color:"#b45309",marginTop:1}}>Released CVs not yet cleared</div>
+              <div style={{fontWeight:800,color:floatingChecks.length===0?"#94a3b8":"#92400e",fontSize:".82rem"}}>🏦 Floating Checks</div>
+              <div style={{fontSize:".66rem",color:floatingChecks.length===0?"#cbd5e1":"#b45309",marginTop:1}}>{floatingChecks.length===0?"No checks issued from FabHub yet":"Released CVs not yet cleared"}</div>
             </div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#b45309"}}>
-              ₱{floatingTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:floatingChecks.length===0?"#cbd5e1":"#b45309"}}>
+              {floatingChecks.length===0?"—":"₱"+floatingTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}
             </div>
           </div>
           {floatingChecks.length===0?(
-            <div style={{padding:"14px 16px",fontSize:".76rem",color:"#94a3b8",fontStyle:"italic"}}>No outstanding checks — all cleared.</div>
+            <div style={{padding:"20px 16px",fontSize:".76rem",color:"#cbd5e1",textAlign:"center"}}>Checks issued via the Check Voucher module will appear here once released.</div>
           ):(
             <div style={{maxHeight:200,overflowY:"auto"}}>
               {floatingChecks.map(cv=>(
