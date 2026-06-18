@@ -4444,6 +4444,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[cvForm,    setCvForm]   =useState({date:today,cvNo:"",payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
   const[cvSearch,  setCvSearch] =useState("");
   const[cvStatus,  setCvStatus] =useState("All");
+  const[dpCollapsed,setDpCollapsed]=useState(new Set());
+  const[cvCollapsed,setCvCollapsed]=useState(new Set());
   const[reconBank,     setReconBank]    =useState(BANKS[0].id);
   const[stmtBal,       setStmtBal]      =useState("");
   const[reconAdjusts,  setReconAdjusts] =useState([]);
@@ -10802,45 +10804,83 @@ First few:
       </div>
       {(()=>{
         let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
-        if(acctMonth) list=list.filter(e=>e.expDate===acctMonth);
+        if(acctMonth) list=list.filter(e=>e.expDate?.startsWith(acctMonth));
         if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
         if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
         if(acctProj==="company") list=list.filter(e=>!e.projectId);
         else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
-        const total=list.reduce((s,e)=>s+Number(e.amount||0),0);
+        const DGROUPS=[
+          {key:"Logged",   label:"Logged",      dot:"#6366f1", clr:"#4338ca", items:list.filter(e=>!e.acctStatus||e.acctStatus==="Logged")},
+          {key:"ForPay",   label:"For Payment", dot:"#f59e0b", clr:"#b45309", items:list.filter(e=>e.acctStatus==="For Payment")},
+          {key:"Paid",     label:"Paid",         dot:"#059669", clr:"#059669", items:list.filter(e=>e.acctStatus==="Paid")},
+        ];
+        const toggleDp=key=>setDpCollapsed(s=>{const n=new Set(s);n.has(key)?n.delete(key):n.add(key);return n;});
+        const markDpStatus=(id,st)=>upExps(es=>es.map(e=>e.id===id?{...e,acctStatus:st}:e));
         return(
           <>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,padding:"6px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"6px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <span style={{fontSize:".75rem",color:"#64748b"}}>{list.length} expense{list.length!==1?"s":""}</span>
-              <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{total.toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
+              <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{list.reduce((s,e)=>s+Number(e.amount||0),0).toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
             </div>
-            {list.length===0?<EmptyState icon="📋" msg="No expenses match your filter."/>:(
-              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 110px 100px 100px 64px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
-                  {["Date","Project","Item","Category","Bank","Amount",""].map((h,i)=>(
-                    <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===5?"right":"left"}}>{h}</div>
-                  ))}
-                </div>
-                {list.map((e,idx)=>{
-                  const proj=wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId);
-                  return(
-                    <div key={e.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1.4fr 110px 100px 100px 64px",padding:"7px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
-                      onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
-                      <div style={{fontSize:".73rem",color:"#64748b",fontFamily:"monospace"}}>{e.expDate||`${MONTHS[e.month]} ${e.year||""}`}</div>
-                      <div style={{fontSize:".78rem",color:"#8b5cf6",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?projDisplayName(proj):<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
-                      <div style={{fontSize:".8rem",color:"#0f172a",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</div>
-                      <div><span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></div>
-                      <div style={{fontSize:".73rem",color:"#0369a1",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.bankAccount||<span style={{color:"#cbd5e1",fontWeight:400}}>—</span>}</div>
-                      <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".83rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</div>
-                      <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
-                        <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                        <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                      </div>
+            {list.length===0?<EmptyState icon="📋" msg="No expenses match your filter."/>:DGROUPS.map(g=>{
+              const isOpen=!dpCollapsed.has(g.key);
+              const total=g.items.reduce((s,e)=>s+Number(e.amount||0),0);
+              return(
+                <div key={g.key} style={{marginBottom:10,border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"hidden",background:"#fff"}}>
+                  <div onClick={()=>toggleDp(g.key)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",cursor:"pointer",borderBottom:isOpen?"1px solid #f1f5f9":"none",background:"#fff"}}>
+                    <div style={{width:10,height:10,borderRadius:"50%",background:g.dot,flexShrink:0}}/>
+                    <div style={{fontWeight:700,fontSize:".82rem",color:g.clr}}>{g.label}</div>
+                    <div style={{background:"#f1f5f9",borderRadius:20,padding:"1px 8px",fontSize:".72rem",fontWeight:700,color:"#64748b"}}>{g.items.length}</div>
+                    <div style={{marginLeft:"auto",fontWeight:700,fontSize:".8rem",color:"#0f172a"}}>{fmt(total)}</div>
+                    <div style={{color:"#cbd5e1",fontSize:".75rem",marginLeft:6}}>{isOpen?"▲":"▼"}</div>
+                  </div>
+                  {isOpen&&g.items.length>0&&(
+                    <div style={{overflowX:"auto"}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem"}}>
+                        <thead>
+                          <tr style={{background:"#f8fafc"}}>
+                            <th style={{padding:"7px 14px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>Date</th>
+                            <th style={{padding:"7px 14px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px"}}>Project</th>
+                            <th style={{padding:"7px 14px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px"}}>Description</th>
+                            <th style={{padding:"7px 14px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px"}}>Category</th>
+                            <th style={{padding:"7px 14px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px"}}>Bank</th>
+                            <th style={{padding:"7px 14px",textAlign:"right",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px"}}>Amount</th>
+                            <th style={{padding:"7px 14px"}}></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {g.items.map((e,idx)=>{
+                            const proj=wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId);
+                            return(
+                              <tr key={e.id} style={{borderBottom:idx<g.items.length-1?"1px solid #f8fafc":"none"}}
+                                onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                                <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".75rem",color:"#64748b",whiteSpace:"nowrap"}}>{e.expDate||`${typeof e.month==="number"?["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][e.month]:""} ${e.year||""}`}</td>
+                                <td style={{padding:"9px 14px",fontSize:".78rem",color:"#8b5cf6",fontWeight:600,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?projDisplayName(proj):<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                                <td style={{padding:"9px 14px",fontSize:".8rem",color:"#0f172a",fontWeight:500,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</td>
+                                <td style={{padding:"9px 14px"}}><span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></td>
+                                <td style={{padding:"9px 14px",fontSize:".73rem",color:"#0369a1",fontWeight:600}}>{e.bankAccount||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                                <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".83rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</td>
+                                <td style={{padding:"9px 14px"}}>
+                                  <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                                    {(!e.acctStatus||e.acctStatus==="Logged")&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ For Payment</button>}
+                                    {e.acctStatus==="For Payment"&&<button onClick={()=>markDpStatus(e.id,"Paid")} style={{background:"#f0fdf4",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#166534",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Paid</button>}
+                                    <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                    <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                  {isOpen&&g.items.length===0&&(
+                    <div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {g.label.toLowerCase()} expenses.</div>
+                  )}
+                </div>
+              );
+            })}
           </>
         );
       })()}
@@ -10908,16 +10948,13 @@ First few:
       })()}
       {/* Filter bar */}
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
-        <input value={cvSearch} onChange={e=>setCvSearch(e.target.value)} placeholder="Search payee or description..." style={{flex:1,minWidth:160,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".82rem"}}/>
-        {["All","Draft","For Release","Released","Cleared","Void"].map(s=>(
-          <button key={s} onClick={()=>setCvStatus(s)} style={{padding:"6px 13px",borderRadius:20,border:"none",fontFamily:"inherit",fontSize:".75rem",fontWeight:600,cursor:"pointer",background:cvStatus===s?"#6366f1":"#f1f5f9",color:cvStatus===s?"#fff":"#475569"}}>{s}</button>
-        ))}
+        <input value={cvSearch} onChange={e=>setCvSearch(e.target.value)} placeholder="Search payee, description or CV no..." style={{flex:1,minWidth:160,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".82rem"}}/>
       </div>
 
       {/* KPI row */}
       {(()=>{
         const pending=vouchers.filter(v=>v.status==="For Release");
-        const released=vouchers.filter(v=>v.status==="Released");
+        const released=vouchers.filter(v=>v.status==="Released"&&!v.isCleared);
         const totalPending=pending.reduce((s,v)=>s+Number(v.amount||0),0);
         const totalReleased=released.reduce((s,v)=>s+Number(v.amount||0),0);
         return(
@@ -10926,7 +10963,7 @@ First few:
               {l:"Total Vouchers",v:vouchers.length+" CVs",c:"#6366f1",icon:"📄"},
               {l:"For Release",   v:pending.length+" vouchers",c:"#f59e0b",icon:"⏳"},
               {l:"Amount Pending",v:fmt(totalPending),c:"#ef4444",icon:"💸"},
-              {l:"Released YTD",  v:fmt(totalReleased),c:"#059669",icon:"✅"},
+              {l:"Released (Float)",v:fmt(totalReleased),c:"#059669",icon:"✅"},
             ].map(({l,v,c,icon})=>(
               <div key={l} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
                 <div style={{fontSize:"1.2rem",marginBottom:3}}>{icon}</div>
@@ -10938,49 +10975,78 @@ First few:
         );
       })()}
 
-      {/* Vouchers table */}
+      {/* Kanban groups */}
       {(()=>{
-        const CV_STATUS_CLR={Draft:"#94a3b8","For Release":"#f59e0b",Released:"#10b981",Void:"#ef4444"};
-        let list=[...vouchers].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-        if(cvStatus==="Cleared") list=list.filter(v=>v.status==="Released"&&v.isCleared);
-        else if(cvStatus!=="All") list=list.filter(v=>v.status===cvStatus);
-        if(cvSearch) list=list.filter(v=>(v.payee||"").toLowerCase().includes(cvSearch.toLowerCase())||(v.description||"").toLowerCase().includes(cvSearch.toLowerCase())||(v.cvNo||"").toLowerCase().includes(cvSearch.toLowerCase()));
-        return list.length===0
-          ?<EmptyState icon="📄" msg="No check vouchers found."/>
-          :(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{display:"grid",gridTemplateColumns:"100px 90px 1fr 1.2fr 100px 90px 100px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
-              {["CV No","Date","Payee","Description","Amount","Bank","Status"].map((h,i)=>(
-                <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
-              ))}
-            </div>
-            {list.map((v,idx)=>{
-              const canEdit=(role==="Accounting"||role==="Manager")&&v.status==="Draft";
-              const canSubmit=(role==="Accounting"||role==="Manager")&&v.status==="Draft";
-              const canRelease=(role==="Finance"||role==="Manager")&&v.status==="For Release";
-              const canVoid=(role==="Manager"||role==="Accounting")&&v.status!=="Released"&&v.status!=="Void";
-              return(
-                <div key={v.id} style={{display:"grid",gridTemplateColumns:"100px 90px 1fr 1.2fr 100px 90px 100px",padding:"9px 14px",gap:8,alignItems:"center",borderBottom:idx<list.length-1?"1px solid #f1f5f9":"none"}}
-                  onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
-                  <div style={{fontFamily:"monospace",fontSize:".75rem",fontWeight:700,color:"#6366f1"}}>{v.cvNo||"—"}</div>
-                  <div style={{fontSize:".73rem",color:"#64748b",fontFamily:"monospace"}}>{v.date||"—"}</div>
-                  <div style={{fontSize:".8rem",fontWeight:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.payee||"—"}</div>
-                  <div style={{fontSize:".78rem",color:"#475569",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.description||"—"}</div>
-                  <div style={{fontSize:".83rem",fontWeight:800,color:"#0f172a",fontFamily:"monospace"}}>{fmt(v.amount)}</div>
-                  <div style={{fontSize:".72rem",color:"#0369a1"}}>{v.bank||"—"}</div>
-                  <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-                    <span style={{fontSize:".65rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:CV_STATUS_CLR[v.status]+"22",color:CV_STATUS_CLR[v.status]||"#94a3b8",whiteSpace:"nowrap"}}>{v.status||"Draft"}</span>
-                    {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
-                    {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Submit</button>}
-                    {canRelease&&<button onClick={()=>releaseCv(v.id)} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Release</button>}
-                    {v.status==="Released"&&!v.isCleared&&(role==="Finance"||role==="Manager"||role==="Accounting")&&<button onClick={()=>clearCv(v.id)} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🏦 Cleared</button>}
-                    {canVoid&&<button onClick={()=>{if(window.confirm("Void this voucher?")) voidCv(v.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"2px 6px",fontSize:".62rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>Void</button>}
-                  </div>
+        const CV_GROUPS=[
+          {key:"Draft",      label:"Draft",               dot:"#64748b", clr:"#475569", items:vouchers.filter(v=>v.status==="Draft"&&!v.isCleared)},
+          {key:"ForRelease", label:"For Release",          dot:"#f59e0b", clr:"#b45309", items:vouchers.filter(v=>v.status==="For Release"&&!v.isCleared)},
+          {key:"Released",   label:"Released (Floating)",  dot:"#ea580c", clr:"#c2410c", items:vouchers.filter(v=>v.status==="Released"&&!v.isCleared)},
+          {key:"Cleared",    label:"Cleared",              dot:"#059669", clr:"#059669", items:vouchers.filter(v=>v.isCleared)},
+          {key:"Void",       label:"Void",                 dot:"#dc2626", clr:"#dc2626", items:vouchers.filter(v=>v.status==="Void")},
+        ];
+        const searchQ=cvSearch.toLowerCase();
+        const filtered=CV_GROUPS.map(g=>({...g,items:g.items.filter(v=>!searchQ||(v.payee||"").toLowerCase().includes(searchQ)||(v.description||"").toLowerCase().includes(searchQ)||(v.cvNo||"").toLowerCase().includes(searchQ))}));
+        const toggleCv=key=>setCvCollapsed(s=>{const n=new Set(s);n.has(key)?n.delete(key):n.add(key);return n;});
+        return filtered.map(g=>{
+          const isOpen=!cvCollapsed.has(g.key);
+          const total=g.items.reduce((s,v)=>s+Number(v.amount||0),0);
+          return(
+            <div key={g.key} style={{marginBottom:10,border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"hidden",background:"#fff"}}>
+              <div onClick={()=>toggleCv(g.key)} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",cursor:"pointer",borderBottom:isOpen?"1px solid #f1f5f9":"none"}}>
+                <div style={{width:10,height:10,borderRadius:"50%",background:g.dot,flexShrink:0}}/>
+                <div style={{fontWeight:700,fontSize:".82rem",color:g.clr}}>{g.label}</div>
+                <div style={{background:"#f1f5f9",borderRadius:20,padding:"1px 8px",fontSize:".72rem",fontWeight:700,color:"#64748b"}}>{g.items.length}</div>
+                {total>0&&<div style={{marginLeft:"auto",fontWeight:700,fontSize:".8rem",color:"#0f172a"}}>{fmt(total)}</div>}
+                <div style={{color:"#cbd5e1",fontSize:".75rem",marginLeft:total>0?6:"auto"}}>{isOpen?"▲":"▼"}</div>
+              </div>
+              {isOpen&&g.items.length>0&&(
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem"}}>
+                    <thead>
+                      <tr style={{background:"#f8fafc"}}>
+                        {["CV No","Date","Payee","Description","Amount","Bank",""].map((h,i)=>(
+                          <th key={i} style={{padding:"7px 14px",textAlign:i===4?"right":"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {g.items.map((v,idx)=>{
+                        const canEdit=(role==="Accounting"||role==="Manager")&&v.status==="Draft";
+                        const canSubmit=(role==="Accounting"||role==="Manager")&&v.status==="Draft";
+                        const canRelease=(role==="Finance"||role==="Manager")&&v.status==="For Release";
+                        const canClear=v.status==="Released"&&!v.isCleared&&(role==="Finance"||role==="Manager"||role==="Accounting");
+                        const canVoid=(role==="Manager"||role==="Accounting")&&v.status!=="Released"&&v.status!=="Void"&&!v.isCleared;
+                        return(
+                          <tr key={v.id} style={{borderBottom:idx<g.items.length-1?"1px solid #f8fafc":"none"}}
+                            onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                            <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".75rem",fontWeight:700,color:"#6366f1",whiteSpace:"nowrap"}}>{v.cvNo||"—"}</td>
+                            <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".73rem",color:"#64748b",whiteSpace:"nowrap"}}>{v.date||"—"}</td>
+                            <td style={{padding:"9px 14px",fontSize:".8rem",fontWeight:600,color:"#0f172a",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.payee||"—"}</td>
+                            <td style={{padding:"9px 14px",fontSize:".78rem",color:"#475569",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.description||"—"}</td>
+                            <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#0f172a",fontFamily:"monospace",whiteSpace:"nowrap"}}>{fmt(v.amount)}</td>
+                            <td style={{padding:"9px 14px",fontSize:".72rem",color:"#0369a1",whiteSpace:"nowrap"}}>{v.bank||"—"}</td>
+                            <td style={{padding:"9px 14px"}}>
+                              <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                                {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
+                                {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
+                                {canRelease&&<button onClick={()=>releaseCv(v.id)} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Release</button>}
+                                {canClear&&<button onClick={()=>clearCv(v.id)} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🏦 Cleared</button>}
+                                {canVoid&&<button onClick={()=>{if(window.confirm("Void this voucher?"))voidCv(v.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })}
-          </div>
-        );
+              )}
+              {isOpen&&g.items.length===0&&(
+                <div style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {g.label.toLowerCase()} vouchers.</div>
+              )}
+            </div>
+          );
+        });
       })()}
 
       {/* Notes panel for released vouchers */}
