@@ -2817,10 +2817,8 @@ export default function App(){
     delivery_note:r.deliveryNote||"", requested_by:r.requestedBy||"",
     approved_by:r.approvedBy||"", project_name:r.projectName||"",
     with_vat:r.withVat||false,
-    from_mr_id:r.fromMrId||null,
-    urgency:r.urgency||"Normal",
-    approved_at:r.approvedAt||null,
-    delivery_history:r.deliveryHistory?JSON.stringify(r.deliveryHistory):null,
+    // NOTE: from_mr_id, urgency, approved_at, delivery_history are tracked in local state
+    // only — add these columns to the purchase_requests Supabase table to enable sync
   });
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
@@ -3942,8 +3940,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(p.projectId||p.dealId) logActivity(p.projectId||p.dealId,"Delivery Received",`${changes.status==="Delivered"?"Full":"Partial"} delivery: ${p.itemName||"?"} × ${changes.qtyDelivered} ${p.unit||""} from ${p.supplier||"(no supplier)"}${shipment.drNo?` · DR# ${shipment.drNo}`:""}`,session?.name);
       }
       const n={...p,...changes,...extraChanges};
-      // P13: surface sync failures instead of swallowing them silently
-      if(isSupabaseReady()) sbSyncOne("purchase_requests",n,toSbPR).catch(e=>toastEmit(`PR sync failed: ${e?.message||"unknown error"} — data saved locally, retry when online.`,"warn"));
+      if(isSupabaseReady()&&hasValidUUIDs({id:n.id}))
+        sbUpsert("purchase_requests",toSbPR(n),"id")
+          .catch(e=>toastEmit(`PR sync failed: ${e?.message||"unknown error"} — saved locally, retry when online.`,"warn"));
       return n;
     }));
   };
