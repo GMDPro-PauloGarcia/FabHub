@@ -4446,6 +4446,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[cvStatus,  setCvStatus] =useState("All");
   const[dpCollapsed,setDpCollapsed]=useState(new Set());
   const[cvCollapsed,setCvCollapsed]=useState(new Set());
+  const[poPayModal, setPoPayModal]=useState(false);
+  const[poPayPr,    setPoPayPr]   =useState(null);
+  const[poPayStep,  setPoPayStep] =useState(1);
+  const[poPayType,  setPoPayType] =useState(null);
   const[reconBank,     setReconBank]    =useState(BANKS[0].id);
   const[stmtBal,       setStmtBal]      =useState("");
   const[reconAdjusts,  setReconAdjusts] =useState([]);
@@ -11226,24 +11230,11 @@ First few:
           {(()=>{
             const pendingPOs=prs.filter(p=>p.paymentStatus==="Pending Payment");
             if(!pendingPOs.length) return null;
-            const makeExp=(pr)=>{
-              const amt=Number(pr.qtyDelivered||pr.qty||0)*Number(pr.actUnitCost||pr.estUnitCost||0);
-              setExpForm({expDate:today,category:"Materials",note:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""} — ${pr.supplier||""}`,amount:amt||"",bankAccount:"",projectId:pr.projectId||null,receipt:pr.deliveryNote||"",acctStatus:"For Payment"});
-              setEditExpId(null);setExpModal(true);
-              updatePR(pr.id,{paymentStatus:"Payable Created"});
-            };
-            const makeCv=(pr)=>{
-              const amt=Number(pr.qtyDelivered||pr.qty||0)*Number(pr.actUnitCost||pr.estUnitCost||0);
-              const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
-              setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
-              setEditCvId(null);setCvModal(true);
-              updatePR(pr.id,{paymentStatus:"Payable Created"});
-            };
             return(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #f59e0b",overflow:"hidden",marginBottom:16}}>
                 <div style={{background:"#78350f",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontWeight:700,color:"#fcd34d",fontSize:".84rem"}}>📦 POs Pending Payment — {pendingPOs.length} received item{pendingPOs.length!==1?"s":""}</span>
-                  <span style={{fontSize:".7rem",color:"rgba(255,255,255,.6)"}}>Tap to create a payable entry</span>
+                  <span style={{fontSize:".7rem",color:"rgba(255,255,255,.6)"}}>Click to create a payable entry</span>
                 </div>
                 {pendingPOs.map((pr,idx)=>{
                   const deal=wonDeals.find(d=>d.id===pr.projectId);
@@ -11260,9 +11251,8 @@ First few:
                         </div>
                       </div>
                       <div style={{fontWeight:800,color:"#92400e",fontSize:".9rem",minWidth:80,textAlign:"right"}}>{amt>0?fmt(amt):"—"}</div>
-                      <div style={{display:"flex",gap:6,flexShrink:0}}>
-                        <button onClick={()=>makeExp(pr)} style={{background:"#6366f1",border:"none",borderRadius:7,padding:"6px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>📄 Daily</button>
-                        <button onClick={()=>makeCv(pr)} style={{background:"#059669",border:"none",borderRadius:7,padding:"6px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>✅ Check</button>
+                      <div style={{flexShrink:0}}>
+                        <button onClick={()=>{setPoPayPr(pr);setPoPayStep(1);setPoPayType(null);setPoPayModal(true);}} style={{background:"#b45309",border:"none",borderRadius:7,padding:"7px 15px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>Create Payable →</button>
                       </div>
                     </div>
                   );
@@ -11295,6 +11285,84 @@ First few:
             ))}
           </div>
         </>);
+      })()}
+      {/* PO → Payable 2-step decision modal */}
+      {poPayModal&&poPayPr&&(()=>{
+        const pr=poPayPr;
+        const amt=Number(pr.qtyDelivered||pr.qty||0)*Number(pr.actUnitCost||pr.estUnitCost||0);
+        const autoSuggest=amt>=10000&&pr.poNumber?"check":"daily";
+        const handleConfirm=()=>{
+          if(poPayType==="daily"){
+            setExpForm({expDate:today,category:"Materials",note:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""} — ${pr.supplier||""}`,amount:amt||"",bankAccount:"",projectId:pr.projectId||null,receipt:pr.deliveryNote||"",acctStatus:"For Payment"});
+            setEditExpId(null);setExpModal(true);
+          } else {
+            const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+            setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
+            setEditCvId(null);setCvModal(true);
+          }
+          updatePR(pr.id,{paymentStatus:"Payable Created"});
+          setPoPayModal(false);setPoPayPr(null);
+        };
+        const close=()=>{setPoPayModal(false);setPoPayPr(null);};
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.48)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1200,padding:"16px"}}>
+            <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:460,boxShadow:"0 20px 60px rgba(0,0,0,.22)",overflow:"hidden"}}>
+              <div style={{background:"#78350f",padding:"15px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontWeight:700,color:"#fcd34d",fontSize:".9rem"}}>📦 Create Payable</span>
+                <button onClick={close} style={{background:"none",border:"none",color:"rgba(255,255,255,.7)",cursor:"pointer",fontSize:"1.1rem",lineHeight:1,padding:0}}>✕</button>
+              </div>
+              <div style={{padding:"13px 20px",borderBottom:"1px solid #f1f5f9",background:"#fffbeb"}}>
+                <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{pr.itemName}</div>
+                <div style={{fontSize:".73rem",color:"#92400e",marginTop:2}}>{pr.supplier||"No supplier"} · {pr.poNumber||"No PO#"} · Received: {pr.qtyDelivered||pr.qty} {pr.unit||""} on {pr.deliveryDate||today}</div>
+                <div style={{fontWeight:800,color:"#b45309",fontSize:"1rem",marginTop:5}}>{amt>0?fmt(amt):"Amount TBD"}</div>
+              </div>
+              {poPayStep===1?(
+                <>
+                  <div style={{padding:"16px 20px 10px"}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:6}}>How will this be paid?</div>
+                    <div style={{fontSize:".75rem",color:"#64748b",lineHeight:1.55}}>Use <strong>Check Payable</strong> for formal supplier invoices (typically ₱10,000+). Use <strong>Daily Payable</strong> for small cash purchases or petty cash reimbursements.</div>
+                    <div style={{marginTop:10,padding:"7px 11px",borderRadius:8,background:autoSuggest==="check"?"#f0fdf4":"#eff6ff",fontSize:".72rem",fontWeight:600,color:autoSuggest==="check"?"#059669":"#6366f1"}}>
+                      💡 Suggested: {autoSuggest==="check"?"Check Payable — formal invoice, ≥ ₱10,000":"Daily Payable — small amount or no PO number"}
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,padding:"10px 20px 20px"}}>
+                    <button onClick={()=>{setPoPayType("daily");setPoPayStep(2);}} style={{background:autoSuggest==="daily"?"#6366f1":"#f8fafc",border:autoSuggest==="daily"?"2px solid #6366f1":"2px solid #e2e8f0",borderRadius:12,padding:"18px 12px",cursor:"pointer",fontFamily:"inherit",textAlign:"center",color:autoSuggest==="daily"?"#fff":"#1e293b",transition:"all .15s"}}>
+                      <div style={{fontSize:"1.5rem",marginBottom:7}}>📄</div>
+                      <div style={{fontWeight:700,fontSize:".83rem"}}>Daily Payable</div>
+                      <div style={{fontSize:".68rem",color:autoSuggest==="daily"?"rgba(255,255,255,.8)":"#94a3b8",marginTop:4,lineHeight:1.4}}>Cash / petty cash<br/>Small amounts</div>
+                    </button>
+                    <button onClick={()=>{setPoPayType("check");setPoPayStep(2);}} style={{background:autoSuggest==="check"?"#059669":"#f8fafc",border:autoSuggest==="check"?"2px solid #059669":"2px solid #e2e8f0",borderRadius:12,padding:"18px 12px",cursor:"pointer",fontFamily:"inherit",textAlign:"center",color:autoSuggest==="check"?"#fff":"#1e293b",transition:"all .15s"}}>
+                      <div style={{fontSize:"1.5rem",marginBottom:7}}>✅</div>
+                      <div style={{fontWeight:700,fontSize:".83rem"}}>Check Payable</div>
+                      <div style={{fontSize:".68rem",color:autoSuggest==="check"?"rgba(255,255,255,.8)":"#94a3b8",marginTop:4,lineHeight:1.4}}>Formal invoice<br/>Larger amounts</div>
+                    </button>
+                  </div>
+                </>
+              ):(
+                <>
+                  <div style={{padding:"16px 20px"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                      <span style={{background:poPayType==="check"?"#f0fdf4":"#eff6ff",color:poPayType==="check"?"#059669":"#6366f1",padding:"4px 12px",borderRadius:20,fontWeight:700,fontSize:".78rem"}}>{poPayType==="check"?"✅ Check Payable":"📄 Daily Payable"}</span>
+                      <button onClick={()=>setPoPayStep(1)} style={{background:"none",border:"none",color:"#6366f1",cursor:"pointer",fontSize:".74rem",fontWeight:600,textDecoration:"underline",fontFamily:"inherit",padding:0}}>Change</button>
+                    </div>
+                    <div style={{fontSize:".8rem",color:"#475569",lineHeight:1.55}}>
+                      {poPayType==="check"?"A Check Voucher will be pre-filled with this PO's details. You can review and finalize amounts before saving.":"A Daily Payable entry will be pre-filled with this PO's details. You can review and adjust before saving."}
+                    </div>
+                    <div style={{marginTop:12,background:"#f8fafc",borderRadius:10,padding:"12px 14px",fontSize:".78rem",color:"#334155",lineHeight:1.7}}>
+                      <div><strong>Supplier:</strong> {pr.supplier||"—"}</div>
+                      <div><strong>PO Reference:</strong> {pr.poNumber||"—"}</div>
+                      <div><strong>Amount:</strong> {amt>0?fmt(amt):"TBD"}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:10,padding:"0 20px 20px"}}>
+                    <button onClick={()=>setPoPayStep(1)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",color:"#475569"}}>← Back</button>
+                    <button onClick={handleConfirm} style={{flex:2,background:poPayType==="check"?"#059669":"#6366f1",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",color:"#fff"}}>Open {poPayType==="check"?"Check Payable":"Daily Payable"} Form →</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
       })()}
     </Wrap>
   );
