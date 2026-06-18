@@ -7708,7 +7708,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const allDeals=[...wonDeals,...deals.filter(d=>!WON_STAGES.includes(d.stage))];
         const AV_COLORS=["#3b82f6","#8b5cf6","#059669","#f59e0b","#ef4444","#06b6d4","#ec4899","#f97316"];
         const colorFor=name=>AV_COLORS[(name||"").split("").reduce((s,c)=>s+c.charCodeAt(0),0)%AV_COLORS.length];
-        const closedIds=new Set(deals.filter(d=>d.stage==="12 · Close-Out").map(d=>d.id));
+        const closedIds=new Set(deals.filter(d=>d.stage==="12 · Close-Out"||d.stage==="14 · Completed").map(d=>d.id));
         const pipelineIds=new Set(deals.filter(d=>!WON_STAGES.includes(d.stage)).map(d=>d.id));
         const wonIds=new Set(wonDeals.map(d=>d.id));
 
@@ -9131,7 +9131,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
         {/* ── PROJECTS P&L TAB ── */}
         {finTab==="projects"&&(()=>{
-          const allProj=[...wonDeals,...completedDeals];
+          const allProj=wonDeals;
           const rows=allProj.map(d=>{
             const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
             const billed=ms.reduce((s,b)=>s+Number(b.amount||0),0);
@@ -9349,7 +9349,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
                 </Fld>
                 <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-                <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
+                <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
                 <Fld label="Notes"><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder="Optional details"/></Fld>
                 <div style={{display:"flex",gap:10,marginTop:18}}>
                   <Btn full variant="green" onClick={()=>savePayable(payForm)}>Save Payable</Btn>
@@ -10559,7 +10559,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
-  if(page==="boq") return(<Wrap><BOQBuilder wonDeals={[...wonDeals,...completedDeals]} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)}/></Wrap>);
+  if(page==="boq") return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)}/></Wrap>);
 
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
@@ -10781,7 +10781,7 @@ First few:
         <select value={acctProj} onChange={e=>setAcctProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer",maxWidth:160}}>
           <option value="all">All Projects</option>
           <option value="company">Company-wide</option>
-          {[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
+          {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}
         </select>
         {(acctSearch||acctCat!=="All"||acctProj!=="all"||acctMonth)&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");setAcctMonth("");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
       </div>
@@ -10829,7 +10829,7 @@ First few:
           </>
         );
       })()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={[...projList,...completedDeals]} clientName={clientName}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={wonDeals} clientName={clientName}/>
     </Wrap>
   );
 
@@ -10995,7 +10995,7 @@ First few:
               <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project (optional)</label>
               <select value={cvForm.projectId||""} onChange={e=>setCvForm(f=>({...f,projectId:e.target.value||null}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}>
                 <option value="">— Company-wide / No project —</option>
-                {[...wonDeals,...completedDeals].map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
+                {wonDeals.map(d=><option key={d.id} value={d.id}>{projDisplayName(d)}</option>)}
               </select>
             </div>
             <div style={{marginBottom:16}}>
@@ -18223,7 +18223,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   };
 
   // Per-project summary for list — includes addendum child deals
-  const _baseDeals=[...wonDeals,...completedDeals];
+  const _baseDeals=wonDeals;
   const _baseIds=new Set(_baseDeals.map(d=>d.id));
   const _addendumDeals=deals.filter(d=>d.parentDealId&&_baseIds.has(d.parentDealId)&&!_baseIds.has(d.id));
   const projectSummaries=[..._baseDeals,..._addendumDeals].map(d=>{
@@ -18800,7 +18800,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     {id:"fab",       label:"Fabrication",icon:"🔨", stgs:["08 · Fabrication"]},
     {id:"site",      label:"Site",       icon:"🏗",  stgs:["09 · Site & Billing","10 · Installation"]},
     {id:"punchlist", label:"Punchlist",  icon:"📋", stgs:["11 · Punchlist"]},
-    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out"]},
+    {id:"closeout",  label:"Close-Out",  icon:"✅", stgs:["12 · Close-Out","14 · Completed"]},
   ];
   const phaseIdx=stg=>PHASES.findIndex(p=>p.stgs.includes(stg));
 
@@ -18813,7 +18813,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"]}[role]||[];
-  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100)):0;};
+  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100)):0;};
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
     const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
@@ -20897,7 +20897,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
 
   const events=React.useMemo(()=>{
     const list=[];
-    [...wonDeals,...(completedDeals||[])].forEach(d=>{
+    wonDeals.forEach(d=>{
       const pc=pcards[d.id];const jo=jos.find(j=>j.dealId===d.id);
       if(pc?.targetEndDate) list.push({date:pc.targetEndDate,type:"end",label:d.client,sub:d.ceNo||"",detail:"PM: "+(jo?.pm1||"—"),color:d.stage==="14 · Completed"?"#059669":"#3b82f6",icon:d.stage==="14 · Completed"?"✅":"🏗",dealId:d.id});
     });
