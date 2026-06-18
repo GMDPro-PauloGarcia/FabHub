@@ -10702,7 +10702,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── DAILY PAYABLES (Accounting-logged Expenses) ───────────────────────────
-  if(page==="accounting") return(
+  if(page==="accounting"&&(role==="Accounting"||role==="Finance"||role==="Manager")) return(
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
@@ -23457,7 +23457,7 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
                         <input type="number" value={newItem.amount} onChange={e=>ni("amount",e.target.value)} placeholder="Amount *" style={{padding:"7px 10px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:".8rem",fontFamily:"inherit"}}/>
                       </div>
                       <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                        <button onClick={()=>addEVItem(ev.id,{...newItem,id:Math.random().toString(36).slice(2)})&&setNewItem(blankItem)||setNewItem(blankItem)} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>Add Item</button>
+                        <button onClick={()=>{addEVItem(ev.id,{...newItem,id:Math.random().toString(36).slice(2)});setNewItem(blankItem);}} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>Add Item</button>
                         <label style={{fontSize:".78rem",color:"#6366f1",cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
                           <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev2=>handleCSV(ev.id,ev2.target.result);r.readAsText(f);e.target.value="";}}/>
                           📎 Upload CSV
