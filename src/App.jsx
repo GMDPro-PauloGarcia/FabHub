@@ -14537,10 +14537,10 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
                   <div style={{...labelCell,background:"#faf5ff",fontStyle:"normal",fontSize:".72rem",paddingLeft:32,display:"flex",alignItems:"center",gap:4}}>
                     <button onClick={()=>f("collections.manualCollections",(pos.collections.manualCollections||[]).filter((_,j)=>j!==ri))}
                       style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"1px 6px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".7rem",fontFamily:"inherit",flexShrink:0}}>✕</button>
-                    <select value={row.projectId||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];const d=wonDeals.find(x=>x.id===e.target.value);mc[ri]={...mc[ri],projectId:e.target.value,note:d?d.client+" — "+d.ceNo:mc[ri].note||""};f("collections.manualCollections",mc);}}
+                    <select value={row.projectId||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];const d=wonDeals.find(x=>x.id===e.target.value);mc[ri]={...mc[ri],projectId:e.target.value,note:d?(d.contact||d.client)+(d.ceNo?" — "+d.ceNo:""):mc[ri].note||""};f("collections.manualCollections",mc);}}
                       style={{...inpStyle,textAlign:"left",borderColor:"#e9d5ff",fontSize:".72rem",padding:"3px 7px",flex:1,minWidth:0,maxWidth:160}}>
                       <option value="">Select project…</option>
-                      {wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=><option key={d.id} value={d.id}>{d.client}{d.ceNo?" · "+d.ceNo:""}</option>)}
+                      {wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=><option key={d.id} value={d.id}>{d.contact||d.client}{d.ceNo?" · "+d.ceNo:""}</option>)}
                     </select>
                     <input type="text" value={row.note||""} onChange={e=>{const mc=[...(pos.collections.manualCollections||[])];mc[ri]={...mc[ri],note:e.target.value};f("collections.manualCollections",mc);}}
                       placeholder="Type / ref…" style={{...inpStyle,textAlign:"left",borderColor:"#e9d5ff",fontSize:".72rem",padding:"3px 7px",minWidth:0,width:80}}/>
