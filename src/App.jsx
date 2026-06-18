@@ -15876,9 +15876,11 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
           <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:16}}>🛠️ {editingId?"Edit Work Order":"New Subcon Work Order"}</div>
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:14}}>
             <Fld label="Subcontractor" required hint="From the Subcontractor Master — terms auto-fill">
-              <SearchSelect value={form.subcontractor||""} onChange={pickSubcon}
-                options={[...new Map((subcons||[]).map(s=>{const n=(s.company_name||s.companyName||"").trim();return[n,{value:n,label:n}];})).values()].filter(o=>o.value)}
-                placeholder="Search or type subcontractor…" noneLabel="— Select subcontractor —" noneValue=""/>
+              <datalist id="wo-subcon-dl">
+                {[...new Map((subcons||[]).map(s=>{const n=(s.company_name||s.companyName||"").trim();return[n,n];})).values()].filter(Boolean).sort().map(n=><option key={n} value={n}/>)}
+              </datalist>
+              <input list="wo-subcon-dl" value={form.subcontractor||""} onChange={e=>pickSubcon(e.target.value)} placeholder="Type or select subcontractor…"
+                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
             </Fld>
             <Fld label="Project" required>
               <SearchSelect
@@ -16583,7 +16585,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
               <input list="po-supplier-list" value={poSupplier} onChange={e=>setPoSupplier(e.target.value)} placeholder="Type or select supplier…"
                 style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}/>
               <datalist id="po-supplier-list">
-                {(suppliers||[]).map(s=><option key={s.id} value={s.company_name||s.companyName||""}/>)}
+                {[...new Map((suppliers||[]).map(s=>{const n=(s.company_name||s.companyName||"").trim();return[n,n];})).values()].filter(Boolean).sort().map(n=><option key={n} value={n}/>)}
               </datalist>
             </Fld>
             <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
