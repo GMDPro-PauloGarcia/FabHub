@@ -3867,6 +3867,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("management",`💰 <b>Budget Request Submitted</b>\n${br.title||br.purpose||"?"}\nProject: ${deal?.client||br.projectId||"?"}${botSettings.hideValueInBots?"":"\nAmount: ₱"+Number(br.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nCategory: ${br.category||"—"}\nBy: ${br.requestedBy||"?"}`);
   };
   const updateBR=(id,ch)=>{
+    if(ch.status==="Approved"){
+      const br=breqs.find(b=>b.id===id);
+      if(br){
+        const b=budgets[br.projectId];
+        const budgetCeiling=b?((Number(b.Materials)||0)+(Number(b.Labor)||0)+(Number(b.Overhead)||0)+(Number(b.Subcon)||0)):0;
+        if(budgetCeiling>0){
+          const totalApproved=breqs.filter(x=>x.id!==id&&x.projectId===br.projectId&&x.status==="Approved").reduce((s,x)=>s+Number(x.amount||0),0)+Number(br.amount||0);
+          if(totalApproved>budgetCeiling){
+            toastEmit&&toastEmit(`⚠️ Approved BRs (₱${totalApproved.toLocaleString("en-PH",{maximumFractionDigits:0})}) exceed project budget ceiling of ₱${budgetCeiling.toLocaleString("en-PH",{maximumFractionDigits:0})}.`,"warn");
+          }
+        }
+      }
+    }
     upBreqs(bs=>bs.map(b=>{
       if(b.id!==id) return b;
       const n={...b,...ch};
@@ -4833,8 +4846,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
   const clearCv=id=>{
-    upVouchers(vs=>vs.map(v=>v.id===id?{...v,isCleared:true,clearedDate:today}:v));
-    if(isSupabaseReady()) sbUpsert("check_vouchers",{id,is_cleared:true,cleared_date:today},"id").catch(()=>{});
+    const cv=vouchers.find(v=>v.id===id);
+    let checkNo=cv?.checkNo||"";
+    if(!checkNo){
+      const input=window.prompt("Enter check number for bank clearance:");
+      if(input===null) return;
+      checkNo=input.trim();
+    }
+    const patch={is_cleared:true,cleared_date:today,...(checkNo?{check_no:checkNo}:{})};
+    upVouchers(vs=>vs.map(v=>v.id===id?{...v,isCleared:true,clearedDate:today,...(checkNo?{checkNo}:{})}:v));
+    if(isSupabaseReady()) sbUpsert("check_vouchers",{id,...patch},"id").catch(()=>{});
   };
   const submitCvForRelease=id=>{
     upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"For Release"}:v));
@@ -4876,6 +4897,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const addLoanPayment=(loanId,amount,date)=>{
     if(!amount||Number(amount)<=0) return;
+    const loan=loans.find(l=>l.id===loanId);
+    if(!loan) return;
+    const totalPaid=(loan.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    const remaining=Math.max(0,Number(loan.principal||0)-totalPaid);
+    if(remaining>0&&Number(amount)>remaining+0.01){
+      toastEmit(`Payment ₱${Number(amount).toLocaleString("en-PH",{maximumFractionDigits:0})} exceeds outstanding balance of ₱${remaining.toLocaleString("en-PH",{maximumFractionDigits:0})}.`,"error");
+      return;
+    }
     const pm={id:uid(),amount:Number(amount),date:date||today};
     upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:[...(l.payments||[]),pm]}:l));
     if(isSupabaseReady()) sbUpsert("loan_payments",{id:pm.id,loan_id:loanId,amount:pm.amount,date:pm.date},"id").catch(()=>{});
@@ -4970,6 +4999,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
       {group:"Accounting",  items:[{id:"accounting",l:"Expenses"},{id:"checkvouchers",l:"Check Vouchers"},{id:"reconc",l:"Bank Reconciliation"}]},
+      {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
       {group:"Overview",   items:[{id:"home",l:"Overview"}]},
@@ -6375,7 +6405,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(role==="ProjectMover"&&page==="calendar") return(
     <ConstructionCalendar
       wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos}
-      prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
+      prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} payables={payables}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
       checklists={checklist} session={session}
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
@@ -7148,7 +7178,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="calendar") return(
     <ConstructionCalendar
       wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos}
-      prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs}
+      prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} payables={payables}
       setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap}
       checklists={checklist} session={session}
       addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(_t==="turnover"){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);sendTelegramNotification("management",msg);}else if(_t==="po delivery"){sendTelegramNotification("procurement",msg);sendTelegramNotification("warehouse",msg);}else if(_t.includes("billing")){sendTelegramNotification("financialcontrol",msg);sendTelegramNotification("management",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t==="inspection"){sendTelegramNotification("ops",msg);sendTelegramNotification("management",msg);}else if(_t==="maintenance"){sendTelegramNotification("ops",msg);}else{sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}}}
@@ -10763,7 +10793,7 @@ First few:
       {/* Filter bar */}
       <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
         <input value={cvSearch} onChange={e=>setCvSearch(e.target.value)} placeholder="Search payee or description..." style={{flex:1,minWidth:160,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".82rem"}}/>
-        {["All","Draft","For Release","Released","Void"].map(s=>(
+        {["All","Draft","For Release","Released","Cleared","Void"].map(s=>(
           <button key={s} onClick={()=>setCvStatus(s)} style={{padding:"6px 13px",borderRadius:20,border:"none",fontFamily:"inherit",fontSize:".75rem",fontWeight:600,cursor:"pointer",background:cvStatus===s?"#6366f1":"#f1f5f9",color:cvStatus===s?"#fff":"#475569"}}>{s}</button>
         ))}
       </div>
@@ -10796,7 +10826,8 @@ First few:
       {(()=>{
         const CV_STATUS_CLR={Draft:"#94a3b8","For Release":"#f59e0b",Released:"#10b981",Void:"#ef4444"};
         let list=[...vouchers].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-        if(cvStatus!=="All") list=list.filter(v=>v.status===cvStatus);
+        if(cvStatus==="Cleared") list=list.filter(v=>v.status==="Released"&&v.isCleared);
+        else if(cvStatus!=="All") list=list.filter(v=>v.status===cvStatus);
         if(cvSearch) list=list.filter(v=>(v.payee||"").toLowerCase().includes(cvSearch.toLowerCase())||(v.description||"").toLowerCase().includes(cvSearch.toLowerCase())||(v.cvNo||"").toLowerCase().includes(cvSearch.toLowerCase()));
         return list.length===0
           ?<EmptyState icon="📄" msg="No check vouchers found."/>
@@ -15500,6 +15531,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
   };
 
   const filtered=swos.filter(w=>{
+    if(role==="Accounting"&&w.acctStatus!=="For Accounting") return false;
     if(filterProj!=="all"&&w.projectId!==filterProj) return false;
     if(filterStat!=="all"&&w.status!==filterStat) return false;
     return true;
@@ -20392,7 +20424,7 @@ const OPS_EVENT_TYPES=["Turnover","PO Delivery","Billing Due","DRF Deadline","Re
 const OPS_EVENT_COLORS={Turnover:"#3b82f6","PO Delivery":"#f97316","Billing Due":"#10b981","DRF Deadline":"#ec4899",Repair:"#ef4444",Backjob:"#dc2626",Maintenance:"#f59e0b","Site Visit":"#0ea5e9",Inspection:"#8b5cf6","Site Meeting":"#059669"};
 const OPS_EVENT_ICONS={Turnover:"🏗","PO Delivery":"📦","Billing Due":"💵","DRF Deadline":"📝",Repair:"🔧",Backjob:"🔄",Maintenance:"⚙️","Site Visit":"🏗","Inspection":"🔍","Site Meeting":"👥"};
 
-function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,setPage,setJumpDeal,today,Wrap,checklists=[],addOpsEvent,updateOpsEvent,deleteOpsEvent,session,updateProjectTurnover}){
+function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,payables=[],setPage,setJumpDeal,today,Wrap,checklists=[],addOpsEvent,updateOpsEvent,deleteOpsEvent,session,updateProjectTurnover}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
   const[calTab,setCalTab]=React.useState("calendar");
@@ -20448,8 +20480,11 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
       const d=wonDeals.find(x=>x.id===ev.projectId);
       list.push({date:ev.dueDate,type:"ops",label:ev.title,sub:ev.type,detail:ev.assignedTo?`Assigned: ${ev.assignedTo}`:"",color:OPS_EVENT_COLORS[ev.type]||"#64748b",icon:OPS_EVENT_ICONS[ev.type]||"🔧",opsId:ev.id,opsEvent:ev,dealId:ev.projectId,project:d?.client});
     });
+    payables.filter(p=>p.dueDate&&!["Paid","Cancelled"].includes(p.status)).forEach(p=>{
+      list.push({date:p.dueDate,type:"payable",label:p.payee||p.description||"Payable",sub:"AP Due",detail:"₱"+Number(p.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0}),color:"#dc2626",icon:"💳"});
+    });
     return list;
-  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs,opsEvents]);
+  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs,opsEvents,payables]);
 
   const eventsByDate=React.useMemo(()=>{
     const map={};events.forEach(e=>{if(!map[e.date])map[e.date]=[];map[e.date].push(e);});return map;
