@@ -18,3 +18,7 @@ yarn-error.log*
 
 # misc
 .DS_Store
+
+# Claude Code local config
+.claude/settings.local.json
+.claude/worktrees/
