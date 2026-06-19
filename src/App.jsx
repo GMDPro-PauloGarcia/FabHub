@@ -14461,7 +14461,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   const totalGMDAssets=netCashAvail+unionCapital;
 
   // Column template: sticky label col + 5 bank cols + total col
-  const colTpl="200px repeat(5,1fr) 130px";
+  const COL=mob?"130px repeat(5,minmax(80px,1fr)) 100px":"200px repeat(5,1fr) 130px";
 
   return(
     <div>
@@ -14677,7 +14677,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       {/* ─── TABLE INNER ─── */}
       <div style={{background:"#fff",minWidth:mob?680:undefined}}>
         {(()=>{
-          const COL=mob?"130px repeat(5,minmax(80px,1fr)) 100px":"200px repeat(5,1fr) 130px";
           const assignBank=(paymentId,bankId,msId)=>{
             const ms=billings.find(b=>(b.payments||[]).some(px=>px.id===paymentId));
             if(ms&&updateMilestone)
