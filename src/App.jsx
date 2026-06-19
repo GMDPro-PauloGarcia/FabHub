@@ -4510,10 +4510,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[poPayPr,    setPoPayPr]   =useState(null);
   const[poPayStep,  setPoPayStep] =useState(1);
   const[poPayType,  setPoPayType] =useState(null);
-  const[reconBank,     setReconBank]    =useState(BANKS[0].id);
-  const[stmtBal,       setStmtBal]      =useState("");
-  const[reconAdjusts,  setReconAdjusts] =useState([]);
-  const[reconAdjForm,  setReconAdjForm] =useState({desc:"",amount:""});
   const[actCollapsed,setActCollapsed]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:actCollapsed")||"false");}catch{return false;}});
   const[dashEditMode,setDashEditMode]=useState(false);
   const[dashOrder,setDashOrder]=useState(()=>{
@@ -5145,7 +5141,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reconc",l:"Bank Reconciliation"},{id:"reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -5163,7 +5159,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reconc",l:"Bank Reconciliation"},{id:"reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -5174,7 +5170,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"reconc",l:"Bank Reconciliation"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -5212,7 +5208,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", reconc:"🏦",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -5335,7 +5331,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", reconc:"🏦",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -11530,154 +11526,6 @@ First few:
         BANKS={BANKS} isMobile={isMobile}/>
     </Wrap>
   );
-
-  // ── BANK RECONCILIATION ───────────────────────────────────────────────────────
-  if(page==="reconc"&&(role==="Finance"||role==="Manager"||role==="Accounting")) {
-    const fmtR=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const outstandingCvs=vouchers.filter(v=>v.status==="Released"&&!v.isCleared&&(v.bank===reconBank||BANKS.find(b=>b.id===reconBank)?.short===v.bank));
-    const outstandingAmt=outstandingCvs.reduce((s,v)=>s+Number(v.amount||0),0);
-    const transitPayments=billings.flatMap(m=>(m.payments||[]).filter(p=>p.bank===reconBank&&p.valueDate&&p.valueDate>today));
-    const transitAmt=transitPayments.reduce((s,p)=>s+Number(p.amount||0),0);
-    const adjustmentsNet=reconAdjusts.reduce((s,a)=>s+Number(a.amount||0),0);
-    const adjBankBal=Number(stmtBal||0)-outstandingAmt+transitAmt+adjustmentsNet;
-    const bookCredits=billings.flatMap(m=>(m.payments||[]).filter(p=>p.bank===reconBank)).reduce((s,p)=>s+Number(p.amount||0),0);
-    const bookDebits=exps.filter(e=>e.bankAccount===reconBank).reduce((s,e)=>s+Number(e.amount||0),0);
-    const bookDebits2=vouchers.filter(v=>v.status==="Released"&&(v.bank===reconBank||BANKS.find(b=>b.id===reconBank)?.short===v.bank)).reduce((s,v)=>s+Number(v.amount||0),0);
-    return(
-      <Wrap>
-        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem",marginBottom:4}}>🏦 Bank Reconciliation</div>
-        <div style={{fontSize:".82rem",color:"#64748b",marginBottom:20}}>Compare FabHub book balance vs. bank statement. Outstanding checks and deposits in transit explain any timing differences.</div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:20}}>
-          {BANKS.map(b=>(
-            <button key={b.id} onClick={()=>setReconBank(b.id)} style={{background:reconBank===b.id?b.color:"#f1f5f9",color:reconBank===b.id?"#fff":"#475569",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>
-              {b.short}
-            </button>
-          ))}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:16,marginBottom:20}}>
-          {/* BANK SIDE */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem"}}>🏛 Bank Statement</span>
-            </div>
-            <div style={{padding:16}}>
-              <div style={{marginBottom:12}}>
-                <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Bank Statement Balance (₱)</label>
-                <input type="number" value={stmtBal} onChange={e=>setStmtBal(e.target.value)} placeholder="Enter balance from bank statement" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".88rem",boxSizing:"border-box"}}/>
-              </div>
-              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
-                <span style={{color:"#64748b"}}>Less: Outstanding Checks</span>
-                <span style={{fontWeight:700,color:"#ef4444"}}>({fmtR(outstandingAmt)})</span>
-              </div>
-              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
-                <span style={{color:"#64748b"}}>Add: Deposits in Transit</span>
-                <span style={{fontWeight:700,color:"#10b981"}}>{fmtR(transitAmt)}</span>
-              </div>
-              {adjustmentsNet!==0&&(
-                <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
-                  <span style={{color:"#64748b"}}>Other adjustments</span>
-                  <span style={{fontWeight:700,color:adjustmentsNet>=0?"#10b981":"#ef4444"}}>{adjustmentsNet<0?"("+fmtR(-adjustmentsNet)+")":fmtR(adjustmentsNet)}</span>
-                </div>
-              )}
-              <div style={{padding:"10px 0 0",display:"flex",justifyContent:"space-between",fontSize:".9rem",fontWeight:800}}>
-                <span>Adjusted Bank Balance</span>
-                <span style={{color:"#1d4ed8"}}>{fmtR(adjBankBal)}</span>
-              </div>
-            </div>
-          </div>
-          {/* BOOK SIDE */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#93c5fd",fontSize:".88rem"}}>📒 FabHub Book Balance</span>
-            </div>
-            <div style={{padding:16}}>
-              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
-                <span style={{color:"#64748b"}}>Collections received</span>
-                <span style={{fontWeight:700,color:"#10b981"}}>{fmtR(bookCredits)}</span>
-              </div>
-              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
-                <span style={{color:"#64748b"}}>Expenses logged</span>
-                <span style={{fontWeight:700,color:"#ef4444"}}>({fmtR(bookDebits)})</span>
-              </div>
-              <div style={{padding:"8px 0",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",fontSize:".82rem"}}>
-                <span style={{color:"#64748b"}}>Check vouchers released</span>
-                <span style={{fontWeight:700,color:"#ef4444"}}>({fmtR(bookDebits2)})</span>
-              </div>
-              <div style={{padding:"10px 0 0",display:"flex",justifyContent:"space-between",fontSize:".9rem",fontWeight:800}}>
-                <span>Net Book Balance</span>
-                <span style={{color:bookCredits-bookDebits-bookDebits2>=0?"#059669":"#ef4444"}}>{fmtR(bookCredits-bookDebits-bookDebits2)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* Manual Bank Adjustments */}
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e0e7ff",overflow:"hidden",marginBottom:16}}>
-          <div style={{background:"#6366f1",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,color:"#fff",fontSize:".85rem"}}>🔧 Manual Adjustments (Bank Side)</span>
-            <span style={{fontSize:".72rem",color:"rgba(255,255,255,.75)"}}>Bank charges, interest earned, NSF, etc.</span>
-          </div>
-          {reconAdjusts.length===0&&(
-            <div style={{padding:"10px 16px",fontSize:".75rem",color:"#94a3b8"}}>No adjustments yet — add bank charges, interest, or other items not yet in FabHub.</div>
-          )}
-          {reconAdjusts.map(a=>(
-            <div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 16px",borderBottom:"1px solid #f1f5f9",fontSize:".82rem"}}>
-              <span style={{color:"#0f172a"}}>{a.desc}</span>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontWeight:700,color:Number(a.amount)<0?"#ef4444":"#10b981"}}>{Number(a.amount)<0?"("+fmtR(-Number(a.amount))+")":fmtR(Number(a.amount))}</span>
-                <button onClick={()=>setReconAdjusts(ps=>ps.filter(x=>x.id!==a.id))} style={{background:"#fee2e2",border:"none",borderRadius:5,padding:"2px 7px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-              </div>
-            </div>
-          ))}
-          <div style={{padding:"10px 16px",display:"flex",gap:8,borderTop:reconAdjusts.length>0?"1px solid #f1f5f9":"none",flexWrap:"wrap",alignItems:"center"}}>
-            <input type="text" value={reconAdjForm.desc} onChange={e=>setReconAdjForm(p=>({...p,desc:e.target.value}))} placeholder="Description (e.g. Bank charges Jan)" style={{flex:"2 1 140px",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem"}}/>
-            <input type="number" value={reconAdjForm.amount} onChange={e=>setReconAdjForm(p=>({...p,amount:e.target.value}))} placeholder="Amount (negative = debit)" style={{flex:"1 1 120px",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".8rem"}}/>
-            <button onClick={()=>{if(!reconAdjForm.desc||!reconAdjForm.amount)return;setReconAdjusts(ps=>[...ps,{id:Date.now().toString(),...reconAdjForm}]);setReconAdjForm({desc:"",amount:""}); }} style={{background:"#6366f1",color:"#fff",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>+ Add</button>
-          </div>
-        </div>
-        {/* Outstanding Checks Detail */}
-        {outstandingCvs.length>0&&(
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #fde68a",overflow:"hidden",marginBottom:16}}>
-            <div style={{background:"#fef3c7",padding:"10px 16px"}}>
-              <span style={{fontWeight:700,color:"#92400e",fontSize:".85rem"}}>📋 Outstanding Checks — {BANKS.find(b=>b.id===reconBank)?.short}</span>
-            </div>
-            {outstandingCvs.map(cv=>(
-              <div key={cv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #fef9c3",fontSize:".82rem"}}>
-                <div>
-                  <span style={{fontWeight:700,color:"#0f172a"}}>{cv.cvNo}</span>
-                  <span style={{color:"#64748b",marginLeft:8}}>{cv.payee}</span>
-                  {cv.checkNo&&<span style={{marginLeft:6,fontSize:".72rem",color:"#94a3b8"}}>Check #{cv.checkNo}</span>}
-                  <span style={{marginLeft:6,fontSize:".72rem",color:"#94a3b8"}}>{cv.releasedDate||cv.date||"—"}</span>
-                </div>
-                <span style={{fontWeight:700,color:"#b45309"}}>{fmtR(cv.amount)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {/* Deposits in Transit Detail */}
-        {transitPayments.length>0&&(
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #bbf7d0",overflow:"hidden",marginBottom:16}}>
-            <div style={{background:"#dcfce7",padding:"10px 16px"}}>
-              <span style={{fontWeight:700,color:"#15803d",fontSize:".85rem"}}>💰 Deposits in Transit — {BANKS.find(b=>b.id===reconBank)?.short}</span>
-            </div>
-            {transitPayments.map((p,i)=>(
-              <div key={p.id||i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #f0fdf4",fontSize:".82rem"}}>
-                <div>
-                  <span style={{fontWeight:600,color:"#0f172a"}}>{p.refNo||"—"}</span>
-                  <span style={{color:"#64748b",marginLeft:8}}>Recorded: {p.date} | Value Date: {p.valueDate}</span>
-                </div>
-                <span style={{fontWeight:700,color:"#059669"}}>{fmtR(p.amount)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {!stmtBal&&(
-          <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",fontSize:".82rem",color:"#3b82f6"}}>
-            💡 Enter your bank statement balance above to compute the adjusted bank balance and check if it matches FabHub's book balance.
-          </div>
-        )}
-      </Wrap>
-    );
-  }
 
   // ── MATERIAL REQUESTS ────────────────────────────────────────────────────────
   if(page==="materialreq") return(
