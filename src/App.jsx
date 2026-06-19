@@ -2557,7 +2557,19 @@ export default function App(){
             if(_jos){setJos(_jos);idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
             const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null})):null;
-            if(_billings){setBillings(_billings);idbE.push([KEYS.billings,_billings]);}
+            if(_billings){
+              // Merge: preserve any locally-recorded payments that didn't sync to Supabase yet
+              const idbBilMap=Object.fromEntries((idb[KEYS.billings]||[]).map(b=>[b.id,b]));
+              const mergedBillings=_billings.map(sb=>{
+                const local=idbBilMap[sb.id];
+                if(!local?.payments?.length) return sb;
+                const sbPayIds=new Set((sb.payments||[]).map(p=>p.id));
+                const localOnly=local.payments.filter(p=>!sbPayIds.has(p.id));
+                return localOnly.length?{...sb,payments:[...(sb.payments||[]),...localOnly]}:sb;
+              });
+              setBillings(mergedBillings);
+              idbE.push([KEYS.billings,mergedBillings]);
+            }
             const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
             const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?JSON.parse(p.delivery_history):undefined})):null;
@@ -3719,8 +3731,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const bTx=calcTax(b.amount||0,b.receiptType||b.receipt_type||"OR",b.withholding??false);
       const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
       if(isSupabaseReady()){
-        sbSyncOne("billing_payments",{...payment,id:payId,milestoneId:msId},toSbPayment);
-        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(e=>{toastEmit("Payment recorded locally — Supabase sync failed. Check connection.","warning");console.error("billing sync:",e);});
+        sbUpsert("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id")
+          .catch(e=>{console.error("billing_payments sync:",e.message);toastEmit("⚠️ Payment saved locally but NOT synced to server — do not close this tab!","warning",9000);});
+        sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(e=>{toastEmit("⚠️ Payment status not synced — do not close this tab!","warning",9000);console.error("billing sync:",e);});
       }
       return{...b,payments,status};
     }));
