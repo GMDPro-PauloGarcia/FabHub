@@ -169,7 +169,7 @@ const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyO
 const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
 const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
-const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||"",po_number:p.poNumber||"",po_id:p.poId||null});
+const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||"",po_number:p.poNumber||"",po_id:p.poId||null,expense_id:p.expenseId||null});
 const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
 const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 const cvToSb=v=>({id:v.id,cv_no:v.cvNo||"",date:v.date||null,payee:v.payee||"",amount:Number(v.amount)||0,description:v.description||"",project_id:v.projectId||null,bank:v.bank||"",notes:v.notes||"",status:v.status||"Draft",released_by:v.releasedBy||null,released_date:v.releasedDate||null,created_by:v.createdBy||"",created_at:v.createdAt||null,po_ref:v.poRef||"",payable_id:v.payableId||null,check_no:v.checkNo||"",cleared_date:v.clearedDate||null,is_cleared:v.isCleared||false});
@@ -2864,7 +2864,12 @@ export default function App(){
     return{id:r.id,deal_id:r.dealId||r.projectId||null,date,
       category:r.category||"",description:desc,note:desc,
       amount:Number(r.amount)||0,supplier:r.payee||r.supplier||"",receipt_no:r.receiptNo||"",
-      bank_account:r.bankAccount||null,cleared_date:r.clearedDate||null};
+      bank_account:r.bankAccount||null,cleared_date:r.clearedDate||null,
+      acct_status:r.acctStatus||"Logged",payment_method:r.paymentMethod||"",
+      payable_id:r.payableId||null,cv_id:r.cvId||null,
+      routed_by:r.routedBy||"",routed_at:r.routedAt||null,
+      qty:Number(r.qty)||1,price_per_qty:Number(r.pricePerQty)||0,
+      tin:r.tin||"",remarks:r.remarks||""};
   };
   const toSbPR = r=>({
     id:r.id, deal_id:(r.projectId==="__gmd_stocks__"||r.dealId==="__gmd_stocks__")?null:(r.projectId||r.dealId||null), item:r.itemName||r.item||"",
@@ -4986,7 +4991,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const exp=exps.find(e=>e.id===expId);
     if(!exp) return;
     const payId=uid();
-    const payRec={vendor:exp.supplier||exp.payee||exp.note||"—",amount:Number(exp.amount||0),dueDate:exp.expDate||today,projectId:exp.projectId||null,category:exp.category||"Supplier",notes:exp.note||"",invoiceRef:exp.receipt||"",sourceExpenseId:expId,id:payId,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+    const payRec={vendor:exp.supplier||exp.payee||exp.note||"—",amount:Number(exp.amount||0),dueDate:exp.expDate||today,projectId:exp.projectId||null,category:exp.category||"Supplier",notes:exp.note||"",invoiceRef:exp.receipt||"",sourceExpenseId:expId,expenseId:expId,id:payId,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[payRec,...ps]);
     upExps(es=>es.map(e=>e.id===expId?{...e,acctStatus:"For Payment",paymentMethod:"BizLink",payableId:payId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
     if(isSupabaseReady()){sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"BizLink",payableId:payId}),"id").catch(()=>{});}
@@ -5004,7 +5009,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     toastEmit("✅ Routed to Check Payables — CV "+nextNo+" created","success");
   };
   const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
-  const markDpStatus=(id,st)=>{upExps(es=>es.map(e=>e.id===id?{...e,acctStatus:st}:e));toastEmit(`Status updated → ${st}`,"success");};
+  const markDpStatus=(id,st)=>{
+    upExps(es=>es.map(e=>e.id===id?{...e,acctStatus:st}:e));
+    const exp=exps.find(e=>e.id===id);
+    if(exp&&isSupabaseReady()) sbUpsert("expenses",toSbExpense({...exp,acctStatus:st}),"id").catch(()=>{});
+    toastEmit(`Status updated → ${st}`,"success");
+  };
 
   const openAddCv=()=>{
     const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
@@ -11362,54 +11372,84 @@ First few:
             </div>
           </div>
           {/* Logged Expenses */}
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-            <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontWeight:700,color:"#facc15",fontSize:".84rem"}}>📝 Logged Expenses — {loggedExps.length} item{loggedExps.length!==1?"s":""}</span>
-              <button onClick={()=>openAddExp()} style={{background:"#facc15",border:"none",borderRadius:6,padding:"4px 12px",color:"#0f172a",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",fontWeight:800}}>+ Log Expense</button>
-            </div>
-            {loggedExps.length===0?(
-              <div style={{padding:"24px",color:"#94a3b8",fontSize:".82rem",textAlign:"center"}}>No logged expenses yet. Click <strong>+ Log Expense</strong> to add one.</div>
-            ):(
-              <div style={{overflowX:"auto"}}>
-                <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
-                  <thead>
-                    <tr style={{background:"#f8fafc"}}>
-                      {["Date","Supplier / Payee","Particulars","Project","Amount",""].map(h=>(
-                        <th key={h} style={{padding:"8px 12px",textAlign:h==="Amount"?"right":"left",fontWeight:700,color:"#64748b",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap"}}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loggedExps.map((e,i)=>{
-                      const proj=wonDeals.find(d=>d.id===e.projectId);
-                      return(
-                        <tr key={e.id} style={{borderTop:"1px solid #f1f5f9",background:i%2===0?"#fff":"#fafafa"}}>
-                          <td style={{padding:"9px 12px",color:"#475569",whiteSpace:"nowrap"}}>{e.expDate||"—"}</td>
-                          <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.supplier||e.payee||"—"}</td>
-                          <td style={{padding:"9px 12px",color:"#334155",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.note||e.category||"—"}</td>
-                          <td style={{padding:"9px 12px",color:"#64748b",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?(proj.contact||proj.client||"Project"):"Company-wide"}</td>
-                          <td style={{padding:"9px 12px",fontWeight:700,color:"#0f172a",textAlign:"right",whiteSpace:"nowrap"}}>{fmt(e.amount)}</td>
-                          <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
-                            {(role==="Finance"||role==="Manager")
-                              ?<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route Payment</button>
-                              :<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Route to</button>
-                            }
-                          </td>
+          {(()=>{
+            const EXP_STEPS=[
+              {key:"Logged",    label:"Logged",      clr:"#f59e0b",fill:"#fef3c7"},
+              {key:"For Payment",label:"For Payment", clr:"#3b82f6",fill:"#eff6ff"},
+              {key:"Paid",      label:"Paid",         clr:"#10b981",fill:"#f0fdf4"},
+            ];
+            const stepIdx=st=>EXP_STEPS.findIndex(s=>s.key===(st||"Logged"));
+            const ExpProgress=({status})=>{
+              const cur=stepIdx(status);
+              return(
+                <div style={{display:"flex",alignItems:"center",gap:0,minWidth:160}}>
+                  {EXP_STEPS.map((s,i)=>(
+                    <React.Fragment key={s.key}>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}>
+                        <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${i<=cur?s.clr:"#e2e8f0"}`,background:i<=cur?s.clr:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".55rem",color:i<=cur?"#fff":"#cbd5e1",fontWeight:800,transition:"all .2s"}}>{i<=cur?"✓":i+1}</div>
+                        <span style={{fontSize:".52rem",color:i<=cur?s.clr:"#cbd5e1",fontWeight:i===cur?700:400,whiteSpace:"nowrap",letterSpacing:".2px"}}>{s.label}</span>
+                      </div>
+                      {i<EXP_STEPS.length-1&&<div style={{flex:1,height:2,background:i<cur?EXP_STEPS[i+1].clr:"#e2e8f0",minWidth:16,marginBottom:12,transition:"all .2s"}}/>}
+                    </React.Fragment>
+                  ))}
+                </div>
+              );
+            };
+            const allExps=[...exps].filter(e=>e.note||e.amount).sort((a,b)=>(b.expDate||"").localeCompare(a.expDate||""));
+            return(
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontWeight:700,color:"#facc15",fontSize:".84rem"}}>📝 Expense Log — {loggedExps.length} pending · {allExps.length} total</span>
+                  <button onClick={()=>openAddExp()} style={{background:"#facc15",border:"none",borderRadius:6,padding:"4px 12px",color:"#0f172a",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",fontWeight:800}}>+ Log Expense</button>
+                </div>
+                {allExps.length===0?(
+                  <div style={{padding:"24px",color:"#94a3b8",fontSize:".82rem",textAlign:"center"}}>No logged expenses yet. Click <strong>+ Log Expense</strong> to add one.</div>
+                ):(
+                  <div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
+                      <thead>
+                        <tr style={{background:"#f8fafc"}}>
+                          {["Date","Supplier / Payee","Particulars","Project","Amount","Progress",""].map(h=>(
+                            <th key={h} style={{padding:"8px 12px",textAlign:h==="Amount"?"right":"left",fontWeight:700,color:"#64748b",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap"}}>{h}</th>
+                          ))}
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr style={{borderTop:"2px solid #e2e8f0",background:"#f8fafc"}}>
-                      <td colSpan={4} style={{padding:"8px 12px",fontWeight:700,color:"#475569",fontSize:".75rem"}}>Total</td>
-                      <td style={{padding:"8px 12px",fontWeight:900,color:"#0f172a",textAlign:"right",fontSize:".88rem"}}>{fmt(loggedExps.reduce((s,e)=>s+Number(e.amount||0),0))}</td>
-                      <td/>
-                    </tr>
-                  </tfoot>
-                </table>
+                      </thead>
+                      <tbody>
+                        {allExps.map((e,i)=>{
+                          const proj=wonDeals.find(d=>d.id===e.projectId);
+                          const st=e.acctStatus||"Logged";
+                          const isLogged=st==="Logged";
+                          return(
+                            <tr key={e.id} style={{borderTop:"1px solid #f1f5f9",background:i%2===0?"#fff":"#fafafa"}}>
+                              <td style={{padding:"9px 12px",color:"#475569",whiteSpace:"nowrap"}}>{e.expDate||"—"}</td>
+                              <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.supplier||e.payee||"—"}</td>
+                              <td style={{padding:"9px 12px",color:"#334155",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.note||e.category||"—"}</td>
+                              <td style={{padding:"9px 12px",color:"#64748b",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?(proj.contact||proj.client||"Project"):"Company-wide"}</td>
+                              <td style={{padding:"9px 12px",fontWeight:700,color:"#0f172a",textAlign:"right",whiteSpace:"nowrap"}}>{fmt(e.amount)}</td>
+                              <td style={{padding:"6px 12px",whiteSpace:"nowrap"}}><ExpProgress status={st}/></td>
+                              <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
+                                {isLogged&&(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route</button>}
+                                {isLogged&&role==="Accounting"&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Route to</button>}
+                                {st==="For Payment"&&<span style={{fontSize:".68rem",color:"#3b82f6",fontWeight:700}}>⏳ Pending</span>}
+                                {st==="Paid"&&<span style={{fontSize:".68rem",color:"#10b981",fontWeight:700}}>✓ Paid</span>}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{borderTop:"2px solid #e2e8f0",background:"#f8fafc"}}>
+                          <td colSpan={4} style={{padding:"8px 12px",fontWeight:700,color:"#475569",fontSize:".75rem"}}>Total</td>
+                          <td style={{padding:"8px 12px",fontWeight:900,color:"#0f172a",textAlign:"right",fontSize:".88rem"}}>{fmt(allExps.reduce((s,e)=>s+Number(e.amount||0),0))}</td>
+                          <td colSpan={2}/>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
           {/* POs Pending Payment */}
           {(()=>{
             const pendingPOs=prs.filter(p=>p.paymentStatus==="Pending Payment");
