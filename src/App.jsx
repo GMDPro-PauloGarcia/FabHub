@@ -14400,7 +14400,9 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     const d=new Date(selDate);
     const selMonth=d.getMonth();
     const selYear=d.getFullYear();
+    // Only count expenses that have actually been paid — "For Payment" and "Logged" are still pending
     return exps.filter(e=>{
+      if(e.acctStatus!=="Paid") return false;
       if(e.expDate) return e.expDate===selDate;
       if(e.month!=null){
         return e.month===selMonth&&(e.year==null||e.year===selYear);
