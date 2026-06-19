@@ -1804,57 +1804,94 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const expFormKey=`exp-${open}-${editId||"new"}`;
   useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});setErrors({});}},[open,editId]);
-  const handleExpSave=()=>{_setExpForm(()=>form);onSave(form);};
+  const qty=Number(String(form.qty||1).replace(/,/g,""))||1;
+  const price=Number(String(form.pricePerQty||0).replace(/,/g,""))||0;
+  const computedAmt=qty*price||Number(String(form.amount||0).replace(/,/g,""))||0;
+  const handleExpSave=()=>{_setExpForm(()=>({...form,amount:computedAmt,qty,pricePerQty:price}));onSave({...form,amount:computedAmt,qty,pricePerQty:price});};
   const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
-  const bankName=form.bankAccount?BANKS.find(b=>b.id===form.bankAccount)?.short||form.bankAccount:"Not specified";
+  const fmtAmt=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const inpSt={width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
+  const lbl=(t,hint)=><div style={{marginBottom:10}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>{t}{hint&&<span style={{fontWeight:400,color:"#94a3b8",marginLeft:6,fontSize:".68rem"}}>{hint}</span>}</div></div>;
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"} key={expFormKey}>
       {step===1?(
         <>
-          <Fld label="Date">
-            <Inp type="date" value={form.expDate||""} onChange={e=>f("expDate",e.target.value)}/>
-          </Fld>
-          <Fld label="Category">
-            <Sel value={form.category} onChange={e=>f("category",e.target.value)}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</Sel>
-          </Fld>
-          <Fld label="Amount (₱)" required>
-            <Inp type="number" value={form.amount} onChange={e=>{f("amount",e.target.value);setErrors(p=>({...p,amount:null}));}} placeholder="e.g. 15000" style={errors.amount?{border:"1.5px solid #ef4444"}:undefined}/>
-            {errors.amount&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3}}>{errors.amount}</div>}
-          </Fld>
-          <Fld label="Description" required hint="Be specific — e.g. 'Steel tubes for TechZone kiosks'">
-            <Inp value={form.note} onChange={e=>{f("note",e.target.value);setErrors(p=>({...p,note:null}));}} placeholder="What was this expense for?" style={errors.note?{border:"1.5px solid #ef4444"}:undefined}/>
+          {/* Row 1: Date + Supplier */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Date</div>
+              <input type="date" value={form.expDate||""} onChange={e=>f("expDate",e.target.value)} style={inpSt}/>
+            </div>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Supplier / Payee</div>
+              <input value={form.supplier||form.payee||""} onChange={e=>{f("supplier",e.target.value);f("payee",e.target.value);}} placeholder="e.g. Wilcon Home Depot" style={inpSt}/>
+            </div>
+          </div>
+          {/* Project */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Project Name</div>
+            <SearchSelect value={form.projectId||null} onChange={v=>f("projectId",v)} options={projList.map(d=>({value:d.id,label:(d.contact||d.client)+(d.ceNo?" · "+d.ceNo:"")}))} placeholder="Search project…" noneLabel="Company-wide (salaries, rent, overhead)" noneValue={null}/>
+          </div>
+          {/* Particulars */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Particulars <span style={{fontWeight:400,color:"#ef4444",fontSize:".7rem"}}>*required</span></div>
+            <input value={form.note||""} onChange={e=>{f("note",e.target.value);setErrors(p=>({...p,note:null}));}} placeholder="e.g. 4L Gloss Paint Mix Paint" style={{...inpSt,...(errors.note?{borderColor:"#ef4444"}:{})}}/>
             {errors.note&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3}}>{errors.note}</div>}
-          </Fld>
-          <Fld label="Payee" hint="Vendor, supplier, or person paid">
-            <Inp value={form.payee||""} onChange={e=>f("payee",e.target.value)} placeholder="e.g. ABC Supplies Inc."/>
-          </Fld>
-          <Fld label="Bank Account" hint="Which bank account was this expense paid from?">
-            <Sel value={form.bankAccount||""} onChange={e=>f("bankAccount",e.target.value||null)}>
-              <option value="">— No bank (cash / untagged) —</option>
-              {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
-            </Sel>
-          </Fld>
-          <Fld label="Link to Project" hint="Type to search by project name or CE number">
-            <SearchSelect
-              value={form.projectId||null}
-              onChange={v=>f("projectId",v)}
-              options={projList.map(d=>({value:d.id,label:(d.contact||d.client)+(d.ceNo?" · "+d.ceNo:"")}))}
-              placeholder="Search project or CE number…"
-              noneLabel="Company-wide (salaries, rent, overhead)"
-              noneValue={null}
-            />
-          </Fld>
-          <Fld label="Receipt / Invoice Link" hint="Paste a Google Drive, email, or any URL link to the receipt">
-            <Inp type="url" value={form.receipt||""} onChange={e=>f("receipt",e.target.value)} placeholder="https://drive.google.com/… (optional)"/>
-          </Fld>
-          <Fld label="Bank Cleared Date" hint="Date this expense cleared in your bank statement (optional — for reconciliation)">
-            <Inp type="date" value={form.clearedDate||""} onChange={e=>f("clearedDate",e.target.value)}/>
-          </Fld>
-          <div style={{display:"flex",gap:10,marginTop:20}}>
+          </div>
+          {/* Row 3: QTY + Price/Qty */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>QTY</div>
+              <input type="number" value={form.qty||"1"} onChange={e=>{f("qty",e.target.value);setErrors(p=>({...p,price:null}));}} placeholder="1" min="0" style={inpSt}/>
+            </div>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Price Per QTY (₱) <span style={{fontWeight:400,color:"#ef4444",fontSize:".7rem"}}>*required</span></div>
+              <input type="number" value={form.pricePerQty||""} onChange={e=>{f("pricePerQty",e.target.value);setErrors(p=>({...p,price:null}));}} placeholder="0.00" style={{...inpSt,...(errors.price?{borderColor:"#ef4444"}:{})}}/>
+              {errors.price&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3}}>{errors.price}</div>}
+            </div>
+          </div>
+          {/* Auto total */}
+          {(qty>0&&price>0)&&(
+            <div style={{background:"#f0fdf4",borderRadius:8,padding:"8px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:".78rem",color:"#166534",fontWeight:600}}>Total Amount</span>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"#059669"}}>₱{fmtAmt(computedAmt)}</span>
+            </div>
+          )}
+          {/* Row 4: TIN + Category */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>TIN <span style={{fontWeight:400,color:"#94a3b8",fontSize:".68rem"}}>(optional)</span></div>
+              <input value={form.tin||""} onChange={e=>f("tin",e.target.value)} placeholder="Supplier TIN" style={inpSt}/>
+            </div>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Category</div>
+              <select value={form.category||"Materials"} onChange={e=>f("category",e.target.value)} style={{...inpSt,background:"#fff"}}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</select>
+            </div>
+          </div>
+          {/* Remarks */}
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Remarks <span style={{fontWeight:400,color:"#94a3b8",fontSize:".68rem"}}>(optional)</span></div>
+            <input value={form.remarks||""} onChange={e=>f("remarks",e.target.value)} placeholder="e.g. For Popmart Davao project" style={inpSt}/>
+          </div>
+          {/* Receipt link + Bank (collapsible row) */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div>
+              <select value={form.bankAccount||""} onChange={e=>f("bankAccount",e.target.value||null)} style={{...inpSt,background:"#fff"}}>
+                <option value="">— Cash / untagged —</option>
+                {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Receipt Link <span style={{fontWeight:400,color:"#94a3b8",fontSize:".68rem"}}>(optional)</span></div>
+              <input type="url" value={form.receipt||""} onChange={e=>f("receipt",e.target.value)} placeholder="Google Drive link…" style={inpSt}/>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:10,marginTop:4}}>
             <Btn full onClick={()=>{
               const errs={};
-              if(!form.amount||Number(form.amount)<=0) errs.amount="Amount is required and must be greater than 0.";
-              if(!form.note?.trim()) errs.note="Description is required.";
+              if(!form.note?.trim()) errs.note="Particulars is required.";
+              if(!price||price<=0) errs.price="Price Per QTY is required.";
               if(Object.keys(errs).length){setErrors(errs);return;}
               setStep(2);
             }}>Review →</Btn>
@@ -1863,28 +1900,27 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
         </>
       ):(
         <>
-          <div style={{background:"#f8fafc",borderRadius:12,padding:"18px 20px",marginBottom:20}}>
-            <div style={{fontSize:".75rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:14}}>Confirm Expense Details</div>
+          <div style={{background:"#f8fafc",borderRadius:12,padding:"16px 18px",marginBottom:16}}>
+            <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:12}}>Confirm Expense Details</div>
             {[
               ["Date",form.expDate||"(not set)"],
-              ["Category",form.category],
-              ["Amount",fmt(Number(form.amount))],
-              ["Description",form.note],
-              form.payee?["Payee",form.payee]:null,
-              ["Bank Account",bankName],
+              ["Supplier",form.supplier||form.payee||"—"],
               ["Project",projName],
-              form.receipt?["Receipt","Linked ✓"]:null,
+              ["Particulars",form.note],
+              ["QTY × Price",`${qty} × ₱${fmtAmt(price)}`],
+              ["Total Amount","₱"+fmtAmt(computedAmt)],
+              form.tin?["TIN",form.tin]:null,
+              form.remarks?["Remarks",form.remarks]:null,
+              ["Category",form.category],
             ].filter(Boolean).map(([l,v])=>(
-              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #e2e8f0",fontSize:".87rem"}}>
-                <span style={{color:"#64748b"}}>{l}</span>
-                <span style={{fontWeight:600,color:"#0f172a",textAlign:"right",maxWidth:"60%"}}>{v}</span>
+              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #e2e8f0",fontSize:".85rem"}}>
+                <span style={{color:"#64748b",minWidth:100}}>{l}</span>
+                <span style={{fontWeight:600,color:l==="Total Amount"?"#059669":"#0f172a",textAlign:"right",maxWidth:"55%"}}>{v}</span>
               </div>
             ))}
           </div>
-          <div style={{background:form.projectId?"#eff6ff":"#fff7ed",borderRadius:10,padding:"12px 16px",marginBottom:20,fontSize:".82rem",color:form.projectId?"#3b82f6":"#f97316"}}>
-            {form.projectId
-              ? `✓ This expense will be tagged to ${projName} and reflected in that project's profit report.`
-              : "⚠ This will be logged as a company-wide expense — not linked to any specific project."}
+          <div style={{background:form.projectId?"#eff6ff":"#fff7ed",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:".8rem",color:form.projectId?"#3b82f6":"#f97316"}}>
+            {form.projectId?`✓ Tagged to ${projName}`:"⚠ Company-wide — not linked to a specific project."}
           </div>
           <div style={{display:"flex",gap:10}}>
             <Btn full variant="green" onClick={handleExpSave}>✓ Confirm &amp; Save</Btn>
@@ -4436,6 +4472,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
   const[expModal,  setExpModal] =useState(false);
+  const[routeModal,setRouteModal]=useState(null);
+  const[routeMethod,setRouteMethod]=useState("BizLink");
+  const[routeBank,setRouteBank]=useState("");
   const[expForm,   setExpForm]  =useState({expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",projectId:null,bankAccount:"",receipt:""});
   const[editExpId, setEditExpId]=useState(null);
   const[infModal,  setInfModal] =useState(false);
@@ -4899,12 +4938,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const proj=selProj?{...emptyProject(),...(projs[selProj]||{})}:null;
   const projDeal=selProj?deals.find(d=>d.id===selProj):null;
 
-  const openAddExp=(projId=null,date=null)=>{setExpForm({expDate:date||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",projectId:projId,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
+  const openAddExp=(projId=null,date=null)=>{setExpForm({expDate:date||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",supplier:"",qty:"1",pricePerQty:"",tin:"",remarks:"",projectId:projId,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
   const saveExp=(overrideData)=>{
     const data=overrideData||expForm;
-    if(!data.amount||!data.note) return;
-    const rec={...data,amount:Number(data.amount),id:editExpId||uid()};
+    if(!data.note) return;
+    const qty=Number(String(data.qty||1).replace(/,/g,""))||1;
+    const price=Number(String(data.pricePerQty||0).replace(/,/g,""))||0;
+    const computedAmt=qty*price||Number(String(data.amount||0).replace(/,/g,""))||0;
+    if(!computedAmt) return;
+    const rec={...data,qty,pricePerQty:price,amount:computedAmt,id:editExpId||uid()};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
     if(isSupabaseReady()){
       sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>{
@@ -4916,6 +4959,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     setEditExpId(null);
     setExpModal(false);
+  };
+  const routeExpToBizLink=(expId,bankId)=>{
+    const exp=exps.find(e=>e.id===expId);
+    if(!exp) return;
+    const payId=uid();
+    const payRec={vendor:exp.supplier||exp.payee||exp.note||"—",amount:Number(exp.amount||0),dueDate:exp.expDate||today,projectId:exp.projectId||null,category:exp.category||"Supplier",notes:exp.note||"",invoiceRef:exp.receipt||"",sourceExpenseId:expId,id:payId,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+    upPayables(ps=>[payRec,...ps]);
+    upExps(es=>es.map(e=>e.id===expId?{...e,paymentMethod:"BizLink",payableId:payId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
+    if(isSupabaseReady()){sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"BizLink",payableId:payId}),"id").catch(()=>{});}
+    toastEmit("✅ Routed to Daily Payables via BizLink","success");
+  };
+  const routeExpToCheck=(expId,bankId)=>{
+    const exp=exps.find(e=>e.id===expId);
+    if(!exp) return;
+    const cvId=uid();
+    const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+    const cvRec={date:exp.expDate||today,cvNo:nextNo,payee:exp.supplier||exp.payee||"",amount:Number(exp.amount||0),description:exp.note||"",projectId:exp.projectId||null,bank:bankId||exp.bankAccount||"",notes:exp.remarks||"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:expId,id:cvId,createdBy:session?.name||"",createdAt:today};
+    upVouchers(vs=>[cvRec,...vs]);
+    upExps(es=>es.map(e=>e.id===expId?{...e,paymentMethod:"Check",cvId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
+    if(isSupabaseReady()){sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"Check",cvId}),"id").catch(()=>{});}
+    toastEmit("✅ Routed to Check Payables — CV "+nextNo+" created","success");
   };
   const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
 
@@ -10911,7 +10975,9 @@ First few:
                                 <td style={{padding:"9px 14px"}}>
                                   <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
                                     {(!e.acctStatus||e.acctStatus==="Logged")&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ For Payment</button>}
-                                    {e.acctStatus==="For Payment"&&<button onClick={()=>markDpStatus(e.id,"Paid")} style={{background:"#f0fdf4",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#166534",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Paid</button>}
+                                    {e.acctStatus==="For Payment"&&!e.paymentMethod&&(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>💳 Route Payment</button>}
+                                    {e.acctStatus==="For Payment"&&!e.paymentMethod&&(role==="Accounting")&&<button onClick={()=>markDpStatus(e.id,"Paid")} style={{background:"#f0fdf4",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#166534",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Paid</button>}
+                                    {e.paymentMethod&&<span style={{fontSize:".63rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:e.paymentMethod==="BizLink"?"#eff6ff":"#faf5ff",color:e.paymentMethod==="BizLink"?"#1d4ed8":"#7c3aed",whiteSpace:"nowrap"}}>{e.paymentMethod==="BizLink"?"💳 BizLink":"🖊 Check"}</span>}
                                     <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                     <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                   </div>
@@ -10933,6 +10999,46 @@ First few:
         );
       })()}
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={wonDeals} clientName={clientName}/>
+      {routeModal&&(()=>{
+        const exp=exps.find(e=>e.id===routeModal);
+        if(!exp) return null;
+        return(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+            <div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div>
+              <div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div>
+              <div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}>
+                <div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div>
+                <div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div>
+              </div>
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(
+                    <div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}>
+                      <div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div>
+                      <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{marginBottom:20}}>
+                <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div>
+                <select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}>
+                  <option value="">Select bank…</option>
+                  {(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              </div>
+              <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                <button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button>
+                <button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>
+                  Confirm Routing
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </Wrap>
   );
 
@@ -11069,7 +11175,10 @@ First few:
                             onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
                             <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".75rem",fontWeight:700,color:"#6366f1",whiteSpace:"nowrap"}}>{v.cvNo||"—"}</td>
                             <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".73rem",color:"#64748b",whiteSpace:"nowrap"}}>{v.date||"—"}</td>
-                            <td style={{padding:"9px 14px",fontSize:".8rem",fontWeight:600,color:"#0f172a",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.payee||"—"}</td>
+                            <td style={{padding:"9px 14px",fontSize:".8rem",fontWeight:600,color:"#0f172a",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                              <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{v.payee||"—"}</div>
+                              {v.sourceExpenseId&&<div style={{fontSize:".62rem",fontWeight:700,color:"#059669",marginTop:1}}>✓ From Accounting</div>}
+                            </td>
                             <td style={{padding:"9px 14px",fontSize:".78rem",color:"#475569",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.description||"—"}</td>
                             <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#0f172a",fontFamily:"monospace",whiteSpace:"nowrap"}}>{fmt(v.amount)}</td>
                             <td style={{padding:"9px 14px",fontSize:".72rem",color:"#0369a1",whiteSpace:"nowrap"}}>{v.bank||"—"}</td>
