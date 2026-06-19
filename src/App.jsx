@@ -2937,7 +2937,8 @@ export default function App(){
   const upCashPos  =useCallback(fn=>setCashPos(p=>{const n=fn(p);persist(KEYS.cashPos,n);return n;}),[persist]);
   const upEvouchers=useCallback(fn=>setEvouchers(p=>{const n=fn(p);persist(KEYS.evouchers,n);return n;}),[persist]);
   const nextEvNo=()=>{const nums=evouchers.map(e=>parseInt((e.evNo||"").replace(/[^0-9]/g,"")||0)).filter(n=>!isNaN(n)&&n>0);const nx=nums.length?Math.max(...nums)+1:1;return`EV-${new Date().getFullYear()}-${String(nx).padStart(3,"0")}`;};
-  const addEV=(ev)=>{const ne={...ev,id:uid(),evNo:nextEvNo(),status:ev.status||"Draft",createdBy:session?.name||"",createdAt:new Date().toISOString(),items:ev.items||[]};upEvouchers(es=>[...es,ne]);};
+  const nextLqNo=()=>{const nums=evouchers.map(e=>parseInt((e.lqNo||"").replace(/[^0-9]/g,"")||0)).filter(n=>!isNaN(n)&&n>0);const nx=nums.length?Math.max(...nums)+1:1;return`LQ-${String(nx).padStart(6,"0")}`;};
+  const addEV=(ev)=>{const ne={...ev,id:uid(),evNo:nextEvNo(),lqNo:nextLqNo(),status:ev.status||"Draft",createdBy:session?.name||"",createdAt:new Date().toISOString(),items:ev.items||[]};upEvouchers(es=>[...es,ne]);};
   const updateEV=(id,ch)=>upEvouchers(es=>es.map(e=>e.id===id?{...e,...ch}:e));
   const deleteEV=(id)=>upEvouchers(es=>es.filter(e=>e.id!==id));
   const addEVItem=(evId,item)=>upEvouchers(es=>es.map(e=>e.id===evId?{...e,items:[...(e.items||[]),{...item,id:uid()}]}:e));
@@ -23277,7 +23278,7 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
   const[payRef,setPayRef]=React.useState("");
   const[evSearch,setEvSearch]=React.useState("");
   const[csvErr,setCsvErr]=React.useState("");
-  const[newItem,setNewItem]=React.useState({project:"",chargeTo:"",category:"",description:"",amount:""});
+  const[newItem,setNewItem]=React.useState({itemDate:today,supplier:"",project:"",description:"",qty:"1",pricePerQty:"",tin:"",remarks:""});
   const[addingItemFor,setAddingItemFor]=React.useState(null);
 
   const STATUSES=["Draft","For Payment","Paid","Cancelled"];
@@ -23286,7 +23287,7 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
   const CHARGE_TYPES=["Project","OPEX","CapEx","Admin","Other"];
   const projList=wonDeals.map(d=>d.contact||d.project||d.client||"").filter(Boolean);
 
-  const blankForm={department:"",payee:"",date:today,bank:"",notes:""};
+  const blankForm={department:"",payee:"",date:today,bank:"",notes:"",mrfBrfDate:"",bankBeginningBalance:""};
   const[form,setForm]=React.useState(blankForm);
   const fld=(k,v)=>setForm(f=>({...f,[k]:v}));
   const ni=(k,v)=>setNewItem(i=>({...i,[k]:v}));
@@ -23303,18 +23304,111 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
     items:evouchers.filter(e=>e.status===st&&(!q||(e.evNo||"").toLowerCase().includes(q)||(e.payee||"").toLowerCase().includes(q)||(e.department||"").toLowerCase().includes(q))),
   }));
 
-  const openEdit=(ev)=>{setEditEV(ev.id);setForm({department:ev.department||"",payee:ev.payee||"",date:ev.date||today,bank:ev.bank||"",notes:ev.notes||""});setShowForm(true);};
+  const openEdit=(ev)=>{setEditEV(ev.id);setForm({department:ev.department||"",payee:ev.payee||"",date:ev.date||today,bank:ev.bank||"",notes:ev.notes||"",mrfBrfDate:ev.mrfBrfDate||"",bankBeginningBalance:ev.bankBeginningBalance||""});setShowForm(true);};
   const saveForm=()=>{
-    if(editEV){updateEV(editEV,{department:form.department,payee:form.payee,date:form.date,bank:form.bank,notes:form.notes});}
+    if(editEV){updateEV(editEV,{department:form.department,payee:form.payee,date:form.date,bank:form.bank,notes:form.notes,mrfBrfDate:form.mrfBrfDate,bankBeginningBalance:form.bankBeginningBalance});}
     else addEV({...form,items:[]});
     setEditEV(null);setForm(blankForm);setShowForm(false);
   };
 
   const doAddItem=(evId)=>{
-    if(!newItem.description||!newItem.amount)return;
-    addEVItem(evId,{...newItem,id:Math.random().toString(36).slice(2)});
-    setNewItem({project:"",chargeTo:"",category:"",description:"",amount:""});
+    if(!newItem.description)return;
+    const qty=Number(String(newItem.qty||1).replace(/,/g,""))||1;
+    const price=Number(String(newItem.pricePerQty||0).replace(/,/g,""))||0;
+    const amount=qty*price;
+    if(!amount)return;
+    addEVItem(evId,{...newItem,id:Math.random().toString(36).slice(2),qty,pricePerQty:price,amount});
+    setNewItem({itemDate:today,supplier:"",project:"",description:"",qty:"1",pricePerQty:"",tin:"",remarks:""});
     setAddingItemFor(null);
+  };
+
+  const printEV=(ev)=>{
+    const total=(ev.items||[]).reduce((s,i)=>s+Number(i.amount||0),0);
+    const beg=Number(String(ev.bankBeginningBalance||0).replace(/,/g,""))||0;
+    const ending=beg-total;
+    const unliq=beg>0?Math.max(0,beg-total-Math.max(0,ending)):0;
+    const fmtA=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const fmtD=(d)=>d?new Date(d+"T12:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"";
+    const fmtDShort=(d)=>d?new Date(d+"T12:00:00").toLocaleDateString("en-PH",{month:"short",day:"numeric",year:"numeric"}):"";
+    const rows=(ev.items||[]).map(item=>`
+      <tr>
+        <td>${fmtDShort(item.itemDate||ev.date)}</td>
+        <td>${item.supplier||""}</td>
+        <td>${item.project||""}</td>
+        <td>${item.description||""}</td>
+        <td style="text-align:center">${item.qty!=null?Number(item.qty).toLocaleString("en-PH",{maximumFractionDigits:2}):""}</td>
+        <td style="text-align:right">₱${fmtA(item.pricePerQty)}</td>
+        <td style="text-align:center">${item.tin||""}</td>
+        <td style="text-align:right">₱&nbsp;${fmtA(item.amount)}</td>
+        <td>${item.remarks||""}</td>
+      </tr>`).join("");
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PRF Liquidation — ${ev.lqNo||ev.evNo}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt;color:#000;background:#fff;padding:10px;}
+.wrap{max-width:960px;margin:0 auto;}
+.form-title{background:#ffff00;text-align:center;font-weight:bold;font-size:11pt;padding:5px 0;border:1px solid #bbb;letter-spacing:3px;margin-bottom:3px;}
+.logo-title{display:grid;grid-template-columns:140px 1fr;gap:0;margin-bottom:3px;align-items:stretch;}
+.logo-cell{display:flex;align-items:center;justify-content:center;padding:4px 8px;border:1px solid #bbb;}
+.logo-txt{font-weight:900;font-size:16pt;color:#c55a11;line-height:1.1;}
+.logo-sub{font-size:8pt;color:#888;font-weight:400;}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid #bbb;margin-bottom:6px;}
+.info-left,.info-right{border-right:none;}
+.info-right{border-left:1px solid #bbb;}
+.info-row{display:flex;border-bottom:1px solid #ddd;min-height:22px;}
+.info-row:last-child{border-bottom:none;}
+.lbl{font-weight:bold;font-size:7.5pt;padding:3px 7px;min-width:155px;background:#f5f5f5;border-right:1px solid #ddd;display:flex;align-items:center;}
+.val{padding:3px 8px;flex:1;display:flex;align-items:center;font-size:8pt;}
+.amt{font-weight:bold;padding:3px 10px;text-align:right;min-width:95px;display:flex;align-items:center;justify-content:flex-end;font-size:8pt;}
+.amt.orange{color:#c55a11;}
+.amt.yellow{background:#ffff00;}
+table{width:100%;border-collapse:collapse;}
+th{background:#1e1e1e;color:#fff;padding:4px 5px;font-size:7.5pt;text-align:center;border:1px solid #555;white-space:nowrap;}
+td{padding:3px 5px;font-size:8pt;border:1px solid #ccc;vertical-align:middle;}
+tr:nth-child(even) td{background:#f9f9f9;}
+.total-row td{font-weight:bold;background:#fff2cc;border-top:2px solid #999;}
+@media print{body{padding:0;}@page{margin:0.8cm;size:A4 landscape;}}
+</style></head><body><div class="wrap">
+<div class="logo-title">
+  <div class="logo-cell"><div><div class="logo-txt">GMD</div><div class="logo-sub">PRO</div></div></div>
+  <div class="form-title" style="display:flex;align-items:center;justify-content:center;">PRF LIQUIDATION FORM</div>
+</div>
+<div class="info-grid">
+  <div class="info-left">
+    <div class="info-row"><div class="lbl">REQUESTOR NAME</div><div class="val">${ev.payee||""}</div></div>
+    <div class="info-row"><div class="lbl">DATE LIQUIDATED</div><div class="val">${fmtD(ev.date)}</div></div>
+    <div class="info-row"><div class="lbl">MRF / BRF DATE REQUEST</div><div class="val">${fmtD(ev.mrfBrfDate)}</div></div>
+    <div class="info-row"><div class="lbl">MRF LIQUIDATION NO.</div><div class="val"><strong>${ev.lqNo||ev.evNo||""}</strong></div></div>
+  </div>
+  <div class="info-right">
+    <div class="info-row"><div class="lbl" style="flex:1">BANK BEGINNING BALANCE</div><div class="amt">${fmtA(beg)}</div></div>
+    <div class="info-row"><div class="lbl" style="flex:1">TOTAL ACTUAL AMOUNT LIQUIDATED</div><div class="amt orange">${fmtA(total)}</div></div>
+    <div class="info-row"><div class="lbl" style="flex:1">BANK ENDING BALANCE</div><div class="amt yellow">${fmtA(ending)}</div></div>
+    <div class="info-row"><div class="lbl" style="flex:1">UN LIQUIDATED</div><div class="amt">${fmtA(unliq)}</div></div>
+  </div>
+</div>
+<table>
+  <thead><tr>
+    <th style="width:7%">DATE</th>
+    <th style="width:13%">SUPPLIER</th>
+    <th style="width:13%">PROJECT NAME</th>
+    <th style="width:24%">PARTICULARS</th>
+    <th style="width:4%">QTY</th>
+    <th style="width:10%">PRICE PER QTY</th>
+    <th style="width:6%">TIN</th>
+    <th style="width:10%">TOTAL AMOUNT</th>
+    <th style="width:13%">REMARKS</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+  <tfoot><tr class="total-row">
+    <td colspan="7" style="text-align:right;font-size:8pt;">TOTAL ACTUAL AMOUNT LIQUIDATED</td>
+    <td style="text-align:right">₱&nbsp;${fmtA(total)}</td>
+    <td></td>
+  </tr></tfoot>
+</table>
+</div></body></html>`;
+    const w=window.open("","_blank","width=1100,height=750");
+    if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
   };
 
   const handleCSV=(evId,text)=>{
@@ -23422,6 +23516,7 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
                                   {(role==="Finance"||role==="Manager")&&ev.status==="For Payment"&&<button onClick={()=>{setShowPay(ev.id);setPayBank(ev.bank||"");setPayRef("");}} style={{background:"#f0fdf4",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#166534",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✅ Paid</button>}
                                   {(role==="Accounting"||role==="Manager")&&ev.status==="Draft"&&<button onClick={()=>{if(window.confirm("Void this EV?"))updateEV(ev.id,{status:"Cancelled"});}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
                                   {ev.status==="Paid"&&<span style={{fontSize:".65rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>✅ {ev.paidRef||""}</span>}
+                                  <button onClick={()=>printEV(ev)} style={{background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#0369a1",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🖨 Print</button>
                                 </div>
                               </td>
                             </tr>
@@ -23433,31 +23528,39 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
                                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
                                       <thead>
                                         <tr style={{background:"#f1f5f9"}}>
-                                          <th style={{padding:"6px 12px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".66rem",textTransform:"uppercase"}}>#</th>
-                                          <th style={{padding:"6px 12px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".66rem",textTransform:"uppercase"}}>Project</th>
-                                          <th style={{padding:"6px 12px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".66rem",textTransform:"uppercase"}}>Charge To</th>
-                                          <th style={{padding:"6px 12px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".66rem",textTransform:"uppercase"}}>Category</th>
-                                          <th style={{padding:"6px 12px",textAlign:"left",fontWeight:600,color:"#94a3b8",fontSize:".66rem",textTransform:"uppercase"}}>Description</th>
-                                          <th style={{padding:"6px 12px",textAlign:"right",fontWeight:600,color:"#94a3b8",fontSize:".66rem",textTransform:"uppercase"}}>Amount</th>
-                                          {canEdit&&<th style={{padding:"6px 12px"}}></th>}
+                                          <th style={{padding:"5px 8px",textAlign:"center",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>#</th>
+                                          <th style={{padding:"5px 8px",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Date</th>
+                                          <th style={{padding:"5px 8px",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Supplier</th>
+                                          <th style={{padding:"5px 8px",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Project</th>
+                                          <th style={{padding:"5px 8px",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Particulars</th>
+                                          <th style={{padding:"5px 8px",textAlign:"center",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Qty</th>
+                                          <th style={{padding:"5px 8px",textAlign:"right",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Price/Qty</th>
+                                          <th style={{padding:"5px 8px",textAlign:"center",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>TIN</th>
+                                          <th style={{padding:"5px 8px",textAlign:"right",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Total</th>
+                                          <th style={{padding:"5px 8px",fontWeight:600,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase"}}>Remarks</th>
+                                          {canEdit&&<th style={{padding:"5px 8px"}}></th>}
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {(ev.items||[]).map((item,ii)=>(
                                           <tr key={item.id||ii} style={{borderBottom:"1px solid #e2e8f0"}}>
-                                            <td style={{padding:"6px 12px",color:"#94a3b8"}}>{ii+1}</td>
-                                            <td style={{padding:"6px 12px",color:"#334155"}}>{item.project||"—"}</td>
-                                            <td style={{padding:"6px 12px",color:"#334155"}}>{item.chargeTo||"—"}</td>
-                                            <td style={{padding:"6px 12px",color:"#334155"}}>{item.category||"—"}</td>
-                                            <td style={{padding:"6px 12px",color:"#0f172a",fontWeight:500}}>{item.description}</td>
-                                            <td style={{padding:"6px 12px",textAlign:"right",fontWeight:700,color:"#7c3aed",fontFamily:"monospace"}}>{fmt(Number(item.amount||0))}</td>
-                                            {canEdit&&<td style={{padding:"6px 12px"}}><button onClick={()=>deleteEVItem(ev.id,item.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".78rem",padding:"2px 5px"}}>✕</button></td>}
+                                            <td style={{padding:"5px 8px",color:"#94a3b8",textAlign:"center",fontSize:".72rem"}}>{ii+1}</td>
+                                            <td style={{padding:"5px 8px",color:"#64748b",fontSize:".72rem",whiteSpace:"nowrap"}}>{item.itemDate||ev.date||"—"}</td>
+                                            <td style={{padding:"5px 8px",color:"#334155",fontSize:".78rem"}}>{item.supplier||"—"}</td>
+                                            <td style={{padding:"5px 8px",color:"#334155",fontSize:".78rem"}}>{item.project||"—"}</td>
+                                            <td style={{padding:"5px 8px",color:"#0f172a",fontWeight:500,fontSize:".78rem"}}>{item.description}</td>
+                                            <td style={{padding:"5px 8px",textAlign:"center",fontSize:".78rem"}}>{item.qty!=null?Number(item.qty).toLocaleString("en-PH",{maximumFractionDigits:2}):""}</td>
+                                            <td style={{padding:"5px 8px",textAlign:"right",fontSize:".78rem",color:"#475569"}}>{item.pricePerQty!=null?"₱"+Number(item.pricePerQty).toLocaleString("en-PH",{minimumFractionDigits:2}):""}</td>
+                                            <td style={{padding:"5px 8px",textAlign:"center",fontSize:".72rem",color:"#64748b"}}>{item.tin||""}</td>
+                                            <td style={{padding:"5px 8px",textAlign:"right",fontWeight:700,color:"#7c3aed",fontFamily:"monospace",fontSize:".78rem"}}>{fmt(Number(item.amount||0))}</td>
+                                            <td style={{padding:"5px 8px",fontSize:".72rem",color:"#64748b"}}>{item.remarks||""}</td>
+                                            {canEdit&&<td style={{padding:"5px 8px"}}><button onClick={()=>deleteEVItem(ev.id,item.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".78rem",padding:"2px 5px"}}>✕</button></td>}
                                           </tr>
                                         ))}
                                       </tbody>
                                       <tfoot>
                                         <tr style={{background:"#eff6ff"}}>
-                                          <td colSpan={5} style={{padding:"7px 12px",fontWeight:700,color:"#1d4ed8",textAlign:"right",fontSize:".78rem"}}>
+                                          <td colSpan={9} style={{padding:"7px 12px",fontWeight:700,color:"#1d4ed8",textAlign:"right",fontSize:".78rem"}}>
                                             🏦 1 bank debit from {bank?.name||ev.bank||"—"} covers all {(ev.items||[]).length} items
                                           </td>
                                           <td style={{padding:"7px 12px",textAlign:"right",fontWeight:800,color:"#7c3aed",fontFamily:"monospace"}}>{fmt(total)}</td>
@@ -23473,18 +23576,18 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
                             {isAddingItem&&(
                               <tr>
                                 <td colSpan={7} style={{padding:"10px 16px",background:"#faf5ff",borderBottom:idx<g.items.length-1?"1px solid #e2e8f0":"none"}}>
-                                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:6,marginBottom:6}}>
+                                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(110px,1fr))",gap:5,marginBottom:6}}>
+                                    <input type="date" value={newItem.itemDate} onChange={e=>ni("itemDate",e.target.value)} style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
+                                    <input value={newItem.supplier} onChange={e=>ni("supplier",e.target.value)} placeholder="Supplier" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
                                     <select value={newItem.project} onChange={e=>ni("project",e.target.value)} style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit",background:"#fff"}}>
                                       <option value="">Project</option>
                                       {projList.map((p,i)=><option key={i} value={p}>{p}</option>)}
                                     </select>
-                                    <select value={newItem.chargeTo} onChange={e=>ni("chargeTo",e.target.value)} style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit",background:"#fff"}}>
-                                      <option value="">Charge To</option>
-                                      {["Project","OPEX","CapEx","Admin","Other"].map(c=><option key={c} value={c}>{c}</option>)}
-                                    </select>
-                                    <input value={newItem.category} onChange={e=>ni("category",e.target.value)} placeholder="Category" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
-                                    <input value={newItem.description} onChange={e=>ni("description",e.target.value)} placeholder="Description *" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit",gridColumn:"span 2"}}/>
-                                    <input type="number" value={newItem.amount} onChange={e=>ni("amount",e.target.value)} placeholder="Amount *" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
+                                    <input value={newItem.description} onChange={e=>ni("description",e.target.value)} placeholder="Particulars *" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit",gridColumn:"span 2"}}/>
+                                    <input type="number" value={newItem.qty} onChange={e=>ni("qty",e.target.value)} placeholder="Qty" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
+                                    <input type="number" value={newItem.pricePerQty} onChange={e=>ni("pricePerQty",e.target.value)} placeholder="Price/Qty *" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
+                                    <input value={newItem.tin} onChange={e=>ni("tin",e.target.value)} placeholder="TIN" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
+                                    <input value={newItem.remarks} onChange={e=>ni("remarks",e.target.value)} placeholder="Remarks" style={{padding:"6px 8px",border:"1.5px solid #e2e8f0",borderRadius:6,fontSize:".78rem",fontFamily:"inherit"}}/>
                                   </div>
                                   <div style={{display:"flex",gap:6,alignItems:"center"}}>
                                     <button onClick={()=>doAddItem(ev.id)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"}}>Add Item</button>
@@ -23532,9 +23635,15 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
               <div>
-                <div style={{fontSize:".78rem",fontWeight:600,color:"#475569",marginBottom:4}}>Date</div>
+                <div style={{fontSize:".78rem",fontWeight:600,color:"#475569",marginBottom:4}}>Date Liquidated</div>
                 <input type="date" value={form.date} onChange={e=>fld("date",e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",boxSizing:"border-box"}}/>
               </div>
+              <div>
+                <div style={{fontSize:".78rem",fontWeight:600,color:"#475569",marginBottom:4}}>MRF / BRF Date Request</div>
+                <input type="date" value={form.mrfBrfDate} onChange={e=>fld("mrfBrfDate",e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
               <div>
                 <div style={{fontSize:".78rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div>
                 <select value={form.bank} onChange={e=>fld("bank",e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}>
@@ -23542,9 +23651,13 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
                   {(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
               </div>
+              <div>
+                <div style={{fontSize:".78rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Beginning Balance (₱)</div>
+                <input type="number" value={form.bankBeginningBalance} onChange={e=>fld("bankBeginningBalance",e.target.value)} placeholder="Cash advance amount" style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",boxSizing:"border-box"}}/>
+              </div>
             </div>
             <div style={{marginBottom:16}}>
-              <div style={{fontSize:".78rem",fontWeight:600,color:"#475569",marginBottom:4}}>Notes</div>
+              <div style={{fontSize:".78rem",fontWeight:600,color:"#475569",marginBottom:4}}>Notes / Purpose</div>
               <textarea value={form.notes} onChange={e=>fld("notes",e.target.value)} placeholder="Purpose / remarks" rows={2} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",resize:"vertical",boxSizing:"border-box"}}/>
             </div>
             {!editEV&&<div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"9px 13px",fontSize:".78rem",color:"#92400e",marginBottom:14}}>💡 After creating, click <strong>+ Item</strong> on the row to add line items.</div>}
