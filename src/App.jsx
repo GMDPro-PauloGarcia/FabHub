@@ -10943,7 +10943,7 @@ First few:
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Checks issued to suppliers — must be linked to a PO or Payable</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          {(role==="Accounting"||role==="Manager")&&(
+          {(role==="Accounting"||role==="Finance"||role==="Manager")&&(
             <Btn onClick={openAddCv}>+ New Voucher</Btn>
           )}
           <button onClick={()=>{
@@ -14110,7 +14110,9 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 // ─── DAILY CASH POSITION DASHBOARD ───────────────────────────────────────────
 function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,totExp,totColl,totOut,exps=[],updateMilestone,upExps,toSbExpense,isSupabaseReady,sbUpsert,vouchers=[],payables=[],loans=[],inventory=[]}){
   const[selDate,setSelDate]=useState(today);
-  const[pos,setPos]        =useState(()=>cashPositions[today]||emptyDayPosition(today));
+  // Normalize any cash position that was saved in old flat format (no .banks object)
+  const normPos=(p,date)=>p?.banks?p:{...emptyDayPosition(date||today),...(p||{})};
+  const[pos,setPos]        =useState(()=>normPos(cashPositions[today],today));
   const[saved,setSaved]    =useState(false);
   const[histOpen,setHistOpen]=useState(false);
 
@@ -14119,7 +14121,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     if(!cashPositions) return;
     // If today already has a saved position, load it
     if(cashPositions[selDate]){
-      setPos(cashPositions[selDate]);
+      setPos(normPos(cashPositions[selDate],selDate));
       setSaved(true);
       return;
     }
@@ -14318,7 +14320,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     setSelDate(d);
     const existing=cashPositions[d];
     if(existing){
-      setPos(existing); setSaved(true);
+      setPos(normPos(existing,d)); setSaved(true);
     } else {
       // Auto-carry: find most recent saved day before d
       const prevDay=Object.keys(cashPositions).filter(k=>k<d).sort().reverse()[0];
@@ -14522,8 +14524,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   };
 
   // Derived totals for new layout
-  const wcBook=workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.book||0),0);
-  const unionRow2=pos.banks["union"]||emptyBankRow();
+  const wcBook=workingBanks.reduce((s,b)=>s+n((pos.banks||{})[b.id]?.book||0),0);
+  const unionRow2=(pos.banks||{})["union"]||emptyBankRow();
   const unionCapital=n(unionRow2.book||0)||n(unionRow2.end||0)||n(unionRow2.beg||0);
   const netCashAvail=wcBook+totalCollections-totalLess;
   const totalGMDAssets=netCashAvail+unionCapital;
@@ -23562,7 +23564,7 @@ function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVIt
           <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem"}}>🧾 Liquidation Reports</div>
           <div style={{fontSize:".82rem",color:"#64748b"}}>Expense vouchers — one bank debit per voucher for easy reconciliation.</div>
         </div>
-        {(role==="Accounting"||role==="Manager")&&<button onClick={()=>{setEditEV(null);setForm(blankForm);setShowForm(true);}} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>+ New EV</button>}
+        {(role==="Accounting"||role==="Finance"||role==="Manager")&&<button onClick={()=>{setEditEV(null);setForm(blankForm);setShowForm(true);}} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>+ New EV</button>}
       </div>
 
       {/* KPI strip */}
