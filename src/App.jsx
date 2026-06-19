@@ -15903,6 +15903,7 @@ function SubconWOView({swos,addSWO,updateSWO,deleteSWO,wonDeals,subcons,session,
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  const ACCT_CLR={"For Accounting":"#d97706","Checked":"#2563eb","Payment Ordered":"#059669"};
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canManage=role==="Manager"||role==="Procurement";
   const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
