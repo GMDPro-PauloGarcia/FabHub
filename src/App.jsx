@@ -14951,11 +14951,11 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         );
       })()}
 
-      {/* ── POSITION SUMMARY ── */}
-      <div style={{marginBottom:16}}>
+      {/* ── POSITION SUMMARY + OBLIGATIONS — side by side ── */}
+      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16,marginBottom:16,alignItems:"start"}}>
 
-        {/* Position Summary */}
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",maxWidth:560}}>
+        {/* Left: Position Summary */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
           <div style={{background:"#1e293b",padding:"12px 16px"}}>
             <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📊 Position Summary</span>
           </div>
@@ -15002,10 +15002,8 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
           </div>
         </div>
 
-      </div>
-
-      {/* ── FINANCIAL OBLIGATIONS & RESERVES ── */}
-      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:14,marginBottom:16}}>
+        {/* Right: Floating Checks + Accounts Payable + Loan Obligations stacked */}
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
 
         {/* ── Floating Checks ── */}
         <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${floatingChecks.length===0?"#e2e8f0":"#fde68a"}`,overflow:"hidden"}}>
@@ -15139,7 +15137,9 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
             </>
           )}
         </div>
-      </div>
+
+        </div>{/* end right column */}
+      </div>{/* end 2-col grid */}
 
       {/* ── AVAILABLE STANDBY FUNDS ── */}
       {(()=>{
