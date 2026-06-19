@@ -4988,7 +4988,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const payId=uid();
     const payRec={vendor:exp.supplier||exp.payee||exp.note||"—",amount:Number(exp.amount||0),dueDate:exp.expDate||today,projectId:exp.projectId||null,category:exp.category||"Supplier",notes:exp.note||"",invoiceRef:exp.receipt||"",sourceExpenseId:expId,id:payId,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[payRec,...ps]);
-    upExps(es=>es.map(e=>e.id===expId?{...e,paymentMethod:"BizLink",payableId:payId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
+    upExps(es=>es.map(e=>e.id===expId?{...e,acctStatus:"For Payment",paymentMethod:"BizLink",payableId:payId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
     if(isSupabaseReady()){sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"BizLink",payableId:payId}),"id").catch(()=>{});}
     toastEmit("✅ Routed to Daily Payables via BizLink","success");
   };
@@ -4999,7 +4999,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
     const cvRec={date:exp.expDate||today,cvNo:nextNo,payee:exp.supplier||exp.payee||"",amount:Number(exp.amount||0),description:exp.note||"",projectId:exp.projectId||null,bank:bankId||exp.bankAccount||"",notes:exp.remarks||"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:expId,id:cvId,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
-    upExps(es=>es.map(e=>e.id===expId?{...e,paymentMethod:"Check",cvId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
+    upExps(es=>es.map(e=>e.id===expId?{...e,acctStatus:"For Payment",paymentMethod:"Check",cvId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
     if(isSupabaseReady()){sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"Check",cvId}),"id").catch(()=>{});}
     toastEmit("✅ Routed to Check Payables — CV "+nextNo+" created","success");
   };
@@ -11392,7 +11392,7 @@ First few:
                           <td style={{padding:"9px 12px",fontWeight:700,color:"#0f172a",textAlign:"right",whiteSpace:"nowrap"}}>{fmt(e.amount)}</td>
                           <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
                             {(role==="Finance"||role==="Manager")
-                              ?<button onClick={()=>{markDpStatus(e.id,"For Payment");setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route Payment</button>
+                              ?<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route Payment</button>
                               :<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Route to</button>
                             }
                           </td>
