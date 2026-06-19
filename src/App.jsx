@@ -3750,15 +3750,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(payment.bank&&payment.amount){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
-      upCashPos(cp=>{
-        const existing=cp[pDate]||{date:pDate,bpi_end:0,metrobank_end:0,chinabank_end:0,bdo_end:0,secbank_end:0,unionbank_end:0,notes:""};
-        const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
-        const field=fieldMap[bankKey]||null;
-        if(!field) return cp;
-        const updated={...existing,[field]:(Number(existing[field]||0)+Number(payment.amount))};
-        updated.notes=(updated.notes?updated.notes+" | ":"")+`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
-        return{...cp,[pDate]:updated};
-      });
+      const bankIdMap={bpi:"bpi",metrobank:"metro",chinabank:"china",bdo:"bdo",securitybank:"security",unionbank:"union"};
+      const bankId=bankIdMap[bankKey]||null;
+      if(bankId){
+        upCashPos(cp=>{
+          const existing=cp[pDate]||emptyDayPosition(pDate);
+          const existingBanks=existing.banks||emptyDayPosition(pDate).banks;
+          const bankRow=existingBanks[bankId]||emptyBankRow();
+          const newEnd=Number(bankRow.end||bankRow.book||0)+Number(payment.amount);
+          const newNotes=(existing.notes?existing.notes+" | ":"")+`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
+          return{...cp,[pDate]:{...existing,banks:{...existingBanks,[bankId]:{...bankRow,end:String(newEnd)}},notes:newNotes}};
+        });
+      }
     }
   };
   const deleteBillingPayment=(msId,payId)=>{
@@ -14372,6 +14375,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
   // Bank totals
   const bankTotals=useMemo(()=>{
+    if(!pos.banks) return {beg:0,book:0,end:0,capBeg:0,capBook:0,capEnd:0};
     let beg=0,book=0,end=0;
     let capBeg=0,capBook=0,capEnd=0;
     BANKS.forEach(b=>{
@@ -14449,6 +14453,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   },[dateExps]);
 
   const totalMoneyPerBank=useMemo(()=>{
+    if(!pos.banks) return Object.fromEntries(workingBanks.map(b=>[b.id,cashIn[b.id]||0]));
     const out={};
     workingBanks.forEach(b=>{
       const n2=(v)=>Number(String(v).replace(/,/g,""))||0;
