@@ -14167,76 +14167,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
     return{outstanding,collectedYTD,dueThisMonth};
   },[billings]);
 
-  // Outstanding balance per deal (for FabHub Collections breakdown)
-  const billingByDeal=useMemo(()=>{
-    const bl=billings||[];
-    const map={};
-    bl.forEach(b=>{
-      if(b.status==='Cancelled') return;
-      const key=b.dealId||'unknown';
-      if(!map[key]) map[key]={dealId:key,totalAmount:0,totalPaid:0};
-      map[key].totalAmount+=Number(b.amount||0);
-      map[key].totalPaid+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-    });
-    return Object.values(map)
-      .map(row=>{
-        const deal=wonDeals.find(d=>d.id===row.dealId);
-        const balance=Math.max(0,row.totalAmount-row.totalPaid);
-        const pct=row.totalAmount>0?Math.round(row.totalPaid/row.totalAmount*100):0;
-        return{...row,client:deal?.client||'Unknown Project',balance,pct};
-      })
-      .filter(r=>r.balance>0)
-      .sort((a,b)=>b.balance-a.balance);
-  },[billings,wonDeals]);
-
-  // Top pending milestones — per milestone, sorted by outstanding balance desc
-  const pendingMilestones=useMemo(()=>{
-    const classifyType=name=>{
-      const n=(name||"").toLowerCase();
-      if(n.includes("down")||n.includes("dp")) return "Downpayment";
-      if(n.includes("retention")||n.includes("retent")) return "Retention";
-      if(n.includes("assume")) return "Assume Balance";
-      if(n.includes("balance")&&!n.includes("assume")) return "Balance";
-      return "Progress Bill";
-    };
-    const now2=new Date();
-    return (billings||[])
-      .filter(b=>b.status!=="Cancelled"&&b.status!=="Paid"&&b.status!=="Fully Paid")
-      .map(b=>{
-        const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-        const balance=Math.max(0,Number(b.amount||0)-paid);
-        const deal=wonDeals.find(d=>d.id===b.dealId);
-        const daysOverdue=b.dueDate?Math.floor((now2-new Date(b.dueDate))/(1000*60*60*24)):null;
-        return{id:b.id,client:deal?.client||"Unknown",milestoneName:b.name||"Milestone",
-          type:classifyType(b.name),balance,dueDate:b.dueDate||null,
-          daysOverdue:daysOverdue>0?daysOverdue:null,pct:Number(b.amount)>0?Math.round(paid/Number(b.amount)*100):0};
-      })
-      .filter(r=>r.balance>0)
-      .sort((a,b)=>b.balance-a.balance);
-  },[billings,wonDeals]);
-
-  // Collections breakdown by milestone type
-  const billingByType=useMemo(()=>{
-    const TYPES=["Downpayment","Progress Bill","Assume Balance","Retention"];
-    const classify=name=>{
-      const n=(name||"").toLowerCase();
-      if(n.includes("down")) return "Downpayment";
-      if(n.includes("progress")||n.includes("billing")||n.includes("partial")) return "Progress Bill";
-      if(n.includes("assume")) return "Assume Balance";
-      if(n.includes("retention")||n.includes("retent")) return "Retention";
-      return "Progress Bill";
-    };
-    const totals={};
-    TYPES.forEach(t=>{totals[t]={billed:0,collected:0};});
-    (billings||[]).forEach(b=>{
-      if(b.status==="Cancelled") return;
-      const t=classify(b.name);
-      totals[t].billed+=Number(b.amount||0);
-      totals[t].collected+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-    });
-    return TYPES.map(t=>({type:t,...totals[t],outstanding:Math.max(0,totals[t].billed-totals[t].collected)}));
-  },[billings]);
-
   // ── Floating checks (Released CVs not yet cleared in bank)
   const floatingChecks=useMemo(()=>vouchers.filter(v=>v.status==="Released"&&!v.isCleared),[vouchers]);
   const floatingTotal=useMemo(()=>floatingChecks.reduce((s,v)=>s+Number(v.amount||0),0),[floatingChecks]);
@@ -15021,11 +14951,11 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
         );
       })()}
 
-      {/* ── POSITION SUMMARY + KEY AREAS — side by side ── */}
-      <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16,marginBottom:16,alignItems:"start"}}>
+      {/* ── POSITION SUMMARY ── */}
+      <div style={{marginBottom:16}}>
 
-        {/* Left: Position Summary */}
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        {/* Position Summary */}
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",maxWidth:560}}>
           <div style={{background:"#1e293b",padding:"12px 16px"}}>
             <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📊 Position Summary</span>
           </div>
@@ -15072,67 +15002,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
           </div>
         </div>
 
-        {/* Right: Key Areas + Collections by Type stacked */}
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-
-          {/* Key Areas */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>KEY AREAS</span>
-            </div>
-            {[["YTD Supplier Payable","ytd.supplierPayable","#ef4444"],["YTD Loans Payable","ytd.loansPayable","#f97316"]].map(([label,path,color])=>(
-              <div key={path} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:"1px solid #f1f5f9",gap:8}}>
-                <div style={{fontSize:".78rem",color:"#475569",fontWeight:600,fontStyle:"italic",flex:1}}>{label}</div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <CurrInp value={path.split(".").reduce((o,k)=>o?.[k],pos)||""} onChange={e=>f(path,e.target.value)} style={{...inpStyle,width:120,borderColor:`${color}44`}}/>
-                  <span style={{fontWeight:700,color,minWidth:80,textAlign:"right",fontSize:".8rem"}}>
-                    {path.split(".").reduce((o,k)=>o?.[k],pos)?`₱${fmt2(path.split(".").reduce((o,k)=>o?.[k],pos))}`:"—"}
-                  </span>
-                </div>
-              </div>
-            ))}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",background:"#f0fdf4"}}>
-              <div>
-                <div style={{fontSize:".78rem",color:"#475569",fontWeight:600,fontStyle:"italic"}}>Due This Month</div>
-                <div style={{fontSize:".63rem",color:"#94a3b8",marginTop:2}}>Billing milestones due this calendar month</div>
-              </div>
-              <span style={{fontWeight:800,color:billingMetrics.dueThisMonth>0?"#f59e0b":"#10b981",fontSize:".88rem"}}>
-                ₱{billingMetrics.dueThisMonth.toLocaleString("en-PH",{minimumFractionDigits:2})}
-              </span>
-            </div>
-          </div>
-
-          {/* Collections by Type */}
-          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-            <div style={{background:"#1e293b",padding:"12px 16px"}}>
-              <span style={{fontWeight:700,color:"#4ade80",fontSize:".88rem",textTransform:"uppercase",letterSpacing:".5px"}}>📂 Collections by Type</span>
-            </div>
-            {billingByType.map(({type,billed,collected,outstanding})=>{
-              const pct=billed>0?Math.round(collected/billed*100):0;
-              const typeClr=type==="Downpayment"?"#3b82f6":type==="Progress Bill"?"#8b5cf6":type==="Assume Balance"?"#f59e0b":"#ef4444";
-              return(
-                <div key={type} style={{padding:"9px 16px",borderBottom:"1px solid #f1f5f9"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{width:8,height:8,borderRadius:"50%",background:typeClr,flexShrink:0,display:"inline-block"}}/>
-                      <span style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{type}</span>
-                    </div>
-                    <div style={{textAlign:"right"}}>
-                      <div style={{fontWeight:700,color:outstanding>0?"#ef4444":"#059669",fontSize:".8rem"}}>{outstanding>0?`₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} due`:"Fully collected"}</div>
-                      <div style={{fontSize:".67rem",color:"#94a3b8"}}>₱{collected.toLocaleString("en-PH",{minimumFractionDigits:2})} / ₱{billed.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-                    </div>
-                  </div>
-                  {billed>0&&<div style={{height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:Math.min(100,pct)+"%",background:typeClr,borderRadius:2,transition:"width .5s"}}/></div>}
-                </div>
-              );
-            })}
-            <div style={{display:"flex",justifyContent:"space-between",padding:"10px 16px",background:"#f8fafc"}}>
-              <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>Total Outstanding</span>
-              <span style={{fontWeight:800,color:"#ef4444",fontSize:".83rem"}}>₱{billingMetrics.outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
-            </div>
-          </div>
-
-        </div>
       </div>
 
       {/* ── FINANCIAL OBLIGATIONS & RESERVES ── */}
@@ -15300,39 +15169,14 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
       {/* ── INVENTORY ASSETS ── */}
       {inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).length>0&&(
-        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #a5f3fc",overflow:"hidden",marginBottom:16}}>
-          <div style={{background:"#ecfeff",borderBottom:"2px solid #a5f3fc",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div>
-              <div style={{fontWeight:800,color:"#0e7490",fontSize:".82rem"}}>📦 Inventory Assets</div>
-              <div style={{fontSize:".66rem",color:"#06b6d4",marginTop:1}}>On-hand stock at average cost</div>
-            </div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#0e7490"}}>
-              ₱{inventoryValue.toLocaleString("en-PH",{minimumFractionDigits:2})}
-            </div>
+        <div style={{background:"#ecfeff",borderRadius:14,border:"1.5px solid #a5f3fc",padding:"14px 18px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:800,color:"#0e7490",fontSize:".82rem"}}>📦 Inventory Assets</div>
+            <div style={{fontSize:".66rem",color:"#06b6d4",marginTop:2}}>On-hand stock at average cost</div>
           </div>
-          <div style={{padding:"10px 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:8}}>
-            {inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).sort((a,b)=>(Number(b.qtyOnHand||0)*Number(b.avgCost||0))-(Number(a.qtyOnHand||0)*Number(a.avgCost||0))).slice(0,12).map(i=>{
-              const val=Number(i.qtyOnHand||0)*Number(i.avgCost||0);
-              const pct=inventoryValue>0?Math.round(val/inventoryValue*100):0;
-              return(
-                <div key={i.id} style={{padding:"8px 10px",background:"#f8fafc",borderRadius:8,border:"1px solid #e0f7fa"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:4}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".76rem",lineHeight:1.3,flex:1,marginRight:6}}>{i.name||i.sku||"Item"}</div>
-                    <div style={{fontWeight:800,color:"#0e7490",fontSize:".76rem",flexShrink:0}}>₱{val.toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
-                  </div>
-                  <div style={{fontSize:".63rem",color:"#94a3b8",marginBottom:4}}>{Number(i.qtyOnHand||0).toLocaleString("en-PH",{maximumFractionDigits:2})} {i.unit||"pcs"} @ ₱{Number(i.avgCost||0).toLocaleString("en-PH",{maximumFractionDigits:2})}</div>
-                  <div style={{height:3,background:"#e0f7fa",borderRadius:2,overflow:"hidden"}}>
-                    <div style={{height:"100%",width:pct+"%",background:"#06b6d4",borderRadius:2}}/>
-                  </div>
-                </div>
-              );
-            })}
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.3rem",color:"#0e7490"}}>
+            ₱{inventoryValue.toLocaleString("en-PH",{minimumFractionDigits:2})}
           </div>
-          {inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).length>12&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid #a5f3fc",fontSize:".72rem",color:"#0e7490",fontWeight:600}}>
-              +{inventory.filter(i=>i.status!=="Inactive"&&Number(i.qtyOnHand||0)>0).length-12} more items — see Warehouse → Inventory
-            </div>
-          )}
         </div>
       )}
 
