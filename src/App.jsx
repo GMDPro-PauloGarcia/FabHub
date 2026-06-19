@@ -14877,48 +14877,6 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
               })}
               <div style={{padding:"5px 12px",textAlign:"right",fontSize:".75rem",color:"#94a3b8"}}>—</div>
             </div>
-            {/* Credit Line row — editable standby funds per bank */}
-            <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #c7d2fe",background:"#eef2ff",borderTop:"2px solid #a5b4fc"}}>
-              <div style={{...labelCell,background:"#e0e7ff",color:"#4338ca",fontStyle:"normal",fontSize:".78rem"}}>
-                🏦 Credit Line
-                <div style={{fontSize:".62rem",fontWeight:400,color:"#6366f1",marginTop:1}}>Standby funds — set per bank</div>
-              </div>
-              {workingBanks.map(b=>(
-                <div key={b.id} style={{padding:"4px 6px",borderRight:"1px solid #c7d2fe",display:"flex",alignItems:"center"}}>
-                  <CurrInp value={pos.banks[b.id]?.creditLine||""} onChange={e=>f(`banks.${b.id}.creditLine`,e.target.value)} style={{...inpStyle,borderColor:"transparent",background:"transparent",textAlign:"right",padding:"5px 8px",color:"#4338ca"}}/>
-                </div>
-              ))}
-              <div style={{padding:"8px 12px",textAlign:"right",fontWeight:700,fontSize:".84rem",color:"#4338ca",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-                {fmt2(workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.creditLine||0),0))}
-              </div>
-            </div>
-            {/* Available to Borrow = Credit Line − Book Balance */}
-            <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"2px solid #a5b4fc",background:"#f5f3ff"}}>
-              <div style={{...labelCell,background:"#ede9fe",color:"#5b21b6",fontStyle:"normal",fontSize:".78rem"}}>
-                💸 Available to Borrow
-                <div style={{fontSize:".62rem",fontWeight:400,color:"#7c3aed",marginTop:1}}>Credit Line − Book Balance</div>
-              </div>
-              {workingBanks.map(b=>{
-                const credit=n(pos.banks[b.id]?.creditLine||0);
-                const book=n(pos.banks[b.id]?.book||0)||n(endingBal[b.id]||0);
-                const avail=credit>0?credit-book:null;
-                return(
-                  <div key={b.id} style={{padding:"8px 8px",borderRight:"1px solid #ddd6fe",textAlign:"right",fontWeight:avail!=null?800:400,fontSize:".82rem",color:avail==null?"#cbd5e1":avail>=0?"#059669":"#dc2626",fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    {avail==null?"—":avail>=0?fmt2(avail):`(${fmt2(Math.abs(avail))})`}
-                  </div>
-                );
-              })}
-              {(()=>{
-                const totalCredit=workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.creditLine||0),0);
-                const totalBook=workingBanks.reduce((s,b)=>s+(n(pos.banks[b.id]?.book||0)||n(endingBal[b.id]||0)),0);
-                const totalAvail=totalCredit>0?totalCredit-totalBook:null;
-                return(
-                  <div style={{padding:"8px 12px",textAlign:"right",fontWeight:800,fontSize:".88rem",color:totalAvail==null?"#94a3b8":totalAvail>=0?"#059669":"#dc2626",display:"flex",alignItems:"center",justifyContent:"flex-end",fontFamily:"'Barlow Condensed',sans-serif"}}>
-                    {totalAvail==null?"—":totalAvail>=0?fmt2(totalAvail):`(${fmt2(Math.abs(totalAvail))})`}
-                  </div>
-                );
-              })()}
-            </div>
           </>);
         })()}
       </div>
@@ -14950,6 +14908,70 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
           </div>
         );
       })()}
+
+      {/* ── CREDIT LINE TABLE — separate from main bank table, after Save-Up Capital ── */}
+      <div style={{background:"#fff",borderRadius:14,border:"2px solid #a5b4fc",overflow:"hidden",marginBottom:16}}>
+        {/* Header */}
+        <div style={{background:"#4338ca",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <div style={{fontWeight:800,color:"#fff",fontSize:".88rem"}}>🏦 Credit Line / Standby Funds</div>
+            <div style={{fontSize:".67rem",color:"rgba(255,255,255,.65)",marginTop:2}}>Borrowing capacity per bank — enter the approved credit limit</div>
+          </div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.3rem",color:"#c7d2fe"}}>
+            {fmt2(workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.creditLine||0),0))}
+          </div>
+        </div>
+        {/* Column headers */}
+        <div style={{display:"grid",gridTemplateColumns:COL,background:"#e0e7ff",borderBottom:"1px solid #c7d2fe"}}>
+          <div style={{padding:"6px 12px",fontWeight:700,fontSize:".72rem",color:"#4338ca",borderRight:"2px solid #c7d2fe"}}>Row</div>
+          {workingBanks.map(b=>(
+            <div key={b.id} style={{padding:"6px 10px",textAlign:"center",fontWeight:700,fontSize:".72rem",color:"#4338ca",borderRight:"1px solid #c7d2fe"}}>{b.short}</div>
+          ))}
+          <div style={{padding:"6px 10px",textAlign:"right",fontWeight:700,fontSize:".72rem",color:"#4338ca"}}>Total</div>
+        </div>
+        {/* Credit Line row — editable */}
+        <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #c7d2fe",background:"#eef2ff"}}>
+          <div style={{padding:"8px 12px",fontWeight:700,fontSize:".78rem",color:"#4338ca",borderRight:"2px solid #c7d2fe",display:"flex",flexDirection:"column",justifyContent:"center"}}>
+            Credit Line
+            <span style={{fontWeight:400,fontSize:".62rem",color:"#6366f1",marginTop:1}}>Approved limit</span>
+          </div>
+          {workingBanks.map(b=>(
+            <div key={b.id} style={{padding:"4px 6px",borderRight:"1px solid #c7d2fe",display:"flex",alignItems:"center"}}>
+              <CurrInp value={pos.banks[b.id]?.creditLine||""} onChange={e=>f(`banks.${b.id}.creditLine`,e.target.value)} style={{...inpStyle,borderColor:"transparent",background:"transparent",textAlign:"right",padding:"5px 8px",color:"#4338ca"}}/>
+            </div>
+          ))}
+          <div style={{padding:"8px 12px",textAlign:"right",fontWeight:700,fontSize:".84rem",color:"#4338ca",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+            {fmt2(workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.creditLine||0),0))}
+          </div>
+        </div>
+        {/* Available to Borrow = Credit Line − Book Balance */}
+        <div style={{display:"grid",gridTemplateColumns:COL,background:"#f5f3ff"}}>
+          <div style={{padding:"8px 12px",fontWeight:700,fontSize:".78rem",color:"#5b21b6",borderRight:"2px solid #c7d2fe",display:"flex",flexDirection:"column",justifyContent:"center"}}>
+            Available to Borrow
+            <span style={{fontWeight:400,fontSize:".62rem",color:"#7c3aed",marginTop:1}}>Credit Line − Book Balance</span>
+          </div>
+          {workingBanks.map(b=>{
+            const credit=n(pos.banks[b.id]?.creditLine||0);
+            const book=n(pos.banks[b.id]?.book||0)||n(endingBal[b.id]||0);
+            const avail=credit>0?credit-book:null;
+            return(
+              <div key={b.id} style={{padding:"8px 8px",borderRight:"1px solid #ddd6fe",textAlign:"right",fontWeight:avail!=null?800:400,fontSize:".82rem",color:avail==null?"#cbd5e1":avail>=0?"#059669":"#dc2626",fontFamily:"'Barlow Condensed',sans-serif",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
+                {avail==null?"—":avail>=0?fmt2(avail):`(${fmt2(Math.abs(avail))})`}
+              </div>
+            );
+          })}
+          {(()=>{
+            const totalCredit=workingBanks.reduce((s,b)=>s+n(pos.banks[b.id]?.creditLine||0),0);
+            const totalBook=workingBanks.reduce((s,b)=>s+(n(pos.banks[b.id]?.book||0)||n(endingBal[b.id]||0)),0);
+            const totalAvail=totalCredit>0?totalCredit-totalBook:null;
+            return(
+              <div style={{padding:"8px 12px",textAlign:"right",fontWeight:800,fontSize:".88rem",color:totalAvail==null?"#94a3b8":totalAvail>=0?"#059669":"#dc2626",display:"flex",alignItems:"center",justifyContent:"flex-end",fontFamily:"'Barlow Condensed',sans-serif"}}>
+                {totalAvail==null?"—":totalAvail>=0?fmt2(totalAvail):`(${fmt2(Math.abs(totalAvail))})`}
+              </div>
+            );
+          })()}
+        </div>
+      </div>
 
       {/* ── POSITION SUMMARY + OBLIGATIONS — side by side ── */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:16,marginBottom:16,alignItems:"start"}}>
