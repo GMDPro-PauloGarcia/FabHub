@@ -11301,6 +11301,7 @@ First few:
         const cvCleared=vouchers.filter(v=>v.isCleared);
         const cvForRelAmt=cvForRel.reduce((s,v)=>s+Number(v.amount||0),0);
         const cvRelAmt=cvReleased.reduce((s,v)=>s+Number(v.amount||0),0);
+        const loggedExps=exps.filter(e=>!e.acctStatus||e.acctStatus==="Logged").sort((a,b)=>(b.expDate||"").localeCompare(a.expDate||""));
         const recentActivity=[
           ...exps.filter(e=>e.acctStatus==="For Payment"||e.acctStatus==="Logged").map(e=>({type:"daily",label:(e.note||e.category||"Expense"),sub:e.expDate+" · "+(e.bankAccount||"No bank"),status:e.acctStatus||"Logged",amt:Number(e.amount||0),date:e.expDate||""})),
           ...vouchers.filter(v=>["For Release","Released"].includes(v.status)).map(v=>({type:"cv",label:v.cvNo+" · "+(v.payee||""),sub:v.date,status:v.status,amt:Number(v.amount||0),date:v.date||""})),
@@ -11315,6 +11316,7 @@ First few:
               <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>{session?.name||role} · {todayL}</div>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button onClick={()=>openAddExp()} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 18px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".82rem",cursor:"pointer",letterSpacing:".3px"}}>+ LOG EXPENSE</button>
               <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📄 Daily Payables</button>
               <button onClick={()=>setPage("checkvouchers")} style={{background:"#059669",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>✅ Check Payables</button>
               <button onClick={()=>setPage("evouchers")} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🧾 Liquidation</button>
@@ -11374,6 +11376,52 @@ First few:
                 </div>
               ))}
             </div>
+          </div>
+          {/* Logged Expenses */}
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+            <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#facc15",fontSize:".84rem"}}>📝 Logged Expenses — {loggedExps.length} item{loggedExps.length!==1?"s":""}</span>
+              <button onClick={()=>openAddExp()} style={{background:"#facc15",border:"none",borderRadius:6,padding:"4px 12px",color:"#0f172a",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",fontWeight:800}}>+ Log Expense</button>
+            </div>
+            {loggedExps.length===0?(
+              <div style={{padding:"24px",color:"#94a3b8",fontSize:".82rem",textAlign:"center"}}>No logged expenses yet. Click <strong>+ Log Expense</strong> to add one.</div>
+            ):(
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem"}}>
+                  <thead>
+                    <tr style={{background:"#f8fafc"}}>
+                      {["Date","Supplier / Payee","Particulars","Project","Amount",""].map(h=>(
+                        <th key={h} style={{padding:"8px 12px",textAlign:h==="Amount"?"right":"left",fontWeight:700,color:"#64748b",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loggedExps.map((e,i)=>{
+                      const proj=wonDeals.find(d=>d.id===e.projectId);
+                      return(
+                        <tr key={e.id} style={{borderTop:"1px solid #f1f5f9",background:i%2===0?"#fff":"#fafafa"}}>
+                          <td style={{padding:"9px 12px",color:"#475569",whiteSpace:"nowrap"}}>{e.expDate||"—"}</td>
+                          <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.supplier||e.payee||"—"}</td>
+                          <td style={{padding:"9px 12px",color:"#334155",maxWidth:200,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.note||e.category||"—"}</td>
+                          <td style={{padding:"9px 12px",color:"#64748b",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?(proj.contact||proj.client||"Project"):"Company-wide"}</td>
+                          <td style={{padding:"9px 12px",fontWeight:700,color:"#0f172a",textAlign:"right",whiteSpace:"nowrap"}}>{fmt(e.amount)}</td>
+                          <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
+                            <button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ For Payment</button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{borderTop:"2px solid #e2e8f0",background:"#f8fafc"}}>
+                      <td colSpan={4} style={{padding:"8px 12px",fontWeight:700,color:"#475569",fontSize:".75rem"}}>Total</td>
+                      <td style={{padding:"8px 12px",fontWeight:900,color:"#0f172a",textAlign:"right",fontSize:".88rem"}}>{fmt(loggedExps.reduce((s,e)=>s+Number(e.amount||0),0))}</td>
+                      <td/>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            )}
           </div>
           {/* POs Pending Payment */}
           {(()=>{
