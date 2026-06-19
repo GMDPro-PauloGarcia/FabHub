@@ -14798,82 +14798,15 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
             <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #d1fae5",background:"#f0fdf4",borderTop:"2px solid #6ee7b7"}}>
               <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontWeight:700,fontStyle:"normal",fontSize:".78rem"}}>💚 CASH IN</div>
               <div style={{gridColumn:"2/7",padding:"7px 12px",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <span style={{fontSize:".72rem",color:"#059669",fontWeight:600}}>Finance-approved only</span>
-                {todayPayments.filter(p=>!approvedPaymentIds.has(p.id)).length>0&&(
-                  <span style={{fontSize:".68rem",background:"#fef3c7",color:"#b45309",borderRadius:20,padding:"1px 8px",fontWeight:700,border:"1px solid #fde68a"}}>
-                    {todayPayments.filter(p=>!approvedPaymentIds.has(p.id)).length} pending
-                  </span>
-                )}
-                {untaggedPayments.length>0&&(
-                  <span style={{fontSize:".68rem",background:"#fff1f2",color:"#dc2626",borderRadius:20,padding:"1px 8px",fontWeight:700,border:"1px solid #fecaca"}}>
-                    ⚠ {untaggedPayments.length} need bank tag
-                  </span>
-                )}
+                <span style={{fontSize:".72rem",color:"#059669",fontWeight:600}}>Manual entries</span>
               </div>
               <div style={{padding:"7px 12px",textAlign:"right",fontWeight:800,color:"#059669",fontSize:".85rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>{fmt2(totalCollections)}</div>
             </div>
 
-            {/* ── 2a. Collections from FabHub sub-header ── */}
-            <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #d1fae5",background:"#f0fdf4"}}>
-              <div style={{...labelCell,background:"#dcfce7",color:"#059669",fontStyle:"normal",fontSize:".73rem",paddingLeft:24}}>Collections from FabHub</div>
-              {workingBanks.map(b=>(
-                <div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #d1fae5",textAlign:"right",fontSize:".75rem",fontWeight:cashIn[b.id]>0?700:400,color:cashIn[b.id]>0?"#059669":"#cbd5e1"}}>
-                  {cashIn[b.id]>0?fmt2(cashIn[b.id]):"—"}
-                </div>
-              ))}
-              <div style={{padding:"5px 12px",textAlign:"right",fontWeight:700,color:"#059669",fontSize:".78rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-                {fmt2(workingBanks.reduce((s,b)=>s+cashIn[b.id],0))}
-              </div>
-            </div>
-            {todayPayments.length===0?(
+            {/* ── 2b. Collections (manual) ── */}
+            <div style={{background:"#f8fffe"}}>
               <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #d1fae5"}}>
-                <div style={{...labelCell,background:"#f8fffe",color:"#94a3b8",fontStyle:"italic",fontSize:".73rem",paddingLeft:28}}>No billing payments for {selDate}</div>
-                <div style={{gridColumn:"2/8",padding:"7px 12px",fontSize:".73rem",color:"#94a3b8",fontStyle:"italic"}}>Log a billing payment in the Billing module to see it here.</div>
-              </div>
-            ):todayPayments.map(p=>{
-              const approved=approvedPaymentIds.has(p.id);
-              const noBank=!p.bank;
-              const toggle=()=>{
-                const cur=pos.collections?.approvedPayments||[];
-                const newApproved=approved?cur.filter(id=>id!==p.id):[...cur,p.id];
-                const newPos={...pos,collections:{...pos.collections,approvedPayments:newApproved}};
-                setPos(newPos);
-                setSaved(false);
-                saveDayPos(selDate,newPos);
-              };
-              return(
-                <div key={p.id} style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #d1fae5",background:approved?"#f0fdf4":noBank?"#fffbeb":"#fef9c3"}}>
-                  <div style={{...labelCell,background:approved?"#dcfce7":noBank?"#fef3c7":"#fef9c3",fontStyle:"normal",fontSize:".72rem",paddingLeft:28,display:"flex",flexDirection:"column",gap:3,justifyContent:"center"}}>
-                    <button onClick={toggle} style={{background:approved?"#059669":"#f59e0b",border:"none",borderRadius:5,padding:"2px 8px",cursor:"pointer",color:"#fff",fontWeight:700,fontSize:".67rem",fontFamily:"inherit",alignSelf:"flex-start"}}>
-                      {approved?"✓ Approved":"Pending"}
-                    </button>
-                    <span style={{fontWeight:600,color:"#1e293b",fontSize:".73rem",lineHeight:1.2}}>{p.clientName}</span>
-                    {p.milestoneName&&<span style={{color:"#0369a1",fontSize:".65rem",fontWeight:600}}>{p.milestoneName}</span>}
-                    <span style={{color:"#64748b",fontSize:".65rem"}}>{p.refNo||"—"}</span>
-                  </div>
-                  {noBank?(
-                    <div style={{gridColumn:"2/7",padding:"7px 12px",display:"flex",gap:5,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:".7rem",color:"#92400e",fontWeight:700}}>⚠ Tag bank to approve:</span>
-                      {workingBanks.map(b=>bankBtn(b.short,()=>assignBank(p.id,b.id)))}
-                    </div>
-                  ):(
-                    workingBanks.map(b=>(
-                      <div key={b.id} style={{padding:"7px 8px",borderRight:"1px solid #d1fae5",textAlign:"right",fontSize:".8rem",fontWeight:p.bank===b.id?700:400,color:p.bank===b.id?(approved?"#059669":"#b45309"):"#cbd5e1"}}>
-                        {p.bank===b.id?fmt2(Number(p.amount||0)):"—"}
-                      </div>
-                    ))
-                  )}
-                  <div style={{padding:"7px 12px",textAlign:"right",fontWeight:700,color:approved?"#059669":"#94a3b8",fontSize:".82rem",display:"flex",alignItems:"center",justifyContent:"flex-end"}}>
-                    {fmt2(Number(p.amount||0))}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* ── 2b. Other Collections (manual) ── */}
-            <div style={{borderTop:"1px dashed #bbf7d0",background:"#f8fffe"}}>
-              <div style={{display:"grid",gridTemplateColumns:COL,borderBottom:"1px solid #d1fae5"}}>
-                <div style={{...labelCell,background:"#faf5ff",color:"#8b5cf6",fontStyle:"normal",fontSize:".73rem",paddingLeft:24}}>Other Collections</div>
+                <div style={{...labelCell,background:"#faf5ff",color:"#8b5cf6",fontStyle:"normal",fontSize:".73rem",paddingLeft:24}}>Collections</div>
                 {workingBanks.map(b=>{
                   const amt=(pos.collections?.manualCollections||[]).filter(r=>r.bank===b.id).reduce((s,r)=>s+Number(r.amount||0),0);
                   return(<div key={b.id} style={{padding:"5px 8px",borderRight:"1px solid #d1fae5",textAlign:"right",fontSize:".75rem",fontWeight:amt>0?700:400,color:amt>0?"#8b5cf6":"#cbd5e1"}}>{amt>0?fmt2(amt):"—"}</div>);
