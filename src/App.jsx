@@ -10942,7 +10942,7 @@ First few:
                                 <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".83rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</td>
                                 <td style={{padding:"9px 14px"}}>
                                   <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
-                                    {(!e.acctStatus||e.acctStatus==="Logged")&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ For Payment</button>}
+                                    {(!e.acctStatus||e.acctStatus==="Logged")&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Route to</button>}
                                     {e.acctStatus==="For Payment"&&!e.paymentMethod&&(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>💳 Route Payment</button>}
                                     {e.acctStatus==="For Payment"&&!e.paymentMethod&&(role==="Accounting")&&<button onClick={()=>markDpStatus(e.id,"Paid")} style={{background:"#f0fdf4",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#166534",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Paid</button>}
                                     {e.paymentMethod&&<span style={{fontSize:".63rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:e.paymentMethod==="BizLink"?"#eff6ff":"#faf5ff",color:e.paymentMethod==="BizLink"?"#1d4ed8":"#7c3aed",whiteSpace:"nowrap"}}>{e.paymentMethod==="BizLink"?"💳 BizLink":"🖊 Check"}</span>}
@@ -11340,7 +11340,7 @@ First few:
                           <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
                             {(role==="Finance"||role==="Manager")
                               ?<button onClick={()=>{markDpStatus(e.id,"For Payment");setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route Payment</button>
-                              :<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ For Payment</button>
+                              :<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Route to</button>
                             }
                           </td>
                         </tr>
