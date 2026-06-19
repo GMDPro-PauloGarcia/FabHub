@@ -1014,12 +1014,12 @@ const FileAttachments=({folder,label="Attachments"})=>{
   );
 };
 
-const Modal=({open,onClose,title,children,wide})=>{
+const Modal=({open,onClose,title,children,wide,maxWidth})=>{
   const mob=window.innerWidth<768;
   if(!open) return null;
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16}} onClick={mob?undefined:onClose}>
-      <div style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:wide?640:480,maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+      <div style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:(maxWidth||wide?640:480),maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:mob?16:22}}>
           <div style={{fontWeight:800,fontSize:mob?"1rem":"1.1rem",color:"#0f172a"}}>{title}</div>
           <button onClick={onClose} style={{background:"#f1f5f9",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
@@ -1797,137 +1797,92 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 }
 
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
-function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,editId,projList,clientName}){
-  const[form,setForm]=useState(initialExpForm||{});
-  const[step,setStep]=useState(1);
+function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName}){
+  const todayStr=new Date().toISOString().slice(0,10);
+  const emptyRow=()=>({expDate:todayStr,supplier:"",payee:"",projectId:null,note:"",qty:"1",pricePerQty:"",tin:"",category:"Materials",remarks:"",bankAccount:"",receipt:"",month:new Date().getMonth(),year:new Date().getFullYear(),_exp:false});
+  const[rows,setRows]=useState([emptyRow()]);
   const[errors,setErrors]=useState({});
-  const f=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const expFormKey=`exp-${open}-${editId||"new"}`;
-  useEffect(()=>{if(open){setStep(1);setForm(initialExpForm||{});setErrors({});}},[open,editId]);
-  const qty=Number(String(form.qty||1).replace(/,/g,""))||1;
-  const price=Number(String(form.pricePerQty||0).replace(/,/g,""))||0;
-  const computedAmt=qty*price||Number(String(form.amount||0).replace(/,/g,""))||0;
-  const handleExpSave=()=>{_setExpForm(()=>({...form,amount:computedAmt,qty,pricePerQty:price}));onSave({...form,amount:computedAmt,qty,pricePerQty:price});};
-  const projName=form.projectId?clientName(form.projectId):"Company-wide (no specific project)";
-  const fmtAmt=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-  const inpSt={width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
-  const lbl=(t,hint)=><div style={{marginBottom:10}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>{t}{hint&&<span style={{fontWeight:400,color:"#94a3b8",marginLeft:6,fontSize:".68rem"}}>{hint}</span>}</div></div>;
+  useEffect(()=>{
+    if(open){
+      if(editId&&initialExpForm){setRows([{...initialExpForm,_exp:false}]);}
+      else{setRows([initialExpForm?{...initialExpForm,_exp:false}:emptyRow()]);}
+      setErrors({});
+    }
+  },[open,editId]);
+  const upRow=(i,k,v)=>setRows(rs=>rs.map((r,idx)=>idx===i?{...r,[k]:v}:r));
+  const addRow=()=>setRows(rs=>[...rs,{...emptyRow(),expDate:rs[rs.length-1]?.expDate||todayStr,bankAccount:rs[rs.length-1]?.bankAccount||"",projectId:rs[rs.length-1]?.projectId||null}]);
+  const removeRow=i=>setRows(rs=>rs.filter((_,idx)=>idx!==i));
+  const rowAmt=r=>{const q=Number(String(r.qty||1).replace(/,/g,""))||1;const p=Number(String(r.pricePerQty||0).replace(/,/g,""))||0;return q*p;};
+  const grandTotal=rows.reduce((s,r)=>s+rowAmt(r),0);
+  const fmt=v=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+  const inp={width:"100%",padding:"6px 9px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:".8rem",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
+  const errInp={...inp,borderColor:"#ef4444"};
+  const lbl=t=><div style={{fontSize:".65rem",fontWeight:700,color:"#64748b",marginBottom:2,textTransform:"uppercase",letterSpacing:".3px"}}>{t}</div>;
+  const handleSave=()=>{
+    const errs={};
+    rows.forEach((r,i)=>{
+      if(!r.note?.trim()) errs[`${i}_note`]=true;
+      if(!(Number(String(r.pricePerQty||0).replace(/,/g,""))||0)) errs[`${i}_price`]=true;
+    });
+    if(Object.keys(errs).length){setErrors(errs);return;}
+    if(editId){
+      const r=rows[0];const q=Number(String(r.qty||1).replace(/,/g,""))||1;const p=Number(String(r.pricePerQty||0).replace(/,/g,""))||0;
+      _setExpForm(()=>({...r,amount:q*p,qty:q,pricePerQty:p}));onSave({...r,amount:q*p,qty:q,pricePerQty:p});
+    } else {
+      onSaveAll(rows);
+    }
+  };
   return(
-    <Modal open={open} onClose={onClose} title={editId?"Edit Expense":"Log Expense"} key={expFormKey}>
-      {step===1?(
-        <>
-          {/* Row 1: Date + Supplier */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Date</div>
-              <input type="date" value={form.expDate||""} onChange={e=>f("expDate",e.target.value)} style={inpSt}/>
-            </div>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Supplier / Payee</div>
-              <input value={form.supplier||form.payee||""} onChange={e=>{f("supplier",e.target.value);f("payee",e.target.value);}} placeholder="e.g. Wilcon Home Depot" style={inpSt}/>
+    <Modal open={open} onClose={onClose} title={editId?"Edit Expense":`Log Expenses`} maxWidth={820}>
+      {rows.map((r,i)=>(
+        <div key={i} style={{border:`1.5px solid ${Object.keys(errors).some(k=>k.startsWith(i+"_"))?"#ef4444":"#e2e8f0"}`,borderRadius:12,marginBottom:10,overflow:"hidden"}}>
+          <div style={{background:"#f8fafc",padding:"7px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:"1px solid #e2e8f0"}}>
+            <span style={{fontWeight:700,color:"#475569",fontSize:".78rem"}}>#{i+1}</span>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              {rowAmt(r)>0&&<span style={{fontWeight:800,color:"#059669",fontSize:".82rem"}}>₱{fmt(rowAmt(r))}</span>}
+              {rows.length>1&&<button onClick={()=>removeRow(i)} style={{background:"#fee2e2",border:"none",borderRadius:5,width:22,height:22,cursor:"pointer",color:"#dc2626",fontSize:".85rem",lineHeight:1,display:"flex",alignItems:"center",justifyContent:"center"}}>×</button>}
             </div>
           </div>
-          {/* Project */}
-          <div style={{marginBottom:10}}>
-            <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Project Name</div>
-            <SearchSelect value={form.projectId||null} onChange={v=>f("projectId",v)} options={projList.map(d=>({value:d.id,label:(d.contact||d.client)+(d.ceNo?" · "+d.ceNo:"")}))} placeholder="Search project…" noneLabel="Company-wide (salaries, rent, overhead)" noneValue={null}/>
-          </div>
-          {/* Particulars */}
-          <div style={{marginBottom:10}}>
-            <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Particulars <span style={{fontWeight:400,color:"#ef4444",fontSize:".7rem"}}>*required</span></div>
-            <input value={form.note||""} onChange={e=>{f("note",e.target.value);setErrors(p=>({...p,note:null}));}} placeholder="e.g. 4L Gloss Paint Mix Paint" style={{...inpSt,...(errors.note?{borderColor:"#ef4444"}:{})}}/>
-            {errors.note&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3}}>{errors.note}</div>}
-          </div>
-          {/* Row 3: QTY + Price/Qty */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>QTY</div>
-              <input type="number" value={form.qty||"1"} onChange={e=>{f("qty",e.target.value);setErrors(p=>({...p,price:null}));}} placeholder="1" min="0" style={inpSt}/>
+          <div style={{padding:"10px 12px"}}>
+            <div style={{display:"grid",gridTemplateColumns:"130px 1fr 1fr",gap:7,marginBottom:7}}>
+              <div>{lbl("Date")}<input type="date" value={r.expDate||""} onChange={e=>upRow(i,"expDate",e.target.value)} style={inp}/></div>
+              <div>{lbl("Supplier / Payee")}<input value={r.supplier||r.payee||""} onChange={e=>{upRow(i,"supplier",e.target.value);upRow(i,"payee",e.target.value);}} placeholder="e.g. Wilcon Home Depot" style={inp}/></div>
+              <div>{lbl("Project")}<select value={r.projectId||""} onChange={e=>upRow(i,"projectId",e.target.value||null)} style={{...inp,background:"#fff"}}><option value="">— Company-wide —</option>{projList.map(d=><option key={d.id} value={d.id}>{(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:"")}</option>)}</select></div>
             </div>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Price Per QTY (₱) <span style={{fontWeight:400,color:"#ef4444",fontSize:".7rem"}}>*required</span></div>
-              <input type="number" value={form.pricePerQty||""} onChange={e=>{f("pricePerQty",e.target.value);setErrors(p=>({...p,price:null}));}} placeholder="0.00" style={{...inpSt,...(errors.price?{borderColor:"#ef4444"}:{})}}/>
-              {errors.price&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3}}>{errors.price}</div>}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 72px 120px 110px",gap:7,marginBottom:7}}>
+              <div>{lbl("Particulars *")}<input value={r.note||""} onChange={e=>{upRow(i,"note",e.target.value);setErrors(p=>({...p,[`${i}_note`]:false}));}} placeholder="Description of expense" style={errors[`${i}_note`]?errInp:inp}/></div>
+              <div>{lbl("QTY")}<input type="number" value={r.qty||"1"} onChange={e=>upRow(i,"qty",e.target.value)} min="0" style={inp}/></div>
+              <div>{lbl("Price / QTY (₱) *")}<input type="number" value={r.pricePerQty||""} onChange={e=>{upRow(i,"pricePerQty",e.target.value);setErrors(p=>({...p,[`${i}_price`]:false}));}} placeholder="0.00" style={errors[`${i}_price`]?errInp:inp}/></div>
+              <div>{lbl("Total")}<div style={{padding:"6px 9px",background:"#f0fdf4",borderRadius:7,fontWeight:800,color:"#059669",fontSize:".82rem",border:"1.5px solid #bbf7d0",height:30,display:"flex",alignItems:"center"}}>{rowAmt(r)>0?"₱"+fmt(rowAmt(r)):"—"}</div></div>
             </div>
-          </div>
-          {/* Auto total */}
-          {(qty>0&&price>0)&&(
-            <div style={{background:"#f0fdf4",borderRadius:8,padding:"8px 14px",marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-              <span style={{fontSize:".78rem",color:"#166534",fontWeight:600}}>Total Amount</span>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.1rem",color:"#059669"}}>₱{fmtAmt(computedAmt)}</span>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:7,alignItems:"end"}}>
+              <div>{lbl("Category")}<select value={r.category||"Materials"} onChange={e=>upRow(i,"category",e.target.value)} style={{...inp,background:"#fff"}}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</select></div>
+              <div>{lbl("Bank Account")}<select value={r.bankAccount||""} onChange={e=>upRow(i,"bankAccount",e.target.value||null)} style={{...inp,background:"#fff"}}><option value="">— Cash / untagged —</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</select></div>
+              <button onClick={()=>upRow(i,"_exp",!r._exp)} style={{background:r._exp?"#eff6ff":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 11px",cursor:"pointer",fontSize:".7rem",fontWeight:700,color:"#64748b",fontFamily:"inherit",whiteSpace:"nowrap",marginTop:14}}>{r._exp?"▲ less":"▼ more"}</button>
             </div>
-          )}
-          {/* Row 4: TIN + Category */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>TIN <span style={{fontWeight:400,color:"#94a3b8",fontSize:".68rem"}}>(optional)</span></div>
-              <input value={form.tin||""} onChange={e=>f("tin",e.target.value)} placeholder="Supplier TIN" style={inpSt}/>
-            </div>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Category</div>
-              <select value={form.category||"Materials"} onChange={e=>f("category",e.target.value)} style={{...inpSt,background:"#fff"}}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</select>
-            </div>
-          </div>
-          {/* Remarks */}
-          <div style={{marginBottom:10}}>
-            <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Remarks <span style={{fontWeight:400,color:"#94a3b8",fontSize:".68rem"}}>(optional)</span></div>
-            <input value={form.remarks||""} onChange={e=>f("remarks",e.target.value)} placeholder="e.g. For Popmart Davao project" style={inpSt}/>
-          </div>
-          {/* Receipt link + Bank (collapsible row) */}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div>
-              <select value={form.bankAccount||""} onChange={e=>f("bankAccount",e.target.value||null)} style={{...inpSt,background:"#fff"}}>
-                <option value="">— Cash / untagged —</option>
-                {BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Receipt Link <span style={{fontWeight:400,color:"#94a3b8",fontSize:".68rem"}}>(optional)</span></div>
-              <input type="url" value={form.receipt||""} onChange={e=>f("receipt",e.target.value)} placeholder="Google Drive link…" style={inpSt}/>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:10,marginTop:4}}>
-            <Btn full onClick={()=>{
-              const errs={};
-              if(!form.note?.trim()) errs.note="Particulars is required.";
-              if(!price||price<=0) errs.price="Price Per QTY is required.";
-              if(Object.keys(errs).length){setErrors(errs);return;}
-              setStep(2);
-            }}>Review →</Btn>
-            <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
-          </div>
-        </>
-      ):(
-        <>
-          <div style={{background:"#f8fafc",borderRadius:12,padding:"16px 18px",marginBottom:16}}>
-            <div style={{fontSize:".7rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:12}}>Confirm Expense Details</div>
-            {[
-              ["Date",form.expDate||"(not set)"],
-              ["Supplier",form.supplier||form.payee||"—"],
-              ["Project",projName],
-              ["Particulars",form.note],
-              ["QTY × Price",`${qty} × ₱${fmtAmt(price)}`],
-              ["Total Amount","₱"+fmtAmt(computedAmt)],
-              form.tin?["TIN",form.tin]:null,
-              form.remarks?["Remarks",form.remarks]:null,
-              ["Category",form.category],
-            ].filter(Boolean).map(([l,v])=>(
-              <div key={l} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #e2e8f0",fontSize:".85rem"}}>
-                <span style={{color:"#64748b",minWidth:100}}>{l}</span>
-                <span style={{fontWeight:600,color:l==="Total Amount"?"#059669":"#0f172a",textAlign:"right",maxWidth:"55%"}}>{v}</span>
+            {r._exp&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:7,paddingTop:7,borderTop:"1px dashed #e2e8f0"}}>
+                <div>{lbl("TIN (optional)")}<input value={r.tin||""} onChange={e=>upRow(i,"tin",e.target.value)} placeholder="Supplier TIN" style={inp}/></div>
+                <div>{lbl("Remarks (optional)")}<input value={r.remarks||""} onChange={e=>upRow(i,"remarks",e.target.value)} placeholder="Additional notes" style={inp}/></div>
+                <div>{lbl("Receipt Link (optional)")}<input type="url" value={r.receipt||""} onChange={e=>upRow(i,"receipt",e.target.value)} placeholder="Google Drive link…" style={inp}/></div>
               </div>
-            ))}
+            )}
           </div>
-          <div style={{background:form.projectId?"#eff6ff":"#fff7ed",borderRadius:10,padding:"10px 14px",marginBottom:16,fontSize:".8rem",color:form.projectId?"#3b82f6":"#f97316"}}>
-            {form.projectId?`✓ Tagged to ${projName}`:"⚠ Company-wide — not linked to a specific project."}
-          </div>
-          <div style={{display:"flex",gap:10}}>
-            <Btn full variant="green" onClick={handleExpSave}>✓ Confirm &amp; Save</Btn>
-            <Btn variant="ghost" onClick={()=>setStep(1)}>← Go Back</Btn>
-          </div>
-        </>
-      )}
+        </div>
+      ))}
+      <button onClick={addRow} style={{width:"100%",padding:"9px",border:"2px dashed #cbd5e1",borderRadius:10,background:"#f8fafc",cursor:"pointer",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",marginBottom:14}}>＋ Add Another Expense</button>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:"2px solid #e2e8f0",paddingTop:12}}>
+        <div>
+          <div style={{fontSize:".65rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase"}}>Grand Total</div>
+          <div style={{fontWeight:900,fontSize:"1.1rem",color:"#059669"}}>₱{fmt(grandTotal)}</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onClose} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",cursor:"pointer",color:"#475569"}}>Cancel</button>
+          <button onClick={handleSave} style={{background:"#0f172a",border:"none",borderRadius:8,padding:"8px 20px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".84rem",cursor:"pointer"}}>
+            {editId?"Save Changes":`Save ${rows.length} Expense${rows.length!==1?"s":""}`}
+          </button>
+        </div>
+      </div>
     </Modal>
   );
 }
@@ -4956,6 +4911,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setEditExpId(null);
     setExpModal(false);
   };
+  const batchSaveExps=(rows)=>{
+    const valid=rows.map(data=>{
+      if(!data.note?.trim()) return null;
+      const qty=Number(String(data.qty||1).replace(/,/g,""))||1;
+      const price=Number(String(data.pricePerQty||0).replace(/,/g,""))||0;
+      const amt=qty*price;
+      if(!amt) return null;
+      return {...data,qty,pricePerQty:price,amount:amt,id:uid(),acctStatus:"Logged"};
+    }).filter(Boolean);
+    if(!valid.length) return;
+    upExps(es=>[...es,...valid]);
+    if(isSupabaseReady()){valid.forEach(rec=>sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>{console.error("FabHub batch expense:",e.message);toastEmit("⚠️ Some expenses saved locally only — no server sync","warning",9000);}));}
+    else{toastEmit("⚠️ Expenses saved locally only — no server connection. Do not close this tab!","warning",9000);}
+    setEditExpId(null);
+    setExpModal(false);
+    toastEmit(`✅ ${valid.length} expense${valid.length!==1?"s":""} logged`,"success");
+  };
   const routeExpToBizLink=(expId,bankId)=>{
     const exp=exps.find(e=>e.id===expId);
     if(!exp) return;
@@ -5539,7 +5511,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} role={role}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={projList} clientName={clientName} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
           <>
@@ -10993,7 +10965,7 @@ First few:
           </>
         );
       })()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} editId={editExpId} projList={wonDeals} clientName={clientName}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName}/>
       {routeModal&&(()=>{
         const exp=exps.find(e=>e.id===routeModal);
         if(!exp) return null;
@@ -16282,6 +16254,7 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   const today=new Date().toISOString().split("T")[0];
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  const ACCT_CLR={"For Accounting":"#d97706","Checked":"#2563eb","Payment Ordered":"#059669"};
   const[stageFilter,setStageFilter]=useState("For Accounting");
   const[open,setOpen]=useState({});
   const[notesDraft,setNotesDraft]=useState({});
