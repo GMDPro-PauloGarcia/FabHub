@@ -4978,6 +4978,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     toastEmit("✅ Routed to Check Payables — CV "+nextNo+" created","success");
   };
   const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
+  const markDpStatus=(id,st)=>{upExps(es=>es.map(e=>e.id===id?{...e,acctStatus:st}:e));toastEmit(`Status updated → ${st}`,"success");};
 
   const openAddCv=()=>{
     const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
@@ -10911,19 +10912,17 @@ First few:
         {(acctSearch||acctCat!=="All"||acctProj!=="all"||acctMonth)&&<button onClick={()=>{setAcctSearch("");setAcctCat("All");setAcctProj("all");setAcctMonth("");}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>✕ Clear</button>}
       </div>
       {(()=>{
-        let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
+        let list=[...exps].filter(e=>e.acctStatus&&e.acctStatus!=="Logged").sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
         if(acctMonth) list=list.filter(e=>e.expDate?.startsWith(acctMonth));
         if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
         if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
         if(acctProj==="company") list=list.filter(e=>!e.projectId);
         else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
         const DGROUPS=[
-          {key:"Logged",   label:"Logged",      dot:"#6366f1", clr:"#4338ca", items:list.filter(e=>!e.acctStatus||e.acctStatus==="Logged")},
           {key:"ForPay",   label:"For Payment", dot:"#f59e0b", clr:"#b45309", items:list.filter(e=>e.acctStatus==="For Payment")},
           {key:"Paid",     label:"Paid",         dot:"#059669", clr:"#059669", items:list.filter(e=>e.acctStatus==="Paid")},
         ];
         const toggleDp=key=>setDpCollapsed(s=>{const n=new Set(s);n.has(key)?n.delete(key):n.add(key);return n;});
-        const markDpStatus=(id,st)=>upExps(es=>es.map(e=>e.id===id?{...e,acctStatus:st}:e));
         return(
           <>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"6px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
