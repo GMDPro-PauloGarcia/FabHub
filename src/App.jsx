@@ -8524,72 +8524,71 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const addendaOfWon=deals.filter(d=>d.parentDealId&&wonIds.has(d.parentDealId)&&!wonIds.has(d.id));
                 const activeWon=[...activeWonBase,...addendaOfWon.filter(d=>activeWonBase.find(p=>p.id===d.parentDealId))];
                 const doneWon  =[...doneWonBase, ...addendaOfWon.filter(d=>doneWonBase.find(p=>p.id===d.parentDealId))];
-                const AWARD_GRID="80px 1fr 130px 64px 84px 80px 36px";
-                const AwardRow=({d,list,i})=>{
+                const STAGE_CLR_PIPE={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
+                const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
+                  const pc=pcards[d.id];
                   const paid=Number(d.amountPaid)||0;
                   const inv=Number(d.invoiced)||0;
-                  const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
-                  const pc=pcards[d.id];
-                  const tatLabel=pc?.targetEndDate?new Date(pc.targetEndDate).toLocaleDateString("en-PH",{month:"short",day:"numeric"}):"";
-                  const ae=d.salesOwner?(d.salesOwner.split(" ").filter(w=>!["de","del","ng","la","the"].includes(w.toLowerCase())).map(w=>w[0]||"").join("").toUpperCase().slice(0,3)):"";
-                  const [expanded,setExpanded]=React.useState(false);
-                  if(isMobile) return(
-                    <div style={{padding:"12px 14px",borderBottom:i<list.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:2}}>{d.contact||d.client}</div>
-                          <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
-                            {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
-                            {d.client&&d.contact&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</span>}
-                            {jo?.pm1&&<span>👷 {jo.pm1.split(" ")[0]}</span>}
-                            {ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"0 4px",fontWeight:700,fontSize:".65rem"}}>{ae}</span>}
-                            {tatLabel&&<span style={{color:"#8b5cf6"}}>📅 {tatLabel}</span>}
-                          </div>
-                        </div>
-                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
-                          <span style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".9rem"}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t)+"📊":"—";}return fmtK(Number(d.value));})()}</span>
-                          <span style={{fontSize:".7rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}% paid</span>
-                        </div>
-                      </div>
-                      <div style={{display:"flex",gap:6,alignItems:"center",justifyContent:"flex-end"}}>
-                        <button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"6px 10px",fontSize:".78rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
-                        {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"6px 9px",fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
-                      </div>
-                    </div>
-                  );
+                  const contractVal=Number(d.value)||0;
+                  const outstanding=Math.max(0,inv-paid);
+                  const pctPaid=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const sc=STAGE_CLR_PIPE[d.stage]||"#94a3b8";
+                  const stageLabel=d.stage?.replace(/^\d+ · /,"")||"—";
+                  const dLeftP=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date(today2))/86400000):null;
+                  const isOverP=dLeftP!==null&&dLeftP<0;
                   return(
-                    <div style={{borderBottom:i<list.length-1?"1px solid #f1f5f9":"none"}}>
-                      <div onClick={()=>setExpanded(x=>!x)}
-                        style={{display:"grid",gridTemplateColumns:AWARD_GRID,gap:0,padding:"10px 16px",alignItems:"center",cursor:"pointer",background:expanded?"#f8fafc":"#fff",transition:"background .12s",minWidth:580}}
-                        onMouseEnter={e=>{if(!expanded)e.currentTarget.style.background="#f8fafc";}}
-                        onMouseLeave={e=>{e.currentTarget.style.background=expanded?"#f8fafc":"#fff";}}>
-                        <div style={{fontWeight:700,color:"#6366f1",fontSize:".72rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:6}}>{d.ceNo||"—"}</div>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.contact||d.client||"—"}</div>
-                        <div style={{fontSize:".72rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.client||"—"}</div>
-                        <div>{ae&&<span style={{background:"#eff6ff",color:"#3b82f6",borderRadius:4,padding:"2px 6px",fontWeight:700,fontSize:".62rem"}}>{ae}</span>}</div>
-                        <div style={{textAlign:"right",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".78rem",paddingRight:4}}>{(()=>{if(BUDGET_ONLY.includes(role)){const t=qsBudgetTotal(d.id);return t>0?fmtK(t):"—";}return fmtK(Number(d.value));})()}</div>
-                        <div style={{textAlign:"right",paddingRight:4}}>
-                          <div style={{fontSize:".67rem",color:pct===100?"#059669":"#94a3b8",fontWeight:700}}>{pct}%</div>
-                          <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:2}}><div style={{height:"100%",width:pct+"%",background:pct===100?"#059669":"#10b981",borderRadius:2}}/></div>
+                    <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
+                      onClick={()=>openEditDeal(d)}
+                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                      onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":""}>
+                      <td style={{width:4,padding:0,background:isChild?"#f59e0b":sc}}></td>
+                      <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
+                        {isChild&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".52rem",fontWeight:700,color:"#f59e0b",marginBottom:2,letterSpacing:".5px"}}>↳ ADDENDUM</div>}
+                        <div style={{fontWeight:700,fontSize:".82rem",color:"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
+                        {d.client!==d.contact&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
+                          {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
+                          {jo?.joNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{jo.joNo}</span>}
                         </div>
-                        <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{expanded?"▲":"▼"}</div>
-                      </div>
-                      {expanded&&(
-                        <div style={{padding:"10px 16px 14px",background:"#fafafa",borderTop:"1px solid #f1f5f9",display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
-                          {jo?.pm1&&<span style={{fontSize:".72rem",color:"#64748b"}}>👷 <strong>PM:</strong> {jo.pm1}</span>}
-                          {tatLabel&&<span style={{fontSize:".72rem",color:"#8b5cf6"}}>📅 <strong>TAT:</strong> {tatLabel}</span>}
-                          {d.product&&<span style={{fontSize:".72rem",color:"#64748b"}}><strong>Product:</strong> {d.product}</span>}
-                          {escalations.filter(e=>e.dealId===d.id).map((e,ei)=>(
-                            <span key={ei} style={{background:e.severity==="high"?"#fef2f2":"#fffbeb",color:e.severity==="high"?"#dc2626":"#92400e",border:`1px solid ${e.severity==="high"?"#fecaca":"#fde68a"}`,borderRadius:4,padding:"2px 6px",fontWeight:700,fontSize:".65rem"}}>{e.type}</span>
-                          ))}
-                          <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                            <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"5px 10px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
-                            {role==="Manager"&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"5px 9px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Delete</button>}
-                          </div>
+                      </td>
+                      <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                        <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{stageLabel}</span>
+                      </td>
+                      <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:"10px 14px",verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
+                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".78rem",fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
+                      </td>
+                      <td style={{padding:"10px 14px",verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
+                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".75rem",fontWeight:700,color:pctPaid===100?"#059669":"#0d1117"}}>₱{paid.toLocaleString("en-PH")}</div>
+                        {inv>0&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:700,padding:"1px 5px",borderRadius:3,marginTop:2,display:"inline-block",
+                          color:pctPaid===100?"#065f46":pctPaid>50?"#1d4ed8":"#92400e",
+                          background:pctPaid===100?"#ecfdf5":pctPaid>50?"#eff6ff":"#fffbeb",
+                          border:`1px solid ${pctPaid===100?"#a7f3d0":pctPaid>50?"#bfdbfe":"#fde68a"}`}}>{pctPaid}%</span>}
+                      </td>
+                      <td style={{padding:"10px 14px",verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
+                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".75rem",fontWeight:700,color:outstanding>0?"#ef4444":"#94a3b8"}}>
+                          {outstanding>0?`₱${outstanding.toLocaleString("en-PH")}`:"—"}
                         </div>
-                      )}
-                    </div>
+                      </td>
+                      <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                        {pc?.targetEndDate?(
+                          <>
+                            <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".68rem",fontWeight:700,color:isOverP?"#dc2626":dLeftP!==null&&dLeftP<=7?"#d97706":"#059669"}}>{pc.targetEndDate}</div>
+                            {dLeftP!==null&&<span style={{display:"inline-block",marginTop:2,fontFamily:"'IBM Plex Mono',monospace",fontSize:".54rem",fontWeight:700,padding:"1px 5px",borderRadius:3,
+                              color:isOverP?"#991b1b":dLeftP<=7?"#92400e":"#065f46",
+                              background:isOverP?"#fef2f2":dLeftP<=7?"#fffbeb":"#ecfdf5",
+                              border:`1px solid ${isOverP?"#fecaca":dLeftP<=7?"#fde68a":"#a7f3d0"}`}}>
+                              {isOverP?`⚠ ${Math.abs(dLeftP)}d over`:`${dLeftP}d left`}
+                            </span>}
+                          </>
+                        ):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}
+                      </td>
+                      <td style={{padding:"10px 10px",verticalAlign:"middle"}}>
+                        <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                      </td>
+                    </tr>
                   );
                 };
                 const AwardGroups=({deals:list})=>{
@@ -8609,28 +8608,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                             style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:isOpen?"#1e293b":"#f8fafc",border:`1.5px solid ${isOpen?"#334155":"#e2e8f0"}`,borderRadius:isOpen?"10px 10px 0 0":"10px",padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
                             <span style={{fontWeight:800,color:isOpen?"#f59e0b":"#0f172a",fontSize:".85rem"}}>{grp}</span>
                             <span style={{background:isOpen?"rgba(255,255,255,.12)":"#e2e8f0",color:isOpen?"#fff":"#64748b",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700}}>{gd.length}{gdChildren.length>0&&`+${gdChildren.length}`}</span>
-                            <span style={{marginLeft:"auto",fontWeight:700,color:isOpen?"#4ade80":"#10b981",fontSize:".82rem"}}>{fmtK(total)}</span>
-                            {paid>0&&!isMobile&&<span style={{fontSize:".68rem",color:isOpen?"rgba(255,255,255,.5)":"#94a3b8",fontWeight:600}}>{Math.round(paid/total*100)}% collected</span>}
+                            <span style={{marginLeft:"auto",fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:isOpen?"#4ade80":"#10b981",fontSize:".82rem"}}>₱{total.toLocaleString("en-PH")}</span>
+                            {paid>0&&!isMobile&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".65rem",color:isOpen?"rgba(255,255,255,.5)":"#94a3b8",fontWeight:600}}>{Math.round(paid/total*100)}% collected</span>}
                             <span style={{fontSize:".65rem",color:isOpen?"rgba(255,255,255,.4)":"#94a3b8",marginLeft:4}}>{isOpen?"▲":"▼"}</span>
                           </button>
                           {isOpen&&(
                             <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #e2e8f0",borderTop:"none",overflow:"hidden"}}>
                               <div style={{overflowX:"auto"}}>
-                                <ColHeader/>
-                                {gd.map((d,i)=>{
-                                  const children=allChildren.filter(c=>c.parentDealId===d.id);
-                                  return(
-                                    <React.Fragment key={d.id}>
-                                      <AwardRow d={d} list={gd} i={i}/>
-                                      {children.map((c,ci)=>(
-                                        <div key={c.id} style={{borderLeft:"3px solid #f59e0b",background:"#fffbeb"}}>
-                                          <div style={{fontSize:".55rem",color:"#f59e0b",fontWeight:700,padding:"3px 12px 0",letterSpacing:".5px"}}>↳ ADDENDUM</div>
-                                          <AwardRow d={c} list={children} i={ci}/>
-                                        </div>
+                                <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
+                                  <thead>
+                                    <tr style={{background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>
+                                      <th style={{width:4,padding:0}}></th>
+                                      {["Project / Client","Stage","AE","PM","Contract","Collected","Outstanding","Turnover",""].map(h=>(
+                                        <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".09em",color:"#94a3b8",padding:"9px 14px",textAlign:["Contract","Collected","Outstanding"].includes(h)?"right":"left",whiteSpace:"nowrap"}}>{h}</th>
                                       ))}
-                                    </React.Fragment>
-                                  );
-                                })}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {gd.map(d=>{
+                                      const children=allChildren.filter(c=>c.parentDealId===d.id);
+                                      return(
+                                        <React.Fragment key={d.id}>
+                                          <AwardRow d={d}/>
+                                          {children.map(c=><AwardRow key={c.id} d={c} isChild={true}/>)}
+                                        </React.Fragment>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           )}
@@ -8639,13 +8644,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     })}
                   </>);
                 };
-                function ColHeader(){return isMobile?null:(
-                  <div style={{display:"grid",gridTemplateColumns:AWARD_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:580}}>
-                    {["CE #","Project","Client","AE","Value","Payment",""].map((h,i)=>(
-                      <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i>=4&&i<=5?"right":"left"}}>{h}</div>
-                    ))}
-                  </div>
-                );}
                 return(<>
                   {/* Active Awarded — one collapsible card per project type */}
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
