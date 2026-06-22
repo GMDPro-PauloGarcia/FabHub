@@ -2599,6 +2599,8 @@ export default function App(){
   const[receivingPr, setReceivingPr]=useState(null);  // PR being received (partial receiving modal)
   const[rxQty,       setRxQty]     =useState("");
   const[rxDrNo,      setRxDrNo]    =useState("");
+  const[issueModal,  setIssueModal]=useState(false);  // quick "Issue to Site" stock OUT modal
+  const[issueForm,   setIssueForm] =useState({itemId:"",qty:"",projectId:"",notes:"",date:""});
   const[prs,         setPrs]       = useState([]);   // Purchase Requests
   const[addenda,     setAddenda]   = useState([]);   // Project Addenda
   const[billings,    setBillings]  = useState([]);   // Billing milestones
@@ -5280,6 +5282,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const openDesignEdit=()=>{setDesignForm({...(proj?.design||mkDesign())});setDesignModal(true);};
   const saveDesign=()=>{
     const next={...designForm};
+    if(next.status==="Done"&&!next.link){toastEmit("⚠ Please add a file link before marking design Done.","warning");return;}
     if(proj?.design?.status!==next.status) next.statusHistory=[...(proj?.design?.statusHistory||[]),{status:next.status,date:today,by:role}];
     upProj(selProj,p=>({...p,design:next}));
     if(next.status==="Done"&&proj?.currentStage==="Design") upProj(selProj,p=>({...p,currentStage:"Fabrication",progress:{...p.progress,Design:100}}));
@@ -10172,7 +10175,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"Warehouse"} 👋</div>
             <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Warehouse · {todayL}</div>
           </div>
-          <div style={{display:"flex",gap:8}}>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button onClick={()=>{setIssueForm({itemId:"",qty:"",projectId:"",notes:"",date:today});setIssueModal(true);}} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📤 Issue to Site</button>
             <button onClick={()=>setPage("inventory")} style={{background:"#64748b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📦 Inventory</button>
             <button onClick={()=>setPage("stockmove")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Stock Log</button>
           </div>
@@ -10291,7 +10295,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               )}
 
               {/* Quick links */}
-              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10}}>
+                <div onClick={()=>{setIssueForm({itemId:"",qty:"",projectId:"",notes:"",date:today});setIssueModal(true);}} style={{background:"#fff7ed",borderRadius:10,padding:"16px",border:"1.5px solid #fed7aa",cursor:"pointer",textAlign:"center"}}>
+                  <div style={{fontSize:"1.4rem"}}>📤</div>
+                  <div style={{fontWeight:700,color:"#c2410c",marginTop:6,fontSize:".9rem"}}>Issue to Site</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>Log stock OUT without leaving this page</div>
+                </div>
                 <div onClick={()=>setPage("inventory")} style={{background:"#fff",borderRadius:10,padding:"16px",border:"1.5px solid #e2e8f0",cursor:"pointer",textAlign:"center"}}>
                   <div style={{fontSize:"1.4rem"}}>📦</div>
                   <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".9rem"}}>Inventory</div>
@@ -10299,8 +10308,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
                 <div onClick={()=>setPage("stockmove")} style={{background:"#fff",borderRadius:10,padding:"16px",border:"1.5px solid #e2e8f0",cursor:"pointer",textAlign:"center"}}>
                   <div style={{fontSize:"1.4rem"}}>📋</div>
-                  <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".9rem"}}>Stock Movements</div>
-                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>Log IN / OUT / Adjust</div>
+                  <div style={{fontWeight:700,color:"#0f172a",marginTop:6,fontSize:".9rem"}}>Stock Log</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>Full history · IN / OUT / Adjust</div>
                 </div>
               </div>
             </div>
@@ -10374,6 +10383,80 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
           </div>
         )}
+
+        {/* ── Issue to Site Modal ─────────────────────────── */}
+        {issueModal&&(
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={e=>{if(e.target===e.currentTarget)setIssueModal(false);}}>
+            <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.25rem",color:"#0f172a",marginBottom:4}}>📤 Issue to Site</div>
+              <div style={{fontSize:".8rem",color:"#64748b",marginBottom:18,paddingBottom:14,borderBottom:"1px solid #f1f5f9"}}>Log stock being sent out to a project site</div>
+              <div style={{display:"flex",flexDirection:"column",gap:12}}>
+                <div>
+                  <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Item * <span style={{color:"#94a3b8",fontWeight:400}}>({inventory.filter(i=>i.qtyOnHand>0).length} in stock)</span></label>
+                  <select value={issueForm.itemId} onChange={e=>setIssueForm(f=>({...f,itemId:e.target.value}))}
+                    style={{width:"100%",border:`1.5px solid ${issueForm.itemId?"#3b82f6":"#e2e8f0"}`,borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a"}}>
+                    <option value="">— Select item —</option>
+                    {[...inventory].filter(i=>i.status!=="Inactive").sort((a,b)=>a.name.localeCompare(b.name)).map(i=>(
+                      <option key={i.id} value={i.id}>{i.name} — {i.qtyOnHand} {i.unit} on hand</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div>
+                    <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Qty Issued *</label>
+                    <input type="number" min="0.01" step="any" value={issueForm.qty} onChange={e=>setIssueForm(f=>({...f,qty:e.target.value}))}
+                      placeholder="0"
+                      style={{width:"100%",border:`1.5px solid ${issueForm.qty?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".92rem",fontWeight:700,color:"#0f172a",textAlign:"center",boxSizing:"border-box"}}/>
+                    {issueForm.itemId&&issueForm.qty&&(()=>{
+                      const item=inventory.find(i=>i.id===issueForm.itemId);
+                      const remaining=(item?.qtyOnHand||0)-Number(issueForm.qty);
+                      return remaining<0?<div style={{fontSize:".68rem",color:"#ef4444",marginTop:3,fontWeight:700}}>⚠ Only {item?.qtyOnHand} {item?.unit} on hand</div>
+                        :<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3}}>Remaining: {remaining} {item?.unit}</div>;
+                    })()}
+                  </div>
+                  <div>
+                    <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Date</label>
+                    <input type="date" value={issueForm.date} onChange={e=>setIssueForm(f=>({...f,date:e.target.value}))}
+                      style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a",boxSizing:"border-box"}}/>
+                  </div>
+                </div>
+                <div>
+                  <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Project / Site</label>
+                  <select value={issueForm.projectId} onChange={e=>setIssueForm(f=>({...f,projectId:e.target.value}))}
+                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a"}}>
+                    <option value="">— Optional —</option>
+                    {wonDeals.filter(d=>d.stage!=="14 · Completed").map(d=>(
+                      <option key={d.id} value={d.id}>{d.client}{d.ceNo?` (${d.ceNo})`:""}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label style={{fontSize:".75rem",fontWeight:700,color:"#475569",display:"block",marginBottom:5}}>Notes</label>
+                  <input value={issueForm.notes} onChange={e=>setIssueForm(f=>({...f,notes:e.target.value}))} placeholder="Reason, site location, requested by…"
+                    style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#0f172a",boxSizing:"border-box"}}/>
+                </div>
+              </div>
+              <div style={{display:"flex",gap:10,marginTop:20}}>
+                <button disabled={!issueForm.itemId||!issueForm.qty||Number(issueForm.qty)<=0} onClick={()=>{
+                  const item=inventory.find(i=>i.id===issueForm.itemId);
+                  if(!item) return;
+                  if(Number(issueForm.qty)>Number(item.qtyOnHand)){if(!window.confirm(`Only ${item.qtyOnHand} ${item.unit} on hand. Issue ${issueForm.qty} anyway?`)) return;}
+                  logStockMove({itemId:issueForm.itemId,moveType:"OUT — Used in Project",qty:Number(issueForm.qty),unitCost:0,projectId:issueForm.projectId||"",notes:issueForm.notes||"",date:issueForm.date||today});
+                  const deal=issueForm.projectId?wonDeals.find(d=>d.id===issueForm.projectId):null;
+                  toastEmit(`📤 Issued ${issueForm.qty} ${item.unit} of ${item.name}${deal?` → ${deal.client}`:""}`,"success");
+                  setIssueModal(false);
+                }}
+                  style={{flex:1,background:issueForm.itemId&&issueForm.qty&&Number(issueForm.qty)>0?"#f97316":"#e2e8f0",border:"none",borderRadius:9,padding:"11px 0",color:issueForm.itemId&&issueForm.qty&&Number(issueForm.qty)>0?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",cursor:issueForm.itemId&&issueForm.qty&&Number(issueForm.qty)>0?"pointer":"not-allowed"}}>
+                  📤 Confirm Issue
+                </button>
+                <button onClick={()=>setIssueModal(false)}
+                  style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 16px",color:"#64748b",fontFamily:"inherit",fontWeight:600,fontSize:".83rem",cursor:"pointer"}}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </Wrap>
     );
   }
@@ -10417,12 +10500,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <span>Designer: {p.design?.designer||"—"}</span>
                 <span>Due: {p.design?.dueDate||"—"}</span>
               </div>
-              <div style={{marginTop:10,display:"flex",gap:7,flexWrap:"wrap"}}>
+              <div style={{marginTop:10,display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
                 {DESIGN_STATUSES.map(s=>(
-                  <button key={s} onClick={e=>{e.stopPropagation();const next={...p.design,status:s,statusHistory:[...(p.design?.statusHistory||[]),{status:s,date:today,by:"Design"}]};upProj(d.id,x=>({...x,design:next}));if(s==="Done"&&p.currentStage==="Design")upProj(d.id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100}}));}} style={{padding:"4px 11px",border:`1.5px solid ${ds===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:ds===s?DS_CLR[s]+"18":"#fff",color:ds===s?DS_CLR[s]:"#94a3b8",fontWeight:ds===s?700:400,cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>
+                  <button key={s} onClick={e=>{
+                    e.stopPropagation();
+                    if(s==="Done"&&!p.design?.link){
+                      toastEmit("⚠ Please add a file / link before marking Done.","warning");
+                      setSelProj(d.id);setOpsTab("design");
+                      return;
+                    }
+                    const next={...p.design,status:s,statusHistory:[...(p.design?.statusHistory||[]),{status:s,date:today,by:"Design"}]};
+                    upProj(d.id,x=>({...x,design:next}));
+                    if(s==="Done"&&p.currentStage==="Design")upProj(d.id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100}}));
+                  }} style={{padding:"4px 11px",border:`1.5px solid ${ds===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:ds===s?DS_CLR[s]+"18":"#fff",color:ds===s?DS_CLR[s]:"#94a3b8",fontWeight:ds===s?700:400,cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>
                     {s}
                   </button>
                 ))}
+                <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} style={{marginLeft:"auto",padding:"4px 10px",border:"1.5px solid #fecaca",borderRadius:16,background:"#fef2f2",color:"#dc2626",fontWeight:600,cursor:"pointer",fontSize:".68rem",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                  ⛔ Raise Blocker
+                </button>
               </div>
             </Card>
           );
