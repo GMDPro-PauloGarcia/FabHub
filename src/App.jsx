@@ -10035,7 +10035,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
+    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -10719,6 +10719,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
         deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove}
+        suppliers={suppliers} addSupplier={addSupplier}
         session={session} role={role}/>
     </Wrap>
   );
@@ -19084,6 +19085,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
   useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
+  const[viewMode,setViewMode]=useState("list");
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
@@ -19203,7 +19205,20 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📋 Project Cards</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{wonDeals.length} awarded · {totalCards} cards · all departments in one view</div>
         </div>
-        {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setShowScopeForm(false);setScopeForm({title:"",desc:"",value:"",ceNo:""});setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {!selDeal&&(
+            <div style={{display:"flex",background:"#fff",border:"1px solid #e2e8f0",borderRadius:8,padding:3,gap:2}}>
+              {[["list","☰ List"],["card","⊞ Cards"]].map(([v,l])=>(
+                <button key={v} onClick={()=>setViewMode(v)}
+                  style={{padding:"4px 12px",borderRadius:5,border:"none",fontFamily:"inherit",fontSize:".72rem",fontWeight:600,cursor:"pointer",
+                    background:viewMode===v?"#0f172a":"transparent",color:viewMode===v?"#fff":"#64748b",transition:"all .12s"}}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          )}
+          {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setShowScopeForm(false);setScopeForm({title:"",desc:"",value:"",ceNo:""});setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
+        </div>
       </div>
 
       {/* KPI bar — only on list view */}
@@ -19250,7 +19265,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             {(pcFilter||pcDeptFilter!=="All"||pcSearch)&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");setPcSearch("");}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
           {(()=>{
-            // "completed" = Close-Out + 14·Completed (both now in wonDeals); default = active only
+            // shared filter logic
             let list=pcFilter==="overdue"
               ?wonDeals
               :pcFilter==="completed"
@@ -19311,6 +19326,80 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               );
             };
             if(parentList.length===0&&childDeals.length===0) return <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No projects match this filter.</div>;
+
+            // ── CARD VIEW ────────────────────────────────────────────────────
+            if(viewMode==="card") return(
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(340px,1fr))",gap:14}}>
+                {parentList.map(d=>{
+                  const pc=pcards[d.id];
+                  const h=getHealth(d,pc);const[hc]=HC[h];
+                  const joC=jos.find(j=>j.dealId===d.id);
+                  const dLeftC=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
+                  const isOverC=dLeftC!==null&&dLeftC<0;
+                  const projSwos=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
+                  const pms=[pc?.pm1||joC?.pm1,pc?.pm2||joC?.pm2,pc?.pm3||joC?.pm3].filter(Boolean).join(", ")||"—";
+                  const aeC=pc?.aeAssigned||joC?.aeAssigned||d.salesOwner||"—";
+                  return(
+                    <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
+                      style={{background:"#fff",border:"1px solid #e2e8f0",borderLeft:`4px solid ${hc}`,borderRadius:"2px 10px 10px 2px",overflow:"hidden",
+                        boxShadow:"0 1px 4px rgba(0,0,0,.05)",cursor:"pointer",transition:"box-shadow .15s,transform .15s"}}
+                      onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.09)";e.currentTarget.style.transform="translateY(-1px)";}}
+                      onMouseLeave={e=>{e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.05)";e.currentTarget.style.transform="translateY(0)";}}>
+                      {/* Card head */}
+                      <div style={{padding:"13px 15px 10px",borderBottom:"1px solid #e2e8f0",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                        <div style={{minWidth:0}}>
+                          <div style={{fontWeight:800,fontSize:".9rem",color:"#0f172a",letterSpacing:"-.02em",lineHeight:1.25,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                          <div style={{fontSize:".68rem",color:"#7c3aed",marginTop:2}}>{d.client!==d.contact?`📁 ${d.client}`:""}</div>
+                          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:5}}>
+                            {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
+                            {joC&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{joC.joNo}</span>}
+                            {pc?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH Only</span>}
+                          </div>
+                        </div>
+                        <span style={{flexShrink:0,fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                      </div>
+                      {/* Spec table */}
+                      <table style={{width:"100%",borderCollapse:"collapse"}}>
+                        {[["📍 Location",d.location||joC?.location||"—"],["🤝 AE",aeC],["👷 PM",pms],["📋 Coordinator",pc?.coordinator||joC?.coordinator||"—"]].map(([lbl,val])=>(
+                          <tr key={lbl} style={{borderBottom:"1px solid #e2e8f0"}}>
+                            <td style={{width:110,fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",padding:"7px 14px",background:"#f8fafc",borderRight:"1px solid #e2e8f0",whiteSpace:"nowrap",verticalAlign:"middle"}}>{lbl}</td>
+                            <td style={{padding:"7px 14px",fontSize:".78rem",fontWeight:500,color:val==="—"?"#cbd5e1":"#0f172a",fontStyle:val==="—"?"italic":"normal"}}>{val}</td>
+                          </tr>
+                        ))}
+                        {projSwos.length>0&&(
+                          <tr style={{borderBottom:"1px solid #e2e8f0"}}>
+                            <td style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",padding:"7px 14px",background:"#f8fafc",borderRight:"1px solid #e2e8f0",whiteSpace:"nowrap",verticalAlign:"top"}}>🔧 Subcons</td>
+                            <td style={{padding:"7px 14px"}}>
+                              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                                {projSwos.map(w=><span key={w.id} style={{fontSize:".68rem",fontWeight:600,padding:"1px 8px",borderRadius:20,background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1d4ed8"}}>{w.subcontractor||"?"}</span>)}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                        <tr>
+                          <td style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",padding:"7px 14px",background:"#f8fafc",borderRight:"1px solid #e2e8f0",whiteSpace:"nowrap",verticalAlign:"middle"}}>📅 Timeline</td>
+                          <td style={{padding:"7px 14px"}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".68rem",color:"#94a3b8"}}>{joC?.startDate||d.awardDate||"—"}</span>
+                              <span style={{color:"#cbd5e1",fontSize:".6rem"}}>→</span>
+                              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".68rem",fontWeight:700,color:isOverC?"#dc2626":dLeftC!==null&&dLeftC<=7?"#d97706":"#059669"}}>{pc?.targetEndDate||"No date"}</span>
+                              {dLeftC!==null&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:700,padding:"1px 7px",borderRadius:3,
+                                color:isOverC?"#991b1b":dLeftC<=7?"#92400e":"#065f46",
+                                background:isOverC?"#fef2f2":dLeftC<=7?"#fffbeb":"#ecfdf5",
+                                border:`1px solid ${isOverC?"#fecaca":dLeftC<=7?"#fde68a":"#a7f3d0"}`}}>
+                                {isOverC?`⚠ ${Math.abs(dLeftC)}d over`:`${dLeftC}d left`}
+                              </span>}
+                            </div>
+                          </td>
+                        </tr>
+                      </table>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+
+            // ── LIST VIEW ────────────────────────────────────────────────────
             return(
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                 <div style={{overflowX:"auto"}}>
@@ -20256,8 +20345,52 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   );
 }
 
+// ─── SUPPLIER PICKER ─────────────────────────────────────────────────────────
+function SupplierPicker({value,onChange,suppliers=[],addSupplier,placeholder="Supplier name"}){
+  const[q,setQ]=React.useState(value||"");
+  const[open,setOpen]=React.useState(false);
+  React.useEffect(()=>{setQ(value||"");},[value]);
+  const filtered=(suppliers||[]).filter(s=>(s.companyName||"").toLowerCase().includes(q.toLowerCase())).slice(0,8);
+  const exactMatch=filtered.some(s=>(s.companyName||"").toLowerCase()===q.toLowerCase().trim());
+  return(
+    <div style={{position:"relative"}}>
+      <input value={q} onChange={e=>{setQ(e.target.value);onChange(e.target.value);setOpen(true);}}
+        onFocus={()=>setOpen(true)} onBlur={()=>setTimeout(()=>setOpen(false),200)}
+        placeholder={placeholder}
+        style={{width:"100%",border:"1.5px solid #e4e8ef",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".83rem",boxSizing:"border-box",outline:"none"}}/>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 3px)",left:0,right:0,zIndex:300,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 4px 20px rgba(0,0,0,.13)",maxHeight:220,overflowY:"auto"}}>
+          {filtered.length===0&&!q.trim()&&(
+            <div style={{padding:"10px 12px",fontSize:".78rem",color:"#94a3b8"}}>Start typing to search suppliers…</div>
+          )}
+          {filtered.map(s=>(
+            <div key={s.id} onMouseDown={()=>{onChange(s.companyName);setQ(s.companyName);setOpen(false);}}
+              style={{padding:"9px 13px",fontSize:".82rem",cursor:"pointer",borderBottom:"1px solid #f1f5f9"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              <div style={{fontWeight:600,color:"#0f172a"}}>{s.companyName}</div>
+              {s.contactPerson&&<div style={{fontSize:".68rem",color:"#64748b",marginTop:1}}>{s.contactPerson}</div>}
+            </div>
+          ))}
+          {q.trim()&&!exactMatch&&(
+            <div onMouseDown={()=>{addSupplier&&addSupplier({companyName:q.trim()});onChange(q.trim());setOpen(false);}}
+              style={{padding:"9px 13px",fontSize:".82rem",cursor:"pointer",color:"#2563eb",fontWeight:600}}
+              onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+              onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+              ＋ Add "{q.trim()}" as new supplier
+            </div>
+          )}
+          {q.trim()&&filtered.length===0&&!q.trim()&&(
+            <div style={{padding:"9px 13px",fontSize:".78rem",color:"#94a3b8"}}>No suppliers found.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,suppliers=[],addSupplier,session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -20947,7 +21080,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                       <Inp type="number" value={restockForm.unitCost} onChange={e=>setRestockForm(p=>({...p,unitCost:e.target.value}))} placeholder={String(n(addTarget.avgCost)||"")}/>
                     </Fld>
                     <Fld label="Supplier">
-                      <Inp value={restockForm.supplier} onChange={e=>setRestockForm(p=>({...p,supplier:e.target.value}))} placeholder={addTarget.supplier||"Supplier name"}/>
+                      <SupplierPicker value={restockForm.supplier} onChange={v=>setRestockForm(p=>({...p,supplier:v}))} suppliers={suppliers} addSupplier={addSupplier} placeholder={addTarget.supplier||"Supplier name"}/>
                     </Fld>
                     <Fld label="Date">
                       <Inp type="date" value={restockForm.date} onChange={e=>setRestockForm(p=>({...p,date:e.target.value}))}/>
@@ -20987,7 +21120,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                     <Fld label="Opening Qty"><Inp type="number" value={form.qtyOnHand} onChange={e=>f("qtyOnHand",e.target.value)} min={0}/></Fld>
                     <Fld label="Unit Price (₱)"><Inp type="number" value={form.lastPurchasePrice} onChange={e=>{f("lastPurchasePrice",e.target.value);f("avgCost",e.target.value);}}/></Fld>
                     <Fld label="Reorder Point"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
-                    <Fld label="Supplier"><Inp value={form.supplier} onChange={e=>f("supplier",e.target.value)} placeholder="Supplier name"/></Fld>
+                    <Fld label="Supplier"><SupplierPicker value={form.supplier} onChange={v=>f("supplier",v)} suppliers={suppliers} addSupplier={addSupplier}/></Fld>
                     <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
                   </div>
                   <div style={{display:"flex",gap:8,marginTop:14}}>
