@@ -19809,7 +19809,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
                     if(st==="12 · Close-Out"){
                       const finMsg=`💰 <b>Final Billing Ready</b>\nProject: <b>${deal.contact||deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nClient: ${deal.client}\nContract Value: ₱${Number(deal.value||0).toLocaleString("en-PH")}\n\nThis project has moved to Close-Out. Please issue the final invoice.\n\n— ${session?.name}`;
-                      sendTelegramNotification("finance",finMsg);
+                      ["sales","finance"].forEach(ch=>sendTelegramNotification(ch,finMsg));
                     }
                     if(st==="14 · Completed"){
                       setPcFilter("completed");
