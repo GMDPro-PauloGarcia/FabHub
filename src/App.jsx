@@ -379,6 +379,8 @@ const swoToSb=r=>({
   acct_checked_by:r.acctCheckedBy||"", acct_checked_at:r.acctCheckedAt||null,
   payment_bank:r.paymentBank||"", payment_ref:r.paymentRef||"",
   payment_ordered_by:r.paymentOrderedBy||"", payment_ordered_at:r.paymentOrderedAt||null,
+  paid_ref:r.paidRef||"", paid_date:r.paidDate||null,
+  paid_amt:r.paidAmt!=null?Number(r.paidAmt):null, paid_by:r.paidBy||"",
 });
 const swoFromSb=r=>({...r,
   woNumber:r.wo_number||"", projectId:r.deal_id, dealId:r.deal_id,
@@ -391,6 +393,8 @@ const swoFromSb=r=>({...r,
   acctCheckedBy:r.acct_checked_by||"", acctCheckedAt:r.acct_checked_at||"",
   paymentBank:r.payment_bank||"", paymentRef:r.payment_ref||"",
   paymentOrderedBy:r.payment_ordered_by||"", paymentOrderedAt:r.payment_ordered_at||"",
+  paidRef:r.paid_ref||"", paidDate:r.paid_date||"",
+  paidAmt:r.paid_amt!=null?Number(r.paid_amt):null, paidBy:r.paid_by||"",
 });
 const WO_NO_RE=/^WO-(\d+)$/;
 const computeNextWoNo=swos=>{
@@ -434,6 +438,7 @@ const BANKS = [
 ];
 
 const emptyBankRow = () => ({ beg:"", book:"", end:"" });
+const ACCT_CLR={"For Accounting":"#f59e0b","Checked":"#3b82f6","Payment Ordered":"#8b5cf6","Paid":"#059669"};
 const emptyDayPosition = (date) => ({
   date,
   banks: Object.fromEntries(BANKS.map(b=>[b.id, emptyBankRow()])),
@@ -2618,7 +2623,7 @@ export default function App(){
             }
             const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?JSON.parse(p.delivery_history):undefined})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?JSON.parse(p.delivery_history):undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_disc_type||"none",poDiscValue:Number(p.po_disc_value)||0})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
@@ -2757,7 +2762,7 @@ export default function App(){
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(ws);idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||""}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_disc_type||"none",poDiscValue:Number(p.po_disc_value)||0}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(ms);idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(bs2);idbE.push([KEYS.breqs,bs2]);}
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(as);idbE.push([KEYS.addenda,as]);}
@@ -2887,6 +2892,14 @@ export default function App(){
     urgency:r.urgency||"Normal",
     approved_at:r.approvedAt||null,
     delivery_history:r.deliveryHistory?JSON.stringify(r.deliveryHistory):null,
+    acct_status:r.acctStatus||"", acct_notes:r.acctNotes||"",
+    acct_checked_by:r.acctCheckedBy||"", acct_checked_at:r.acctCheckedAt||null,
+    payment_bank:r.paymentBank||"", payment_ref:r.paymentRef||"",
+    payment_ordered_by:r.paymentOrderedBy||"", payment_ordered_at:r.paymentOrderedAt||null,
+    paid_ref:r.paidRef||"", paid_date:r.paidDate||null,
+    paid_amt:r.paidAmt!=null?Number(r.paidAmt):null, paid_by:r.paidBy||"",
+    disc_type:r.discType||"none", disc_value:Number(r.discValue)||0,
+    po_disc_type:r.poDiscType||"none", po_disc_value:Number(r.poDiscValue)||0,
   });
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
@@ -11028,6 +11041,7 @@ First few:
           </>
         );
       })()}
+      <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName}/>
     </Wrap>
   );
@@ -16308,7 +16322,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
 // creates the bank-tagged Payment Order. Lives on the Accounting page.
 
 // ─── PO DOCUMENTATION QUEUE ─────────────────────────────────────────────────────
-function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role,toastEmit}){
+function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role,toastEmit,sendTelegramNotification}){
   const today=new Date().toISOString().split("T")[0];
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -16318,6 +16332,9 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   const[notesDraft,setNotesDraft]=useState({});
   const[bankPick,setBankPick]=useState({});
   const[refPick,setRefPick]=useState({});
+  const[paidRef,setPaidRef]=useState({});
+  const[paidDate,setPaidDate]=useState({});
+  const[paidAmt,setPaidAmt]=useState({});
   const canAct=role==="Manager"||role==="Finance";
 
   const docs=[];
@@ -16341,10 +16358,15 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
       projects:w.projectName||"—",amount:n(w.contractAmount),acct:w,lines:null,retentionPct:n(w.retentionPct),
       apply:changes=>updateSWO(w.id,changes)});
   });
-  const STAGES=["For Accounting","Checked","Payment Ordered"];
+  const STAGES=["For Accounting","Checked","Payment Ordered","Paid"];
+  const STAGE_CLR={"For Accounting":"#f59e0b","Checked":"#3b82f6","Payment Ordered":"#8b5cf6","Paid":"#059669"};
   docs.sort((a,b)=>STAGES.indexOf(a.acct.acctStatus)-STAGES.indexOf(b.acct.acctStatus)||String(b.number).localeCompare(String(a.number)));
   const shown=stageFilter==="All"?docs:docs.filter(d=>d.acct.acctStatus===stageFilter);
   const counts=Object.fromEntries(STAGES.map(s=>[s,docs.filter(d=>d.acct.acctStatus===s).length]));
+
+  // AP Aging totals
+  const agingTotals=STAGES.map(s=>({stage:s,total:docs.filter(d=>d.acct.acctStatus===s).reduce((sum,d)=>sum+d.amount,0),count:counts[s]}));
+  const totalOutstanding=agingTotals.filter(a=>a.stage!=="Paid").reduce((s,a)=>s+a.total,0);
 
   const printPaymentOrder=d=>{
     const a=d.acct;
@@ -16365,6 +16387,7 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   td.lbl{color:#64748b;width:200px}
   td.val{font-weight:700}
   .amount-row td{font-weight:800;background:#eff6ff;color:#1e40af;border-top:2px solid #1e293b;font-size:15px}
+  .paid-row td{font-weight:800;background:#f0fdf4;color:#059669;border-top:2px solid #059669;font-size:13px}
   .trail{margin-top:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;font-size:11px;color:#475569;line-height:1.8}
   .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;margin-top:44px}
   .sig-box{border-top:1px solid #cbd5e1;padding-top:8px;font-size:10px;color:#64748b}
@@ -16378,17 +16401,17 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   <tr><td class="lbl">Pay To</td><td class="val">${esc(d.payee)}</td></tr>
   <tr><td class="lbl">For</td><td class="val">${d.kind} ${esc(d.number)} — ${esc(d.projects)}</td></tr>
   <tr><td class="lbl">Pay From (Bank)</td><td class="val">${esc(bank?bank.name+" ("+bank.short+")":a.paymentBank||"—")}</td></tr>
-  <tr><td class="lbl">Reference</td><td class="val">${esc(a.paymentRef)||"—"}</td></tr>
+  <tr><td class="lbl">Reference / Cheque</td><td class="val">${esc(a.paymentRef)||"—"}</td></tr>
   ${d.kind==="WO"&&d.retentionPct>0?`<tr><td class="lbl">Retention (${d.retentionPct}%)</td><td class="val">−${fmt2(d.amount*d.retentionPct/100)} held until acceptance</td></tr>`:""}
   <tr class="amount-row"><td>AMOUNT</td><td>${fmt2(d.amount)}</td></tr>
+  ${a.acctStatus==="Paid"?`<tr class="paid-row"><td>✅ PAID</td><td>${esc(a.paidRef||"—")} · ${esc(a.paidDate||"—")}${a.paidAmt?` · ${fmt2(a.paidAmt)} confirmed`:""}<br><span style="font-size:11px;font-weight:400">Confirmed by: ${esc(a.paidBy||"—")}</span></td></tr>`:""}
 </table>
 ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)}</div>`:""}
 <div class="trail">
   Requested by: <b>${esc(a.requestedBy)||"—"}</b><br>
   Approved by: <b>${esc(a.approvedBy)||"—"}</b><br>
   Checked by Accounting: <b>${esc(a.acctCheckedBy)||"—"}</b>${a.acctCheckedAt?` · ${esc(a.acctCheckedAt)}`:""}<br>
-  Payment ordered by: <b>${esc(a.paymentOrderedBy)||"—"}</b>${a.paymentOrderedAt?` · ${esc(a.paymentOrderedAt)}`:""}
-</div>
+  Payment ordered by: <b>${esc(a.paymentOrderedBy)||"—"}</b>${a.paymentOrderedAt?` · ${esc(a.paymentOrderedAt)}`:""}${a.acctStatus==="Paid"?`<br>Payment confirmed by: <b>${esc(a.paidBy||"—")}</b> · ${esc(a.paidDate||"—")}`:""}</div>
 <div class="sig">
   <div class="sig-box">Prepared by — Finance<br><br><br>_______________________<br>${esc(a.paymentOrderedBy)||""}</div>
   <div class="sig-box">Approved by<br><br><br>_______________________</div>
@@ -16402,11 +16425,27 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
   if(docs.length===0) return null;
   return(
     <div style={{marginBottom:22}}>
+      {/* AP Aging Summary */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:14}}>
+        {agingTotals.map(a=>(
+          <div key={a.stage} onClick={()=>setStageFilter(a.stage)} style={{background:"#fff",border:`1.5px solid ${STAGE_CLR[a.stage]}44`,borderRadius:10,padding:"10px 14px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:stageFilter===a.stage?"0 0 0 2px "+STAGE_CLR[a.stage]:"0 1px 3px rgba(0,0,0,.05)"}}>
+            <div style={{fontSize:".68rem",color:STAGE_CLR[a.stage],fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>{a.stage}</div>
+            <div style={{fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>{fmt(a.total)}</div>
+            <div style={{fontSize:".68rem",color:"#94a3b8"}}>{a.count} doc{a.count!==1?"s":""}</div>
+          </div>
+        ))}
+        <div style={{background:"#1e293b",borderRadius:10,padding:"10px 14px"}}>
+          <div style={{fontSize:".68rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Outstanding</div>
+          <div style={{fontWeight:800,fontSize:"1rem",color:"#f97316"}}>{fmt(totalOutstanding)}</div>
+          <div style={{fontSize:".68rem",color:"#64748b"}}>unpaid total</div>
+        </div>
+      </div>
+
       <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:10,flexWrap:"wrap"}}>
         <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>🧾 PO Documentation & Payment Orders</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           {["All",...STAGES].map(s=>(
-            <button key={s} onClick={()=>setStageFilter(s)} style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${stageFilter===s?(ACCT_CLR[s]||"#3b82f6"):"#e2e8f0"}`,background:stageFilter===s?(ACCT_CLR[s]||"#3b82f6")+"18":"#fff",color:stageFilter===s?(ACCT_CLR[s]||"#3b82f6"):"#64748b",fontWeight:stageFilter===s?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".74rem"}}>
+            <button key={s} onClick={()=>setStageFilter(s)} style={{padding:"4px 12px",borderRadius:20,border:`1.5px solid ${stageFilter===s?(STAGE_CLR[s]||"#3b82f6"):"#e2e8f0"}`,background:stageFilter===s?(STAGE_CLR[s]||"#3b82f6")+"18":"#fff",color:stageFilter===s?(STAGE_CLR[s]||"#3b82f6"):"#64748b",fontWeight:stageFilter===s?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".74rem"}}>
               {s}{s!=="All"&&counts[s]>0?` (${counts[s]})`:""}
             </button>
           ))}
@@ -16420,6 +16459,10 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
           const draft=notesDraft[d.key]!==undefined?notesDraft[d.key]:(a.acctNotes||"");
           const bank=bankPick[d.key]!==undefined?bankPick[d.key]:(a.paymentBank||"");
           const ref=refPick[d.key]!==undefined?refPick[d.key]:(a.paymentRef||"");
+          const pRef=paidRef[d.key]!==undefined?paidRef[d.key]:(a.paidRef||"");
+          const pDate=paidDate[d.key]!==undefined?paidDate[d.key]:(a.paidDate||today);
+          const pAmt=paidAmt[d.key]!==undefined?paidAmt[d.key]:(a.paidAmt!=null?String(a.paidAmt):"");
+          const stageColor=STAGE_CLR[a.acctStatus]||"#94a3b8";
           return(
             <div key={d.key} style={{borderBottom:di<shown.length-1?"1px solid #f1f5f9":"none"}}>
               <div onClick={()=>setOpen(p=>({...p,[d.key]:!p[d.key]}))}
@@ -16431,9 +16474,9 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
                 <div style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.payee}</div>
                 <div style={{fontSize:".72rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",paddingRight:8}}>{d.projects}</div>
                 <div style={{paddingRight:6}}>
-                  <span style={{fontSize:".62rem",background:(ACCT_CLR[a.acctStatus]||"#94a3b8")+"22",color:ACCT_CLR[a.acctStatus]||"#94a3b8",border:`1px solid ${(ACCT_CLR[a.acctStatus]||"#94a3b8")}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{a.acctStatus}</span>
+                  <span style={{fontSize:".62rem",background:stageColor+"22",color:stageColor,border:`1px solid ${stageColor}44`,borderRadius:20,padding:"1px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{a.acctStatus}</span>
                 </div>
-                <div style={{textAlign:"right",fontWeight:700,color:"#10b981",fontSize:".78rem",paddingRight:4}}>{fmt(d.amount)}</div>
+                <div style={{textAlign:"right",fontWeight:700,color:a.acctStatus==="Paid"?"#059669":"#10b981",fontSize:".78rem",paddingRight:4,textDecoration:a.acctStatus==="Paid"?"line-through":"none",opacity:a.acctStatus==="Paid"?0.6:1}}>{fmt(d.amount)}</div>
                 <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem"}}>{isOpen?"▲":"▼"}</div>
               </div>
               {isOpen&&(
@@ -16446,8 +16489,9 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
                   <div style={{display:"flex",gap:12,flexWrap:"wrap",fontSize:".7rem",color:"#64748b",marginBottom:8}}>
                     <span>Requested: {a.requestedBy||"—"}</span>
                     <span>Approved: {a.approvedBy||"—"}</span>
-                    {a.acctCheckedBy&&<span style={{color:"#3b82f6",fontWeight:600}}>Checked: {a.acctCheckedBy} · {a.acctCheckedAt}</span>}
-                    {a.paymentOrderedBy&&<span style={{color:"#059669",fontWeight:600}}>Payment: {(BANKS.find(b=>b.id===a.paymentBank)||{}).short||a.paymentBank||"—"} · {a.paymentRef||"no ref"} · {a.paymentOrderedBy} · {a.paymentOrderedAt}</span>}
+                    {a.acctCheckedBy&&<span style={{color:"#3b82f6",fontWeight:600}}>✓ Checked: {a.acctCheckedBy} · {a.acctCheckedAt}</span>}
+                    {a.paymentOrderedBy&&<span style={{color:"#8b5cf6",fontWeight:600}}>💳 Payment Order: {(BANKS.find(b=>b.id===a.paymentBank)||{}).short||a.paymentBank||"—"} · {a.paymentRef||"no ref"} · {a.paymentOrderedBy} · {a.paymentOrderedAt}</span>}
+                    {a.acctStatus==="Paid"&&<span style={{color:"#059669",fontWeight:700}}>✅ Paid: {a.paidRef||"—"} · {a.paidDate||"—"}{a.paidAmt?` · ₱${Number(a.paidAmt).toLocaleString("en-PH")}`:""} · {a.paidBy||"—"}</span>}
                   </div>
                   <textarea value={draft} onChange={e=>setNotesDraft(p=>({...p,[d.key]:e.target.value}))} rows={2}
                     placeholder="Accounting notes — receipts checked, OR/SI numbers, discrepancies…"
@@ -16462,7 +16506,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
                       {canAct&&a.acctStatus==="For Accounting"&&(
                         <button onClick={()=>{
                           d.apply({acctStatus:"Checked",acctNotes:draft,acctCheckedBy:session?.name||"",acctCheckedAt:today});
-                          sendTelegramNotification("financialcontrol",`🧾 <b>${d.kind} ${d.number} checked by Accounting</b>\nPayee: ${d.payee}\nAmount: ${fmt(d.amount)}\nChecked by: ${session?.name||"?"}\n→ Ready for Payment Order`);
+                          sendTelegramNotification&&sendTelegramNotification("financialcontrol",`🧾 <b>${d.kind} ${d.number} checked by Accounting</b>\nPayee: ${d.payee}\nAmount: ${fmt(d.amount)}\nChecked by: ${session?.name||"?"}\n→ Ready for Payment Order`);
                           toastEmit&&toastEmit(`${d.number} checked — ready for payment order`,"success");
                         }} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✓ Mark Checked</button>
                       )}
@@ -16478,12 +16522,28 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
                           d.apply({acctStatus:"Payment Ordered",paymentBank:bank,paymentRef:ref,paymentOrderedBy:session?.name||"",paymentOrderedAt:today});
                           const bk=(BANKS.find(b=>b.id===bank)||{}).short||bank;
                           const pMsg=`💳 <b>Payment Order — ${d.kind} ${d.number}</b>\nPay to: ${d.payee}\nAmount: ${fmt(d.amount)}\nBank: ${bk}${ref?`\nRef: ${ref}`:""}\nBy: ${session?.name||"?"} · ${today}`;
-                          sendTelegramNotification("financialcontrol",pMsg);
+                          sendTelegramNotification&&sendTelegramNotification("financialcontrol",pMsg);
                           toastEmit&&toastEmit(`Payment order created for ${d.number} (${bk})`,"success");
                         }} style={{background:bank?"#059669":"#e2e8f0",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:bank?"#fff":"#94a3b8",cursor:bank?"pointer":"not-allowed",fontFamily:"inherit",fontWeight:700}}>💳 Create Payment Order</button>
                       </>)}
-                      {a.acctStatus==="Payment Ordered"&&(
-                        <button onClick={()=>printPaymentOrder(d)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print Payment Order</button>
+                      {canAct&&a.acctStatus==="Payment Ordered"&&(<>
+                        <input value={pRef} onChange={e=>setPaidRef(p=>({...p,[d.key]:e.target.value}))} placeholder="OR / Cheque / ref no."
+                          style={{width:150,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                        <input type="date" value={pDate} onChange={e=>setPaidDate(p=>({...p,[d.key]:e.target.value}))}
+                          style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#1e293b"}}/>
+                        <input type="number" value={pAmt} onChange={e=>setPaidAmt(p=>({...p,[d.key]:e.target.value}))} placeholder={`Amt paid (${fmt(d.amount)})`}
+                          style={{width:130,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#1e293b",boxSizing:"border-box"}}/>
+                        <button onClick={()=>{
+                          const confirmedAmt=pAmt?Number(pAmt):d.amount;
+                          d.apply({acctStatus:"Paid",paidRef:pRef||a.paymentRef||"",paidDate:pDate||today,paidAmt:confirmedAmt,paidBy:session?.name||""});
+                          const bk=(BANKS.find(b=>b.id===a.paymentBank)||{}).short||a.paymentBank||"—";
+                          sendTelegramNotification&&sendTelegramNotification("financialcontrol",`✅ <b>Payment Confirmed — ${d.kind} ${d.number}</b>\nPaid to: ${d.payee}\nAmount: ₱${confirmedAmt.toLocaleString("en-PH")}\nBank: ${bk}\nRef: ${pRef||a.paymentRef||"—"}\nDate: ${pDate||today}\nBy: ${session?.name||"?"}`);
+                          toastEmit&&toastEmit(`${d.number} marked as Paid ✅`,"success");
+                        }} style={{background:"#059669",border:"none",borderRadius:7,padding:"5px 14px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>✅ Mark as Paid</button>
+                        <button onClick={()=>printPaymentOrder(d)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                      </>)}
+                      {a.acctStatus==="Paid"&&(
+                        <button onClick={()=>printPaymentOrder(d)} style={{background:"#f0fdf4",border:"none",borderRadius:7,padding:"5px 12px",fontSize:".72rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print Receipt</button>
                       )}
                     </div>
                   </div>
