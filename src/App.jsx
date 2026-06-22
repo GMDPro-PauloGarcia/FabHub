@@ -10971,9 +10971,10 @@ First few:
         if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
         if(acctProj==="company") list=list.filter(e=>!e.projectId);
         else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
+        // Daily Payables = cash / BizLink only; Check items are tracked in Check Payables via CV
         const DGROUPS=[
-          {key:"ForPay",   label:"For Payment", dot:"#f59e0b", clr:"#b45309", items:list.filter(e=>e.acctStatus==="For Payment")},
-          {key:"Paid",     label:"Paid",         dot:"#059669", clr:"#059669", items:list.filter(e=>e.acctStatus==="Paid")},
+          {key:"ForPay",   label:"For Payment", dot:"#f59e0b", clr:"#b45309", items:list.filter(e=>e.acctStatus==="For Payment"&&e.paymentMethod!=="Check")},
+          {key:"Paid",     label:"Paid",         dot:"#059669", clr:"#059669", items:list.filter(e=>e.acctStatus==="Paid"&&e.paymentMethod!=="Check")},
         ];
         const toggleDp=key=>setDpCollapsed(s=>{const n=new Set(s);n.has(key)?n.delete(key):n.add(key);return n;});
         return(
