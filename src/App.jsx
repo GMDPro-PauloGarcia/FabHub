@@ -10422,6 +10422,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         logActivity={logActivity} actLog={actLog}
         addenda={addenda} billings={billings} mreqs={mreqs} breqs={breqs}
         isMobile={isMobile} createCard={createProjectCard}
+        swos={swos}
         updateJO={updateJO} upPcards={upPcards}
         addAddendum2={addAddendum2}
         initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}
@@ -19078,7 +19079,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[]}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
@@ -19094,7 +19095,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[showUForm,setShowUForm]=useState(false); const[uText,setUText]=useState("");
   const[tatOpen,setTatOpen]=useState(false);
   const[showTeamEdit,setShowTeamEdit]=useState(false);
-  const[teamForm,setTeamForm]=useState({ae:"",pm1:"",pm2:"",pm3:"",designer:"",coordinator:""});
+  const[teamForm,setTeamForm]=useState({ae:"",pm1:"",pm2:"",pm3:"",designer:"",coordinator:"",warehouseOnly:false});
   const[showScopeForm,setShowScopeForm]=useState(false);
   const[scopeForm,setScopeForm]=useState({title:"",desc:"",value:"",ceNo:""});
   const fsc=(k,v)=>setScopeForm(p=>({...p,[k]:v}));
@@ -19558,26 +19559,77 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 
               {/* ── Header card ── */}
               <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${hc}44`,padding:isMobile?"14px":"18px 22px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:12}}>
+                {/* Top row: project name + stage badge */}
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:10}}>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:800,color:"#0f172a",fontSize:isMobile?"1rem":"1.15rem"}}>{deal?.contact||deal?.client}</div>
                     {deal?.contact&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {deal?.client}</div>}
-                    <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deal?.ceNo} · {pcAmt(deal)} · <span style={{color:"#8b5cf6",fontWeight:600}}>{deal?.stage?.replace(/^\d+ · /,"")}</span></div>
-                    {jo&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:3}}>📋 {jo.joNo}</div>}
-                    {(card?.pm1||card?.pm2||jo?.pm1)&&<div style={{fontSize:".72rem",color:"#3b82f6",marginTop:1}}>👷 {[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")}</div>}
-                    {(card?.aeAssigned||deal?.salesOwner)&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>🤝 AE: {card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"}{(card?.coordinator||jo?.coordinator)&&` · Coord: ${card?.coordinator||jo?.coordinator}`}</div>}
+                    <div style={{fontSize:".75rem",color:"#64748b",marginTop:2,display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+                      {deal?.ceNo&&<span>{deal.ceNo}</span>}
+                      {jo&&<span style={{color:"#3b82f6"}}>📋 {jo.joNo}</span>}
+                      {card?.warehouseOnly&&<span style={{background:"#fef3c7",color:"#92400e",border:"1px solid #fbbf24",borderRadius:20,padding:"1px 8px",fontSize:".65rem",fontWeight:700}}>📦 Warehouse / Procurement Only</span>}
+                    </div>
                   </div>
-                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4}}>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.6rem",color:pct===100?"#059669":hc}}>{pct}%</div>
-                    <span style={{fontSize:".7rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"3px 10px"}}>{pct===100?"✅ PROJECT DONE":hl}</span>
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
+                    <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                    {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
                   </div>
                 </div>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:".68rem",color:"#94a3b8",marginBottom:4}}>
-                  <span>{card?.manualProgress!=null?"Progress set by PM":Object.values(card?.departments||{}).filter(d=>d.done).length+"/6 departments complete"}</span>
-                  {card?.targetDays&&<span style={{color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#94a3b8"}}>{isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d remaining`}</span>}
-                </div>
-                <div style={{height:8,background:"#f1f5f9",borderRadius:4,overflow:"hidden"}}>
-                  <div style={{height:"100%",width:pct+"%",background:pct===100?"#10b981":hc,borderRadius:4,transition:"width .5s"}}/>
+
+                {/* Info grid: location, team, subcons, timeline */}
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
+                  {/* Location */}
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📍 Location</div>
+                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{deal?.location||jo?.location||"—"}</div>
+                  </div>
+                  {/* AE */}
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>🤝 AE</div>
+                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"—"}</div>
+                  </div>
+                  {/* PM */}
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>👷 PM</div>
+                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{[card?.pm1||jo?.pm1,card?.pm2||jo?.pm2,card?.pm3||jo?.pm3].filter(Boolean).join(", ")||"Unassigned"}</div>
+                  </div>
+                  {/* Coordinator */}
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
+                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>📋 Coordinator</div>
+                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{card?.coordinator||jo?.coordinator||"—"}</div>
+                  </div>
+                  {/* Subcontractors */}
+                  {(()=>{
+                    const projSwos=(swos||[]).filter(w=>w.projectId===selDeal||w.dealId===selDeal);
+                    return projSwos.length>0?(
+                      <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
+                        <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>🔧 Subcontractors</div>
+                        <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                          {projSwos.map(w=>(
+                            <span key={w.id} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 10px",fontSize:".75rem",fontWeight:600,color:"#1d4ed8"}}>
+                              {w.subcontractor||"?"}{w.specialty?` · ${w.specialty}`:""}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ):null;
+                  })()}
+                  {/* Timeline */}
+                  <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px",gridColumn:"1/-1"}}>
+                    <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>📅 Timeline</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:".78rem",color:"#64748b"}}>{jo?.startDate||deal?.awardDate||"—"}</span>
+                      <span style={{color:"#94a3b8",fontSize:".7rem"}}>→</span>
+                      <span style={{fontSize:".78rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#059669"}}>
+                        {card?.targetEndDate||"No turnover date set"}
+                      </span>
+                      {card?.targetDays&&(
+                        <span style={{fontSize:".7rem",fontWeight:700,color:isOver?"#ef4444":dLeft<=7?"#f59e0b":"#64748b",background:isOver?"#fef2f2":dLeft<=7?"#fffbeb":"#f1f5f9",borderRadius:20,padding:"2px 8px"}}>
+                          {isOver?`⚠ ${Math.abs(dLeft)}d overdue`:`${dLeft}d left`}
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 {/* Stage selector */}
                 {(role==="Manager"||role==="Sales")&&deal&&upDeals&&(()=>{
@@ -19631,25 +19683,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     }} style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
                       🔒 Move to Close-Out
                     </button>
-                  </div>
-                )}
-                {/* Manual progress control — PM or Manager */}
-                {card&&(role==="Manager"||[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name))&&(
-                  <div style={{marginTop:10,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                      <span style={{fontSize:".68rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px"}}>📊 Progress (set by PM)</span>
-                      <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:pct===100?"#059669":"#3b82f6"}}>{pct}%</span>
-                    </div>
-                    <input type="range" min={0} max={100} step={5} value={card.manualProgress??0}
-                      onChange={e=>{
-                        const v=Number(e.target.value);
-                        upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:v}}));
-                        if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,manual_progress:v},'deal_id').catch(()=>{});
-                      }}
-                      style={{width:"100%",accentColor:"#3b82f6",cursor:"pointer"}}/>
-                    <div style={{display:"flex",justifyContent:"space-between",fontSize:".62rem",color:"#94a3b8",marginTop:2}}>
-                      <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
-                    </div>
                   </div>
                 )}
                 <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
@@ -19746,7 +19779,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
                   {(role==="Manager"||role==="Operations")&&!showTeamEdit&&card&&(
                     <button onClick={()=>{
-                      setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||""});
+                      setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
                       setShowTeamEdit(true);
                     }} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
                   )}
@@ -19763,12 +19796,21 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         </select>
                       </div>
                     ))}
+                    <div>
+                      <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 10px",background:"#fffbeb",borderRadius:8,border:"1.5px solid #fbbf24"}}>
+                        <input type="checkbox" checked={!!teamForm.warehouseOnly} onChange={e=>setTeamForm(f=>({...f,warehouseOnly:e.target.checked}))} style={{width:16,height:16,cursor:"pointer"}}/>
+                        <div>
+                          <div style={{fontSize:".82rem",fontWeight:700,color:"#92400e"}}>📦 Warehouse / Procurement Only</div>
+                          <div style={{fontSize:".7rem",color:"#b45309"}}>This project does not require full operations (e.g. client purchase assistance)</div>
+                        </div>
+                      </label>
+                    </div>
                     <div style={{display:"flex",gap:8,marginTop:4}}>
                       <button onClick={()=>{
                         const tf=teamForm;
-                        if(upPcards&&pcards[selDeal]) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator}}));
+                        if(upPcards&&pcards[selDeal]) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouseOnly:tf.warehouseOnly||false}}));
                         if(isSupabaseReady()){
-                          sbUpsert('project_cards',{deal_id:selDeal,ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator},'deal_id').catch(()=>{});
+                          sbUpsert('project_cards',{deal_id:selDeal,ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false},'deal_id').catch(()=>{});
                         }
                         if(jo&&updateJO) updateJO(jo.id,{aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator});
                         logActivity(selDeal,"Team Updated",`AE: ${tf.ae||"—"}, PM: ${[tf.pm1,tf.pm2,tf.pm3].filter(Boolean).join(", ")||"—"}, Designer: ${tf.designer||"—"}`,session?.name);
