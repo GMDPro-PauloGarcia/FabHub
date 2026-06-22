@@ -20938,7 +20938,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                     <div style={{fontWeight:800,fontSize:".95rem",color:C.text}}>New Inventory Item</div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                    <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp autoFocus value={form.name} onChange={e=>f("name",e.target.value)} placeholder="e.g. CUTTING DISC 4""/></Fld></div>
+                    <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp autoFocus value={form.name} onChange={e=>f("name",e.target.value)} placeholder='e.g. CUTTING DISC 4"'/></Fld></div>
                     <Fld label="Category"><Sel value={form.category} onChange={e=>{f("category",e.target.value);f("subCategory",INV_CATEGORIES.find(c=>c.main===e.target.value)?.subs[0]||"Other");}}>
                       {INV_CATEGORIES.map(c=><option key={c.main}>{c.main}</option>)}</Sel></Fld>
                     <Fld label="Unit"><Sel value={form.unit} onChange={e=>f("unit",e.target.value)}>{INV_UNITS.map(u=><option key={u}>{u}</option>)}</Sel></Fld>
