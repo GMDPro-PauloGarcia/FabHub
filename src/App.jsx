@@ -19545,7 +19545,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       toastEmit(`Stage → ${st}`,"success");
                     }
                   };
-                  const stageOpts=[...WON_STAGES,"14 · Completed"];
+                  const stageOpts=[...WON_STAGES];
                   return(
                     <div style={{marginTop:10,display:"flex",alignItems:"center",gap:8}}>
                       <span style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",flexShrink:0}}>STAGE</span>
