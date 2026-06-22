@@ -2491,6 +2491,103 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
   );
 }
 
+// ─── ACCOUNTING HOME ─────────────────────────────────────────────────────────
+function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,wonDeals}){
+  const[tab,setTab]=useState("cash");
+  const cashItems=exps.filter(e=>e.acctStatus==="For Payment"&&e.paymentMethod!=="Check");
+  const checkItems=vouchers.filter(v=>v.status==="For Release"||v.status==="Draft");
+  const paidToday=exps.filter(e=>e.acctStatus==="Paid"&&e.expDate===today);
+  const thisMonthExp=exps.filter(e=>{const d=new Date(e.expDate||`${e.year}-${String((e.month||0)+1).padStart(2,"0")}-01`);return d.getMonth()===new Date().getMonth()&&d.getFullYear()===new Date().getFullYear();}).reduce((s,e)=>s+Number(e.amount||0),0);
+  const fmtAmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Accounting Dashboard · {todayL}</div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📒 All Expenses</button>
+          <button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>
+        </div>
+      </div>
+      {/* KPI strip */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}}>
+        {[
+          {l:"Cash/BizLink For Payment", v:cashItems.length,        c:"#6366f1", icon:"💳"},
+          {l:"Checks For Release",       v:checkItems.filter(v=>v.status==="For Release").length, c:"#f59e0b", icon:"📄"},
+          {l:"Paid Today",               v:paidToday.length,        c:"#059669", icon:"✅"},
+          {l:"Expenses This Month",      v:fmtAmt(thisMonthExp),    c:"#94a3b8", icon:"📊"},
+        ].map(({l,v,c,icon})=>(
+          <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px",border:`1.5px solid ${c}22`,textAlign:"center"}}>
+            <div style={{fontSize:"1.1rem"}}>{icon}</div>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:4}}>{v}</div>
+            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
+          </div>
+        ))}
+      </div>
+      {/* Unified payables tabs */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{display:"flex",borderBottom:"1.5px solid #e2e8f0"}}>
+          {[["cash",`💳 Cash / BizLink (${cashItems.length})`],["check",`📄 Check Vouchers (${checkItems.length})`],["paid",`✅ Paid Today (${paidToday.length})`]].map(([t,l])=>(
+            <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"12px",border:"none",borderBottom:tab===t?"2.5px solid #6366f1":"2.5px solid transparent",background:tab===t?"#f8fafc":"#fff",fontFamily:"inherit",fontSize:".78rem",fontWeight:tab===t?700:500,color:tab===t?"#6366f1":"#64748b",cursor:"pointer",transition:"all .12s"}}>{l}</button>
+          ))}
+        </div>
+        <div style={{maxHeight:340,overflowY:"auto"}}>
+          {tab==="cash"&&(cashItems.length===0
+            ?<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No cash/BizLink items pending payment.</div>
+            :[...cashItems].sort((a,b)=>(a.expDate||"").localeCompare(b.expDate||"")).map((e,i)=>{
+              const d=wonDeals.find(x=>x.id===e.dealId);
+              const isOld=e.expDate&&e.expDate<today;
+              return(
+                <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<cashItems.length-1?"1px solid #f1f5f9":"",background:isOld?"#fffbeb":"#fff"}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:".83rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.note||e.category||"Expense"}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>{e.expDate||"No date"} · {d?.client||e.dealId||"General"} · {e.paymentMethod||"Cash"}{isOld&&<span style={{color:"#d97706",fontWeight:700,marginLeft:6}}>⚠ Overdue</span>}</div>
+                  </div>
+                  <div style={{fontWeight:700,color:"#dc2626",fontSize:".85rem",flexShrink:0,marginLeft:12}}>{fmtAmt(e.amount)}</div>
+                </div>
+              );
+            })
+          )}
+          {tab==="check"&&(checkItems.length===0
+            ?<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No check vouchers pending.</div>
+            :checkItems.sort((a,b)=>(a.date||"").localeCompare(b.date||"")).map((v,i)=>(
+              <div key={v.id} onClick={()=>setPage("checkvouchers")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<checkItems.length-1?"1px solid #f1f5f9":"",cursor:"pointer",background:"#fff"}}
+                onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:".83rem",color:"#0f172a"}}>{v.cvNo||"Draft"} · {v.payee||"—"}</div>
+                  <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>{v.date||"No date"} · {v.bankAccount||"—"}</div>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,flexShrink:0}}>
+                  <span style={{fontSize:".65rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:v.status==="For Release"?"#fffbeb":"#f1f5f9",color:v.status==="For Release"?"#d97706":"#64748b",border:`1px solid ${v.status==="For Release"?"#fde68a":"#e2e8f0"}`}}>{v.status}</span>
+                  <div style={{fontWeight:700,color:"#dc2626",fontSize:".85rem"}}>{fmtAmt(v.amount)}</div>
+                </div>
+              </div>
+            ))
+          )}
+          {tab==="paid"&&(paidToday.length===0
+            ?<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>Nothing marked as paid today yet.</div>
+            :paidToday.map((e,i)=>{
+              const d=wonDeals.find(x=>x.id===e.dealId);
+              return(
+                <div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:i<paidToday.length-1?"1px solid #f1f5f9":""}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:600,fontSize:".83rem",color:"#0f172a"}}>{e.note||e.category||"Expense"}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginTop:1}}>{d?.client||"General"} · {e.paymentMethod||"Cash"}</div>
+                  </div>
+                  <div style={{fontWeight:700,color:"#059669",fontSize:".85rem",flexShrink:0,marginLeft:12}}>{fmtAmt(e.amount)}</div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </Wrap>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -5934,85 +6031,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── ACCOUNTING HOME ───────────────────────────────────────────────────────
   if(role==="Accounting") return(
-    <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Accounting Dashboard · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📒 Expenses</button>
-          <button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>
-        </div>
-      </div>
-
-      {(()=>{
-        const pendingCv=vouchers.filter(v=>v.status==="For Release");
-        const draftCv=vouchers.filter(v=>v.status==="Draft");
-        const releasedCv=vouchers.filter(v=>v.status==="Released");
-        const totalExp=exps.reduce((s,e)=>s+Number(e.amount||0),0);
-        const thisMonthExp=exps.filter(e=>{const d=new Date(e.expDate||`${e.year}-${String((e.month||0)+1).padStart(2,"0")}-01`);return d.getMonth()===new Date().getMonth()&&d.getFullYear()===new Date().getFullYear();}).reduce((s,e)=>s+Number(e.amount||0),0);
-        return(
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
-            {[
-              {l:"Expenses This Month",v:fmt(thisMonthExp),c:"#6366f1",icon:"📒"},
-              {l:"Total Expenses YTD",  v:fmt(totalExp),   c:"#3b82f6",icon:"💸"},
-              {l:"Pending For Release", v:pendingCv.length+" vouchers",c:"#f59e0b",icon:"⏳"},
-              {l:"Draft Vouchers",      v:draftCv.length+" drafts",    c:"#94a3b8",icon:"📝"},
-            ].map(({l,v,c,icon})=>(
-              <div key={l} style={{background:"#fff",borderRadius:12,padding:"16px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
-                <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
-                <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-        {/* Pending vouchers */}
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-          <div style={{background:"#f59e0b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⏳ For Release</span>
-            <button onClick={()=>setPage("checkvouchers")} style={{background:"rgba(255,255,255,.25)",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View All →</button>
-          </div>
-          <div style={{padding:"0",maxHeight:200,overflowY:"auto"}}>
-            {vouchers.filter(v=>v.status==="For Release").length===0
-              ? <div style={{color:"#94a3b8",fontSize:".82rem",textAlign:"center",padding:"16px"}}>No vouchers pending release.</div>
-              : vouchers.filter(v=>v.status==="For Release").map(v=>(
-                <div key={v.id} style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <div>
-                    <div style={{fontWeight:600,fontSize:".82rem",color:"#0f172a"}}>{v.cvNo} · {v.payee}</div>
-                    <div style={{fontSize:".7rem",color:"#94a3b8"}}>{v.date}</div>
-                  </div>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{fmt(v.amount)}</div>
-                </div>
-              ))
-            }
-          </div>
-        </div>
-
-        {/* Recent expenses */}
-        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-          <div style={{background:"#6366f1",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>📒 Recent Expenses</span>
-            <button onClick={()=>setPage("accounting")} style={{background:"rgba(255,255,255,.2)",border:"none",borderRadius:6,padding:"4px 10px",color:"#fff",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit"}}>View All →</button>
-          </div>
-          <div style={{padding:"0",maxHeight:200,overflowY:"auto"}}>
-            {[...exps].sort((a,b)=>(b.expDate||"").localeCompare(a.expDate||"")).slice(0,8).map(e=>(
-              <div key={e.id} style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <div>
-                  <div style={{fontWeight:600,fontSize:".82rem",color:"#0f172a"}}>{e.note||e.category}</div>
-                  <div style={{fontSize:".7rem",color:"#94a3b8"}}>{e.expDate||`${e.year}-${String((e.month||0)+1).padStart(2,"0")}`} · {e.category}</div>
-                </div>
-                <div style={{fontWeight:700,color:"#dc2626",fontSize:".85rem"}}>{fmt(e.amount)}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </Wrap>
+    <AcctHome exps={exps} vouchers={vouchers} fmt={fmt} today={today} greeting={greeting} todayL={todayL} session={session} setPage={setPage} wonDeals={wonDeals}/>
   );
 
   // ── QS HOME ──────────────────────────────────────────────────────────────
@@ -6220,16 +6239,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* KPIs */}
       {(()=>{
         const pendingPRs=prs.filter(p=>["Pending Approval","Approved","PO Issued"].includes(p.status));
+        const needsApproval=prs.filter(p=>p.status==="Pending Approval");
         const pendingMRs=mreqs.filter(m=>m.status==="Submitted"||m.status==="Approved");
         const pendingBRs=breqs.filter(b=>b.status==="Pending"||b.status==="Approved");
         const deliveredToday=prs.filter(p=>p.deliveryDate===today&&p.status==="Delivered");
         return(
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:12,marginBottom:24}}>
             {[
-              {l:"Open Purchase Orders", v:pendingPRs.length, c:"#06b6d4", icon:"📦", click:()=>setPage("procurement")},
-              {l:"Material Requests",    v:pendingMRs.length, c:"#f97316", icon:"🔧", click:()=>setPage("requests")},
-              {l:"Budget Requests",      v:pendingBRs.length, c:"#8b5cf6", icon:"💳", click:()=>setPage("requests")},
-              {l:"Arriving Today",       v:deliveredToday.length, c:"#059669", icon:"🚚"},
+              {l:"Open Purchase Orders",      v:pendingPRs.length,     c:"#06b6d4", icon:"📦", click:()=>setPage("procurement")},
+              {l:"Awaiting Mgr Approval",     v:needsApproval.length,  c:needsApproval.length>0?"#ef4444":"#94a3b8", icon:"⏳", click:()=>setPage("procurement")},
+              {l:"Material Requests",         v:pendingMRs.length,     c:"#f97316", icon:"🔧", click:()=>setPage("requests")},
+              {l:"Budget Requests",           v:pendingBRs.length,     c:"#8b5cf6", icon:"💳", click:()=>setPage("requests")},
+              {l:"Arriving Today",            v:deliveredToday.length, c:"#059669", icon:"🚚"},
             ].map(({l,v,c,icon,click})=>(
               <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:click?"pointer":"default"}}>
                 <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
@@ -6285,7 +6306,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                   <div>
                     <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{s.name}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {s.qty} {s.unit} · {s.category}</div>
+                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"}{d?.ceNo?` · ${d.ceNo}`:""} · {s.qty} {s.unit} · {s.category}</div>
                   </div>
                   <span style={{fontSize:".72rem",background:"#ecfeff",color:"#0891b2",border:"1px solid #a5f3fc",borderRadius:20,padding:"2px 8px",fontWeight:600}}>To Buy</span>
                 </div>
@@ -15920,7 +15941,22 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
                 <span style={{background:clr+"22",color:clr,borderRadius:20,padding:"1px 8px",fontSize:".7rem",fontWeight:700}}>{list.length}</span>
               </div>
               {list.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8",padding:"20px 0",textAlign:"center"}}>No {label.toLowerCase()} requests</div>}
-              {list.sort((a,b)=>{const pa={High:0,Normal:1,Low:2};return(pa[a.priority]||1)-(pa[b.priority]||1);}).map(r=><Card key={r.id} r={r}/>)}
+              {list.sort((a,b)=>{
+                const pa={High:0,Normal:1,Low:2};
+                const pdiff=(pa[a.priority]||1)-(pa[b.priority]||1);
+                if(pdiff!==0) return pdiff;
+                // secondary: overdue deadline first, then oldest submission
+                const aDL=a.targetDeadline?new Date(a.targetDeadline):null;
+                const bDL=b.targetDeadline?new Date(b.targetDeadline):null;
+                const now=new Date();
+                const aOver=aDL&&aDL<now;const bOver=bDL&&bDL<now;
+                if(aOver&&!bOver) return -1;
+                if(!aOver&&bOver) return 1;
+                if(aDL&&bDL) return aDL-bDL;
+                const aAge=a.createdAt?new Date(a.createdAt):new Date(0);
+                const bAge=b.createdAt?new Date(b.createdAt):new Date(0);
+                return aAge-bAge; // older first
+              }).map(r=><Card key={r.id} r={r}/>)}
             </div>
           ))}
         </div>
