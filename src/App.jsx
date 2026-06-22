@@ -19088,7 +19088,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
   useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
-  const[viewMode,setViewMode]=useState("list");
+  const[viewMode,setViewMode]=useState("card");
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
@@ -19404,23 +19404,89 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
 
             // ── LIST VIEW ────────────────────────────────────────────────────
             return(
-              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+              <div style={{background:"#fff",borderRadius:10,border:"1px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
                 <div style={{overflowX:"auto"}}>
-                {/* Table header */}
-                <div style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 14px",alignItems:"center",minWidth:720}}>
-                  {["Project","Client","AE","PM","Grade","Due"].map((h,i)=>(
-                    <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
-                  ))}
-                </div>
-                {parentList.map((d,idx)=>{
-                  const children=childDeals.filter(c=>c.parentDealId===d.id);
-                  return(
-                    <React.Fragment key={d.id}>
-                      {renderPCRow(d,idx,parentList.length,false)}
-                      {children.map((c,ci)=>renderPCRow(c,ci,children.length,true))}
-                    </React.Fragment>
-                  );
-                })}
+                  <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
+                    <thead>
+                      <tr style={{background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>
+                        <th style={{width:4,padding:0}}></th>
+                        {["Project / Client","Stage","Location","AE","PM","Coordinator","Subcons","Turnover"].map(h=>(
+                          <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".1em",color:"#94a3b8",padding:"10px 14px",textAlign:"left",whiteSpace:"nowrap"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parentList.map(d=>{
+                        const pcL=pcards[d.id];
+                        const hL=getHealth(d,pcL);const[hcL]=HC[hL];
+                        const joL=jos.find(j=>j.dealId===d.id);
+                        const dLeftL=pcL?.targetEndDate?Math.ceil((new Date(pcL.targetEndDate)-today2)/86400000):null;
+                        const isOverL=dLeftL!==null&&dLeftL<0;
+                        const aeL=pcL?.aeAssigned||joL?.aeAssigned||d.salesOwner||"—";
+                        const pm1L=pcL?.pm1||joL?.pm1||"";
+                        const pm2L=pcL?.pm2||joL?.pm2||"";
+                        const coordL=pcL?.coordinator||joL?.coordinator||"—";
+                        const projSwosL=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
+                        const stageLabel=d.stage?.replace(/^\d+ · /,"")||"—";
+                        return(
+                          <tr key={d.id} style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
+                            onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
+                            onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                            onMouseLeave={e=>e.currentTarget.style.background=""}>
+                            {/* Stage color bar */}
+                            <td style={{width:4,padding:0,background:hcL}}></td>
+                            {/* Project / Client */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
+                              <div style={{fontWeight:700,fontSize:".82rem",color:"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
+                              {d.client!==d.contact&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
+                              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
+                                {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
+                                {joL&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{joL.joNo}</span>}
+                                {pcL?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH</span>}
+                              </div>
+                            </td>
+                            {/* Stage pill */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                              <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hcL+"18",color:hcL,border:`1px solid ${hcL}44`,whiteSpace:"nowrap"}}>{stageLabel}</span>
+                            </td>
+                            {/* Location */}
+                            <td style={{padding:"10px 14px",fontSize:".78rem",color:"#475569",verticalAlign:"middle",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.location||joL?.location||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                            {/* AE */}
+                            <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{aeL==="—"?<span style={{color:"#cbd5e1"}}>—</span>:aeL}</td>
+                            {/* PM */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
+                              {pm1L?<><div style={{fontSize:".78rem",fontWeight:500,color:"#0d1117"}}>{pm1L}</div>{pm2L&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>+ {pm2L}</div>}</>:<span style={{fontSize:".78rem",color:"#cbd5e1",fontStyle:"italic"}}>—</span>}
+                            </td>
+                            {/* Coordinator */}
+                            <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{coordL==="—"?<span style={{color:"#cbd5e1"}}>—</span>:coordL}</td>
+                            {/* Subcons */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
+                              {projSwosL.length>0?(
+                                <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+                                  {projSwosL.slice(0,2).map(w=><span key={w.id} style={{fontSize:".68rem",fontWeight:600,padding:"1px 7px",borderRadius:20,background:"#eff6ff",border:"1px solid #bfdbfe",color:"#1d4ed8",whiteSpace:"nowrap"}}>{w.subcontractor||"?"}</span>)}
+                                  {projSwosL.length>2&&<span style={{fontSize:".65rem",color:"#94a3b8"}}>+{projSwosL.length-2}</span>}
+                                </div>
+                              ):<span style={{color:"#cbd5e1",fontSize:".72rem",fontStyle:"italic"}}>—</span>}
+                            </td>
+                            {/* Turnover */}
+                            <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                              {pcL?.targetEndDate?(
+                                <>
+                                  <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".72rem",fontWeight:700,color:isOverL?"#dc2626":dLeftL!==null&&dLeftL<=7?"#d97706":"#059669"}}>{pcL.targetEndDate}</div>
+                                  {dLeftL!==null&&<span style={{display:"inline-block",marginTop:2,fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:700,padding:"1px 6px",borderRadius:3,
+                                    color:isOverL?"#991b1b":dLeftL<=7?"#92400e":"#065f46",
+                                    background:isOverL?"#fef2f2":dLeftL<=7?"#fffbeb":"#ecfdf5",
+                                    border:`1px solid ${isOverL?"#fecaca":dLeftL<=7?"#fde68a":"#a7f3d0"}`}}>
+                                    {isOverL?`⚠ ${Math.abs(dLeftL)}d over`:`${dLeftL}d left`}
+                                  </span>}
+                                </>
+                              ):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             );
