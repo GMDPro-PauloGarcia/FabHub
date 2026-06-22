@@ -2537,7 +2537,7 @@ export default function App(){
       // Step 1: Session/role from localStorage (sync, tiny)
       try {
         const s=localStorage.getItem(KEYS.session);
-        if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); }
+        if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
         const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
       } catch {}
       // Step 1b: Data from IndexedDB — async, no 5 MB limit
@@ -4302,6 +4302,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setRole(null);
     setAuthView("login");
     setPage("home");
+    sessionStorage.removeItem("gmd:lastPage");
     localStorage.removeItem(KEYS.session);
     localStorage.removeItem(KEYS.role);
   };
@@ -4615,6 +4616,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[fromHome,   setFromHome]   =useState(false);
   const[showExport, setShowExport] =useState(false);
   const showExportRef=useRef(false);
+  useEffect(()=>{if(session&&page)sessionStorage.setItem("gmd:lastPage",page);},[page,session]);
   const smartImportInputRef=useRef(null);
   showExportRef.current=showExport;
   const[joStep,     setJoStep]     =useState("select");
