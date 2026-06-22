@@ -19816,14 +19816,27 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       toastEmit(`Stage → ${st}`,"success");
                     }
                   };
-                  const stageOpts=[...WON_STAGES];
                   return(
-                    <div style={{marginTop:10,display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",flexShrink:0}}>STAGE</span>
-                      <select value={deal.stage||""} onChange={e=>changeStage(e.target.value)}
-                        style={{flex:1,fontSize:".78rem",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",color:"#0f172a",background:"#f8fafc",fontWeight:600,cursor:"pointer"}}>
-                        {stageOpts.map(s=><option key={s} value={s}>{s}</option>)}
-                      </select>
+                    <div style={{marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12}}>
+                      <div style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",marginBottom:8}}>Stage — tap to change</div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                        {WON_STAGES.map(s=>{
+                          const isActive=deal.stage===s;
+                          const stageColors={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
+                          const sc=stageColors[s]||"#64748b";
+                          const label=s.replace(/^\d+ · /,"");
+                          return(
+                            <button key={s} onClick={()=>changeStage(s)}
+                              style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,letterSpacing:".04em",padding:"4px 11px",borderRadius:20,cursor:"pointer",transition:"all .12s",
+                                background:isActive?sc:"transparent",
+                                color:isActive?"#fff":sc,
+                                border:`1.5px solid ${isActive?sc:sc+"55"}`,
+                                opacity:1}}>
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   );
                 })()}
