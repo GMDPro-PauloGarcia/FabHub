@@ -2312,40 +2312,50 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 
 function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate}){
   const[note,setNote]=useState("");
+  const[nextSteps,setNextSteps]=useState("");
   const[stage,setStage]=useState("");
   const[pct,setPct]=useState("");
-  // Reset when modal opens for a new deal
-  React.useEffect(()=>{if(pmUpdateModal){setNote("");setStage("");setPct("");}},[pmUpdateModal?.dealId]);
+  React.useEffect(()=>{if(pmUpdateModal){setNote("");setNextSteps("");setStage("");setPct("");}},[pmUpdateModal?.dealId]);
   if(!pmUpdateModal) return null;
   return(
     <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
-        <div>
-          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Stage</label>
-          <select value={stage} onChange={e=>setStage(e.target.value)}
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-            <option value="">Select stage...</option>
-            {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
-              <option key={s}>{s}</option>
-            ))}
-          </select>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Stage</label>
+            <select value={stage} onChange={e=>setStage(e.target.value)}
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
+              <option value="">Select stage...</option>
+              {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete</label>
+            <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
+          </div>
         </div>
         <div>
-          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete</label>
-          <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>What happened today? <span style={{color:"#ef4444"}}>*</span></label>
+          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
+            placeholder="Deliveries, installations, issues, decisions, site status..."
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
         </div>
         <div>
-          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Update Notes <span style={{color:"#ef4444"}}>*</span></label>
-          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={4}
-            placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Next Steps / Action Items</label>
+          <textarea value={nextSteps} onChange={e=>setNextSteps(e.target.value)} rows={2}
+            placeholder="What needs to happen next? Who is responsible?"
             style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
           <button onClick={()=>{
-            if(!note.trim()){toastEmit("Please enter an update note.","warning");return;}
-            const updateText=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
+            if(!note.trim()){toastEmit("Please enter what happened today.","warning");return;}
+            const parts=[`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]`,note.trim()];
+            if(nextSteps.trim()) parts.push(`Next: ${nextSteps.trim()}`);
+            const updateText=parts.join(" | ");
             logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",updateText);
             addPmUpdate&&addPmUpdate(pmUpdateModal.dealId,updateText,session?.name);
             setPmUpdateModal(null);
@@ -4594,6 +4604,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const fqac=(k,v)=>setQuickAddClientForm(p=>({...p,[k]:v}));
   const resetQAC=()=>setQuickAddClientForm({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
   const[pmUpdateModal,setPmUpdateModal]= useState(null);   // {dealId, dealName} — PM update entry
+  const[billingJumpDeal,setBillingJumpDeal]=useState(null); // pre-select a deal when opening billing page
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
@@ -5704,8 +5715,104 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(page==="home"){
 
-  // Sales should never land here — redirect to pipeline
-  if(role==="Sales"){ setTimeout(()=>setPage("pipeline"),0); return null; }
+  // ── SALES HOME ───────────────────────────────────────────────────────────
+  if(role==="Sales") return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Sales Dashboard · {todayL}</div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button onClick={()=>setPage("pipeline")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📊 Pipeline</button>
+          <button onClick={()=>setPage("projects")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 My Projects</button>
+        </div>
+      </div>
+      {(()=>{
+        const myDeals=deals.filter(d=>d.salesOwner===session?.name);
+        const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
+        const myPipe=myDeals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
+        const myUnpriced=myPipe.filter(d=>!Number(d.value)||Number(d.value)===0);
+        const myColl=myWon.reduce((s,d)=>s+Number(d.amountPaid||0),0);
+        const myRev=myWon.reduce((s,d)=>s+Number(d.value||0),0);
+        const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0));
+        const pendingAddenda=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected"&&myWon.some(d=>d.id===a.dealId));
+        const fmtK=v=>v>=1000000?"₱"+Math.round(v/1000000*10)/10+"M":"₱"+Math.round(v/1000)+"K";
+        return(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {/* KPI strip */}
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
+              {[
+                {l:"Pipeline Deals",   v:myPipe.length,     c:"#6366f1", icon:"📊", action:()=>setPage("pipeline")},
+                {l:"Awarded Value",    v:fmtK(myRev),        c:"#10b981", icon:"🏆", action:()=>setPage("pipeline")},
+                {l:"Collected",        v:fmtK(myColl),       c:"#059669", icon:"💰", action:()=>setPage("pipeline")},
+                {l:"Outstanding",      v:fmtK(myOut),        c:myOut>0?"#ef4444":"#94a3b8", icon:"⏳", action:()=>setPage("pipeline")},
+              ].map(({l,v,c,icon,action})=>(
+                <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${c}22`,cursor:"pointer",transition:"all .15s"}}>
+                  <div style={{fontSize:"1.1rem"}}>{icon}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c,marginTop:4}}>{v}</div>
+                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            {/* Scope changes needing Sales action */}
+            {pendingAddenda.length>0&&(
+              <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,overflow:"hidden"}}>
+                <div style={{background:"#d97706",padding:"10px 16px"}}><span style={{fontWeight:700,color:"#fff",fontSize:".88rem"}}>⚠️ {pendingAddenda.length} Scope Change{pendingAddenda.length!==1?"s":""} Need Your Action</span></div>
+                {pendingAddenda.slice(0,4).map((a,i)=>{
+                  const d=myWon.find(x=>x.id===a.dealId);
+                  return(
+                    <div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<Math.min(pendingAddenda.length,4)-1?"1px solid #fef3c7":"",background:"#fff"}}>
+                      <div>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{a.title||"Untitled Scope Change"}</div>
+                        <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.status}</div>
+                      </div>
+                      <button onClick={()=>setPage("addenda")} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>Review →</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {/* Unpriced deals */}
+            {myUnpriced.length>0&&(
+              <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontWeight:700,color:"#dc2626",fontSize:".85rem"}}>⏳ {myUnpriced.length} deal{myUnpriced.length!==1?"s":""} awaiting QS pricing</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{myUnpriced.slice(0,3).map(d=>d.client).join(", ")}{myUnpriced.length>3&&` +${myUnpriced.length-3} more`}</div>
+                </div>
+                <button onClick={()=>setPage("pipeline")} style={{background:"#ef4444",border:"none",borderRadius:7,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>View Pipeline →</button>
+              </div>
+            )}
+            {/* My awarded projects */}
+            {myWon.length>0&&(
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>🏆 My Awarded Projects ({myWon.length})</span>
+                  <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)",cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("pipeline")}>See all →</span>
+                </div>
+                {myWon.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").slice(0,6).map((d,i,arr)=>{
+                  const paid=Number(d.amountPaid||0);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const sc={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"}[d.stage]||"#94a3b8";
+                  return(
+                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f8fafc":""}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                        <div style={{display:"flex",gap:6,marginTop:3,alignItems:"center"}}>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".54rem",fontWeight:600,padding:"1px 6px",borderRadius:3,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                          <span style={{fontSize:".68rem",color:"#10b981",fontWeight:700}}>₱{Number(d.value||0).toLocaleString("en-PH")}</span>
+                          <span style={{fontSize:".66rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}% collected</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+    </Wrap>
+  );
 
   // ── FINANCE HOME ──────────────────────────────────────────────────────────
   if(role==="Finance") return(
@@ -5815,7 +5922,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{fontWeight:700,color:"#92400e",marginBottom:10,fontSize:".88rem"}}>⚠️ {noBilling.length} awarded projects have no billing milestones set up</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {noBilling.slice(0,6).map(d=>(
-                <button key={d.id} onClick={()=>{setPage("billing");}} style={{background:"#fff",border:"1px solid #fde68a",borderRadius:20,padding:"4px 12px",fontSize:".75rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>{d.client} — {d.ceNo}</button>
+                <button key={d.id} onClick={()=>{setBillingJumpDeal(d.id);setPage("billing");}} style={{background:"#fff",border:"1px solid #fde68a",borderRadius:20,padding:"4px 12px",fontSize:".75rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>{d.client} — {d.ceNo}</button>
               ))}
               {noBilling.length>6&&<span style={{fontSize:".75rem",color:"#92400e",padding:"4px 8px"}}>+{noBilling.length-6} more</span>}
             </div>
@@ -6421,6 +6528,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {l:"Pending MRs",     v:mreqs.filter(m=>m.status==="Submitted").length,                                      icon:"🔧", page:"requests", c:"#f97316"},
                 {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length,                                        icon:"💳", page:"requests",   c:"#8b5cf6"},
                 {l:"Open Tasks",      v:myOpenTasks.length,                                                                   icon:"✅", page:"checklist",   c:"#3b82f6"},
+                {l:"Open Blockers",   v:(blockers||[]).filter(b=>b.status==="Open"&&display.some(d=>d.id===b.dealId)).length, icon:"⛔", page:"projects",   c:(blockers||[]).filter(b=>b.status==="Open"&&display.some(d=>d.id===b.dealId)).length>0?"#ef4444":"#94a3b8"},
               ].map(({l,v,icon,page:pg,c})=>(
                 <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:10,padding:"14px",border:`1.5px solid ${c}22`,textAlign:"center",cursor:"pointer"}}>
                   <div style={{fontSize:"1.2rem"}}>{icon}</div>
@@ -8403,6 +8511,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       {vvipClients?.has(d.client)&&<span style={{fontSize:".6rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⭐</span>}
                       {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".6rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700}}>₱3M+</span>}
                       {d.awardRequestData&&<span style={{fontSize:".6rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>🏆 Pending</span>}
+                      {(!Number(d.value)||Number(d.value)===0)&&<span style={{fontSize:".6rem",color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⏳ Awaiting QS Price</span>}
                     </div>
                     <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
                       {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
@@ -8438,6 +8547,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {vvipClients?.has(d.client)&&<span style={{fontSize:".58rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⭐</span>}
                   {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".58rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>₱3M+</span>}
                   {d.awardRequestData&&<span style={{fontSize:".58rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>🏆 Pending</span>}
+                  {(!Number(d.value)||Number(d.value)===0)&&<span style={{fontSize:".58rem",color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⏳ Awaiting QS Price</span>}
                 </div>
                 <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {d.ceNo&&<span style={{color:"#475569",fontWeight:600}}>{d.ceNo}</span>}
@@ -10837,6 +10947,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         deleteBillingPayment={deleteBillingPayment}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
         clientProfiles={clientProfiles}
+        initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
         cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}/>
     </Wrap>
   );
@@ -18152,8 +18263,9 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles}){
-  const[selDeal,  setSelDeal]  =useState(null);
+function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal}){
+  const[selDeal,  setSelDeal]  =useState(initialDeal||null);
+  React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
   const[showPay,  setShowPay]  =useState(null);
   const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
