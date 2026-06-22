@@ -19807,6 +19807,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
                     const msg=`📌 <b>Project Stage Updated</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}${deal.contact?`\nProject: ${deal.contact}`:""}\nStage: ${st}\nBy: ${session?.name}`;
                     ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
+                    if(st==="12 · Close-Out"){
+                      const finMsg=`💰 <b>Final Billing Ready</b>\nProject: <b>${deal.contact||deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nClient: ${deal.client}\nContract Value: ₱${Number(deal.value||0).toLocaleString("en-PH")}\n\nThis project has moved to Close-Out. Please issue the final invoice.\n\n— ${session?.name}`;
+                      sendTelegramNotification("finance",finMsg);
+                    }
                     if(st==="14 · Completed"){
                       setPcFilter("completed");
                       setSelDeal(null);
