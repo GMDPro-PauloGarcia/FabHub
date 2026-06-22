@@ -19815,13 +19815,15 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       toastEmit(`Stage → ${st}`,"success");
                     }
                   };
+                  const ACTIVE_STAGES=["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist"];
+                  const isAlreadyDone=deal.stage==="12 · Close-Out"||deal.stage==="14 · Completed";
                   return(
                     <div style={{marginTop:12,borderTop:"1px solid #f1f5f9",paddingTop:12}}>
                       <div style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",marginBottom:8}}>Stage — tap to change</div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                        {WON_STAGES.map(s=>{
+                        {ACTIVE_STAGES.map(s=>{
                           const isActive=deal.stage===s;
-                          const stageColors={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
+                          const stageColors={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"};
                           const sc=stageColors[s]||"#64748b";
                           const label=s.replace(/^\d+ · /,"");
                           return(
@@ -19829,30 +19831,44 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                               style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,letterSpacing:".04em",padding:"4px 11px",borderRadius:20,cursor:"pointer",transition:"all .12s",
                                 background:isActive?sc:"transparent",
                                 color:isActive?"#fff":sc,
-                                border:`1.5px solid ${isActive?sc:sc+"55"}`,
-                                opacity:1}}>
+                                border:`1.5px solid ${isActive?sc:sc+"55"}`}}>
                               {label}
                             </button>
                           );
                         })}
                       </div>
+                      {/* Complete project button — shown when stage is 06-11 */}
+                      {!isAlreadyDone&&(
+                        <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
+                          <button onClick={()=>{if(window.confirm(`Move "${deal.contact||deal.client}" to Close-Out?\n\nUse this when the project is finishing up (final billing, punch items, handover).`)) changeStage("12 · Close-Out");}}
+                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#059669",border:"1.5px solid #059669"}}>
+                            🔒 Move to Close-Out
+                          </button>
+                          <button onClick={()=>{if(window.confirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`)) changeStage("14 · Completed");}}
+                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"#059669",color:"#fff",border:"1.5px solid #059669"}}>
+                            ✅ Mark as Completed
+                          </button>
+                        </div>
+                      )}
+                      {/* If already done, show badge + reopen option */}
+                      {isAlreadyDone&&(
+                        <div style={{marginTop:10,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,padding:"4px 12px",borderRadius:20,background:"#ecfdf5",color:"#059669",border:"1px solid #a7f3d0"}}>
+                            {deal.stage==="14 · Completed"?"✅ Completed":"🔒 Close-Out"}
+                          </span>
+                          <button onClick={()=>{if(window.confirm("Reopen this project? It will be moved back to 11 · Punchlist.")) changeStage("11 · Punchlist");}}
+                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"3px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#94a3b8",border:"1px solid #e2e8f0"}}>
+                            ↩ Reopen
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
-                {/* All-depts-done close banner */}
-                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&upDeals&&(
-                  <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}>
-                    <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete!</span>
-                    <button onClick={()=>{
-                      upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:"12 · Close-Out"}:d));
-                      if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:"12 · Close-Out"}).catch(()=>{});
-                      logActivity(selDeal,"Stage Change","Stage → 12 · Close-Out (all depts done)",session?.name);
-                      const msg=`✅ <b>Project Close-Out</b>\nClient: <b>${deal.client}</b>${deal.ceNo?`\nCE: ${deal.ceNo}`:""}\nAll departments complete.\nBy: ${session?.name}`;
-                      ["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,msg));
-                      toastEmit("Project moved to Close-Out ✅","success");
-                    }} style={{background:"#059669",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
-                      🔒 Move to Close-Out
-                    </button>
+                {/* All-depts-done celebration banner */}
+                {pct===100&&deal&&deal.stage!=="12 · Close-Out"&&deal.stage!=="14 · Completed"&&(
+                  <div style={{marginTop:10,background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px"}}>
+                    <span style={{fontSize:".8rem",fontWeight:700,color:"#059669"}}>🎉 All departments complete! Use the buttons above to close out or complete this project.</span>
                   </div>
                 )}
                 <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
