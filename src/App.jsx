@@ -19520,16 +19520,15 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {/* Stage selector */}
                 {(role==="Manager"||role==="Sales")&&deal&&upDeals&&(()=>{
                   const changeStage=st=>{
-                    const allStages=[...WON_STAGES,"14 · Completed"];
-                    const curIdx=allStages.indexOf(deal.stage||"");
-                    const newIdx=allStages.indexOf(st);
+                    const curIdx=WON_STAGES.indexOf(deal.stage||"");
+                    const newIdx=WON_STAGES.indexOf(st);
                     // M8: warn if active CE/QS requests exist for this deal
                     const activeCE=(ceReqs||[]).filter(r=>r.dealId===selDeal&&!["Done","Cancelled"].includes(r.status));
                     if(activeCE.length>0&&newIdx>curIdx){
                       if(!window.confirm(`⚠️ This project has ${activeCE.length} active CE/QS request${activeCE.length!==1?"s":""} not yet completed.\n\nAdvance stage anyway?`)) return;
                     }
-                    // M1: warn if jumping more than 1 stage ahead
-                    if(newIdx>curIdx+1){
+                    // M1: warn if jumping more than 1 stage ahead (only when current stage is recognized)
+                    if(curIdx!==-1&&newIdx>curIdx+1){
                       if(!window.confirm(`⚠️ You're skipping ${newIdx-curIdx-1} stage${newIdx-curIdx-1!==1?"s":""} (${deal.stage||"?"} → ${st}).\n\nContinue?`)) return;
                     }
                     upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
