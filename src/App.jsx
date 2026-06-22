@@ -2651,7 +2651,7 @@ export default function App(){
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
             if(_drfs){setDrfs(_drfs);idbE.push([KEYS.drfs,_drfs]);}
             const _inv=data.inventory?.length?data.inventory.map(invFromSb):null;
-            if(_inv){setInventory(_inv);idbE.push([KEYS.inventory,_inv]);}
+            if(_inv){setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
             const _stock=data.stocklog?.length?data.stocklog.map(moveFromSb):null;
             if(_stock){setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
             const _suppliers=data.suppliers?.length?data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by})):null;
@@ -3052,7 +3052,7 @@ export default function App(){
 
   const addInventoryItem=(item)=>upInventory(iv=>{
     const rec={...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
-    if(isSupabaseReady()) sbInsert('inventory_items',invToSb(rec)).catch(()=>{});
+    if(isSupabaseReady()) sbUpsert('inventory_items',invToSb(rec),'id').catch(e=>console.warn("inv insert:",e.message));
     return[...iv,rec];
   });
   const updateInventoryItem=(id,ch)=>{
@@ -20312,8 +20312,16 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const openNew=()=>{setForm(emptyItem());setEditId(null);setShowForm(true);};
   const saveItem=()=>{
     if(!form.name)return;
-    if(editId)updateInventoryItem(editId,form);
-    else addInventoryItem(form);
+    if(editId){updateInventoryItem(editId,form);}
+    else{
+      const existing=inventory.find(i=>i.name.trim().toLowerCase()===form.name.trim().toLowerCase());
+      if(existing){
+        if(!window.confirm(`"${existing.name}" already exists. Update it instead of creating a duplicate?`))return;
+        updateInventoryItem(existing.id,{...form,id:existing.id,code:existing.code});
+      } else {
+        addInventoryItem(form);
+      }
+    }
     setShowForm(false);setEditId(null);
   };
   const submitMove=()=>{
