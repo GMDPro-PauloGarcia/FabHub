@@ -20243,6 +20243,18 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const[delivFilterDateTo,setDelivFilterDateTo]=useState("");
   const csvFileRef=useRef(null);
 
+  const[showAddModal,setShowAddModal]=useState(false);
+  const[addSearch,setAddSearch]=useState("");
+  const[addStep,setAddStep]=useState("search"); // "search" | "restock" | "new"
+  const[addTarget,setAddTarget]=useState(null);
+  const[restockForm,setRestockForm]=useState({qty:"",unitCost:"",supplier:"",notes:"",date:today});
+  const openAddModal=()=>{setAddSearch("");setAddStep("search");setAddTarget(null);setRestockForm({qty:"",unitCost:"",supplier:"",notes:"",date:today});setShowAddModal(true);};
+  const addSearchResults=useMemo(()=>{
+    if(!addSearch.trim())return[];
+    const q=addSearch.trim().toLowerCase();
+    return inventory.filter(i=>i.name.toLowerCase().includes(q)||i.code.toLowerCase().includes(q)||(i.supplier||"").toLowerCase().includes(q)).slice(0,8);
+  },[inventory,addSearch]);
+
   const n=v=>Number(v)||0;
   const fp=v=>v?("₱"+n(v).toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:2})):"—";
   const canEdit=role==="Manager"||role==="Procurement"||role==="Warehouse";
@@ -20332,6 +20344,12 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   };
   const quickAdjust=(item,delta)=>{
     logStockMove({itemId:item.id,moveType:"ADJUST — Stock Count",qty:Math.max(0,n(item.qtyOnHand)+delta),unitCost:n(item.avgCost),projectId:"",notes:delta>0?`Quick +${delta}`:`Quick ${delta}`,date:today});
+  };
+  const commitRestock=()=>{
+    if(!addTarget||!restockForm.qty)return;
+    logStockMove({itemId:addTarget.id,moveType:"IN — Delivery",qty:Number(restockForm.qty),unitCost:Number(restockForm.unitCost)||n(addTarget.avgCost),projectId:"",notes:restockForm.notes||(restockForm.supplier?`Restocked from ${restockForm.supplier}`:"Restocked"),date:restockForm.date||today});
+    if(restockForm.unitCost)updateInventoryItem(addTarget.id,{lastPurchasePrice:Number(restockForm.unitCost),avgCost:Number(restockForm.unitCost),...(restockForm.supplier?{supplier:restockForm.supplier}:{})});
+    setShowAddModal(false);
   };
 
   // ── CSV import helpers ────────────────────────────────────────────────
@@ -20620,7 +20638,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <button onClick={exportInvXLSX} style={{background:C.green,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬇ Excel</button>
           {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
-          {canEdit&&<button onClick={openNew} style={{background:C.accent,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>＋ Add Item</button>}
+          {canEdit&&<button onClick={openAddModal} style={{background:C.accent,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>＋ Add / Restock</button>}
         </div>
       </div>
 
@@ -20799,10 +20817,10 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
             </select>
           </div>
 
-          {/* Add / Edit form */}
-          {showForm&&canEdit&&(
+          {/* Edit form (existing items only) */}
+          {showForm&&canEdit&&editId&&(
             <div style={{background:"#fff",borderRadius:10,border:`1px solid ${C.border}`,padding:16,boxShadow:"0 4px 16px rgba(0,0,0,.06)"}}>
-              <div style={{fontWeight:800,color:C.text,marginBottom:12,fontSize:".92rem"}}>{editId?"✏ Edit Item":"＋ Add Inventory Item"}</div>
+              <div style={{fontWeight:800,color:C.text,marginBottom:12,fontSize:".92rem"}}>✏ Edit Item</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp value={form.name} onChange={e=>f("name",e.target.value)} placeholder="e.g. CUTTING DISC"/></Fld></div>
                 <Fld label="Category"><Sel value={form.category} onChange={e=>{f("category",e.target.value);f("subCategory",INV_CATEGORIES.find(c=>c.main===e.target.value)?.subs[0]||"Other");}}>
@@ -20815,8 +20833,129 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
               </div>
               <div style={{display:"flex",gap:8,marginTop:12}}>
-                <button onClick={saveItem} disabled={!form.name} style={{background:form.name?C.accent:"#e2e8f0",border:"none",borderRadius:7,padding:"8px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:form.name?"#fff":"#94a3b8",cursor:form.name?"pointer":"not-allowed"}}>{editId?"Save Changes":"Add Item"}</button>
+                <button onClick={saveItem} disabled={!form.name} style={{background:form.name?C.accent:"#e2e8f0",border:"none",borderRadius:7,padding:"8px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:form.name?"#fff":"#94a3b8",cursor:form.name?"pointer":"not-allowed"}}>Save Changes</button>
                 <button onClick={()=>{setShowForm(false);setEditId(null);}} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:7,padding:"8px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+              </div>
+            </div>
+          )}
+
+          {/* ── Add / Restock modal ─────────────────────────────────── */}
+          {showAddModal&&(
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setShowAddModal(false)}>
+              <div style={{background:"#fff",borderRadius:14,padding:24,width:"100%",maxWidth:460,boxShadow:"0 8px 40px rgba(0,0,0,.18)"}} onClick={e=>e.stopPropagation()}>
+
+                {/* ── STEP 1: Search ── */}
+                {addStep==="search"&&(<>
+                  <div style={{fontWeight:800,fontSize:"1rem",color:C.text,marginBottom:4}}>＋ Add / Restock Item</div>
+                  <div style={{fontSize:".75rem",color:C.muted,marginBottom:14}}>Search for an existing item to restock, or create a new one.</div>
+                  <input autoFocus value={addSearch} onChange={e=>setAddSearch(e.target.value)}
+                    placeholder="Search by name, code, or supplier…"
+                    style={{width:"100%",border:`1.5px solid ${C.border}`,borderRadius:8,padding:"10px 14px",fontFamily:"inherit",fontSize:".88rem",color:C.text,boxSizing:"border-box",outline:"none",marginBottom:10}}/>
+                  {addSearch.trim()&&addSearchResults.length===0&&(
+                    <div style={{textAlign:"center",padding:"12px 0",color:C.muted,fontSize:".82rem"}}>
+                      No match found.
+                      <button onClick={()=>{setForm({...emptyItem(),name:addSearch.trim()});setEditId(null);setAddStep("new");}}
+                        style={{display:"block",margin:"8px auto 0",background:C.accent,border:"none",borderRadius:8,padding:"8px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:"#fff",cursor:"pointer"}}>
+                        ＋ Create "{addSearch.trim()}" as new item
+                      </button>
+                    </div>
+                  )}
+                  {addSearchResults.map(item=>{
+                    const rem=n(item.qtyOnHand);
+                    const bdg=rem<=0?"🔴":rem<=n(item.reorderPoint)?"🟡":"🟢";
+                    return(
+                      <div key={item.id} onClick={()=>{setAddTarget(item);setRestockForm({qty:"",unitCost:String(n(item.avgCost)||n(item.lastPurchasePrice)||""),supplier:item.supplier||"",notes:"",date:today});setAddStep("restock");}}
+                        style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:9,border:`1.5px solid ${C.border}`,marginBottom:7,cursor:"pointer",background:"#fafafa",transition:"border-color .12s"}}
+                        onMouseEnter={e=>e.currentTarget.style.borderColor=C.accent}
+                        onMouseLeave={e=>e.currentTarget.style.borderColor=C.border}>
+                        <div>
+                          <div style={{fontWeight:700,fontSize:".88rem",color:C.text}}>{item.name}</div>
+                          <div style={{fontSize:".72rem",color:C.muted,marginTop:1}}>{item.code} · {item.category}{item.supplier?` · ${item.supplier}`:""}</div>
+                        </div>
+                        <div style={{textAlign:"right",flexShrink:0,marginLeft:12}}>
+                          <div style={{fontWeight:700,fontSize:".88rem",color:C.text}}>{bdg} {rem} {item.unit}</div>
+                          {item.avgCost>0&&<div style={{fontSize:".7rem",color:C.muted}}>₱{n(item.avgCost).toLocaleString("en-PH")}/unit</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {!addSearch.trim()&&(
+                    <button onClick={()=>{setForm(emptyItem());setEditId(null);setAddStep("new");}}
+                      style={{width:"100%",marginTop:4,background:"transparent",border:`1.5px dashed ${C.border}`,borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:C.muted,cursor:"pointer"}}>
+                      ＋ Create brand-new item
+                    </button>
+                  )}
+                  <button onClick={()=>setShowAddModal(false)} style={{marginTop:14,width:"100%",background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"8px",fontFamily:"inherit",fontSize:".8rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+                </>)}
+
+                {/* ── STEP 2: Restock existing ── */}
+                {addStep==="restock"&&addTarget&&(<>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+                    <button onClick={()=>setAddStep("search")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".75rem",color:C.muted,cursor:"pointer"}}>← Back</button>
+                    <div>
+                      <div style={{fontWeight:800,fontSize:".95rem",color:C.text}}>Restock: {addTarget.name}</div>
+                      <div style={{fontSize:".72rem",color:C.muted}}>Current stock: {n(addTarget.qtyOnHand)} {addTarget.unit}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <Fld label="Qty Received" required>
+                      <Inp type="number" autoFocus value={restockForm.qty} onChange={e=>setRestockForm(p=>({...p,qty:e.target.value}))} min={1} placeholder="0"/>
+                    </Fld>
+                    <Fld label={`Unit Cost (₱/${addTarget.unit})`}>
+                      <Inp type="number" value={restockForm.unitCost} onChange={e=>setRestockForm(p=>({...p,unitCost:e.target.value}))} placeholder={String(n(addTarget.avgCost)||"")}/>
+                    </Fld>
+                    <Fld label="Supplier">
+                      <Inp value={restockForm.supplier} onChange={e=>setRestockForm(p=>({...p,supplier:e.target.value}))} placeholder={addTarget.supplier||"Supplier name"}/>
+                    </Fld>
+                    <Fld label="Date">
+                      <Inp type="date" value={restockForm.date} onChange={e=>setRestockForm(p=>({...p,date:e.target.value}))}/>
+                    </Fld>
+                    <div style={{gridColumn:"1/-1"}}>
+                      <Fld label="Notes (optional)">
+                        <Inp value={restockForm.notes} onChange={e=>setRestockForm(p=>({...p,notes:e.target.value}))} placeholder="PO ref, DR no., batch…"/>
+                      </Fld>
+                    </div>
+                  </div>
+                  {restockForm.qty&&Number(restockForm.qty)>0&&(
+                    <div style={{background:"#f0fdf4",border:"1px solid #86efac",borderRadius:8,padding:"8px 12px",fontSize:".78rem",color:"#166534",marginTop:10}}>
+                      Stock will increase: {n(addTarget.qtyOnHand)} → <b>{n(addTarget.qtyOnHand)+Number(restockForm.qty)} {addTarget.unit}</b>
+                      {restockForm.unitCost&&` · Total value: ₱${(Number(restockForm.qty)*Number(restockForm.unitCost)).toLocaleString("en-PH")}`}
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:8,marginTop:14}}>
+                    <button onClick={commitRestock} disabled={!restockForm.qty}
+                      style={{flex:1,background:restockForm.qty?C.green:"#e2e8f0",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:restockForm.qty?"#fff":"#94a3b8",cursor:restockForm.qty?"pointer":"not-allowed"}}>
+                      ✓ Confirm Restock
+                    </button>
+                    <button onClick={()=>setShowAddModal(false)} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+                  </div>
+                </>)}
+
+                {/* ── STEP 3: New item ── */}
+                {addStep==="new"&&(<>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
+                    <button onClick={()=>setAddStep("search")} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".75rem",color:C.muted,cursor:"pointer"}}>← Back</button>
+                    <div style={{fontWeight:800,fontSize:".95rem",color:C.text}}>New Inventory Item</div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <div style={{gridColumn:"1/-1"}}><Fld label="Item Name" required><Inp autoFocus value={form.name} onChange={e=>f("name",e.target.value)} placeholder="e.g. CUTTING DISC 4""/></Fld></div>
+                    <Fld label="Category"><Sel value={form.category} onChange={e=>{f("category",e.target.value);f("subCategory",INV_CATEGORIES.find(c=>c.main===e.target.value)?.subs[0]||"Other");}}>
+                      {INV_CATEGORIES.map(c=><option key={c.main}>{c.main}</option>)}</Sel></Fld>
+                    <Fld label="Unit"><Sel value={form.unit} onChange={e=>f("unit",e.target.value)}>{INV_UNITS.map(u=><option key={u}>{u}</option>)}</Sel></Fld>
+                    <Fld label="Opening Qty"><Inp type="number" value={form.qtyOnHand} onChange={e=>f("qtyOnHand",e.target.value)} min={0}/></Fld>
+                    <Fld label="Unit Price (₱)"><Inp type="number" value={form.lastPurchasePrice} onChange={e=>{f("lastPurchasePrice",e.target.value);f("avgCost",e.target.value);}}/></Fld>
+                    <Fld label="Reorder Point"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
+                    <Fld label="Supplier"><Inp value={form.supplier} onChange={e=>f("supplier",e.target.value)} placeholder="Supplier name"/></Fld>
+                    <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
+                  </div>
+                  <div style={{display:"flex",gap:8,marginTop:14}}>
+                    <button onClick={()=>{if(!form.name)return;addInventoryItem(form);setShowAddModal(false);}} disabled={!form.name}
+                      style={{flex:1,background:form.name?C.accent:"#e2e8f0",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:form.name?"#fff":"#94a3b8",cursor:form.name?"pointer":"not-allowed"}}>
+                      ＋ Create Item
+                    </button>
+                    <button onClick={()=>setShowAddModal(false)} style={{background:"transparent",border:`1px solid ${C.border}`,borderRadius:8,padding:"10px 16px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:C.muted,cursor:"pointer"}}>Cancel</button>
+                  </div>
+                </>)}
               </div>
             </div>
           )}
