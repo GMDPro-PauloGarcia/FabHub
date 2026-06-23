@@ -6114,16 +6114,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── SALES HOME ───────────────────────────────────────────────────────────
   if(role==="Sales") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Sales Dashboard · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={()=>setPage("pipeline")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📊 Pipeline</button>
-          <button onClick={()=>setPage("projects")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 My Projects</button>
-        </div>
-      </div>
+      <DeptHeader
+        name={session?.name?.split(" ")[0]}
+        subtitle={`Sales · ${todayL}`}
+        buttons={[
+          {label:"+ New Deal",    icon:"🤝", bg:"#6366f1", action:()=>openAddDeal()},
+          {label:"Pipeline",      icon:"📊", bg:"#1e293b", action:()=>setPage("pipeline")},
+          {label:"My Projects",   icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
+          {label:"Flag for Award",icon:"🏆", bg:"#059669", action:()=>setPage("pipeline")},
+          {label:"Addenda",       icon:"📝", bg:"#8b5cf6", action:()=>setPage("addenda")},
+        ]}
+      />
       {(()=>{
         const myDeals=deals.filter(d=>d.salesOwner===session?.name);
         const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
@@ -6213,13 +6214,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── FINANCE HOME ──────────────────────────────────────────────────────────
   if(role==="Finance") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"there"} 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Finance Dashboard · {todayL}</div>
-        </div>
-        <button onClick={()=>setPage("billing")} style={{background:"#3b82f6",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Open Billing</button>
-      </div>
+      <DeptHeader
+        name={session?.name?.split(" ")[0]}
+        subtitle={`Finance · ${todayL}`}
+        buttons={[
+          {label:"Log Payment",   icon:"💵", bg:"#8b5cf6", action:()=>{setFromHome(true);setPage("billing");}},
+          {label:"Log Expense",   icon:"💸", bg:"#3b82f6", action:()=>openAddExp()},
+          {label:"Open Billing",  icon:"📋", bg:"#1e293b", action:()=>setPage("billing")},
+          {label:"Cash Position", icon:"💰", bg:"#059669", action:()=>setPage("finance")},
+        ]}
+      />
 
       {/* KPI row */}
       {(()=>{
@@ -6707,16 +6711,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── OPERATIONS HOME ───────────────────────────────────────────────────────
   if(role==="Operations") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"Team"} 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Operations · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={()=>setPage("projects")} style={{background:"#f97316",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 My Projects</button>
-          <button onClick={()=>setPage("requests")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>🔧 Material Request</button>
-        </div>
-      </div>
+      <DeptHeader
+        name={session?.name?.split(" ")[0]||"Team"}
+        subtitle={`Operations · ${todayL}`}
+        buttons={[
+          {label:"Log Update",      icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
+          {label:"Report Blocker",  icon:"🚨", bg:"#dc2626", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General",initialType:"Blocker"})},
+          {label:"Material Request",icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
+          {label:"My Projects",     icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
+        ]}
+      />
 
       {(()=>{
         const myName=session?.name||"";
@@ -6903,13 +6907,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── DESIGN HOME ───────────────────────────────────────────────────────────
   if(role==="Design") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"Team"} 👋</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Design Dashboard · {todayL}</div>
-        </div>
-        <button onClick={()=>setPage("projects")} style={{background:"#ec4899",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📋 Project Cards</button>
-      </div>
+      <DeptHeader
+        name={session?.name?.split(" ")[0]||"Team"}
+        subtitle={`Design · ${todayL}`}
+        buttons={[
+          {label:"+ New DRF",    icon:"🎨", bg:"#ec4899", action:()=>setPage("drf")},
+          {label:"My Requests",  icon:"📋", bg:"#1e293b", action:()=>setPage("drf")},
+          {label:"Swatchboard",  icon:"🎨", bg:"#8b5cf6", action:()=>setPage("swatchboard")},
+        ]}
+      />
 
       {(()=>{
         const now=new Date();
@@ -7079,16 +7085,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── PROJECT MOVER HOME ───────────────────────────────────────────────────
   if(role==="ProjectMover") return(
     <Wrap>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
-        <div>
-          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>Good {greeting}, {session?.name?.split(" ")[0]||"PM"} 👷</div>
-          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Project Mover · {todayL}</div>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>setPage("pmupdates")} style={{background:"#0ea5e9",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📝 Log Update</button>
-          <button onClick={()=>setPage("addenda")} style={{background:"#dc2626",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>⚠️ Flag Scope Change</button>
-        </div>
-      </div>
+      <DeptHeader
+        name={session?.name?.split(" ")[0]||"Team"}
+        subtitle={`Project Mover · ${todayL}`}
+        buttons={[
+          {label:"Log Update",   icon:"📝", bg:"#f97316", action:()=>setPmUpdateModal&&setPmUpdateModal({dealId:null,dealName:"General"})},
+          {label:"My Projects",  icon:"📋", bg:"#1e293b", action:()=>setPage("projects")},
+          {label:"Calendar",     icon:"📅", bg:"#0ea5e9", action:()=>setPage("calendar")},
+          {label:"Material Req", icon:"📦", bg:"#f59e0b", action:()=>setPage("materialreq")},
+        ]}
+      />
 
       {(()=>{
         const myName=session?.name||"";
@@ -10087,6 +10093,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const grossMar=totRev>0?Math.round(grossPro/totRev*100):0;
     if(page==="home"&&role==="QS") return(
       <Wrap>
+        <DeptHeader
+          name={session?.name?.split(" ")[0]||"Team"}
+          subtitle={`QS / Cost Control · ${todayL}`}
+          buttons={[
+            {label:"BOQ Builder",   icon:"🧮", bg:"#8b5cf6", action:()=>setPage("boq")},
+            {label:"CE Request",    icon:"📐", bg:"#06b6d4", action:()=>setPage("ceqs")},
+            {label:"Cost Analysis", icon:"💹", bg:"#059669", action:()=>setPage("costanalysis")},
+            {label:"Budget",        icon:"📊", bg:"#1e293b", action:()=>setPage("budget")},
+          ]}
+        />
         {/* QS action items */}
         {(()=>{
           const pendingBudget=jos.filter(j=>j.budgetStatus==="QS Budget Pending");
@@ -10113,6 +10129,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     );
     if(page==="home"&&role==="Procurement") return(
       <Wrap>
+        <DeptHeader
+          name={session?.name?.split(" ")[0]||"Team"}
+          subtitle={`Procurement · ${todayL}`}
+          buttons={[
+            {label:"+ New PO",      icon:"📦", bg:"#06b6d4", action:()=>setPage("procurement")},
+            {label:"+ Work Order",  icon:"🔧", bg:"#8b5cf6", action:()=>setPage("subconwo")},
+            {label:"Requests",      icon:"📋", bg:"#f59e0b", action:()=>setPage("requests")},
+            {label:"Inventory",     icon:"🗃️", bg:"#1e293b", action:()=>setPage("inventory")},
+            {label:"Suppliers",     icon:"🏢", bg:"#1e293b", action:()=>setPage("masters")},
+          ]}
+        />
         <SecHead title="Procurement Overview"/>
         {(()=>{
           const lowInv=inventory.filter(i=>Number(i.qtyOnHand)<=Number(i.reorderPoint)&&Number(i.reorderPoint)>0);
@@ -10734,6 +10761,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(role==="Design"){
     if(page==="home") return(
       <Wrap>
+        <DeptHeader
+          name={session?.name?.split(" ")[0]||"Team"}
+          subtitle={`Design · ${todayL}`}
+          buttons={[
+            {label:"+ New DRF",    icon:"🎨", bg:"#ec4899", action:()=>setPage("drf")},
+            {label:"My Requests",  icon:"📋", bg:"#1e293b", action:()=>setPage("drf")},
+            {label:"Swatchboard",  icon:"🎨", bg:"#8b5cf6", action:()=>setPage("swatchboard")},
+          ]}
+        />
         <SecHead title="Design Projects"/>
         {projList.map(d=>{
           const p=projs[d.id]; if(!p) return null; const ds=p?.design?.status||"Briefing";
@@ -18905,6 +18941,29 @@ function BudgetRequestView({breqs,addBR,updateBR,deleteBR,wonDeals,session,role,
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
+function DeptHeader({greeting,name,subtitle,buttons=[]}){
+  return(
+    <div style={{background:"#0f172a",borderRadius:12,padding:"16px 20px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",gap:14,flexWrap:"wrap"}}>
+      <div>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.4rem",color:"#f8fafc",letterSpacing:"-.3px"}}>
+          Good {new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening"}, {name||"Team"} 👋
+        </div>
+        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.4)",marginTop:2}}>{subtitle}</div>
+      </div>
+      {buttons.length>0&&(
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+          {buttons.map(({label,icon,bg,fg,action})=>(
+            <button key={label} onClick={action}
+              style={{background:bg||"#1e293b",color:fg||"#fff",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".76rem",cursor:"pointer",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RecentActivityFeed({projs,wonDeals,limit=10}){
   const all=[];
   wonDeals.forEach(d=>{
