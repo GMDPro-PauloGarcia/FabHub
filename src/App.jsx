@@ -11481,7 +11481,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         upDeals={upDeals}
         onOpenPayTerms={id=>setPayTermsModal(id)}
         initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
-        cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}/>
+        cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}
+        toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
   );
 
@@ -18998,7 +18999,36 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms}){
+function DeductionForm({ms,updateMilestone,session,role,today,toastEmit,sendTelegramNotification,deal}){
+  const[showDed,setShowDed]=useState(false);
+  const[dedForm,setDedForm]=useState({reason:"",amount:""});
+  if(!showDed) return(
+    <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Record Deduction</button>
+  );
+  return(
+    <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"10px 12px"}}>
+      <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:8}}>📉 Record Deduction</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+        <Fld label="Reason"><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
+        <Fld label="Amount (₱)"><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        <button onClick={()=>{
+          if(!dedForm.reason||!dedForm.amount) return;
+          const ded={id:uid(),reason:dedForm.reason,amount:Number(dedForm.amount),approvedBy:session?.name||"Manager",approvedOn:today};
+          const updated=[...(ms.deductions||[]),ded];
+          updateMilestone(ms.id,{deductions:updated,amount:Math.max(0,Number(ms.amount)-Number(dedForm.amount))});
+          sendTelegramNotification&&sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}\nDeduction: ₱${Number(dedForm.amount).toLocaleString("en-PH")}\nReason: ${dedForm.reason}\nApproved by: ${session?.name||"Manager"} · ${today}`);
+          toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
+          setShowDed(false);setDedForm({reason:"",amount:""});
+        }} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Approve & Record</button>
+        <button onClick={()=>setShowDed(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontSize:".74rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,toastEmit,sendTelegramNotification}){
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -19904,34 +19934,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                               ))}
                             </div>
                           )}
-                          {role==="Manager"&&(()=>{
-                            const[showDed,setShowDed]=useState(false);
-                            const[dedForm,setDedForm]=useState({reason:"",amount:""});
-                            if(!showDed) return(
-                              <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Record Deduction</button>
-                            );
-                            return(
-                              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"10px 12px"}}>
-                                <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:8}}>📉 Record Deduction</div>
-                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                                  <Fld label="Reason"><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
-                                  <Fld label="Amount (₱)"><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
-                                </div>
-                                <div style={{display:"flex",gap:6}}>
-                                  <button onClick={()=>{
-                                    if(!dedForm.reason||!dedForm.amount) return;
-                                    const ded={id:uid(),reason:dedForm.reason,amount:Number(dedForm.amount),approvedBy:session?.name||"Manager",approvedOn:today};
-                                    const updated=[...(ms.deductions||[]),ded];
-                                    updateMilestone(ms.id,{deductions:updated,amount:Math.max(0,Number(ms.amount)-Number(dedForm.amount))});
-                                    sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}\nDeduction: ₱${Number(dedForm.amount).toLocaleString("en-PH")}\nReason: ${dedForm.reason}\nApproved by: ${session?.name||"Manager"} · ${today}`);
-                                    toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
-                                    setShowDed(false);setDedForm({reason:"",amount:""});
-                                  }} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Approve & Record</button>
-                                  <button onClick={()=>setShowDed(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontSize:".74rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                                </div>
-                              </div>
-                            );
-                          })()}
+                          {role==="Manager"&&<DeductionForm ms={ms} updateMilestone={updateMilestone} session={session} role={role} today={today} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} deal={deal}/>}
                         </div>
                       );
                     })()}
