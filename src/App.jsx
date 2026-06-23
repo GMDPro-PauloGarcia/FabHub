@@ -2530,66 +2530,102 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 
 }
 
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover}){
+const PM_UPDATE_TYPES=["General Progress","Materials Needed","Design Request","Blocker"];
+const PM_TYPE_COLOR={"General Progress":"#0ea5e9","Materials Needed":"#f59e0b","Design Request":"#8b5cf6","Blocker":"#ef4444"};
+const PM_TYPE_ICON={"General Progress":"📋","Materials Needed":"📦","Design Request":"🎨","Blocker":"🚨"};
+
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification}){
+  const[updateType,setUpdateType]=useState("General Progress");
   const[note,setNote]=useState("");
   const[nextSteps,setNextSteps]=useState("");
   const[stage,setStage]=useState("");
   const[pct,setPct]=useState("");
   const[revisedDate,setRevisedDate]=useState("");
-  React.useEffect(()=>{if(pmUpdateModal){setNote("");setNextSteps("");setStage("");setPct("");setRevisedDate("");}},[pmUpdateModal?.dealId]);
+  const[blockerDesc,setBlockerDesc]=useState("");
+  const[decisionMaker,setDecisionMaker]=useState("");
+  const[actionPlan,setActionPlan]=useState("");
+  React.useEffect(()=>{
+    if(pmUpdateModal){setUpdateType("General Progress");setNote("");setNextSteps("");setStage("");setPct("");setRevisedDate("");setBlockerDesc("");setDecisionMaker("");setActionPlan("");}
+  },[pmUpdateModal?.dealId]);
   if(!pmUpdateModal) return null;
+  const typeColor=PM_TYPE_COLOR[updateType]||"#0ea5e9";
+  const isBlocker=updateType==="Blocker";
   return(
     <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
-      <div style={{display:"flex",flexDirection:"column",gap:12}}>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        {/* Update type selector */}
+        <div>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:6}}>Update Type <span style={{color:"#ef4444"}}>*</span></label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {PM_UPDATE_TYPES.map(t=>(
+              <button key={t} onClick={()=>setUpdateType(t)} style={{border:`2px solid ${PM_TYPE_COLOR[t]}`,borderRadius:20,padding:"5px 14px",fontSize:".78rem",fontWeight:700,fontFamily:"inherit",cursor:"pointer",background:updateType===t?PM_TYPE_COLOR[t]:"#fff",color:updateType===t?"#fff":PM_TYPE_COLOR[t],transition:"all .15s"}}>
+                {PM_TYPE_ICON[t]} {t}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
           <div>
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Current Stage</label>
-            <select value={stage} onChange={e=>setStage(e.target.value)}
-              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
+            <select value={stage} onChange={e=>setStage(e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
               <option value="">Select stage...</option>
-              {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=>(
-                <option key={s}>{s}</option>
-              ))}
+              {["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"].map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>% Complete</label>
-            <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45"
-              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
+            <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 45" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
           </div>
         </div>
         <div>
-          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>What happened today? <span style={{color:"#ef4444"}}>*</span></label>
-          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
-            placeholder="Deliveries, installations, issues, decisions, site status..."
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>What happened? <span style={{color:"#ef4444"}}>*</span></label>
+          <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3} placeholder="Deliveries, installations, issues, decisions, site status..." style={{width:"100%",border:`1.5px solid ${typeColor}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical",boxSizing:"border-box"}}/>
         </div>
+        {isBlocker&&(
+          <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:10,padding:"12px 14px",display:"flex",flexDirection:"column",gap:10}}>
+            <div style={{fontWeight:700,color:"#dc2626",fontSize:".82rem"}}>🚨 Blocker Details</div>
+            <div>
+              <label style={{fontSize:".78rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Describe the blocker</label>
+              <textarea value={blockerDesc} onChange={e=>setBlockerDesc(e.target.value)} rows={2} placeholder="What exactly is blocked and why?" style={{width:"100%",border:"1.5px solid #fecaca",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",resize:"vertical",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <label style={{fontSize:".78rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Who needs to decide?</label>
+              <input value={decisionMaker} onChange={e=>setDecisionMaker(e.target.value)} placeholder="e.g. Paulo Garcia, Client, Architect..." style={{width:"100%",border:"1.5px solid #fecaca",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
+            </div>
+            <div>
+              <label style={{fontSize:".78rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Proposed action / solution</label>
+              <textarea value={actionPlan} onChange={e=>setActionPlan(e.target.value)} rows={2} placeholder="What do we need to do to unblock?" style={{width:"100%",border:"1.5px solid #fecaca",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",resize:"vertical",boxSizing:"border-box"}}/>
+            </div>
+          </div>
+        )}
         <div>
           <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Next Steps / Action Items</label>
-          <textarea value={nextSteps} onChange={e=>setNextSteps(e.target.value)} rows={2}
-            placeholder="What needs to happen next? Who is responsible?"
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
+          <textarea value={nextSteps} onChange={e=>setNextSteps(e.target.value)} rows={2} placeholder="What needs to happen next? Who is responsible?" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical",boxSizing:"border-box"}}/>
         </div>
         <div>
-          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Revised Target Completion <span style={{fontWeight:400,color:"#94a3b8"}}>(optional — only if date has changed)</span></label>
-          <input type="date" value={revisedDate} onChange={e=>setRevisedDate(e.target.value)}
-            style={{width:"100%",border:`1.5px solid ${revisedDate?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Revised Target Completion <span style={{fontWeight:400,color:"#94a3b8"}}>(optional)</span></label>
+          <input type="date" value={revisedDate} onChange={e=>setRevisedDate(e.target.value)} style={{width:"100%",border:`1.5px solid ${revisedDate?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
           {revisedDate&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ This will update the project's target end date visible to Management.</div>}
         </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
           <button onClick={()=>{
-            if(!note.trim()){toastEmit("Please enter what happened today.","warning");return;}
-            const parts=[`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]`,note.trim()];
-            if(nextSteps.trim()) parts.push(`Next: ${nextSteps.trim()}`);
-            if(revisedDate) parts.push(`Target revised: ${revisedDate}`);
-            const updateText=parts.join(" | ");
-            logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",updateText);
-            addPmUpdate&&addPmUpdate(pmUpdateModal.dealId,updateText,session?.name);
+            if(!note.trim()){toastEmit("Please enter what happened.","warning");return;}
+            if(isBlocker&&!blockerDesc.trim()){toastEmit("Please describe the blocker.","warning");return;}
+            const entry={id:uid(),type:updateType,date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"}),by:session?.name||"Team",stage,pct,note:note.trim(),nextSteps:nextSteps.trim(),revisedDate,...(isBlocker?{blockerDesc:blockerDesc.trim(),decisionMaker:decisionMaker.trim(),actionPlan:actionPlan.trim(),blockerStatus:"Open"}:{})};
+            logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",`[${updateType}] ${note.trim()}`);
+            addPmUpdate&&addPmUpdate(pmUpdateModal.dealId,entry);
             if(revisedDate&&updateProjectTurnover) updateProjectTurnover(pmUpdateModal.dealId,revisedDate);
+            if(isBlocker&&sendTelegramNotification){
+              const msg=`🚨 <b>BLOCKER — ${pmUpdateModal.dealName}</b>\n${blockerDesc||note}\nDecision needed from: <b>${decisionMaker||"TBD"}</b>\nAction plan: ${actionPlan||"—"}\nLogged by: ${session?.name||"Team"}`;
+              sendTelegramNotification("ops",msg);
+              sendTelegramNotification("management",msg);
+            }
+            if(updateType==="Design Request"&&sendTelegramNotification) sendTelegramNotification("design",`🎨 <b>Design Request — ${pmUpdateModal.dealName}</b>\n${note}\nBy: ${session?.name||"Team"}`);
+            if(updateType==="Materials Needed"&&sendTelegramNotification) sendTelegramNotification("ops",`📦 <b>Materials Needed — ${pmUpdateModal.dealName}</b>\n${note}\nBy: ${session?.name||"Team"}`);
             setPmUpdateModal(null);
             toastEmit("Update logged!");
-          }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
+          }} style={{background:typeColor,border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
             ✅ Submit Update
           </button>
         </div>
@@ -4548,12 +4584,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upChecklist(cs=>[...cs,...items]);
   };
 
-  const addPmUpdate=(projId,text,by)=>{
-    if(!text.trim()) return;
-    const entry={id:uid(),text,by:by||session?.name||"Team",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
+  const addPmUpdate=(projId,entryOrText,by)=>{
+    const entry=typeof entryOrText==="object"&&entryOrText!==null
+      ? entryOrText
+      : {id:uid(),type:"General Progress",note:String(entryOrText||""),text:String(entryOrText||""),by:by||session?.name||"Team",date:today,time:new Date().toLocaleTimeString("en-PH",{hour:"2-digit",minute:"2-digit"})};
+    if(!(entry.note||entry.text||"").trim()) return;
     upProj(projId,p=>({...p,pmUpdates:[entry,...(p.pmUpdates||[])]}));
     const deal=deals.find(d=>d.id===projId);
-    sendTelegramNotification("ops",`📝 <b>PM Update</b>\n${deal?.client||projId}\nBy: ${entry.by} · ${today}\n${text}`);
+    if(entry.type!=="Blocker"&&entry.type!=="Materials Needed"&&entry.type!=="Design Request"){
+      sendTelegramNotification("ops",`📝 <b>PM Update — ${deal?.client||projId}</b>\nBy: ${entry.by} · ${today}\n${entry.note||entry.text||""}`);
+    }
   };
   const addAddendum=(dealId,title,desc,requestedBy)=>{
     const entry={id:uid(),title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
@@ -5550,7 +5590,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
-      {group:"Operations",  items:[{id:"projects",l:"Projects"}]},
+      {group:"Operations",  items:[{id:"home",l:"Ops Dashboard"},{id:"pmfeed",l:"PM Feed"},{id:"projects",l:"Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"}]},
@@ -5559,7 +5599,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"reports",l:"Reports"}]},
-      {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"pmfeed",l:"PM Feed"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Deliverables", items:[{id:"drf",l:"Design Requests"}]},
       {group:"QS",           items:[{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ Builder"}]},
     ],
@@ -5604,7 +5644,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
-      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Updates",  items:[{id:"pmfeed",l:"PM Feed"},{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
     ],
     Warehouse:[
@@ -5619,7 +5659,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
-      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  suppliers:"🏭",
+      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️",
     };
@@ -5742,7 +5782,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
-      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  suppliers:"🏭",
+      deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️",
     };
@@ -10810,7 +10850,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   }
 
   if(role==="Operations"){
-    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
+    if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
@@ -10983,6 +11023,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog}/>
       </div>
     </Wrap>
+  );
+  // ── PM FEED PAGE ─────────────────────────────────────────────────────────
+  if(page==="pmfeed") return(
+    <Wrap><PMFeedView projs={projs} wonDeals={wonDeals} deals={deals} session={session} role={role} upProj={upProj}/></Wrap>
   );
   // ── PM UPDATES PAGE ──────────────────────────────────────────────────────
   if(page==="pmupdates") return(
@@ -12593,50 +12637,19 @@ function PLStatement({billings,exps,wonDeals}){
 
 // ─── OPS VIEW ─────────────────────────────────────────────────────────────────
 const PM_STAGES=["Design Ongoing","Fabrication Started","Fabrication Ongoing","Fabrication Complete","Mobilization","Installation Started","Installation Ongoing","Installation Complete","Punchlist","Project Closed"];
-function OpsUpdateForm({selProj,session,addPmUpdate,logActivity}){
-  const[note,setNote]=React.useState("");
-  const[stage,setStage]=React.useState("");
-  const[pct,setPct]=React.useState("");
-  const post=()=>{
-    if(!note.trim()){toastEmit("Please enter an update note.","warning");return;}
-    const txt=`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]: ${note.trim()}`;
-    addPmUpdate(selProj,txt,session?.name);
-    logActivity&&logActivity(selProj,"PM Update",txt,session?.name);
-    setNote("");setStage("");setPct("");
-    toastEmit("Update posted!");
-  };
+function OpsUpdateForm({selProj,selProjName,session,addPmUpdate,logActivity,openPmModal}){
   return(
-    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:14}}>
-      <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:10}}>📝 Log PM Update <span style={{fontSize:".72rem",color:"#94a3b8",fontWeight:400,marginLeft:6}}>Daily/weekly — client-visible progress</span></div>
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:8}}>
-        <div>
-          <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:3}}>Current Stage</label>
-          <select value={stage} onChange={e=>setStage(e.target.value)}
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff"}}>
-            <option value="">Select stage...</option>
-            {PM_STAGES.map(s=><option key={s}>{s}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:3}}>% Complete</label>
-          <input type="number" min="0" max="100" value={pct} onChange={e=>setPct(e.target.value)} placeholder="e.g. 65"
-            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
-        </div>
-      </div>
-      <textarea value={note} onChange={e=>setNote(e.target.value)} rows={3}
-        placeholder="What happened today? Any issues, deliveries, decisions, blockers..."
-        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",resize:"vertical",boxSizing:"border-box",marginBottom:8}}/>
-      <div style={{display:"flex",justifyContent:"flex-end"}}>
-        <button onClick={post} disabled={!note.trim()}
-          style={{background:note.trim()?"#0ea5e9":"#e2e8f0",border:"none",borderRadius:8,padding:"9px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:note.trim()?"#fff":"#94a3b8",cursor:note.trim()?"pointer":"not-allowed"}}>
-          ✅ Post Update
+    <div style={{marginBottom:14,display:"flex",gap:8,flexWrap:"wrap"}}>
+      {[{type:"General Progress",icon:"📋",color:"#0ea5e9"},{type:"Blocker",icon:"🚨",color:"#ef4444"},{type:"Materials Needed",icon:"📦",color:"#f59e0b"},{type:"Design Request",icon:"🎨",color:"#8b5cf6"}].map(({type,icon,color})=>(
+        <button key={type} onClick={post} style={{background:color,border:"none",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>
+          {icon} {type}
         </button>
-      </div>
+      ))}
     </div>
   );
 }
 
-function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role,onCloseProject}){
+function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role,onCloseProject,openPmModal}){
   const BUDGET_ONLY_OPS=["Operations","ProjectMover"];
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
   const opsAmt=(d)=>{if(BUDGET_ONLY_OPS.includes(role)){const t=qsBudgetTotalOps(d?.id);return t>0?fmt(t)+" (budget)":"Budget Pending";}return fmt(d?.value);};
@@ -12993,14 +13006,40 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
       {/* PM UPDATES TAB */}
       {opsTab==="updates"&&(
         <div>
-          <OpsUpdateForm selProj={selProj} session={session} addPmUpdate={addPmUpdate} logActivity={logActivity}/>
-          {(proj.pmUpdates||[]).length===0&&<EmptyState icon="📝" msg="No PM updates yet. Log daily or weekly updates here."/>}
-          {(proj.pmUpdates||[]).map(u=>(
-            <Card key={u.id}>
-              <div style={{fontSize:".88rem",color:"#0f172a",lineHeight:1.6}}>{u.text}</div>
-              <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:5}}>{u.by} · {u.date}{u.time&&` at ${u.time}`}</div>
-            </Card>
-          ))}
+          <OpsUpdateForm selProj={selProj} selProjName={projDeal?.client||selProj} session={session} addPmUpdate={addPmUpdate} logActivity={logActivity} openPmModal={openPmModal}/>
+          {(proj.pmUpdates||[]).length===0&&<EmptyState icon="📝" msg="No PM updates yet. Use the buttons above to log progress, blockers, or requests."/>}
+          {(proj.pmUpdates||[]).map(u=>{
+            const uType=u.type||"General Progress";
+            const uColor=PM_TYPE_COLOR[uType]||"#0ea5e9";
+            const uIcon=PM_TYPE_ICON[uType]||"📋";
+            const isBlocker=uType==="Blocker";
+            const cleared=u.blockerStatus==="Cleared";
+            const canClear=!["Sales","Finance"].includes(role);
+            return(
+              <Card key={u.id||u.date}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+                  <span style={{background:uColor,color:"#fff",borderRadius:20,padding:"2px 10px",fontSize:".68rem",fontWeight:700,fontFamily:"'IBM Plex Mono',monospace"}}>{uIcon} {uType}</span>
+                  {isBlocker&&<span style={{background:cleared?"#dcfce7":"#fef2f2",color:cleared?"#15803d":"#dc2626",border:`1px solid ${cleared?"#86efac":"#fca5a5"}`,borderRadius:20,padding:"2px 10px",fontSize:".65rem",fontWeight:700,fontFamily:"'IBM Plex Mono',monospace"}}>{cleared?"✓ Cleared":"⚠ Open"}</span>}
+                  {u.stage&&<span style={{fontSize:".65rem",color:"#64748b",background:"#f1f5f9",borderRadius:12,padding:"2px 8px"}}>{u.stage}{u.pct?" · "+u.pct+"%":""}</span>}
+                </div>
+                <div style={{fontSize:".88rem",color:"#0f172a",lineHeight:1.6,marginBottom:isBlocker?8:0}}>{u.note||u.text||""}</div>
+                {isBlocker&&(u.blockerDesc||u.decisionMaker||u.actionPlan)&&(
+                  <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"8px 10px",marginBottom:6,fontSize:".78rem"}}>
+                    {u.blockerDesc&&<div style={{marginBottom:4}}><b>Blocker:</b> {u.blockerDesc}</div>}
+                    {u.decisionMaker&&<div style={{marginBottom:4,color:"#dc2626"}}><b>Decision from:</b> {u.decisionMaker}</div>}
+                    {u.actionPlan&&<div><b>Action plan:</b> {u.actionPlan}</div>}
+                  </div>
+                )}
+                {u.nextSteps&&<div style={{fontSize:".78rem",color:"#475569",marginTop:4}}><b>Next:</b> {u.nextSteps}</div>}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginTop:6,flexWrap:"wrap",gap:6}}>
+                  <div style={{fontSize:".72rem",color:"#94a3b8"}}>{u.by} · {u.date}{u.time&&` at ${u.time}`}</div>
+                  {isBlocker&&!cleared&&canClear&&(
+                    <button onClick={()=>upProj(selProj,p=>({...p,pmUpdates:(p.pmUpdates||[]).map(x=>x.id===u.id?{...x,blockerStatus:"Cleared",clearedBy:session?.name,clearedOn:today}:x)}))} style={{background:"#dcfce7",border:"1px solid #86efac",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#15803d",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Clear Blocker</button>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -18999,6 +19038,105 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
+function PMFeedView({projs,wonDeals,deals,session,role,upProj}){
+  const[typeFilter,setTypeFilter]=useState("All");
+  const[projFilter,setProjFilter]=useState("");
+  const[search,setSearch]=useState("");
+  const today2=new Date().toISOString().slice(0,10);
+  const canClear=!["Sales","Finance"].includes(role);
+
+  const allUpdates=React.useMemo(()=>{
+    const out=[];
+    for(const deal of wonDeals){
+      const proj=projs[deal.id];
+      for(const u of (proj?.pmUpdates||[])){
+        out.push({...u,dealId:deal.id,client:deal.client,ceNo:deal.ceNo||""});
+      }
+    }
+    return out.sort((a,b)=>{
+      const da=(a.date||"")+(a.time||"");
+      const db=(b.date||"")+(b.time||"");
+      return db.localeCompare(da);
+    });
+  },[projs,wonDeals]);
+
+  const openBlockers=allUpdates.filter(u=>u.type==="Blocker"&&u.blockerStatus!=="Cleared");
+
+  const filtered=allUpdates.filter(u=>{
+    if(typeFilter!=="All"&&u.type!==typeFilter) return false;
+    if(projFilter&&u.dealId!==projFilter) return false;
+    if(search&&!(u.note||u.text||"").toLowerCase().includes(search.toLowerCase())&&!u.client.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  return(
+    <div style={{maxWidth:900,margin:"0 auto",padding:"0 0 40px"}}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a",marginBottom:4}}>📋 PM Activity Feed</div>
+      <div style={{fontSize:".82rem",color:"#64748b",marginBottom:18}}>All project updates across active jobs — visible to the whole team.</div>
+
+      {openBlockers.length>0&&(
+        <div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:12,padding:"12px 16px",marginBottom:16,display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:"1.2rem"}}>🚨</span>
+          <div>
+            <div style={{fontWeight:700,color:"#dc2626",fontSize:".9rem"}}>{openBlockers.length} Open Blocker{openBlockers.length!==1?"s":""}</div>
+            <div style={{fontSize:".78rem",color:"#991b1b"}}>{openBlockers.map(b=>b.client).join(" · ")}</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:14,alignItems:"center"}}>
+        {["All",...PM_UPDATE_TYPES].map(t=>(
+          <button key={t} onClick={()=>setTypeFilter(t)} style={{border:`2px solid ${t==="All"?"#64748b":PM_TYPE_COLOR[t]||"#64748b"}`,borderRadius:20,padding:"4px 14px",fontSize:".75rem",fontWeight:700,fontFamily:"inherit",cursor:"pointer",background:typeFilter===t?(t==="All"?"#64748b":PM_TYPE_COLOR[t]||"#64748b"):"#fff",color:typeFilter===t?"#fff":(t==="All"?"#64748b":PM_TYPE_COLOR[t]||"#64748b")}}>
+            {t!=="All"&&PM_TYPE_ICON[t]+" "}{t}
+          </button>
+        ))}
+        <select value={projFilter} onChange={e=>setProjFilter(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 10px",fontFamily:"inherit",fontSize:".78rem",marginLeft:"auto"}}>
+          <option value="">All Projects</option>
+          {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.ceNo?" · "+d.ceNo:""}</option>)}
+        </select>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search updates…" style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 10px",fontFamily:"inherit",fontSize:".78rem",minWidth:160}}/>
+      </div>
+
+      {filtered.length===0&&<div style={{textAlign:"center",padding:"40px 0",color:"#94a3b8",fontSize:".9rem"}}>No updates found.</div>}
+
+      {filtered.map(u=>{
+        const uType=u.type||"General Progress";
+        const uColor=PM_TYPE_COLOR[uType]||"#0ea5e9";
+        const uIcon=PM_TYPE_ICON[uType]||"📋";
+        const isBlocker=uType==="Blocker";
+        const cleared=u.blockerStatus==="Cleared";
+        return(
+          <div key={u.id||u.date+u.client} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",marginBottom:10,borderLeft:`4px solid ${uColor}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6,flexWrap:"wrap"}}>
+              <span style={{background:uColor,color:"#fff",borderRadius:20,padding:"2px 10px",fontSize:".68rem",fontWeight:700,fontFamily:"'IBM Plex Mono',monospace"}}>{uIcon} {uType}</span>
+              <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{u.client}</span>
+              {u.ceNo&&<span style={{fontSize:".68rem",color:"#94a3b8",fontFamily:"'IBM Plex Mono',monospace"}}>{u.ceNo}</span>}
+              {isBlocker&&<span style={{background:cleared?"#dcfce7":"#fef2f2",color:cleared?"#15803d":"#dc2626",border:`1px solid ${cleared?"#86efac":"#fca5a5"}`,borderRadius:20,padding:"2px 8px",fontSize:".65rem",fontWeight:700}}>{cleared?"✓ Cleared":"⚠ Open"}</span>}
+              {u.stage&&<span style={{fontSize:".65rem",color:"#64748b",background:"#f1f5f9",borderRadius:12,padding:"2px 8px"}}>{u.stage}{u.pct?" · "+u.pct+"%":""}</span>}
+            </div>
+            <div style={{fontSize:".87rem",color:"#1e293b",lineHeight:1.6,marginBottom:isBlocker?8:4}}>{u.note||u.text||""}</div>
+            {isBlocker&&(u.blockerDesc||u.decisionMaker||u.actionPlan)&&(
+              <div style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,padding:"8px 10px",marginBottom:6,fontSize:".78rem"}}>
+                {u.blockerDesc&&<div style={{marginBottom:3}}><b>Blocker:</b> {u.blockerDesc}</div>}
+                {u.decisionMaker&&<div style={{marginBottom:3,color:"#dc2626"}}><b>Decision from:</b> {u.decisionMaker}</div>}
+                {u.actionPlan&&<div><b>Action plan:</b> {u.actionPlan}</div>}
+                {u.clearedBy&&<div style={{color:"#15803d",marginTop:4}}>✓ Cleared by {u.clearedBy} · {u.clearedOn}</div>}
+              </div>
+            )}
+            {u.nextSteps&&<div style={{fontSize:".78rem",color:"#475569",marginBottom:4}}><b>Next:</b> {u.nextSteps}</div>}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
+              <div style={{fontSize:".72rem",color:"#94a3b8"}}>{u.by} · {u.date}{u.time&&` at ${u.time}`}</div>
+              {isBlocker&&!cleared&&canClear&&(
+                <button onClick={()=>upProj(u.dealId,p=>({...p,pmUpdates:(p.pmUpdates||[]).map(x=>x.id===u.id?{...x,blockerStatus:"Cleared",clearedBy:session?.name,clearedOn:today2}:x)}))} style={{background:"#dcfce7",border:"1px solid #86efac",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#15803d",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Clear Blocker</button>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function DeductionForm({ms,updateMilestone,session,role,today,toastEmit,sendTelegramNotification,deal}){
   const[showDed,setShowDed]=useState(false);
   const[dedForm,setDedForm]=useState({reason:"",amount:""});
