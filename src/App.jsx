@@ -5287,7 +5287,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(next.status==="Done"&&!next.link){toastEmit("⚠ Please add a file link before marking design Done.","warning");return;}
     if(proj?.design?.status!==next.status) next.statusHistory=[...(proj?.design?.statusHistory||[]),{status:next.status,date:today,by:role}];
     upProj(selProj,p=>({...p,design:next}));
-    if(next.status==="Done"&&proj?.currentStage==="Design") upProj(selProj,p=>({...p,currentStage:"Fabrication",progress:{...p.progress,Design:100}}));
+    if(next.status==="Done"&&proj?.currentStage==="Design"){
+      upProj(selProj,p=>({...p,currentStage:"Fabrication",progress:{...p.progress,Design:100}}));
+      const d=projDeal;
+      const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${d?.client||"?"}</b>${d?.ceNo?`\nCE: ${d.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
+      sendTelegramNotification("ops",msg);
+      sendTelegramNotification("management",msg);
+    }
     setDesignModal(false);
   };
   const issueJO=()=>{
@@ -10603,7 +10609,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     }
                     const next={...p.design,status:s,statusHistory:[...(p.design?.statusHistory||[]),{status:s,date:today,by:"Design"}]};
                     upProj(d.id,x=>({...x,design:next}));
-                    if(s==="Done"&&p.currentStage==="Design")upProj(d.id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100}}));
+                    if(s==="Done"&&p.currentStage==="Design"){
+                      upProj(d.id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100}}));
+                      const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${d.client||"?"}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
+                      sendTelegramNotification("ops",msg);
+                      sendTelegramNotification("management",msg);
+                    }
                   }} style={{padding:"4px 11px",border:`1.5px solid ${ds===s?DS_CLR[s]:"#e2e8f0"}`,borderRadius:16,background:ds===s?DS_CLR[s]+"18":"#fff",color:ds===s?DS_CLR[s]:"#94a3b8",fontWeight:ds===s?700:400,cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>
                     {s}
                   </button>
@@ -10628,7 +10639,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ✅ Ready to hand off — <strong>{proj.design.revisionNo}</strong> · <a href={proj.design.link} target="_blank" rel="noreferrer" style={{color:"#15803d"}}>View drawings</a>
               </div>
             )}
-            <Btn full onClick={()=>setSelProj(null)}>Done</Btn>
+            <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginBottom:6}}>Changes are saved automatically as you type.</div>
+            <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
           </Modal>
         )}
       </Wrap>
