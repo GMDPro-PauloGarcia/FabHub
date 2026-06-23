@@ -336,6 +336,7 @@ const emptyMilestone=()=>({
   amount:0,invoiceNo:"",invoiceDate:"",dueDate:"",
   status:"Draft",payments:[],
   createdBy:"",createdDate:"",sentDate:"",
+  deductions:[], // [{id,reason,amount,approvedBy,approvedOn,netAmount}]
 });
 const MR_STATUSES  = ["Submitted","Reviewed","Converted to PR","Rejected"];
 const BR_STATUSES  = ["Submitted","Under Review","Approved","Released","Rejected"];
@@ -909,6 +910,8 @@ const emptyDeal={
   parentDealId:null,
   // Feedback
   clientFeedback:"",feedbackDate:"",feedbackScore:"",
+  // Payment Terms (set at award)
+  paymentTerms:null, // {dp:30,progress:40,final:20,retention:10,retentionRelease:"Project Completion",netDays:30,notes:""}
 };
 const emptyProject=()=>({
   currentStage:"Design",
@@ -1267,6 +1270,61 @@ function AwardReqModal({deal,session,today,onClose,onSubmit}){
         </div>
       </div>)}
     </Modal>
+  );
+}
+function PaymentTermsModal({dealId,deals,onClose,onSave,session}){
+  const deal=(deals||[]).find(d=>d.id===dealId)||{};
+  const val=Number(deal.value||0);
+  const existing=deal.paymentTerms||{};
+  const[f,setF]=useState({dp:existing.dp??30,progress:existing.progress??40,final:existing.final??20,retention:existing.retention??10,netDays:existing.netDays??30,retentionRelease:existing.retentionRelease||"Project Completion",notes:existing.notes||""});
+  const upd=(k,v)=>setF(p=>({...p,[k]:v}));
+  const total=(Number(f.dp)||0)+(Number(f.progress)||0)+(Number(f.final)||0)+(Number(f.retention)||0);
+  const ok=total===100;
+  const pct=(p)=>val>0?` (₱${Math.round(val*p/100).toLocaleString("en-PH")})`:"";
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{background:"#fff",borderRadius:18,padding:28,width:"100%",maxWidth:500,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 24px 64px rgba(0,0,0,.25)"}}>
+        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.3rem",color:"#0f172a",marginBottom:2}}>💰 Payment Terms</div>
+        <div style={{fontSize:".78rem",color:"#64748b",marginBottom:20}}>{deal.client||""} · {deal.contact||deal.ceNo||""} · Contract: ₱{val.toLocaleString("en-PH")}</div>
+        <div style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:10,padding:"10px 14px",marginBottom:18,fontSize:".74rem",color:"#15803d",fontWeight:600}}>
+          These terms will auto-generate the billing schedule in Finance. Total must equal 100%.
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+          {[["dp","Down Payment %"],["progress","Progress Billing %"],["final","Final Billing %"],["retention","Retention %"]].map(([k,lbl])=>(
+            <div key={k}>
+              <div style={{fontSize:".68rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>{lbl}</div>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <input type="number" min={0} max={100} value={f[k]} onChange={e=>upd(k,Number(e.target.value))} style={{flex:1,border:`1.5px solid ${!ok&&total>0?"#fca5a5":"#e2e8f0"}`,borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".9rem",fontWeight:700,outline:"none",boxSizing:"border-box",textAlign:"right"}}/>
+                <span style={{fontSize:".72rem",color:"#94a3b8",whiteSpace:"nowrap"}}>{pct(Number(f[k]))}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{textAlign:"right",fontSize:".78rem",fontWeight:700,color:ok?"#059669":"#dc2626",marginBottom:16,paddingRight:4}}>
+          Total: {total}% {ok?"✓ Balanced":"← must equal 100%"}
+        </div>
+        <div style={{display:"grid",gap:12,marginBottom:20}}>
+          <div>
+            <div style={{fontSize:".68rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Net Payment Days</div>
+            <input type="number" value={f.netDays} onChange={e=>upd("netDays",Number(e.target.value))} placeholder="e.g. 30" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".87rem",outline:"none",boxSizing:"border-box"}}/>
+          </div>
+          <div>
+            <div style={{fontSize:".68rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Retention Release Condition</div>
+            <select value={f.retentionRelease} onChange={e=>upd("retentionRelease",e.target.value)} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".85rem",outline:"none",background:"#fff",boxSizing:"border-box"}}>
+              {["Project Completion","COC Issued","1 Year Warranty Period","6 Months After Completion","Client Approval"].map(o=><option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <div style={{fontSize:".68rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>Notes / Special Conditions</div>
+            <textarea value={f.notes} onChange={e=>upd("notes",e.target.value)} rows={2} placeholder="e.g. Retention waived per client request, PDC on DP…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontSize:".84rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Skip for now</button>
+          <button onClick={()=>{if(ok)onSave(dealId,f);}} disabled={!ok} style={{background:ok?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"10px 24px",fontFamily:"inherit",fontSize:".84rem",color:ok?"#fff":"#94a3b8",cursor:ok?"pointer":"not-allowed",fontWeight:700}}>✓ Save Terms</button>
+        </div>
+      </div>
+    </div>
   );
 }
 function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
@@ -4729,6 +4787,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[dealModal,  setDealModal] =useState(false);
   const[awardModal, setAwardModal]=useState(null);
   const[awardReqModal, setAwardReqModal]=useState(null);
+  const[payTermsModal,setPayTermsModal]=useState(null); // dealId — shown after award to capture payment terms
   const[clientSugg, setClientSugg]=useState([]); // autocomplete suggestions
   const[dealForm,  setDealForm] =useState(emptyDeal);
   const[editDeal,  setEditDeal] =useState(null);
@@ -5172,6 +5231,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       `\n🚀 All departments — please mobilize!`
     );
     setAwardModal(null);
+    // Prompt Sales/Manager to record payment terms for Finance
+    setPayTermsModal(id);
   };
   const logPayment=({dealId,amount,note,date})=>{
     const amt=Number(amount);
@@ -9020,6 +9081,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           setAwardReqModal(null);
         }}/>}
       {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward} drfs={drfs}/>}
+      {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});toastEmit("Payment terms saved — Finance can now build the billing schedule","success");setPayTermsModal(null);}} session={session}/>}
       {priceModal&&<SetPriceModal deal={priceModal} today={today} onClose={()=>setPriceModal(null)} onSave={(val,note)=>{
         upDeals(ds=>ds.map(x=>{
           if(x.id!==priceModal.id) return x;
@@ -11362,6 +11424,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         deleteBillingPayment={deleteBillingPayment}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
         clientProfiles={clientProfiles}
+        upDeals={upDeals}
+        onOpenPayTerms={id=>setPayTermsModal(id)}
         initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
         cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}/>
     </Wrap>
@@ -18880,7 +18944,7 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal}){
+function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms}){
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -19491,6 +19555,55 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
             return null;
           })()}
 
+          {/* Payment Terms & Auto-Generate Banner */}
+          {(()=>{
+            const terms=deal?.paymentTerms;
+            const existingMs=billings.filter(b=>b.dealId===selDeal);
+            const val=Number(deal?.value||0);
+            const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0;
+            const autoGenerate=()=>{
+              const t=terms;
+              const milestones=[
+                t.dp>0&&{name:`Down Payment (${t.dp}%)`,amount:Math.round(val*t.dp/100),description:"Upon signing of contract / Purchase Order"},
+                t.progress>0&&{name:`Progress Billing (${t.progress}%)`,amount:Math.round(val*t.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
+                t.final>0&&{name:`Final Billing (${t.final}%)`,amount:Math.round(val*t.final/100),description:"Upon delivery and installation completion"},
+                t.retention>0&&{name:`Retention (${t.retention}%) — Release: ${t.retentionRelease||"Project Completion"}`,amount:Math.round(val*t.retention/100),description:`Held as retention. Release condition: ${t.retentionRelease||"Project Completion"}`},
+              ].filter(Boolean);
+              milestones.forEach(m=>addMilestone({...m,dealId:selDeal,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
+              toastEmit&&toastEmit(`${milestones.length} billing milestones generated from payment terms`,"success");
+            };
+            return(
+              <div style={{marginBottom:14}}>
+                {/* Terms chip */}
+                <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:terms?10:0}}>
+                  {terms?(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+                      {[`DP ${terms.dp}%`,`Progress ${terms.progress}%`,`Final ${terms.final}%`,`Retention ${terms.retention}%`].map(lbl=>(
+                        <span key={lbl} style={{fontSize:".65rem",background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",borderRadius:20,padding:"2px 9px",fontWeight:700,fontFamily:"'IBM Plex Mono',monospace"}}>{lbl}</span>
+                      ))}
+                      <span style={{fontSize:".65rem",color:"#64748b"}}>Net {terms.netDays}d · {terms.retentionRelease||""}</span>
+                      {onOpenPayTerms&&<button onClick={()=>onOpenPayTerms(selDeal)} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontSize:".68rem",fontWeight:700,padding:0}}>✏ Edit terms</button>}
+                    </div>
+                  ):(
+                    <div style={{display:"flex",alignItems:"center",gap:8,background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"8px 14px"}}>
+                      <span style={{fontSize:".78rem",color:"#c2410c",fontWeight:700}}>⚠ No payment terms on file for this project.</span>
+                      {onOpenPayTerms&&<button onClick={()=>onOpenPayTerms(selDeal)} style={{background:"#f97316",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".74rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Set Payment Terms</button>}
+                    </div>
+                  )}
+                </div>
+                {canGenerate&&(
+                  <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".84rem"}}>📋 Auto-Generate Billing Schedule</div>
+                      <div style={{fontSize:".73rem",color:"#475569",marginTop:2}}>Payment terms are set — generate all {[terms.dp>0,terms.progress>0,terms.final>0,terms.retention>0].filter(Boolean).length} milestone invoices automatically.</div>
+                    </div>
+                    <button onClick={autoGenerate} style={{background:"#1d4ed8",border:"none",borderRadius:9,padding:"9px 20px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>⚡ Generate Schedule</button>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Add milestone form */}
           {canEdit&&(
             <div style={{marginBottom:12}}>
@@ -19711,6 +19824,59 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                           </div>
                         </div>
                       )}
+                    {/* Deductions (Manager-only approval trail) */}
+                    {(()=>{
+                      const deds=(ms.deductions||[]);
+                      const totalDed=deds.reduce((s,d)=>s+Number(d.amount||0),0);
+                      return(
+                        <div style={{marginTop:8}}>
+                          {deds.length>0&&(
+                            <div style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:8,padding:"8px 12px",marginBottom:6}}>
+                              <div style={{fontSize:".67rem",fontWeight:700,color:"#c2410c",marginBottom:5,textTransform:"uppercase",letterSpacing:".5px"}}>Deductions — ₱{totalDed.toLocaleString("en-PH")} total</div>
+                              {deds.map((d,di)=>(
+                                <div key={d.id||di} style={{display:"flex",justifyContent:"space-between",fontSize:".72rem",color:"#78350f",marginBottom:3,gap:8,alignItems:"center"}}>
+                                  <div>
+                                    <span style={{fontWeight:700}}>₱{Number(d.amount).toLocaleString("en-PH")}</span>
+                                    <span style={{margin:"0 5px",color:"#c2410c"}}>·</span>
+                                    <span>{d.reason}</span>
+                                    {d.approvedBy&&<span style={{color:"#059669",fontWeight:600,marginLeft:6}}>✓ {d.approvedBy} · {d.approvedOn}</span>}
+                                  </div>
+                                  {role==="Manager"&&<button onClick={()=>{const updated=(ms.deductions||[]).filter((_,i)=>i!==di);updateMilestone(ms.id,{deductions:updated});}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:0}}>×</button>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {role==="Manager"&&(()=>{
+                            const[showDed,setShowDed]=useState(false);
+                            const[dedForm,setDedForm]=useState({reason:"",amount:""});
+                            if(!showDed) return(
+                              <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Record Deduction</button>
+                            );
+                            return(
+                              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"10px 12px"}}>
+                                <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:8}}>📉 Record Deduction</div>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+                                  <Fld label="Reason"><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
+                                  <Fld label="Amount (₱)"><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
+                                </div>
+                                <div style={{display:"flex",gap:6}}>
+                                  <button onClick={()=>{
+                                    if(!dedForm.reason||!dedForm.amount) return;
+                                    const ded={id:uid(),reason:dedForm.reason,amount:Number(dedForm.amount),approvedBy:session?.name||"Manager",approvedOn:today};
+                                    const updated=[...(ms.deductions||[]),ded];
+                                    updateMilestone(ms.id,{deductions:updated,amount:Math.max(0,Number(ms.amount)-Number(dedForm.amount))});
+                                    sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}\nDeduction: ₱${Number(dedForm.amount).toLocaleString("en-PH")}\nReason: ${dedForm.reason}\nApproved by: ${session?.name||"Manager"} · ${today}`);
+                                    toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
+                                    setShowDed(false);setDedForm({reason:"",amount:""});
+                                  }} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Approve & Record</button>
+                                  <button onClick={()=>setShowDed(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontSize:".74rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      );
+                    })()}
                     </div>
                     {/* Action buttons */}
                     <div style={{display:"flex",flexDirection:"column",gap:5,flexShrink:0}}>
