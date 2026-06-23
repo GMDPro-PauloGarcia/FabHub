@@ -4860,7 +4860,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const pipeVal        =useMemo(()=>pipeDeals.reduce((s,d)=>s+Number(d.value||0),0),[pipeDeals]);
   const awardReqCnt    =useMemo(()=>deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST")).length,[deals]);
   const overdueInvCnt  =useMemo(()=>billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled").length,[billings]);
-  const overdueTATCnt  =useMemo(()=>Object.values(pcards).filter(p=>p.targetEndDate&&p.targetEndDate<today&&!DEPT_ORDER.every(d=>p.departments?.[d]?.done)).length,[pcards]);
+  const overdueTATCnt  =useMemo(()=>wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,[wonDeals,pcards]);
   const qsPendingCnt   =useMemo(()=>jos.filter(j=>j.budgetStatus==="QS Budget Pending"&&!Object.values(budgets[j.dealId]||{}).some(v=>Number(v)>0)).length,[jos,budgets]);
   const mrPendingCnt   =useMemo(()=>mreqs.filter(m=>m.status==="Submitted").length,[mreqs]);
   const addendaAlertCnt=useMemo(()=>addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected").length,[addenda]);
@@ -7639,23 +7639,65 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
         </div>
 
-      {/* ── KPI CHIPS ───────────────────────────────────────────────── */}
-      <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14,paddingBottom:2}}>
-        {[
-          {l:"Pipeline",        v:fmtK(pipeVal),   c:"#3b82f6",                               click:()=>setPage("pipeline")},
-          {l:"Awarded",         v:fmtK(totRev),    c:"#10b981",                               click:()=>setPage("projects")},
-          {l:"Collected",       v:fmtK(totColl),   c:"#059669",                               click:()=>setPage("billing")},
-          {l:"Outstanding",     v:fmtK(totOut),    c:totOut>0?"#ef4444":"#94a3b8",            click:()=>setPage("billing")},
-          {l:"Gross Margin",    v:grossMar+"%",    c:grossMar>=20?"#059669":"#f59e0b"},
-          {l:"Active Projects", v:wonDeals.length, c:"#f97316",                               click:()=>setPage("projects")},
-          {l:"Open POs",        v:openPOCnt,       c:"#8b5cf6",                               click:()=>setPage("procurement")},
-        ].map(({l,v,c,click})=>(
-          <div key={l} onClick={click} style={{flexShrink:0,background:"#fff",borderRadius:10,padding:"10px 16px",border:`1.5px solid ${c}22`,borderTop:`3px solid ${c}`,cursor:click?"pointer":"default",minWidth:90,textAlign:"center"}}>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:c}}>{v}</div>
-            <div style={{fontSize:".59rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2,whiteSpace:"nowrap"}}>{l}</div>
+      {/* ── CHARTS 2×2 ──────────────────────────────────────────────── */}
+      {(()=>{
+        const now=new Date();
+        const months=[];
+        for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({yr:d.getFullYear(),mo:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]});}
+        const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=d.dateAcquired?new Date(d.dateAcquired):null;return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
+        const expData=months.map(({yr,mo})=>exps.filter(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds)return false;const d=new Date(ds);return d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,e)=>s+Number(e.amount||0),0));
+        const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date)return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
+        const awardData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=d.dateAcquired?new Date(d.dateAcquired):null;return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).length);
+        const fmtM=v=>v>=1000000?"₱"+Math.round(v/100000)/10+"M":v>=1000?"₱"+Math.round(v/1000)+"K":v>0?"₱"+v:"₱0";
+        const BarChart=({data,color,labels})=>{
+          const max=Math.max(...data,1);
+          const n=data.length;
+          const gap=3;
+          const barW=(100-gap*(n-1))/n;
+          const H=64;
+          return(
+            <svg viewBox={`0 0 100 ${H+10}`} style={{width:"100%",height:H+10,display:"block"}}>
+              {data.map((v,i)=>{
+                const bh=Math.max((v/max)*H,v>0?2:0);
+                const x=i*(barW+gap);
+                const y=H-bh;
+                const isLast=i===n-1;
+                return(
+                  <g key={i}>
+                    <rect x={x} y={y} width={barW} height={bh} rx={2} fill={isLast?color:color+"44"}/>
+                    <text x={x+barW/2} y={H+8} textAnchor="middle" fontSize={6} fill="#94a3b8">{labels[i]}</text>
+                  </g>
+                );
+              })}
+            </svg>
+          );
+        };
+        const charts=[
+          {title:"Sales Value",     data:salesData,  color:"#6366f1", fmt:fmtM,                   icon:"📊", action:()=>setPage("pipeline")},
+          {title:"Expenses",        data:expData,    color:"#ef4444", fmt:fmtM,                   icon:"💸", action:()=>setPage("finance")},
+          {title:"Collections",     data:collData,   color:"#10b981", fmt:fmtM,                   icon:"💰", action:()=>setPage("billing")},
+          {title:"Projects Awarded",data:awardData,  color:"#f59e0b", fmt:v=>v+(v===1?" project":" projects"), icon:"🏆", action:()=>setPage("projects")},
+        ];
+        return(
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+            {charts.map(({title,data,color,fmt,icon,action})=>{
+              const curr=data[data.length-1];
+              const prev=data[data.length-2]||0;
+              const chg=prev>0?Math.round((curr-prev)/prev*100):null;
+              return(
+                <div key={title} onClick={action} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 14px",cursor:"pointer"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                    <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>{icon} {title}</div>
+                    {chg!==null&&<span style={{fontSize:".6rem",fontWeight:700,color:chg>=0?"#059669":"#ef4444",background:chg>=0?"#f0fdf4":"#fef2f2",borderRadius:5,padding:"1px 5px"}}>{chg>=0?"↑":"↓"}{Math.abs(chg)}%</span>}
+                  </div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:color,marginBottom:8}}>{fmt(curr)}</div>
+                  <BarChart data={data} color={color} labels={months.map(m=>m.label)}/>
+                </div>
+              );
+            })}
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* ── ALERT BANNERS ───────────────────────────────────────────── */}
       {(()=>{
@@ -20399,7 +20441,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             if(pcSearch){const q=pcSearch.toLowerCase();list=list.filter(d=>[d.contact,d.client,d.ceNo,d.salesOwner].join(" ").toLowerCase().includes(q));}
             if(pcFilter==="attention") list=list.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";});
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
-            if(pcFilter==="overdue") list=list.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done));
+            if(pcFilter==="overdue") list=list.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done));
             if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
