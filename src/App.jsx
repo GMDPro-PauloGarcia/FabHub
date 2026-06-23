@@ -24377,7 +24377,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                     {si.map((it,idx)=>(
                       <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,padding:"3px 12px",borderBottom:"1px solid #f1f5f9",alignItems:"center",background:idx%2===0?"#fff":"#fafafa"}}>
                         <div style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8"}}>{sec.id}.{idx+1}</div>
-                        <div style={{position:"relative"}}>
+                        <div style={{position:"relative",display:"flex",alignItems:"center",gap:3}}>
                           <input value={it.description}
                             onChange={e=>{
                               updateItem(it._id,"description",e.target.value);
@@ -24394,7 +24394,15 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             }}
                             onBlur={()=>setTimeout(()=>setSuggest({id:null,matches:[]}),160)}
                             placeholder="Type to search library or enter description"
-                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",width:"100%"}}/>
+                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1}}/>
+                          {it.description.trim().length>=2&&!boqLibrary.some(lib=>lib.name.toLowerCase()===it.description.trim().toLowerCase())&&(
+                            <button title="Save to library" onMouseDown={e=>{e.preventDefault();
+                              const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+                              const newLib=[...boqLibrary,entry];saveLibrary(newLib);
+                              if(isSupabaseReady())sbInsert("boq_library",{id:entry.id,name:entry.name,description:"",section:entry.section,unit:entry.unit,unit_cost:entry.unitCost,tags:[],created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt}).catch(()=>{});
+                              toastEmit&&toastEmit(`"${entry.name}" saved to library`,"success");
+                            }} style={{background:"none",border:"none",cursor:"pointer",fontSize:".82rem",color:"#7c3aed",opacity:.55,padding:"0 2px",lineHeight:1,flexShrink:0}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.55}>💾</button>
+                          )}
                           {suggest.id===it._id&&suggest.matches.length>0&&(
                             <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #7c3aed",borderRadius:8,zIndex:1000,boxShadow:"0 8px 24px #0003",overflow:"hidden",minWidth:220}}>
                               {suggest.matches.map(lib=>{
