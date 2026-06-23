@@ -3342,8 +3342,8 @@ export default function App(){
   const logStockMove=(move)=>{
     if(move.moveType?.startsWith("OUT")){
       const item=inventory.find(i=>i.id===move.itemId);
-      if(!item){toastEmit("Stock OUT failed — inventory item not found. Check that the item still exists.","error");return;}
-      if(Number(item.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${item.qtyOnHand} ${item.unit||""} on hand.`,"error");return;}
+      if(!item){toastEmit("Stock OUT failed — inventory item not found. Check that the item still exists.","error");return false;}
+      if(Number(item.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${item.qtyOnHand} ${item.unit||""} on hand.`,"error");return false;}
     }
     const entry={...move,id:uid(),date:move.date||today,recordedBy:session?.name||role};
     upStocklog(sl=>[entry,...sl]);
@@ -3392,6 +3392,7 @@ export default function App(){
       }
       return updated;
     }));
+    return true;
   };
 
   const printDR=(pr,qty,drNo,deal)=>{
@@ -10473,7 +10474,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     if(!item) return;
                     if(remaining<0){if(!window.confirm(`Only ${item.qtyOnHand} ${item.unit} on hand. Issue ${issueForm.qty} anyway?`)) return;}
                     const notesStr=[issueForm.requestedBy?`Requested by: ${issueForm.requestedBy}`:"",issueForm.deliveryLink?`Delivery link: ${issueForm.deliveryLink}`:""].filter(Boolean).join(" · ");
-                    logStockMove({itemId:issueForm.itemId,moveType:"OUT — Issued to Site",qty:Number(issueForm.qty),unitCost:0,projectId:issueForm.projectId,notes:notesStr,date:issueForm.date||today});
+                    const ok=logStockMove({itemId:issueForm.itemId,moveType:"OUT — Issued to Site",qty:Number(issueForm.qty),unitCost:0,projectId:issueForm.projectId,notes:notesStr,date:issueForm.date||today});
+                    if(!ok) return;
                     // Create PM confirmation checklist task
                     const deal=wonDeals.find(d=>d.id===issueForm.projectId);
                     const task={id:uid(),projectId:issueForm.projectId,title:`Confirm receipt: ${Number(issueForm.qty)} ${item.unit} of ${item.name} from Warehouse`,dept:"Operations",priority:"Normal",status:"To Do",dueDate:issueForm.date||today,createdBy:session?.name||"Warehouse",createdDate:today,notes:`Issued by: ${session?.name||"Warehouse"}${issueForm.requestedBy?` | Requested by: ${issueForm.requestedBy}`:""}${issueForm.deliveryLink?` | ${issueForm.deliveryLink}`:""}`};
