@@ -1341,16 +1341,23 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
     specialInstructions:req.specialInstructions||"",
     designer:req.designer||drf.designer||"",
     location:deal?.location||"",
+    // Payment terms (Step 3)
+    ptDp:30,ptProgress:40,ptFinal:20,ptRetention:10,
+    ptNetDays:30,ptRetentionRelease:"Project Completion",ptNotes:"",
   });
   const[step,setStep]=React.useState(1);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const mob=window.innerWidth<768;
+  const ptTotal=(Number(form.ptDp)||0)+(Number(form.ptProgress)||0)+(Number(form.ptFinal)||0)+(Number(form.ptRetention)||0);
+  const ptOk=ptTotal===100;
+  const val=Number(deal?.value||0);
+  const pctAmt=p=>val>0?` ≈ ₱${Math.round(val*p/100).toLocaleString("en-PH")}`:"";
   if(!deal) return null;
   return(
     <Modal open title={`🏆 Award — ${deal.client}`} onClose={onClose} wide>
       <div style={{display:"flex",gap:0,marginBottom:22,borderRadius:10,overflow:"hidden",border:"1.5px solid #e2e8f0"}}>
-        {[["1","Confirm Award","#10b981",step>=1],["2","Job Order","#3b82f6",step>=2]].map(([num,label,clr,active],i)=>(
-          <div key={num} onClick={()=>step>i+1&&setStep(i+1)} style={{flex:1,padding:"12px 8px",textAlign:"center",background:step===i+1?clr:active?"#f8fafc":"#fff",cursor:step>i+1?"pointer":"default",borderRight:i<1?"1px solid #e2e8f0":"none"}}>
+        {[["1","Confirm Award","#10b981",step>=1],["2","Job Order","#3b82f6",step>=2],["3","Payment Terms","#f97316",step>=3]].map(([num,label,clr,active],i)=>(
+          <div key={num} onClick={()=>step>i+1&&setStep(i+1)} style={{flex:1,padding:"12px 8px",textAlign:"center",background:step===i+1?clr:active?"#f8fafc":"#fff",cursor:step>i+1?"pointer":"default",borderRight:i<2?"1px solid #e2e8f0":"none"}}>
             <div style={{fontSize:".82rem",fontWeight:700,color:step===i+1?"#fff":active?"#374151":"#cbd5e1"}}>{num}. {label}</div>
             <div style={{fontSize:".68rem",color:step===i+1?"rgba(255,255,255,.75)":step>i+1?"#10b981":"#e2e8f0",marginTop:2}}>{step>i+1?"✓ Done":step===i+1?"In progress":"—"}</div>
           </div>
@@ -1469,10 +1476,53 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
         )}
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
           <button onClick={()=>setStep(1)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
-          <button onClick={()=>onConfirm(form)} disabled={!form.scopeNotes}
-            style={{background:form.scopeNotes?"#059669":"#e2e8f0",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:form.scopeNotes?"#fff":"#94a3b8",cursor:form.scopeNotes?"pointer":"not-allowed",letterSpacing:".3px"}}>
-            🏆 Confirm Award Deal
+          <button onClick={()=>setStep(3)} disabled={!form.scopeNotes}
+            style={{background:form.scopeNotes?"#1e293b":"#e2e8f0",border:"none",borderRadius:10,padding:"11px 28px",fontFamily:"inherit",fontWeight:700,fontSize:".88rem",color:form.scopeNotes?"#fff":"#94a3b8",cursor:form.scopeNotes?"pointer":"not-allowed"}}>
+            Next: Payment Terms →
           </button>
+        </div>
+      </div>)}
+      {step===3&&(<div>
+        <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:18,fontSize:".82rem",color:"#c2410c",fontWeight:600}}>
+          💰 Set the billing schedule terms. Finance will use this to auto-generate milestones — total must equal 100%.{val>0&&<span style={{color:"#64748b",fontWeight:400}}> Contract value: ₱{val.toLocaleString("en-PH")}</span>}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:4}}>
+          {[["ptDp","Down Payment"],["ptProgress","Progress"],["ptFinal","Final"],["ptRetention","Retention"]].map(([k,lbl])=>(
+            <div key={k}>
+              <div style={{fontSize:".67rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".5px",marginBottom:4}}>{lbl} %</div>
+              <input type="number" min={0} max={100} value={form[k]} onChange={e=>f(k,Number(e.target.value))}
+                style={{width:"100%",border:`2px solid ${!ptOk&&ptTotal>0?"#fca5a5":"#e2e8f0"}`,borderRadius:8,padding:"10px 8px",fontFamily:"inherit",fontSize:"1rem",fontWeight:700,outline:"none",boxSizing:"border-box",textAlign:"center"}}/>
+              {val>0&&<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:3,textAlign:"center"}}>{pctAmt(Number(form[k]))}</div>}
+            </div>
+          ))}
+        </div>
+        <div style={{textAlign:"right",fontSize:".8rem",fontWeight:700,color:ptOk?"#059669":"#dc2626",marginBottom:16}}>
+          Total: {ptTotal}% {ptOk?"✓ Balanced":"← must equal 100%"}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginBottom:18}}>
+          <Fld label="Net Payment Days" hint="How many days after invoice is payment due?">
+            <Inp type="number" value={form.ptNetDays} onChange={e=>f("ptNetDays",Number(e.target.value))} placeholder="e.g. 30"/>
+          </Fld>
+          <Fld label="Retention Release Condition">
+            <Sel value={form.ptRetentionRelease} onChange={e=>f("ptRetentionRelease",e.target.value)}>
+              {["Project Completion","COC Issued","1 Year Warranty Period","6 Months After Completion","Client Approval"].map(o=><option key={o}>{o}</option>)}
+            </Sel>
+          </Fld>
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="Notes / Special Conditions" hint="PDC arrangements, penalty clauses, client-specific terms">
+              <Inp rows={2} value={form.ptNotes} onChange={e=>f("ptNotes",e.target.value)} placeholder="e.g. Retention waived per client request, PDC cheque on DP…"/>
+            </Fld>
+          </div>
+        </div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:4}}>
+          <button onClick={()=>setStep(2)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>onConfirm({...form,paymentTerms:null})} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Skip Terms & Award</button>
+            <button onClick={()=>onConfirm({...form,paymentTerms:ptOk?{dp:form.ptDp,progress:form.ptProgress,final:form.ptFinal,retention:form.ptRetention,netDays:form.ptNetDays,retentionRelease:form.ptRetentionRelease,notes:form.ptNotes}:null})}
+              style={{background:"#059669",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:"#fff",cursor:"pointer",letterSpacing:".3px"}}>
+              🏆 Confirm Award Deal
+            </button>
+          </div>
         </div>
       </div>)}
     </Modal>
@@ -5230,9 +5280,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       (form.specialInstructions?`\n⚠️ Special Instructions:\n${form.specialInstructions}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
+    // Save payment terms if set in Step 3
+    if(form.paymentTerms){
+      upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentTerms:form.paymentTerms}:d));
+      if(isSupabaseReady())sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}).catch(()=>{});
+    }
     setAwardModal(null);
-    // Prompt Sales/Manager to record payment terms for Finance
-    setPayTermsModal(id);
   };
   const logPayment=({dealId,amount,note,date})=>{
     const amt=Number(amount);
@@ -18948,6 +19001,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
+  const[autoGenDone,setAutoGenDone]=useState({});
   const[showPay,  setShowPay]  =useState(null);
   const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
@@ -19591,15 +19645,18 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                     </div>
                   )}
                 </div>
-                {canGenerate&&(
-                  <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:12,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap"}}>
-                    <div>
-                      <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".84rem"}}>📋 Auto-Generate Billing Schedule</div>
-                      <div style={{fontSize:".73rem",color:"#475569",marginTop:2}}>Payment terms are set — generate all {[terms.dp>0,terms.progress>0,terms.final>0,terms.retention>0].filter(Boolean).length} milestone invoices automatically.</div>
+                {canGenerate&&!autoGenDone[selDeal]&&(()=>{
+                  // Auto-generate immediately — no button needed
+                  setTimeout(()=>{
+                    autoGenerate();
+                    setAutoGenDone(p=>({...p,[selDeal]:true}));
+                  },0);
+                  return(
+                    <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>
+                      ⚡ Billing schedule generated from payment terms…
                     </div>
-                    <button onClick={autoGenerate} style={{background:"#1d4ed8",border:"none",borderRadius:9,padding:"9px 20px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>⚡ Generate Schedule</button>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })()}
