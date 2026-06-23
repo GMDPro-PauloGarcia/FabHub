@@ -7637,19 +7637,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:1}}>{todayL} · FabHub GMD</div>
         </div>
-        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-          {[
-            {l:"+ Add Deal",    action:()=>openAddDeal(),                               bg:"#334155",fg:"#fff"},
-            {l:"+ Award",       action:()=>{setFromHome(true);setPage("pipeline");},    bg:"#059669",fg:"#fff"},
-            {l:"+ Log Expense", action:()=>openAddExp(),                                bg:"#3b82f6",fg:"#fff"},
-            {l:"+ Log Payment", action:()=>{setFromHome(true);setPage("billing");},     bg:"#8b5cf6",fg:"#fff"},
-            {l:"+ New PO",      action:()=>{setFromHome(true);setPage("procurement");}, bg:"#f59e0b",fg:"#fff"},
-            {l:"📅 Calendar",   action:()=>{setFromHome(true);setPage("calendar");},    bg:"#0ea5e9",fg:"#fff"},
-          ].map(({l,action,bg,fg})=>(
-            <button key={l} onClick={action} style={{background:bg,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:fg,cursor:"pointer"}}>{l}</button>
-          ))}
         </div>
-      </div>
 
       {/* ── KPI CHIPS ───────────────────────────────────────────────── */}
       <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14,paddingBottom:2}}>
@@ -7700,6 +7688,60 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
         <RecentActivityFeed projs={projs} wonDeals={wonDeals} limit={12}/>
       </div>
+
+      {/* ── MINI CALENDAR ───────────────────────────────────────── */}
+      {(()=>{
+        const now=new Date();
+        const yr=now.getFullYear(),mo=now.getMonth();
+        const first=new Date(yr,mo,1).getDay();
+        const days=new Date(yr,mo+1,0).getDate();
+        const todayD=now.getDate();
+        const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+        const evts={};
+        checklist.forEach(c=>{
+          if(!c.dueDate)return;
+          const d=new Date(c.dueDate);
+          if(d.getFullYear()===yr&&d.getMonth()===mo){const k=d.getDate();if(!evts[k])evts[k]=[];evts[k].push("#f97316");}
+        });
+        billings.forEach(b=>{
+          if(!b.dueDate||b.status==="Paid"||b.status==="Cancelled")return;
+          const d=new Date(b.dueDate);
+          if(d.getFullYear()===yr&&d.getMonth()===mo){const k=d.getDate();if(!evts[k])evts[k]=[];evts[k].push("#3b82f6");}
+        });
+        const cells=[];
+        for(let i=0;i<first;i++)cells.push(null);
+        for(let d=1;d<=days;d++)cells.push(d);
+        return(
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",marginTop:14}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>📅 {MONTH_NAMES[mo]} {yr}</span>
+              <button onClick={()=>setPage("calendar")} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 10px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Full Calendar →</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,textAlign:"center"}}>
+              {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d=>(
+                <div key={d} style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,paddingBottom:4}}>{d}</div>
+              ))}
+              {cells.map((d,i)=>(
+                <div key={i} onClick={d?()=>setPage("calendar"):undefined}
+                  style={{aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",borderRadius:6,background:d===todayD?"#0f172a":"transparent",cursor:d?"pointer":"default"}}>
+                  <span style={{fontSize:".75rem",fontWeight:d===todayD?800:400,color:d===todayD?"#fff":d?"#0f172a":"transparent"}}>{d||""}</span>
+                  {d&&evts[d]&&(
+                    <div style={{display:"flex",gap:1,marginTop:1}}>
+                      {[...new Set(evts[d])].slice(0,2).map((c,j)=>(
+                        <span key={j} style={{width:4,height:4,borderRadius:"50%",background:c,display:"inline-block"}}/>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:12,marginTop:8,paddingTop:8,borderTop:"1px solid #f1f5f9"}}>
+              <span style={{fontSize:".65rem",color:"#64748b",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#f97316",display:"inline-block"}}/>Operations</span>
+              <span style={{fontSize:".65rem",color:"#64748b",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>Billing Due</span>
+            </div>
+          </div>
+        );
+      })()}
     </Wrap>
   );
   }
