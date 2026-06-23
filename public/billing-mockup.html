@@ -1,0 +1,765 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>FabHub — Billing Features Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=IBM+Plex+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ground: #f8fafc;
+    --surface: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --accent: #f97316;
+    --accent-light: #fff7ed;
+    --accent-2: #6366f1;
+    --blue: #3b82f6;
+    --green: #10b981;
+    --red: #ef4444;
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  body {
+    background: var(--ground);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 0;
+  }
+
+  /* ── Nav bar (FabHub chrome) ───────────────────────────────── */
+  .nav {
+    background: #0d1117;
+    padding: 0 20px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .nav-logo {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.2rem;
+    color: #fff;
+    letter-spacing: .5px;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-pill {
+    background: rgba(249,115,22,.15);
+    color: var(--accent);
+    font-size: .68rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-family: var(--font-mono);
+  }
+  .nav-right {
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .nav-tab {
+    color: #94a3b8;
+    font-size: .78rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .nav-tab.active { color: #fff; background: rgba(255,255,255,.08); }
+
+  /* ── Page layout ───────────────────────────────────────────── */
+  .page { max-width: 760px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  .feature-label {
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feature-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .section { margin-bottom: 48px; }
+
+  /* ── Cards ─────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 1px 4px rgba(15,23,42,.04);
+  }
+  .card + .card { margin-top: 10px; }
+
+  /* ── Modal card (Part 1) ───────────────────────────────────── */
+  .modal-wrap {
+    background: rgba(15,23,42,.18);
+    border-radius: 16px;
+    padding: 24px;
+  }
+  .modal {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(15,23,42,.12);
+    overflow: hidden;
+  }
+  .modal-header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.3rem;
+    color: var(--text);
+    letter-spacing: .3px;
+  }
+  .modal-sub {
+    font-size: .75rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .modal-body { padding: 18px 20px; }
+
+  /* ── Form elements ─────────────────────────────────────────── */
+  .field-label {
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--muted);
+    display: block;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+  .field-hint {
+    font-size: .68rem;
+    color: #94a3b8;
+    margin-top: 3px;
+  }
+  .input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--font-body);
+    font-size: .87rem;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+  }
+  .input:focus { border-color: var(--accent); }
+  .input-accent { border-color: var(--accent); background: #fff7ed; font-weight: 700; font-family: var(--font-mono); }
+  .input-sm { padding: 7px 10px; font-size: .82rem; }
+  .input-suffix-wrap {
+    position: relative;
+  }
+  .input-suffix {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: .72rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    pointer-events: none;
+  }
+  .select {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-family: var(--font-body);
+    font-size: .87rem;
+    color: var(--text);
+    background: var(--surface);
+    appearance: none;
+    cursor: pointer;
+  }
+  textarea.input { resize: none; }
+
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid-3-custom { display: grid; grid-template-columns: 1fr 1.4fr 1.4fr; gap: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .span-full { grid-column: 1 / -1; }
+
+  .total-ok {
+    font-family: var(--font-mono);
+    font-size: .72rem;
+    font-weight: 700;
+    color: var(--green);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────── */
+  .btn {
+    padding: 10px 18px;
+    border-radius: 9px;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: .84rem;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+  .btn-sm { padding: 6px 12px; font-size: .76rem; border-radius: 7px; }
+  .btn-purple { background: var(--accent-2); color: #fff; }
+  .btn-blue { background: #eff6ff; color: var(--blue); border: 1.5px solid #bfdbfe; }
+
+  .modal-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    background: #fafafa;
+  }
+
+  /* ── Section 2 — Billing schedule ─────────────────────────── */
+  .deal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .deal-title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.15rem;
+    color: var(--text);
+  }
+  .deal-meta { font-size: .74rem; color: var(--muted); margin-top: 1px; font-family: var(--font-mono); }
+  .deal-value {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--green);
+  }
+
+  .setup-banner {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .setup-banner-text { font-size: .82rem; color: #1d4ed8; font-weight: 600; }
+  .setup-banner-sub { font-size: .72rem; color: #3b82f6; margin-top: 1px; }
+
+  /* Ledger aesthetic risk */
+  .ledger-list {
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 31px,
+      #f1f5f9 31px,
+      #f1f5f9 32px
+    );
+  }
+  .milestone-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid #f1f5f9;
+    flex-wrap: wrap;
+  }
+  .milestone-row:last-child { border-bottom: none; }
+  .milestone-row:hover { background: #fafafa; }
+
+  .ms-type {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--text);
+    min-width: 220px;
+  }
+  .ms-type-sub { font-size: .7rem; color: var(--muted); margin-top: 1px; }
+  .ms-amount {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--text);
+    min-width: 110px;
+  }
+  .ms-actions { margin-left: auto; display: flex; gap: 7px; }
+
+  /* ── Chips / badges ────────────────────────────────────────── */
+  .chip {
+    font-family: var(--font-mono);
+    font-size: .65rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .chip-gray { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+  .chip-purple { background: #ede9fe; color: #7c3aed; border: 1px solid #ddd6fe; }
+  .chip-green { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+  .chip-orange { background: #fff7ed; color: var(--accent); border: 1px solid #fed7aa; }
+  .chip-red { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+  .chip-blue { background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe; }
+
+  /* ── Section 3 — Deductions ────────────────────────────────── */
+  .deduction-card {
+    background: #fff;
+    border: 1.5px solid #fecaca;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .deduction-header {
+    padding: 14px 16px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid #fef2f2;
+  }
+  .deduction-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text);
+  }
+  .deduction-body { padding: 14px 16px; }
+  .deduction-field { font-size: .78rem; color: var(--muted); margin-bottom: 6px; }
+  .deduction-field strong { color: var(--text); font-weight: 600; }
+  .deduction-desc {
+    font-size: .8rem;
+    color: #475569;
+    background: #fef2f2;
+    border-left: 3px solid #fecaca;
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    margin: 10px 0;
+    line-height: 1.5;
+  }
+  .deduction-footer {
+    padding: 10px 16px;
+    background: #fafafa;
+    border-top: 1px solid #fee2e2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .approved-by {
+    font-family: var(--font-mono);
+    font-size: .68rem;
+    color: var(--muted);
+  }
+  .approved-by strong { color: #15803d; }
+  .net-impact {
+    font-family: var(--font-mono);
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .net-strike { color: var(--muted); text-decoration: line-through; }
+  .net-deduct { color: var(--red); }
+  .net-result { color: var(--text); font-weight: 800; }
+
+  /* Add deduction form */
+  .add-form {
+    background: #fff;
+    border: 1.5px dashed #fca5a5;
+    border-radius: 12px;
+    padding: 18px;
+    margin-top: 12px;
+  }
+  .add-form-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--text);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stamp-row {
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .stamp-icon { font-size: 1.2rem; }
+  .stamp-name { font-family: var(--font-mono); font-size: .75rem; font-weight: 700; color: #15803d; }
+  .stamp-role { font-size: .67rem; color: #64748b; }
+  .form-note {
+    font-size: .7rem;
+    color: var(--muted);
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ── Section divider ────────────────────────────────────────── */
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.25rem;
+    color: var(--text);
+    letter-spacing: .3px;
+  }
+
+  @media (max-width: 600px) {
+    .grid-3, .grid-3-custom { grid-template-columns: 1fr; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .ms-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+  }
+</style>
+</head>
+<body>
+
+<!-- FabHub nav chrome -->
+<nav class="nav">
+  <div class="nav-logo">Fab<span>Hub</span></div>
+  <div class="nav-pill">MOCKUP</div>
+  <div class="nav-right">
+    <div class="nav-tab">Pipeline</div>
+    <div class="nav-tab">Projects</div>
+    <div class="nav-tab active">Billing</div>
+    <div class="nav-tab">Finance</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- ── PART 1 — Payment Terms Modal ──────────────────────── -->
+  <div class="section">
+    <div class="feature-label">Part 1 — Sales closes a deal</div>
+
+    <div class="modal-wrap">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title">💳 Lock in Payment Terms</div>
+          <div class="modal-sub">Adidas Philippines · CE-2026-041 · ₱1,200,000 contract value</div>
+          <div class="modal-sub" style="margin-top:4px;color:#f97316;font-weight:600;">Finance uses these to auto-generate the billing schedule — set them once, correctly.</div>
+        </div>
+        <div class="modal-body">
+
+          <!-- Billing split -->
+          <div style="margin-bottom:16px;">
+            <label class="field-label">Billing Split</label>
+            <div class="grid-3">
+              <div>
+                <div style="font-size:.72rem;color:#64748b;margin-bottom:4px;">Downpayment</div>
+                <div class="input-suffix-wrap">
+                  <input class="input input-accent input-sm" type="number" value="50" style="padding-right:28px;"/>
+                  <span class="input-suffix">%</span>
+                </div>
+                <div class="field-hint">₱600,000</div>
+              </div>
+              <div>
+                <div style="font-size:.72rem;color:#64748b;margin-bottom:4px;">Progress Billing</div>
+                <div class="input-suffix-wrap">
+                  <input class="input input-sm" type="number" value="40" style="padding-right:28px;"/>
+                  <span class="input-suffix">%</span>
+                </div>
+                <div class="field-hint">₱480,000</div>
+              </div>
+              <div>
+                <div style="font-size:.72rem;color:#64748b;margin-bottom:4px;">Final Billing</div>
+                <div class="input-suffix-wrap">
+                  <input class="input input-sm" type="number" value="10" style="padding-right:28px;"/>
+                  <span class="input-suffix">%</span>
+                </div>
+                <div class="field-hint">₱120,000</div>
+              </div>
+            </div>
+            <div class="total-ok">✓ Total: 100% — balanced</div>
+          </div>
+
+          <!-- Retention + window + method -->
+          <div class="grid-3-custom" style="margin-bottom:16px;">
+            <div>
+              <label class="field-label">Retention</label>
+              <div class="input-suffix-wrap">
+                <select class="select input-sm">
+                  <option>None (0%)</option>
+                  <option>5%</option>
+                  <option selected>10%</option>
+                  <option>15%</option>
+                  <option>Custom…</option>
+                </select>
+              </div>
+              <div class="field-hint">₱120,000 held until COC</div>
+            </div>
+            <div>
+              <label class="field-label">Payment Window</label>
+              <div class="input-suffix-wrap">
+                <input class="input input-sm" type="number" value="30" style="padding-right:60px;"/>
+                <span class="input-suffix">days net</span>
+              </div>
+              <div class="field-hint">From invoice date</div>
+            </div>
+            <div>
+              <label class="field-label">Method</label>
+              <select class="select input-sm">
+                <option selected>Bank Transfer</option>
+                <option>Check (PDC)</option>
+                <option>Check (on delivery)</option>
+                <option>Cash</option>
+                <option>Mixed</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div>
+            <label class="field-label">Special Conditions</label>
+            <textarea class="input input-sm" rows="2" placeholder="e.g. PDC upon PO signing · client requests soft copy of invoice first · retention released 30 days after COC"></textarea>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-ghost btn-sm">Skip for now</button>
+          <button class="btn btn-primary btn-sm">Save Terms &amp; Award Deal →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PART 2 — Billing Schedule ────────────────────────── -->
+  <div class="section">
+    <div class="feature-label">Part 2 — Finance opens billing</div>
+
+    <div class="card">
+      <div class="deal-header">
+        <div>
+          <div class="deal-title">Adidas Philippines</div>
+          <div class="deal-meta">CE-2026-041 · Jordan Brand Display · Trinoma · Stage: 07 · Briefing</div>
+        </div>
+        <div class="deal-value">₱1,200,000</div>
+      </div>
+
+      <!-- Setup banner -->
+      <div class="setup-banner">
+        <div>
+          <div class="setup-banner-text">📋 Payment terms are set. No milestones created yet.</div>
+          <div class="setup-banner-sub">50% DP · 40% Progress · 10% Final · 10% Retention · Net 30 · Bank Transfer</div>
+        </div>
+        <button class="btn btn-blue btn-sm">🚀 Auto-Generate Schedule</button>
+      </div>
+
+      <!-- Milestone list with ledger aesthetic -->
+      <div class="ledger-list">
+
+        <div class="milestone-row">
+          <div style="min-width:28px;font-family:var(--font-mono);font-size:.7rem;color:#94a3b8;font-weight:700;">01</div>
+          <div style="flex:1;">
+            <div class="ms-type">Downpayment</div>
+            <div class="ms-type-sub">Due on PO signing · 50% of contract</div>
+          </div>
+          <div class="ms-amount">₱600,000</div>
+          <span class="chip chip-gray">Draft</span>
+          <div class="ms-actions">
+            <button class="btn btn-ghost btn-sm">✏ Edit</button>
+            <button class="btn btn-primary btn-sm">📤 Send Invoice</button>
+          </div>
+        </div>
+
+        <div class="milestone-row">
+          <div style="min-width:28px;font-family:var(--font-mono);font-size:.7rem;color:#94a3b8;font-weight:700;">02</div>
+          <div style="flex:1;">
+            <div class="ms-type">Progress Billing</div>
+            <div class="ms-type-sub">Triggered at Stage 09 · Site &amp; Billing · 40% of contract</div>
+          </div>
+          <div class="ms-amount">₱480,000</div>
+          <span class="chip chip-gray">Draft</span>
+          <div class="ms-actions">
+            <button class="btn btn-ghost btn-sm">✏ Edit</button>
+            <button class="btn btn-primary btn-sm">📤 Send Invoice</button>
+          </div>
+        </div>
+
+        <div class="milestone-row">
+          <div style="min-width:28px;font-family:var(--font-mono);font-size:.7rem;color:#94a3b8;font-weight:700;">03</div>
+          <div style="flex:1;">
+            <div class="ms-type">Final Billing</div>
+            <div class="ms-type-sub">Triggered at Close-Out · 10% less 10% retention</div>
+          </div>
+          <div class="ms-amount">₱0</div>
+          <span class="chip chip-gray">Draft</span>
+          <div class="ms-actions">
+            <button class="btn btn-ghost btn-sm">✏ Edit</button>
+            <button class="btn btn-primary btn-sm" style="opacity:.4;cursor:not-allowed;">📤 Send Invoice</button>
+          </div>
+        </div>
+
+        <div class="milestone-row" style="background:#f5f3ff;">
+          <div style="min-width:28px;font-family:var(--font-mono);font-size:.7rem;color:#94a3b8;font-weight:700;">R</div>
+          <div style="flex:1;">
+            <div class="ms-type" style="color:#7c3aed;">Retention Release</div>
+            <div class="ms-type-sub">₱120,000 held · Released upon COC issuance</div>
+          </div>
+          <div class="ms-amount" style="color:#7c3aed;">₱120,000</div>
+          <span class="chip chip-purple">🔒 On Hold</span>
+          <div class="ms-actions">
+            <button class="btn btn-sm" style="background:#ede9fe;color:#7c3aed;border:1.5px solid #ddd6fe;">Release on COC</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding:0 4px;">
+        <div style="font-size:.72rem;color:#94a3b8;font-family:var(--font-mono);">Total scheduled: ₱1,200,000 · Retention held: ₱120,000</div>
+        <button class="btn btn-ghost btn-sm">+ Add Custom Milestone</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PART 3 — Deductions ───────────────────────────────── -->
+  <div class="section">
+    <div class="feature-label">Part 3 — Deduction approval trail</div>
+
+    <div class="section-head">
+      <div style="font-size:.82rem;font-weight:700;color:var(--text);">⚠ Deductions — Penshoppe Robinsons</div>
+      <button class="btn btn-sm" style="background:#fef2f2;color:#dc2626;border:1.5px solid #fecaca;">+ Record Deduction <span style="font-size:.65rem;color:#94a3b8;margin-left:4px;">Manager only</span></button>
+    </div>
+
+    <!-- Approved deduction card -->
+    <div class="deduction-card">
+      <div class="deduction-header">
+        <div>
+          <div class="deduction-title">Backcharge — Ceiling Panel Damage</div>
+          <div style="font-size:.72rem;color:#94a3b8;margin-top:2px;font-family:var(--font-mono);">Applies to: Milestone 02 · Progress Billing</div>
+        </div>
+        <span class="chip chip-green">✅ Approved</span>
+      </div>
+      <div class="deduction-body">
+        <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px;">
+          <div class="deduction-field">Type: <strong>Backcharge</strong></div>
+          <div class="deduction-field">Amount: <strong style="color:#dc2626;font-family:var(--font-mono);">−₱45,000</strong></div>
+          <div class="deduction-field">Ref: <strong style="font-family:var(--font-mono);">SR-2026-089</strong></div>
+        </div>
+        <div class="deduction-desc">
+          Client backcharged for damaged ceiling panel during installation at Robinsons Galleria — site report SR-2026-089. Damage confirmed by on-site PM (David Melendez) and client's facilities team.
+        </div>
+        <div class="net-impact">
+          <span class="net-strike">₱480,000</span>
+          <span class="net-deduct">− ₱45,000 backcharge</span>
+          <span style="color:#94a3b8;">=</span>
+          <span class="net-result">₱435,000 net collectible</span>
+        </div>
+      </div>
+      <div class="deduction-footer">
+        <div class="approved-by">Approved by <strong>Paulo Garcia</strong> · June 23, 2026 · 10:42 AM</div>
+        <div style="font-size:.68rem;color:#94a3b8;">Finance notified via Telegram</div>
+      </div>
+    </div>
+
+    <!-- Add deduction form -->
+    <div class="add-form">
+      <div class="add-form-title">
+        <span style="color:#dc2626;">⚠</span> Record New Deduction
+      </div>
+      <div class="grid-2" style="margin-bottom:12px;">
+        <div>
+          <label class="field-label">Type</label>
+          <select class="select input-sm">
+            <option selected>Backcharge</option>
+            <option>Scope Reduction</option>
+            <option>Client Penalty</option>
+            <option>Material Return Credit</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Amount (₱)</label>
+          <input class="input input-sm" type="number" placeholder="e.g. 45000"/>
+        </div>
+        <div>
+          <label class="field-label">Applies to Milestone</label>
+          <select class="select input-sm">
+            <option>— Select milestone —</option>
+            <option>01 · Downpayment</option>
+            <option selected>02 · Progress Billing</option>
+            <option>03 · Final Billing</option>
+          </select>
+        </div>
+        <div>
+          <label class="field-label">Reference No.</label>
+          <input class="input input-sm" type="text" placeholder="Site report, email ref, etc."/>
+        </div>
+        <div class="span-full">
+          <label class="field-label">Description</label>
+          <textarea class="input input-sm" rows="2" placeholder="What caused the deduction? Include site report number or client communication reference."></textarea>
+        </div>
+      </div>
+
+      <label class="field-label">Approved By</label>
+      <div class="stamp-row">
+        <div class="stamp-icon">🔏</div>
+        <div>
+          <div class="stamp-name">Paulo Garcia</div>
+          <div class="stamp-role">Manager · Auto-stamped from your login · June 23, 2026</div>
+        </div>
+      </div>
+
+      <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+        <div class="form-note">📱 Finance will be notified via Telegram once recorded.</div>
+        <button class="btn btn-primary btn-sm">Record Approved Deduction</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
