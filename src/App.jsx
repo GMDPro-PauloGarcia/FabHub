@@ -2421,12 +2421,13 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
 
 }
 
-function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate}){
+function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover}){
   const[note,setNote]=useState("");
   const[nextSteps,setNextSteps]=useState("");
   const[stage,setStage]=useState("");
   const[pct,setPct]=useState("");
-  React.useEffect(()=>{if(pmUpdateModal){setNote("");setNextSteps("");setStage("");setPct("");}},[pmUpdateModal?.dealId]);
+  const[revisedDate,setRevisedDate]=useState("");
+  React.useEffect(()=>{if(pmUpdateModal){setNote("");setNextSteps("");setStage("");setPct("");setRevisedDate("");}},[pmUpdateModal?.dealId]);
   if(!pmUpdateModal) return null;
   return(
     <Modal open title={`📝 Log Update — ${pmUpdateModal.dealName}`} onClose={()=>setPmUpdateModal(null)}>
@@ -2460,15 +2461,23 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
             placeholder="What needs to happen next? Who is responsible?"
             style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
         </div>
+        <div>
+          <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Revised Target Completion <span style={{fontWeight:400,color:"#94a3b8"}}>(optional — only if date has changed)</span></label>
+          <input type="date" value={revisedDate} onChange={e=>setRevisedDate(e.target.value)}
+            style={{width:"100%",border:`1.5px solid ${revisedDate?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+          {revisedDate&&<div style={{fontSize:".72rem",color:"#f97316",marginTop:3,fontWeight:600}}>⚠ This will update the project's target end date visible to Management.</div>}
+        </div>
         <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
           <button onClick={()=>setPmUpdateModal(null)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
           <button onClick={()=>{
             if(!note.trim()){toastEmit("Please enter what happened today.","warning");return;}
             const parts=[`[${session?.name}${stage?" · "+stage:""}${pct?" · "+pct+"%":""}]`,note.trim()];
             if(nextSteps.trim()) parts.push(`Next: ${nextSteps.trim()}`);
+            if(revisedDate) parts.push(`Target revised: ${revisedDate}`);
             const updateText=parts.join(" | ");
             logActivityProp&&logActivityProp(pmUpdateModal.dealId,"PM Update",updateText);
             addPmUpdate&&addPmUpdate(pmUpdateModal.dealId,updateText,session?.name);
+            if(revisedDate&&updateProjectTurnover) updateProjectTurnover(pmUpdateModal.dealId,revisedDate);
             setPmUpdateModal(null);
             toastEmit("Update logged!");
           }} style={{background:"#0ea5e9",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
@@ -5400,7 +5409,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(proj?.design?.status!==next.status) next.statusHistory=[...(proj?.design?.statusHistory||[]),{status:next.status,date:today,by:role}];
     upProj(selProj,p=>({...p,design:next}));
     if(next.status==="Done"&&proj?.currentStage==="Design"){
-      upProj(selProj,p=>({...p,currentStage:"Fabrication",progress:{...p.progress,Design:100}}));
+      upProj(selProj,p=>({...p,currentStage:"Fabrication",progress:{...p.progress,Design:100},stageDates:{...p.stageDates,Design:{...p.stageDates?.Design,e:today},Fabrication:{...p.stageDates?.Fabrication,s:p.stageDates?.Fabrication?.s||today}}}));
       const d=projDeal;
       const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${d?.client||"?"}</b>${d?.ceNo?`\nCE: ${d.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
       sendTelegramNotification("ops",msg);
@@ -7038,7 +7047,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       })()}
 
       {/* PM Update Modal (also accessible from home) */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
     </Wrap>
   );
 
@@ -10738,7 +10747,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const next={...p.design,status:s,statusHistory:[...(p.design?.statusHistory||[]),{status:s,date:today,by:"Design"}]};
                     upProj(d.id,x=>({...x,design:next}));
                     if(s==="Done"&&p.currentStage==="Design"){
-                      upProj(d.id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100}}));
+                      upProj(d.id,x=>({...x,currentStage:"Fabrication",progress:{...x.progress,Design:100},stageDates:{...x.stageDates,Design:{...x.stageDates?.Design,e:today},Fabrication:{...x.stageDates?.Fabrication,s:x.stageDates?.Fabrication?.s||today}}}));
                       const msg=`🎨 <b>Design Complete — Ready for Fabrication</b>\nProject: <b>${d.client||"?"}</b>${d.ceNo?`\nCE: ${d.ceNo}`:""}\nDesigner: ${next.designer||"—"}${next.revisionNo?`\nRevision: ${next.revisionNo}`:""}\n${next.link?`<a href="${next.link}">View Drawings</a>`:"No file link yet"}\nBy: ${session?.name||"Design"}`;
                       sendTelegramNotification("ops",msg);
                       sendTelegramNotification("management",msg);
@@ -10911,7 +10920,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {/* PM Update Modal */}
       {/* PM Update Modal */}
-      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate}/>}
+      {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
     </Wrap>
   );
 
@@ -12540,6 +12549,22 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 {pending>0&&<span style={{color:"#ef4444"}}>🛒 {pending} to buy</span>}
                 {(()=>{const ps=p?.stageDates?.Punchlist?.s;if(!ps)return null;const el=bizDaysElapsed(ps);const left=5-el;const over=left<0;return<span style={{color:over?"#ef4444":left<=1?"#f59e0b":"#f97316",fontWeight:700}}>📋 Punchlist {over?`${Math.abs(left)}d OVERDUE`:`${left}d left`}</span>})()}
               </div>
+              {(()=>{
+                const tgt=pc?.targetEndDate;if(!tgt) return null;
+                const dLeft=Math.ceil((new Date(tgt)-new Date())/(1000*60*60*24));
+                const over=dLeft<0;const warn=dLeft<=7&&!over;
+                return(
+                  <div style={{marginTop:6,display:"flex",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:".7rem",color:"#94a3b8"}}>Due {tgt}</span>
+                    <span style={{fontSize:".7rem",fontWeight:700,padding:"2px 8px",borderRadius:20,
+                      background:over?"#fef2f2":warn?"#fffbeb":"#f0fdf4",
+                      color:over?"#dc2626":warn?"#d97706":"#059669",
+                      border:`1px solid ${over?"#fecaca":warn?"#fde68a":"#6ee7b7"}`}}>
+                      {over?`⚠ ${Math.abs(dLeft)}d OVERDUE`:warn?`⏰ ${dLeft}d left`:`✓ ${dLeft}d left`}
+                    </span>
+                  </div>
+                );
+              })()}
             </Card>
           );
         })}
@@ -12639,7 +12664,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                   <span style={{fontWeight:700,color:cur?c:done?"#94a3b8":"#cbd5e1",fontSize:".92rem"}}>{s}</span>
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     <span style={{fontSize:".72rem",color:done?"#059669":cur?c:"#94a3b8"}}>{done?"✓ Done":cur?"In progress":"Pending"}</span>
-                    {cur&&pct===100&&i<3&&<Btn small onClick={()=>upProj(selProj,p=>({...p,currentStage:["Design","Fabrication","QC","Delivery"][i+1]}))}>→ Next Stage</Btn>}
+                    {cur&&pct===100&&i<3&&<Btn small onClick={()=>{const nextStage=["Design","Fabrication","QC","Delivery"][i+1];upProj(selProj,p=>({...p,currentStage:nextStage,stageDates:{...p.stageDates,[nextStage]:{...p.stageDates?.[nextStage],s:p.stageDates?.[nextStage]?.s||today},[s]:{...p.stageDates?.[s],e:p.stageDates?.[s]?.e||today}}}));}}>→ Next Stage</Btn>}
                   </div>
                 </div>
                 <input type="range" min={0} max={100} value={pct} disabled={locked||done} onChange={e=>upProj(selProj,p=>({...p,progress:{...p.progress,[s]:Number(e.target.value)}}))} style={{width:"100%",accentColor:c,marginBottom:6,cursor:locked||done?"not-allowed":"pointer"}}/>
@@ -21021,7 +21046,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity}/>}
+    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));}}/>}
     </>
   );
 }
