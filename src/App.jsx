@@ -2535,7 +2535,7 @@ const PM_TYPE_COLOR={"General Progress":"#0ea5e9","Materials Needed":"#f59e0b","
 const PM_TYPE_ICON={"General Progress":"📋","Materials Needed":"📦","Design Request":"🎨","Blocker":"🚨"};
 
 function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logActivityProp,addPmUpdate,updateProjectTurnover,sendTelegramNotification}){
-  const[updateType,setUpdateType]=useState("General Progress");
+  const[updateType,setUpdateType]=useState(pmUpdateModal?.initialType||"General Progress");
   const[note,setNote]=useState("");
   const[nextSteps,setNextSteps]=useState("");
   const[stage,setStage]=useState("");
@@ -12641,7 +12641,7 @@ function OpsUpdateForm({selProj,selProjName,session,addPmUpdate,logActivity,open
   return(
     <div style={{marginBottom:14,display:"flex",gap:8,flexWrap:"wrap"}}>
       {[{type:"General Progress",icon:"📋",color:"#0ea5e9"},{type:"Blocker",icon:"🚨",color:"#ef4444"},{type:"Materials Needed",icon:"📦",color:"#f59e0b"},{type:"Design Request",icon:"🎨",color:"#8b5cf6"}].map(({type,icon,color})=>(
-        <button key={type} onClick={post} style={{background:color,border:"none",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>
+        <button key={type} onClick={()=>openPmModal&&openPmModal({dealId:selProj,dealName:selProjName||selProj,initialType:type})} style={{background:color,border:"none",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>
           {icon} {type}
         </button>
       ))}
@@ -19166,6 +19166,18 @@ function DeductionForm({ms,updateMilestone,session,role,today,toastEmit,sendTele
   );
 }
 
+function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
+  React.useEffect(()=>{
+    autoGenerate();
+    setAutoGenDone(p=>({...p,[selDeal]:true}));
+  },[selDeal]);
+  return(
+    <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>
+      ⚡ Billing schedule generated from payment terms…
+    </div>
+  );
+}
+
 function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,toastEmit,sendTelegramNotification}){
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
@@ -19814,18 +19826,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                     </div>
                   )}
                 </div>
-                {canGenerate&&!autoGenDone[selDeal]&&(()=>{
-                  // Auto-generate immediately — no button needed
-                  setTimeout(()=>{
-                    autoGenerate();
-                    setAutoGenDone(p=>({...p,[selDeal]:true}));
-                  },0);
-                  return(
-                    <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>
-                      ⚡ Billing schedule generated from payment terms…
-                    </div>
-                  );
-                })()}
+                {canGenerate&&!autoGenDone[selDeal]&&<AutoGenerateBilling selDeal={selDeal} autoGenerate={autoGenerate} setAutoGenDone={setAutoGenDone}/>}
               </div>
             );
           })()}
