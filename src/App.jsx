@@ -761,7 +761,7 @@ const DEFAULT_USERS = [
 
 // ─── SEED DATA ────────────────────────────────────────────────────────────────
 const mkDesign=(status="Briefing",designer="",type="in-house",dueDate="",link="",notes="")=>({
-  status,designer,designerType:type,dueDate,link,notes,revisionNo:"",
+  status,designer,designerType:type,dueDate,link,notes,revisionNo:"",approvedBy:"",approvedOn:"",
   statusHistory:[{status,date:today,by:"System"}],deliverables:[]
 });
 const SEED_DEALS=[];
@@ -5768,7 +5768,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             {!designForm.dueDate&&designForm.status&&designForm.status!=="Briefing"&&designForm.status!=="Done"&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>No due date set — consider adding one to track progress.</div>}
           </Fld>
           <div style={{gridColumn:"1/-1"}}><Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={designForm.link||""} onChange={e=>setDesignForm(p=>({...p,link:e.target.value}))} placeholder="https://…"/></Fld></div>
-          <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={3} value={designForm.notes||""} onChange={e=>setDesignForm(p=>({...p,notes:e.target.value}))}/></Fld></div>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Revision No." hint="e.g. Rev 3 — lock before handing off to Ops"><Inp value={designForm.revisionNo||""} onChange={e=>setDesignForm(p=>({...p,revisionNo:e.target.value}))} placeholder="e.g. Rev 3"/></Fld></div>
+          <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={designForm.notes||""} onChange={e=>setDesignForm(p=>({...p,notes:e.target.value}))}/></Fld></div>
+        </div>
+        {/* Approval stamp */}
+        <div style={{marginTop:14,background:designForm.approvedBy&&designForm.approvedOn?"#f0fdf4":"#fffbeb",border:`1.5px solid ${designForm.approvedBy&&designForm.approvedOn?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
+          <div style={{fontSize:".68rem",fontWeight:700,color:designForm.approvedBy&&designForm.approvedOn?"#15803d":"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>
+            {designForm.approvedBy&&designForm.approvedOn?"✅ Approval Stamp":"⏳ Approval Sign-off"}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            <Fld label="Approved by"><Sel value={designForm.approvedBy||""} onChange={e=>setDesignForm(p=>({...p,approvedBy:e.target.value}))}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+            <Fld label="Approved on"><Inp type="date" value={designForm.approvedOn||""} onChange={e=>setDesignForm(p=>({...p,approvedOn:e.target.value}))}/></Fld>
+          </div>
+          {!(designForm.approvedBy&&designForm.approvedOn)&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill both fields to stamp this revision as approved. Operations will see the stamp on their view.</div>}
         </div>
         {designForm.status==="Done"&&proj?.currentStage==="Design"&&(
           <div style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:10,padding:"10px 14px",margin:"12px 0",fontSize:".82rem",color:"#059669"}}>✓ Marking as Done will advance this project to Fabrication automatically.</div>
@@ -10594,9 +10606,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:4}}><span>Design progress</span><span style={{fontWeight:700,color:DS_CLR[ds]}}>{dsPct}%</span></div>
                 <ProgBar pct={dsPct} color={DS_CLR[ds]}/>
               </div>
-              <div style={{display:"flex",gap:12,fontSize:".74rem",color:"#94a3b8",marginTop:6}}>
+              <div style={{display:"flex",gap:12,fontSize:".74rem",color:"#94a3b8",marginTop:6,flexWrap:"wrap",alignItems:"center"}}>
                 <span>Designer: {p.design?.designer||"—"}</span>
                 <span>Due: {p.design?.dueDate||"—"}</span>
+                {p.design?.approvedBy&&p.design?.approvedOn&&(
+                  <span style={{background:"#dcfce7",color:"#15803d",fontWeight:700,fontSize:".68rem",padding:"2px 9px",borderRadius:20,border:"1px solid #86efac"}}>🔏 {p.design?.revisionNo||"Rev"} · Approved by {p.design.approvedBy}</span>
+                )}
               </div>
               <div style={{marginTop:10,display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
                 {DESIGN_STATUSES.map(s=>(
@@ -10627,22 +10642,78 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })}
         {projList.length===0&&<EmptyState icon="🎨" msg="No active projects assigned yet."/>}
-        {selProj&&proj&&(
-          <Modal open title={`Design Details — ${projDeal?.client}`} onClose={()=>setSelProj(null)} wide>
+        {selProj&&proj&&(()=>{
+          const linkedDrf=drfs.find(r=>r.dealId===selProj);
+          const deal=projDeal;
+          const hasApproval=proj.design?.approvedBy&&proj.design?.approvedOn;
+          return(
+          <Modal open title={`Design Details — ${deal?.client}`} onClose={()=>setSelProj(null)} wide>
+            {/* ── Brief from Sales ─────────────────────────── */}
+            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
+              <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>📋 Brief from Sales</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 16px",fontSize:".8rem",color:"#1e293b",marginBottom:8}}>
+                <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Product / Item</span><div style={{fontWeight:600}}>{deal?.product||"—"}</div></div>
+                <div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Location</span><div style={{fontWeight:600}}>{deal?.location||"—"}</div></div>
+                {deal?.drfSize&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Size / Dimensions</span><div style={{fontWeight:600}}>{deal.drfSize}</div></div>}
+                {deal?.contact&&<div><span style={{color:"#94a3b8",fontSize:".72rem"}}>Contact Person</span><div style={{fontWeight:600}}>{deal.contact}</div></div>}
+              </div>
+              {(deal?.drfDescription||deal?.notes)&&(
+                <div style={{fontSize:".78rem",color:"#475569",marginBottom:6,whiteSpace:"pre-wrap",borderTop:"1px solid #e2e8f0",paddingTop:8}}>
+                  {deal?.drfDescription||deal?.notes}
+                </div>
+              )}
+              {deal?.drfAccessories?.filter(a=>a).length>0&&(
+                <div style={{marginTop:6}}>
+                  <div style={{fontSize:".68rem",color:"#94a3b8",fontWeight:700,marginBottom:4}}>ACCESSORIES / COMPONENTS</div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {deal.drfAccessories.filter(a=>a).map((a,i)=>(
+                      <span key={i} style={{background:"#e0e7ff",color:"#4338ca",fontSize:".72rem",padding:"2px 9px",borderRadius:20,fontWeight:600}}>{a}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {linkedDrf&&(
+                <div style={{marginTop:8,paddingTop:8,borderTop:"1px solid #e2e8f0",fontSize:".75rem",color:"#6366f1",fontWeight:600}}>
+                  📄 DRF on file: {linkedDrf.drfNo||"DRF"} · {linkedDrf.type||""} · {linkedDrf.designDeadline||"no deadline"}
+                  {linkedDrf.description&&<div style={{color:"#475569",fontWeight:400,marginTop:3}}>{linkedDrf.description}</div>}
+                </div>
+              )}
+            </div>
+            {/* ── Design Work ──────────────────────────────── */}
+            <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>🎨 Design Output</div>
             <Fld label="Designer"><Sel value={proj.design?.designer||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,designer:e.target.value}}))}><option value="">— Select —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
             <Fld label="Due Date"><Inp type="date" value={proj.design?.dueDate||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,dueDate:e.target.value}}))}/></Fld>
-            <Fld label="Approved Revision No." hint="Lock this before handoff to Ops e.g. Rev 3"><Inp value={proj.design?.revisionNo||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,revisionNo:e.target.value}}))} placeholder="e.g. Rev 3"/></Fld>
-            <Fld label="File / Link"><Inp type="url" value={proj.design?.link||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,link:e.target.value}}))} placeholder="https://drive.google.com/…"/></Fld>
-            <Fld label="Notes"><Inp rows={3} value={proj.design?.notes||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,notes:e.target.value}}))}/></Fld>
-            {proj.design?.revisionNo&&proj.design?.link&&(
-              <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"10px 14px",marginTop:4,fontSize:".8rem",color:"#15803d"}}>
-                ✅ Ready to hand off — <strong>{proj.design.revisionNo}</strong> · <a href={proj.design.link} target="_blank" rel="noreferrer" style={{color:"#15803d"}}>View drawings</a>
+            <Fld label="Revision No." hint="e.g. Rev 3 — lock this before handoff to Ops"><Inp value={proj.design?.revisionNo||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,revisionNo:e.target.value}}))} placeholder="e.g. Rev 3"/></Fld>
+            <Fld label="File / Link (Google Drive, Figma, etc.)"><Inp type="url" value={proj.design?.link||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,link:e.target.value}}))} placeholder="https://drive.google.com/…"/></Fld>
+            <Fld label="Notes"><Inp rows={2} value={proj.design?.notes||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,notes:e.target.value}}))}/></Fld>
+            {/* ── Approval Stamp ───────────────────────────── */}
+            <div style={{marginTop:16,background:hasApproval?"#f0fdf4":"#fffbeb",border:`1.5px solid ${hasApproval?"#bbf7d0":"#fde68a"}`,borderRadius:12,padding:"14px 16px"}}>
+              <div style={{fontSize:".68rem",fontWeight:700,color:hasApproval?"#15803d":"#92400e",textTransform:"uppercase",letterSpacing:".8px",marginBottom:10}}>
+                {hasApproval?"✅ Approved — Locked for Handoff":"⏳ Pending Approval"}
               </div>
-            )}
-            <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginBottom:6}}>Changes are saved automatically as you type.</div>
+              {hasApproval&&(
+                <div style={{display:"flex",gap:16,alignItems:"center",marginBottom:10,flexWrap:"wrap"}}>
+                  <div style={{background:"#dcfce7",border:"1.5px solid #86efac",borderRadius:10,padding:"8px 14px",display:"inline-flex",gap:10,alignItems:"center"}}>
+                    <span style={{fontSize:"1.2rem"}}>🔏</span>
+                    <div>
+                      <div style={{fontWeight:800,color:"#15803d",fontSize:".85rem"}}>{proj.design.revisionNo||"Rev —"}</div>
+                      <div style={{fontSize:".72rem",color:"#166534"}}>Approved by {proj.design.approvedBy} · {proj.design.approvedOn}</div>
+                    </div>
+                  </div>
+                  {proj.design.link&&<a href={proj.design.link} target="_blank" rel="noreferrer" style={{fontSize:".78rem",color:"#15803d",fontWeight:600}}>📂 View Drawings</a>}
+                </div>
+              )}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <Fld label="Approved by"><Sel value={proj.design?.approvedBy||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,approvedBy:e.target.value}}))}><option value="">— Select approver —</option>{[...DESIGN_MEMBERS,...SALES_TEAM,...OPS_TEAM].filter((v,i,a)=>a.indexOf(v)===i).map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+                <Fld label="Approved on"><Inp type="date" value={proj.design?.approvedOn||""} onChange={e=>upProj(selProj,p=>({...p,design:{...p.design,approvedOn:e.target.value}}))}/></Fld>
+              </div>
+              {!hasApproval&&<div style={{fontSize:".72rem",color:"#92400e",marginTop:6}}>Fill in both fields above to lock this revision for handoff to Operations.</div>}
+            </div>
+            <div style={{fontSize:".72rem",color:"#94a3b8",textAlign:"center",marginTop:10,marginBottom:4}}>Changes are saved automatically as you type.</div>
             <Btn full onClick={()=>setSelProj(null)}>Close</Btn>
           </Modal>
-        )}
+          );
+        })()}
       </Wrap>
     );
     if(page==="procurement") return <ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Design",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/>;
@@ -20668,6 +20739,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   </div>
                   <div style={{display:"flex",gap:6}}>
                     {projCl.length===0&&loadChecklistTemplate&&<button onClick={()=>{const d=deal;if(d)loadChecklistTemplate(d.id,d.client);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700}}>📋 Load Template</button>}
+                    <button onClick={()=>openAddCl&&openAddCl(selDeal,"Design","Task")} style={{background:"#ede9fe",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#7c3aed",cursor:"pointer",fontWeight:700}}>🎨 Request from Design</button>
                     <button onClick={()=>openAddCl&&openAddCl(selDeal,role==="Design"?"Design":"Operations")} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:700}}>+ Add Task</button>
                   </div>
                 </div>
