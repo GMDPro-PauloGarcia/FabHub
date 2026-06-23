@@ -8810,7 +8810,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const pctPaid=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
                   const sc=STAGE_CLR_PIPE[d.stage]||"#94a3b8";
                   const stageLabel=d.stage?.replace(/^\d+ · /,"")||"—";
-                  const dLeftP=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date(today2))/86400000):null;
+                  const dLeftP=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date())/86400000):null;
                   const isOverP=dLeftP!==null&&dLeftP<0;
                   return(
                     <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
