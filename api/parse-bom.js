@@ -1,6 +1,6 @@
-import * as xlsx from 'xlsx';
+const xlsx = require('xlsx');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -21,7 +21,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'No BOM sheet found. Make sure your Excel has a sheet named "BOM".' });
     }
 
-    // Extract project info from BOQ sheet
     let projectName = '', projectLocation = '', quotationNo = '';
     if (boqSheetName) {
       const boqRows = xlsx.utils.sheet_to_json(workbook.Sheets[boqSheetName], { header: 'A', defval: '' });
@@ -34,7 +33,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Parse BOM sheet
     const bomRows = xlsx.utils.sheet_to_json(workbook.Sheets[bomSheetName], { header: 'A', defval: '' });
     const materials = parseBOM(bomRows);
 
@@ -42,7 +40,7 @@ export default async function handler(req, res) {
   } catch (err) {
     return res.status(500).json({ error: 'Failed to parse file: ' + err.message });
   }
-}
+};
 
 function parseBOM(rows) {
   const materials = [];
@@ -55,26 +53,21 @@ function parseBOM(rows) {
     const c = String(row.C || '').trim();
     const d = String(row.D || '').trim();
 
-    // Skip any row containing a formula error
     if (Object.values(row).some(v => String(v).includes('#REF!'))) continue;
 
-    // Section markers
     if (a === 'MATERIALS NEEDED') { inMaterials = false; continue; }
     if (a === 'Material' || a === 'Material ') { inMaterials = true; continue; }
     if (['Direct Unit Cost', 'Total Unit Cost', 'Total Markup', 'COST PER UNIT'].includes(a)) {
       inMaterials = false; continue;
     }
-    // Config rows at top of BOM sheet (Wastage, Handling, etc.)
     if (['Wastage', 'Handling', 'Transportation', 'Contingencies & Miscellaneous', 'OT Allowance', 'Equipment Fund'].some(k => a.startsWith(k))) continue;
     if (a.startsWith("Contractor's")) continue;
 
-    // BOQ line item header (e.g. "FF-1", "Single Face Drywall") — row between MATERIALS NEEDED and Material header
     if (!inMaterials && a && parseFloat(b) > 0 && c) {
       currentBoqItem = a;
       continue;
     }
 
-    // Material rows — skip Misc. (too vague for forecasting)
     if (inMaterials && a && a !== 'Misc.' && parseFloat(b) > 0 && c) {
       const qty = Math.round(parseFloat(b) * 1000) / 1000;
       const unitCost = parseFloat(d) || 0;
