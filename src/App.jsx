@@ -418,7 +418,8 @@ const claimWoNumber=async({typed,suggested,swos})=>{
 const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
 const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
-const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:0,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:""});
+const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:0,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
+const emptyDelivery=()=>({mode:"",deliveredDate:"",inspectedBy:"",inspectedOn:"",checkQty:false,checkDimensions:false,checkFinish:false,defectNotes:"",inspectionNotes:"",signedOffBy:"",signedOffOn:"",status:"Pending",retentionReleased:false});
 const projDisplayName=d=>d?(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:""):"";
 const projOptions=deals=>(deals||[]).map(d=>({value:d.id,label:projDisplayName(d)}));
 
@@ -16616,6 +16617,29 @@ function SubconWOView({swos,addSWO,updateSWO,deleteSWO,wonDeals,subcons,session,
   const[filterProj,setFilterProj]=useState("all");
   const[filterStat,setFilterStat]=useState("all");
   const[expanded,setExpanded]=useState({});
+  const[delivModal,setDelivModal]=useState(null); // {woId, wo}
+  const[delivForm,setDelivForm]=useState(emptyDelivery());
+  const df=(k,v)=>setDelivForm(p=>({...p,[k]:v}));
+  const openDelivery=w=>{setDelivModal({woId:w.id,wo:w});setDelivForm(w.delivery?{...w.delivery}:emptyDelivery());};
+  const saveDelivery=()=>{
+    const d={...delivForm,inspectedBy:delivForm.inspectedBy||session?.name||"",inspectedOn:delivForm.inspectedOn||today,status:"Inspected"};
+    updateSWO(delivModal.woId,{delivery:d,...(delivModal.wo.status==="Issued"?{status:"In Progress"}:{})});
+    toastEmit&&toastEmit("Delivery inspection recorded","success");
+    setDelivModal(null);
+  };
+  const signOffDelivery=w=>{
+    const d={...(w.delivery||{}),signedOffBy:session?.name||"",signedOffOn:today,status:"Accepted"};
+    updateSWO(w.id,{delivery:d,status:"Completed"});
+    sendTelegramNotification("ops",`✅ <b>Subcon Delivery Accepted — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nProject: ${w.projectName||"—"}\nSigned off by: ${session?.name||"?"} · ${today}\n${w.retentionPct>0?"Retention "+w.retentionPct+"% held until project close":""}`);
+    toastEmit&&toastEmit(`${w.woNumber} signed off — marked Completed`,"success");
+  };
+  const releaseRetention=w=>{
+    const d={...(w.delivery||{}),retentionReleased:true,retentionReleasedBy:session?.name||"",retentionReleasedOn:today};
+    updateSWO(w.id,{delivery:d});
+    sendTelegramNotification("financialcontrol",`💰 <b>Retention Release Approved — ${w.woNumber}</b>\nSubcontractor: ${w.subcontractor||"—"}\nRetention: ₱${woRetentionAmt(w).toLocaleString("en-PH")}\nAuthorized by: ${session?.name||"?"} · ${today}`);
+    toastEmit&&toastEmit("Retention release recorded — Finance notified","success");
+  };
+  const canSignOff=role==="Manager"||role==="Ops";
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -16845,6 +16869,52 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
         </select>
       </div>
 
+      {/* Delivery Inspection Modal */}
+      {delivModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}>
+            <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>📦 Record Delivery & Inspection</div>
+            <div style={{fontSize:".74rem",color:"#64748b",marginBottom:16}}>{delivModal.wo.woNumber} · {delivModal.wo.subcontractor}</div>
+            <div style={{display:"grid",gap:14}}>
+              <Fld label="Delivery Method" required>
+                <div style={{display:"flex",gap:10}}>
+                  {[["warehouse","🏭 Delivered to Warehouse"],["site","📍 Installed on Site"]].map(([v,lbl])=>(
+                    <button key={v} onClick={()=>df("mode",v)} style={{flex:1,padding:"10px 0",borderRadius:9,border:`2px solid ${delivForm.mode===v?"#4f46e5":"#e2e8f0"}`,background:delivForm.mode===v?"#ede9fe":"#fff",color:delivForm.mode===v?"#4f46e5":"#64748b",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              </Fld>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+                <Fld label="Date Delivered / Installed"><Inp type="date" value={delivForm.deliveredDate} onChange={e=>df("deliveredDate",e.target.value)}/></Fld>
+                <Fld label="Inspection Date"><Inp type="date" value={delivForm.inspectedOn} onChange={e=>df("inspectedOn",e.target.value)}/></Fld>
+              </div>
+              <Fld label="Inspected By"><Inp value={delivForm.inspectedBy||session?.name||""} onChange={e=>df("inspectedBy",e.target.value)} placeholder="Name of inspector"/></Fld>
+              <Fld label="Inspection Checklist">
+                <div style={{display:"flex",flexDirection:"column",gap:8,padding:"10px 14px",border:"1.5px solid #e0e7ff",borderRadius:9,background:"#f5f3ff"}}>
+                  {[["checkQty","Quantity / Count matches WO"],["checkDimensions","Dimensions / Specs correct"],["checkFinish","Finish / Workmanship acceptable"]].map(([k,lbl])=>(
+                    <label key={k} style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",fontSize:".8rem",fontWeight:600,color:"#1e293b"}}>
+                      <input type="checkbox" checked={!!delivForm[k]} onChange={e=>df(k,e.target.checked)} style={{width:16,height:16,accentColor:"#4f46e5"}}/>
+                      {lbl}
+                    </label>
+                  ))}
+                </div>
+              </Fld>
+              <Fld label="Defects / Issues (if any)">
+                <textarea value={delivForm.defectNotes} onChange={e=>df("defectNotes",e.target.value)} rows={2} placeholder="Describe any defects, missing items, or punch-list items…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+              </Fld>
+              <Fld label="Inspector Notes (optional)">
+                <textarea value={delivForm.inspectionNotes} onChange={e=>df("inspectionNotes",e.target.value)} rows={2} placeholder="Additional remarks…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+              </Fld>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
+              <button onClick={()=>setDelivModal(null)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>Cancel</button>
+              <button onClick={saveDelivery} disabled={!delivForm.mode} style={{background:delivForm.mode?"#4f46e5":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 22px",fontFamily:"inherit",fontSize:".82rem",color:delivForm.mode?"#fff":"#94a3b8",cursor:delivForm.mode?"pointer":"not-allowed",fontWeight:700}}>✓ Save Inspection</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {filtered.length===0?(
         <div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No work orders yet. Hit + New Work Order to engage a subcontractor.</div>
       ):(
@@ -16889,6 +16959,61 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         {w.approvedBy&&<span style={{color:"#10b981",fontWeight:600}}>✓ {w.approvedBy}</span>}
                         {w.notes&&<span style={{fontStyle:"italic"}}>{w.notes}</span>}
                       </div>
+                      {/* ── Delivery & Inspection ── */}
+                      {(w.status==="Issued"||w.status==="In Progress"||w.status==="Completed")&&(()=>{
+                        const d=w.delivery;
+                        const retAmt2=woRetentionAmt(w);
+                        return(
+                          <div style={{marginBottom:10,border:"1.5px solid #e0e7ff",borderRadius:10,padding:"10px 14px",background:"#f5f3ff"}}>
+                            <div style={{fontWeight:700,fontSize:".72rem",color:"#4f46e5",marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+                              📦 Delivery & Acceptance
+                              {!d&&<span style={{fontSize:".62rem",background:"#fef9c3",color:"#a16207",border:"1px solid #fde68a",borderRadius:20,padding:"1px 8px",fontWeight:700}}>⏳ Awaiting Delivery</span>}
+                              {d?.status==="Inspected"&&<span style={{fontSize:".62rem",background:"#dbeafe",color:"#1d4ed8",border:"1px solid #93c5fd",borderRadius:20,padding:"1px 8px",fontWeight:700}}>🔍 Inspected — Pending Sign-off</span>}
+                              {d?.status==="Accepted"&&<span style={{fontSize:".62rem",background:"#dcfce7",color:"#15803d",border:"1px solid #86efac",borderRadius:20,padding:"1px 8px",fontWeight:700}}>✅ Accepted by {d.signedOffBy}</span>}
+                              {d?.status==="Rejected"&&<span style={{fontSize:".62rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fca5a5",borderRadius:20,padding:"1px 8px",fontWeight:700}}>❌ Rejected</span>}
+                            </div>
+                            {d&&(
+                              <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".7rem",color:"#374151",marginBottom:8}}>
+                                <span>📍 {d.mode==="warehouse"?"Delivered to Warehouse":"Installed on Site"}</span>
+                                <span>📅 {d.deliveredDate||"—"}</span>
+                                <span>🔍 Inspected by {d.inspectedBy||"—"} on {d.inspectedOn||"—"}</span>
+                                {d.signedOffBy&&<span style={{color:"#059669",fontWeight:700}}>✅ Signed off by {d.signedOffBy} · {d.signedOffOn}</span>}
+                              </div>
+                            )}
+                            {d&&(
+                              <div style={{display:"flex",gap:8,flexWrap:"wrap",fontSize:".69rem",marginBottom:8}}>
+                                {[["Qty / Count",d.checkQty],["Dimensions",d.checkDimensions],["Finish / Quality",d.checkFinish]].map(([lbl,ok])=>(
+                                  <span key={lbl} style={{padding:"2px 9px",borderRadius:20,fontWeight:600,background:ok?"#dcfce7":"#fee2e2",color:ok?"#15803d":"#dc2626",border:`1px solid ${ok?"#86efac":"#fca5a5"}`}}>{ok?"✓":"✗"} {lbl}</span>
+                                ))}
+                                {d.defectNotes&&<span style={{color:"#b45309",fontStyle:"italic"}}>⚠ {d.defectNotes}</span>}
+                              </div>
+                            )}
+                            {/* Retention release status */}
+                            {d?.status==="Accepted"&&retAmt2>0&&(
+                              <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 10px",background:d.retentionReleased?"#dcfce7":"#fffbeb",borderRadius:8,border:`1px solid ${d.retentionReleased?"#86efac":"#fde68a"}`,marginBottom:8}}>
+                                <span style={{fontSize:".69rem",fontWeight:700,color:d.retentionReleased?"#15803d":"#b45309"}}>
+                                  {d.retentionReleased?`✅ Retention ₱${retAmt2.toLocaleString("en-PH")} released · ${d.retentionReleasedOn}`:`🔒 Retention ₱${retAmt2.toLocaleString("en-PH")} held`}
+                                </span>
+                                {!d.retentionReleased&&canSignOff&&(
+                                  <button onClick={()=>releaseRetention(w)} style={{background:"#059669",border:"none",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Release Retention</button>
+                                )}
+                              </div>
+                            )}
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                              {(role==="PM"||role==="Warehouse"||role==="Ops"||role==="Manager")&&(
+                                <button onClick={()=>openDelivery(w)} style={{background:"#4f46e5",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+                                  {d?"📝 Update Inspection":"📦 Record Delivery"}
+                                </button>
+                              )}
+                              {d?.status==="Inspected"&&canSignOff&&(
+                                <button onClick={()=>signOffDelivery(w)} style={{background:"#059669",border:"none",borderRadius:7,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>
+                                  ✅ Sign Off (Ops Director)
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
                         <select value={w.status} onChange={e=>{const st=e.target.value;
                           if(st==="Issued"&&(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)){toastEmit&&toastEmit("Needs a Manager (or designated approver) to approve.","error");return;}
