@@ -10424,7 +10424,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} session={session} role={role}/></Wrap>);
+    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -11359,6 +11359,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
         deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove}
         suppliers={suppliers} addSupplier={addSupplier}
+        projs={projs} upProjs={upProjs} deals={wonDeals}
         session={session} role={role}/>
     </Wrap>
   );
@@ -11480,7 +11481,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         upDeals={upDeals}
         onOpenPayTerms={id=>setPayTermsModal(id)}
         initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
-        cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}/>
+        cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}
+        toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
   );
 
@@ -18997,7 +18999,36 @@ function BudgetRequestView({breqs,addBR,updateBR,wonDeals,session,role,toastEmit
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
-function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms}){
+function DeductionForm({ms,updateMilestone,session,role,today,toastEmit,sendTelegramNotification,deal}){
+  const[showDed,setShowDed]=useState(false);
+  const[dedForm,setDedForm]=useState({reason:"",amount:""});
+  if(!showDed) return(
+    <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Record Deduction</button>
+  );
+  return(
+    <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"10px 12px"}}>
+      <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:8}}>📉 Record Deduction</div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
+        <Fld label="Reason"><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
+        <Fld label="Amount (₱)"><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
+      </div>
+      <div style={{display:"flex",gap:6}}>
+        <button onClick={()=>{
+          if(!dedForm.reason||!dedForm.amount) return;
+          const ded={id:uid(),reason:dedForm.reason,amount:Number(dedForm.amount),approvedBy:session?.name||"Manager",approvedOn:today};
+          const updated=[...(ms.deductions||[]),ded];
+          updateMilestone(ms.id,{deductions:updated,amount:Math.max(0,Number(ms.amount)-Number(dedForm.amount))});
+          sendTelegramNotification&&sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}\nDeduction: ₱${Number(dedForm.amount).toLocaleString("en-PH")}\nReason: ${dedForm.reason}\nApproved by: ${session?.name||"Manager"} · ${today}`);
+          toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
+          setShowDed(false);setDedForm({reason:"",amount:""});
+        }} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Approve & Record</button>
+        <button onClick={()=>setShowDed(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontSize:".74rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,toastEmit,sendTelegramNotification}){
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -19903,34 +19934,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                               ))}
                             </div>
                           )}
-                          {role==="Manager"&&(()=>{
-                            const[showDed,setShowDed]=useState(false);
-                            const[dedForm,setDedForm]=useState({reason:"",amount:""});
-                            if(!showDed) return(
-                              <button onClick={()=>setShowDed(true)} style={{background:"none",border:"1px dashed #f97316",borderRadius:6,padding:"3px 10px",fontSize:".68rem",color:"#c2410c",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Record Deduction</button>
-                            );
-                            return(
-                              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"10px 12px"}}>
-                                <div style={{fontWeight:700,color:"#c2410c",fontSize:".76rem",marginBottom:8}}>📉 Record Deduction</div>
-                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:8}}>
-                                  <Fld label="Reason"><Inp value={dedForm.reason} onChange={e=>setDedForm(p=>({...p,reason:e.target.value}))} placeholder="e.g. Penalty, Incomplete works"/></Fld>
-                                  <Fld label="Amount (₱)"><Inp type="number" value={dedForm.amount} onChange={e=>setDedForm(p=>({...p,amount:e.target.value}))} placeholder="0.00"/></Fld>
-                                </div>
-                                <div style={{display:"flex",gap:6}}>
-                                  <button onClick={()=>{
-                                    if(!dedForm.reason||!dedForm.amount) return;
-                                    const ded={id:uid(),reason:dedForm.reason,amount:Number(dedForm.amount),approvedBy:session?.name||"Manager",approvedOn:today};
-                                    const updated=[...(ms.deductions||[]),ded];
-                                    updateMilestone(ms.id,{deductions:updated,amount:Math.max(0,Number(ms.amount)-Number(dedForm.amount))});
-                                    sendTelegramNotification("financialcontrol",`📉 <b>Billing Deduction Approved — ${deal?.client||""}</b>\nMilestone: ${ms.name}\nDeduction: ₱${Number(dedForm.amount).toLocaleString("en-PH")}\nReason: ${dedForm.reason}\nApproved by: ${session?.name||"Manager"} · ${today}`);
-                                    toastEmit&&toastEmit("Deduction recorded — Finance notified","success");
-                                    setShowDed(false);setDedForm({reason:"",amount:""});
-                                  }} style={{background:"#c2410c",border:"none",borderRadius:6,padding:"5px 14px",fontSize:".74rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Approve & Record</button>
-                                  <button onClick={()=>setShowDed(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 10px",fontSize:".74rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
-                                </div>
-                              </div>
-                            );
-                          })()}
+                          {role==="Manager"&&<DeductionForm ms={ms} updateMilestone={updateMilestone} session={session} role={role} today={today} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification} deal={deal}/>}
                         </div>
                       );
                     })()}
@@ -21444,7 +21448,7 @@ function SupplierPicker({value,onChange,suppliers=[],addSupplier,placeholder="Su
 }
 
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,suppliers=[],addSupplier,session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,suppliers=[],addSupplier,projs={},upProjs,deals=[],session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -21471,6 +21475,64 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const[delivFilterDateFrom,setDelivFilterDateFrom]=useState("");
   const[delivFilterDateTo,setDelivFilterDateTo]=useState("");
   const csvFileRef=useRef(null);
+
+  // ── BOM Import / Demand Forecast ──────────────────────────────────────────
+  const[bomModal,setBomModal]=useState(null); // dealId
+  const[bomFile,setBomFile]=useState(null);
+  const[bomParsing,setBomParsing]=useState(false);
+  const[bomPreview,setBomPreview]=useState(null); // parsed result
+  const[bomLabel,setBomLabel]=useState("Original BOQ");
+  const[demandSearch,setDemandSearch]=useState("");
+
+  const handleBomFile=async(file)=>{
+    if(!file) return;
+    setBomFile(file);setBomParsing(true);setBomPreview(null);
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+      const base64=btoa(new Uint8Array(e.target.result).reduce((d,b)=>d+String.fromCharCode(b),""));
+      try{
+        const res=await fetch("/api/parse-bom",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fileData:base64})});
+        const data=await res.json();
+        if(!res.ok) throw new Error(data.error||"Parse failed");
+        setBomPreview(data);
+      } catch(err){ toastEmit&&toastEmit("BOM parse failed: "+err.message,"error"); }
+      setBomParsing(false);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const saveBomImport=()=>{
+    if(!bomPreview||!bomModal) return;
+    const entry={id:uid(),label:bomLabel||"Original BOQ",date:today,importedBy:session?.name||role,projectName:bomPreview.projectName||"",quotationNo:bomPreview.quotationNo||"",items:bomPreview.materials};
+    upProjs(ps=>({...ps,[bomModal]:{...ps[bomModal],materialsForecast:[...(ps[bomModal]?.materialsForecast||[]),entry]}}));
+    toastEmit&&toastEmit(`${bomPreview.materials.length} materials imported from ${bomLabel}`,"success");
+    setBomModal(null);setBomPreview(null);setBomFile(null);setBomLabel("Original BOQ");
+  };
+
+  // Aggregate demand across all active projects
+  const allDemand=useMemo(()=>{
+    const map={};
+    Object.entries(projs).forEach(([dealId,proj])=>{
+      const deal=deals.find(d=>d.id===dealId);
+      (proj?.materialsForecast||[]).forEach(forecast=>{
+        (forecast.items||[]).forEach(item=>{
+          const key=item.name.toLowerCase().trim();
+          if(!map[key]) map[key]={name:item.name,unit:item.unit,totalQty:0,projects:[],invItem:null};
+          map[key].totalQty+=item.qty;
+          map[key].projects.push({dealId,client:deal?.client||dealId,label:forecast.label,qty:item.qty,unit:item.unit});
+        });
+      });
+    });
+    // Try to match to inventory items by name
+    Object.values(map).forEach(d=>{
+      const inv=inventory.find(i=>i.name.toLowerCase().trim()===d.name.toLowerCase().trim())||
+                inventory.find(i=>i.name.toLowerCase().includes(d.name.toLowerCase().substring(0,8)));
+      d.invItem=inv||null;
+      d.onHand=inv?Number(inv.qtyOnHand)||0:null;
+      d.gap=inv?Math.max(0,d.totalQty-(Number(inv.qtyOnHand)||0)):null;
+    });
+    return Object.values(map).sort((a,b)=>(b.gap??-1)-(a.gap??-1));
+  },[projs,deals,inventory]);
 
   const[showAddModal,setShowAddModal]=useState(false);
   const[addSearch,setAddSearch]=useState("");
@@ -21854,7 +21916,8 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   }
 
   // ── tab bar ───────────────────────────────────────────────────────────
-  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
+  const demandGaps=allDemand.filter(d=>d.gap>0).length;
+  const TABS=[["dashboard","📊 Dashboard"],["deliveries",`📦 Deliveries${prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length>0?" ("+prs.filter(p=>!["Delivered","Cancelled"].includes(p.status)).length+")":""}`],["inventory",`≡ Inventory (${rows.length})`],["demand",`🔮 Demand${demandGaps>0?" ⚠"+demandGaps:""}`],["alerts",`⚠ Alerts${(lowStock.length+outOfStk.length)>0?" ("+(lowStock.length+outOfStk.length)+")":""}`],["log",`⟳ Log (${stocklog.length})`]];
 
   return(
     <div style={{display:"flex",flexDirection:"column",gap:0,height:"100%"}}>
@@ -22329,6 +22392,120 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
               ))}</>
             )}
           </>}
+        </div>
+      )}
+
+      {/* ── DEMAND FORECAST TAB ──────────────────────────────────────────── */}
+      {tab==="demand"&&(
+        <div>
+          {/* BOM Import — per project */}
+          <div style={{background:"#fff",border:"1.5px solid #e0e7ff",borderRadius:12,padding:"14px 18px",marginBottom:16}}>
+            <div style={{fontWeight:800,color:"#4f46e5",fontSize:".88rem",marginBottom:8}}>📥 Import BOM from Excel</div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginBottom:12}}>QS uploads the Excel BOM file per project. Materials are extracted from the BOM sheet and used to forecast demand against current stock.</div>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+              <select value={bomModal||""} onChange={e=>setBomModal(e.target.value||null)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",minWidth:220}}>
+                <option value="">— Select Project —</option>
+                {deals.map(d=><option key={d.id} value={d.id}>{d.client}{d.ceNo?" · "+d.ceNo:""}</option>)}
+              </select>
+              {bomModal&&<input value={bomLabel} onChange={e=>setBomLabel(e.target.value)} placeholder="Label (e.g. Original BOQ, Addendum 1)" style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",flex:1,minWidth:180,boxSizing:"border-box"}}/>}
+              {bomModal&&(
+                <label style={{background:"#4f46e5",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontSize:".8rem",color:"#fff",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
+                  {bomParsing?"⏳ Parsing…":"📂 Choose Excel File"}
+                  <input type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>handleBomFile(e.target.files[0])} disabled={bomParsing}/>
+                </label>
+              )}
+            </div>
+            {bomPreview&&(
+              <div style={{marginTop:12,background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:10,padding:"10px 14px"}}>
+                <div style={{fontWeight:700,color:"#15803d",marginBottom:6,fontSize:".82rem"}}>✓ {bomPreview.totalItems} materials parsed{bomPreview.projectName?" — "+bomPreview.projectName:""}{bomPreview.quotationNo?" · QN-"+bomPreview.quotationNo:""}</div>
+                <div style={{maxHeight:160,overflowY:"auto",fontSize:".72rem",color:"#374151",marginBottom:10}}>
+                  {bomPreview.materials.slice(0,20).map((m,i)=>(
+                    <div key={i} style={{display:"flex",gap:10,borderBottom:"1px solid #dcfce7",padding:"3px 0"}}>
+                      <span style={{color:"#6b7280",minWidth:130,fontSize:".65rem"}}>{m.boqItem}</span>
+                      <span style={{fontWeight:600,flex:1}}>{m.name}</span>
+                      <span style={{color:"#059669",minWidth:80,textAlign:"right"}}>{m.qty} {m.unit}</span>
+                    </div>
+                  ))}
+                  {bomPreview.materials.length>20&&<div style={{color:"#6b7280",marginTop:4}}>…and {bomPreview.materials.length-20} more</div>}
+                </div>
+                <button onClick={saveBomImport} style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 20px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>💾 Save to Project</button>
+              </div>
+            )}
+          </div>
+
+          {/* Demand vs Stock */}
+          <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 18px"}}>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12,flexWrap:"wrap"}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:".88rem"}}>🔮 Demand vs Stock</div>
+              <span style={{fontSize:".7rem",color:"#64748b"}}>Aggregated across all active project BOMs</span>
+              <input value={demandSearch} onChange={e=>setDemandSearch(e.target.value)} placeholder="Search material…" style={{marginLeft:"auto",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",outline:"none",minWidth:180}}/>
+            </div>
+            {allDemand.length===0?(
+              <div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No BOM imports yet. Import an Excel BOM above to see demand forecasts.</div>
+            ):(()=>{
+              const filtered=allDemand.filter(d=>!demandSearch||d.name.toLowerCase().includes(demandSearch.toLowerCase()));
+              const gaps=filtered.filter(d=>d.gap>0);
+              const ok=filtered.filter(d=>d.gap===0&&d.invItem);
+              const unmatched=filtered.filter(d=>d.invItem===null);
+              return(
+                <div>
+                  {gaps.length>0&&(
+                    <div style={{marginBottom:14}}>
+                      <div style={{fontSize:".68rem",fontWeight:700,color:"#dc2626",textTransform:"uppercase",letterSpacing:".7px",marginBottom:6}}>⚠ Shortfalls — {gaps.length} items</div>
+                      {gaps.map((d,i)=>(
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 10px",background:"#fef2f2",borderRadius:8,marginBottom:4,flexWrap:"wrap"}}>
+                          <div style={{flex:2,fontWeight:700,fontSize:".8rem",color:"#0f172a"}}>{d.name}</div>
+                          <div style={{fontSize:".72rem",color:"#64748b",flex:1}}>{d.unit}</div>
+                          <div style={{fontSize:".74rem",color:"#3b82f6",fontWeight:600}}>Need: {d.totalQty}</div>
+                          <div style={{fontSize:".74rem",color:"#059669",fontWeight:600}}>On hand: {d.onHand}</div>
+                          <div style={{fontSize:".74rem",color:"#dc2626",fontWeight:800,background:"#fee2e2",borderRadius:6,padding:"2px 8px"}}>Gap: {d.gap} {d.unit}</div>
+                          <div style={{fontSize:".65rem",color:"#94a3b8",width:"100%",paddingLeft:2}}>{d.projects.map(p=>p.client).join(" · ")}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {ok.length>0&&(
+                    <div style={{marginBottom:14}}>
+                      <div style={{fontSize:".68rem",fontWeight:700,color:"#059669",textTransform:"uppercase",letterSpacing:".7px",marginBottom:6}}>✓ Covered — {ok.length} items</div>
+                      {ok.map((d,i)=>(
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 10px",background:"#f0fdf4",borderRadius:8,marginBottom:3,flexWrap:"wrap"}}>
+                          <div style={{flex:2,fontWeight:600,fontSize:".78rem",color:"#0f172a"}}>{d.name}</div>
+                          <div style={{fontSize:".72rem",color:"#064e3b"}}>Need {d.totalQty} · On hand {d.onHand} {d.unit}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {unmatched.length>0&&(
+                    <div>
+                      <div style={{fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".7px",marginBottom:6}}>— Not in Inventory ({unmatched.length} items)</div>
+                      <div style={{fontSize:".72rem",color:"#64748b",lineHeight:1.8}}>{unmatched.map(d=>d.name).join(" · ")}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* BOM imports per project summary */}
+          {deals.some(d=>projs[d.id]?.materialsForecast?.length>0)&&(
+            <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 18px",marginTop:14}}>
+              <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10}}>Imported BOMs by Project</div>
+              {deals.filter(d=>projs[d.id]?.materialsForecast?.length>0).map(d=>(
+                <div key={d.id} style={{marginBottom:10}}>
+                  <div style={{fontWeight:700,fontSize:".78rem",color:"#1e293b"}}>{d.client}{d.ceNo?" · "+d.ceNo:""}</div>
+                  {(projs[d.id]?.materialsForecast||[]).map((f,fi)=>(
+                    <div key={fi} style={{display:"flex",gap:10,alignItems:"center",fontSize:".72rem",color:"#64748b",marginTop:3,paddingLeft:10}}>
+                      <span style={{fontWeight:600,color:"#4f46e5"}}>{f.label}</span>
+                      <span>{f.date}</span>
+                      <span>{f.items?.length} materials</span>
+                      <span>by {f.importedBy}</span>
+                      <button onClick={()=>{upProjs(ps=>({...ps,[d.id]:{...ps[d.id],materialsForecast:(ps[d.id]?.materialsForecast||[]).filter((_,i)=>i!==fi)}}));toastEmit&&toastEmit("BOM import removed","success");}} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".65rem",padding:0,marginLeft:"auto"}}>✕ Remove</button>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
