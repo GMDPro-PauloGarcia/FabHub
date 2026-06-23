@@ -7622,227 +7622,81 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── PAULO GARCIA — CEO (full system overview) ──────────────────────────────
   const grossMar=totRev>0?Math.round((totRev-totExp)/totRev*100):0;
   return(
-      <Wrap>
-        {/* ── HEADER ─────────────────────────────────────────────────── */}
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
-          <div>
-            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a",letterSpacing:"-.5px"}}>
-              Good {new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening"}, {session?.name?.split(" ")[0]}
-            </div>
-            <div style={{fontSize:".78rem",color:"#64748b",marginTop:2}}>{todayL} · FabHub GMD</div>
+    <Wrap>
+      {/* ── COMMAND BAR ─────────────────────────────────────────────── */}
+      <div style={{background:"#0f172a",borderRadius:14,padding:"16px 20px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.4rem",color:"#fff",letterSpacing:"-.5px"}}>
+            Good {new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening"}, {session?.name?.split(" ")[0]}
           </div>
-          {/* Quick Actions */}
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            {[
-              {l:"+ Add Deal",       icon:"🤝", action:()=>openAddDeal(),                                         bg:"#1e293b", fg:"#fff"},
-              {l:"+ Award Project",  icon:"🏆", action:()=>{setFromHome(true);setPage("pipeline");},             bg:"#059669", fg:"#fff"},
-              {l:"+ Log Expense",    icon:"💸", action:()=>openAddExp(),                                         bg:"#3b82f6", fg:"#fff"},
-              {l:"+ Log Payment",    icon:"💵", action:()=>{setFromHome(true);setPage("billing");},              bg:"#8b5cf6", fg:"#fff"},
-              {l:"+ New PO",         icon:"📦", action:()=>{setFromHome(true);setPage("procurement");},          bg:"#f59e0b", fg:"#fff"},
-              {l:"📅 Calendar",      icon:"",   action:()=>{setFromHome(true);setPage("calendar");},             bg:"#0ea5e9", fg:"#fff"},
-            ].map(({l,icon,action,bg,fg})=>(
-              <button key={l} onClick={action}
-                style={{background:bg,border:"none",borderRadius:9,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:fg,cursor:"pointer",display:"flex",alignItems:"center",gap:5}}>
-                {icon} {l}
-              </button>
-            ))}
-          </div>
+          <div style={{fontSize:".75rem",color:"#64748b",marginTop:1}}>{todayL} · FabHub GMD</div>
         </div>
-
-        {/* ── ALERT BANNER ROW ────────────────────────────────────────── */}
-        {(()=>{
-          const alerts=[];
-          if(awardReqCnt)     alerts.push({icon:"🏆",msg:`${awardReqCnt} deal${awardReqCnt>1?"s":""} flagged for award`,color:"#f59e0b",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
-          if(overdueInvCnt)   alerts.push({icon:"🚨",msg:`${overdueInvCnt} overdue invoice${overdueInvCnt>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
-          if(overdueTATCnt)   alerts.push({icon:"⏰",msg:`${overdueTATCnt} project${overdueTATCnt>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>{setJumpFilter("overdue");setPage("projects");}});
-          if(qsPendingCnt)    alerts.push({icon:"⚠️",msg:`${qsPendingCnt} project${qsPendingCnt>1?"s":""} need QS budget`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("costanalysis")});
-          if(mrPendingCnt)    alerts.push({icon:"📋",msg:`${mrPendingCnt} material request${mrPendingCnt>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("procurement")});
-          if(addendaAlertCnt) alerts.push({icon:"⚠️",msg:`${addendaAlertCnt} scope change${addendaAlertCnt>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
-          if(!alerts.length) return null;
-          return(
-            <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(alerts.length,3)},1fr)`,gap:8,marginBottom:16}}>
-              {alerts.slice(0,3).map((a,i)=>(
-                <div key={i} onClick={a.action} style={{background:a.bg,border:`1.5px solid ${a.border}`,borderRadius:10,padding:"10px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:"1rem"}}>{a.icon}</span>
-                  <span style={{fontSize:".78rem",fontWeight:700,color:a.color}}>{a.msg}</span>
-                  <span style={{marginLeft:"auto",fontSize:".72rem",color:a.color}}>→</span>
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* ── KPI STRIP ───────────────────────────────────────────────── */}
-        <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(7,1fr)",gap:10,marginBottom:20}}>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
           {[
-            {l:"Pipeline",      v:fmtK(pipeVal),     c:"#3b82f6", sub:pipeDeals.length+" deals",              click:()=>setPage("pipeline")},
-            {l:"Awarded",       v:fmtK(totRev),      c:"#10b981", sub:wonDeals.length+" projects",             click:()=>setPage("projects")},
-            {l:"Collected",     v:fmtK(totColl),     c:"#059669", sub:`${fmtK(totOut)} outstanding`,           click:()=>setPage("billing")},
-            {l:"Gross Margin",  v:grossMar+"%",      c:grossMar>=20?"#059669":"#f59e0b", sub:"on awarded projects"},
-            {l:"Active Projects", v:wonDeals.length,    c:"#f97316", sub:"project cards ongoing",                click:()=>setPage("projects")},
-            {l:"Pending PRs",   v:pendingPRCnt,      c:"#8b5cf6", sub:"awaiting approval",                    click:()=>setPage("procurement")},
-            {l:"Escalations",   v:escalations.length>0?"⚠️ "+escalations.length:escalations.length, c:escalations.length>0?"#ef4444":"#94a3b8", sub:escalations.length>0?escalations.filter(e=>e.severity==="high").length+" high severity":"all clear"},
-          ].map(({l,v,c,sub,click})=>(
-            <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${l==="Escalations"&&escalations.length>0?"#fecaca":"#e2e8f0"}`,cursor:click?"pointer":"default"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.35rem",color:c}}>{v}</div>
-              <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
-              {sub&&<div style={{fontSize:".67rem",color:"#cbd5e1",marginTop:2}}>{sub}</div>}
-            </div>
+            {l:"+ Add Deal",    action:()=>openAddDeal(),                               bg:"#334155",fg:"#fff"},
+            {l:"+ Award",       action:()=>{setFromHome(true);setPage("pipeline");},    bg:"#059669",fg:"#fff"},
+            {l:"+ Log Expense", action:()=>openAddExp(),                                bg:"#3b82f6",fg:"#fff"},
+            {l:"+ Log Payment", action:()=>{setFromHome(true);setPage("billing");},     bg:"#8b5cf6",fg:"#fff"},
+            {l:"+ New PO",      action:()=>{setFromHome(true);setPage("procurement");}, bg:"#f59e0b",fg:"#fff"},
+            {l:"📅 Calendar",   action:()=>{setFromHome(true);setPage("calendar");},    bg:"#0ea5e9",fg:"#fff"},
+          ].map(({l,action,bg,fg})=>(
+            <button key={l} onClick={action} style={{background:bg,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:fg,cursor:"pointer"}}>{l}</button>
           ))}
         </div>
-        {escalations.length>0&&(()=>{
-          const ESC_META={
-            'E-1':{label:"Outstanding Billing",    dest:"billing",    amber:false},
-            'E-2':{label:"Addendum Needed",         dest:"addenda",    amber:true},
-            'E-3':{label:"Pipeline Action",         dest:"pipeline",   amber:false},
-            'E-4':{label:"DRF Pending",             dest:"drf",        amber:false},
-            'E-5':{label:"Procurement Overdue",     dest:"procurement",amber:false},
-            'E-6':{label:"Budget Request",          dest:"budgetreq",  amber:false},
-            'E-7':{label:"Billing Follow-Up",       dest:"billing",    amber:false},
-          };
-          const grouped=["E-1","E-2","E-3","E-4","E-5","E-6","E-7"]
-            .map(t=>({type:t,...ESC_META[t],items:escalations.filter(e=>e.type===t)}))
-            .filter(g=>g.items.length>0);
-          const highCount=escalations.filter(e=>e.severity==="high").length;
-          return(
-            <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,overflow:"hidden",marginBottom:20}}>
-              <div style={{background:"#dc2626",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontWeight:800,color:"#fff",fontSize:".85rem"}}>⚠️ {escalations.length} Active Escalation{escalations.length!==1?"s":""}</span>
-                {highCount>0&&<span style={{fontSize:".72rem",color:"#fecaca",fontWeight:600}}>{highCount} high severity</span>}
-              </div>
-              {grouped.map((g,i)=>(
-                <div key={g.type} style={{borderBottom:i<grouped.length-1?"1px solid #fecaca":"",background:"#fff"}}>
-                  <div onClick={()=>setPage(g.dest)}
-                    style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",cursor:"pointer"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="#fef2f2"}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <span style={{background:g.amber?"#f59e0b":"#dc2626",color:"#fff",borderRadius:6,padding:"2px 8px",fontWeight:800,fontSize:".7rem",flexShrink:0,minWidth:36,textAlign:"center"}}>{g.type}</span>
-                    <span style={{flex:1,fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{g.label}</span>
-                    <span style={{fontWeight:800,color:g.amber?"#92400e":"#dc2626",fontSize:".88rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{g.items.length}</span>
-                    <span style={{color:"#94a3b8",fontSize:".72rem"}}>›</span>
-                  </div>
-                  {(()=>{
-                    // Dedupe identical labels — no point showing 102 identical rows
-                    const unique=[...new Map(g.items.map(e=>[e.label,e])).values()];
-                    const shown=unique.slice(0,3);
-                    const remaining=g.items.length-shown.length;
-                    return(<>
-                      {shown.map((e,ei)=>(
-                        <div key={ei} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"5px 16px 5px 52px",borderTop:"1px solid #fef2f2",background:"#fffafa"}}>
-                          <span style={{fontSize:".72rem",fontWeight:700,color:"#ef4444",flexShrink:0,marginTop:1}}>▸</span>
-                          <span style={{fontSize:".72rem",color:"#374151",lineHeight:1.4}}>{e.label}</span>
-                        </div>
-                      ))}
-                      {remaining>0&&(
-                        <div onClick={()=>setPage(g.dest)} style={{padding:"4px 16px 6px 52px",borderTop:"1px solid #fef2f2",background:"#fffafa",cursor:"pointer"}}>
-                          <span style={{fontSize:".7rem",color:"#94a3b8",fontStyle:"italic"}}>and {remaining} more… tap to view</span>
-                        </div>
-                      )}
-                    </>);
-                  })()}
-                </div>
-              ))}
-            </div>
-          );
-        })()}
+      </div>
 
-        {/* ── AWARD REQUESTS PANEL ────────────────────────────────────── */}
-        {(()=>{
-          const reqs=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
-          if(!reqs.length) return null;
-          return(
-            <div style={{background:"#fffbeb",borderRadius:14,border:"2px solid #f59e0b",padding:"14px 18px",marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                <span style={{fontSize:"1.2rem"}}>🏆</span>
-                <span style={{fontWeight:800,color:"#92400e",fontSize:".95rem"}}>
-                  {reqs.length} Deal{reqs.length>1?"s":""} Pending Your Award Approval
-                </span>
-              </div>
-              {reqs.map(d=>{
-                const reqLine=d.notes.split("\n").filter(l=>l.includes("[AWARD REQUEST")).pop()||"";
-                const reqBy=reqLine.match(/]: (.+?) flagged/)?.[1]||"Sales";
-                const reqDate=reqLine.match(/REQUEST (.+?)]/)?.[1]||"";
-                return(
-                  <div key={d.id} style={{background:"#fff",borderRadius:8,padding:"10px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",border:"1px solid #fde68a"}}>
-                    <div>
-                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</div>
-                      <div style={{fontSize:".72rem",color:"#92400e",marginTop:2}}>
-                        Requested by {reqBy} · {reqDate} · ₱{Number(d.value||0).toLocaleString()}
-                      </div>
-                    </div>
-                    <button onClick={()=>{openAward(d);setPage("pipeline");}}
-                      style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>
-                      🏆 Review & Award
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+      {/* ── KPI CHIPS ───────────────────────────────────────────────── */}
+      <div style={{display:"flex",gap:8,overflowX:"auto",marginBottom:14,paddingBottom:2}}>
+        {[
+          {l:"Pipeline",        v:fmtK(pipeVal),   c:"#3b82f6",                               click:()=>setPage("pipeline")},
+          {l:"Awarded",         v:fmtK(totRev),    c:"#10b981",                               click:()=>setPage("projects")},
+          {l:"Collected",       v:fmtK(totColl),   c:"#059669",                               click:()=>setPage("billing")},
+          {l:"Outstanding",     v:fmtK(totOut),    c:totOut>0?"#ef4444":"#94a3b8",            click:()=>setPage("billing")},
+          {l:"Gross Margin",    v:grossMar+"%",    c:grossMar>=20?"#059669":"#f59e0b"},
+          {l:"Active Projects", v:wonDeals.length, c:"#f97316",                               click:()=>setPage("projects")},
+          {l:"Open POs",        v:openPOCnt,       c:"#8b5cf6",                               click:()=>setPage("procurement")},
+        ].map(({l,v,c,click})=>(
+          <div key={l} onClick={click} style={{flexShrink:0,background:"#fff",borderRadius:10,padding:"10px 16px",border:`1.5px solid ${c}22`,borderTop:`3px solid ${c}`,cursor:click?"pointer":"default",minWidth:90,textAlign:"center"}}>
+            <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:c}}>{v}</div>
+            <div style={{fontSize:".59rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2,whiteSpace:"nowrap"}}>{l}</div>
+          </div>
+        ))}
+      </div>
 
-        {/* ── SECTION SUMMARY CARDS ── */}
-          {(()=>{
-            const sCards=[
-              {icon:"🏗", label:"Projects",        accent:"#f97316", main:`ALL PROJECTS`,                          sub:overdueProjectCnt>0?`⚠️ ${overdueProjectCnt} overdue`:"All on track",                     subClr:overdueProjectCnt>0?"#ef4444":"#10b981", action:()=>setPage("projects")},
-              {icon:"💵", label:"Collections",     accent:"#10b981", main:fmtK(billOutstanding)+" out",             sub:overdueInvMs>0?`${overdueInvMs} overdue invoice${overdueInvMs>1?"s":""}`:"No overdue",    subClr:overdueInvMs>0?"#ef4444":"#10b981",      action:()=>setPage("billing")},
-              {icon:"📋", label:"Requests",        accent:"#8b5cf6", main:`${mrPendingCnt+breqPendingCnt} pending`, sub:`${mrPendingCnt} MR · ${breqPendingCnt} Budget`,                                          subClr:"#64748b",                               action:()=>setPage("requests")},
-              {icon:"📦", label:"Purchase Orders", accent:"#06b6d4", main:`${openPOCnt} open`,                      sub:openPOCnt===0?"Nothing pending":"Awaiting action",                                         subClr:openPOCnt>0?"#f59e0b":"#10b981",         action:()=>setPage("procurement")},
-              {icon:"🎨", label:"Swatchboard",     accent:"#ec4899", main:`${toBuyCnt} to source`,                  sub:"Tap to manage",                                                                           subClr:"#64748b",                               action:()=>setPage("swatchboard")},
-              {icon:"📊", label:"Pipeline",        accent:"#3b82f6", main:fmtK(pipeVal),                            sub:`${pipeDeals.length} active deals`,                                                        subClr:"#64748b",                               action:()=>setPage("pipeline")},
-            ];
-            return(
-              <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                  {sCards.map(c=>(
-                    <div key={c.label} onClick={c.action}
-                      style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",borderLeft:`4px solid ${c.accent}`,padding:"14px 12px",cursor:"pointer",display:"flex",flexDirection:"column",gap:3,transition:"all .15s"}}
-                      onMouseEnter={e=>{e.currentTarget.style.boxShadow=`0 4px 14px ${c.accent}28`;e.currentTarget.style.borderColor=c.accent;}}
-                      onMouseLeave={e=>{e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor="#e2e8f0";}}>
-                      <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"flex",justifyContent:"space-between"}}>
-                        <span>{c.icon} {c.label}</span><span style={{color:c.accent}}>›</span>
-                      </div>
-                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c.accent}}>{c.main}</div>
-                      <div style={{fontSize:".67rem",color:c.subClr,fontWeight:600}}>{c.sub}</div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                  <div style={{background:"#1e293b",padding:"10px 16px"}}>
-                    <span style={{fontWeight:700,color:"#a78bfa",fontSize:".82rem"}}>📋 Recent Activity</span>
-                  </div>
-                  {actLog.length===0
-                    ?<div style={{padding:"14px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>No activity yet</div>
-                    :actLog.slice(0,3).map((entry,i)=>{
-                      const clr={"New Deal":"#10b981","Project Awarded":"#f59e0b","Stage Change":"#3b82f6","Deal Updated":"#94a3b8","Department Done":"#8b5cf6","TAT Set":"#06b6d4"}[entry.action]||"#94a3b8";
-                      return(
-                        <div key={entry.id} style={{display:"flex",gap:10,padding:"8px 14px",borderBottom:i<2?"1px solid #f8fafc":"",alignItems:"flex-start"}}>
-                          <div style={{width:6,height:6,borderRadius:"50%",background:clr,flexShrink:0,marginTop:5}}/>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:".74rem",color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{entry.detail||entry.action}</div>
-                            <div style={{fontSize:".63rem",color:"#94a3b8",marginTop:1}}>{entry.by} · {entry.date}</div>
-                          </div>
-                          <span style={{fontSize:".58rem",color:clr,background:clr+"18",padding:"1px 6px",borderRadius:20,flexShrink:0,fontWeight:700}}>{entry.action}</span>
-                        </div>
-                      );
-                    })
-                  }
-                </div>
+      {/* ── ALERT BANNERS ───────────────────────────────────────────── */}
+      {(()=>{
+        const alerts=[];
+        if(escalations.length) alerts.push({icon:"⚠️",msg:`${escalations.length} escalation${escalations.length>1?"s":""}${escalations.filter(e=>e.severity==="high").length>0?" · "+escalations.filter(e=>e.severity==="high").length+" high severity":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
+        if(overdueInvCnt)      alerts.push({icon:"🚨",msg:`${overdueInvCnt} overdue invoice${overdueInvCnt>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
+        if(overdueTATCnt)      alerts.push({icon:"⏰",msg:`${overdueTATCnt} project${overdueTATCnt>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>{setJumpFilter("overdue");setPage("projects");}});
+        if(awardReqCnt)        alerts.push({icon:"🏆",msg:`${awardReqCnt} deal${awardReqCnt>1?"s":""} pending award approval`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
+        if(mrPendingCnt)       alerts.push({icon:"📋",msg:`${mrPendingCnt} material request${mrPendingCnt>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("requests")});
+        if(addendaAlertCnt)    alerts.push({icon:"⚠️",msg:`${addendaAlertCnt} scope change${addendaAlertCnt>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
+        if(!alerts.length) return null;
+        return(
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
+            {alerts.map((a,i)=>(
+              <div key={i} onClick={a.action} style={{background:a.bg,border:`1px solid ${a.border}`,borderRadius:8,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:".9rem"}}>{a.icon}</span>
+                <span style={{fontSize:".79rem",fontWeight:700,color:a.color,flex:1}}>{a.msg}</span>
+                <span style={{fontSize:".75rem",color:a.color}}>→</span>
               </div>
-            );
-          })()}
-      {/* Recent Activity */}
-      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginTop:14}}>
-        <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📋 Recent Activity</span>
-          <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>Latest updates from all projects</span>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* ── RECENT ACTIVITY ─────────────────────────────────────────── */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+        <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontWeight:700,color:"#f59e0b",fontSize:".86rem"}}>📋 Recent Activity</span>
+          <span style={{fontSize:".7rem",color:"rgba(255,255,255,.4)"}}>Latest updates from all projects</span>
         </div>
         <RecentActivityFeed projs={projs} wonDeals={wonDeals} limit={12}/>
       </div>
-      </Wrap>
-    );
+    </Wrap>
+  );
   }
-
   // ── CALENDAR ────────────────────────────────────────────────────────────────
   if(page==="calendar") return(
     <ConstructionCalendar
