@@ -764,13 +764,124 @@ const mkDesign=(status="Briefing",designer="",type="in-house",dueDate="",link=""
   status,designer,designerType:type,dueDate,link,notes,revisionNo:"",approvedBy:"",approvedOn:"",
   statusHistory:[{status,date:today,by:"System"}],deliverables:[]
 });
-const SEED_DEALS=[];
-const SEED_PROJECTS={};
-const SEED_EXP=[];
-const SEED_INF=[];
+const SEED_DEALS=[
+  // ── Pipeline deals ─────────────────────────────────────────────────────────
+  {id:"demo-d01",client:"Adidas PH",contact:"Brand Experience Display — Trinoma",product:"Sneaker Wall Display System",value:"",stage:"01 · BizDev",probability:20,priority:"Normal",assignedAE:"Jena De Asis",salesOwner:"Jena De Asis",ceNo:"",ceType:"Fabrication / General",location:"Trinoma, QC",notes:"Initial inquiry from store manager. Need to send deck.",dateAcquired:"2026-06-01",followUp:"2026-06-25"},
+  {id:"demo-d02",client:"Uniqlo Philippines",contact:"LifeWear Station — SM North",product:"Folding Table & Fixture Package",value:"480000",stage:"02 · Proposal",probability:40,priority:"High",assignedAE:"Don Wyn Celmar",salesOwner:"Don Wyn Celmar",ceNo:"CE-2026-041",ceType:"Fabrication / General",location:"SM North EDSA",notes:"Client wants modular design. Rev 2 of proposal submitted.",dateAcquired:"2026-05-20",followUp:"2026-06-24"},
+  {id:"demo-d03",client:"Levi's Philippines",contact:"Denim Bar Fixture — Abreeza",product:"Custom Denim Bar + Shelf Unit",value:"620000",stage:"03 · Presentation",probability:55,priority:"Normal",assignedAE:"April Gail De Ello",salesOwner:"April Gail De Ello",ceNo:"CE-2026-038",ceType:"Fabrication / General",location:"Abreeza Mall, Davao",notes:"Pitch scheduled this Friday. Good relationship with brand manager.",dateAcquired:"2026-05-10",followUp:"2026-06-27"},
+  {id:"demo-d04",client:"New Balance PH",contact:"Footwear Showcase — Mega",product:"Shoe Display Tower (3 units)",value:"390000",stage:"04 · Negotiation",probability:70,priority:"High",assignedAE:"Jena De Asis",salesOwner:"Jena De Asis",ceNo:"CE-2026-035",ceType:"Fabrication / General",location:"SM Megamall, Mandaluyong",notes:"Client requesting 10% discount. Currently at margin review.",dateAcquired:"2026-04-28",followUp:"2026-06-23"},
+  {id:"demo-d05",client:"Pandora Philippines",contact:"Jewelry Showcase Upgrade — Greenbelt",product:"Glass Showcase Counters (6 units)",value:"840000",stage:"05 · Awarded",probability:95,priority:"High",assignedAE:"Don Wyn Celmar",salesOwner:"Don Wyn Celmar",ceNo:"CE-2026-029",ceType:"Fabrication / General",location:"Greenbelt 5, Makati",amountPaid:"250000",invoiced:"840000",paymentStatus:"Partial",dateAcquired:"2026-04-01",followUp:"2026-06-30"},
+  // ── Active / Won deals ──────────────────────────────────────────────────────
+  {id:"demo-d06",client:"Nike Philippines",contact:"Jordan Brand Corner — MOA",product:"Jordan Brand Corner Fixture",value:"1250000",stage:"07 · Briefing",probability:100,priority:"High",assignedAE:"April Gail De Ello",salesOwner:"April Gail De Ello",ceNo:"CE-2026-021",ceType:"Fabrication / General",location:"SM Mall of Asia",amountPaid:"625000",invoiced:"1250000",paymentStatus:"Partial",dateAcquired:"2026-03-15"},
+  {id:"demo-d07",client:"Penshoppe",contact:"Summer Collection Display — Robinsons",product:"Apparel Display System — Full Store Refit",value:"2100000",stage:"08 · Fabrication",probability:100,priority:"High",assignedAE:"Jena De Asis",salesOwner:"Jena De Asis",ceNo:"CE-2026-015",ceType:"Fabrication / General",location:"Robinsons Galleria",amountPaid:"1050000",invoiced:"1575000",paymentStatus:"Partial",dateAcquired:"2026-02-20"},
+  {id:"demo-d08",client:"Bench Philippines",contact:"Flagship Renovation — BGC",product:"Full Store Fixture Renovation",value:"3400000",stage:"10 · Installation",probability:100,priority:"High",assignedAE:"Don Wyn Celmar",salesOwner:"Don Wyn Celmar",ceNo:"CE-2026-008",ceType:"Fabrication / General",location:"Bonifacio High Street, BGC",amountPaid:"2550000",invoiced:"3400000",paymentStatus:"Partial",dateAcquired:"2026-01-10"},
+  {id:"demo-d09",client:"H&M Philippines",contact:"Fast Fashion Display — Landmark",product:"Fast Fashion Rack System",value:"1800000",stage:"12 · Close-Out",probability:100,priority:"Normal",assignedAE:"April Gail De Ello",salesOwner:"April Gail De Ello",ceNo:"CE-2025-098",ceType:"Fabrication / General",location:"Landmark Makati",amountPaid:"1800000",invoiced:"1800000",paymentStatus:"Paid",dateAcquired:"2025-11-01"},
+  {id:"demo-d10",client:"Zara Philippines",contact:"Brand Refresh — Greenbelt 3",product:"Zara Minimalist Fixture Package",value:"4200000",stage:"14 · Completed",probability:100,priority:"Normal",assignedAE:"Jena De Asis",salesOwner:"Jena De Asis",ceNo:"CE-2025-072",ceType:"Fabrication / General",location:"Greenbelt 3, Makati",amountPaid:"4200000",invoiced:"4200000",paymentStatus:"Paid",dateAcquired:"2025-08-15"},
+];
+
+const SEED_PROJECTS={
+  "demo-d06":{
+    currentStage:"Design",progress:{Design:30,Fabrication:0,Installation:0},
+    aeAssigned:"April Gail De Ello",pm1:"Ryon Santiago",
+    scopeNotes:"Jordan Brand Corner — acrylic + steel structure, backlit logo panel, 3 shoe pedestals, bench seating",
+    design:mkDesign("On-going","Gab Florita","in-house","2026-06-30","","DRF submitted. Working on Rev 1 — Jordan Brand corner layout."),
+    materials:[
+      {id:"dm01",name:"Acrylic Sheet 10mm",qty:8,unit:"sheets",cost:12000,received:false},
+      {id:"dm02",name:"Steel Square Tube 50x50",qty:24,unit:"pcs",cost:18000,received:false},
+    ],
+    laborCost:180000,overhead:60000,
+    checklist:[],pmUpdates:[],addenda:[],
+  },
+  "demo-d07":{
+    currentStage:"Fabrication",progress:{Design:100,Fabrication:55,Installation:0},
+    aeAssigned:"Jena De Asis",pm1:"David Melendez",pm2:"Jay Bernardo",
+    scopeNotes:"Full store refit — gondola shelving, wall-mounted display rails, fitting room partitions, cash counter",
+    design:{...mkDesign("Done","Miaa Villoria","in-house","2026-05-20","https://drive.google.com/demo-penshoppe","Production plans approved. Rev 3 locked."),revisionNo:"Rev 3",approvedBy:"Mar Mungcal",approvedOn:"2026-05-25",status:"Done"},
+    materials:[
+      {id:"dm03",name:"Melamine Board 18mm White",qty:120,unit:"sheets",cost:96000,received:true},
+      {id:"dm04",name:"Aluminum Profile 40x20",qty:200,unit:"pcs",cost:80000,received:true},
+      {id:"dm05",name:"Tempered Glass 6mm",qty:40,unit:"sheets",cost:64000,received:false},
+    ],
+    laborCost:420000,overhead:120000,
+    pmUpdates:[{id:"pmu01",date:"2026-06-15",note:"Fabrication 55% — gondolas and wall rails done. Glass panels arriving June 20. · Stage: 08 · Fabrication · 55%",by:"David Melendez"}],
+    checklist:[],addenda:[],
+  },
+  "demo-d08":{
+    currentStage:"Installation",progress:{Design:100,Fabrication:100,Installation:70},
+    aeAssigned:"Don Wyn Celmar",pm1:"Angelo Nogra",pm2:"Arvin Jaca",
+    scopeNotes:"Full flagship renovation BGC — 3 floors, all fixtures replaced, new cash wrap counter, fitting rooms",
+    design:{...mkDesign("Done","Miel Vidallo","in-house","2026-03-01","https://drive.google.com/demo-bench","Approved Rev 5"),revisionNo:"Rev 5",approvedBy:"Paulo Garcia",approvedOn:"2026-03-05",status:"Done"},
+    materials:[
+      {id:"dm06",name:"Solid Surface Sheet",qty:30,unit:"sheets",cost:150000,received:true},
+      {id:"dm07",name:"Steel Tube 40x40",qty:300,unit:"pcs",cost:120000,received:true},
+    ],
+    laborCost:680000,overhead:200000,
+    pmUpdates:[
+      {id:"pmu02",date:"2026-06-10",note:"Site 70% — Ground floor complete, 2nd floor ongoing. Final punch Friday. · Stage: 10 · Installation · 70%",by:"Angelo Nogra"},
+      {id:"pmu03",date:"2026-06-03",note:"Ground floor installation complete. Client sign-off received. · Stage: 10 · Installation · 50%",by:"Angelo Nogra"},
+    ],
+    checklist:[],addenda:[],
+  },
+  "demo-d09":{
+    currentStage:"Close-Out",progress:{Design:100,Fabrication:100,Installation:100},
+    aeAssigned:"April Gail De Ello",pm1:"Jay Bernardo",
+    scopeNotes:"Fast fashion rack system — H&M Landmark. As-built drawings submitted.",
+    design:{...mkDesign("Done","Adrian Adriano","in-house","2026-01-15","https://drive.google.com/demo-hm",""),revisionNo:"Rev 2",approvedBy:"Mar Mungcal",approvedOn:"2026-01-20",status:"Done"},
+    materials:[],laborCost:320000,overhead:90000,
+    pmUpdates:[{id:"pmu04",date:"2026-05-30",note:"Project complete. Punchlist items resolved. Final billing submitted. · Stage: 12 · Close-Out · 100%",by:"Jay Bernardo"}],
+    checklist:[],addenda:[],
+  },
+};
+
+const SEED_EXP=[
+  {id:"demo-e01",dealId:"demo-d07",projectId:"demo-d07",expDate:"2026-06-01",category:"Materials",note:"Melamine boards — batch 1",amount:48000,payee:"Wilcon Depot",receiptNo:"OR-88821",year:2026,month:5,createdBy:"David Melendez"},
+  {id:"demo-e02",dealId:"demo-d07",projectId:"demo-d07",expDate:"2026-06-05",category:"Materials",note:"Aluminum profiles",amount:80000,payee:"Metal World PH",receiptNo:"OR-44132",year:2026,month:5,createdBy:"David Melendez"},
+  {id:"demo-e03",dealId:"demo-d07",projectId:"demo-d07",expDate:"2026-06-10",category:"Labor",note:"Fab team — week 1",amount:85000,payee:"GMD Fabrication",receiptNo:"",year:2026,month:5,createdBy:"Marian Prile"},
+  {id:"demo-e04",dealId:"demo-d08",projectId:"demo-d08",expDate:"2026-06-08",category:"Labor",note:"Installation crew — BGC",amount:120000,payee:"GMD Installation",receiptNo:"",year:2026,month:5,createdBy:"Angelo Nogra"},
+  {id:"demo-e05",dealId:"demo-d08",projectId:"demo-d08",expDate:"2026-06-15",category:"Transport",note:"Delivery to BGC site × 3 trips",amount:18000,payee:"LM Trucking",receiptNo:"OR-77210",year:2026,month:5,createdBy:"Angelo Nogra"},
+  {id:"demo-e06",dealId:"demo-d09",projectId:"demo-d09",expDate:"2026-05-20",category:"Subcon",note:"Electrical works — Landmark",amount:45000,payee:"FastWire Electrical",receiptNo:"OR-55013",year:2026,month:4,createdBy:"Jay Bernardo"},
+];
+
+const SEED_INF=[
+  {id:"demo-i01",dealId:"demo-d07",amount:1050000,date:"2026-04-15",type:"Downpayment",note:"50% DP — Penshoppe Robinsons",month:3,year:2026,createdBy:"Aerwin Del Rosario"},
+  {id:"demo-i02",dealId:"demo-d07",amount:525000,date:"2026-06-01",type:"Progress Billing",note:"25% progress — Penshoppe",month:5,year:2026,createdBy:"Aerwin Del Rosario"},
+  {id:"demo-i03",dealId:"demo-d08",amount:1700000,date:"2026-02-01",type:"Downpayment",note:"50% DP — Bench BGC",month:1,year:2026,createdBy:"Aerwin Del Rosario"},
+  {id:"demo-i04",dealId:"demo-d08",amount:850000,date:"2026-05-10",type:"Progress Billing",note:"25% progress — Bench BGC",month:4,year:2026,createdBy:"Aerwin Del Rosario"},
+  {id:"demo-i05",dealId:"demo-d09",amount:1800000,date:"2026-06-10",type:"Final Billing",note:"Final — H&M Landmark (fully paid)",month:5,year:2026,createdBy:"Aerwin Del Rosario"},
+  {id:"demo-i06",dealId:"demo-d10",amount:4200000,date:"2026-03-20",type:"Final Billing",note:"Final — Zara Greenbelt (fully paid)",month:2,year:2026,createdBy:"Aerwin Del Rosario"},
+];
 
 const SEED_SWATCHES=[];
-const SEED_CHECKLIST=[];
+const SEED_CHECKLIST=[
+  {id:"demo-c01",projectId:"demo-d06",title:"Prepare DRF package for Jordan Brand Corner",dept:"Design",assignedTo:"Gab Florita",status:"In Progress",priority:"High",dueDate:"2026-06-25",type:"Design",createdBy:"April Gail De Ello",createdDate:"2026-06-10",notes:"Include all brand guidelines and Nike reference images"},
+  {id:"demo-c02",projectId:"demo-d06",title:"Submit Rev 1 drawings to AE for review",dept:"Design",assignedTo:"Gab Florita",status:"To Do",priority:"Normal",dueDate:"2026-06-30",type:"Design",createdBy:"April Gail De Ello",createdDate:"2026-06-10",notes:""},
+  {id:"demo-c03",projectId:"demo-d07",title:"Receive tempered glass delivery — check specs",dept:"Operations",assignedTo:"David Melendez",status:"To Do",priority:"High",dueDate:"2026-06-22",type:"Delivery",createdBy:"David Melendez",createdDate:"2026-06-14",notes:"6mm tempered — 1200x2400 panels. Supplier: Glasstech PH"},
+  {id:"demo-c04",projectId:"demo-d07",title:"Cash wrap counter fabrication",dept:"Operations",assignedTo:"Jay Bernardo",status:"In Progress",priority:"Normal",dueDate:"2026-06-28",type:"Fabrication",createdBy:"David Melendez",createdDate:"2026-06-01",notes:"Solid surface countertop + steel base"},
+  {id:"demo-c05",projectId:"demo-d07",title:"PO for fabric panels — Robinsons fitting rooms",dept:"Procurement",assignedTo:"Marian Prile",status:"To Do",priority:"Normal",dueDate:"2026-06-24",type:"Purchase",createdBy:"David Melendez",createdDate:"2026-06-12",notes:"3m fabric × 120m. Supplier TBD."},
+  {id:"demo-c06",projectId:"demo-d08",title:"Punchlist sign-off — Ground Floor BGC",dept:"Operations",assignedTo:"Angelo Nogra",status:"Done",priority:"Normal",dueDate:"2026-06-05",type:"Inspection",createdBy:"Angelo Nogra",createdDate:"2026-05-28",notes:"Client signed off June 4."},
+  {id:"demo-c07",projectId:"demo-d08",title:"Install 2nd floor fitting room partitions",dept:"Operations",assignedTo:"Arvin Jaca",status:"In Progress",priority:"High",dueDate:"2026-06-25",type:"Installation",createdBy:"Angelo Nogra",createdDate:"2026-06-10",notes:"6 partitions remaining"},
+  {id:"demo-c08",projectId:"demo-d08",title:"Final punch — 3rd floor accessories wall",dept:"Operations",assignedTo:"Angelo Nogra",status:"To Do",priority:"Normal",dueDate:"2026-06-28",type:"Inspection",createdBy:"Angelo Nogra",createdDate:"2026-06-15",notes:"Client walkthrough scheduled June 27"},
+  {id:"demo-c09",projectId:"demo-d09",title:"Issue final invoice — H&M Landmark",dept:"Finance",assignedTo:"Aerwin Del Rosario",status:"Done",priority:"High",dueDate:"2026-06-10",type:"Billing",createdBy:"Aerwin Del Rosario",createdDate:"2026-06-01",notes:"Final billing ₱1.8M — paid June 10"},
+  {id:"demo-c10",projectId:"demo-d09",title:"Submit as-built drawings to H&M brand team",dept:"Design",assignedTo:"Adrian Adriano",status:"Done",priority:"Normal",dueDate:"2026-06-08",type:"Design",createdBy:"Jay Bernardo",createdDate:"2026-06-01",notes:"Submitted via Google Drive link. Client acknowledged."},
+];
+
+const SEED_INVENTORY=[
+  {id:"demo-inv01",code:"INV-001",name:"Melamine Board 18mm White",category:"Sheet Materials",subCategory:"Board / Panel",brand:"Wilcon",supplier:"Wilcon Depot",unit:"sheets",unitSize:"4x8ft",location:"Main Warehouse",qtyOnHand:45,reorderPoint:10,lastPurchasePrice:800,avgCost:800,status:"Active",createdBy:"Warehouse"},
+  {id:"demo-inv02",code:"INV-002",name:"Aluminum Profile 40x20 (6m)",category:"Metal",subCategory:"Extrusion",brand:"Local",supplier:"Metal World PH",unit:"pcs",unitSize:"6m",location:"Main Warehouse",qtyOnHand:80,reorderPoint:20,lastPurchasePrice:420,avgCost:420,status:"Active",createdBy:"Warehouse"},
+  {id:"demo-inv03",code:"INV-003",name:"Tempered Glass 6mm Clear",category:"Glass",subCategory:"Tempered",brand:"Glasstech",supplier:"Glasstech PH",unit:"sheets",unitSize:"1200x2400",location:"Main Warehouse",qtyOnHand:12,reorderPoint:5,lastPurchasePrice:1800,avgCost:1800,status:"Active",createdBy:"Warehouse"},
+  {id:"demo-inv04",code:"INV-004",name:"LED Strip 12V Warm White (5m roll)",category:"Electrical",subCategory:"LED Lighting",brand:"Philips",supplier:"Electronic City",unit:"rolls",unitSize:"5m",location:"Main Warehouse",qtyOnHand:30,reorderPoint:10,lastPurchasePrice:650,avgCost:650,status:"Active",createdBy:"Warehouse"},
+  {id:"demo-inv05",code:"INV-005",name:"Steel Square Tube 50x50x3mm (6m)",category:"Metal",subCategory:"Steel Tube",brand:"National Steel",supplier:"National Steel PH",unit:"pcs",unitSize:"6m",location:"Main Warehouse",qtyOnHand:60,reorderPoint:15,lastPurchasePrice:1100,avgCost:1100,status:"Active",createdBy:"Warehouse"},
+  {id:"demo-inv06",code:"INV-006",name:"Acrylic Sheet 10mm Clear",category:"Sheet Materials",subCategory:"Acrylic",brand:"Lucite",supplier:"Plastic Plus PH",unit:"sheets",unitSize:"4x8ft",location:"Main Warehouse",qtyOnHand:18,reorderPoint:5,lastPurchasePrice:3200,avgCost:3200,status:"Active",createdBy:"Warehouse"},
+  {id:"demo-inv07",code:"INV-007",name:"Foam Tape Double-Sided 1\" roll",category:"Consumables",subCategory:"Tape / Adhesive",brand:"3M",supplier:"Ace Hardware",unit:"rolls",unitSize:"1in x 10m",location:"Main Warehouse",qtyOnHand:4,reorderPoint:10,lastPurchasePrice:180,avgCost:180,status:"Active",createdBy:"Warehouse"},
+  {id:"demo-inv08",code:"INV-008",name:"Piano Hinge 1800mm",category:"Hardware",subCategory:"Hinges",brand:"Sugatsune",supplier:"Casa Hardware",unit:"pcs",unitSize:"1800mm",location:"Main Warehouse",qtyOnHand:24,reorderPoint:8,lastPurchasePrice:450,avgCost:450,status:"Active",createdBy:"Warehouse"},
+];
+
+const SEED_DRF=[
+  {id:"demo-drf01",drfNo:"DRF-2026-012",client:"Nike Philippines",dealId:"demo-d06",projectTitle:"Jordan Brand Corner — MOA",type:"Fabrication Drawing",size:"W3600 x H2400 x D600mm",designer:"Gab Florita",designDeadline:"2026-06-30",description:"Jordan Brand corner fixture. Backlit logo panel on rear wall. 3 shoe pedestal risers (acrylic). Steel frame with black powder coat. Integrated LED lighting strip under shelves.",accessories:["Backlit Jordan logo panel (rear wall)","3× acrylic shoe pedestals","LED strip under shelves","Steel frame — black PC finish"],refLinks:["https://drive.google.com/demo-nike-ref1","",""],status:"On-Going",createdBy:"April Gail De Ello"},
+  {id:"demo-drf02",drfNo:"DRF-2026-008",client:"Pandora Philippines",dealId:"demo-d05",projectTitle:"Jewelry Showcase Upgrade — Greenbelt 5",type:"Showcase Drawing",size:"W600 x H950 x D500mm per unit (×6)",designer:"Miaa Villoria",designDeadline:"2026-07-15",description:"6-unit glass showcase counters for jewelry display. Tempered glass top and sides. LED lighting inside. Lockable drawer system underneath.",accessories:["Tempered glass top panel","3-side glass display","Internal LED lighting","Lockable drawer × 2 per unit"],refLinks:["https://drive.google.com/demo-pandora-ref","",""],status:"New",createdBy:"Don Wyn Celmar"},
+];
+
+
 
 const emptyDeal={
   // Core
@@ -12110,6 +12221,53 @@ First few:
   if(role==="Manager"&&page==="accounts") return(
     <Wrap>
       <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
+      {/* Demo Data Loader */}
+      {(()=>{
+        const demoDealsExist=deals.some(d=>d.id?.startsWith("demo-"));
+        const loadDemo=()=>{
+          if(!window.confirm("Load demo data? This will add sample deals, projects, inventory, checklist tasks, and financials alongside any existing data.")) return;
+          // Deals
+          upDeals(ds=>{const ids=new Set(ds.map(d=>d.id));return[...ds,...SEED_DEALS.filter(d=>!ids.has(d.id))];});
+          // Projects
+          Object.entries(SEED_PROJECTS).forEach(([id,p])=>{setProjs(ps=>{const n={...ps,[id]:{...emptyProject(),...ps[id],...p}};persist(KEYS.projects,n);return n;});});
+          // Expenses
+          upExps(es=>{const ids=new Set(es.map(e=>e.id));return[...es,...SEED_EXP.filter(e=>!ids.has(e.id))];});
+          // Inflows
+          upInfs(is=>{const ids=new Set(is.map(i=>i.id));return[...is,...SEED_INF.filter(i=>!ids.has(i.id))];});
+          // Checklist
+          upChecklist(cs=>{const ids=new Set(cs.map(c=>c.id));return[...cs,...SEED_CHECKLIST.filter(c=>!ids.has(c.id))];});
+          // Inventory
+          upInventory(iv=>{const ids=new Set(iv.map(i=>i.id));return[...iv,...SEED_INVENTORY.filter(i=>!ids.has(i.id))];});
+          // DRFs
+          upDrfs(ds=>{const ids=new Set(ds.map(d=>d.id));return[...ds,...SEED_DRF.filter(d=>!ids.has(d.id))];});
+          toastEmit("✅ Demo data loaded — 10 deals, 4 active projects, 8 inventory items, 10 tasks, 2 DRFs, and sample financials.","success");
+        };
+        const clearDemo=()=>{
+          if(!window.confirm("Remove all demo data? This cannot be undone.")) return;
+          upDeals(ds=>ds.filter(d=>!d.id?.startsWith("demo-")));
+          setProjs(ps=>{const n=Object.fromEntries(Object.entries(ps).filter(([k])=>!k.startsWith("demo-")));persist(KEYS.projects,n);return n;});
+          upExps(es=>es.filter(e=>!e.id?.startsWith("demo-")));
+          upInfs(is=>is.filter(i=>!i.id?.startsWith("demo-")));
+          upChecklist(cs=>cs.filter(c=>!c.id?.startsWith("demo-")));
+          upInventory(iv=>iv.filter(i=>!i.id?.startsWith("demo-")));
+          upDrfs(ds=>ds.filter(d=>!d.id?.startsWith("demo-")));
+          toastEmit("🗑 Demo data removed.","info");
+        };
+        return(
+          <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:14,padding:20,marginTop:24}}>
+            <div style={{fontWeight:800,color:"#92400e",fontSize:".95rem",marginBottom:6}}>🧪 Demo Data</div>
+            <div style={{fontSize:".78rem",color:"#78350f",marginBottom:14}}>Load realistic sample data across all departments — deals, projects, inventory, financials, checklist tasks, and design requests — to explore the system without affecting real records.</div>
+            {demoDealsExist?(
+              <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+                <span style={{background:"#d1fae5",color:"#065f46",fontSize:".75rem",fontWeight:700,padding:"4px 12px",borderRadius:20}}>✅ Demo data is loaded</span>
+                <button onClick={clearDemo} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontWeight:700}}>🗑 Remove Demo Data</button>
+              </div>
+            ):(
+              <button onClick={loadDemo} style={{background:"#f59e0b",border:"none",borderRadius:9,padding:"10px 22px",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",color:"#fff",cursor:"pointer"}}>🧪 Load Demo Data</button>
+            )}
+          </div>
+        );
+      })()}
     </Wrap>
   );
   return <Wrap><EmptyState icon="🔍" msg={`No view for ${role}/${page}`}/></Wrap>;
