@@ -5590,7 +5590,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
-      {group:"Operations",  items:[{id:"home",l:"Ops Dashboard"},{id:"pmfeed",l:"PM Feed"},{id:"projects",l:"Projects"}]},
+      {group:"Operations",  items:[{id:"home",l:"Ops Dashboard"},{id:"projects",l:"Projects"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ Builder"}]},
@@ -5599,7 +5599,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"reports",l:"Reports"}]},
-      {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"pmfeed",l:"PM Feed"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Deliverables", items:[{id:"drf",l:"Design Requests"}]},
       {group:"QS",           items:[{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ Builder"}]},
     ],
@@ -5644,7 +5644,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
-      {group:"Updates",  items:[{id:"pmfeed",l:"PM Feed"},{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
     ],
     Warehouse:[
@@ -6889,6 +6889,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         );
       })()}
+      {/* Recent Activity */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginTop:14}}>
+        <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📋 Recent Activity</span>
+          <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>Latest updates from all projects</span>
+        </div>
+        <RecentActivityFeed projs={projs} wonDeals={wonDeals} limit={12}/>
+      </div>
     </Wrap>
   );
 
@@ -7823,6 +7831,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
             );
           })()}
+      {/* Recent Activity */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginTop:14}}>
+        <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontWeight:700,color:"#f59e0b",fontSize:".88rem"}}>📋 Recent Activity</span>
+          <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)"}}>Latest updates from all projects</span>
+        </div>
+        <RecentActivityFeed projs={projs} wonDeals={wonDeals} limit={12}/>
+      </div>
       </Wrap>
     );
   }
@@ -11024,10 +11040,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </div>
     </Wrap>
   );
-  // ── PM FEED PAGE ─────────────────────────────────────────────────────────
-  if(page==="pmfeed") return(
-    <Wrap><PMFeedView projs={projs} wonDeals={wonDeals} deals={deals} session={session} role={role} upProj={upProj}/></Wrap>
-  );
   // ── PM UPDATES PAGE ──────────────────────────────────────────────────────
   if(page==="pmupdates") return(
     <Wrap>
@@ -11419,7 +11431,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
-  if(page==="boq") return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)}/></Wrap>);
+  if(page==="boq") return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setPage("home")}/></Wrap>);
 
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
@@ -19039,6 +19051,44 @@ function BudgetRequestView({breqs,addBR,updateBR,deleteBR,wonDeals,session,role,
 }
 
 // ─── BILLING VIEW ─────────────────────────────────────────────────────────────
+function RecentActivityFeed({projs,wonDeals,limit=10}){
+  const all=[];
+  wonDeals.forEach(d=>{
+    const p=projs[d.id];
+    if(!p?.pmUpdates?.length) return;
+    p.pmUpdates.forEach(u=>all.push({...u,dealId:d.id,dealName:d.client||d.contact||d.id}));
+  });
+  all.sort((a,b)=>(b.date||"")>(a.date||"")?1:(b.date||"")<(a.date||"")?-1:(b.time||"")>(a.time||"")?1:-1);
+  const recent=all.slice(0,limit);
+  if(!recent.length) return(<div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No project updates yet — team will post updates from the Projects page.</div>);
+  return(
+    <div>
+      {recent.map((u,i)=>{
+        const uType=u.type||"General Progress";
+        const uColor=PM_TYPE_COLOR[uType]||"#0ea5e9";
+        const uIcon=PM_TYPE_ICON[uType]||"📋";
+        const isBlocker=uType==="Blocker"&&u.blockerStatus==="Open";
+        return(
+          <div key={u.id||i} style={{padding:"11px 16px",borderBottom:i<recent.length-1?"1px solid #f1f5f9":"",display:"flex",gap:10,alignItems:"flex-start",background:isBlocker?"#fff5f5":"#fff"}}>
+            <span style={{fontSize:"1.1rem",lineHeight:1.2,flexShrink:0,marginTop:1}}>{uIcon}</span>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{u.dealName}</span>
+                <span style={{fontSize:".65rem",color:"#94a3b8",flexShrink:0}}>{u.date||""}{u.time?" · "+u.time:""}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3,flexWrap:"wrap"}}>
+                <span style={{fontSize:".68rem",background:uColor+"18",color:uColor,border:`1px solid ${uColor}44`,borderRadius:20,padding:"1px 9px",fontWeight:700}}>{uIcon} {uType}</span>
+                {u.by&&<span style={{fontSize:".68rem",color:"#94a3b8"}}>by {u.by}</span>}
+                {isBlocker&&<span style={{fontSize:".66rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 8px",fontWeight:700}}>🚨 OPEN BLOCKER</span>}
+              </div>
+              {(u.note||u.text)&&<div style={{fontSize:".79rem",color:"#475569",marginTop:4,lineHeight:1.4}}>{(u.note||u.text).length>120?(u.note||u.text).slice(0,120)+"…":(u.note||u.text)}</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 function PMFeedView({projs,wonDeals,deals,session,role,upProj}){
   const[typeFilter,setTypeFilter]=useState("All");
   const[projFilter,setProjFilter]=useState("");
@@ -24459,7 +24509,7 @@ const GMD_DEFAULT_LIBRARY=[
   {name:"Low Partition",section:"I",unit:"sets",unitCost:0,tags:["partition","built-in","furniture"]},
 ];
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack}){
   const BLANK_ITEMS=()=>BOQ_SECTIONS.map((s,i)=>({_id:i+1,section:s.id,description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}));
   const loadDraft=(dealId)=>{
     if(!dealId) return null;
@@ -24804,6 +24854,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+          {onBack&&<button onClick={onBack} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>← Back</button>}
           <span style={{fontSize:".7rem",fontWeight:600,color:"#64748b"}}>Add row:</span>
           {sections.map(s=>(
             <button key={s.id} onClick={()=>addRow(s.id)} style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:s.color,cursor:"pointer"}}>+ {s.id}</button>
@@ -24938,7 +24989,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                       <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,padding:"3px 12px",borderBottom:"1px solid #f1f5f9",alignItems:"center",background:idx%2===0?"#fff":"#fafafa"}}>
                         <div style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8"}}>{sec.id}.{idx+1}</div>
                         <div style={{position:"relative",display:"flex",alignItems:"center",gap:3}}>
-                          <input value={it.description}
+                          <textarea value={it.description}
                             onChange={e=>{
                               updateItem(it._id,"description",e.target.value);
                               const q=e.target.value;
@@ -24954,7 +25005,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             }}
                             onBlur={()=>setTimeout(()=>setSuggest({id:null,matches:[]}),160)}
                             placeholder="Type to search library or enter description"
-                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1}}/>
+                            rows={1}
+                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1,resize:"vertical",lineHeight:1.4,minHeight:28,fontFamily:"inherit"}}/>
                           {it.description.trim().length>=2&&!boqLibrary.some(lib=>lib.name.toLowerCase()===it.description.trim().toLowerCase())&&(
                             <button title="Save to library" onMouseDown={e=>{e.preventDefault();
                               const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
