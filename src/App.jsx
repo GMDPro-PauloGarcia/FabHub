@@ -24555,7 +24555,15 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   };
   const deleteSection=(id)=>{
     if(items.some(it=>it.section===id)){toastEmit("Move or delete all items in this section first.");return;}
-    setSections(ss=>ss.filter(s=>s.id!==id));
+    setSections(ss=>{
+      const remaining=ss.filter(s=>s.id!==id);
+      // Reassign sequential letter IDs: A, B, C...
+      const remap={};
+      const renumbered=remaining.map((s,i)=>{const newId=String.fromCharCode(65+i);remap[s.id]=newId;return{...s,id:newId};});
+      // Update items to use new section IDs
+      setItems(its=>its.map(it=>({...it,section:remap[it.section]||it.section})));
+      return renumbered;
+    });
   };
 
   // Library state
@@ -25003,7 +25011,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             onBlur={()=>setTimeout(()=>setSuggest({id:null,matches:[]}),160)}
                             placeholder="Type to search library or enter description"
                             rows={1}
-                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1,resize:"vertical",lineHeight:1.4,minHeight:28,fontFamily:"inherit"}}/>
+                            onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}}
+                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1,resize:"none",lineHeight:1.4,minHeight:28,fontFamily:"inherit",overflow:"hidden"}}/>
                           {it.description.trim().length>=2&&!boqLibrary.some(lib=>lib.name.toLowerCase()===it.description.trim().toLowerCase())&&(
                             <button title="Save to library" onMouseDown={e=>{e.preventDefault();
                               const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
