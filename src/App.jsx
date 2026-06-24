@@ -157,7 +157,11 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
   return { base:b, vat, gross, ewt, netReceivable };
 };
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
-const uid=()=>crypto.randomUUID?crypto.randomUUID():"id-"+Date.now()+"-"+Math.random().toString(36).slice(2);
+const uid=()=>{
+  if(crypto.randomUUID) return crypto.randomUUID();
+  // UUID v4 fallback for older browsers / non-secure contexts
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:(r&0x3|0x8)).toString(16);});
+};
 
 const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",swos:"gmdv5:swos",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",loans:"gmdv5:loans",evouchers:"gmdv5:evouchers"};
 
