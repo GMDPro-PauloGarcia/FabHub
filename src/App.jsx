@@ -4714,7 +4714,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const resetPw     =async(id,pw)=>{const u=users.find(x=>x.id===id);if(!u)return;const n={...u,passwordHash:await sha256Hash(pw,u.username)};upUsers(us=>us.map(x=>x.id===id?n:x));if(isSupabaseReady())sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});};
   const createUser  =async(name,username,password,role,title)=>{
     const uname=username.toLowerCase().trim();
-    const newUser={id:"u"+Date.now(),name:name.trim(),username:uname,passwordHash:await sha256Hash(password,uname),role,title:title.trim()||role,status:"active",createdAt:today};
+    const newUser={id:uid(),name:name.trim(),username:uname,passwordHash:await sha256Hash(password,uname),role,title:title.trim()||role,status:"active",createdAt:today};
     upUsers(us=>[...us,newUser]);
     if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
   };
