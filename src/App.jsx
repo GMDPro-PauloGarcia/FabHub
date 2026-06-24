@@ -24971,7 +24971,6 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               {/* Rows by section */}
               {sections.map(sec=>{
                 const si=items.filter(it=>it.section===sec.id);
-                if(!si.length) return null;
                 const secTotal=si.reduce((t,it)=>t+it.total,0);
                 return(
                   <React.Fragment key={sec.id}>
