@@ -4493,7 +4493,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Store only chatIds in localStorage — never the bot token
     const localSafe={chatIds:n.chatIds,hideValueInBots:n.hideValueInBots};
     localStorage.setItem(KEYS.botsettings,JSON.stringify(localSafe));
-    if(isSupabaseReady()) await sbUpsert('app_settings',{key:'botsettings',value:n,updated_at:new Date().toISOString()},'key');
+    if(isSupabaseReady()){
+      // Try update first; if no row exists, insert
+      const{data:existing}=await supabase.from('app_settings').select('key').eq('key','botsettings').maybeSingle();
+      if(existing){
+        await supabase.from('app_settings').update({value:n,updated_at:new Date().toISOString()}).eq('key','botsettings');
+      } else {
+        await supabase.from('app_settings').insert({key:'botsettings',value:n,updated_at:new Date().toISOString()});
+      }
+    }
   };
 
   // ── TELEGRAM NOTIFICATION UTILITY ────────────────────────────────────────
