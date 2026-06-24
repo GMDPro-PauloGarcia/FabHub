@@ -3004,7 +3004,7 @@ export default function App(){
             }
             const _exps=data.exps?.length?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?JSON.parse(p.delivery_history):undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_disc_type||"none",poDiscValue:Number(p.po_disc_value)||0})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_disc_type||"none",poDiscValue:Number(p.po_disc_value)||0})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
@@ -3175,10 +3175,10 @@ export default function App(){
         },
         collections:{
           fabhubAmt:0,
-          approvedPayments: typeof c.approved_payments==="string"?JSON.parse(c.approved_payments||"[]"):(c.approved_payments||[]),
-          manualCollections: typeof c.manual_collections==="string"?JSON.parse(c.manual_collections||"[]"):(c.manual_collections||[]),
+          approvedPayments: typeof c.approved_payments==="string"?(()=>{try{return JSON.parse(c.approved_payments||"[]");}catch(e){return[];}})():(c.approved_payments||[]),
+          manualCollections: typeof c.manual_collections==="string"?(()=>{try{return JSON.parse(c.manual_collections||"[]");}catch(e){return[];}})():(c.manual_collections||[]),
         },
-        transactions:typeof c.transactions==='string'?JSON.parse(c.transactions||'[]'):(c.transactions||[]),
+        transactions:typeof c.transactions==='string'?(()=>{try{return JSON.parse(c.transactions||'[]');}catch(e){return[];}})():(c.transactions||[]),
         ytd:{
           supplierPayable:c.ytd_supplier_payable>0?String(c.ytd_supplier_payable):"",
           loansPayable:   c.ytd_loans_payable>0?String(c.ytd_loans_payable):"",
@@ -3507,6 +3507,10 @@ export default function App(){
   const updateCEReq=async(id,updates)=>{
     await sbUpdate('ce_requests',id,updates);
     setCeReqs(p=>p.map(r=>{if(r.id!==id)return r;return{...r,...(updates.status!==undefined?{status:updates.status}:{}),clientName:updates.client_name??r.clientName,projectName:updates.project_name??r.projectName,location:updates.location??r.location,projectType:updates.project_type??r.projectType,priority:updates.priority??r.priority,submittedBy:updates.submitted_by??r.submittedBy,targetDeadline:updates.target_deadline??r.targetDeadline,submissionDeadline:updates.submission_deadline??r.submissionDeadline,targetBudget:updates.target_budget??r.targetBudget,targetMargin:updates.target_margin??r.targetMargin,plansLink:updates.plans_link??r.plansLink,skpLink:updates.skp_link??r.skpLink,scheduleOfFinish:updates.schedule_of_finish??r.scheduleOfFinish,notes:updates.notes??r.notes,ceNotes:updates.ce_notes??r.ceNotes,bidAmount:updates.bid_amount??r.bidAmount,bidMarginPct:updates.bid_margin_pct??r.bidMarginPct,awarded:updates.awarded??r.awarded,awardDate:updates.award_date??r.awardDate};}));
+  };
+  const deleteCEReq=async(id)=>{
+    setCeReqs(p=>p.filter(r=>r.id!==id));
+    if(isSupabaseReady()) sbDelete('ce_requests',id).catch(()=>{});
   };
 
   // One-time seed from spreadsheet data
