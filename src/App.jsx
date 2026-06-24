@@ -9315,9 +9315,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>WON_STAGES.includes(d.stage)||d.stage==="14 · Completed").length/recentDeals.length*100):0;
           const avgDeal=wonDeals.length>0?Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)/wonDeals.length):0;
           const months6=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{y:d.getFullYear(),m:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]};});
-          const monthlyRev=months6.map(({y,m})=>billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>{const d=new Date(b.invoiceDate||b.dueDate||"");return d.getFullYear()===y&&d.getMonth()===m?s+Number(b.amount||0):s;},0));
-          const monthlyExp=months6.map(({y,m})=>exps.reduce((s,e)=>((e.year||cy)===y&&Number(e.month||0)===m)?s+Number(e.amount||0):s,0));
-          const maxBar=Math.max(...monthlyRev,1);
+          const monthlyRev=months6.map(({y,m})=>billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>{const ds=b.invoiceDate||b.dueDate;if(!ds)return s;const d=new Date(ds);return(!isNaN(d)&&d.getFullYear()===y&&d.getMonth()===m)?s+Number(b.amount||0):s;},0));
+          const monthlyExp=months6.map(({y,m})=>exps.reduce((s,e)=>{let ey,em;if(e.date){const d=new Date(e.date);ey=d.getFullYear();em=d.getMonth();}else{ey=e.year||cy;em=Number(e.month||0);}return(ey===y&&em===m)?s+Number(e.amount||0):s;},0));
+          const maxBar=Math.max(...monthlyRev,...monthlyExp,1);
           const clientMap={};billings.forEach(b=>{const d=wonDeals.find(x=>x.id===b.dealId)||completedDeals.find(x=>x.id===b.dealId);if(!d)return;const k=d.client;if(!clientMap[k])clientMap[k]=0;clientMap[k]+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);});
           const topClients=Object.entries(clientMap).sort(([,a],[,b])=>b-a).slice(0,5);
           const totalPayables=payables.filter(p=>p.status==="Unpaid").reduce((s,p)=>s+Number(p.amount||0),0);
