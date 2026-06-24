@@ -386,6 +386,7 @@ const swoToSb=r=>({
   payment_ordered_by:r.paymentOrderedBy||"", payment_ordered_at:r.paymentOrderedAt||null,
   paid_ref:r.paidRef||"", paid_date:r.paidDate||null,
   paid_amt:r.paidAmt!=null?Number(r.paidAmt):null, paid_by:r.paidBy||"",
+  created_at:r.createdDate||r.woDate||null,
 });
 const swoFromSb=r=>({...r,
   woNumber:r.wo_number||"", projectId:r.deal_id, dealId:r.deal_id,
@@ -5424,9 +5425,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
   const markDpStatus=(id,st)=>{
-    upExps(es=>es.map(e=>e.id===id?{...e,acctStatus:st}:e));
-    const exp=exps.find(e=>e.id===id);
-    if(exp&&isSupabaseReady()) sbUpsert("expenses",toSbExpense({...exp,acctStatus:st}),"id").catch(()=>{});
+    upExps(es=>{
+      const next=es.map(e=>e.id===id?{...e,acctStatus:st}:e);
+      const exp=next.find(e=>e.id===id);
+      if(exp&&isSupabaseReady()) sbUpsert("expenses",toSbExpense(exp),"id").catch(()=>{});
+      return next;
+    });
     toastEmit(`Status updated → ${st}`,"success");
   };
 
