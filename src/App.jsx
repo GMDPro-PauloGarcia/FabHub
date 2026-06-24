@@ -4693,8 +4693,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return null;
   };
   const logout=async()=>{
-    // Sign out of Supabase if connected
-    if(supabase){ try{ await supabase.auth.signOut(); }catch(e){} }
+    if(supabase){ try{ await Promise.race([supabase.auth.signOut(),new Promise(r=>setTimeout(r,2000))]); }catch(e){} }
     setSession(null);
     setRole(null);
     setAuthView("login");
