@@ -3257,8 +3257,12 @@ export default function App(){
       qty:Number(r.qty)||1,price_per_qty:Number(r.pricePerQty)||0,
       tin:r.tin||"",remarks:r.remarks||""};
   };
-  const toSbPR = r=>({
-    id:r.id, deal_id:(r.projectId==="__gmd_stocks__"||r.dealId==="__gmd_stocks__")?null:(r.projectId||r.dealId||null), item:r.itemName||r.item||"",
+  const toSbPR = r=>{
+    const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const rawId=r.projectId||r.dealId||null;
+    const dealId=(rawId==="__gmd_stocks__")?null:(rawId&&uuidRe.test(rawId)?rawId:null);
+    return({
+    id:r.id, deal_id:dealId, item:r.itemName||r.item||"",
     supplier:r.supplier||"", qty:Number(r.qty)||0, unit:r.unit||"",
     estimated_cost:Number(r.estUnitCost||r.estimatedCost)||0,
     actual_cost:Number(r.actUnitCost||r.actualCost)||0,
@@ -3281,7 +3285,7 @@ export default function App(){
     paid_amt:r.paidAmt!=null?Number(r.paidAmt):null, paid_by:r.paidBy||"",
     disc_type:r.discType||"none", disc_value:Number(r.discValue)||0,
     po_disc_type:r.poDiscType||"none", po_disc_value:Number(r.poDiscValue)||0,
-  });
+  });};
   const toSbMR = r=>({
     id:r.id, deal_id:r.projectId||r.dealId||null,
     item:r.itemName||r.item||"", category:r.category||"",
@@ -17621,7 +17625,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   };
 
   const submitPO=()=>{
-    if(!poSupplier||!poNumber||poItems.some(i=>!i.projectId||!i.itemName)) return;
+    if(!poSupplier){toastEmit&&toastEmit("Please enter a supplier name.","error");return;}
+    if(!poNumber){toastEmit&&toastEmit("Please enter a PO number.","error");return;}
+    if(poItems.some(i=>!i.itemName)){toastEmit&&toastEmit("Every item must have a description.","error");return;}
     if(poItems.some(i=>!(Number(i.qty)>0))){toastEmit&&toastEmit("Every item must have a quantity greater than 0.","error");return;}
     const poNo=poNumber.trim();
     const buildUpdate=(item)=>{
@@ -17821,8 +17827,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
                           updatePoItem(item._id,"projectId",deal?deal.id:name||"");
                         }}
                         placeholder="Search or type project name…"
-                        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
+                        style={{width:"100%",border:`1.5px solid ${item.projectName&&item.projectId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.projectId)&&item.projectId!=="__gmd_stocks__"?"#f97316":"#e2e8f0"}`,borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box"}}
                       />
+                      {item.projectName&&item.projectId&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.projectId)&&item.projectId!=="__gmd_stocks__"&&(
+                        <div style={{fontSize:".67rem",color:"#c2410c",marginTop:3}}>⚠ Project not found in FabHub — PO will save without project link. Select from the list to link properly.</div>
+                      )}
                       <datalist id={`proj-list-${item._id}`}>
                         <option value="GMD Stocks"/>
                         {activeDeals.map(d=><option key={d.id} value={projDisplayName(d)}/>)}
