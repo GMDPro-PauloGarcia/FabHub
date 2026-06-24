@@ -5126,7 +5126,29 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!editDeal){
       logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
       sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo}\n`:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Added by: ${session?.name||"Sales"}`);
-    } else logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+    } else {
+      logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+      // Fire award notification when stage is changed to an awarded stage via edit
+      const prevStage=deals.find(d=>d.id===editDeal)?.stage||"";
+      if(WON_STAGES.includes(rec.stage)&&!WON_STAGES.includes(prevStage)){
+        sendToAllChannels(
+          `🏆 <b>PROJECT AWARDED!</b>\n\n`+
+          `Client: <b>${rec.client}</b>\n`+
+          (rec.contact?`Project: <b>${rec.contact}</b>\n`:"")+
+          (rec.ceNo?`CE No: ${rec.ceNo}\n`:"")+
+          (rec.ceType?`${rec.ceType}\n`:"")+
+          (rec.location?`📍 ${rec.location}\n`:"")+
+          (!botSettings.hideValueInBots&&rec.value?`Value: ₱${Number(rec.value).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`:"")+
+          `\nAwarded by: ${session?.name||"Manager"}`
+        );
+        logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
+      }
+      // Fire notification when stage moves back out of awarded (e.g. cancelled)
+      if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
+        sendTelegramNotification("management",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+        sendTelegramNotification("sales",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+      }
+    }
     // Save turnover date to project card if provided and deal is a won project
     if(rec.turnoverDate&&WON_STAGES.includes(rec.stage)){
       const card=pcards[rec.id];
