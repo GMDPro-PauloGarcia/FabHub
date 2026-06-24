@@ -24418,92 +24418,92 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
 
 // ─── BOQ BUILDER ─────────────────────────────────────────────────────────────
 const BOQ_SECTIONS=[
-  {id:"A",label:"General Requirements",color:"#64748b"},
-  {id:"B",label:"Architectural",color:"#3b82f6"},
-  {id:"C",label:"Electrical",color:"#f59e0b"},
-  {id:"D",label:"Electronics",color:"#8b5cf6"},
-  {id:"E",label:"Mechanical",color:"#06b6d4"},
-  {id:"F",label:"Plumbing",color:"#10b981"},
-  {id:"G",label:"FDAS / Fire Protection",color:"#ef4444"},
-  {id:"H",label:"Signages",color:"#f97316"},
-  {id:"I",label:"Built Ins / Furnitures",color:"#ec4899"},
+  {id:"1",label:"General Requirements",color:"#64748b"},
+  {id:"2",label:"Architectural",color:"#3b82f6"},
+  {id:"3",label:"Electrical",color:"#f59e0b"},
+  {id:"4",label:"Electronics",color:"#8b5cf6"},
+  {id:"5",label:"Mechanical",color:"#06b6d4"},
+  {id:"6",label:"Plumbing",color:"#10b981"},
+  {id:"7",label:"FDAS / Fire Protection",color:"#ef4444"},
+  {id:"8",label:"Signages",color:"#f97316"},
+  {id:"9",label:"Built Ins / Furnitures",color:"#ec4899"},
 ];
 const BOQ_SEC_CLR=Object.fromEntries(BOQ_SECTIONS.map(s=>[s.id,s.color]));
 const FINISH_LEVELS=["Budget","Mid-range","High-end","Premium/Luxury"];
 
 const GMD_DEFAULT_LIBRARY=[
   // A. General Requirements
-  {name:"Mobilization / Demobilization",section:"A",unit:"lot",unitCost:0,tags:["mobilization","general"]},
-  {name:"Bonds and Insurance (CARI)",section:"A",unit:"lot",unitCost:0,tags:["insurance","general"]},
-  {name:"Supervision — Project-In-Charge (PIC)",section:"A",unit:"lot",unitCost:0,tags:["supervision","general"]},
-  {name:"Supervision — Safety Officer",section:"A",unit:"lot",unitCost:0,tags:["supervision","general"]},
-  {name:"Permits and Clearances — Processing Fee",section:"A",unit:"lot",unitCost:0,tags:["permits","general"]},
-  {name:"Permits and Clearances — Building Permit Fee",section:"A",unit:"lot",unitCost:0,tags:["permits","general"]},
-  {name:"Permits and Clearances — Occupancy Permit",section:"A",unit:"lot",unitCost:0,tags:["permits","general"]},
-  {name:"Permits and Clearances — Others",section:"A",unit:"lot",unitCost:5000,tags:["permits","general"]},
-  {name:"Temporary Utilities",section:"A",unit:"lot",unitCost:0,tags:["utilities","general"]},
-  {name:"Board Up",section:"A",unit:"lot",unitCost:0,tags:["board up","general"]},
-  {name:"Clean Up",section:"A",unit:"lot",unitCost:0,tags:["clean up","general"]},
-  {name:"As-Built Drawings — Architectural",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
-  {name:"As-Built Drawings — Electrical",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
-  {name:"As-Built Drawings — Electronics",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
-  {name:"As-Built Drawings — Mechanical",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
-  {name:"As-Built Drawings — Plumbing",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
-  {name:"As-Built Drawings — Fire Protection",section:"A",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"Mobilization / Demobilization",section:"1",unit:"lot",unitCost:0,tags:["mobilization","general"]},
+  {name:"Bonds and Insurance (CARI)",section:"1",unit:"lot",unitCost:0,tags:["insurance","general"]},
+  {name:"Supervision — Project-In-Charge (PIC)",section:"1",unit:"lot",unitCost:0,tags:["supervision","general"]},
+  {name:"Supervision — Safety Officer",section:"1",unit:"lot",unitCost:0,tags:["supervision","general"]},
+  {name:"Permits and Clearances — Processing Fee",section:"1",unit:"lot",unitCost:0,tags:["permits","general"]},
+  {name:"Permits and Clearances — Building Permit Fee",section:"1",unit:"lot",unitCost:0,tags:["permits","general"]},
+  {name:"Permits and Clearances — Occupancy Permit",section:"1",unit:"lot",unitCost:0,tags:["permits","general"]},
+  {name:"Permits and Clearances — Others",section:"1",unit:"lot",unitCost:5000,tags:["permits","general"]},
+  {name:"Temporary Utilities",section:"1",unit:"lot",unitCost:0,tags:["utilities","general"]},
+  {name:"Board Up",section:"1",unit:"lot",unitCost:0,tags:["board up","general"]},
+  {name:"Clean Up",section:"1",unit:"lot",unitCost:0,tags:["clean up","general"]},
+  {name:"As-Built Drawings — Architectural",section:"1",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Electrical",section:"1",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Electronics",section:"1",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Mechanical",section:"1",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Plumbing",section:"1",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
+  {name:"As-Built Drawings — Fire Protection",section:"1",unit:"sets",unitCost:4000,tags:["as-built","drawings"]},
   // B. Architectural
-  {name:"Floor Tiles (60×60cm Non-Skid Cement Finish)",section:"B",unit:"sqm",unitCost:0,tags:["floor","tiles","architectural"]},
-  {name:"Single Face Drywall with Paint Finish",section:"B",unit:"sqm",unitCost:0,tags:["wall","drywall","architectural"]},
-  {name:"Double Face Drywall with Paint Finish",section:"B",unit:"sqm",unitCost:0,tags:["wall","drywall","architectural"]},
-  {name:"CHB Wall with Firebricks",section:"B",unit:"sqm",unitCost:0,tags:["wall","chb","architectural"]},
-  {name:"Mirror",section:"B",unit:"sqm",unitCost:0,tags:["mirror","architectural"]},
-  {name:"Paint — White Satin",section:"B",unit:"sqm",unitCost:0,tags:["paint","architectural"]},
-  {name:"Paint — White Textured",section:"B",unit:"sqm",unitCost:0,tags:["paint","architectural"]},
-  {name:"Stainless Steel Brushed Finish",section:"B",unit:"sqm",unitCost:0,tags:["stainless","architectural"]},
-  {name:"Gypsum Ceiling with Paint Finish",section:"B",unit:"sqm",unitCost:0,tags:["ceiling","gypsum","architectural"]},
-  {name:"Stainless Steel Finish Ceiling Panel",section:"B",unit:"sqm",unitCost:0,tags:["ceiling","stainless","architectural"]},
-  {name:"Flush Door with Complete Accessories",section:"B",unit:"unit/s",unitCost:0,tags:["door","architectural"]},
-  {name:"Polycarbonate Roll-Up Door (Supervision Only)",section:"B",unit:"lot",unitCost:0,tags:["door","architectural"]},
-  {name:"Demolition Works",section:"B",unit:"lot",unitCost:0,tags:["demolition","architectural"]},
-  {name:"Working Drawings / Design Fee",section:"B",unit:"lot",unitCost:0,tags:["design","drawings"]},
+  {name:"Floor Tiles (60×60cm Non-Skid Cement Finish)",section:"2",unit:"sqm",unitCost:0,tags:["floor","tiles","architectural"]},
+  {name:"Single Face Drywall with Paint Finish",section:"2",unit:"sqm",unitCost:0,tags:["wall","drywall","architectural"]},
+  {name:"Double Face Drywall with Paint Finish",section:"2",unit:"sqm",unitCost:0,tags:["wall","drywall","architectural"]},
+  {name:"CHB Wall with Firebricks",section:"2",unit:"sqm",unitCost:0,tags:["wall","chb","architectural"]},
+  {name:"Mirror",section:"2",unit:"sqm",unitCost:0,tags:["mirror","architectural"]},
+  {name:"Paint — White Satin",section:"2",unit:"sqm",unitCost:0,tags:["paint","architectural"]},
+  {name:"Paint — White Textured",section:"2",unit:"sqm",unitCost:0,tags:["paint","architectural"]},
+  {name:"Stainless Steel Brushed Finish",section:"2",unit:"sqm",unitCost:0,tags:["stainless","architectural"]},
+  {name:"Gypsum Ceiling with Paint Finish",section:"2",unit:"sqm",unitCost:0,tags:["ceiling","gypsum","architectural"]},
+  {name:"Stainless Steel Finish Ceiling Panel",section:"2",unit:"sqm",unitCost:0,tags:["ceiling","stainless","architectural"]},
+  {name:"Flush Door with Complete Accessories",section:"2",unit:"unit/s",unitCost:0,tags:["door","architectural"]},
+  {name:"Polycarbonate Roll-Up Door (Supervision Only)",section:"2",unit:"lot",unitCost:0,tags:["door","architectural"]},
+  {name:"Demolition Works",section:"2",unit:"lot",unitCost:0,tags:["demolition","architectural"]},
+  {name:"Working Drawings / Design Fee",section:"2",unit:"lot",unitCost:0,tags:["design","drawings"]},
   // C. Electrical
-  {name:"Panel Board",section:"C",unit:"lot",unitCost:0,tags:["panel board","electrical"]},
-  {name:"Roughing-In",section:"C",unit:"lot",unitCost:0,tags:["roughing in","electrical"]},
-  {name:"Electrical Wiring",section:"C",unit:"lot",unitCost:0,tags:["wiring","electrical"]},
-  {name:"Outlet and Switches",section:"C",unit:"lot",unitCost:0,tags:["outlet","switches","electrical"]},
-  {name:"Lighting Fixtures",section:"C",unit:"lot",unitCost:0,tags:["lighting","electrical"]},
-  {name:"Testing and Commissioning",section:"C",unit:"lot",unitCost:0,tags:["testing","electrical"]},
+  {name:"Panel Board",section:"3",unit:"lot",unitCost:0,tags:["panel board","electrical"]},
+  {name:"Roughing-In",section:"3",unit:"lot",unitCost:0,tags:["roughing in","electrical"]},
+  {name:"Electrical Wiring",section:"3",unit:"lot",unitCost:0,tags:["wiring","electrical"]},
+  {name:"Outlet and Switches",section:"3",unit:"lot",unitCost:0,tags:["outlet","switches","electrical"]},
+  {name:"Lighting Fixtures",section:"3",unit:"lot",unitCost:0,tags:["lighting","electrical"]},
+  {name:"Testing and Commissioning",section:"3",unit:"lot",unitCost:0,tags:["testing","electrical"]},
   // D. Electronics
-  {name:"Smoke Detector",section:"D",unit:"lot",unitCost:0,tags:["smoke detector","electronics"]},
-  {name:"CCTV",section:"D",unit:"lot",unitCost:0,tags:["cctv","electronics"]},
-  {name:"DATA / TEL Roughing-In",section:"D",unit:"lot",unitCost:0,tags:["data","tel","electronics"]},
+  {name:"Smoke Detector",section:"4",unit:"lot",unitCost:0,tags:["smoke detector","electronics"]},
+  {name:"CCTV",section:"4",unit:"lot",unitCost:0,tags:["cctv","electronics"]},
+  {name:"DATA / TEL Roughing-In",section:"4",unit:"lot",unitCost:0,tags:["data","tel","electronics"]},
   // E. Mechanical
-  {name:"HVAC (FCU, Ducting, CHW Pipe, Cat Walk)",section:"E",unit:"lot",unitCost:0,tags:["hvac","mechanical","aircon"]},
+  {name:"HVAC (FCU, Ducting, CHW Pipe, Cat Walk)",section:"5",unit:"lot",unitCost:0,tags:["hvac","mechanical","aircon"]},
   // F. Plumbing
-  {name:"Cold Water Line (incl. water filter)",section:"F",unit:"lot",unitCost:0,tags:["water","plumbing"]},
-  {name:"Sewage Line (incl. grease trap)",section:"F",unit:"lot",unitCost:0,tags:["sewage","plumbing"]},
+  {name:"Cold Water Line (incl. water filter)",section:"6",unit:"lot",unitCost:0,tags:["water","plumbing"]},
+  {name:"Sewage Line (incl. grease trap)",section:"6",unit:"lot",unitCost:0,tags:["sewage","plumbing"]},
   // G. FDAS / Fire Protection
-  {name:"Sprinkler System",section:"G",unit:"lot",unitCost:0,tags:["sprinkler","fdas","fire"]},
-  {name:"Fire Suppression System",section:"G",unit:"lot",unitCost:0,tags:["fire suppression","fdas"]},
+  {name:"Sprinkler System",section:"7",unit:"lot",unitCost:0,tags:["sprinkler","fdas","fire"]},
+  {name:"Fire Suppression System",section:"7",unit:"lot",unitCost:0,tags:["fire suppression","fdas"]},
   // H. Signages
-  {name:"Storefront Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","storefront"]},
-  {name:"Lightbox Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","lightbox"]},
-  {name:"Cube / 3D Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","cube"]},
-  {name:"Logo Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","logo"]},
-  {name:"Wall Signage",section:"H",unit:"lot",unitCost:0,tags:["signage","wall"]},
+  {name:"Storefront Signage",section:"8",unit:"lot",unitCost:0,tags:["signage","storefront"]},
+  {name:"Lightbox Signage",section:"8",unit:"lot",unitCost:0,tags:["signage","lightbox"]},
+  {name:"Cube / 3D Signage",section:"8",unit:"lot",unitCost:0,tags:["signage","cube"]},
+  {name:"Logo Signage",section:"8",unit:"lot",unitCost:0,tags:["signage","logo"]},
+  {name:"Wall Signage",section:"8",unit:"lot",unitCost:0,tags:["signage","wall"]},
   // I. Built-Ins / Furniture
-  {name:"Front Counter",section:"I",unit:"lot",unitCost:0,tags:["counter","built-in","furniture"]},
-  {name:"Back Counter",section:"I",unit:"lot",unitCost:0,tags:["counter","built-in","furniture"]},
-  {name:"Display Module",section:"I",unit:"unit/s",unitCost:0,tags:["display","built-in","furniture"]},
-  {name:"Display Table",section:"I",unit:"unit/s",unitCost:0,tags:["table","built-in","furniture"]},
-  {name:"Wall Module",section:"I",unit:"unit/s",unitCost:0,tags:["wall module","built-in","furniture"]},
-  {name:"Storage Cabinet",section:"I",unit:"unit/s",unitCost:0,tags:["cabinet","built-in","furniture"]},
-  {name:"Pantry Counter",section:"I",unit:"lot",unitCost:0,tags:["pantry","built-in","furniture"]},
-  {name:"Overhead Cabinet",section:"I",unit:"unit/s",unitCost:0,tags:["cabinet","built-in","furniture"]},
-  {name:"Stainless Steel Table",section:"I",unit:"pcs",unitCost:0,tags:["table","stainless","furniture"]},
-  {name:"Stainless Steel Chair",section:"I",unit:"pcs",unitCost:0,tags:["chair","stainless","furniture"]},
-  {name:"Stainless Steel Bench",section:"I",unit:"pcs",unitCost:0,tags:["bench","stainless","furniture"]},
-  {name:"Stainless Steel Sink",section:"I",unit:"set",unitCost:0,tags:["sink","stainless","furniture"]},
-  {name:"Low Partition",section:"I",unit:"sets",unitCost:0,tags:["partition","built-in","furniture"]},
+  {name:"Front Counter",section:"9",unit:"lot",unitCost:0,tags:["counter","built-in","furniture"]},
+  {name:"Back Counter",section:"9",unit:"lot",unitCost:0,tags:["counter","built-in","furniture"]},
+  {name:"Display Module",section:"9",unit:"unit/s",unitCost:0,tags:["display","built-in","furniture"]},
+  {name:"Display Table",section:"9",unit:"unit/s",unitCost:0,tags:["table","built-in","furniture"]},
+  {name:"Wall Module",section:"9",unit:"unit/s",unitCost:0,tags:["wall module","built-in","furniture"]},
+  {name:"Storage Cabinet",section:"9",unit:"unit/s",unitCost:0,tags:["cabinet","built-in","furniture"]},
+  {name:"Pantry Counter",section:"9",unit:"lot",unitCost:0,tags:["pantry","built-in","furniture"]},
+  {name:"Overhead Cabinet",section:"9",unit:"unit/s",unitCost:0,tags:["cabinet","built-in","furniture"]},
+  {name:"Stainless Steel Table",section:"9",unit:"pcs",unitCost:0,tags:["table","stainless","furniture"]},
+  {name:"Stainless Steel Chair",section:"9",unit:"pcs",unitCost:0,tags:["chair","stainless","furniture"]},
+  {name:"Stainless Steel Bench",section:"9",unit:"pcs",unitCost:0,tags:["bench","stainless","furniture"]},
+  {name:"Stainless Steel Sink",section:"9",unit:"set",unitCost:0,tags:["sink","stainless","furniture"]},
+  {name:"Low Partition",section:"9",unit:"sets",unitCost:0,tags:["partition","built-in","furniture"]},
 ];
 
 function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack}){
@@ -24546,7 +24546,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const renameSection=(id,label)=>setSections(ss=>ss.map(s=>s.id===id?{...s,label}:s));
   const addSection=()=>{
-    const sid=newSecForm.id.trim().toUpperCase()||String.fromCharCode(65+sections.length);
+    const sid=newSecForm.id.trim()||String(sections.length+1);
     if(!newSecForm.label.trim()){toastEmit("Section name is required.");return;}
     if(sections.find(s=>s.id===sid)){toastEmit(`Section "${sid}" already exists.`);return;}
     setSections(ss=>[...ss,{id:sid,label:newSecForm.label.trim(),color:SEC_COLORS[ss.length%SEC_COLORS.length]}]);
@@ -24559,7 +24559,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const remaining=ss.filter(s=>s.id!==id);
       // Reassign sequential letter IDs: A, B, C...
       const remap={};
-      const renumbered=remaining.map((s,i)=>{const newId=String.fromCharCode(65+i);remap[s.id]=newId;return{...s,id:newId};});
+      const renumbered=remaining.map((s,i)=>{const newId=String(i+1);remap[s.id]=newId;return{...s,id:newId};});
       // Update items to use new section IDs
       setItems(its=>its.map(it=>({...it,section:remap[it.section]||it.section})));
       return renumbered;
@@ -24570,7 +24570,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[libOpen,setLibOpen]=useState(false);
   const[libSearch,setLibSearch]=useState("");
   const[libTab,setLibTab]=useState("search");
-  const[libForm,setLibForm]=useState({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});
+  const[libForm,setLibForm]=useState({name:"",description:"",section:"2",unit:"lot",unitCost:"",tags:""});
   const[libEditId,setLibEditId]=useState(null);
   const canManageLib=["Manager","QS"].includes(role);
 
@@ -24599,7 +24599,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       if(isNew) sbInsert('boq_library',sbRow).catch(()=>{});
       else sbUpdate('boq_library',entry.id,sbRow).catch(()=>{});
     }
-    setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});
+    setLibForm({name:"",description:"",section:"2",unit:"lot",unitCost:"",tags:""});
     setLibEditId(null);
     toastEmit(isNew?"Library item saved.":"Library item updated.");
   };
@@ -24626,7 +24626,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const deleteLibItem=(id)=>{
     saveLibrary(boqLibrary.filter(x=>x.id!==id));
     if(isSupabaseReady()) sbDelete('boq_library',id).catch(()=>{});
-    if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}
+    if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",section:"2",unit:"lot",unitCost:"",tags:""});}
   };
 
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
@@ -24922,7 +24922,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                 </div>
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={saveLibItem} style={{background:"#7c3aed",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>{libEditId?"Update":"Save"}</button>
-                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",section:"B",unit:"lot",unitCost:"",tags:""});}} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>}
+                  {libEditId&&<button onClick={()=>{setLibEditId(null);setLibForm({name:"",description:"",section:"2",unit:"lot",unitCost:"",tags:""});}} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>}
                 </div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
@@ -24950,7 +24950,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       {/* Add Section Form */}
       {addSecOpen&&(
         <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",marginBottom:10,display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
-          <div><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>ID</div><input value={newSecForm.id} onChange={e=>setNewSecForm(p=>({...p,id:e.target.value.toUpperCase().slice(0,3)}))} placeholder={String.fromCharCode(65+sections.length)} style={{width:52,border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",textAlign:"center",fontWeight:700}}/></div>
+          <div><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>ID</div><input value={newSecForm.id} onChange={e=>setNewSecForm(p=>({...p,id:e.target.value.slice(0,3)}))} placeholder={String(sections.length+1)} style={{width:52,border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",textAlign:"center",fontWeight:700}}/></div>
           <div style={{flex:1,minWidth:140}}><div style={{fontSize:".65rem",fontWeight:600,color:"#64748b",marginBottom:3}}>Section Name</div><input value={newSecForm.label} onChange={e=>setNewSecForm(p=>({...p,label:e.target.value}))} placeholder="e.g. Special Works…" onKeyDown={e=>e.key==="Enter"&&addSection()} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",outline:"none",boxSizing:"border-box"}}/></div>
           <button onClick={addSection} style={{background:"#1e293b",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Add</button>
           <button onClick={()=>setAddSecOpen(false)} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:".78rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
