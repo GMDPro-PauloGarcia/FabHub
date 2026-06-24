@@ -4648,6 +4648,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Always check DEFAULT_USERS first as guaranteed fallback (works before Supabase loads)
     const defUser=DEFAULT_USERS.find(x=>x.username===unameLower);
     let u=users.find(x=>x.username.toLowerCase()===unameLower);
+    // If not in local state yet (Supabase still loading), query Supabase directly
+    if(!u&&isSupabaseReady()){
+      try{
+        const{data}=await supabase.from('user_profiles').select('*').ilike('username',unameLower).single();
+        if(data) u={id:data.id,username:data.username||"",name:data.name||data.full_name||"",role:data.role||"Sales",title:data.title||data.role||"",status:data.status||"active",passwordHash:data.password_hash||""};
+      }catch(e){}
+    }
     // If Supabase hasn't loaded yet or user not in DB, fall back to DEFAULT_USERS
     if(!u&&defUser) u={...defUser,status:"active"};
     if(!u) return "Username not found.";
