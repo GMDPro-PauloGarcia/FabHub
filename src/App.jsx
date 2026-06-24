@@ -17456,6 +17456,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
   const[filterStat,setFilterStat]=useState("all");
   const[expandedPo,setExpandedPo]=useState(null);
   const[poListTab,setPoListTab]=useState("list");
+  const[poImportModal,setPoImportModal]=useState(false);
+  const[poImportRows,setPoImportRows]=useState([]);
+  const[poImportStatus,setPoImportStatus]=useState("");
   const[poSupplier,setPoSupplier]=useState("");
   const[poNumber,setPoNumber]=useState("");
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
@@ -17956,6 +17959,42 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
             const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
             const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);a.download=`GMD_PurchaseOrders_${today}.csv`;a.click();
           }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
+          <label style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#16a34a",cursor:"pointer",whiteSpace:"nowrap"}}>
+            ⬆ Import CSV
+            <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
+              const file=e.target.files[0]; if(!file) return;
+              const reader=new FileReader();
+              reader.onload=ev=>{
+                const text=ev.target.result;
+                const lines=text.split(/\r?\n/).filter(l=>l.trim());
+                if(lines.length<2){setPoImportStatus("CSV appears empty.");setPoImportModal(true);return;}
+                const parseRow=line=>{const cols=[];let cur="",inQ=false;for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(c===','&&!inQ){cols.push(cur.trim());cur="";}else cur+=c;}cols.push(cur.trim());return cols;};
+                const headers=parseRow(lines[0]).map(h=>h.replace(/^"|"$/g,"").toLowerCase().replace(/\s+/g,"_"));
+                const col=(row,names)=>{for(const nm of names){const i=headers.indexOf(nm);if(i>=0)return row[i]||"";}return "";};
+                const rows=lines.slice(1).map(l=>parseRow(l).map(v=>v.replace(/^"|"$/g,""))).filter(r=>r.some(v=>v));
+                const parsed=rows.map((r,i)=>({
+                  _row:i+2,
+                  poNumber:col(r,["po_number","po_#","po#"])||"",
+                  poDate:col(r,["date","po_date"])||"",
+                  supplier:col(r,["supplier"])||"",
+                  projectName:col(r,["project"])||"",
+                  itemName:col(r,["item_description","item","description"])||"",
+                  category:col(r,["category"])||"Materials",
+                  qty:Number(col(r,["qty","quantity"]))||1,
+                  unit:col(r,["unit"])||"pcs",
+                  estUnitCost:Number(col(r,["est_unit_cost","estimated_unit_cost","est._unit_cost"]))||0,
+                  actUnitCost:Number(col(r,["act_unit_cost","actual_unit_cost","act._unit_cost"]))||0,
+                  status:col(r,["status"])||"PO Issued",
+                  notes:col(r,["notes"])||"",
+                }));
+                setPoImportRows(parsed);
+                setPoImportStatus("");
+                setPoImportModal(true);
+              };
+              reader.readAsText(file);
+              e.target.value="";
+            }}/>
+          </label>
           <button onClick={openNewPO} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Purchase Order</button>
         </div>
       </div>
@@ -18139,6 +18178,102 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,wonDeals,deals:allDeals,b
           }
         })}
       </div>
+
+      {/* ── CSV Import Modal ── */}
+      {poImportModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+          <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:860,maxHeight:"85vh",overflow:"auto",boxShadow:"0 24px 60px rgba(0,0,0,.25)"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div>
+                <div style={{fontWeight:800,fontSize:"1.1rem",color:"#0f172a"}}>⬆ Import Purchase Orders from CSV</div>
+                <div style={{fontSize:".74rem",color:"#64748b",marginTop:2}}>Review the rows below before saving. Each row becomes one PO line item.</div>
+              </div>
+              <button onClick={()=>{setPoImportModal(false);setPoImportRows([]);setPoImportStatus("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#475569",cursor:"pointer"}}>✕ Close</button>
+            </div>
+            {poImportStatus&&<div style={{background:poImportStatus.startsWith("✅")?"#f0fdf4":"#fef2f2",border:`1px solid ${poImportStatus.startsWith("✅")?"#bbf7d0":"#fecaca"}`,borderRadius:8,padding:"10px 14px",marginBottom:14,color:poImportStatus.startsWith("✅")?"#16a34a":"#dc2626",fontSize:".82rem"}}>{poImportStatus}</div>}
+            {poImportRows.length===0&&!poImportStatus&&(
+              <div style={{textAlign:"center",padding:40,color:"#94a3b8",fontSize:".88rem"}}>No rows parsed. Make sure the CSV has a header row matching the export format.</div>
+            )}
+            {poImportRows.length>0&&(
+              <>
+                <div style={{fontSize:".75rem",color:"#64748b",marginBottom:10,fontWeight:600}}>{poImportRows.length} row{poImportRows.length>1?"s":""} found</div>
+                <div style={{overflowX:"auto",marginBottom:18}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:".74rem"}}>
+                    <thead>
+                      <tr style={{background:"#f8fafc"}}>
+                        {["Row","PO #","Date","Supplier","Project","Item","Cat","Qty","Unit","Est Cost","Act Cost","Status","Notes"].map(h=>(
+                          <th key={h} style={{padding:"7px 10px",textAlign:"left",color:"#64748b",fontWeight:700,borderBottom:"2px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {poImportRows.map((r,i)=>(
+                        <tr key={i} style={{borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff"}}>
+                          <td style={{padding:"6px 10px",color:"#94a3b8"}}>{r._row}</td>
+                          <td style={{padding:"6px 10px",fontWeight:700,color:"#1d4ed8"}}>{r.poNumber||"—"}</td>
+                          <td style={{padding:"6px 10px"}}>{r.poDate||"—"}</td>
+                          <td style={{padding:"6px 10px",fontWeight:600}}>{r.supplier||"—"}</td>
+                          <td style={{padding:"6px 10px",color:"#64748b"}}>{r.projectName||"—"}</td>
+                          <td style={{padding:"6px 10px"}}>{r.itemName||"—"}</td>
+                          <td style={{padding:"6px 10px",color:"#64748b"}}>{r.category}</td>
+                          <td style={{padding:"6px 10px",textAlign:"right"}}>{r.qty}</td>
+                          <td style={{padding:"6px 10px",color:"#64748b"}}>{r.unit}</td>
+                          <td style={{padding:"6px 10px",textAlign:"right",color:"#0f172a",fontWeight:600}}>{"₱"+Number(r.estUnitCost).toLocaleString()}</td>
+                          <td style={{padding:"6px 10px",textAlign:"right",color:"#10b981",fontWeight:600}}>{r.actUnitCost?"₱"+Number(r.actUnitCost).toLocaleString():"—"}</td>
+                          <td style={{padding:"6px 10px"}}><span style={{background:"#eff6ff",color:"#1d4ed8",borderRadius:20,padding:"2px 8px",fontSize:".68rem",fontWeight:700}}>{r.status}</span></td>
+                          <td style={{padding:"6px 10px",color:"#94a3b8",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.notes||"—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+                  <button onClick={()=>{setPoImportModal(false);setPoImportRows([]);setPoImportStatus("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"9px 20px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>Cancel</button>
+                  <button onClick={async()=>{
+                    setPoImportStatus("Saving…");
+                    let saved=0,failed=0;
+                    for(const r of poImportRows){
+                      const allDealsAll=[...wonDeals,...(allDeals||[])];
+                      const matchDeal=allDealsAll.find(d=>(d.client||"").toLowerCase()===r.projectName.toLowerCase()||(d.contact||"").toLowerCase()===r.projectName.toLowerCase())||(r.projectName==="GMD Stocks"?{id:"__gmd_stocks__"}:null);
+                      const rec={
+                        deal_id:matchDeal?.id||null,
+                        project_name:r.projectName||"",
+                        po_number:r.poNumber||null,
+                        po_date:r.poDate||null,
+                        supplier:r.supplier||"",
+                        item:r.itemName||"",
+                        category:r.category||"Materials",
+                        budget_category:r.category||"Materials",
+                        qty:r.qty||1,
+                        unit:r.unit||"pcs",
+                        estimated_cost:r.estUnitCost||0,
+                        actual_cost:r.actUnitCost||null,
+                        status:r.status||"PO Issued",
+                        notes:r.notes||"",
+                        created_by:session?.name||"Import",
+                        requested_by:session?.name||"Import",
+                      };
+                      const res=await sbInsert("purchase_requests",rec);
+                      if(res){
+                        saved++;
+                        addPR({...rec,id:res.id,dealId:rec.deal_id,projectId:rec.deal_id,itemName:rec.item,estUnitCost:rec.estimated_cost,actUnitCost:rec.actual_cost,poNumber:rec.po_number,poDate:rec.po_date,budgetCategory:rec.budget_category,createdBy:rec.created_by,requestedBy:rec.requested_by});
+                      } else failed++;
+                    }
+                    if(failed===0){
+                      setPoImportStatus(`✅ ${saved} row${saved>1?"s":""} imported successfully!`);
+                      setPoImportRows([]);
+                    } else {
+                      setPoImportStatus(`⚠️ ${saved} saved, ${failed} failed. Check console for details.`);
+                    }
+                  }} style={{background:"#16a34a",border:"none",borderRadius:8,padding:"9px 24px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
+                    ✅ Import {poImportRows.length} Row{poImportRows.length>1?"s":""}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
