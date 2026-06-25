@@ -2029,9 +2029,10 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 }
 
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
-function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName}){
+function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[]}){
   const todayStr=new Date().toISOString().slice(0,10);
-  const emptyRow=()=>({expDate:todayStr,supplier:"",payee:"",projectId:null,note:"",qty:"1",pricePerQty:"",tin:"",category:"Materials",remarks:"",bankAccount:"",receipt:"",month:new Date().getMonth(),year:new Date().getFullYear(),_exp:false});
+  const emptyRow=()=>({expDate:todayStr,supplier:"",payee:"",projectId:null,note:"",qty:"1",pricePerQty:"",tin:"",category:"Materials",accountCode:"",remarks:"",bankAccount:"",receipt:"",month:new Date().getMonth(),year:new Date().getFullYear(),_exp:false});
+  const expenseAccounts=(chartOfAccounts||[]).filter(a=>a.type==="COGS"||a.type==="Expense").sort((x,y)=>String(x.code).localeCompare(String(y.code)));
   const[rows,setRows]=useState([emptyRow()]);
   const[errors,setErrors]=useState({});
   useEffect(()=>{
@@ -2140,8 +2141,9 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
               <div>{lbl("Price / QTY (₱) *")}<input type="number" value={r.pricePerQty||""} onChange={e=>{upRow(i,"pricePerQty",e.target.value);setErrors(p=>({...p,[`${i}_price`]:false}));}} placeholder="0.00" style={errors[`${i}_price`]?errInp:inp}/></div>
               <div>{lbl("Total")}<div style={{padding:"6px 9px",background:"#f0fdf4",borderRadius:7,fontWeight:800,color:"#059669",fontSize:".82rem",border:"1.5px solid #bbf7d0",height:30,display:"flex",alignItems:"center"}}>{rowAmt(r)>0?"₱"+fmt(rowAmt(r)):"—"}</div></div>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:7,alignItems:"end"}}>
+            <div style={{display:"grid",gridTemplateColumns:expenseAccounts.length?"1fr 1fr 1fr auto":"1fr 1fr auto",gap:7,alignItems:"end"}}>
               <div>{lbl("Category")}<select value={r.category||"Materials"} onChange={e=>upRow(i,"category",e.target.value)} style={{...inp,background:"#fff"}}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</select></div>
+              {expenseAccounts.length>0&&<div>{lbl("Account")}<select value={r.accountCode||""} onChange={e=>upRow(i,"accountCode",e.target.value)} style={{...inp,background:"#fff"}}><option value="">— None —</option>{expenseAccounts.map(a=><option key={a.id} value={a.code}>{a.code} · {a.name}</option>)}</select></div>}
               <div>{lbl("Bank Account")}<select value={r.bankAccount||""} onChange={e=>upRow(i,"bankAccount",e.target.value||null)} style={{...inp,background:"#fff"}}><option value="">— Cash / untagged —</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</select></div>
               <button onClick={()=>upRow(i,"_exp",!r._exp)} style={{background:r._exp?"#eff6ff":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 11px",cursor:"pointer",fontSize:".7rem",fontWeight:700,color:"#64748b",fontFamily:"inherit",whiteSpace:"nowrap",marginTop:14}}>{r._exp?"▲ less":"▼ more"}</button>
             </div>
@@ -3013,7 +3015,7 @@ export default function App(){
               setBillings(mergedBillings);
               idbE.push([KEYS.billings,mergedBillings]);
             }
-            const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
+            const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",accountCode:e.account_code||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps!=null){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
             const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_disc_type||"none",poDiscValue:Number(p.po_disc_value)||0})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
@@ -3310,7 +3312,7 @@ export default function App(){
       payable_id:r.payableId||null,cv_id:r.cvId||null,
       routed_by:r.routedBy||"",routed_at:r.routedAt||null,
       qty:Number(r.qty)||1,price_per_qty:Number(r.pricePerQty)||0,
-      tin:r.tin||"",remarks:r.remarks||""};
+      tin:r.tin||"",remarks:r.remarks||"",account_code:r.accountCode||null};
   };
   const toSbPR = r=>{
     const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -5789,7 +5791,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -5807,7 +5809,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -5817,7 +5819,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -6185,7 +6187,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} role={role}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
           <>
@@ -11613,6 +11615,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   }
 
   if(page==="coa") return(<Wrap><ChartOfAccountsView chartOfAccounts={chartOfAccounts} saveChartOfAccounts={saveChartOfAccounts} session={session} role={role}/></Wrap>);
+  if(page==="acctreport") return(<Wrap><AccountReportView chartOfAccounts={chartOfAccounts} exps={exps} role={role}/></Wrap>);
 
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
@@ -11930,7 +11933,7 @@ First few:
         );
       })()}
       <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts}/>
     </Wrap>
   );
 
@@ -25008,6 +25011,85 @@ function ChartOfAccountsView({chartOfAccounts=[],saveChartOfAccounts,session,rol
               </div>
             );
           })}
+        </>
+      )}
+    </div>
+  );
+}
+
+function AccountReportView({chartOfAccounts=[],exps=[],role}){
+  const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
+  const years=[...new Set(exps.map(e=>e.year||(e.expDate?Number(e.expDate.slice(0,4)):null)).filter(Boolean))].sort((a,b)=>b-a);
+  const[year,setYear]=React.useState("all");
+  const inYear=e=>year==="all"||String(e.year||(e.expDate?e.expDate.slice(0,4):""))===String(year);
+  const scoped=exps.filter(inYear);
+  const totalByCode={};
+  let untagged=0;
+  scoped.forEach(e=>{
+    const amt=Number(e.amount)||0;
+    if(e.accountCode){totalByCode[e.accountCode]=(totalByCode[e.accountCode]||0)+amt;}
+    else untagged+=amt;
+  });
+  const codeMeta=Object.fromEntries(chartOfAccounts.map(a=>[String(a.code),a]));
+  // Group tagged totals by account type
+  const TYPES=["COGS","Expense","Asset","Liability","Equity","Income"];
+  const byType={};
+  Object.entries(totalByCode).forEach(([code,total])=>{
+    const a=codeMeta[code]; const type=a?.type||"Unmapped";
+    (byType[type]=byType[type]||[]).push({code,name:a?.name||"(deleted account)",total});
+  });
+  const grand=Object.values(totalByCode).reduce((s,v)=>s+v,0)+untagged;
+  const orderedTypes=[...TYPES.filter(t=>byType[t]),...Object.keys(byType).filter(t=>!TYPES.includes(t))];
+  return(
+    <div style={{maxWidth:860,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:12,marginBottom:14,flexWrap:"wrap"}}>
+        <div>
+          <h2 style={{margin:"0 0 4px",fontWeight:900,fontSize:"1.4rem",color:"#0f172a",fontFamily:"'Barlow Condensed',sans-serif"}}>📊 Account Report</h2>
+          <p style={{margin:0,fontSize:".8rem",color:"#64748b"}}>Expenses totalled by chart-of-accounts code.</p>
+        </div>
+        <select value={year} onChange={e=>setYear(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}>
+          <option value="all">All years</option>
+          {years.map(y=><option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+      {chartOfAccounts.length===0?(
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px dashed #cbd5e1",padding:"40px 24px",textAlign:"center",color:"#64748b",fontSize:".85rem"}}>Load your Chart of Accounts first, then tag expenses to see this report.</div>
+      ):(
+        <>
+          {orderedTypes.length===0&&untagged===0&&<div style={{background:"#fff",borderRadius:14,border:"1.5px dashed #cbd5e1",padding:"40px 24px",textAlign:"center",color:"#64748b",fontSize:".85rem"}}>No tagged expenses yet. Open an expense and pick an Account to populate this report.</div>}
+          {orderedTypes.map(type=>{
+            const rows=byType[type].sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+            const sub=rows.reduce((s,r)=>s+r.total,0);
+            const clr=COA_TYPE_CLR[type]||"#64748b";
+            return(
+              <div key={type} style={{marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{width:10,height:10,borderRadius:3,background:clr}}/>
+                  <span style={{fontWeight:800,fontSize:".8rem",textTransform:"uppercase",letterSpacing:".5px",color:"#0f172a"}}>{type}</span>
+                </div>
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  {rows.map((r,i)=>(
+                    <div key={r.code} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 14px",borderBottom:"1px solid #f1f5f9"}}>
+                      <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:clr,fontSize:".82rem",minWidth:52}}>{r.code}</span>
+                      <span style={{flex:1,color:"#0f172a",fontSize:".85rem"}}>{r.name}</span>
+                      <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",fontFamily:"'IBM Plex Mono',monospace"}}>{peso(r.total)}</span>
+                    </div>
+                  ))}
+                  <div style={{display:"flex",justifyContent:"space-between",padding:"8px 14px",background:clr+"0f",fontWeight:800,fontSize:".82rem",color:clr}}><span>Subtotal — {type}</span><span style={{fontFamily:"'IBM Plex Mono',monospace"}}>{peso(sub)}</span></div>
+                </div>
+              </div>
+            );
+          })}
+          {untagged>0&&(
+            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"10px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <span style={{fontWeight:700,color:"#92400e",fontSize:".82rem"}}>⚠️ Untagged expenses (no account)</span>
+              <span style={{fontWeight:800,color:"#92400e",fontFamily:"'IBM Plex Mono',monospace"}}>{peso(untagged)}</span>
+            </div>
+          )}
+          <div style={{display:"flex",justifyContent:"space-between",padding:"12px 16px",background:"#1e293b",borderRadius:12,alignItems:"center"}}>
+            <span style={{fontWeight:800,color:"#f1f5f9",fontSize:".85rem",textTransform:"uppercase",letterSpacing:".5px"}}>Total Expenses</span>
+            <span style={{fontWeight:900,color:"#f59e0b",fontSize:"1.1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>{peso(grand)}</span>
+          </div>
         </>
       )}
     </div>
