@@ -9129,7 +9129,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const isOverP=dLeftP!==null&&dLeftP<0;
                   return(
                     <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
-                      onClick={()=>openEditDeal(d)}
+                      onClick={()=>{setJumpDeal(d.id);setPage("projects");}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":""}>
                       <td style={{width:4,padding:0,background:isChild?"#f59e0b":sc}}></td>
@@ -9175,8 +9175,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           </>
                         ):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}
                       </td>
-                      <td style={{padding:"10px 10px",verticalAlign:"middle"}}>
+                      <td style={{padding:"10px 10px",verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                        <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                       </td>
                     </tr>
                   );
