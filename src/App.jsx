@@ -2939,7 +2939,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs"
+          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts"
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -2961,6 +2961,7 @@ export default function App(){
         if(idb[KEYS.customclients]){const cc=idb[KEYS.customclients];setCustomClients(cc);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
         if(idb["gmdv5:clientprofiles"]) setClientProfiles(idb["gmdv5:clientprofiles"]);
         if(idb["gmdv5:standaloneBoqs"]) setStandaloneBoqs(idb["gmdv5:standaloneBoqs"]);
+        if(idb["gmdv5:chartOfAccounts"]) setChartOfAccounts(idb["gmdv5:chartOfAccounts"]);
         if(idb[KEYS.addenda])     setAddenda(idb[KEYS.addenda]);
         if(idb[KEYS.budgets])     setBudgets(idb[KEYS.budgets]);
         if(idb[KEYS.billings])    setBillings(idb[KEYS.billings]);
@@ -3062,6 +3063,7 @@ export default function App(){
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
             if(data.settings?.standalone_boqs){const sbq=data.settings.standalone_boqs;setStandaloneBoqs(sbq);localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(sbq));idbE.push(["gmdv5:standaloneBoqs",sbq]);}
+            if(data.settings?.chart_of_accounts){const coa=data.settings.chart_of_accounts;setChartOfAccounts(coa);localStorage.setItem("gmdv5:chartOfAccounts",JSON.stringify(coa));idbE.push(["gmdv5:chartOfAccounts",coa]);}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);idbE.push([KEYS.projects,data.projs]);}
             console.log("\u2705 FabHub: Loaded from Supabase \u2014 "+(data.deals?.length||0)+" deals");
             // Auto-sync: push any local records that Supabase is missing.
@@ -5150,6 +5152,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       return next;
     });
   },[]);
+  // ── Chart of Accounts (synced via app_settings, like standalone BOQs) ──
+  const[chartOfAccounts,setChartOfAccounts]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:chartOfAccounts")||"[]");}catch{return [];}});
+  const saveChartOfAccounts=useCallback((next)=>{
+    setChartOfAccounts(next);
+    localStorage.setItem("gmdv5:chartOfAccounts",JSON.stringify(next));
+    idbSetMany([["gmdv5:chartOfAccounts",next]]).catch(()=>{});
+    if(isSupabaseReady()) sbUpsert('app_settings',{key:'chart_of_accounts',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+  },[]);
   useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
   useEffect(()=>{const on=()=>setIsOnline(true);const off=()=>setIsOnline(false);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
@@ -5779,7 +5789,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -5797,7 +5807,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -5807,7 +5817,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -11600,6 +11610,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>setBoqStandaloneId(id)} onOpenDeal={id=>setBoqDealId(id)} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discountedTotal:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
+
+  if(page==="coa") return(<Wrap><ChartOfAccountsView chartOfAccounts={chartOfAccounts} saveChartOfAccounts={saveChartOfAccounts} session={session} role={role}/></Wrap>);
 
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
@@ -24865,6 +24877,131 @@ const GMD_DEFAULT_LIBRARY=[
   {name:"Stainless Steel Sink",section:"9",unit:"set",unitCost:0,tags:["sink","stainless","furniture"]},
   {name:"Low Partition",section:"9",unit:"sets",unitCost:0,tags:["partition","built-in","furniture"]},
 ];
+
+// ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
+const COA_TYPES=["Asset","Liability","Equity","Income","COGS","Expense"];
+const COA_TYPE_CLR={Asset:"#0ea5e9",Liability:"#f97316",Equity:"#8b5cf6",Income:"#10b981",COGS:"#f59e0b",Expense:"#ef4444"};
+// Default chart tailored to a PH fabrication / construction company (GMD Productions)
+const DEFAULT_COA=[
+  {code:"1010",name:"Cash on Hand",type:"Asset"},
+  {code:"1020",name:"Cash in Bank",type:"Asset"},
+  {code:"1100",name:"Accounts Receivable",type:"Asset"},
+  {code:"1200",name:"Inventory / Materials on Hand",type:"Asset"},
+  {code:"1300",name:"Prepaid Expenses & Advances",type:"Asset"},
+  {code:"1500",name:"Property, Plant & Equipment",type:"Asset"},
+  {code:"1600",name:"Accumulated Depreciation",type:"Asset"},
+  {code:"2010",name:"Accounts Payable",type:"Liability"},
+  {code:"2100",name:"Accrued Expenses",type:"Liability"},
+  {code:"2200",name:"Loans Payable",type:"Liability"},
+  {code:"2300",name:"Taxes Payable (VAT / Withholding)",type:"Liability"},
+  {code:"2400",name:"SSS / PhilHealth / Pag-IBIG Payable",type:"Liability"},
+  {code:"3010",name:"Owner's Capital",type:"Equity"},
+  {code:"3020",name:"Owner's Drawings",type:"Equity"},
+  {code:"3030",name:"Retained Earnings",type:"Equity"},
+  {code:"4010",name:"Project / Contract Revenue",type:"Income"},
+  {code:"4020",name:"Fabrication Revenue",type:"Income"},
+  {code:"4030",name:"Service / Installation Income",type:"Income"},
+  {code:"4090",name:"Other Income",type:"Income"},
+  {code:"5010",name:"Materials",type:"COGS"},
+  {code:"5020",name:"Direct Labor",type:"COGS"},
+  {code:"5030",name:"Subcontractor Costs",type:"COGS"},
+  {code:"5040",name:"Equipment / Tool Rental",type:"COGS"},
+  {code:"5050",name:"Site / Project Overhead",type:"COGS"},
+  {code:"6010",name:"Salaries & Wages",type:"Expense"},
+  {code:"6020",name:"Rent",type:"Expense"},
+  {code:"6030",name:"Utilities",type:"Expense"},
+  {code:"6040",name:"Office Supplies",type:"Expense"},
+  {code:"6050",name:"Transportation & Fuel",type:"Expense"},
+  {code:"6060",name:"Repairs & Maintenance",type:"Expense"},
+  {code:"6070",name:"Professional Fees",type:"Expense"},
+  {code:"6080",name:"Taxes & Licenses",type:"Expense"},
+  {code:"6090",name:"Depreciation Expense",type:"Expense"},
+  {code:"6100",name:"Bank Charges",type:"Expense"},
+  {code:"6900",name:"Miscellaneous Expense",type:"Expense"},
+];
+
+function ChartOfAccountsView({chartOfAccounts=[],saveChartOfAccounts,session,role}){
+  const canEdit=["Manager","Finance","Accounting"].includes(role);
+  const[form,setForm]=React.useState({code:"",name:"",type:"Expense"});
+  const[editId,setEditId]=React.useState(null);
+  const[q,setQ]=React.useState("");
+  const sorted=[...chartOfAccounts].sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+  const ql=q.trim().toLowerCase();
+  const filtered=ql?sorted.filter(a=>String(a.code).includes(ql)||(a.name||"").toLowerCase().includes(ql)):sorted;
+  const seedDefaults=()=>{
+    if(chartOfAccounts.length){if(!window.confirm("Append the default chart to your existing accounts? Duplicates (same code) are skipped."))return;}
+    const have=new Set(chartOfAccounts.map(a=>String(a.code)));
+    const add=DEFAULT_COA.filter(d=>!have.has(d.code)).map(d=>({id:uid(),code:d.code,name:d.name,type:d.type,active:true}));
+    if(!add.length){window.alert("All default accounts are already in your chart.");return;}
+    saveChartOfAccounts([...chartOfAccounts,...add]);
+  };
+  const submit=()=>{
+    const code=form.code.trim(),name=form.name.trim();
+    if(!code||!name){window.alert("Account code and name are required.");return;}
+    if(chartOfAccounts.some(a=>String(a.code)===code&&a.id!==editId)){window.alert(`Account code ${code} already exists.`);return;}
+    if(editId) saveChartOfAccounts(chartOfAccounts.map(a=>a.id===editId?{...a,code,name,type:form.type}:a));
+    else saveChartOfAccounts([...chartOfAccounts,{id:uid(),code,name,type:form.type,active:true}]);
+    setForm({code:"",name:"",type:"Expense"});setEditId(null);
+  };
+  const startEdit=(a)=>{setEditId(a.id);setForm({code:String(a.code),name:a.name,type:a.type});};
+  const del=(a)=>{if(window.confirm(`Delete account ${a.code} — ${a.name}?`)) saveChartOfAccounts(chartOfAccounts.filter(x=>x.id!==a.id));};
+  const inpSt={border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"};
+  return(
+    <div style={{maxWidth:860,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:12,marginBottom:6,flexWrap:"wrap"}}>
+        <div>
+          <h2 style={{margin:"0 0 4px",fontWeight:900,fontSize:"1.4rem",color:"#0f172a",fontFamily:"'Barlow Condensed',sans-serif"}}>📒 Chart of Accounts</h2>
+          <p style={{margin:0,fontSize:".8rem",color:"#64748b"}}>The accounts used to classify every transaction. {chartOfAccounts.length} account{chartOfAccounts.length!==1?"s":""}.</p>
+        </div>
+        {canEdit&&<button onClick={seedDefaults} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 16px",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",whiteSpace:"nowrap"}}>Load GMD default chart</button>}
+      </div>
+      {canEdit&&(
+        <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",margin:"14px 0",display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
+          <div><div style={{fontSize:".65rem",fontWeight:700,color:"#64748b",marginBottom:3}}>Code</div><input value={form.code} onChange={e=>setForm(f=>({...f,code:e.target.value}))} placeholder="e.g. 6020" style={{...inpSt,width:90}}/></div>
+          <div style={{flex:1,minWidth:160}}><div style={{fontSize:".65rem",fontWeight:700,color:"#64748b",marginBottom:3}}>Account Name</div><input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Rent" onKeyDown={e=>e.key==="Enter"&&submit()} style={{...inpSt,width:"100%"}}/></div>
+          <div><div style={{fontSize:".65rem",fontWeight:700,color:"#64748b",marginBottom:3}}>Type</div><select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} style={{...inpSt}}>{COA_TYPES.map(t=><option key={t}>{t}</option>)}</select></div>
+          <button onClick={submit} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>{editId?"Save":"＋ Add"}</button>
+          {editId&&<button onClick={()=>{setEditId(null);setForm({code:"",name:"",type:"Expense"});}} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 14px",color:"#64748b",fontFamily:"inherit",fontWeight:600,fontSize:".8rem",cursor:"pointer"}}>Cancel</button>}
+        </div>
+      )}
+      {chartOfAccounts.length===0?(
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px dashed #cbd5e1",padding:"44px 24px",textAlign:"center"}}>
+          <div style={{fontSize:"1.8rem",marginBottom:8}}>📒</div>
+          <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem",marginBottom:4}}>No accounts yet</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>Load the GMD default chart to get started, then customize it.</div>
+          {canEdit&&<button onClick={seedDefaults} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Load GMD default chart</button>}
+        </div>
+      ):(
+        <>
+          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search by code or name…" style={{...inpSt,width:"100%",padding:"9px 13px",marginBottom:14}}/>
+          {COA_TYPES.map(type=>{
+            const rows=filtered.filter(a=>a.type===type);
+            if(!rows.length) return null;
+            return(
+              <div key={type} style={{marginBottom:18}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                  <span style={{width:10,height:10,borderRadius:3,background:COA_TYPE_CLR[type]}}/>
+                  <span style={{fontWeight:800,fontSize:".8rem",textTransform:"uppercase",letterSpacing:".5px",color:"#0f172a"}}>{type}</span>
+                  <span style={{fontSize:".7rem",color:"#94a3b8"}}>{rows.length}</span>
+                </div>
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  {rows.map((a,i)=>(
+                    <div key={a.id} style={{display:"flex",alignItems:"center",gap:12,padding:"9px 14px",borderBottom:i<rows.length-1?"1px solid #f1f5f9":"none"}}>
+                      <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:COA_TYPE_CLR[type],fontSize:".82rem",minWidth:52}}>{a.code}</span>
+                      <span style={{flex:1,color:"#0f172a",fontSize:".85rem",fontWeight:500}}>{a.name}</span>
+                      {canEdit&&<button onClick={()=>startEdit(a)} style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".78rem",padding:2}} title="Edit">✏</button>}
+                      {canEdit&&<button onClick={()=>del(a)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".78rem",padding:2,opacity:.6}} title="Delete">🗑</button>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
+    </div>
+  );
+}
 
 function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStandalone,onOpenDeal,onNewStandalone,onDeleteStandalone}){
   const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
