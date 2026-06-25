@@ -10853,16 +10853,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const unitCost=Number(receivingPr.actUnitCost||receivingPr.estUnitCost)||0;
                   const recvAmt=Math.round(Number(rxQty)*unitCost*100)/100;
                   const poNote=`${rxDrNo?`DR ${rxDrNo} · `:""}PO ${receivingPr.poNumber||receivingPr.id.slice(-6)} · ${receivingPr.supplier||""}`;
-                  // ── ACCOUNTING: receiving a delivery creates the supplier payable (Daily Payable expense).
-                  // Idempotent (skip exact same PR/amount/date), and we mark the PO "Payable Created" so it
-                  // does NOT also surface in the manual "POs Pending Payment" queue (no double-counting).
+                  // GMD-stock POs aren't tied to a real project (projectId="__gmd_stocks__").
+                  const isStock=receivingPr.projectId==="__gmd_stocks__"||receivingPr.projectName==="GMD Stocks";
+                  const sProjId=isStock?null:(receivingPr.projectId||null);
+                  // ── ACCOUNTING: a PROJECT-DIRECT delivery records the cost as a logged EXPENSE on receipt
+                  // (acctStatus "Logged" — recognized now, NOT pushed into the pay-now queue, since suppliers
+                  // are on terms; payment is handled separately when due). The expense is tagged to the project.
+                  // GMD-stock deliveries are NOT expensed here — stock is a cash-valued asset, expensed only when
+                  // it's released to a project (handled in logStockMove). This avoids double-counting stock cost.
                   const alreadyLogged=recvAmt>0&&exps.some(e=>e.fromPrId===receivingPr.id&&e.expDate===today&&Number(e.amount)===recvAmt);
                   let paymentStatus="Pending Payment";
-                  if(recvAmt>0&&!alreadyLogged){
-                    const expRec={id:uid(),expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:receivingPr.category||"Materials",note:`${receivingPr.itemName||""}${receivingPr.poNumber?" — "+receivingPr.poNumber:""}`,payee:receivingPr.supplier||"",supplier:receivingPr.supplier||"",qty:Number(rxQty),pricePerQty:unitCost,amount:recvAmt,projectId:receivingPr.projectId||null,dealId:receivingPr.projectId||null,bankAccount:"",poRef:receivingPr.poNumber||"",receipt:rxDrNo?`DR ${rxDrNo}`:"",acctStatus:"For Payment",createdBy:session?.name||"",createdAt:today,fromPrId:receivingPr.id};
+                  if(recvAmt>0&&!isStock&&!alreadyLogged){
+                    const expRec={id:uid(),expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:receivingPr.category||"Materials",note:`${receivingPr.itemName||""}${receivingPr.poNumber?" — "+receivingPr.poNumber:""}`,payee:receivingPr.supplier||"",supplier:receivingPr.supplier||"",qty:Number(rxQty),pricePerQty:unitCost,amount:recvAmt,projectId:sProjId,dealId:sProjId,bankAccount:"",poRef:receivingPr.poNumber||"",receipt:rxDrNo?`DR ${rxDrNo}`:"",acctStatus:"Logged",createdBy:session?.name||"",createdAt:today,fromPrId:receivingPr.id};
                     upExps(es=>[...es,expRec]);
                     if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(expRec),"id").catch(()=>{});
-                    paymentStatus="Payable Created";
+                    paymentStatus="Expense Logged";
                   }
                   updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr,paymentStatus});
                   sendTelegramNotification("procurement",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
@@ -10871,13 +10876,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   // the warehouse can always track what was received (no more silent, untracked deliveries).
                   const invMatch=inventory.find(i=>i.name?.toLowerCase()===receivingPr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(receivingPr.itemName?.toLowerCase()));
                   if(invMatch){
-                    logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(rxQty),unitCost,projectId:receivingPr.projectId,notes:poNote,date:today});
+                    logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(rxQty),unitCost,projectId:sProjId,notes:poNote,date:today});
                   } else {
                     const newInvId=uid();
                     addInventoryItem({id:newInvId,name:receivingPr.itemName||"Unnamed item",category:receivingPr.category||"Materials",unit:receivingPr.unit||"pcs",supplier:receivingPr.supplier||"",qtyOnHand:0,reorderPoint:0,avgCost:0,lastPurchasePrice:0,location:"Main Warehouse",status:"Active",notes:`Auto-created from ${receivingPr.poNumber||"PO"}`});
-                    logStockMove({itemId:newInvId,moveType:"IN — Delivery",qty:Number(rxQty),unitCost,projectId:receivingPr.projectId,notes:poNote,date:today});
+                    logStockMove({itemId:newInvId,moveType:"IN — Delivery",qty:Number(rxQty),unitCost,projectId:sProjId,notes:poNote,date:today});
                   }
-                  toastEmit(`✓ Delivery recorded${isPartial?" (partial)":""}${recvAmt>0&&!alreadyLogged?` · ₱${recvAmt.toLocaleString("en-PH")} payable created`:""} · stock updated`,"success");
+                  toastEmit(`✓ Delivery recorded${isPartial?" (partial)":""}${recvAmt>0&&!isStock&&!alreadyLogged?` · ₱${recvAmt.toLocaleString("en-PH")} expense logged`:isStock?" · added to GMD Stock (asset)":""} · stock updated`,"success");
                   setReceivingPr(null);
                 }}
                   style={{flex:1,background:rxQty&&Number(rxQty)>0?"#059669":"#e2e8f0",border:"none",borderRadius:9,padding:"11px 0",color:rxQty&&Number(rxQty)>0?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",cursor:rxQty&&Number(rxQty)>0?"pointer":"not-allowed"}}>
