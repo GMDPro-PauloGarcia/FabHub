@@ -23334,11 +23334,8 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
       const d=wonDeals.find(x=>x.id===ev.projectId);
       list.push({date:ev.dueDate,type:"ops",label:ev.title,sub:ev.type,detail:ev.assignedTo?`Assigned: ${ev.assignedTo}`:"",color:OPS_EVENT_COLORS[ev.type]||"#64748b",icon:OPS_EVENT_ICONS[ev.type]||"🔧",opsId:ev.id,opsEvent:ev,dealId:ev.projectId,project:d?.client});
     });
-    payables.filter(p=>p.dueDate&&!["Paid","Cancelled"].includes(p.status)).forEach(p=>{
-      list.push({date:p.dueDate,type:"payable",label:p.payee||p.description||"Payable",sub:"AP Due",detail:"₱"+Number(p.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0}),color:"#dc2626",icon:"💳"});
-    });
     return list;
-  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs,opsEvents,payables]);
+  },[wonDeals,pcards,jos,prs,billings,drfs,ceReqs,opsEvents]);
 
   const eventsByDate=React.useMemo(()=>{
     const map={};events.forEach(e=>{if(!map[e.date])map[e.date]=[];map[e.date].push(e);});return map;
