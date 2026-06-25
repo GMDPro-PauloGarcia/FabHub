@@ -24828,7 +24828,8 @@ const GMD_DEFAULT_LIBRARY=[
 ];
 
 function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack}){
-  const BLANK_ITEMS=()=>BOQ_SECTIONS.map((s,i)=>({_id:i+1,section:s.id,description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}));
+  // Start blank — sections are added per BOQ, no fixed/preset sections
+  const BLANK_ITEMS=()=>[];
   const loadDraft=(dealId)=>{
     if(!dealId) return null;
     try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");return drafts[dealId]||null;}
@@ -24858,9 +24859,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[draftSaved,setDraftSaved]=useState(false);
   const draftTimerRef=useRef(null);
 
-  // Dynamic sections — start from GMD defaults, fully editable per BOQ
+  // Dynamic sections — start empty, fully built per BOQ (no fixed sections)
   const SEC_COLORS=["#64748b","#3b82f6","#f59e0b","#8b5cf6","#06b6d4","#10b981","#ef4444","#f97316","#ec4899","#0ea5e9","#14b8a6","#a855f7","#e11d48","#84cc16","#d97706","#6366f1"];
-  const[sections,setSections]=useState(BOQ_SECTIONS);
+  const[sections,setSections]=useState([]);
+  const loadStandardSections=()=>setSections(ss=>ss.length?ss:BOQ_SECTIONS);
   const[editingSecId,setEditingSecId]=useState(null);
   const[addSecOpen,setAddSecOpen]=useState(false);
   const[newSecForm,setNewSecForm]=useState({id:"",label:""});
@@ -24968,7 +24970,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(true);
     } else {
       setItems(BLANK_ITEMS());
-      setSections(BOQ_SECTIONS);
+      setSections([]);
       setDiscountedTotal("");
       setDraftSaved(false);
       const d=deal;
@@ -25193,7 +25195,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {selDeal&&<button onClick={()=>{deleteDraft(selDeal);if(isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections(BOQ_SECTIONS);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {selDeal&&<button onClick={()=>{deleteDraft(selDeal);if(isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {selDeal&&draftSaved&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ Draft saved</span>}
         </div>
       </div>
@@ -25279,7 +25281,18 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       )}
 
       {/* BOQ Table */}
-      {items.length>0&&(
+      {selDeal&&sections.length===0&&(
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px dashed #cbd5e1",padding:"40px 24px",marginBottom:12,textAlign:"center"}}>
+          <div style={{fontSize:"1.6rem",marginBottom:8}}>📋</div>
+          <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem",marginBottom:4}}>No sections yet</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>Add a section to start building this BOQ. You decide which sections this quotation needs.</div>
+          <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+            <button onClick={()=>setAddSecOpen(true)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>✚ Add Section</button>
+            <button onClick={loadStandardSections} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 18px",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Load GMD standard sections</button>
+          </div>
+        </div>
+      )}
+      {sections.length>0&&(
         <>
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"auto",marginBottom:12}}>
             <div style={{minWidth:760}}>
