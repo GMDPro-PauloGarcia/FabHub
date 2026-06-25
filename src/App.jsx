@@ -3501,6 +3501,16 @@ export default function App(){
     upInventory(iv=>iv.filter(i=>i.id!==id));
     if(isSupabaseReady()) sbDelete('inventory_items',id).catch(()=>{});
   };
+  // Wipe ALL inventory items and stock movements — local + Supabase. Used to start fresh.
+  const clearAllInventory=async()=>{
+    upInventory(()=>[]);
+    upStocklog(()=>[]);
+    if(isSupabaseReady()){
+      try{ await sbClear('stock_movements'); await sbClear('inventory_items'); }
+      catch(e){ toastEmit&&toastEmit("Cleared locally but server wipe failed: "+(e?.message||e),"error"); return false; }
+    }
+    return true;
+  };
 
   // Supplier CRUD
   const addSupplier=(item)=>upSuppliers(ss=>{
@@ -10625,7 +10635,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── WAREHOUSE ───────────────────────────────────────────────────────────────
   if(role==="Warehouse"||(["Manager","Finance"].includes(role)&&page==="deliveries")){
     if(role==="Warehouse"&&page==="stockmove") return(<Wrap><StockMovementView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} logStockMove={logStockMove} session={session} role={role}/></Wrap>);
-    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
+    if(role==="Warehouse"&&page==="inventory") return(<Wrap><InventoryView inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR} addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem} deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove} suppliers={suppliers} addSupplier={addSupplier} projs={projs} upProjs={upProjs} deals={wonDeals} session={session} role={role}/></Wrap>);
     if(page==="deliveries"||page==="home") return(
       <Wrap>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:10}}>
@@ -11567,7 +11577,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <InventoryView
         inventory={inventory} stocklog={stocklog} wonDeals={wonDeals} prs={prs} updatePR={updatePR}
         addInventoryItem={addInventoryItem} updateInventoryItem={updateInventoryItem}
-        deleteInventoryItem={deleteInventoryItem} logStockMove={logStockMove}
+        deleteInventoryItem={deleteInventoryItem} clearAllInventory={clearAllInventory} logStockMove={logStockMove}
         suppliers={suppliers} addSupplier={addSupplier}
         projs={projs} upProjs={upProjs} deals={wonDeals}
         session={session} role={role}/>
@@ -13854,7 +13864,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
                   {jo.pm1&&<div style={{fontSize:".68rem",color:"#3b82f6",marginTop:2}}>PM: {[jo.pm1,jo.pm2,jo.pm3].filter(Boolean).join(", ")}</div>}
                 </div>
                 <div style={{display:"flex",gap:5,flexShrink:0}}>
-                  <button onClick={e=>{e.stopPropagation();printJO(jo);}}
+                  <button onClick={e=>{e.stopPropagation();printJO(jo,deals);}}
                     style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
                     🖨 Print
                   </button>
@@ -21997,7 +22007,7 @@ function SupplierPicker({value,onChange,suppliers=[],addSupplier,placeholder="Su
 }
 
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
-function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,logStockMove,suppliers=[],addSupplier,projs={},upProjs,deals=[],session,role}){
+function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,suppliers=[],addSupplier,projs={},upProjs,deals=[],session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
   const C={bg:"#f0f2f5",card:"#ffffff",border:"#e4e8ef",text:"#1a2035",muted:"#7b8499",accent:"#f97316",green:"#22c55e",teal:"#14b8a6",blue:"#3b82f6",red:"#ef4444",yellow:"#eab308"};
 
@@ -22480,6 +22490,12 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
           <button onClick={exportInvXLSX} style={{background:C.green,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬇ Excel</button>
           {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
           {canEdit&&<button onClick={openAddModal} style={{background:C.accent,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>＋ Add / Restock</button>}
+          {role==="Manager"&&clearAllInventory&&(inventory.length>0||stocklog.length>0)&&<button onClick={async()=>{
+            if(!window.confirm(`Start fresh? This permanently deletes ALL ${inventory.length} inventory item(s) and ${stocklog.length} stock movement(s) — for everyone, on every device. This cannot be undone.`)) return;
+            if(!window.confirm("Final confirmation: delete the entire inventory now?")) return;
+            const ok=await clearAllInventory();
+            if(ok) window.alert("Inventory cleared. You're starting from scratch.");
+          }} style={{background:"#fff",border:`1.5px solid ${C.red}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:C.red,cursor:"pointer"}} title="Permanently delete all inventory items and stock movements">🗑 Clear All</button>}
         </div>
       </div>
 
@@ -24267,8 +24283,8 @@ function DataManagement({
     </div>
   );
 }
-  const printJO=(jo)=>{
-    const d=deals.find(x=>x.id===jo.dealId)||{};
+  const printJO=(jo,dealsList=[])=>{
+    const d=(dealsList||[]).find(x=>x.id===jo.dealId)||{};
     const win=window.open("","_blank");
     win.document.write(`<!DOCTYPE html><html><head><title>Job Order ${jo.joNo||jo.joNum}</title>
     <style>
