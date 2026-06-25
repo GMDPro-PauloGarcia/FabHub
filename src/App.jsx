@@ -10251,7 +10251,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="clients") return(
       <Wrap>
-        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients}
+        <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
           clientProfiles={clientProfiles}
           saveClientProfile={(name,profile)=>{
             const next={...clientProfiles,[name]:profile};
@@ -12514,7 +12514,7 @@ First few:
   // Clients directory (Manager, Sales, Finance)
   if(page==="clients") return(
     <Wrap>
-      <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients}
+      <ClientDirectory deals={deals} session={session} role={role} vvipClients={vvipClients} toggleVvip={toggleVvip} customClients={customClients} isMobile={isMobile}
         clientProfiles={clientProfiles}
         saveClientProfile={(name,profile)=>{
           const next={...clientProfiles,[name]:profile};
@@ -14671,7 +14671,7 @@ function SalesCalendarView({deals, session, role, pcards, jos, billings}){
 }
 
 // ─── CLIENT AUTOCOMPLETE ──────────────────────────────────────────────────────
-function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient}){
+function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customClients, clientProfiles, saveClientProfile, addNewClient, isMobile}){
   const[selClient,  setSelClient]  = useState(null);
   const[search,     setSearch]     = useState("");
   const[filter,     setFilter]     = useState("all");
