@@ -13242,7 +13242,9 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
 
       {/* ADDENDA TAB — full workflow */}
       {opsTab==="addenda"&&(()=>{
-        const projAddenda=(addenda||[]).filter(a=>a.projectId===selProj);
+        // Addenda are tagged to their project via dealId (see addAddendum2 below + Project HQ),
+        // so filter by dealId — not projectId, which addendum records never carry.
+        const projAddenda=(addenda||[]).filter(a=>a.dealId===selProj);
         const[showAF,setShowAF]=useState(false);
         const[af,setAf]=useState({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
         const faf=(k,v)=>setAf(p=>({...p,[k]:v}));
@@ -20685,7 +20687,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const HC={green:["#10b981","On Track"],yellow:["#f59e0b","At Risk"],red:["#ef4444","Overdue"],none:["#94a3b8","No TAT"]};
 
   const calcCardGrade=(deal,pc)=>{
-    if(!pc||!deal) return{score:0,grade:"F",color:"#ef4444",gcolor:"#fef2f2",breakdown:{}};
+    if(!pc||!deal) return{score:0,grade:"F",color:"#ef4444",gcolor:"#fef2f2",breakdown:{completeness:{earned:0,max:40,items:{hasPM:false,hasDate:false,hasBudget:false,hasDesigner:false,hasCE:false}},recency:{earned:0,max:30,label:"No updates yet",count:0},timeline:{earned:0,max:30,label:"—"}}};
     let score=0;
     // ─ Completeness (40pts) ────────────────────────────────────────────────
     const joR=jos.find(j=>j.dealId===deal.id);
@@ -25245,7 +25247,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   });
 
   const addLibItemToBoq=(libIt)=>{
-    setItems(its=>[...its,{_id:Date.now(),section:libIt.section||"B",itemCode:"",description:libIt.name,unit:libIt.unit||"lot",qty:1,unitCost:libIt.unitCost||0,total:libIt.unitCost||0,remarks:""}]);
+    setItems(its=>[...its,{_id:uid(),section:libIt.section||"B",itemCode:"",description:libIt.name,unit:libIt.unit||"lot",qty:1,unitCost:libIt.unitCost||0,total:libIt.unitCost||0,remarks:""}]);
     toastEmit(`"${libIt.name}" added to BOQ`);
   };
 
@@ -25377,7 +25379,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     return upd;
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
-  const addRow=(sec)=>setItems(its=>[...its,{_id:Date.now(),section:sec||sections[0]?.id||"A",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
+  const addRow=(sec)=>setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
   const applyLibItem=(rowId,lib)=>{
     setItems(its=>its.map(it=>{
       if(it._id!==rowId) return it;
@@ -25534,7 +25536,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               ?<span style={{fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px"}}>📄 Standalone BOQ</span>
               :<select value={selDeal} onChange={e=>setSelDeal(e.target.value)} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
                 <option value="">— Select —</option>
-                {deals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
+                {deals.filter(d=>d.id===selDeal||(d.stage!=="Did Not Win"&&d.stage!=="Cancelled")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
               </select>
             }
           </div>
@@ -25573,7 +25575,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
         </div>
       </div>
