@@ -2885,7 +2885,14 @@ export default function App(){
   const[subcons,    setSubcons]   = useState([]);  // Subcontractor master list
   const[swos,       setSwos]      = useState([]);  // Subcon work orders
   const[ceReqs,     setCeReqs]    = useState([]);  // CE/QS cost estimation requests
-  const[botSettings, setBotSettings]= useState({token:"",chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""});
+  const[botSettings, setBotSettings]= useState(()=>{
+    try{
+      const local=JSON.parse(localStorage.getItem(KEYS.botsettings)||"{}");
+      // sessionStorage survives refresh within the same tab but clears on browser close — safe for token
+      const token=sessionStorage.getItem('fabhub:bottoken')||"";
+      return{token,chatIds:{...{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},...(local.chatIds||{})},hideValueInBots:local.hideValueInBots||false,poApprovers:local.poApprovers||""};
+    }catch{return{token:"",chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
+  });
   const[customClients,setCustomClients]= useState([]);
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
@@ -2950,7 +2957,7 @@ export default function App(){
         if(idb[KEYS.suppliers])   setSuppliers(idb[KEYS.suppliers]);
         if(idb[KEYS.subcons])     setSubcons(idb[KEYS.subcons]);
         if(idb[KEYS.swos])        setSwos(idb[KEYS.swos]);
-        if(idb[KEYS.botsettings]) setBotSettings(idb[KEYS.botsettings]);
+        if(idb[KEYS.botsettings]){const bs=idb[KEYS.botsettings];setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));}
         if(idb[KEYS.customclients]){const cc=idb[KEYS.customclients];setCustomClients(cc);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);});}
         if(idb["gmdv5:clientprofiles"]) setClientProfiles(idb["gmdv5:clientprofiles"]);
         if(idb[KEYS.addenda])     setAddenda(idb[KEYS.addenda]);
@@ -3030,7 +3037,7 @@ export default function App(){
             const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
             if(_vouchers){setVouchers(_vouchers);idbE.push([KEYS.vouchers,_vouchers]);}
             if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(bl);idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
-            if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);idbE.push([KEYS.botsettings,bs]);}
+            if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(bs);if(bs.token)sessionStorage.setItem('fabhub:bottoken',bs.token);idbE.push([KEYS.botsettings,bs]);}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
             if(_drfs){setDrfs(_drfs);idbE.push([KEYS.drfs,_drfs]);}
             const _inv=data.inventory?.length?data.inventory.map(invFromSb):null;
@@ -4525,8 +4532,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── BOT SETTINGS CRUD ────────────────────────────────────────────────────
   const saveBotSettings=async(data)=>{
     const n={...data};
+    // Guard: if the form's token field is blank but we already have a token, don't overwrite it
+    if(!n.token && botSettings.token) n.token=botSettings.token;
+    if(!n.token) n.token=sessionStorage.getItem('fabhub:bottoken')||"";
     setBotSettings(n);
-    // Store only chatIds in localStorage — never the bot token
+    // Cache token in sessionStorage — survives refresh within same tab, clears on browser close
+    if(n.token) sessionStorage.setItem('fabhub:bottoken',n.token);
+    // Store chatIds in localStorage (never the token — intentional security boundary)
     const localSafe={chatIds:n.chatIds,hideValueInBots:n.hideValueInBots};
     localStorage.setItem(KEYS.botsettings,JSON.stringify(localSafe));
     if(isSupabaseReady()){
@@ -4557,7 +4569,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           token=row.value.token;
           ids=row.value.chatIds;
           setBotSettings(row.value);
-          // Only cache chatIds locally — never the token
+          sessionStorage.setItem('fabhub:bottoken',token);
           localStorage.setItem(KEYS.botsettings,JSON.stringify({chatIds:row.value.chatIds,hideValueInBots:row.value.hideValueInBots}));
         }
       }catch{}
