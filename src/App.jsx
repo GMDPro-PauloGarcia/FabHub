@@ -4530,12 +4530,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const localSafe={chatIds:n.chatIds,hideValueInBots:n.hideValueInBots};
     localStorage.setItem(KEYS.botsettings,JSON.stringify(localSafe));
     if(isSupabaseReady()){
-      // Try update first; if no row exists, insert
-      const{data:existing}=await supabase.from('app_settings').select('key').eq('key','botsettings').maybeSingle();
-      if(existing){
-        await supabase.from('app_settings').update({value:n,updated_at:new Date().toISOString()}).eq('key','botsettings');
-      } else {
-        await supabase.from('app_settings').insert({key:'botsettings',value:n,updated_at:new Date().toISOString()});
+      try{
+        const{data:existing}=await supabase.from('app_settings').select('key').eq('key','botsettings').maybeSingle();
+        if(existing){
+          const{error}=await supabase.from('app_settings').update({value:n,updated_at:new Date().toISOString()}).eq('key','botsettings');
+          if(error) throw error;
+        } else {
+          const{error}=await supabase.from('app_settings').insert({key:'botsettings',value:n,updated_at:new Date().toISOString()});
+          if(error) throw error;
+        }
+      }catch(e){
+        toastEmit("Bot settings saved locally but failed to sync to server: "+(e?.message||e),"error");
       }
     }
   };
@@ -4641,6 +4646,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       createdBy:"System (Template)",
     }));
     upChecklist(cs=>[...cs,...items]);
+    if(isSupabaseReady()) items.forEach(item=>sbInsert('checklists',toSbChecklist(item)).catch(()=>{}));
   };
 
   const addPmUpdate=(projId,entryOrText,by)=>{
@@ -4655,9 +4661,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
   const addAddendum=(dealId,title,desc,requestedBy)=>{
-    const entry={id:uid(),title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
+    const entry={id:uid(),dealId,title,desc,requestedBy,date:today,status:"Pending",notifiedSales:false,notifiedOps:false};
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:[entry,...(d.addenda||[])]}:d));
     upProj(dealId,p=>({...p,addenda:[entry,...(p.addenda||[])]}));
+    if(isSupabaseReady()) sbSyncOne("addenda",entry,toSbAddendum);
     const deal=deals.find(d=>d.id===dealId);
     const msg=`⚠️ <b>Scope Change Logged</b>\n${title||"?"}\nProject: ${deal?.client||dealId||"?"}\nBy: ${requestedBy||"?"}\n\n📌 Sales must quote this to client before proceeding.`;
     sendTelegramNotification("sales",msg);
@@ -5424,7 +5431,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       return{...d,amountPaid:newPaid,paymentStatus:newStatus};
     }));
     const mo=new Date(date).getMonth();
-    upInfs(is=>[...is,{id:uid(),month:mo,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId}]);
+    const inf={id:uid(),month:mo,date:date||today,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId,dealId};
+    upInfs(is=>[...is,inf]);
+    if(isSupabaseReady()) sbUpsert("inflows",{id:inf.id,deal_id:dealId,date:inf.date,amount:amt,source:inf.source,note:note||""},"id").catch(()=>{});
   };
 
   const upProj=(id,fn)=>{
@@ -23819,6 +23828,11 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
   const[testing,setTesting]=React.useState(null);
   const[testResult,setTestResult]=React.useState({});
   const[saved,setSaved]=React.useState(false);
+
+  // Supabase loads the token asynchronously after mount — hydrate the form when it arrives
+  React.useEffect(()=>{
+    if(botSettings.token && !form.token) setForm(f=>({...f,token:botSettings.token}));
+  },[botSettings.token]);
 
   const CHANNELS=[
     {id:"general",         label:"🌐 General",          hint:"All-team announcements"},
