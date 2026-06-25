@@ -3495,7 +3495,7 @@ export default function App(){
   const upSwos      =useCallback(fn=>setSwos(p=>{const n=fn(p);persist(KEYS.swos,n);return n;}),[persist]);
 
   const addInventoryItem=(item)=>upInventory(iv=>{
-    const rec={...item,id:uid(),code:nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
+    const rec={...item,id:item.id||uid(),code:item.code||nextItemCode(iv),createdAt:today,createdBy:session?.name||role};
     if(isSupabaseReady()) sbUpsert('inventory_items',invToSb(rec),'id').catch(e=>console.warn("inv insert:",e.message));
     return[...iv,rec];
   });
@@ -10850,16 +10850,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const isPartial=Number(rxQty)<Number(receivingPr.qty);
                   const newStatus=isPartial?"Partially Delivered":"Delivered";
                   const noteStr=`${rxDrNo?`DR: ${rxDrNo} · `:""}Received ${rxQty} ${receivingPr.unit||""} by ${session?.name||"Warehouse"} on ${today}`;
-                  updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr,paymentStatus:"Pending Payment"});
+                  const unitCost=Number(receivingPr.actUnitCost||receivingPr.estUnitCost)||0;
+                  const recvAmt=Math.round(Number(rxQty)*unitCost*100)/100;
+                  const poNote=`${rxDrNo?`DR ${rxDrNo} · `:""}PO ${receivingPr.poNumber||receivingPr.id.slice(-6)} · ${receivingPr.supplier||""}`;
+                  // ── ACCOUNTING: receiving a delivery creates the supplier payable (Daily Payable expense).
+                  // Idempotent (skip exact same PR/amount/date), and we mark the PO "Payable Created" so it
+                  // does NOT also surface in the manual "POs Pending Payment" queue (no double-counting).
+                  const alreadyLogged=recvAmt>0&&exps.some(e=>e.fromPrId===receivingPr.id&&e.expDate===today&&Number(e.amount)===recvAmt);
+                  let paymentStatus="Pending Payment";
+                  if(recvAmt>0&&!alreadyLogged){
+                    const expRec={id:uid(),expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:receivingPr.category||"Materials",note:`${receivingPr.itemName||""}${receivingPr.poNumber?" — "+receivingPr.poNumber:""}`,payee:receivingPr.supplier||"",supplier:receivingPr.supplier||"",qty:Number(rxQty),pricePerQty:unitCost,amount:recvAmt,projectId:receivingPr.projectId||null,dealId:receivingPr.projectId||null,bankAccount:"",poRef:receivingPr.poNumber||"",receipt:rxDrNo?`DR ${rxDrNo}`:"",acctStatus:"For Payment",createdBy:session?.name||"",createdAt:today,fromPrId:receivingPr.id};
+                    upExps(es=>[...es,expRec]);
+                    if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(expRec),"id").catch(()=>{});
+                    paymentStatus="Payable Created";
+                  }
+                  updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr,paymentStatus});
                   sendTelegramNotification("procurement",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
                   sendTelegramNotification("warehouse",`📦 <b>Delivery ${isPartial?"Partial ":""} Confirmed</b>\n${receivingPr.itemName}\nQty: ${rxQty}/${receivingPr.qty} ${receivingPr.unit||""}\n${rxDrNo?`DR: ${rxDrNo}\n`:""}Received by: ${session?.name||"Warehouse"} · ${today}`);
+                  // ── INVENTORY: log stock-in. If the item isn't an inventory SKU yet, auto-create it so
+                  // the warehouse can always track what was received (no more silent, untracked deliveries).
                   const invMatch=inventory.find(i=>i.name?.toLowerCase()===receivingPr.itemName?.toLowerCase()||i.name?.toLowerCase().includes(receivingPr.itemName?.toLowerCase()));
                   if(invMatch){
-                    logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(rxQty),unitCost:Number(receivingPr.actUnitCost||receivingPr.estUnitCost)||0,projectId:receivingPr.projectId,notes:`${rxDrNo?`DR ${rxDrNo} · `:""}PO ${receivingPr.poNumber||receivingPr.id.slice(-6)} · ${receivingPr.supplier||""}`,date:today});
-                    toastEmit(`Stock updated: +${rxQty} ${receivingPr.unit||""} of ${invMatch.name}`,"success");
+                    logStockMove({itemId:invMatch.id,moveType:"IN — Delivery",qty:Number(rxQty),unitCost,projectId:receivingPr.projectId,notes:poNote,date:today});
                   } else {
-                    toastEmit(`Delivery recorded${isPartial?" (partial)":""}. Add "${receivingPr.itemName}" to Inventory to auto-track stock.`,"info");
+                    const newInvId=uid();
+                    addInventoryItem({id:newInvId,name:receivingPr.itemName||"Unnamed item",category:receivingPr.category||"Materials",unit:receivingPr.unit||"pcs",supplier:receivingPr.supplier||"",qtyOnHand:0,reorderPoint:0,avgCost:0,lastPurchasePrice:0,location:"Main Warehouse",status:"Active",notes:`Auto-created from ${receivingPr.poNumber||"PO"}`});
+                    logStockMove({itemId:newInvId,moveType:"IN — Delivery",qty:Number(rxQty),unitCost,projectId:receivingPr.projectId,notes:poNote,date:today});
                   }
+                  toastEmit(`✓ Delivery recorded${isPartial?" (partial)":""}${recvAmt>0&&!alreadyLogged?` · ₱${recvAmt.toLocaleString("en-PH")} payable created`:""} · stock updated`,"success");
                   setReceivingPr(null);
                 }}
                   style={{flex:1,background:rxQty&&Number(rxQty)>0?"#059669":"#e2e8f0",border:"none",borderRadius:9,padding:"11px 0",color:rxQty&&Number(rxQty)>0?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:800,fontSize:".88rem",cursor:rxQty&&Number(rxQty)>0?"pointer":"not-allowed"}}>
