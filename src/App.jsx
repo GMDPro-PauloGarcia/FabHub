@@ -3062,6 +3062,48 @@ export default function App(){
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
             if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);idbE.push([KEYS.projects,data.projs]);}
             console.log("\u2705 FabHub: Loaded from Supabase \u2014 "+(data.deals?.length||0)+" deals");
+            // Auto-sync: push any local records that Supabase is missing.
+            // This covers saves made while offline or before Supabase was ready.
+            setTimeout(()=>{
+              const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              const sbDealIds=new Set((data.deals||[]).map(d=>d.id));
+              const sbPrIds=new Set((data.prs||[]).map(r=>r.id));
+              const sbJoIds=new Set((data.jos||[]).map(j=>j.id));
+              const sbSwoIds=new Set((data.swos||[]).map(s=>s.id));
+              const sbMrIds=new Set((data.mreqs||[]).map(r=>r.id));
+              const sbBrIds=new Set((data.breqs||[]).map(r=>r.id));
+              // Read current local state via functional updater pattern (read-only)
+              setDeals(localDeals=>{
+                const missing=localDeals.filter(d=>uuidRe.test(d.id||"")&&!sbDealIds.has(d.id));
+                if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only deals to Supabase");missing.forEach(d=>sbSyncOne("deals",d,toSbDeal));}
+                return localDeals;
+              });
+              setPrs(localPrs=>{
+                const missing=localPrs.filter(r=>uuidRe.test(r.id||"")&&!sbPrIds.has(r.id));
+                if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only POs to Supabase");missing.forEach(r=>sbSyncOne("purchase_requests",r,toSbPR));}
+                return localPrs;
+              });
+              setJos(localJos=>{
+                const missing=localJos.filter(j=>uuidRe.test(j.id||"")&&!sbJoIds.has(j.id));
+                if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only JOs to Supabase");missing.forEach(j=>sbSyncOne("job_orders",j,toSbJO));}
+                return localJos;
+              });
+              setSwos(localSwos=>{
+                const missing=localSwos.filter(s=>uuidRe.test(s.id||"")&&!sbSwoIds.has(s.id));
+                if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only WOs to Supabase");missing.forEach(s=>sbSyncOne("subcon_work_orders",s,swoToSb));}
+                return localSwos;
+              });
+              setMreqs(localMreqs=>{
+                const missing=localMreqs.filter(r=>uuidRe.test(r.id||"")&&!sbMrIds.has(r.id));
+                if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only MRs to Supabase");missing.forEach(r=>sbSyncOne("material_requests",r,toSbMR));}
+                return localMreqs;
+              });
+              setBreqs(localBreqs=>{
+                const missing=localBreqs.filter(r=>uuidRe.test(r.id||"")&&!sbBrIds.has(r.id));
+                if(missing.length){console.info("[FabHub] Auto-syncing",missing.length,"local-only BRs to Supabase");missing.forEach(r=>sbSyncOne("budget_requests",r,toSbBR));}
+                return localBreqs;
+              });
+            },2000); // 2s delay \u2014 let all state settle before comparing
             try{
               const{data:aeRows,error:aeErr}=await supabase.from('ae_updates').select('*').order('created_at',{ascending:false}).limit(300);
               if(!aeErr&&aeRows?.length){
