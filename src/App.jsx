@@ -19636,6 +19636,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   // Company-wide stats
   const allBilled    =billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
   const allCollected =billings.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+  // Per-deal outstanding: floor each deal at 0 so overpayments don't offset other clients
+  const allOutstanding=(()=>{
+    const dealIds=[...new Set(billings.map(b=>b.dealId))];
+    return dealIds.reduce((total,did)=>{
+      const dms=billings.filter(m=>m.dealId===did&&m.status!=="Cancelled");
+      const billed=dms.reduce((s,m)=>s+n(m.amount),0);
+      const collected=dms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+      return total+Math.max(0,billed-collected);
+    },0);
+  })();
   const overdue      =billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
 
   const submitMS=()=>{
@@ -20064,7 +20074,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
         {[
           {l:"Total Billed",      v:fmt(allBilled),                c:"#3b82f6"},
           {l:"Total Collected",   v:fmt(allCollected),             c:"#059669"},
-          {l:"Outstanding",       v:fmt(Math.max(0,allBilled-allCollected)), c:allBilled>allCollected?"#ef4444":"#059669"},
+          {l:"Outstanding",       v:fmt(allOutstanding), c:allOutstanding>0?"#ef4444":"#059669"},
           {l:"Overdue Invoices",  v:overdue.length,                c:overdue.length>0?"#ef4444":"#94a3b8"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
