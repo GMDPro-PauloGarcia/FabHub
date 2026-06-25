@@ -5872,7 +5872,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const active=page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       return(
-        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);}}
+        <button key={id} onClick={()=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -6014,7 +6014,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const BadgeDot=({count})=>count>0?(
       <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(18px)",background:"#ef4444",color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:".6rem",fontWeight:800,lineHeight:1.2,minWidth:14,textAlign:"center"}}>{count>9?"9+":count}</span>
     ):null;
-    const navigate=(id)=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);if(id==="home")setFromHome(false);};
+    const navigate=(id)=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);if(id==="home")setFromHome(false);};
     // For Manager show fixed key tabs + More; others show first 4 + Me
     const primaryIds=role==="Manager"
       ? ["home","pipeline","projects","finance"]
@@ -9011,7 +9011,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{display:"flex",gap:4}}>
                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>✏</button>}
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
-                      {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
+                      {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
                       {(role==="Manager"||role==="Sales")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>}
                       {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete "+d.client+"?"))delDeal(d.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Delete">✕</button>}
                     </div>
@@ -9046,7 +9046,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Edit">✏</button>}
                 {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Set Client Price">₱</button>}
                 {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Update Client Price">₱✏</button>}
-                {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined,whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">{isMobile?"🧮":"🧮 BOQ"}</button>}
+                {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined,whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">{isMobile?"🧮":"🧮 BOQ"}</button>}
                 {(role==="Manager"||role==="Sales")
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Award Project">🏆</button>
                   :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Request Award">🏆</button>
@@ -11611,7 +11611,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="boq"){
     if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)}/></Wrap>);
     if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)}/></Wrap>);
-    return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>setBoqStandaloneId(id)} onOpenDeal={id=>setBoqDealId(id)} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discountedTotal:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
+    return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discountedTotal:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
   if(page==="coa") return(<Wrap><ChartOfAccountsView chartOfAccounts={chartOfAccounts} saveChartOfAccounts={saveChartOfAccounts} session={session} role={role}/></Wrap>);
@@ -25179,10 +25179,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   };
 
   const[selDeal,setSelDeal]=useState(initialDealId||"");
-  useEffect(()=>{if(initialDealId){setSelDeal(initialDealId);clearBoqDeal&&clearBoqDeal();}},[initialDealId]);
+  // NOTE: do NOT clear the parent's boqDealId/boqStandaloneId here — the route uses
+  // those ids as the mount condition for this component. Clearing them mid-mount would
+  // unmount the builder and bounce back to the BOQ list. Navigation resets them instead.
+  useEffect(()=>{if(initialDealId)setSelDeal(initialDealId);},[initialDealId]);
   // Standalone mode: a BOQ that isn't tied to a pipeline deal (saved to the shared standalone store)
   const[standaloneId,setStandaloneId]=useState(initialStandaloneId||null);
-  useEffect(()=>{if(initialStandaloneId){setStandaloneId(initialStandaloneId);setSelDeal("");clearBoqStandalone&&clearBoqStandalone();}},[initialStandaloneId]);
+  useEffect(()=>{if(initialStandaloneId){setStandaloneId(initialStandaloneId);setSelDeal("");}},[initialStandaloneId]);
   const[boqTitle,setBoqTitle]=useState("");
   const[location,setLocation]=useState("");
   const[quotationNo,setQuotationNo]=useState("");
