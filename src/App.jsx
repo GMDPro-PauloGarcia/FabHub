@@ -24830,6 +24830,8 @@ const GMD_DEFAULT_LIBRARY=[
 function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack}){
   // Start blank — sections are added per BOQ, no fixed/preset sections
   const BLANK_ITEMS=()=>[];
+  // Draft key used when no project is selected yet (work is migrated onto the deal once picked)
+  const BOQ_SCRATCH_KEY="__scratch__";
   const loadDraft=(dealId)=>{
     if(!dealId) return null;
     try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");return drafts[dealId]||null;}
@@ -24954,41 +24956,61 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
 
+  const applyBoqSrc=(src)=>{
+    if(src.items) setItems(src.items);
+    if(src.sections) setSections(src.sections);
+    if(src.boqTitle!==undefined) setBoqTitle(src.boqTitle);
+    if(src.location!==undefined) setLocation(src.location);
+    if(src.quotationNo!==undefined) setQuotationNo(src.quotationNo);
+    if(src.boqDate!==undefined) setBoqDate(src.boqDate);
+    if(src.vatEnabled!==undefined) setVatEnabled(src.vatEnabled);
+    if(src.discountedTotal!==undefined) setDiscountedTotal(src.discountedTotal);
+  };
+
   React.useEffect(()=>{
-    if(!selDeal) return;
+    if(!selDeal){
+      // No project selected yet — restore any scratch draft so in-progress work isn't lost
+      const scratch=loadDraft(BOQ_SCRATCH_KEY);
+      if(scratch){applyBoqSrc(scratch);setDraftSaved(true);}
+      return;
+    }
     // Prefer Supabase-stored BOQ (deal.boqData), fall back to localStorage draft
-    const src=deal?.boqData||loadDraft(selDeal);
-    if(src){
-      if(src.items) setItems(src.items);
-      if(src.sections) setSections(src.sections);
-      if(src.boqTitle!==undefined) setBoqTitle(src.boqTitle);
-      if(src.location!==undefined) setLocation(src.location);
-      if(src.quotationNo!==undefined) setQuotationNo(src.quotationNo);
-      if(src.boqDate!==undefined) setBoqDate(src.boqDate);
-      if(src.vatEnabled!==undefined) setVatEnabled(src.vatEnabled);
-      if(src.discountedTotal!==undefined) setDiscountedTotal(src.discountedTotal);
+    const existing=deal?.boqData||loadDraft(selDeal);
+    if(existing){
+      applyBoqSrc(existing);
       setDraftSaved(true);
     } else {
-      setItems(BLANK_ITEMS());
-      setSections([]);
-      setDiscountedTotal("");
+      // No saved BOQ for this deal yet — adopt a scratch draft built before a project was chosen
+      const scratch=loadDraft(BOQ_SCRATCH_KEY);
+      if(scratch&&((scratch.items?.length)||(scratch.sections?.length))){
+        applyBoqSrc(scratch);
+        deleteDraft(BOQ_SCRATCH_KEY);
+      } else {
+        setItems(BLANK_ITEMS());
+        setSections([]);
+        setDiscountedTotal("");
+        const d=deal;
+        if(d){
+          setLocation(d.location||"");
+          setBoqTitle(`${d.client||""}${d.contact?" · "+d.contact:""}${d.ceNo?" ("+d.ceNo+")":""}`);
+          if(d.ceNo) setQuotationNo(d.ceNo);
+        }
+      }
       setDraftSaved(false);
-      const d=deal;
-      if(!d) return;
-      setLocation(d.location||"");
-      setBoqTitle(`${d.client||""}${d.contact?" · "+d.contact:""}${d.ceNo?" ("+d.ceNo+")":""}`);
-      if(d.ceNo) setQuotationNo(d.ceNo);
     }
   },[selDeal]);
 
   React.useEffect(()=>{
-    if(!selDeal) return;
+    // Save under the deal key, or a scratch key when no project is selected yet,
+    // so a BOQ is never lost just because a project hasn't been picked.
+    const hasContent=items.length>0||sections.length>0;
+    if(!selDeal&&!hasContent) return;
     setDraftSaved(false);
     clearTimeout(draftTimerRef.current);
     draftTimerRef.current=setTimeout(()=>{
       const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal};
-      saveDraft(selDeal,boqData);
-      if(isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
+      saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
+      if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
       setDraftSaved(true);
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
@@ -25195,8 +25217,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {selDeal&&<button onClick={()=>{deleteDraft(selDeal);if(isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
-          {selDeal&&draftSaved&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ Draft saved</span>}
+          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate("");setVatEnabled(false);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
         </div>
       </div>
 
@@ -25281,11 +25303,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       )}
 
       {/* BOQ Table */}
-      {selDeal&&sections.length===0&&(
+      {sections.length===0&&(
         <div style={{background:"#fff",borderRadius:14,border:"1.5px dashed #cbd5e1",padding:"40px 24px",marginBottom:12,textAlign:"center"}}>
           <div style={{fontSize:"1.6rem",marginBottom:8}}>📋</div>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem",marginBottom:4}}>No sections yet</div>
-          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>Add a section to start building this BOQ. You decide which sections this quotation needs.</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>Add a section to start building this BOQ. You decide which sections this quotation needs.{!selDeal&&" Tip: pick a Project above to link this BOQ — your work is saved either way."}</div>
           <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
             <button onClick={()=>setAddSecOpen(true)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>✚ Add Section</button>
             <button onClick={loadStandardSections} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 18px",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Load GMD standard sections</button>
