@@ -2896,6 +2896,7 @@ export default function App(){
     }catch{return{token:"",chatIds:{general:"",ops:"",design:"",procurement:"",warehouse:"",sales:"",management:"",financialcontrol:""},hideValueInBots:false,poApprovers:""};}
   });
   const[customClients,setCustomClients]= useState([]);
+  const[customMembers,setCustomMembers]= useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:customMembers")||"[]");}catch{return[];}});  // extra team members typed in (beyond the built-in roster)
   const[clientProfiles,setClientProfiles]= useState({});  // keyed by client name
   const[budgets,     setBudgets]   = useState({});   // keyed by dealId
   const[session,  setSession] = useState(null);   // {userId, username, name, role}
@@ -3063,6 +3064,7 @@ export default function App(){
             if(_users){setUsers(_users);idbE.push([KEYS.users,_users]);}
             if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
+            if(data.settings?.custom_members){const cm=data.settings.custom_members;setCustomMembers(cm);localStorage.setItem("gmdv5:customMembers",JSON.stringify(cm));idbE.push(["gmdv5:customMembers",cm]);}
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
             if(data.settings?.standalone_boqs){const sbq=data.settings.standalone_boqs;setStandaloneBoqs(sbq);localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(sbq));idbE.push(["gmdv5:standaloneBoqs",sbq]);}
             if(data.settings?.chart_of_accounts){const coa=data.settings.chart_of_accounts;setChartOfAccounts(coa);localStorage.setItem("gmdv5:chartOfAccounts",JSON.stringify(coa));idbE.push(["gmdv5:chartOfAccounts",coa]);}
@@ -5857,7 +5859,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -5980,7 +5982,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -21519,16 +21521,17 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
                 {showTeamEdit?(
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {[["ae","AE (Account Executive)",SALES_TEAM],["pm1","PM 1",OPS_TEAM],["pm2","PM 2",OPS_TEAM],["pm3","PM 3",OPS_TEAM],["designer","Designer",DESIGN_MEMBERS],["coordinator","Coordinator",OPS_TEAM]].map(([k,l,opts])=>(
+                    {[["ae","AE (Account Executive)",SALES_TEAM],["pm1","PM 1",OPS_TEAM],["pm2","PM 2",OPS_TEAM],["pm3","PM 3",OPS_TEAM],["designer","Designer",DESIGN_MEMBERS],["coordinator","Coordinator",OPS_TEAM]].map(([k,l,opts])=>{
+                      const sugg=[...new Set([...opts,...customMembers])];
+                      return(
                       <div key={k}>
                         <label style={{fontSize:".72rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>{l}</label>
-                        <select value={teamForm[k]} onChange={e=>setTeamForm(f=>({...f,[k]:e.target.value}))}
-                          style={{width:"100%",padding:"7px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontFamily:"inherit",fontSize:".82rem",background:"#fff"}}>
-                          <option value="">— Not assigned —</option>
-                          {opts.map(m=><option key={m}>{m}</option>)}
-                        </select>
+                        <input list={`teamopts_${k}`} value={teamForm[k]} onChange={e=>setTeamForm(f=>({...f,[k]:e.target.value}))} placeholder="— Not assigned — (type to add a new name)"
+                          style={{width:"100%",padding:"7px 8px",borderRadius:6,border:"1.5px solid #e2e8f0",fontFamily:"inherit",fontSize:".82rem",background:"#fff",boxSizing:"border-box"}}/>
+                        <datalist id={`teamopts_${k}`}>{sugg.map(m=><option key={m} value={m}/>)}</datalist>
                       </div>
-                    ))}
+                      );
+                    })}
                     <div>
                       <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",padding:"8px 10px",background:"#fffbeb",borderRadius:8,border:"1.5px solid #fbbf24"}}>
                         <input type="checkbox" checked={!!teamForm.warehouseOnly} onChange={e=>setTeamForm(f=>({...f,warehouseOnly:e.target.checked}))} style={{width:16,height:16,cursor:"pointer"}}/>
@@ -21541,6 +21544,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     <div style={{display:"flex",gap:8,marginTop:4}}>
                       <button onClick={()=>{
                         const tf=teamForm;
+                        // Remember any names typed in that aren't in the built-in roster, so they become reusable suggestions everywhere.
+                        const known=new Set([...SALES_TEAM,...OPS_TEAM,...DESIGN_MEMBERS,...customMembers]);
+                        const fresh=[...new Set([tf.ae,tf.pm1,tf.pm2,tf.pm3,tf.designer,tf.coordinator].map(s=>(s||"").trim()).filter(s=>s&&!known.has(s)))];
+                        if(fresh.length){const nm=[...customMembers,...fresh];setCustomMembers(nm);try{localStorage.setItem("gmdv5:customMembers",JSON.stringify(nm));}catch{}if(isSupabaseReady())sbUpsert('app_settings',{key:'custom_members',value:nm,updated_at:new Date().toISOString()},'key').catch(()=>{});}
                         if(upPcards&&pcards[selDeal]) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouseOnly:tf.warehouseOnly||false}}));
                         if(isSupabaseReady()){
                           sbUpsert('project_cards',{deal_id:selDeal,ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false},'deal_id').catch(()=>{});
