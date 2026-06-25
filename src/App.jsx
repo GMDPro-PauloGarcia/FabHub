@@ -5552,7 +5552,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const proj=selProj?{...emptyProject(),...(projs[selProj]||{})}:null;
   const projDeal=selProj?deals.find(d=>d.id===selProj):null;
 
-  const openAddExp=(projId=null,date=null)=>{setExpForm({expDate:date||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",supplier:"",qty:"1",pricePerQty:"",tin:"",remarks:"",projectId:projId,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
+  const openAddExp=(projId=null,date=null)=>{
+    // Guard against being wired directly as an event handler (onClick={openAddExp}),
+    // which would pass a React event object in as projId/date and corrupt the form.
+    const pid=(projId&&typeof projId==="object")?null:projId;
+    const dt=(typeof date==="string")?date:null;
+    setExpForm({expDate:dt||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",supplier:"",qty:"1",pricePerQty:"",tin:"",remarks:"",projectId:pid,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
   const saveExp=(overrideData)=>{
     const data=overrideData||expForm;
@@ -11760,7 +11765,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Accounting logs · Finance triggers payment</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <Btn onClick={openAddExp}>+ Log Expense</Btn>
+          <Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>
           <button onClick={()=>{
             let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
             if(acctMonth) list=list.filter(e=>e.expDate===acctMonth);
