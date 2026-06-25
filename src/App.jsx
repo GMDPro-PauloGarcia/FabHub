@@ -4062,6 +4062,38 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         });
       }
     });
+    const blockerSub = sbSubscribe('blockers-rt','project_blockers',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setBlockers(bs=>bs.filter(b=>b.id!==oldRow.id));return;}
+      if(rec){
+        const item={id:rec.id,dealId:rec.deal_id,title:rec.title,dept:rec.dept||"Operations",detail:rec.detail||"",flaggedBy:rec.flagged_by||"",status:rec.status||"Open",createdAt:rec.created_at||"",resolvedBy:rec.resolved_by||null,resolvedAt:rec.resolved_at||null};
+        setBlockers(bs=>eventType==='UPDATE'?bs.map(b=>b.id===rec.id?{...b,...item}:b):bs.find(b=>b.id===rec.id)?bs:[item,...bs]);
+      }
+    });
+    const invSub = sbSubscribe('inv-rt','inventory_items',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setInventory(iv=>iv.filter(i=>i.id!==oldRow.id));return;}
+      if(rec){
+        const item=invFromSb(rec);
+        setInventory(iv=>eventType==='UPDATE'?iv.map(i=>i.id===rec.id?{...i,...item}:i):iv.find(i=>i.id===rec.id)?iv:[...iv,item]);
+      }
+    });
+    const stockSub = sbSubscribe('stock-rt','stock_movements',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setStocklog(sl=>sl.filter(m=>m.id!==oldRow.id));return;}
+      if(rec){
+        const item=moveFromSb(rec);
+        setStocklog(sl=>sl.find(m=>m.id===rec.id)?sl:[...sl,item]);
+      }
+    });
+    const drfSub = sbSubscribe('drfs-rt','design_requests',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setDrfs(ds=>ds.filter(d=>d.id!==oldRow.id));return;}
+      if(rec){
+        const item=drfFromSb(rec);
+        setDrfs(ds=>eventType==='UPDATE'?ds.map(d=>d.id===rec.id?{...d,...item}:d):ds.find(d=>d.id===rec.id)?ds:[item,...ds]);
+      }
+    });
     const pcardsTableSub = sbSubscribe('pcards-table-rt','project_cards',payload=>{
       const{eventType,new:rec}=payload;
       if(eventType==='DELETE'||!rec) return;
@@ -4091,6 +4123,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checkSub?.unsubscribe?.();
       swatchSub?.unsubscribe?.();
       aeUpdateSub?.unsubscribe?.();
+      blockerSub?.unsubscribe?.();
+      invSub?.unsubscribe?.();
+      stockSub?.unsubscribe?.();
+      drfSub?.unsubscribe?.();
       pcardsTableSub?.unsubscribe?.();
     };
   },[session?.userId]);
@@ -4631,6 +4667,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const updateAddendumStatus=(dealId,addId,status)=>{
     upDeals(ds=>ds.map(d=>d.id===dealId?{...d,addenda:(d.addenda||[]).map(a=>a.id===addId?{...a,status}:a)}:d));
+    if(isSupabaseReady()) sbUpdate('addenda',addId,{status,updated_at:new Date().toISOString()}).catch(()=>{});
   };
 
   // ── Checklist state ──────────────────────────────────────────────────────────
