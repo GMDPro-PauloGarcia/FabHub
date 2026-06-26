@@ -5708,7 +5708,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const payableToCheck=(id)=>{
     const p=payables.find(x=>x.id===id);
     if(!p) return;
-    if(p.cvId){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
+    if(p.cvId||p.status==="Check Issued"){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
     const cvId=uid();
     const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
     const cvRec={id:cvId,date:today,cvNo:nextNo,payee:p.vendor||"",amount:Number(p.amount||0),description:p.notes||p.invoiceRef||p.poNumber||"",projectId:p.projectId||null,bank:"",notes:p.notes||"",status:"Draft",poRef:p.poNumber||"",payableId:p.id,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:p.expenseId||null,createdBy:session?.name||"",createdAt:today};
@@ -10104,7 +10104,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
                         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:isOverdue?"#ef4444":"#0f172a"}}>{fmtM(p.amount)}</div>
                         <div style={{display:"flex",gap:6}}>
-                          {p.cvId
+                          {(p.cvId||p.status==="Check Issued")
                             ?<span style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",fontWeight:700,fontFamily:"inherit"}}>🖊 Check Issued</span>
                             :<button onClick={()=>payableToCheck(p.id)} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 By Check</button>}
                           <button onClick={()=>markPayablePaid(p.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#059669",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Paid</button>
@@ -10887,13 +10887,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const alreadyLogged=recvAmt>0&&exps.some(e=>e.fromPrId===receivingPr.id&&e.expDate===today&&Number(e.amount)===recvAmt);
                   let paymentStatus="Pending Payment";
                   if(recvAmt>0&&!isStock&&!alreadyLogged){
-                    const expRec={id:uid(),expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:receivingPr.category||"Materials",note:`${receivingPr.itemName||""}${receivingPr.poNumber?" — "+receivingPr.poNumber:""}`,payee:receivingPr.supplier||"",supplier:receivingPr.supplier||"",qty:Number(rxQty),pricePerQty:unitCost,amount:recvAmt,projectId:sProjId,dealId:sProjId,bankAccount:"",poRef:receivingPr.poNumber||"",receipt:rxDrNo?`DR ${rxDrNo}`:"",acctStatus:"Logged",createdBy:session?.name||"",createdAt:today,fromPrId:receivingPr.id};
+                    const expId=uid();const payId=uid();
+                    // payableId links the expense to its payable so it isn't offered for re-routing
+                    // (which would create a duplicate payable/CV for the same PO).
+                    const expRec={id:expId,expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:receivingPr.category||"Materials",note:`${receivingPr.itemName||""}${receivingPr.poNumber?" — "+receivingPr.poNumber:""}`,payee:receivingPr.supplier||"",supplier:receivingPr.supplier||"",qty:Number(rxQty),pricePerQty:unitCost,amount:recvAmt,projectId:sProjId,dealId:sProjId,bankAccount:"",poRef:receivingPr.poNumber||"",receipt:rxDrNo?`DR ${rxDrNo}`:"",acctStatus:"Logged",payableId:payId,createdBy:session?.name||"",createdAt:today,fromPrId:receivingPr.id};
                     upExps(es=>[...es,expRec]);
                     if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(expRec),"id").catch(()=>{});
                     // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
                     // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
                     const supTerms=(suppliers.find(s=>(s.companyName||"").toLowerCase()===(receivingPr.supplier||"").toLowerCase())||{}).paymentTerms||"";
-                    const payRec={id:uid(),vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:dueDateFromTerms(supTerms,today),projectId:sProjId,category:"Supplier",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expRec.id,createdAt:today,createdBy:session?.name||""};
+                    const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:dueDateFromTerms(supTerms,today),projectId:sProjId,category:"Supplier",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
                     upPayables(ps=>[payRec,...ps]);
                     if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
                     paymentStatus="Expense Logged";
@@ -12383,7 +12386,9 @@ First few:
                         {allExps.map((e,i)=>{
                           const proj=wonDeals.find(d=>d.id===e.projectId);
                           const st=e.acctStatus||"Logged";
-                          const isLogged=st==="Logged";
+                          // A logged expense that already has a payable/CV is in the payment pipeline — don't offer re-routing (would duplicate).
+                          const isLogged=st==="Logged"&&!e.payableId&&!e.cvId;
+                          const inPipeline=st==="Logged"&&(e.payableId||e.cvId);
                           return(
                             <tr key={e.id} style={{borderTop:"1px solid #f1f5f9",background:i%2===0?"#fff":"#fafafa"}}>
                               <td style={{padding:"9px 12px",color:"#475569",whiteSpace:"nowrap"}}>{e.expDate||"—"}</td>
@@ -12395,6 +12400,7 @@ First few:
                               <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
                                 {isLogged&&(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route</button>}
                                 {isLogged&&role==="Accounting"&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Route to</button>}
+                                {inPipeline&&<span style={{fontSize:".68rem",color:"#c2410c",fontWeight:700}}>📤 In payables</span>}
                                 {st==="For Payment"&&<span style={{fontSize:".68rem",color:"#3b82f6",fontWeight:700}}>⏳ Pending</span>}
                                 {st==="Paid"&&<span style={{fontSize:".68rem",color:"#10b981",fontWeight:700}}>✓ Paid</span>}
                               </td>
