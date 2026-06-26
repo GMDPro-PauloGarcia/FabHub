@@ -2989,14 +2989,25 @@ export default function App(){
       if(!isSupabaseReady()){ setSbReady(true); return; }
       if(isSupabaseReady()){
         try{
-          // Ensure we have a Supabase session (needed for RLS policies on new devices)
-          const {data:{session:sbSess}}=await supabase.auth.getSession();
+          // Ensure a VALID Supabase session (RLS-protected tables return empty without one —
+          // this is the usual cause of "one device shows data, another shows nothing").
+          let {data:{session:sbSess}}=await supabase.auth.getSession();
+          if(sbSess){
+            // Self-heal a stale/expired token (e.g. on a phone that hasn't been opened in a while):
+            // refresh it; if that fails, drop it so we sign in fresh below.
+            const {error:refErr}=await supabase.auth.refreshSession();
+            if(refErr){ await supabase.auth.signOut().catch(()=>{}); sbSess=null; }
+          }
           if(!sbSess){
-            // Try anonymous sign-in first; if not enabled fall back gracefully
-            const {error:anonErr}=await supabase.auth.signInAnonymously();
-            if(anonErr) console.warn("Anon sign-in failed (may not be enabled):",anonErr.message);
+            let {error:anonErr}=await supabase.auth.signInAnonymously();
+            if(anonErr){
+              await new Promise(r=>setTimeout(r,1000));               // brief backoff, then one retry
+              ({error:anonErr}=await supabase.auth.signInAnonymously());
+              if(anonErr) console.warn("Anon sign-in failed after retry:",anonErr.message);
+            }
           }
           const data = await sbLoadAll();
+          if(!data) toastEmit&&toastEmit("⚠️ Couldn't load from the server. Check your connection, then tap the 🔄 sync button.","error",12000);
           // Diagnostic — visible in browser console AND stored for the sync banner
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
@@ -5959,15 +5970,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:8}}>
                 <span onClick={async()=>{
                   if(!isSupabaseReady()) return;
+                  setSync("saving");
+                  // Heal the session (fixes a device that's showing no data due to a stale/expired
+                  // token blocked by RLS), then do a full reload so EVERYTHING re-fetches cleanly.
                   try{
-                    const data=await sbLoadAll();
-                    if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",stage:normalizeStage(d.stage)})));
-                    if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})));
-                    if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
-                    setSync("saved");
-                  }catch(e){setSync("error");}
+                    let {data:{session:s}}=await supabase.auth.getSession();
+                    if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
+                    if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
+                  }catch(e){}
+                  window.location.reload();
                 }}
-                title="Click to sync latest data from server"
+                title="Re-sync: reconnect to the server and reload all data"
                 style={{fontSize:".62rem",cursor:"pointer",userSelect:"none"}}>
                 {sync==="saving"?<span style={{color:"#f59e0b"}}>saving…</span>:sync!=="saved"?<span style={{color:"#ef4444"}}>⚠ error</span>:<span style={{color:"#10b981"}}>🔄</span>}
               </span>
@@ -11289,6 +11302,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{fontSize:".78rem",color:"#94a3b8",marginTop:1}}>Logged in as <strong>{session?.username}</strong> · {role}</div>
           </div>
         </div>
+        {isSupabaseReady()&&(
+          <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:20}}>
+            <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:2}}>🔄 Data Sync</div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginBottom:10}}>If this device is missing data that shows on another device, reconnect to the server and reload everything.</div>
+            <button onClick={async()=>{
+              try{
+                let {data:{session:s}}=await supabase.auth.getSession();
+                if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
+                if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
+              }catch(e){}
+              window.location.reload();
+            }} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🔄 Reload from Cloud</button>
+          </div>
+        )}
         <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog}/>
       </div>
     </Wrap>
