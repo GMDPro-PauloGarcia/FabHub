@@ -6173,15 +6173,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const SyncBanner=sbReady&&deals.length===0&&isSupabaseReady()?(
     <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#fef2f2",borderBottom:"2px solid #fca5a5",padding:"10px 20px",display:"flex",alignItems:"center",gap:12,justifyContent:"center",fontSize:".82rem",fontFamily:"'Segoe UI',sans-serif"}}>
       <span style={{color:"#991b1b",fontWeight:700}}>⚠ Data not loaded from server.</span>
-      <span style={{color:"#b91c1c"}}>Supabase returned 0 deals. This is usually an RLS or session issue.</span>
+      <span style={{color:"#b91c1c"}}>Couldn't read your data — usually a sign-in/session issue. If you're on a phone, open in <strong>Chrome/Safari</strong> (not an in-app browser), then Retry.</span>
       <button disabled={syncRetry} onClick={async()=>{
         setSyncRetry(true);
-        const {data:{session:s}}=await supabase.auth.getSession();
-        console.info("[FabHub] Manual sync — Supabase session:",s?.user?.id||"none");
+        // Re-establish the session BEFORE reloading — a missing/stale anonymous session under RLS
+        // is the usual reason reads come back empty on one device but not others.
+        try{
+          let {data:{session:s}}=await supabase.auth.getSession();
+          if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
+          if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
+          ({data:{session:s}}=await supabase.auth.getSession());
+          console.info("[FabHub] Manual sync — session:",s?.user?.id||"NONE");
+          if(!s) toastEmit("⚠️ Still couldn't sign in to the server on this device — try Chrome/Safari.","error",10000);
+        }catch(e){console.warn("retry auth:",e?.message);}
         await loadAllFromSupabase();
         setSyncRetry(false);
-        toastEmit("Sync complete — deals: "+deals.length);
-      }} style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:syncRetry?"not-allowed":"pointer"}}>
+      }} style={{background:"#dc2626",color:"#fff",border:"none",borderRadius:6,padding:"5px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:syncRetry?"not-allowed":"pointer",whiteSpace:"nowrap"}}>
         {syncRetry?"Syncing…":"↺ Retry Sync"}
       </button>
     </div>
