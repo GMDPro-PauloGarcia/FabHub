@@ -5703,6 +5703,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidDate:today}:p));
     if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_date:today},"id").catch(()=>{});
   };
+  // Route a floated payable into Check Payables: create a linked Draft check voucher.
+  // The CV carries the vendor/amount/PO; on Release it marks this payable Paid (see releaseCv).
+  const payableToCheck=(id)=>{
+    const p=payables.find(x=>x.id===id);
+    if(!p) return;
+    if(p.cvId){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
+    const cvId=uid();
+    const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+    const cvRec={id:cvId,date:today,cvNo:nextNo,payee:p.vendor||"",amount:Number(p.amount||0),description:p.notes||p.invoiceRef||p.poNumber||"",projectId:p.projectId||null,bank:"",notes:p.notes||"",status:"Draft",poRef:p.poNumber||"",payableId:p.id,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:p.expenseId||null,createdBy:session?.name||"",createdAt:today};
+    upVouchers(vs=>[cvRec,...vs]);
+    if(isSupabaseReady()) sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});
+    upPayables(ps=>ps.map(x=>x.id===id?{...x,status:"Check Issued",cvId}:x));
+    if(isSupabaseReady()) sbUpsert("payables",{id,status:"Check Issued"},"id").catch(()=>{});
+    toastEmit(`✅ Routed to Check Payables — ${nextNo} (Draft). Set the bank, then Submit → Release.`,"success");
+    setPage("checkvouchers");
+  };
   const delPayable=(id)=>{
     upPayables(ps=>ps.filter(p=>p.id!==id));
     if(isSupabaseReady()) sbDelete("payables",id).catch(()=>{});
@@ -10088,6 +10104,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
                         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:isOverdue?"#ef4444":"#0f172a"}}>{fmtM(p.amount)}</div>
                         <div style={{display:"flex",gap:6}}>
+                          {p.cvId
+                            ?<span style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",fontWeight:700,fontFamily:"inherit"}}>🖊 Check Issued</span>
+                            :<button onClick={()=>payableToCheck(p.id)} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 By Check</button>}
                           <button onClick={()=>markPayablePaid(p.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#059669",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Paid</button>
                           <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                           <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
