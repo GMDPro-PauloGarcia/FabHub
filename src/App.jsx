@@ -174,6 +174,10 @@ const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',q
 const moveFromSb=(r)=>({...r,itemId:r.item_id,moveType:r.move_type,unitCost:Number(r.unit_cost)||0,dealId:r.deal_id,recordedBy:r.recorded_by});
 const supToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",email:s.email||"",materials:s.materials||"",contact_nos:s.contactNos||s.contact_nos||"",contact_person:s.contactPerson||s.contact_person||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",tin_no:s.tinNo||s.tin_no||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,due_date:p.dueDate||null,project_id:p.projectId||null,category:p.category||"Supplier",invoice_ref:p.invoiceRef||"",notes:p.notes||"",status:p.status||"Unpaid",paid_date:p.paidDate||null,created_at:p.createdAt||null,created_by:p.createdBy||"",po_number:p.poNumber||"",po_id:p.poId||null,expense_id:p.expenseId||null});
+// Compute a payment due date from a supplier's free-text terms (e.g. "Net 30", "30 days", "COD").
+// A number → that many days from `fromISO`; COD/cash/none → due immediately (the from date).
+const addDaysISO=(fromISO,days)=>{const b=fromISO?new Date(fromISO+"T00:00:00"):new Date();const d=new Date(b.getTime()+(Number(days)||0)*86400000);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowerCase();const m=t.match(/(\d+)\s*(day|d\b)?/);const days=(/\b(cod|cash|cwo)\b/.test(t)||!m)?0:parseInt(m[1],10);return addDaysISO(fromISO,days);};
 const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
 const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 const cvToSb=v=>({id:v.id,cv_no:v.cvNo||"",date:v.date||null,payee:v.payee||"",amount:Number(v.amount)||0,description:v.description||"",project_id:v.projectId||null,bank:v.bank||"",notes:v.notes||"",status:v.status||"Draft",released_by:v.releasedBy||null,released_date:v.releasedDate||null,created_by:v.createdBy||"",created_at:v.createdAt||null,po_ref:v.poRef||"",payable_id:v.payableId||null,check_no:v.checkNo||"",cleared_date:v.clearedDate||null,is_cleared:v.isCleared||false});
@@ -10867,6 +10871,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const expRec={id:uid(),expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:receivingPr.category||"Materials",note:`${receivingPr.itemName||""}${receivingPr.poNumber?" — "+receivingPr.poNumber:""}`,payee:receivingPr.supplier||"",supplier:receivingPr.supplier||"",qty:Number(rxQty),pricePerQty:unitCost,amount:recvAmt,projectId:sProjId,dealId:sProjId,bankAccount:"",poRef:receivingPr.poNumber||"",receipt:rxDrNo?`DR ${rxDrNo}`:"",acctStatus:"Logged",createdBy:session?.name||"",createdAt:today,fromPrId:receivingPr.id};
                     upExps(es=>[...es,expRec]);
                     if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(expRec),"id").catch(()=>{});
+                    // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
+                    // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
+                    const supTerms=(suppliers.find(s=>(s.companyName||"").toLowerCase()===(receivingPr.supplier||"").toLowerCase())||{}).paymentTerms||"";
+                    const payRec={id:uid(),vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:dueDateFromTerms(supTerms,today),projectId:sProjId,category:"Supplier",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expRec.id,createdAt:today,createdBy:session?.name||""};
+                    upPayables(ps=>[payRec,...ps]);
+                    if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
                     paymentStatus="Expense Logged";
                   }
                   updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr,paymentStatus});
@@ -12103,6 +12113,7 @@ First few:
                             <td style={{padding:"9px 14px",fontSize:".8rem",fontWeight:600,color:"#0f172a",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                               <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{v.payee||"—"}</div>
                               {v.sourceExpenseId&&<div style={{fontSize:".62rem",fontWeight:700,color:"#059669",marginTop:1}}>✓ From Accounting</div>}
+                              {v.status==="Released"&&!v.isCleared&&v.releasedDate&&<div style={{fontSize:".62rem",fontWeight:700,color:"#ea580c",marginTop:1}}>🏦 Expect clearance by {addDaysISO(v.releasedDate,3)}</div>}
                             </td>
                             <td style={{padding:"9px 14px",fontSize:".78rem",color:"#475569",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.description||"—"}</td>
                             <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#0f172a",fontFamily:"monospace",whiteSpace:"nowrap"}}>{fmt(v.amount)}</td>
