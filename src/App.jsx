@@ -177,7 +177,7 @@ const payableToSb=p=>({id:p.id,vendor:p.vendor||"",amount:Number(p.amount)||0,du
 // Compute a payment due date from a supplier's free-text terms (e.g. "Net 30", "30 days", "COD").
 // A number → that many days from `fromISO`; COD/cash/none → due immediately (the from date).
 const addDaysISO=(fromISO,days)=>{const b=fromISO?new Date(fromISO+"T00:00:00"):new Date();const d=new Date(b.getTime()+(Number(days)||0)*86400000);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
-const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowerCase();const m=t.match(/(\d+)\s*(day|d\b)?/);const days=(/\b(cod|cash|cwo)\b/.test(t)||!m)?0:parseInt(m[1],10);return addDaysISO(fromISO,days);};
+const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowerCase();if(/\b(cod|cash|cwo)\b/.test(t))return addDaysISO(fromISO,0);const m=t.match(/(\d+)/);if(!m)return "";return addDaysISO(fromISO,parseInt(m[1],10));};
 const loanToSb=l=>({id:l.id,lender:l.lender||"",type:l.type||"Bank Loan",principal:Number(l.principal)||0,disbursed_date:l.disbursedDate||null,term_months:Number(l.termMonths)||null,interest_rate:Number(l.interestRate)||0,monthly_payment:Number(l.monthlyPayment)||0,notes:l.notes||"",created_at:l.createdAt||null});
 const subconToSb=s=>({company_name:s.companyName||s.company_name||"",rating:s.rating||"",specialty:s.specialty||"",strengths_weaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contact_no:s.contactNo||s.contact_no||"",payment_terms:s.paymentTerms||s.payment_terms||"",address:s.address||"",remarks:s.remarks||"",rate_structure:s.rateStructure||s.rate_structure||"",payment_structure:s.paymentStructure||s.payment_structure||"",location_note:s.locationNote||s.location_note||"",notes:s.notes||"",status:s.status||"Active",created_by:s.createdBy||s.created_by||""});
 const cvToSb=v=>({id:v.id,cv_no:v.cvNo||"",date:v.date||null,payee:v.payee||"",amount:Number(v.amount)||0,description:v.description||"",project_id:v.projectId||null,bank:v.bank||"",notes:v.notes||"",status:v.status||"Draft",released_by:v.releasedBy||null,released_date:v.releasedDate||null,created_by:v.createdBy||"",created_at:v.createdAt||null,po_ref:v.poRef||"",payable_id:v.payableId||null,check_no:v.checkNo||"",cleared_date:v.clearedDate||null,is_cleared:v.isCleared||false});
@@ -5662,6 +5662,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upPayables(ps=>ps.map(p=>p.id===cv.payableId?{...p,status:"Paid",paidDate:today}:p));
       if(isSupabaseReady()) sbUpsert("payables",{id:cv.payableId,status:"Paid",paid_date:today},"id").catch(()=>{});
     }
+    // Reflect payment on the originating expense so the log shows "Paid" rather than "Logged".
+    const paidExpId=cv?.sourceExpenseId||(payables.find(p=>p.id===cv?.payableId)||{}).expenseId;
+    if(paidExpId) markExpensePaid(paidExpId);
   };
   const clearCv=id=>{
     const cv=vouchers.find(v=>v.id===id);
@@ -5699,9 +5702,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     setPayModal(false);setEditPayId(null);setPayForm({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
   };
+  // Mark a logged expense as Paid (so the expense log reflects payment instead of staying "Logged").
+  const markExpensePaid=(expId)=>{
+    if(!expId) return;
+    upExps(es=>{const next=es.map(e=>e.id===expId?{...e,acctStatus:"Paid"}:e);const ex=next.find(e=>e.id===expId);if(ex&&isSupabaseReady())sbUpsert("expenses",toSbExpense(ex),"id").catch(()=>{});return next;});
+  };
   const markPayablePaid=(id)=>{
+    const p=payables.find(x=>x.id===id);
     upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidDate:today}:p));
     if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_date:today},"id").catch(()=>{});
+    if(p?.expenseId) markExpensePaid(p.expenseId);
   };
   // Route a floated payable into Check Payables: create a linked Draft check voucher.
   // The CV carries the vendor/amount/PO; on Release it marks this payable Paid (see releaseCv).
