@@ -3069,6 +3069,7 @@ export default function App(){
             if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
             if(data.settings?.custom_members){const cm=data.settings.custom_members;setCustomMembers(cm);localStorage.setItem("gmdv5:customMembers",JSON.stringify(cm));idbE.push(["gmdv5:customMembers",cm]);}
+            if(data.settings?.evouchers){const ev=data.settings.evouchers;setEvouchers(ev);idbE.push([KEYS.evouchers,ev]);}
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
             if(data.settings?.standalone_boqs){const sbq=data.settings.standalone_boqs;setStandaloneBoqs(sbq);localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(sbq));idbE.push(["gmdv5:standaloneBoqs",sbq]);}
             if(data.settings?.chart_of_accounts){const coa=data.settings.chart_of_accounts;setChartOfAccounts(coa);localStorage.setItem("gmdv5:chartOfAccounts",JSON.stringify(coa));idbE.push(["gmdv5:chartOfAccounts",coa]);}
@@ -3446,7 +3447,7 @@ export default function App(){
 
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
   const upCashPos  =useCallback(fn=>setCashPos(p=>{const n=fn(p);persist(KEYS.cashPos,n);return n;}),[persist]);
-  const upEvouchers=useCallback(fn=>setEvouchers(p=>{const n=fn(p);persist(KEYS.evouchers,n);return n;}),[persist]);
+  const upEvouchers=useCallback(fn=>setEvouchers(p=>{const n=fn(p);persist(KEYS.evouchers,n);if(isSupabaseReady())sbUpsert('app_settings',{key:'evouchers',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;}),[persist]);
   const nextEvNo=()=>{const nums=evouchers.map(e=>parseInt((e.evNo||"").replace(/[^0-9]/g,"")||0)).filter(n=>!isNaN(n)&&n>0);const nx=nums.length?Math.max(...nums)+1:1;return`EV-${new Date().getFullYear()}-${String(nx).padStart(3,"0")}`;};
   const nextLqNo=()=>{const nums=evouchers.map(e=>parseInt((e.lqNo||"").replace(/[^0-9]/g,"")||0)).filter(n=>!isNaN(n)&&n>0);const nx=nums.length?Math.max(...nums)+1:1;return`LQ-${String(nx).padStart(6,"0")}`;};
   const addEV=(ev)=>{const ne={...ev,id:uid(),evNo:nextEvNo(),lqNo:nextLqNo(),status:ev.status||"Draft",createdBy:session?.name||"",createdAt:new Date().toISOString(),items:ev.items||[]};upEvouchers(es=>[...es,ne]);};
@@ -4218,7 +4219,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const addMilestone=(ms)=>{
     const rec={...ms,id:uid(),createdDate:today};
     upBillings(bs=>[...bs,rec]);
-    if(isSupabaseReady()) sbSyncOne("billing_milestones",rec,toSbBilling);
+    if(!isSupabaseReady()) toastEmit("⚠️ Billing saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
+    else if(rec.dealId&&!isUUID(rec.dealId)) toastEmit("⚠️ This billing can't sync — the project has an invalid ID. Saved on this device only.","warning",9000);
+    else sbSyncOne("billing_milestones",rec,toSbBilling);
     // Fix 4: sync deal.invoiced = sum of all non-cancelled milestones
     if(rec.dealId){
       const allMs=[...billings,rec].filter(b=>b.dealId===rec.dealId&&b.status!=='Cancelled');
@@ -4281,6 +4284,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const milestone=billings.find(b=>b.id===msId);
     const dealId=milestone?.dealId;
     const payDeal=dealId?deals.find(d=>d.id===dealId):null;
+    if(!isSupabaseReady()) toastEmit("⚠️ Collection saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
     const msTx=calcTax(milestone?.amount||0,milestone?.receiptType||milestone?.receipt_type||"OR",milestone?.withholding??false);
     const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
