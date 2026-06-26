@@ -2987,6 +2987,9 @@ export default function App(){
 
       // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
       if(!isSupabaseReady()){ setSbReady(true); return; }
+      // Safety net: never leave the login screen stuck on "Connecting…" — enable it within 6s even
+      // if the auth/session call is slow or hangs (login still works via direct query / defaults).
+      setTimeout(()=>setSbReady(true),6000);
       if(isSupabaseReady()){
         try{
           // Ensure a VALID Supabase session (RLS-protected tables return empty without one —
@@ -3006,6 +3009,10 @@ export default function App(){
               if(anonErr) console.warn("Anon sign-in failed after retry:",anonErr.message);
             }
           }
+          // Login only needs the session (it queries the single user directly / falls back to
+          // defaults) — NOT the full data load. Enable login NOW; load the bulk data below in the
+          // background so the sign-in screen isn't blocked behind 30+ table fetches.
+          setSbReady(true);
           const data = await sbLoadAll();
           if(!data) toastEmit&&toastEmit("⚠️ Couldn't load from the server. Check your connection, then tap the 🔄 sync button.","error",12000);
           // Diagnostic — visible in browser console AND stored for the sync banner
