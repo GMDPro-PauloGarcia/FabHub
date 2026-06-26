@@ -4325,13 +4325,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
     // Sync deal.amountPaid so Finance KPIs reflect billing collections
     if(dealId){
-      upDeals(ds=>ds.map(d=>{
-        if(d.id!==dealId) return d;
-        const newPaid=Number(d.amountPaid||0)+Number(payment.amount||0);
-        const refVal=Number(d.invoiced||d.value||0);
-        const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
-        return{...d,amountPaid:newPaid,paymentStatus:newStatus};
-      }));
+      const d0=deals.find(d=>d.id===dealId);
+      const newPaid=Number(d0?.amountPaid||0)+Number(payment.amount||0);
+      const refVal=Number(d0?.invoiced||d0?.value||0);
+      const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
+      upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
+      if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
     if(payment.bank&&payment.amount){
       const pDate=payment.date||today;
@@ -4376,12 +4375,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const newPaid=updatedBillings
         .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
         .reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
-      upDeals(ds=>ds.map(d=>{
-        if(d.id!==dealId) return d;
-        const refVal=Number(d.invoiced||d.value||0);
-        const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
-        return{...d,amountPaid:newPaid,paymentStatus:newStatus};
-      }));
+      const d0=deals.find(d=>d.id===dealId);
+      const refVal=Number(d0?.invoiced||d0?.value||0);
+      const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
+      upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
+      if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
     // Reverse the cashPositions update
     if(payment.bank&&payment.amount){
@@ -5554,12 +5552,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const logPayment=({dealId,amount,note,date})=>{
     const amt=Number(amount);
-    upDeals(ds=>ds.map(d=>{
-      if(d.id!==dealId) return d;
-      const newPaid=d.amountPaid+amt;
-      const newStatus=newPaid>=d.invoiced?"Paid":newPaid>0?"Deposited":"Unpaid";
-      return{...d,amountPaid:newPaid,paymentStatus:newStatus};
-    }));
+    const d0=deals.find(d=>d.id===dealId);
+    const newPaid=Number(d0?.amountPaid||0)+amt;
+    const newStatus=newPaid>=Number(d0?.invoiced||0)?"Paid":newPaid>0?"Deposited":"Unpaid";
+    upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
+    // Persist the collection to the server so Finance/Billing reflect it on every device.
+    if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     const mo=new Date(date).getMonth();
     const inf={id:uid(),month:mo,date:date||today,source:deals.find(d=>d.id===dealId)?.client||"",amount:amt,note,projectId:dealId,dealId};
     upInfs(is=>[...is,inf]);
