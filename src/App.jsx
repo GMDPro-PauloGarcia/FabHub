@@ -2987,32 +2987,16 @@ export default function App(){
 
       // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
       if(!isSupabaseReady()){ setSbReady(true); return; }
-      // Safety net: never leave the login screen stuck on "Connecting…" — enable it within 6s even
-      // if the auth/session call is slow or hangs (login still works via direct query / defaults).
-      setTimeout(()=>setSbReady(true),6000);
+      // RLS allows the public anon key to read/write directly (policies grant the `anon` role),
+      // so data access does NOT require a per-device Supabase session. We enable the app
+      // immediately and load with the anon key — this is what makes every device/browser sync
+      // reliably (no session = no stale-token / rate-limit / in-app-browser failures).
+      setSbReady(true);
+      // Best-effort session in the BACKGROUND (not required for data access) — keeps the
+      // authenticated role / realtime warm without blocking or churning anonymous users.
+      supabase.auth.getSession().then(({data:{session:s}})=>{ if(!s) supabase.auth.signInAnonymously().catch(()=>{}); }).catch(()=>{});
       if(isSupabaseReady()){
         try{
-          // Ensure a VALID Supabase session (RLS-protected tables return empty without one —
-          // this is the usual cause of "one device shows data, another shows nothing").
-          let {data:{session:sbSess}}=await supabase.auth.getSession();
-          if(sbSess){
-            // Self-heal a stale/expired token (e.g. on a phone that hasn't been opened in a while):
-            // refresh it; if that fails, drop it so we sign in fresh below.
-            const {error:refErr}=await supabase.auth.refreshSession();
-            if(refErr){ await supabase.auth.signOut().catch(()=>{}); sbSess=null; }
-          }
-          if(!sbSess){
-            let {error:anonErr}=await supabase.auth.signInAnonymously();
-            if(anonErr){
-              await new Promise(r=>setTimeout(r,1000));               // brief backoff, then one retry
-              ({error:anonErr}=await supabase.auth.signInAnonymously());
-              if(anonErr) console.warn("Anon sign-in failed after retry:",anonErr.message);
-            }
-          }
-          // Login only needs the session (it queries the single user directly / falls back to
-          // defaults) — NOT the full data load. Enable login NOW; load the bulk data below in the
-          // background so the sign-in screen isn't blocked behind 30+ table fetches.
-          setSbReady(true);
           const data = await sbLoadAll();
           if(!data) toastEmit&&toastEmit("⚠️ Couldn't load from the server. Check your connection, then tap the 🔄 sync button.","error",12000);
           // Diagnostic — visible in browser console AND stored for the sync banner
