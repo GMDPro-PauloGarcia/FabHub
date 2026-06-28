@@ -16681,51 +16681,59 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   const f=(k,v)=>{setSaved(false);setForm(p=>({...p,[k]:v}));};
   const n=v=>Number(String(v).replace(/,/g,""))||0;
 
+  // Split project costs into Committed (open POs not yet delivered) and Actual
+  // (delivered POs + logged expenses). Committed = money you've ordered but not
+  // yet spent; Actual = money actually gone out. Delivered POs already turned
+  // into an expense (matched by PO ref) are not double-counted.
+  const costFor=useCallback((dealId)=>{
+    const committed={Materials:0,Labor:0,Overhead:0,Subcon:0};
+    const actual={Materials:0,Labor:0,Overhead:0,Subcon:0};
+    const projExps=exps.filter(e=>e.projectId===dealId);
+    const expensedPORefs=new Set(projExps.map(e=>e.poRef).filter(Boolean));
+    prs.filter(p=>p.projectId===dealId&&p.status!=="Cancelled").forEach(p=>{
+      const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+      const cat=committed[p.budgetCategory]!==undefined?p.budgetCategory:"Materials";
+      if(p.status==="Delivered"){
+        if(!(p.poNumber&&expensedPORefs.has(p.poNumber))) actual[cat]+=cost;
+      } else {
+        committed[cat]+=cost;
+      }
+    });
+    projExps.forEach(e=>{
+      const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
+      actual[cat]+=n(e.amount);
+    });
+    return {committed,actual};
+  },[prs,exps]);
+
   // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
     return wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").map(d=>{
       const b=budgets[d.id]||emptyBudget();
-      const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
-      prs.filter(p=>p.projectId===d.id&&p.status!=="Cancelled").forEach(p=>{
-        const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-        const cat=p.budgetCategory||"Materials";
-        if(result[cat]!==undefined) result[cat]+=cost;
-      });
-      exps.filter(e=>e.projectId===d.id).forEach(e=>{
-        const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
-        result[cat]+=n(e.amount);
-      });
+      const {committed,actual}=costFor(d.id);
       const totalBudget=BUDGET_CATS.reduce((s,c)=>s+n(b[c]),0);
-      const totalActual=BUDGET_CATS.reduce((s,c)=>s+result[c],0);
+      const totalActual=BUDGET_CATS.reduce((s,c)=>s+actual[c],0);
+      const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+committed[c],0);
+      const totalProjected=totalActual+totalCommitted;
       const contractVal=n(d.value)||0;
-      const pctUsed=totalBudget>0?Math.round(totalActual/totalBudget*100):0;
-      const grossMargin=contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):null;
-      const isOver=totalBudget>0&&totalActual>totalBudget;
+      const pctUsed=totalBudget>0?Math.round(totalProjected/totalBudget*100):0;
+      const grossMargin=contractVal>0?Math.round((contractVal-totalProjected)/contractVal*100):null;
+      const isOver=totalBudget>0&&totalProjected>totalBudget;
       const hasBudget=totalBudget>0;
-      return{d,b,actuals:result,totalBudget,totalActual,contractVal,pctUsed,grossMargin,isOver,hasBudget};
+      return{d,b,actuals:actual,committed,totalBudget,totalActual,totalCommitted,totalProjected,contractVal,pctUsed,grossMargin,isOver,hasBudget};
     });
-  },[wonDeals,budgets,prs,exps]);
+  },[wonDeals,budgets,costFor]);
 
-  // Actuals for the selected deal (detail view)
-  const actuals = useMemo(()=>{
-    const result={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").forEach(p=>{
-      const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-      const cat=p.budgetCategory||"Materials";
-      if(result[cat]!==undefined) result[cat]+=cost;
-    });
-    exps.filter(e=>e.projectId===selDeal).forEach(e=>{
-      const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
-      result[cat]+=n(e.amount);
-    });
-    return result;
-  },[prs,exps,selDeal]);
+  // Committed / actual for the selected deal (detail view)
+  const {committed,actual:actuals} = useMemo(()=>costFor(selDeal),[costFor,selDeal]);
 
   const totalBudget = BUDGET_CATS.reduce((s,c)=>s+n(form[c]),0);
   const totalActual = BUDGET_CATS.reduce((s,c)=>s+actuals[c],0);
+  const totalCommitted = BUDGET_CATS.reduce((s,c)=>s+committed[c],0);
+  const totalProjected = totalActual+totalCommitted;
   const contractVal = n(deal?.value)||0;
-  const grossMargin = contractVal>0?Math.round((contractVal-totalActual)/contractVal*100):0;
-  const budgetUsed  = totalBudget>0?Math.round(totalActual/totalBudget*100):0;
+  const grossMargin = contractVal>0?Math.round((contractVal-totalProjected)/contractVal*100):0;
+  const budgetUsed  = totalBudget>0?Math.round(totalProjected/totalBudget*100):0;
   const linkedPRs   = prs.filter(p=>p.projectId===selDeal&&p.status!=="Cancelled").length;
   const linkedExps  = exps.filter(e=>e.projectId===selDeal).length;
 
@@ -16734,6 +16742,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   const noBudgetCount=allProjectData.filter(p=>!p.hasBudget).length;
   const totalAllBudget=allProjectData.reduce((s,p)=>s+p.totalBudget,0);
   const totalAllActual=allProjectData.reduce((s,p)=>s+p.totalActual,0);
+  const totalAllCommitted=allProjectData.reduce((s,p)=>s+p.totalCommitted,0);
 
   // ── CARD GRID VIEW ───────────────────────────────────────────────────────────
   if(!selDeal) return(
@@ -16744,11 +16753,12 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
       </div>
 
       {/* Summary KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
-          {l:"Active Projects",  v:allProjectData.length,                  c:"#0f172a"},
           {l:"Total Budget Set", v:fmtPHP(totalAllBudget),                 c:"#3b82f6"},
-          {l:"Total Actual Spend",v:fmtPHP(totalAllActual),                c:totalAllActual>totalAllBudget&&totalAllBudget>0?"#ef4444":"#10b981"},
+          {l:"Committed (open POs)",v:fmtPHP(totalAllCommitted),          c:"#a16207"},
+          {l:"Actual Spend",     v:fmtPHP(totalAllActual),                c:totalAllActual>totalAllBudget&&totalAllBudget>0?"#ef4444":"#10b981"},
+          {l:"Budget Remaining", v:fmtPHP(Math.max(0,totalAllBudget-totalAllActual-totalAllCommitted)), c:(totalAllBudget-totalAllActual-totalAllCommitted)<0?"#ef4444":"#059669"},
           {l:"Over Budget",      v:overBudgetCount,                        c:overBudgetCount>0?"#ef4444":"#059669"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
@@ -16774,7 +16784,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
       {/* Project Cards Grid */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(320px,1fr))",gap:14}}>
-        {allProjectData.map(({d,actuals:acts,totalBudget:tb,totalActual:ta,contractVal:cv,pctUsed,grossMargin:gm,isOver,hasBudget})=>{
+        {allProjectData.map(({d,actuals:acts,committed:cmt,totalBudget:tb,totalActual:ta,totalCommitted:tcm,contractVal:cv,pctUsed,grossMargin:gm,isOver,hasBudget})=>{
           const healthClr=isOver?"#ef4444":!hasBudget?"#94a3b8":pctUsed>80?"#f59e0b":"#059669";
           const healthLabel=isOver?"Over Budget":!hasBudget?"No Budget":pctUsed>80?"At Risk":"On Track";
           return(
@@ -16796,20 +16806,24 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
               {/* Budget bars */}
               {hasBudget?(
                 <>
-                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
-                    <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".5px"}}>Budget</div>
-                      <div style={{fontWeight:700,color:"#3b82f6",fontSize:".85rem",lineHeight:1.2}}>{fmtPHP(tb)}</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:10}}>
+                    <div style={{background:"#f8fafc",borderRadius:8,padding:"7px 9px"}}>
+                      <div style={{fontSize:".55rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".3px"}}>Budget</div>
+                      <div style={{fontWeight:700,color:"#3b82f6",fontSize:".78rem",lineHeight:1.2}}>{fmtPHP(tb)}</div>
                     </div>
-                    <div style={{background:"#f8fafc",borderRadius:8,padding:"8px 10px"}}>
-                      <div style={{fontSize:".58rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".5px"}}>Actual Spend</div>
-                      <div style={{fontWeight:700,color:isOver?"#ef4444":"#10b981",fontSize:".85rem",lineHeight:1.2}}>{fmtPHP(ta)}</div>
+                    <div style={{background:"#fffbeb",borderRadius:8,padding:"7px 9px"}}>
+                      <div style={{fontSize:".55rem",textTransform:"uppercase",color:"#a16207",marginBottom:2,letterSpacing:".3px"}}>Committed</div>
+                      <div style={{fontWeight:700,color:"#a16207",fontSize:".78rem",lineHeight:1.2}}>{fmtPHP(tcm)}</div>
+                    </div>
+                    <div style={{background:"#f8fafc",borderRadius:8,padding:"7px 9px"}}>
+                      <div style={{fontSize:".55rem",textTransform:"uppercase",color:"#94a3b8",marginBottom:2,letterSpacing:".3px"}}>Actual</div>
+                      <div style={{fontWeight:700,color:isOver?"#ef4444":"#10b981",fontSize:".78rem",lineHeight:1.2}}>{fmtPHP(ta)}</div>
                     </div>
                   </div>
                   {/* Progress bar */}
                   <div style={{marginBottom:8}}>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:".65rem",color:"#94a3b8",marginBottom:3}}>
-                      <span>{pctUsed}% of budget used</span>
+                      <span>{pctUsed}% committed+spent</span>
                       {gm!==null&&<span style={{color:gm>=20?"#059669":gm>=10?"#f59e0b":"#ef4444",fontWeight:700}}>{gm}% margin</span>}
                     </div>
                     <div style={{height:6,background:"#f1f5f9",borderRadius:3,overflow:"hidden"}}>
@@ -16820,7 +16834,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
                   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                     {BUDGET_CATS.map(cat=>{
                       const bcat=Number((budgets[d.id]||{})[cat]||0);
-                      const acat=acts[cat];
+                      const acat=acts[cat]+(cmt[cat]||0);
                       const cpct=bcat>0?Math.round(acat/bcat*100):0;
                       const cc=acat>bcat&&bcat>0?"#ef4444":cpct>80?"#f59e0b":BUDGET_CAT_CLR[cat];
                       return bcat>0?(
@@ -16864,19 +16878,20 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
           Currently: <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> · <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
         </div>
       )}
-      {totalActual>0&&(
+      {(totalActual>0||totalCommitted>0)&&(
         <div style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:10,padding:"8px 14px",marginBottom:14,fontSize:".78rem",color:"#065f46"}}>
-          📊 Actual spend from <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> + <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project.
+          📊 From <strong>{linkedPRs} PO{linkedPRs!==1?"s":""}</strong> + <strong>{linkedExps} expense{linkedExps!==1?"s":""}</strong> linked to this project. <strong>Committed</strong> = open POs not yet delivered; <strong>Actual</strong> = delivered POs + logged expenses.
         </div>
       )}
 
       {/* KPIs */}
-      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:20}}>
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
         {[
-          {l:"Contract Value",  v:fmtPHP(contractVal),       c:"#0f172a"},
           {l:"Total Budget",    v:totalBudget>0?fmtPHP(totalBudget):"Not set", c:"#3b82f6"},
+          {l:"Committed (open POs)",v:fmtPHP(totalCommitted), c:"#a16207"},
           {l:"Actual Spend",    v:fmtPHP(totalActual),       c:totalActual>totalBudget&&totalBudget>0?"#ef4444":"#10b981"},
-          {l:"Gross Margin",    v:contractVal>0?grossMargin+"%":"—", c:grossMargin>=20?"#059669":grossMargin>=10?"#f59e0b":"#ef4444"},
+          {l:"Budget Remaining",v:totalBudget>0?fmtPHP(totalBudget-totalProjected):"—", c:(totalBudget-totalProjected)<0?"#ef4444":"#059669"},
+          {l:"Projected Margin",v:contractVal>0?grossMargin+"%":"—", c:grossMargin>=20?"#059669":grossMargin>=10?"#f59e0b":"#ef4444"},
         ].map(({l,v,c})=>(
           <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
             <div style={{fontWeight:800,fontSize:"1rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
@@ -16887,18 +16902,20 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
 
       {/* Budget table */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
-        <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:12}}>
-          {["Category","Budget (₱)","Actual Spend","Variance","% Used"].map(h=>(
-            <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
+        <div style={{display:"grid",gridTemplateColumns:"120px 1fr 1fr 1fr 1fr 70px",background:"#1e293b",padding:"10px 16px",gap:10}}>
+          {["Category","Budget (₱)","Committed","Actual","Remaining","% Used"].map(h=>(
+            <div key={h} style={{fontSize:".66rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
           ))}
         </div>
         {BUDGET_CATS.map((cat,i)=>{
           const bgt=n(form[cat]);
           const act=actuals[cat];
-          const variance=bgt-act;
-          const pct=bgt>0?Math.round(act/bgt*100):act>0?999:0;
+          const com=committed[cat]||0;
+          const projected=act+com;
+          const variance=bgt-projected;
+          const pct=bgt>0?Math.round(projected/bgt*100):projected>0?999:0;
           return(
-            <div key={cat} style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
+            <div key={cat} style={{display:"grid",gridTemplateColumns:"120px 1fr 1fr 1fr 1fr 70px",padding:"12px 16px",gap:10,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center"}}>
               <div style={{display:"flex",alignItems:"center",gap:8}}>
                 <span style={{width:10,height:10,borderRadius:"50%",background:BUDGET_CAT_CLR[cat],flexShrink:0,display:"inline-block"}}/>
                 <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{cat}</span>
@@ -16910,7 +16927,8 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
                   placeholder="0.00"
                   style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",width:"100%",boxSizing:"border-box",textAlign:"right",outline:"none"}}/>
               </div>
-              <div style={{fontWeight:600,color:act>bgt&&bgt>0?"#ef4444":"#10b981",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(act)}</div>
+              <div style={{fontWeight:600,color:"#a16207",fontSize:".82rem",textAlign:"right"}}>{com>0?fmtPHP(com):"—"}</div>
+              <div style={{fontWeight:600,color:projected>bgt&&bgt>0?"#ef4444":"#10b981",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(act)}</div>
               <div style={{fontWeight:600,color:variance<0?"#ef4444":"#059669",fontSize:".82rem",textAlign:"right"}}>
                 {bgt>0?(variance<0?"▼ ":"▲ ")+fmtPHP(Math.abs(variance)):"—"}
               </div>
@@ -16928,12 +16946,13 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
           );
         })}
         {/* Totals row */}
-        <div style={{display:"grid",gridTemplateColumns:"140px 1fr 1fr 1fr 80px",padding:"12px 16px",gap:12,background:"#1e293b",alignItems:"center"}}>
+        <div style={{display:"grid",gridTemplateColumns:"120px 1fr 1fr 1fr 1fr 70px",padding:"12px 16px",gap:10,background:"#1e293b",alignItems:"center"}}>
           <div style={{fontWeight:700,color:"#f59e0b",fontSize:".85rem"}}>TOTAL</div>
           <div style={{fontWeight:800,color:"#fff",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalBudget)}</div>
-          <div style={{fontWeight:800,color:totalActual>totalBudget?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalActual)}</div>
-          <div style={{fontWeight:800,color:totalBudget-totalActual<0?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>
-            {totalBudget>0?(totalBudget-totalActual<0?"▼ ":"▲ ")+fmtPHP(Math.abs(totalBudget-totalActual)):"—"}
+          <div style={{fontWeight:800,color:"#fcd34d",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalCommitted)}</div>
+          <div style={{fontWeight:800,color:totalProjected>totalBudget?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>{fmtPHP(totalActual)}</div>
+          <div style={{fontWeight:800,color:totalBudget-totalProjected<0?"#f87171":"#4ade80",fontSize:".82rem",textAlign:"right"}}>
+            {totalBudget>0?(totalBudget-totalProjected<0?"▼ ":"▲ ")+fmtPHP(Math.abs(totalBudget-totalProjected)):"—"}
           </div>
           <div style={{textAlign:"center",fontWeight:800,color:budgetUsed>100?"#f87171":"#4ade80",fontSize:".85rem"}}>{budgetUsed}%</div>
         </div>
@@ -16952,8 +16971,8 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
           {saved?"✓ Saved":"Save Budget"}
         </button>
         {budget.savedAt&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>Last saved {new Date(budget.savedAt).toLocaleDateString("en-PH")}</span>}
-        {totalActual>totalBudget&&totalBudget>0&&(
-          <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>⚠️ Over budget by {fmtPHP(totalActual-totalBudget)}</span>
+        {totalProjected>totalBudget&&totalBudget>0&&(
+          <span style={{fontSize:".78rem",color:"#ef4444",fontWeight:700}}>⚠️ Committed + actual exceeds budget by {fmtPHP(totalProjected-totalBudget)}</span>
         )}
       </div>
     </div>
