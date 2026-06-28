@@ -12212,6 +12212,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         onOpenPayTerms={id=>setPayTermsModal(id)}
         initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
         cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}
+        projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
   );
@@ -20121,7 +20122,7 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -20183,6 +20184,31 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||nextInvoiceNo(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setShowForm(false);
+  };
+  // Turn the WIP under-billed figure into an invoice: bill the work completed
+  // (contract × % complete) that hasn't been billed yet. Prefills the milestone
+  // form so finance can review receipt type / retention before submitting.
+  const progressClaim=()=>{
+    if(!deal) return;
+    const p=projs?.[selDeal];
+    const pct=p&&overallProg?Math.max(0,Math.min(100,overallProg(p))):0;
+    const contract=n(deal.value);
+    if(!contract){toastEmit&&toastEmit("Set a contract value for this project first.","error");return;}
+    const earned=Math.round(contract*pct/100);
+    const billed=billings.filter(b=>b.dealId===selDeal&&b.status!=="Cancelled").reduce((s,b)=>s+n(b.amount),0);
+    const claimable=Math.round((earned-billed)*100)/100;
+    if(claimable<=0){toastEmit&&toastEmit(`Nothing to claim — ${pct}% complete = ₱${earned.toLocaleString("en-PH")} earned, already billed ₱${billed.toLocaleString("en-PH")}.`,"info",7000);return;}
+    const ret=Number(deal.paymentTerms?.retention)||0;
+    const claimNo=billings.filter(b=>b.dealId===selDeal&&/progress claim/i.test(b.name||"")).length+1;
+    setMsForm({
+      name:`Progress Claim #${claimNo} — ${pct}% complete`,
+      description:`Work completed to ${pct}%: earned ₱${earned.toLocaleString("en-PH")} − previously billed ₱${billed.toLocaleString("en-PH")} = ₱${claimable.toLocaleString("en-PH")}.${ret?` Retention ${ret}% may be withheld per terms.`:""}`,
+      amount:String(claimable),
+      invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",
+      receiptType:deal.receiptType||null,withholding:deal.withholding??null,
+    });
+    setShowForm(true);
+    toastEmit&&toastEmit(`Progress claim drafted: ₱${claimable.toLocaleString("en-PH")} (review & save).`,"success",6000);
   };
   const submitPay=()=>{
     if(!payForm.amount||!showPay) return;
@@ -20808,10 +20834,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           {canEdit&&(
             <div style={{marginBottom:12}}>
               {!showForm?(
-                <button onClick={()=>setShowForm(true)}
-                  style={{background:"#1e293b",border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
-                  + Add Milestone
-                </button>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <button onClick={()=>setShowForm(true)}
+                    style={{background:"#1e293b",border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
+                    + Add Milestone
+                  </button>
+                  <button onClick={progressClaim} title="Bill the work completed (contract × % complete) that hasn't been billed yet"
+                    style={{background:"#0e7490",border:"none",borderRadius:9,padding:"8px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>
+                    📐 Progress Claim
+                  </button>
+                </div>
               ):(
                 <div style={{background:"#f8fafc",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:8}}>
                   <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".88rem"}}>New Billing Milestone</div>
