@@ -18,29 +18,96 @@ let _onWriteError = null
 export const setSbErrorHandler = (fn) => { _onWriteError = fn }
 const _writeFailed = (op, table, msg) => { try { _onWriteError && _onWriteError(op, table, msg) } catch (_) {} }
 
+// ── OFFLINE WRITE QUEUE ──────────────────────────────────────────────────────
+// When a write fails (offline, transient network, RLS hiccup) the operation is
+// persisted to localStorage and replayed automatically on reconnect / focus /
+// interval, so changes that didn't reach the server are recovered instead of
+// just warned about. A badge in the UI shows how many writes are still pending.
+const QKEY = 'fabhub_sync_queue'
+let _queue = []
+try { _queue = JSON.parse(localStorage.getItem(QKEY) || '[]') } catch (_) { _queue = [] }
+let _queueListeners = []
+let _seq = 0
+const _saveQueue = () => {
+  try { localStorage.setItem(QKEY, JSON.stringify(_queue)) } catch (_) {}
+  _queueListeners.forEach(fn => { try { fn(_queue.length) } catch (_) {} })
+}
+export const sbQueueSize = () => _queue.length
+export const sbOnQueueChange = (fn) => { _queueListeners.push(fn); return () => { _queueListeners = _queueListeners.filter(f => f !== fn) } }
+const _enqueue = (op) => { _queue.push({ qid: `${Date.now()}_${_seq++}`, attempts: 0, ...op }); _saveQueue() }
+
+const _replay = async (op) => {
+  try {
+    let error
+    if (op.kind === 'insert' || op.kind === 'upsert') {
+      // Replay inserts as upserts when an id is present so a lost-response retry
+      // can't create a duplicate; fall back to insert only when there's no id.
+      if (op.data && op.data.id != null) error = (await supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' })).error
+      else error = (await supabase.from(op.table).insert(op.data)).error
+    } else if (op.kind === 'update') {
+      error = (await supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id)).error
+    } else if (op.kind === 'delete') {
+      error = (await supabase.from(op.table).delete().eq('id', op.id)).error
+    } else if (op.kind === 'deleteWhere') {
+      let q = supabase.from(op.table).delete()
+      if (op.op === 'in') q = q.in(op.column, op.value)
+      else q = q.eq(op.column, op.value)
+      error = (await q).error
+    }
+    if (error) { console.warn(`sync replay ${op.kind} ${op.table}:`, error.message); return false }
+    return true
+  } catch (e) { console.warn(`sync replay threw ${op.kind} ${op.table}:`, e.message); return false }
+}
+
+let _flushing = false
+export const sbFlushQueue = async () => {
+  if (!supabase || _flushing || !_queue.length) return
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+  _flushing = true
+  try {
+    while (_queue.length) {
+      const op = _queue[0]
+      const ok = await _replay(op)
+      if (ok) { _queue.shift(); _saveQueue() }
+      else {
+        op.attempts = (op.attempts || 0) + 1
+        if (op.attempts >= 8) { console.error(`sync queue: dropping op after 8 tries — ${op.kind} ${op.table}`); _queue.shift() }
+        _saveQueue()
+        if (op.attempts < 8) break // preserve order; retry whole queue later
+      }
+    }
+  } finally { _flushing = false }
+}
+
+// Auto-flush on reconnect and on a slow heartbeat while anything is pending.
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => { sbFlushQueue() })
+  setInterval(() => { if (_queue.length) sbFlushQueue() }, 45000)
+}
+
 export const sbInsert = async (table, data) => {
   if (!supabase) return null
   const { data: result, error } = await supabase.from(table).insert(data).select().single()
-  if (error) { console.error(`SB INSERT ${table}:`, error.message); _writeFailed('insert', table, error.message) }
+  if (error) { console.error(`SB INSERT ${table}:`, error.message); _writeFailed('insert', table, error.message); _enqueue({ kind: 'insert', table, data }) }
   return result
 }
 
 export const sbUpdate = async (table, id, data) => {
   if (!supabase) return
   const { error } = await supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id)
-  if (error) { console.error(`SB UPDATE ${table}:`, error.message); _writeFailed('update', table, error.message) }
+  if (error) { console.error(`SB UPDATE ${table}:`, error.message); _writeFailed('update', table, error.message); _enqueue({ kind: 'update', table, id, data }) }
 }
 
 export const sbUpsert = async (table, data, conflictCol = 'id') => {
   if (!supabase) return
   const { error } = await supabase.from(table).upsert(data, { onConflict: conflictCol })
-  if (error) { console.error(`SB UPSERT ${table}:`, error.message); _writeFailed('upsert', table, error.message) }
+  if (error) { console.error(`SB UPSERT ${table}:`, error.message); _writeFailed('upsert', table, error.message); _enqueue({ kind: 'upsert', table, data, conflictCol }) }
 }
 
 export const sbDelete = async (table, id) => {
   if (!supabase) return
   const { error } = await supabase.from(table).delete().eq('id', id)
-  if (error) { console.error(`SB DELETE ${table}:`, error.message); _writeFailed('delete', table, error.message) }
+  if (error) { console.error(`SB DELETE ${table}:`, error.message); _writeFailed('delete', table, error.message); _enqueue({ kind: 'delete', table, id }) }
 }
 
 // Conditional delete (delete-where) that, like sbDelete, reports failures
@@ -54,7 +121,12 @@ export const sbDeleteWhere = async (table, column, value, op = 'eq') => {
   else if (op === 'not_null') q = q.not(column, 'is', null)
   else q = q.eq(column, value)
   const { error } = await q
-  if (error) { console.error(`SB DELETE ${table} where ${column}:`, error.message); _writeFailed('delete', table, error.message) }
+  if (error) {
+    console.error(`SB DELETE ${table} where ${column}:`, error.message); _writeFailed('delete', table, error.message)
+    // Only re-queue targeted deletes; never replay bulk admin wipes (gte/not_null)
+    // later, which could remove data added after the fact.
+    if (op === 'eq' || op === 'in') _enqueue({ kind: 'deleteWhere', table, column, value, op })
+  }
 }
 
 export const sbList = async (table, opts = {}) => {

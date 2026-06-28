@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -3263,6 +3263,18 @@ export default function App(){
     return ()=>setSbErrorHandler(null);
   },[]);
 
+  // Offline write queue: track how many writes are still pending and keep
+  // retrying them on mount / focus / reconnect until they reach the server.
+  const[pendingSync,setPendingSync]=useState(sbQueueSize());
+  useEffect(()=>{
+    const off=sbOnQueueChange(n=>setPendingSync(n));
+    const tryFlush=()=>{ if(isSupabaseReady()) sbFlushQueue(); };
+    tryFlush();
+    window.addEventListener("focus",tryFlush);
+    window.addEventListener("online",tryFlush);
+    return ()=>{ off(); window.removeEventListener("focus",tryFlush); window.removeEventListener("online",tryFlush); };
+  },[]);
+
   // Auto-refresh when user switches back to FabHub tab/app
   useEffect(()=>{
     let lastRefresh=0;
@@ -6378,11 +6390,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             .hide-mobile{display:none!important}
             .card-stack{flex-direction:column!important}
           }
+          @keyframes fhspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
         `}</style>
         {!isMobile&&<Nav/>}
         <MobileHeader/>
         <Toaster/>
         {!isOnline&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#1e293b",color:"#fcd34d",padding:"8px 16px",textAlign:"center",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>⚠️ You're offline — changes are saved locally and will sync when you reconnect.</div>}
+        {pendingSync>0&&(
+          <div onClick={()=>{toastEmit("Retrying sync…","info",2000);sbFlushQueue();}} title="Some changes haven't reached the server yet. Tap to retry now."
+            style={{position:"fixed",bottom:isMobile?80:18,right:18,zIndex:2100,background:"#b45309",color:"#fff",padding:"8px 14px",borderRadius:24,fontSize:".76rem",fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(180,83,9,.35)",display:"flex",alignItems:"center",gap:7}}>
+            <span style={{display:"inline-block",animation:"fhspin 1.1s linear infinite"}}>⟳</span>
+            {pendingSync} change{pendingSync!==1?"s":""} pending sync — tap to retry
+          </div>
+        )}
         {SyncBanner}
         <div style={{maxWidth:isMobile?undefined:1140,margin:"0 auto",padding:isMobile?"10px 12px":"22px 24px",paddingTop:isMobile?56:undefined,paddingBottom:isMobile?72:undefined}} className="fi">
           {!isMobile&&!alreadyWrapped&&(
