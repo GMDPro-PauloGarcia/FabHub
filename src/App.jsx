@@ -11100,7 +11100,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     if(!item) return;
                     if(remaining<0){if(!window.confirm(`Only ${item.qtyOnHand} ${item.unit} on hand. Release ${fabForm.qty} anyway?`)) return;}
                     const notesStr=[fabForm.requestedBy?`Requested by: ${fabForm.requestedBy}`:"",fabForm.notes].filter(Boolean).join(" · ");
-                    logStockMove({itemId:fabForm.itemId,moveType:"OUT — Released for Fabrication",qty:Number(fabForm.qty),unitCost:0,projectId:fabForm.projectId||"",notes:notesStr,date:fabForm.date||today});
+                    if(!logStockMove({itemId:fabForm.itemId,moveType:"OUT — Released for Fabrication",qty:Number(fabForm.qty),unitCost:0,projectId:fabForm.projectId||"",notes:notesStr,date:fabForm.date||today})) return;
                     const deal=fabForm.projectId?wonDeals.find(d=>d.id===fabForm.projectId):null;
                     toastEmit(`🔨 Released ${fabForm.qty} ${item.unit} of ${item.name} to fab floor${deal?` — ${deal.client}`:""}`,"success");
                     setFabModal(false);
@@ -23313,7 +23313,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 disabled={!dispatchForm.qty||!dispatchForm.itemId}
                 onClick={()=>{
                   if(!dispatchForm.qty||!dispatchForm.itemId) return;
-                  logStockMove({itemId:dispatchForm.itemId,moveType:"OUT — Used in Project",qty:Number(dispatchForm.qty),projectId:dispatchForm.projectId||null,dealId:dispatchForm.projectId||null,notes:dispatchForm.notes||(dispatchModal.poNumber?"PO "+dispatchModal.poNumber:"Dispatched"),date:today,recordedBy:session?.name||role});
+                  if(!logStockMove({itemId:dispatchForm.itemId,moveType:"OUT — Used in Project",qty:Number(dispatchForm.qty),projectId:dispatchForm.projectId||null,dealId:dispatchForm.projectId||null,notes:dispatchForm.notes||(dispatchModal.poNumber?"PO "+dispatchModal.poNumber:"Dispatched"),date:today,recordedBy:session?.name||role})) return;
                   setDispatchModal(null);
                 }}
                 style={{flex:1,padding:"9px",background:(!dispatchForm.qty||!dispatchForm.itemId)?"#cbd5e1":"#f97316",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:(!dispatchForm.qty||!dispatchForm.itemId)?"not-allowed":"pointer"}}>
