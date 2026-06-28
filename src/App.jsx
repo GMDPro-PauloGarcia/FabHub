@@ -156,6 +156,28 @@ const calcTax = (base, receiptType="OR", withholding=false) => {
   const netReceivable = gross - ewt;                    // what GMD actually receives
   return { base:b, vat, gross, ewt, netReceivable };
 };
+// Purchase-side tax breakdown for a supplier cost (input VAT + EWT withheld).
+// gross = VAT-inclusive amount on the supplier invoice. If vatable, 12% is
+// embedded: net = gross/1.12, inputVat = gross − net (creditable against output
+// VAT). EWT is withheld from the supplier on the net (VAT-exclusive) amount.
+const calcInputTax = (gross, vatable=false, ewtRate=0) => {
+  const g = Number(gross)||0;
+  const net = vatable ? Math.round(g/1.12*100)/100 : g;
+  const inputVat = Math.round((g-net)*100)/100;
+  const rate = Number(ewtRate)||0;
+  const ewtAmount = Math.round(net*rate/100*100)/100;
+  const netPayable = Math.round((g-ewtAmount)*100)/100; // cash actually paid to supplier
+  return { gross:g, net, inputVat, ewtRate:rate, ewtAmount, netPayable };
+};
+// Common BIR EWT rates for supplier payments.
+const EWT_RATES = [
+  {v:0,   l:"None"},
+  {v:1,   l:"1% — Goods"},
+  {v:2,   l:"2% — Services / Contractors"},
+  {v:5,   l:"5% — Rentals / Pros"},
+  {v:10,  l:"10% — Professionals"},
+  {v:15,  l:"15% — Professionals (high)"},
+];
 const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
 const uid=()=>{
   if(crypto.randomUUID) return crypto.randomUUID();
@@ -2167,11 +2189,32 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
               <button onClick={()=>upRow(i,"_exp",!r._exp)} style={{background:r._exp?"#eff6ff":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 11px",cursor:"pointer",fontSize:".7rem",fontWeight:700,color:"#64748b",fontFamily:"inherit",whiteSpace:"nowrap",marginTop:14}}>{r._exp?"▲ less":"▼ more"}</button>
             </div>
             {r._exp&&(
+              <>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:7,marginTop:7,paddingTop:7,borderTop:"1px dashed #e2e8f0"}}>
                 <div>{lbl("TIN (optional)")}<input value={r.tin||""} onChange={e=>upRow(i,"tin",e.target.value)} placeholder="Supplier TIN" style={inp}/></div>
                 <div>{lbl("Remarks (optional)")}<input value={r.remarks||""} onChange={e=>upRow(i,"remarks",e.target.value)} placeholder="Additional notes" style={inp}/></div>
                 <div>{lbl("Receipt Link (optional)")}<input type="url" value={r.receipt||""} onChange={e=>upRow(i,"receipt",e.target.value)} placeholder="Google Drive link…" style={inp}/></div>
               </div>
+              {/* BIR tax capture — input VAT (creditable) + EWT withheld */}
+              <div style={{display:"grid",gridTemplateColumns:"auto 1fr",gap:10,marginTop:7,alignItems:"end"}}>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:".75rem",fontWeight:700,color:"#475569",cursor:"pointer",whiteSpace:"nowrap",paddingBottom:6}}>
+                  <input type="checkbox" checked={!!r.vatable} onChange={e=>upRow(i,"vatable",e.target.checked)} style={{width:16,height:16}}/>
+                  VAT-inclusive (12%)
+                </label>
+                <div>{lbl("EWT (withholding)")}<select value={r.ewtRate||0} onChange={e=>upRow(i,"ewtRate",Number(e.target.value))} style={{...inp,background:"#fff"}}>{EWT_RATES.map(o=><option key={o.v} value={o.v}>{o.l}</option>)}</select></div>
+              </div>
+              {(r.vatable||Number(r.ewtRate)>0)&&rowAmt(r)>0&&(()=>{
+                const tx=calcInputTax(rowAmt(r),r.vatable,r.ewtRate);
+                return(
+                  <div style={{display:"flex",flexWrap:"wrap",gap:12,marginTop:7,padding:"8px 11px",background:"#f8fafc",borderRadius:8,fontSize:".72rem",color:"#475569"}}>
+                    <span>Net of VAT: <strong>₱{fmt(tx.net)}</strong></span>
+                    {tx.inputVat>0&&<span>Input VAT: <strong style={{color:"#2563eb"}}>₱{fmt(tx.inputVat)}</strong></span>}
+                    {tx.ewtAmount>0&&<span>EWT withheld: <strong style={{color:"#b45309"}}>−₱{fmt(tx.ewtAmount)}</strong></span>}
+                    <span>Net payable to supplier: <strong style={{color:"#059669"}}>₱{fmt(tx.netPayable)}</strong></span>
+                  </div>
+                );
+              })()}
+              </>
             )}
           </div>
         </div>
@@ -3327,7 +3370,7 @@ export default function App(){
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
-    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
+    if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(ws);idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
     if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_disc_type||"none",poDiscValue:Number(p.po_disc_value)||0}));setPrs(ps);idbE.push([KEYS.prs,ps]);}
@@ -3434,7 +3477,7 @@ export default function App(){
     let date=r.expDate||null;
     if(!date){const yr=r.year||new Date().getFullYear();const mo=r.month!=null?Number(r.month):new Date().getMonth();date=`${yr}-${String(mo+1).padStart(2,'0')}-01`;}
     const desc=r.note||r.description||"";
-    return{id:r.id,deal_id:r.dealId||r.projectId||null,date,
+    const base={id:r.id,deal_id:r.dealId||r.projectId||null,date,
       category:r.category||"",description:desc,note:desc,
       amount:Number(r.amount)||0,supplier:r.payee||r.supplier||"",receipt_no:r.receiptNo||"",
       bank_account:r.bankAccount||null,cleared_date:r.clearedDate||null,
@@ -3443,6 +3486,17 @@ export default function App(){
       routed_by:r.routedBy||"",routed_at:r.routedAt||null,
       qty:Number(r.qty)||1,price_per_qty:Number(r.pricePerQty)||0,
       tin:r.tin||"",remarks:r.remarks||"",account_code:r.accountCode||null};
+    // Tax columns only included when the expense is tax-tagged, so writes keep
+    // working before supabase_input_tax.sql is applied (the retry queue syncs
+    // any tax-tagged expense once the columns exist).
+    if(r.vatable!=null){
+      base.vatable=!!r.vatable;
+      base.input_vat=Number(r.inputVat)||0;
+      base.ewt_rate=Number(r.ewtRate)||0;
+      base.ewt_amount=Number(r.ewtAmount)||0;
+      base.net_amount=Number(r.netAmount)||0;
+    }
+    return base;
   };
   const toSbPR = r=>{
     const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -5775,7 +5829,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const price=Number(String(data.pricePerQty||0).replace(/,/g,""))||0;
     const computedAmt=qty*price||Number(String(data.amount||0).replace(/,/g,""))||0;
     if(!computedAmt) return;
-    const rec={...data,qty,pricePerQty:price,amount:computedAmt,id:editExpId||uid()};
+    const tx=calcInputTax(computedAmt,data.vatable,data.ewtRate);
+    const rec={...data,qty,pricePerQty:price,amount:computedAmt,id:editExpId||uid(),vatable:!!data.vatable,ewtRate:tx.ewtRate,inputVat:tx.inputVat,ewtAmount:tx.ewtAmount,netAmount:tx.net};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
     if(isSupabaseReady()){
       sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>{
@@ -5795,7 +5850,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const price=Number(String(data.pricePerQty||0).replace(/,/g,""))||0;
       const amt=qty*price;
       if(!amt) return null;
-      return {...data,qty,pricePerQty:price,amount:amt,id:uid(),acctStatus:"Logged"};
+      const tx=calcInputTax(amt,data.vatable,data.ewtRate);
+      return {...data,qty,pricePerQty:price,amount:amt,id:uid(),acctStatus:"Logged",vatable:!!data.vatable,ewtRate:tx.ewtRate,inputVat:tx.inputVat,ewtAmount:tx.ewtAmount,netAmount:tx.net};
     }).filter(Boolean);
     if(!valid.length) return;
     upExps(es=>[...es,...valid]);
@@ -12510,6 +12566,10 @@ First few:
         const pendingPay=exps.filter(e=>e.acctStatus==="For Payment"||(!e.acctStatus&&e.bankAccount));
         const overduePay=exps.filter(e=>(e.acctStatus==="For Payment"||(!e.acctStatus))&&e.expDate&&e.expDate<today);
         const paidThisMonth=exps.filter(e=>e.acctStatus==="Paid"&&(e.expDate||"").slice(0,7)===today.slice(0,7));
+        // BIR tax this month: creditable input VAT + EWT withheld from suppliers
+        const monthExps=exps.filter(e=>(e.expDate||"").slice(0,7)===today.slice(0,7));
+        const inputVatMonth=monthExps.reduce((s,e)=>s+(Number(e.inputVat)||0),0);
+        const ewtPayableMonth=monthExps.reduce((s,e)=>s+(Number(e.ewtAmount)||0),0);
         const pendingEvs=evouchers.filter(e=>e.status==="For Payment");
         const evItems=pendingEvs.reduce((s,e)=>(s+(e.items||[]).length),0);
         const pendingEvsAmt=pendingEvs.reduce((s,e)=>(s+(e.items||[]).reduce((ss,i)=>ss+Number(i.amount||0),0)),0);
@@ -12558,6 +12618,15 @@ First few:
               </div>
             ))}
           </div>
+          {/* BIR tax this month — input VAT (creditable) + EWT to remit */}
+          {(inputVatMonth>0||ewtPayableMonth>0)&&(
+            <div style={{display:"flex",flexWrap:"wrap",gap:12,marginBottom:16,padding:"12px 16px",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:12}}>
+              <span style={{fontWeight:800,color:"#1e3a8a",fontSize:".82rem"}}>🧾 BIR Tax · {new Date().toLocaleDateString("en-PH",{month:"long",year:"numeric"})}</span>
+              <span style={{fontSize:".82rem",color:"#1e40af"}}>Input VAT (creditable): <strong>{fmt(inputVatMonth)}</strong></span>
+              <span style={{fontSize:".82rem",color:"#1e40af"}}>EWT withheld (to remit): <strong>{fmt(ewtPayableMonth)}</strong></span>
+              <span style={{fontSize:".72rem",color:"#64748b"}}>from supplier costs tagged this month</span>
+            </div>
+          )}
           {/* Panels row */}
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14,marginBottom:16}}>
             <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
