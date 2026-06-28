@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -4606,8 +4606,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(br&&role!=="Manager"&&br.requestedBy!==session?.name) return toastEmit("Only Managers or the submitter can delete budget requests.","error");
     upBreqs(bs=>bs.filter(b=>b.id!==id));if(isSupabaseReady()) sbDelete('budget_requests',id).catch(()=>{});
   };
-  const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_cards').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
-  const delBudget    =(id)=>{upBudgets(bs=>{const n={...bs};delete n[id];return n;});if(isSupabaseReady()) supabase.from('project_budgets').delete().eq('deal_id',id).then(()=>{}).catch(()=>{});};
+  const delPcard     =(id)=>{upPcards(ps=>{const n={...ps};delete n[id];return n;});if(isSupabaseReady()) sbDeleteWhere('project_cards','deal_id',id);};
+  const delBudget    =(id)=>{upBudgets(bs=>{const n={...bs};delete n[id];return n;});if(isSupabaseReady()) sbDeleteWhere('project_budgets','deal_id',id);};
   const delChecklist =(id)=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady()) sbDelete('checklists',id).catch(()=>{});};
   const upMreqs    =useCallback(fn=>setMreqs(p=>{const n=fn(p);persist(KEYS.mreqs,n);return n;}),[persist]);
   const upBreqs    =useCallback(fn=>setBreqs(p=>{const n=fn(p);persist(KEYS.breqs,n);return n;}),[persist]);
@@ -5535,16 +5535,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         .then(()=>{ toastEmit("Deal deleted","success"); })
         .catch(e=>{ toastEmit("Supabase delete failed — check console","error"); console.error("delDeal:",e); });
       // Cascade deletes (DB has ON DELETE CASCADE but clean up explicitly too)
-      dealMsIds.forEach(msId=>supabase.from('billing_payments').delete().eq('milestone_id',msId).catch(()=>{}));
+      dealMsIds.forEach(msId=>sbDeleteWhere('billing_payments','milestone_id',msId));
       const tables=['projects','billing_milestones','job_orders','purchase_requests',
         'material_requests','budget_requests','addenda','design_requests',
         'checklists','project_cards','project_budgets','swatches'];
-      tables.forEach(t=>supabase.from(t).delete().eq('deal_id',id).catch(()=>{}));
-      supabase.from('expenses').delete().eq('deal_id',id).catch(()=>{});
-      supabase.from('project_card_dept_tasks').delete()
-        .in('card_id',pcards[id]?.id?[pcards[id].id]:[]).catch(()=>{});
-      supabase.from('project_card_dept_status').delete()
-        .in('card_id',pcards[id]?.id?[pcards[id].id]:[]).catch(()=>{});
+      tables.forEach(t=>sbDeleteWhere(t,'deal_id',id));
+      sbDeleteWhere('expenses','deal_id',id);
+      const cardIds=pcards[id]?.id?[pcards[id].id]:[];
+      if(cardIds.length){
+        sbDeleteWhere('project_card_dept_tasks','card_id',cardIds,'in');
+        sbDeleteWhere('project_card_dept_status','card_id',cardIds,'in');
+      }
     } else if(isSupabaseReady()&&!isUUID(id)){
       toastEmit("Deal removed locally — not synced (legacy ID)","warning");
     }
@@ -24430,9 +24431,9 @@ function DataManagement({
         setActLog([]);persist("gmdv5:actlog",[]);
         if(isSupabaseReady()){
           ["deals","expenses","inflows","job_orders","purchase_requests","material_requests","budget_requests","addenda","billing_payments","billing_milestones","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","activity_log"].forEach(t=>sbClear(t).catch(()=>{}));
-          supabase.from('cash_positions').delete().gte('date','1900-01-01').then(()=>{}).catch(()=>{});
-          supabase.from('project_budgets').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
-          supabase.from('projects').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+          sbDeleteWhere('cash_positions','date','1900-01-01','gte');
+          sbDeleteWhere('project_budgets','deal_id',null,'not_null');
+          sbDeleteWhere('projects','deal_id',null,'not_null');
         }
         return "Full purge complete. FabHub is clean and ready for real data.";
       }
@@ -24450,7 +24451,7 @@ function DataManagement({
         upChecklist(()=>[]);upAddenda(()=>[]);
         if(isSupabaseReady()){
           ["deals","job_orders","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","addenda"].forEach(t=>sbClear(t).catch(()=>{}));
-          supabase.from('projects').delete().not('deal_id','is',null).then(()=>{}).catch(()=>{});
+          sbDeleteWhere('projects','deal_id',null,'not_null');
         }
         return "Pipeline cleared. Expenses, billing, and cash position preserved.";
       }
@@ -24467,7 +24468,7 @@ function DataManagement({
         upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));
         if(isSupabaseReady()){
           ["expenses","inflows","billing_payments","billing_milestones"].forEach(t=>sbClear(t).catch(()=>{}));
-          supabase.from('cash_positions').delete().gte('date','1900-01-01').then(()=>{}).catch(()=>{});
+          sbDeleteWhere('cash_positions','date','1900-01-01','gte');
         }
         return "Finance data cleared. Pipeline and projects untouched.";
       }

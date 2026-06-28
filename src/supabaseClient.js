@@ -43,6 +43,20 @@ export const sbDelete = async (table, id) => {
   if (error) { console.error(`SB DELETE ${table}:`, error.message); _writeFailed('delete', table, error.message) }
 }
 
+// Conditional delete (delete-where) that, like sbDelete, reports failures
+// through the central write-error hook — so cascade/by-column deletions are no
+// longer a silent blind spot. op: 'eq' | 'in' | 'gte' | 'not_null'.
+export const sbDeleteWhere = async (table, column, value, op = 'eq') => {
+  if (!supabase) return
+  let q = supabase.from(table).delete()
+  if (op === 'in') q = q.in(column, value)
+  else if (op === 'gte') q = q.gte(column, value)
+  else if (op === 'not_null') q = q.not(column, 'is', null)
+  else q = q.eq(column, value)
+  const { error } = await q
+  if (error) { console.error(`SB DELETE ${table} where ${column}:`, error.message); _writeFailed('delete', table, error.message) }
+}
+
 export const sbList = async (table, opts = {}) => {
   if (!supabase) return []
   let q = supabase.from(table).select(opts.select || '*')
@@ -172,7 +186,7 @@ export const sbLoadAll = async () => {
 export const sbClear = async (table) => {
   if (!supabase) return
   const { error } = await supabase.from(table).delete().not('id', 'is', null)
-  if (error) console.error(`SB CLEAR ${table}:`, error.message)
+  if (error) { console.error(`SB CLEAR ${table}:`, error.message); _writeFailed('delete', table, error.message) }
 }
 
 export const sbSubscribe = (channel, table, callback) => {
