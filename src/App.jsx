@@ -2866,6 +2866,85 @@ function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,wonDe
   );
 }
 
+// Read-only Audit Trail for soft-deleted financial records. Lazy-loads
+// audit_log (so it doesn't slow app startup) and lets Finance restore a row.
+function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
+  const[rows,setRows]=useState(null);
+  const[busy,setBusy]=useState("");
+  const load=useCallback(async()=>{
+    if(!isSupabaseReady()){setRows([]);return;}
+    setRows(null);
+    const data=await sbList("audit_log",{order:"performed_at",limit:500});
+    setRows(data||[]);
+  },[]);
+  useEffect(()=>{load();},[load]);
+  const onRestore=async(r)=>{
+    if(!window.confirm("Restore this record back into the live data?")) return;
+    setBusy(r.id);
+    const ok=await restoreFinancial(r);
+    setBusy("");
+    if(ok) load();
+  };
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>🕵️ Audit Trail</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Deleted financial records — who, when, why. Nothing is lost; rows can be restored.</div>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={load} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>↻ Refresh</button>
+          <button onClick={()=>setPage("acctdash")} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 16px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer"}}>← Accounting</button>
+        </div>
+      </div>
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"auto"}}>
+        {rows===null?(
+          <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>Loading…</div>
+        ):rows.length===0?(
+          <div style={{padding:30,textAlign:"center",color:"#94a3b8"}}>No deleted financial records yet. Deletions of expenses, check vouchers, payables, loans, collections and inflows will appear here.</div>
+        ):(
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:isMobile?".72rem":".82rem"}}>
+            <thead>
+              <tr style={{background:"#f8fafc",textAlign:"left",color:"#64748b"}}>
+                <th style={{padding:"9px 12px"}}>When</th>
+                <th style={{padding:"9px 12px"}}>Type</th>
+                <th style={{padding:"9px 12px"}}>Action</th>
+                <th style={{padding:"9px 12px"}}>Amount</th>
+                <th style={{padding:"9px 12px"}}>Reason</th>
+                <th style={{padding:"9px 12px"}}>By</th>
+                <th style={{padding:"9px 12px"}}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(r=>{
+                const amt=Number(r.snapshot?.amount);
+                const when=(r.performed_at||"").replace("T"," ").slice(0,16);
+                return(
+                  <tr key={r.id} style={{borderTop:"1px solid #f1f5f9"}}>
+                    <td style={{padding:"8px 12px",whiteSpace:"nowrap",color:"#475569"}}>{when}</td>
+                    <td style={{padding:"8px 12px"}}>{labelFor(r.table_name)}</td>
+                    <td style={{padding:"8px 12px"}}>
+                      <span style={{padding:"2px 8px",borderRadius:20,fontSize:".68rem",fontWeight:700,background:r.action==="restore"?"#f0fdf4":"#fef2f2",color:r.action==="restore"?"#059669":"#dc2626"}}>{r.action==="restore"?"Restored":"Deleted"}</span>
+                    </td>
+                    <td style={{padding:"8px 12px",fontWeight:700,color:"#0f172a"}}>{Number.isFinite(amt)?fmt(amt):"—"}</td>
+                    <td style={{padding:"8px 12px",color:"#475569",maxWidth:260}}>{r.reason||"—"}</td>
+                    <td style={{padding:"8px 12px",color:"#64748b"}}>{r.performed_by||"—"}</td>
+                    <td style={{padding:"8px 12px"}}>
+                      {r.action!=="restore"&&(
+                        <button disabled={busy===r.id} onClick={()=>onRestore(r)} style={{background:busy===r.id?"#cbd5e1":"#059669",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:busy===r.id?"default":"pointer"}}>{busy===r.id?"…":"Restore"}</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </Wrap>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -3486,6 +3565,59 @@ export default function App(){
     }
   };
   const upPcards    =useCallback(fn=>setPcards(p=>{const n=fn(p);persist(KEYS.pcards,n);return n;}),[persist]);
+
+  // ── FINANCIAL AUDIT TRAIL (soft-delete) ───────────────────────────────────
+  // Money records are never silently lost: before an expense, check voucher,
+  // payable, loan, loan payment, cash inflow or billing collection is deleted
+  // we snapshot the row (in its Supabase shape) into audit_log with who / when
+  // / why, so it appears in Finance ▸ Audit Trail and can be restored.
+  const inflowToSb=r=>({id:r.id,deal_id:r.dealId||r.projectId||null,date:r.date||r.month||null,amount:Number(r.amount)||0,source:r.source||"",ref_no:r.refNo||"",note:r.note||""});
+  const FIN_AUDIT={
+    expenses:       {label:"expense",          toSb:toSbExpense},
+    check_vouchers: {label:"check voucher",    toSb:cvToSb},
+    payables:       {label:"payable",          toSb:payableToSb},
+    loans:          {label:"loan",             toSb:loanToSb},
+    loan_payments:  {label:"loan payment",     toSb:r=>({id:r.id,loan_id:r.loanId||r.loan_id||null,amount:Number(r.amount)||0,date:r.date||null})},
+    inflows:        {label:"cash inflow",      toSb:inflowToSb},
+    billing_payments:{label:"collection",     toSb:r=>toSbPayment(r)},
+  };
+  // Write to audit_log via the raw client (not sbInsert) so a missing-table /
+  // audit-only failure doesn't trip the app-wide "you're offline" warning.
+  const writeAudit=async(entry)=>{
+    if(!supabase) return;
+    try{ const {error}=await supabase.from("audit_log").insert(entry); if(error) console.error("audit_log:",error.message); }
+    catch(e){ console.error("audit_log:",e.message); }
+  };
+  const archiveFinancial=async(table,sbSnapshot,recordId,reason)=>{
+    const entry={id:uid(),table_name:table,record_id:String(recordId??""),action:"delete",snapshot:sbSnapshot||null,reason:reason||"",performed_by:session?.name||role||"System",performed_at:new Date().toISOString()};
+    await writeAudit(entry);
+    return entry;
+  };
+  // Prompt for a reason, archive the record, then return true to proceed with the delete.
+  const confirmFinancialDelete=async(table,record)=>{
+    const cfg=FIN_AUDIT[table]||{};
+    if(!record) return true; // nothing to snapshot — shouldn't happen, don't block
+    const reason=window.prompt(`Delete this ${cfg.label||"financial record"}?\n\nIt will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,"");
+    if(reason===null) return false;                 // cancelled
+    if(!reason.trim()){ toastEmit("A reason is required to delete a financial record.","error",5000); return false; }
+    const snap=cfg.toSb?cfg.toSb(record):record;
+    await archiveFinancial(table,snap,record.id,reason.trim());
+    logActivity(record.dealId||record.projectId||null,"Financial Record Deleted",`${cfg.label||table} deleted — ${reason.trim()}`);
+    return true;
+  };
+  // Restore a previously-deleted record from its audit snapshot.
+  const restoreFinancial=async(audit)=>{
+    if(!audit?.snapshot||!audit?.table_name){ toastEmit("Nothing to restore.","error"); return false; }
+    if(!isSupabaseReady()){ toastEmit("Restore needs a server connection.","error"); return false; }
+    try{
+      await sbUpsert(audit.table_name,audit.snapshot,"id");
+      await writeAudit({id:uid(),table_name:audit.table_name,record_id:audit.record_id,action:"restore",snapshot:audit.snapshot,reason:"Restored from audit trail",performed_by:session?.name||role||"System",performed_at:new Date().toISOString()});
+      logActivity(null,"Financial Record Restored",`${(FIN_AUDIT[audit.table_name]||{}).label||audit.table_name} restored`);
+      await loadAllFromSupabase();
+      toastEmit("✅ Record restored. (Loan payments & collections may need a refresh to re-link.)","success",6000);
+      return true;
+    }catch(e){ console.error("restore:",e); toastEmit("Restore failed — see console.","error",6000); return false; }
+  };
 
   // One-time migration: push all IDB-cached data to Supabase on new devices
   const migrateToCloud=useCallback(async()=>{
@@ -4348,10 +4480,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }
     }
   };
-  const deleteBillingPayment=(msId,payId)=>{
+  const deleteBillingPayment=async(msId,payId)=>{
     const milestone=billings.find(b=>b.id===msId);
     const payment=milestone?.payments?.find(p=>p.id===payId);
     if(!payment) return;
+    if(!await confirmFinancialDelete("billing_payments",{...payment,milestoneId:msId,dealId:milestone.dealId}))return;
     const dealId=milestone.dealId;
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
@@ -5640,7 +5773,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()){sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"Check",cvId}),"id").catch(()=>{});}
     toastEmit("✅ Routed to Check Payables — CV "+nextNo+" created","success");
   };
-  const delExp=id=>{upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
+  const delExp=async id=>{const rec=exps.find(e=>e.id===id);if(!await confirmFinancialDelete("expenses",rec))return;upExps(es=>es.filter(e=>e.id!==id));if(isSupabaseReady()) sbDelete('expenses',id).catch(()=>{});};
   const markDpStatus=(id,st)=>{
     upExps(es=>{
       const next=es.map(e=>e.id===id?{...e,acctStatus:st}:e);
@@ -5671,7 +5804,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     setEditCvId(null);setCvModal(false);
   };
-  const delCv=id=>{upVouchers(vs=>vs.filter(v=>v.id!==id));if(isSupabaseReady()) sbDelete("check_vouchers",id).catch(()=>{});};
+  const delCv=async id=>{const rec=vouchers.find(v=>v.id===id);if(!await confirmFinancialDelete("check_vouchers",rec))return;upVouchers(vs=>vs.filter(v=>v.id!==id));if(isSupabaseReady()) sbDelete("check_vouchers",id).catch(()=>{});};
   const releaseCv=id=>{
     const releasedBy=session?.name||role;
     const cv=vouchers.find(v=>v.id===id);
@@ -5748,7 +5881,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     toastEmit(`✅ Routed to Check Payables — ${nextNo} (Draft). Set the bank, then Submit → Release.`,"success");
     setPage("checkvouchers");
   };
-  const delPayable=(id)=>{
+  const delPayable=async(id)=>{
+    const rec=payables.find(p=>p.id===id);
+    if(!await confirmFinancialDelete("payables",rec))return;
     upPayables(ps=>ps.filter(p=>p.id!==id));
     if(isSupabaseReady()) sbDelete("payables",id).catch(()=>{});
   };
@@ -5761,7 +5896,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()) sbUpsert("loans",loanToSb(rec),"id").catch(()=>{});
     setLoanModal(false);setEditLoanId(null);setLoanForm({lender:"",type:"Bank Loan",principal:"",disbursedDate:"",termMonths:"",interestRate:"",monthlyPayment:"",notes:""});
   };
-  const delLoan=(id)=>{
+  const delLoan=async(id)=>{
+    const rec=loans.find(l=>l.id===id);
+    if(!await confirmFinancialDelete("loans",rec))return;
     upLoans(ls=>ls.filter(l=>l.id!==id));
     if(isSupabaseReady()) sbDelete("loans",id).catch(()=>{});
   };
@@ -5780,7 +5917,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()) sbUpsert("loan_payments",{id:pm.id,loan_id:loanId,amount:pm.amount,date:pm.date},"id").catch(()=>{});
     setLoanPay(p=>({...p,[loanId]:{amount:"",date:today}}));
   };
-  const delLoanPayment=(loanId,payId)=>{
+  const delLoanPayment=async(loanId,payId)=>{
+    const loan=loans.find(l=>l.id===loanId);
+    const pay=(loan?.payments||[]).find(p=>p.id===payId);
+    if(!await confirmFinancialDelete("loan_payments",pay?{...pay,loanId}:null))return;
     upLoans(ls=>ls.map(l=>l.id===loanId?{...l,payments:(l.payments||[]).filter(p=>p.id!==payId)}:l));
     if(isSupabaseReady()) sbDelete("loan_payments",payId).catch(()=>{});
   };
@@ -5793,7 +5933,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setInfModal(false);
     setInfForm({month:new Date().getMonth(),source:"",amount:"",note:"",projectId:null});
   };
-  const delInf=id=>{upInfs(is=>is.filter(i=>i.id!==id));if(isSupabaseReady()) sbDelete('inflows',id).catch(()=>{});};
+  const delInf=async id=>{const rec=infs.find(i=>i.id===id);if(!await confirmFinancialDelete("inflows",rec))return;upInfs(is=>is.filter(i=>i.id!==id));if(isSupabaseReady()) sbDelete('inflows',id).catch(()=>{});};
 
   const saveSwatch=()=>{
     if(!swForm.name) return;
@@ -12298,6 +12438,9 @@ First few:
   );
 
   // ── ACCOUNTING DASHBOARD (accessible from Finance & Manager navs) ────────────
+  if(page==="audittrail"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
+    <AuditTrailView isMobile={isMobile} fmt={fmt} setPage={setPage} restoreFinancial={restoreFinancial} labelFor={t=>(FIN_AUDIT[t]||{}).label||t} Wrap={Wrap}/>
+  );
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap>
       {(()=>{
@@ -12334,6 +12477,7 @@ First few:
               <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📄 Daily Payables</button>
               <button onClick={()=>setPage("checkvouchers")} style={{background:"#059669",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>✅ Check Payables</button>
               <button onClick={()=>setPage("evouchers")} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🧾 Liquidation</button>
+              <button onClick={()=>setPage("audittrail")} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🕵️ Audit Trail</button>
             </div>
           </div>
           {/* KPI Cards */}
