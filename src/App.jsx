@@ -21449,6 +21449,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     if(curIdx!==-1&&newIdx>curIdx+1){
                       if(!window.confirm(`⚠️ You're skipping ${newIdx-curIdx-1} stage${newIdx-curIdx-1!==1?"s":""} (${deal.stage||"?"} → ${st}).\n\nContinue?`)) return;
                     }
+                    // FINANCIAL GATE — a project cannot be marked Completed without a contract value
+                    // and billing on record; if collections are short, require an explicit confirm.
+                    if(st==="14 · Completed"){
+                      const miss=[];
+                      if(!Number(deal.value)) miss.push("Contract Value");
+                      if(!Number(deal.invoiced)) miss.push("Billing (invoiced amount)");
+                      if(miss.length){ toastEmit(`Can't mark Completed — ${miss.join(" & ")} must be recorded in Finance first.`,"error",9000); return; }
+                      const outstanding=Math.round((Number(deal.invoiced||0)-Number(deal.amountPaid||0))*100)/100;
+                      if(outstanding>0.5 && !window.confirm(`⚠️ This project still has ₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} outstanding (collected is below billed).\n\nMark Completed anyway? Do this only if the balance is retention or a written-off amount.`)) return;
+                    }
                     upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
                     if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
                     logActivity(selDeal,"Stage Change",`Stage → ${st}`,session?.name);
