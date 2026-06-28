@@ -4548,14 +4548,36 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     sendTelegramNotification("sales",msg);
     sendTelegramNotification("management",msg);
   };
+  // Once a change order is client-approved (or further along), its value is part
+  // of the contract — keep the parent deal's contract value in step automatically.
+  const ADDENDUM_ROLLED=s=>["Approved","Billed","Collected"].includes(s);
+  // Apply a delta to a deal's contract value (and remember the pre-addenda base
+  // for transparency). Derives nothing from flags, so it can't double-count.
+  const rollDealContract=(dealId,delta,addendum)=>{
+    if(!dealId||!delta) return;
+    upDeals(ds=>ds.map(d=>{
+      if(d.id!==dealId) return d;
+      const base=d.originalValue!=null?d.originalValue:Number(d.value)||0;
+      const nd={...d,originalValue:base,value:Math.round((Number(d.value||0)+delta)*100)/100};
+      if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+      return nd;
+    }));
+    logActivity(dealId,"Contract Value Updated",`${delta>0?"+":"−"}₱${Number(Math.abs(delta)).toLocaleString("en-PH",{maximumFractionDigits:2})} from change order "${addendum?.title||""}" → revised contract value`);
+  };
   const updateAddendum=(id,ch)=>{
     upAddenda(as=>as.map(a=>{
       if(a.id!==id) return a;
       const n={...a,...ch};
+      // Roll the change-order value in/out of the parent contract based on the
+      // status transition (and any value edit). Uses persisted status only.
+      const oldVal=Number(a.value)||0, newVal=Number(n.value)||0;
+      const wasIn=ADDENDUM_ROLLED(a.status), nowIn=ADDENDUM_ROLLED(n.status);
+      const delta=(nowIn?newVal:0)-(wasIn?oldVal:0);
+      if(delta) rollDealContract(n.dealId||n.projectId,delta,n);
       if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
       if(ch.status==="Approved"||ch.clientApproved){
         const deal=deals.find(d=>d.id===(a.dealId||a.projectId));
-        const costMsg=`⚠️ <b>Scope Change Approved</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nScope: ${a.title||"?"}\nCost Impact: ₱${Number(a.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nApproved by: ${session?.name||"Ops"}\n\n💰 Finance team: please review cost impact and update billing milestones if applicable.`;
+        const costMsg=`⚠️ <b>Scope Change Approved</b>\nProject: <b>${deal?.client||"?"}</b>${deal?.ceNo?`\nCE: ${deal.ceNo}`:""}\nScope: ${a.title||"?"}\nCost Impact: ₱${Number(a.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nApproved by: ${session?.name||"Ops"}\nRevised contract value updated automatically.\n\n💰 Finance team: please review cost impact and update billing milestones if applicable.`;
         sendTelegramNotification("finance",costMsg);
         sendTelegramNotification("management",costMsg);
       }
@@ -4565,6 +4587,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const deleteAddendum=(id)=>{
     const adm=addenda.find(a=>a.id===id);
     if(adm&&role!=="Manager"&&adm.discoveredBy!==session?.name) return toastEmit("Only Managers or the creator can delete scope changes.","error");
+    // If this change order was already rolled into the contract, take it back out.
+    if(adm&&ADDENDUM_ROLLED(adm.status)&&Number(adm.value)) rollDealContract(adm.dealId||adm.projectId,-(Number(adm.value)||0),adm);
     upAddenda(as=>as.filter(a=>a.id!==id));
     if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});
   };
