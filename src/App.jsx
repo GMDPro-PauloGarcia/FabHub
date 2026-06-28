@@ -3264,7 +3264,7 @@ export default function App(){
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(_jos);idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null})):null;
+            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined})):null;
             if(_billings){
               // Merge: preserve any locally-recorded payments that didn't sync to Supabase yet
               const idbBilMap=Object.fromEntries((idb[KEYS.billings]||[]).map(b=>[b.id,b]));
@@ -3488,7 +3488,7 @@ export default function App(){
     if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null}));setDeals(ds);idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
+    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(mappedExps);idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(ws);idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(infs);idbE.push([KEYS.inflows,infs]);}
@@ -3576,7 +3576,7 @@ export default function App(){
   });
   const toSbBilling = r=>{
     const tx=calcTax(Number(r.amount)||0,r.receiptType||"OR",r.withholding??false);
-    return{
+    const base={
       id:r.id, deal_id:r.dealId, name:r.name||"", description:r.description||"",
       amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
       invoice_date:r.invoiceDate||null, due_date:r.dueDate||null,
@@ -3585,6 +3585,11 @@ export default function App(){
       receipt_type:r.receiptType||null, withholding:r.withholding??null,
       vat:tx.vat, ewt:tx.ewt, net_receivable:tx.netReceivable,
     };
+    // Retention columns only when set, so writes work before supabase_retention.sql
+    // runs (the retry queue syncs them once the columns exist).
+    if(r.retentionHeld!=null) base.retention_held=Number(r.retentionHeld)||0;
+    if(r.isRetentionRelease) base.is_retention_release=true;
+    return base;
   };
   const toSbPayment = r=>({
     id:r.id, milestone_id:r.milestoneId, amount:Number(r.amount)||0,
@@ -20195,20 +20200,42 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     const contract=n(deal.value);
     if(!contract){toastEmit&&toastEmit("Set a contract value for this project first.","error");return;}
     const earned=Math.round(contract*pct/100);
-    const billed=billings.filter(b=>b.dealId===selDeal&&b.status!=="Cancelled").reduce((s,b)=>s+n(b.amount),0);
-    const claimable=Math.round((earned-billed)*100)/100;
-    if(claimable<=0){toastEmit&&toastEmit(`Nothing to claim — ${pct}% complete = ₱${earned.toLocaleString("en-PH")} earned, already billed ₱${billed.toLocaleString("en-PH")}.`,"info",7000);return;}
+    // Revenue recognised so far = invoiced amount + retention withheld (retention
+    // is earned, just not yet invoiced) so a claim is never double-counted.
+    const dealMs=billings.filter(b=>b.dealId===selDeal&&b.status!=="Cancelled"&&!b.isRetentionRelease);
+    const recognized=dealMs.reduce((s,m)=>s+n(m.amount)+(Number(m.retentionHeld)||0),0);
+    const claimable=Math.round((earned-recognized)*100)/100;
+    if(claimable<=0){toastEmit&&toastEmit(`Nothing to claim — ${pct}% complete = ₱${earned.toLocaleString("en-PH")} earned, already recognised ₱${recognized.toLocaleString("en-PH")}.`,"info",7000);return;}
     const ret=Number(deal.paymentTerms?.retention)||0;
+    const retHeld=Math.round(claimable*ret/100);
+    const netInvoice=Math.round((claimable-retHeld)*100)/100;
     const claimNo=billings.filter(b=>b.dealId===selDeal&&/progress claim/i.test(b.name||"")).length+1;
     setMsForm({
       name:`Progress Claim #${claimNo} — ${pct}% complete`,
-      description:`Work completed to ${pct}%: earned ₱${earned.toLocaleString("en-PH")} − previously billed ₱${billed.toLocaleString("en-PH")} = ₱${claimable.toLocaleString("en-PH")}.${ret?` Retention ${ret}% may be withheld per terms.`:""}`,
-      amount:String(claimable),
+      description:`Work completed to ${pct}%: ₱${claimable.toLocaleString("en-PH")} earned this claim.${ret?` Retention ${ret}% (₱${retHeld.toLocaleString("en-PH")}) withheld — net invoice ₱${netInvoice.toLocaleString("en-PH")}.`:""}`,
+      amount:String(netInvoice),
+      retentionHeld:ret?retHeld:undefined,
       invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",
       receiptType:deal.receiptType||null,withholding:deal.withholding??null,
     });
     setShowForm(true);
-    toastEmit&&toastEmit(`Progress claim drafted: ₱${claimable.toLocaleString("en-PH")} (review & save).`,"success",6000);
+    toastEmit&&toastEmit(ret?`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} net (₱${retHeld.toLocaleString("en-PH")} retention held).`:`Claim drafted: ₱${netInvoice.toLocaleString("en-PH")} (review & save).`,"success",6500);
+  };
+  // Retention receivable for the selected project: withheld across claims, less
+  // any already released.
+  const retentionState=(()=>{
+    const ms=billings.filter(b=>b.dealId===selDeal&&b.status!=="Cancelled");
+    const held=ms.reduce((s,m)=>s+(Number(m.retentionHeld)||0),0);
+    const released=ms.filter(m=>m.isRetentionRelease).reduce((s,m)=>s+n(m.amount),0);
+    return {held,released,outstanding:Math.round((held-released)*100)/100};
+  })();
+  const releaseRetention=()=>{
+    if(!deal) return;
+    const out=retentionState.outstanding;
+    if(out<=0){toastEmit&&toastEmit("No retention outstanding to release.","info");return;}
+    if(!window.confirm(`Release retention of ₱${out.toLocaleString("en-PH")} for ${deal.client||"this project"}? This creates a Draft retention-release invoice.`)) return;
+    addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
+    toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
   const submitPay=()=>{
     if(!payForm.amount||!showPay) return;
@@ -20829,6 +20856,19 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               </div>
             );
           })()}
+
+          {/* Retention receivable */}
+          {(retentionState.held>0)&&(
+            <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:16,marginBottom:12,padding:"12px 16px",background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12}}>
+              <span style={{fontWeight:800,color:"#92400e",fontSize:".82rem"}}>🔒 Retention</span>
+              <span style={{fontSize:".82rem",color:"#92400e"}}>Withheld: <strong>₱{retentionState.held.toLocaleString("en-PH")}</strong></span>
+              {retentionState.released>0&&<span style={{fontSize:".82rem",color:"#92400e"}}>Released: <strong>₱{retentionState.released.toLocaleString("en-PH")}</strong></span>}
+              <span style={{fontSize:".82rem",color:"#92400e"}}>Outstanding: <strong>₱{retentionState.outstanding.toLocaleString("en-PH")}</strong></span>
+              {canEdit&&retentionState.outstanding>0&&(
+                <button onClick={releaseRetention} style={{marginLeft:"auto",background:"#b45309",border:"none",borderRadius:8,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"}}>Release Retention →</button>
+              )}
+            </div>
+          )}
 
           {/* Add milestone form */}
           {canEdit&&(
