@@ -427,6 +427,21 @@ const claimWoNumber=async({typed,suggested,swos})=>{
   while(taken.has(`WO-${String(nn).padStart(4,"0")}`)) nn++;
   return `WO-${String(nn).padStart(4,"0")}`;
 };
+// Collision-free document numbers (PO / CV / INV / JO). Asks the server for the
+// next number via the next_doc_number RPC (atomic across devices), passing the
+// current local max as a floor; falls back to local count if the RPC is
+// unavailable (e.g. before supabase_doc_numbers.sql is applied, or offline).
+const claimDocNumber=async(prefix,existingNumbers)=>{
+  const re=new RegExp(`^${prefix}-(\\d+)$`);
+  const localMax=(existingNumbers||[]).reduce((m,s)=>{const mt=re.exec(String(s||""));return mt?Math.max(m,Number(mt[1])):m;},0);
+  if(isSupabaseReady()){
+    try{
+      const {data,error}=await supabase.rpc('next_doc_number',{p_prefix:prefix,p_min:localMax});
+      if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${prefix}-${String(Number(data)).padStart(4,"0")}`;
+    }catch(e){ /* fall back to local allocation */ }
+  }
+  return `${prefix}-${String(localMax+1).padStart(4,"0")}`;
+};
 const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
 const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
@@ -5613,11 +5628,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const openAward=(deal)=>setAwardModal(deal);
-  const confirmAward=(form)=>{
+  const confirmAward=async(form)=>{
     if(!awardModal) return;
     const id=awardModal.id;
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
+    const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo));
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
       stage:"06 · Kickoff",
       probability:100,
@@ -5642,7 +5658,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Create Job Order
     const jo={
       id:uid(), dealId:id,
-      joNo:"JO-"+String(jos.length+1).padStart(4,"0"),
+      joNo,
       client:awardModal.client,
       ceNo:awardModal.ceNo,
       projectName:awardModal.contact||awardModal.client,
@@ -5799,11 +5815,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(isSupabaseReady()){sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"BizLink",payableId:payId}),"id").catch(()=>{});}
     toastEmit("✅ Routed to Daily Payables via BizLink","success");
   };
-  const routeExpToCheck=(expId,bankId)=>{
+  const routeExpToCheck=async(expId,bankId)=>{
     const exp=exps.find(e=>e.id===expId);
     if(!exp) return;
     const cvId=uid();
-    const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
     const cvRec={date:exp.expDate||today,cvNo:nextNo,payee:exp.supplier||exp.payee||"",amount:Number(exp.amount||0),description:exp.note||"",projectId:exp.projectId||null,bank:bankId||exp.bankAccount||"",notes:exp.remarks||"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:expId,id:cvId,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
     upExps(es=>es.map(e=>e.id===expId?{...e,acctStatus:"For Payment",paymentMethod:"Check",cvId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
@@ -5821,8 +5837,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     toastEmit(`Status updated → ${st}`,"success");
   };
 
-  const openAddCv=()=>{
-    const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+  const openAddCv=async()=>{
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
     setCvForm({date:today,cvNo:nextNo,payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
     setEditCvId(null);setCvModal(true);
   };
@@ -5904,12 +5920,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   // Route a floated payable into Check Payables: create a linked Draft check voucher.
   // The CV carries the vendor/amount/PO; on Release it marks this payable Paid (see releaseCv).
-  const payableToCheck=(id)=>{
+  const payableToCheck=async(id)=>{
     const p=payables.find(x=>x.id===id);
     if(!p) return;
     if(p.cvId||p.status==="Check Issued"){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
     const cvId=uid();
-    const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
     const cvRec={id:cvId,date:today,cvNo:nextNo,payee:p.vendor||"",amount:Number(p.amount||0),description:p.notes||p.invoiceRef||p.poNumber||"",projectId:p.projectId||null,bank:"",notes:p.notes||"",status:"Draft",poRef:p.poNumber||"",payableId:p.id,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:p.expenseId||null,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
     if(isSupabaseReady()) sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});
@@ -12727,12 +12743,12 @@ First few:
         const pr=poPayPr;
         const amt=Number(pr.qtyDelivered||pr.qty||0)*Number(pr.actUnitCost||pr.estUnitCost||0);
         const autoSuggest=amt>=10000&&pr.poNumber?"check":"daily";
-        const handleConfirm=()=>{
+        const handleConfirm=async()=>{
           if(poPayType==="daily"){
             setExpForm({expDate:today,category:"Materials",note:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""} — ${pr.supplier||""}`,amount:amt||"",bankAccount:"",projectId:pr.projectId||null,receipt:pr.deliveryNote||"",acctStatus:"For Payment"});
             setEditExpId(null);setExpModal(true);
           } else {
-            const nextNo="CV-"+String((vouchers.length||0)+1).padStart(4,"0");
+            const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
             setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
             setEditCvId(null);setCvModal(true);
           }
@@ -17994,15 +18010,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
   }
 
-  const nextPoNo=()=>{
-    const existing=prs.map(p=>p.poNumber).filter(Boolean);
-    const nums=existing.map(n=>{const m=n.match(/PO-(\d+)/);return m?Number(m[1]):0;}).filter(x=>x>0);
-    const next=(nums.length?Math.max(...nums):0)+1;
-    return `PO-${String(next).padStart(4,"0")}`;
-  };
+  const nextPoNo=()=>claimDocNumber("PO",prs.map(p=>p.poNumber));
 
-  const openNewPO=()=>{
-    setPoSupplier(""); setPoNumber(nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
+  const openNewPO=async()=>{
+    setPoSupplier(""); setPoNumber(await nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
     setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false);
     setEditingPrIds(null); setMode("newpo");
@@ -19062,12 +19073,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,deleteMR,prs,addPR,wonDeals,s
   const[convSupplier, setConvSupplier] = useState("");
   const[convPoNo,     setConvPoNo]     = useState("");
 
-  const nextPoNo = () => {
-    const existing = (prs||[]).map(p=>p.poNumber).filter(Boolean);
-    const nums = existing.map(n=>{const m=n.match(/PO-(\d+)/);return m?Number(m[1]):0;}).filter(x=>x>0);
-    const next = (nums.length?Math.max(...nums):0)+1;
-    return `PO-${String(next).padStart(4,"0")}`;
-  };
+  const nextPoNo = () => claimDocNumber("PO",(prs||[]).map(p=>p.poNumber));
 
   const printMR = (mr) => {
     const deal = wonDeals.find(d=>d.id===mr.projectId);
@@ -19385,7 +19391,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,deleteMR,prs,addPR,wonDeals,s
               ) : (
                 canApprove&&mr.status==="Submitted"&&(
                   <div style={{display:"flex",gap:7,marginTop:8}}>
-                    <button onClick={()=>{setConvertingId(mr.id);setConvPoNo(nextPoNo());setConvSupplier("");}}
+                    <button onClick={async()=>{setConvertingId(mr.id);setConvPoNo(await nextPoNo());setConvSupplier("");}}
                       style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:8,padding:"6px 13px",fontWeight:700,fontSize:".78rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit"}}>
                       ✓ Convert to PO
                     </button>
