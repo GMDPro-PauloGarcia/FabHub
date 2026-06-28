@@ -11,29 +11,36 @@ export const supabase = (SUPABASE_URL && SUPABASE_ANON)
 
 export const isSupabaseReady = () => !!supabase
 
+// App-wide write-failure hook: register a callback to be told when ANY write
+// (insert/update/upsert/delete) fails, so the UI can warn the user that changes
+// aren't reaching the server (instead of failing silently in 160+ call sites).
+let _onWriteError = null
+export const setSbErrorHandler = (fn) => { _onWriteError = fn }
+const _writeFailed = (op, table, msg) => { try { _onWriteError && _onWriteError(op, table, msg) } catch (_) {} }
+
 export const sbInsert = async (table, data) => {
   if (!supabase) return null
   const { data: result, error } = await supabase.from(table).insert(data).select().single()
-  if (error) console.error(`SB INSERT ${table}:`, error.message)
+  if (error) { console.error(`SB INSERT ${table}:`, error.message); _writeFailed('insert', table, error.message) }
   return result
 }
 
 export const sbUpdate = async (table, id, data) => {
   if (!supabase) return
   const { error } = await supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id)
-  if (error) console.error(`SB UPDATE ${table}:`, error.message)
+  if (error) { console.error(`SB UPDATE ${table}:`, error.message); _writeFailed('update', table, error.message) }
 }
 
 export const sbUpsert = async (table, data, conflictCol = 'id') => {
   if (!supabase) return
   const { error } = await supabase.from(table).upsert(data, { onConflict: conflictCol })
-  if (error) console.error(`SB UPSERT ${table}:`, error.message)
+  if (error) { console.error(`SB UPSERT ${table}:`, error.message); _writeFailed('upsert', table, error.message) }
 }
 
 export const sbDelete = async (table, id) => {
   if (!supabase) return
   const { error } = await supabase.from(table).delete().eq('id', id)
-  if (error) console.error(`SB DELETE ${table}:`, error.message)
+  if (error) { console.error(`SB DELETE ${table}:`, error.message); _writeFailed('delete', table, error.message) }
 }
 
 export const sbList = async (table, opts = {}) => {

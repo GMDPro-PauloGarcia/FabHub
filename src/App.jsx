@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
@@ -3167,6 +3167,21 @@ export default function App(){
     });
 
     return () => subscription.unsubscribe();
+  },[]);
+
+  // App-wide sync-failure warning: when ANY Supabase write fails (offline, RLS,
+  // network), warn the user once (throttled) that changes are local-only — instead
+  // of the 160+ silent .catch() sites that hid sync failures from the user.
+  useEffect(()=>{
+    let last=0;
+    setSbErrorHandler(()=>{
+      const n=Date.now();
+      if(n-last>30000){
+        last=n;
+        toastEmit("⚠️ Some changes aren't reaching the server — you may be offline. Working locally; they'll sync when the connection returns.","error",8000);
+      }
+    });
+    return ()=>setSbErrorHandler(null);
   },[]);
 
   // Auto-refresh when user switches back to FabHub tab/app
