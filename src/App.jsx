@@ -3122,6 +3122,147 @@ function WIPView({wonDeals,projs,billings,exps,prs,overallProg,setPage,Wrap,isMo
   );
 }
 
+// ─── CASH-FLOW FORECAST ──────────────────────────────────────────────────────
+// Forward view of working cash: projects expected collections (outstanding
+// billings) against expected payments (payables, uncleared checks, loan
+// amortizations) week by week, flagging when the projected balance runs short.
+function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wrap,isMobile}){
+  const money=v=>(v<0?"−₱":"₱")+Math.round(Math.abs(Number(v)||0)).toLocaleString("en-PH");
+  const DAY=86400000, WEEKS=8;
+  const start=new Date(); start.setHours(0,0,0,0);
+  const today=start.getTime();
+  const parse=d=>{ if(!d) return null; const t=new Date(d); return isNaN(t.getTime())?null:(t.setHours(0,0,0,0),t.getTime()); };
+
+  // Opening working cash = latest reconciled position across operating banks
+  const opening=(()=>{
+    const days=Object.values(cashPositions||{}).filter(p=>p&&p.banks).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+    if(!days[0]) return 0;
+    return BANKS.filter(b=>!b.capital).reduce((s,b)=>{const r=days[0].banks?.[b.id]||{};return s+(Number(r.book)||Number(r.end)||Number(r.beg)||0);},0);
+  })();
+
+  const flows=[];
+  billings.filter(m=>m.status!=="Cancelled").forEach(m=>{
+    const paid=(m.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    const out=Math.round((Number(m.amount||0)-paid)*100)/100;
+    if(out>0.5) flows.push({date:parse(m.dueDate),amt:out,dir:"in",label:m.name||"Billing",ref:m.invoiceNo||""});
+  });
+  (payables||[]).filter(p=>p.status!=="Paid"&&Number(p.amount)>0).forEach(p=>{
+    flows.push({date:parse(p.dueDate),amt:Number(p.amount),dir:"out",label:p.vendor||"Payable",ref:p.poNumber||p.invoiceRef||""});
+  });
+  (vouchers||[]).filter(v=>v.status==="Released"&&!v.isCleared&&Number(v.amount)>0).forEach(v=>{
+    const exp=parse(v.clearedDate)||(parse(v.releasedDate)?parse(v.releasedDate)+3*DAY:today+3*DAY);
+    flows.push({date:exp,amt:Number(v.amount),dir:"out",label:v.payee||"Check",ref:v.cvNo||""});
+  });
+  const horizonEnd=today+(WEEKS+4)*7*DAY;
+  (loans||[]).forEach(l=>{
+    const mp=Number(l.monthlyPayment)||0; if(mp<=0) return;
+    let bal=(Number(l.principal)||0)-(l.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
+    if(bal<=0.5) return;
+    const dd=l.disbursedDate?new Date(l.disbursedDate):start; const day=dd.getDate();
+    let d=new Date(start.getFullYear(),start.getMonth(),day); d.setHours(0,0,0,0);
+    if(d.getTime()<today) d=new Date(start.getFullYear(),start.getMonth()+1,day);
+    let guard=0;
+    while(d.getTime()<=horizonEnd&&bal>0.5&&guard++<24){
+      const amt=Math.min(mp,bal);
+      flows.push({date:d.getTime(),amt,dir:"out",label:l.lender||"Loan",ref:"Amortization"});
+      bal-=amt; d=new Date(d.getFullYear(),d.getMonth()+1,day);
+    }
+  });
+
+  const bucketOf=ms=>{ if(ms==null||ms<today) return 0; const w=Math.floor((ms-today)/(7*DAY))+1; return w>WEEKS?WEEKS+1:w; };
+  const buckets=Array.from({length:WEEKS+2},(_,i)=>({i,in:0,out:0}));
+  flows.forEach(f=>{ const b=buckets[bucketOf(f.date)]; if(f.dir==="in") b.in+=f.amt; else b.out+=f.amt; });
+  let run=opening; let lowest=opening, crunchWk=null;
+  buckets.forEach(b=>{ b.net=b.in-b.out; run+=b.net; b.close=run; if(run<lowest) lowest=run; if(b.close<0&&crunchWk==null&&b.i>0) crunchWk=b.i; });
+  const bLabel=i=>{ if(i===0) return "Overdue / now"; if(i===WEEKS+1) return `Beyond ${WEEKS} wks`; const s=new Date(today+(i-1)*7*DAY),e=new Date(today+(i*7*DAY-DAY)); const f=dt=>dt.toLocaleDateString("en-PH",{month:"short",day:"numeric"}); return `Wk ${i} · ${f(s)}–${f(e)}`; };
+
+  const horizon30=today+30*DAY;
+  const in30=flows.filter(f=>f.dir==="in"&&(f.date==null||f.date<=horizon30)).reduce((s,f)=>s+f.amt,0);
+  const out30=flows.filter(f=>f.dir==="out"&&f.date!=null&&f.date<=horizon30).reduce((s,f)=>s+f.amt,0);
+  const bal30=opening+in30-out30;
+  const upcoming=[...flows].filter(f=>f.amt>0).sort((a,b)=>((a.date??today)-(b.date??today))).slice(0,14);
+
+  const kpi=(l,v,c,sub)=>(
+    <div style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+      <div style={{fontWeight:800,fontSize:"1.05rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
+      <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+      {sub&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div>}
+    </div>
+  );
+  const cell={padding:"9px 12px",fontSize:isMobile?".74rem":".82rem",textAlign:"right",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"};
+  const head={...cell,fontSize:".64rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"};
+  const fdate=ms=>ms==null?"—":new Date(ms).toLocaleDateString("en-PH",{month:"short",day:"numeric"});
+
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>💵 Cash-Flow Forecast</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Projected working cash — collections in vs payments out, week by week.</div>
+        </div>
+        <button onClick={()=>setPage("acctdash")} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 16px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer"}}>← Accounting</button>
+      </div>
+
+      {crunchWk!=null&&(
+        <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"12px 16px",marginBottom:16,fontSize:".86rem",color:"#b91c1c",fontWeight:600}}>
+          ⚠️ Projected cash goes negative around <strong>{bLabel(crunchWk)}</strong> (low point {money(lowest)}). Pull collections forward or defer payments.
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {kpi("Working cash now",money(opening),"#0f172a",opening===0?"Set cash position for accuracy":null)}
+        {kpi("Collections (30d)",money(in30),"#059669")}
+        {kpi("Payments due (30d)",money(out30),"#b45309")}
+        {kpi("Projected balance (30d)",money(bal30),bal30<0?"#ef4444":"#059669")}
+      </div>
+
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflowX:"auto",marginBottom:18}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:560}}>
+          <thead><tr style={{background:"#1e293b"}}>
+            <th style={{...head,textAlign:"left"}}>Period</th>
+            <th style={head}>In</th><th style={head}>Out</th><th style={head}>Net</th><th style={head}>Projected balance</th>
+          </tr></thead>
+          <tbody>
+            {buckets.map(b=>(
+              <tr key={b.i} style={{borderTop:"1px solid #f1f5f9",background:b.close<0?"#fff5f5":"#fff"}}>
+                <td style={{padding:"9px 12px",fontSize:isMobile?".74rem":".82rem",fontWeight:b.i===0?700:500,color:"#0f172a"}}>{bLabel(b.i)}</td>
+                <td style={{...cell,color:b.in?"#059669":"#cbd5e1"}}>{b.in?money(b.in):"—"}</td>
+                <td style={{...cell,color:b.out?"#b45309":"#cbd5e1"}}>{b.out?money(b.out):"—"}</td>
+                <td style={{...cell,fontWeight:600,color:b.net>0?"#059669":b.net<0?"#ef4444":"#64748b"}}>{b.net?money(b.net):"—"}</td>
+                <td style={{...cell,fontWeight:800,color:b.close<0?"#ef4444":"#0f172a"}}>{money(b.close)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflowX:"auto"}}>
+        <div style={{padding:"11px 16px",borderBottom:"1px solid #f1f5f9",fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Next movements</div>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+          <tbody>
+            {upcoming.length===0?(
+              <tr><td style={{padding:24,textAlign:"center",color:"#94a3b8"}}>No upcoming collections or payments on record.</td></tr>
+            ):upcoming.map((f,idx)=>(
+              <tr key={idx} style={{borderTop:"1px solid #f8fafc"}}>
+                <td style={{padding:"8px 14px",width:64,color:"#64748b",fontSize:".76rem",whiteSpace:"nowrap"}}>{fdate(f.date)}</td>
+                <td style={{padding:"8px 6px",width:30}}>{f.dir==="in"?"🟢":"🟠"}</td>
+                <td style={{padding:"8px 10px",fontSize:isMobile?".76rem":".84rem"}}>
+                  <div style={{fontWeight:600,color:"#0f172a"}}>{f.label}</div>
+                  {f.ref&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{f.ref}</div>}
+                </td>
+                <td style={{padding:"8px 14px",textAlign:"right",fontWeight:700,fontVariantNumeric:"tabular-nums",color:f.dir==="in"?"#059669":"#b45309",whiteSpace:"nowrap"}}>{f.dir==="in"?"+":"−"}{money(f.amt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{marginTop:12,fontSize:".74rem",color:"#64748b",lineHeight:1.6,background:"#f8fafc",borderRadius:10,padding:"11px 14px"}}>
+        <strong>Sources:</strong> collections = outstanding billings (by due date); payments = unpaid payables, released-but-uncleared checks (≈3 days to clear), and loan amortizations. Items with no due date show under “Overdue / now.” Opening cash uses your latest cash position (operating banks only).
+      </div>
+    </Wrap>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -12686,6 +12827,9 @@ First few:
   if(page==="wip"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
+  if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
+    <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
+  );
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap>
       {(()=>{
@@ -12727,6 +12871,7 @@ First few:
               <button onClick={()=>setPage("checkvouchers")} style={{background:"#059669",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>✅ Check Payables</button>
               <button onClick={()=>setPage("evouchers")} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🧾 Liquidation</button>
               <button onClick={()=>setPage("wip")} style={{background:"#0e7490",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📐 WIP Report</button>
+              <button onClick={()=>setPage("cashflow")} style={{background:"#0d9488",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>💵 Cash Flow</button>
               <button onClick={()=>setPage("audittrail")} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🕵️ Audit Trail</button>
             </div>
           </div>
