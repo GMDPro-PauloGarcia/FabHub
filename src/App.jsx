@@ -3003,6 +3003,125 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
   );
 }
 
+// ─── WORK-IN-PROGRESS (WIP) SCHEDULE ─────────────────────────────────────────
+// The headline construction-finance report: per active project, compares
+// earned revenue (contract × % complete) against what's actually been billed,
+// surfacing over-billing (billed ahead of work — a liability) and under-billing
+// (work done but not yet billed — revenue/cash to catch up).
+function WIPView({wonDeals,projs,billings,exps,prs,overallProg,setPage,Wrap,isMobile}){
+  const money=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
+  const actualCostOf=(dealId)=>{
+    const projExps=exps.filter(e=>e.projectId===dealId);
+    const expensedPORefs=new Set(projExps.map(e=>e.poRef).filter(Boolean));
+    let cost=projExps.reduce((s,e)=>s+(Number(e.amount)||0),0);
+    prs.filter(p=>p.projectId===dealId&&p.status==="Delivered").forEach(p=>{
+      if(!(p.poNumber&&expensedPORefs.has(p.poNumber))) cost+=(Number(p.actUnitCost)||Number(p.estUnitCost)||0)*(Number(p.qty)||0);
+    });
+    return cost;
+  };
+  const rows=wonDeals
+    .filter(d=>d.stage!=="14 · Completed")
+    .map(d=>{
+      const p=projs[d.id];
+      const pct=p?Math.max(0,Math.min(100,overallProg(p))):0;
+      const contract=Number(d.value)||0;
+      const billed=Number(d.invoiced)||0;
+      const collected=Number(d.amountPaid)||0;
+      const earned=Math.round(contract*pct/100);
+      const overUnder=earned-billed;            // + = under-billed, − = over-billed
+      const cost=actualCostOf(d.id);
+      const uncollected=billed-collected;
+      return {d,pct,contract,billed,collected,earned,overUnder,cost,uncollected};
+    })
+    .filter(r=>r.contract>0||r.billed>0)
+    .sort((a,b)=>Math.abs(b.overUnder)-Math.abs(a.overUnder));
+
+  const T=k=>rows.reduce((s,r)=>s+r[k],0);
+  const totContract=T("contract"),totEarned=T("earned"),totBilled=T("billed"),totOverUnder=totEarned-totBilled,totUncollected=T("uncollected");
+
+  const kpi=(l,v,c)=>(
+    <div style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+      <div style={{fontWeight:800,fontSize:"1rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
+      <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:5}}>{l}</div>
+    </div>
+  );
+  const cell={padding:"9px 10px",fontSize:isMobile?".72rem":".8rem",textAlign:"right",whiteSpace:"nowrap"};
+  const head={...cell,fontSize:".64rem",fontWeight:700,color:"rgba(255,255,255,.65)",textTransform:"uppercase",letterSpacing:".5px"};
+
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>📐 Work-in-Progress (WIP)</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Earned revenue vs billed — over/under-billing across active projects. % complete comes from each project's production progress.</div>
+        </div>
+        <button onClick={()=>setPage("acctdash")} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 16px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer"}}>← Accounting</button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:18}}>
+        {kpi("Contract Value (active)",money(totContract),"#0f172a")}
+        {kpi("Earned to Date",money(totEarned),"#3b82f6")}
+        {kpi("Billed to Date",money(totBilled),"#8b5cf6")}
+        {kpi(totOverUnder>=0?"Net Under-billed (to bill)":"Net Over-billed (liability)",money(Math.abs(totOverUnder)),totOverUnder>=0?"#059669":"#ef4444")}
+      </div>
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflowX:"auto"}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:760}}>
+          <thead>
+            <tr style={{background:"#1e293b"}}>
+              <th style={{...head,textAlign:"left"}}>Project</th>
+              <th style={head}>% Comp</th>
+              <th style={head}>Contract</th>
+              <th style={head}>Earned</th>
+              <th style={head}>Billed</th>
+              <th style={head}>Over / (Under)</th>
+              <th style={head}>Cost to Date</th>
+              <th style={head}>Uncollected</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length===0?(
+              <tr><td colSpan={8} style={{padding:24,textAlign:"center",color:"#94a3b8"}}>No active projects with a contract value yet.</td></tr>
+            ):rows.map(({d,pct,contract,billed,earned,overUnder,cost,uncollected})=>{
+              const ouClr=overUnder>0?"#059669":overUnder<0?"#ef4444":"#64748b";
+              return(
+                <tr key={d.id} style={{borderTop:"1px solid #f1f5f9"}}>
+                  <td style={{padding:"9px 10px",fontSize:isMobile?".72rem":".8rem"}}>
+                    <div style={{fontWeight:700,color:"#0f172a"}}>{d.contact||d.client}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8"}}>{d.ceNo||"No CE"}</div>
+                  </td>
+                  <td style={cell}>{pct}%</td>
+                  <td style={cell}>{money(contract)}</td>
+                  <td style={cell}>{money(earned)}</td>
+                  <td style={cell}>{money(billed)}</td>
+                  <td style={{...cell,fontWeight:700,color:ouClr}}>{overUnder<0?"("+money(-overUnder)+")":money(overUnder)}</td>
+                  <td style={cell}>{money(cost)}</td>
+                  <td style={{...cell,color:uncollected>0?"#b45309":"#64748b"}}>{money(uncollected)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          {rows.length>0&&(
+            <tfoot>
+              <tr style={{background:"#0f172a"}}>
+                <td style={{...cell,textAlign:"left",fontWeight:800,color:"#f59e0b"}}>TOTAL</td>
+                <td style={cell}></td>
+                <td style={{...cell,fontWeight:800,color:"#fff"}}>{money(totContract)}</td>
+                <td style={{...cell,fontWeight:800,color:"#93c5fd"}}>{money(totEarned)}</td>
+                <td style={{...cell,fontWeight:800,color:"#c4b5fd"}}>{money(totBilled)}</td>
+                <td style={{...cell,fontWeight:800,color:totOverUnder>=0?"#4ade80":"#f87171"}}>{totOverUnder<0?"("+money(-totOverUnder)+")":money(totOverUnder)}</td>
+                <td style={cell}></td>
+                <td style={{...cell,fontWeight:800,color:"#fbbf24"}}>{money(totUncollected)}</td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
+      </div>
+      <div style={{marginTop:12,fontSize:".74rem",color:"#64748b",lineHeight:1.6,background:"#f8fafc",borderRadius:10,padding:"11px 14px"}}>
+        <strong>How to read this:</strong> <span style={{color:"#059669",fontWeight:700}}>Under-billed</span> (positive) = work earned but not yet invoiced — revenue/cash to catch up on. <span style={{color:"#ef4444",fontWeight:700}}>Over-billed</span> (in parentheses) = billed ahead of work done — a liability you still owe in production. Earned = Contract × % Complete (production progress).
+      </div>
+    </Wrap>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -12558,6 +12677,9 @@ First few:
   if(page==="audittrail"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <AuditTrailView isMobile={isMobile} fmt={fmt} setPage={setPage} restoreFinancial={restoreFinancial} labelFor={t=>(FIN_AUDIT[t]||{}).label||t} Wrap={Wrap}/>
   );
+  if(page==="wip"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
+    <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
+  );
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap>
       {(()=>{
@@ -12598,6 +12720,7 @@ First few:
               <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📄 Daily Payables</button>
               <button onClick={()=>setPage("checkvouchers")} style={{background:"#059669",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>✅ Check Payables</button>
               <button onClick={()=>setPage("evouchers")} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🧾 Liquidation</button>
+              <button onClick={()=>setPage("wip")} style={{background:"#0e7490",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📐 WIP Report</button>
               <button onClick={()=>setPage("audittrail")} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🕵️ Audit Trail</button>
             </div>
           </div>
