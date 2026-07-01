@@ -56,23 +56,33 @@ export const sbQueueSize = () => _queue.length
 export const sbOnQueueChange = (fn) => { _queueListeners.push(fn); return () => { _queueListeners = _queueListeners.filter(f => f !== fn) } }
 const _enqueue = (op) => { _queue.push({ qid: `${Date.now()}_${_seq++}`, attempts: 0, ...op }); _saveQueue() }
 
+// A hung request (no error, no success — seen on some flaky/restrictive
+// networks) must not block forever: without a timeout it holds the single
+// in-flight flush lock open indefinitely, so every later retry — automatic
+// AND manual — silently no-ops with no explanation ("Unknown error"). Racing
+// against a timeout guarantees _replay always resolves so the lock releases.
+const _REPLAY_TIMEOUT_MS = 12000
+const _withTimeout = (promise) => Promise.race([
+  promise,
+  new Promise(resolve => setTimeout(() => resolve({ error: { message: 'Request timed out — the server did not respond in time.' } }), _REPLAY_TIMEOUT_MS)),
+])
 const _replay = async (op) => {
   try {
     let error
     if (op.kind === 'insert' || op.kind === 'upsert') {
       // Replay inserts as upserts when an id is present so a lost-response retry
       // can't create a duplicate; fall back to insert only when there's no id.
-      if (op.data && op.data.id != null) error = (await supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' })).error
-      else error = (await supabase.from(op.table).insert(op.data)).error
+      if (op.data && op.data.id != null) error = (await _withTimeout(supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' }))).error
+      else error = (await _withTimeout(supabase.from(op.table).insert(op.data))).error
     } else if (op.kind === 'update') {
-      error = (await supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id)).error
+      error = (await _withTimeout(supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id))).error
     } else if (op.kind === 'delete') {
-      error = (await supabase.from(op.table).delete().eq('id', op.id)).error
+      error = (await _withTimeout(supabase.from(op.table).delete().eq('id', op.id))).error
     } else if (op.kind === 'deleteWhere') {
       let q = supabase.from(op.table).delete()
       if (op.op === 'in') q = q.in(op.column, op.value)
       else q = q.eq(op.column, op.value)
-      error = (await q).error
+      error = (await _withTimeout(q)).error
     }
     if (error) { console.warn(`sync replay ${op.kind} ${op.table}:`, error.message); return { ok: false, kind: _classifyError(error.message), message: error.message } }
     return { ok: true }
@@ -90,7 +100,7 @@ let _flushing = false
 // the server" — the classified kind plus the raw message from Supabase.
 export const sbFlushQueue = async (force = false) => {
   if (!supabase) return { synced: 0, remaining: _queue.length, lastError: { kind: 'no-client', message: 'Supabase is not configured on this device.' } }
-  if (_flushing) return { synced: 0, remaining: _queue.length, lastError: null }
+  if (_flushing) return { synced: 0, remaining: _queue.length, lastError: { kind: 'busy', message: 'A sync attempt is already in progress.' } }
   if (!_queue.length) return { synced: 0, remaining: 0, lastError: null }
   if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) {
     return { synced: 0, remaining: _queue.length, lastError: { kind: 'offline', message: 'This device is offline.' } }
