@@ -80,9 +80,14 @@ const _replay = async (op) => {
 }
 
 let _flushing = false
-export const sbFlushQueue = async () => {
+// force=true (user tapped "retry now", or the periodic heartbeat) skips the
+// navigator.onLine check — that flag is unreliable on some networks/browsers
+// (VPNs, captive portals, mobile Safari) and can report false while the
+// connection is actually fine, which silently blocked every retry forever
+// even though nothing was actually wrong.
+export const sbFlushQueue = async (force = false) => {
   if (!supabase || _flushing || !_queue.length) return
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+  if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) return
   _flushing = true
   try {
     while (_queue.length) {
@@ -106,9 +111,11 @@ export const sbFlushQueue = async () => {
 }
 
 // Auto-flush on reconnect and on a slow heartbeat while anything is pending.
+// The heartbeat forces through the same unreliable-onLine gap noted above — a
+// stuck "online: false" reading should not mean a queued write waits forever.
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => { sbFlushQueue() })
-  setInterval(() => { if (_queue.length) sbFlushQueue() }, 45000)
+  setInterval(() => { if (_queue.length) sbFlushQueue(true) }, 45000)
 }
 
 export const sbInsert = async (table, data) => {
