@@ -4469,17 +4469,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setTimeout(()=>w.print(),400);
   };
 
-  const createProjectCard=(dealId,dealData)=>{
+  const createProjectCard=async(dealId,dealData)=>{
     const card=emptyProjectCard(dealId,dealData);
     upPcards(ps=>({...ps,[dealId]:card}));
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
     if(isSupabaseReady()){
-      sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id').catch(()=>{});
-      DEPT_ORDER.forEach(dept=>{
-        (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
-          sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
+      // Await the parent card write before firing the ~39 department-task
+      // inserts that reference it by foreign key — firing them in parallel
+      // let a task occasionally reach the server before the card committed,
+      // failing an FK check that sync retry then permanently drops (a
+      // constraint violation is a "data" error, never retried, only dropped —
+      // this silently lost individual checklist tasks in production).
+      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id');
+      if(cardSynced){
+        DEPT_ORDER.forEach(dept=>{
+          (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
+            sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
+          });
         });
-      });
+      }
+      // If the parent write itself failed, it's already queued for retry —
+      // the tasks stay local-only until the next createProjectCard-style
+      // flow or a manual resync; queuing them now would just fail the FK too.
     }
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
