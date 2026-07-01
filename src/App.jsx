@@ -4018,12 +4018,15 @@ export default function App(){
       return sbUpsert(table,payload,'id');
     })).catch(e=>console.error("FabHub sbSync "+table+":",e.message));
   };
+  // Returns the sbUpsert outcome (true/false) so a caller that's about to write
+  // a DEPENDENT row (one referencing this record by foreign key) can await
+  // confirmation first — see createProjectCard for why this matters.
   const sbSyncOne=(table,record,mapper)=>{
-    if(!isSupabaseReady()||!record) return;
+    if(!isSupabaseReady()||!record) return Promise.resolve(false);
     const payload=mapper?mapper(record):record;
-    if(!hasValidUUIDs(payload)) return;
-    sbUpsert(table,payload,'id')
-      .catch(e=>console.error("FabHub sbSyncOne "+table+":",e.message));
+    if(!hasValidUUIDs(payload)) return Promise.resolve(false);
+    return sbUpsert(table,payload,'id')
+      .catch(e=>{console.error("FabHub sbSyncOne "+table+":",e.message);return false;});
   };
   const sbSyncDelete=(table,id)=>{
     if(!isSupabaseReady()||!id) return;
@@ -5908,7 +5911,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return rec.id;
   };
 
-  const saveDeal=(overrideData,skipDupCheck=false)=>{
+  const saveDeal=async(overrideData,skipDupCheck=false)=>{
     const data = overrideData||dealForm;
     if(!data.client||!data.client.trim()){toastEmit("Client name is required.","error");return;}
     if(!data.stage){toastEmit("Stage is required.","error");return;}
@@ -5936,7 +5939,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
-    if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
+    // Await the deal's own write before firing the DRF auto-create below, which
+    // references rec.id by foreign key — firing it unawaited let the design
+    // request occasionally reach the server before the deal committed, failing
+    // an FK check that sync retry then permanently drops (same bug class fixed
+    // in createProjectCard for department tasks).
+    const dealSynced=isSupabaseReady()?await sbSyncOne("deals",rec,toSbDeal):true;
     // Save new client to master list if not already present
     if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
       const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -5946,7 +5954,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
     // left unset here; the Design lead assigns who handles it (DRFView "Assign").
-    if(!editDeal && data.drfReqCreate){
+    // Gated on dealSynced: firing this before the deal committed would fail
+    // design_requests' foreign key to deals.id. If the deal write itself failed,
+    // it's already queued for retry — the DRF stays local-only rather than
+    // risk an unwinnable, permanently-dropped FK violation.
+    if(!editDeal && data.drfReqCreate && dealSynced){
       addDRF({
         dealId:rec.id, client:rec.client, location:"",
         designer:"", designDeadline:data.drfDeadline||"",

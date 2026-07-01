@@ -75,7 +75,13 @@ const _replay = async (op) => {
       if (op.data && op.data.id != null) error = (await _withTimeout(supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' }))).error
       else error = (await _withTimeout(supabase.from(op.table).insert(op.data))).error
     } else if (op.kind === 'update') {
-      error = (await _withTimeout(supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id))).error
+      // .select('id') so a 0-row match (e.g. the target still doesn't exist on
+      // the server — a parent write is itself still queued) isn't reported as
+      // success. Without this the op gets shifted out of the queue as "done"
+      // while nothing actually happened, and no one is ever told.
+      const res = await _withTimeout(supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id).select('id'))
+      error = res.error
+      if (!error && (!res.data || res.data.length === 0)) error = { message: `No row matched id=${op.id} — it may not exist on the server yet.` }
     } else if (op.kind === 'delete') {
       error = (await _withTimeout(supabase.from(op.table).delete().eq('id', op.id))).error
     } else if (op.kind === 'deleteWhere') {
@@ -147,9 +153,20 @@ export const sbInsert = async (table, data) => {
 }
 
 export const sbUpdate = async (table, id, data) => {
-  if (!supabase) return
-  const { error } = await supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id)
-  if (error) { console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }) }
+  if (!supabase) return false
+  // .select('id') so we can tell "updated 0 rows" apart from "updated 1 row" —
+  // without it, Postgres reports success for an UPDATE that matched nothing
+  // (e.g. the target row hasn't finished its own insert yet, on another device
+  // or an unawaited parent write), and the change silently goes nowhere: no
+  // error, so nothing queues it for retry, and no one is ever told.
+  const { data: rows, error } = await supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id).select('id')
+  if (error) { console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); return false }
+  if (!rows || rows.length === 0) {
+    console.warn(`SB UPDATE ${table}: no row matched id=${id} (not created yet on the server?) — queuing for retry`)
+    _enqueue({ kind: 'update', table, id, data })
+    return false
+  }
+  return true
 }
 
 // Returns true/false so a caller that's about to write a DEPENDENT row (e.g. a
