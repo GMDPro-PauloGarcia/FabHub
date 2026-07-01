@@ -20291,7 +20291,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
           terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
         ].filter(Boolean);
-        milestones.forEach(m=>addMilestone({...m,dealId:d.id,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
+        const start=invMax()+1;
+        milestones.forEach((m,idx)=>addMilestone({...m,dealId:d.id,invoiceNo:invNo(start+idx),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
         setAutoGenDone(p=>({...p,[d.id]:true}));
       }
     });
@@ -20329,9 +20330,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   })();
   const overdue      =billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
 
-  const submitMS=()=>{
+  // Collision-free invoice number from the shared server counter (falls back to
+  // local allocation offline / before the migration). Used at save time.
+  const claimInv=()=>claimDocNumber("INV",billings.map(b=>b.invoiceNo||""));
+  // Local sequential helpers for batch auto-generation (one device, one deal).
+  const invMax=()=>billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
+  const invNo=x=>`INV-${String(x).padStart(4,"0")}`;
+  const submitMS=async()=>{
     if(!msForm.name||!msForm.amount) return;
-    addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||nextInvoiceNo(),createdBy:session?.name||role});
+    addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setShowForm(false);
   };
@@ -20374,12 +20381,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     const released=ms.filter(m=>m.isRetentionRelease).reduce((s,m)=>s+n(m.amount),0);
     return {held,released,outstanding:Math.round((held-released)*100)/100};
   })();
-  const releaseRetention=()=>{
+  const releaseRetention=async()=>{
     if(!deal) return;
     const out=retentionState.outstanding;
     if(out<=0){toastEmit&&toastEmit("No retention outstanding to release.","info");return;}
     if(!window.confirm(`Release retention of ₱${out.toLocaleString("en-PH")} for ${deal.client||"this project"}? This creates a Draft retention-release invoice.`)) return;
-    addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
+    addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
   const submitPay=()=>{
@@ -20975,7 +20982,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                 t.final>0&&{name:`Final Billing (${t.final}%)`,amount:Math.round(val*t.final/100),description:"Upon delivery and installation completion"},
                 t.retention>0&&{name:`Retention (${t.retention}%) — Release: ${t.retentionRelease||"Project Completion"}`,amount:Math.round(val*t.retention/100),description:`Held as retention. Release condition: ${t.retentionRelease||"Project Completion"}`},
               ].filter(Boolean);
-              milestones.forEach(m=>addMilestone({...m,dealId:selDeal,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
+              {const start=invMax()+1;milestones.forEach((m,idx)=>addMilestone({...m,dealId:selDeal,invoiceNo:invNo(start+idx),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));}
               toastEmit&&toastEmit(`${milestones.length} billing milestones generated from payment terms`,"success");
             };
             return(
