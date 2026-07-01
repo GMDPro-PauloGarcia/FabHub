@@ -6906,12 +6906,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {!isOnline&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#1e293b",color:"#fcd34d",padding:"8px 16px",textAlign:"center",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>⚠️ You're offline — changes are saved locally and will sync when you reconnect.</div>}
         {pendingSync>0&&(
           <div onClick={async()=>{
-            const before=sbQueueSize();
             toastEmit("Retrying sync…","info",2000);
-            await sbFlushQueue(true); // force — bypass the unreliable navigator.onLine check
-            const after=sbQueueSize();
-            if(after<before) toastEmit(after===0?"✅ Synced — all changes reached the server.":`Synced ${before-after} of ${before}, ${after} still pending.`,"success",5000);
-            else toastEmit("Still can't reach the server. Check your connection and try again.","error",6000);
+            const{synced,remaining,lastError}=await sbFlushQueue(true); // force — bypass the unreliable navigator.onLine check
+            if(remaining===0) toastEmit("✅ Synced — all changes reached the server.","success",5000);
+            else if(synced>0) toastEmit(`Synced ${synced}, ${remaining} still pending — ${lastError?.message||"retrying…"}`,"warning",6000);
+            else{
+              const reason=lastError?.kind==="offline"?"This device appears to be offline.":
+                lastError?.kind==="auth"?"Your session can't reach the server — try logging out and back in.":
+                lastError?.kind==="network"?"Network request failed — check your connection or try a different network.":
+                lastError?.message?`Server said: "${lastError.message}"`:"Unknown error — check your connection.";
+              toastEmit(`Still can't sync. ${reason}`,"error",9000);
+            }
           }} title="Some changes haven't reached the server yet. Tap to retry now."
             style={{position:"fixed",bottom:isMobile?80:18,right:18,zIndex:2100,background:"#b45309",color:"#fff",padding:"8px 14px",borderRadius:24,fontSize:".76rem",fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(180,83,9,.35)",display:"flex",alignItems:"center",gap:7}}>
             <span style={{display:"inline-block",animation:"fhspin 1.1s linear infinite"}}>⟳</span>

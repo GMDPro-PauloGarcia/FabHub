@@ -74,9 +74,9 @@ const _replay = async (op) => {
       else q = q.eq(op.column, op.value)
       error = (await q).error
     }
-    if (error) { console.warn(`sync replay ${op.kind} ${op.table}:`, error.message); return { ok: false, kind: _classifyError(error.message) } }
+    if (error) { console.warn(`sync replay ${op.kind} ${op.table}:`, error.message); return { ok: false, kind: _classifyError(error.message), message: error.message } }
     return { ok: true }
-  } catch (e) { console.warn(`sync replay threw ${op.kind} ${op.table}:`, e.message); return { ok: false, kind: _classifyError(e.message) } }
+  } catch (e) { console.warn(`sync replay threw ${op.kind} ${op.table}:`, e.message); return { ok: false, kind: _classifyError(e.message), message: e.message } }
 }
 
 let _flushing = false
@@ -85,29 +85,40 @@ let _flushing = false
 // (VPNs, captive portals, mobile Safari) and can report false while the
 // connection is actually fine, which silently blocked every retry forever
 // even though nothing was actually wrong.
+// Returns { synced, remaining, lastError } so a caller (e.g. the retry badge)
+// can tell the user WHY it's still stuck instead of a generic "can't reach
+// the server" — the classified kind plus the raw message from Supabase.
 export const sbFlushQueue = async (force = false) => {
-  if (!supabase || _flushing || !_queue.length) return
-  if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) return
+  if (!supabase) return { synced: 0, remaining: _queue.length, lastError: { kind: 'no-client', message: 'Supabase is not configured on this device.' } }
+  if (_flushing) return { synced: 0, remaining: _queue.length, lastError: null }
+  if (!_queue.length) return { synced: 0, remaining: 0, lastError: null }
+  if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { synced: 0, remaining: _queue.length, lastError: { kind: 'offline', message: 'This device is offline.' } }
+  }
   _flushing = true
+  let synced = 0, lastError = null
   try {
     while (_queue.length) {
       const op = _queue[0]
-      const { ok, kind } = await _replay(op)
-      if (ok) { _queue.shift(); _saveQueue() }
+      const { ok, kind, message } = await _replay(op)
+      if (ok) { _queue.shift(); _saveQueue(); synced++ }
       else if (!_isRetryable(kind)) {
         // Permission/schema/constraint errors will never succeed by replaying
         // the same payload — drop immediately instead of wedging every write
         // queued behind it for up to 8 retry cycles.
         console.error(`sync queue: dropping non-retryable op (${kind}) — ${op.kind} ${op.table}`)
+        lastError = { kind, message, table: op.table }
         _queue.shift(); _saveQueue()
       } else {
         op.attempts = (op.attempts || 0) + 1
+        lastError = { kind, message, table: op.table }
         if (op.attempts >= 8) { console.error(`sync queue: dropping op after 8 tries — ${op.kind} ${op.table}`); _queue.shift() }
         _saveQueue()
         if (op.attempts < 8) break // preserve order; retry whole queue later
       }
     }
   } finally { _flushing = false }
+  return { synced, remaining: _queue.length, lastError }
 }
 
 // Auto-flush on reconnect and on a slow heartbeat while anything is pending.
