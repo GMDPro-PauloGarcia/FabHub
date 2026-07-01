@@ -152,10 +152,16 @@ export const sbUpdate = async (table, id, data) => {
   if (error) { console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }) }
 }
 
+// Returns true/false so a caller that's about to write a DEPENDENT row (e.g. a
+// child referencing this row's id via a foreign key) can wait for and confirm
+// success first — otherwise the child write can reach the server before the
+// parent commits and fail an FK check, which sync retry can never fix (a "data"
+// error like a constraint violation is never retried, only dropped).
 export const sbUpsert = async (table, data, conflictCol = 'id') => {
-  if (!supabase) return
+  if (!supabase) return false
   const { error } = await supabase.from(table).upsert(data, { onConflict: conflictCol })
-  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }) }
+  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); return false }
+  return true
 }
 
 export const sbDelete = async (table, id) => {
