@@ -10354,7 +10354,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           setAwardReqModal(null);
         }}/>}
       {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward} drfs={drfs}/>}
-      {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});generateBillingSchedule(dealId,terms,deals.find(d=>d.id===dealId)?.value);toastEmit("✅ Payment terms saved — billing schedule generated.","success");setPayTermsModal(null);}} session={session}/>}
       {priceModal&&<SetPriceModal deal={priceModal} today={today} onClose={()=>setPriceModal(null)} onSave={(val,note)=>{
         upDeals(ds=>ds.map(x=>{
           if(x.id!==priceModal.id) return x;
@@ -12707,6 +12706,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── BILLING ─────────────────────────────────────────────────────────────────
   if(page==="billing") return(
+    <>
     <Wrap>
       {/* Aging Summary */}
       {(()=>{
@@ -12795,6 +12795,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
+    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});generateBillingSchedule(dealId,terms,deals.find(d=>d.id===dealId)?.value);toastEmit("✅ Payment terms saved — billing schedule generated.","success");setPayTermsModal(null);}} session={session}/>}
+    </>
   );
 
   // ── DATA MANAGEMENT (Manager only) ──────────────────────────────────────────
