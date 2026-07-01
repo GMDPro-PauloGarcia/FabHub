@@ -185,7 +185,7 @@ const uid=()=>{
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:(r&0x3|0x8)).toString(16);});
 };
 
-const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",swos:"gmdv5:swos",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",loans:"gmdv5:loans",evouchers:"gmdv5:evouchers"};
+const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",swos:"gmdv5:swos",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",loans:"gmdv5:loans",evouchers:"gmdv5:evouchers",dailylogs:"gmdv5:dailylogs"};
 
 // ─── SUPABASE FIELD MAPPERS ───────────────────────────────────────────────────
 const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',client:r.client||'',location:r.location||'',designer:r.designer||'',design_deadline:r.designDeadline||null,project_title:r.projectTitle||'',type:r.type||'',size:r.size||'',description:r.description||'',accessories:r.accessories||[],ref_links:r.refLinks||[],notes:r.notes||'',approved_link:r.approvedLink||'',status:r.status||'New',created_by:r.createdBy||''});
@@ -3305,6 +3305,101 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
   );
 }
 
+// ─── DAILY SITE LOG ──────────────────────────────────────────────────────────
+// A per-project site diary: manpower, work done, weather, delays, materials &
+// equipment on site. The daily record that feeds progress, supports progress
+// claims, and becomes the delay/dispute trail.
+const WEATHER_OPTS=["☀️ Sunny","⛅ Cloudy","🌧️ Rainy","⛈️ Storm","🥵 Hot"];
+function DailySiteLogView({dailyLogs,wonDeals,addDailyLog,delDailyLog,session,role,Wrap,isMobile,setPage}){
+  const todayStr=new Date().toISOString().slice(0,10);
+  const canLog=["Manager","ProjectMover","Operations","Admin"].includes(role);
+  const [projF,setProjF]=useState("all");
+  const [show,setShow]=useState(false);
+  const blank={dealId:wonDeals[0]?.id||"",date:todayStr,weather:WEATHER_OPTS[0],manpower:"",workDone:"",issues:"",materials:"",equipment:"",progressNote:""};
+  const [f,setF]=useState(blank);
+  const up=(k,v)=>setF(p=>({...p,[k]:v}));
+  const dealName=id=>{const d=wonDeals.find(x=>x.id===id);return d?(d.contact||d.client||"—"):"—";};
+  const logs=(dailyLogs||[]).filter(l=>projF==="all"||l.dealId===projF)
+    .slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")||(b.createdAt||"").localeCompare(a.createdAt||""));
+  const submit=()=>{
+    if(!f.dealId){alert("Pick a project first.");return;}
+    if(!f.workDone.trim()){alert("Describe the work done.");return;}
+    addDailyLog({...f,manpower:Number(f.manpower)||0,loggedBy:session?.name||role||""});
+    setF({...blank,dealId:f.dealId,date:f.date});
+    setShow(false);
+  };
+  const inp={width:"100%",padding:"8px 10px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
+  const lbl=t=><div style={{fontSize:".66rem",fontWeight:700,color:"#64748b",marginBottom:3,textTransform:"uppercase",letterSpacing:".3px"}}>{t}</div>;
+  return(
+    <Wrap>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:"#0f172a"}}>📓 Daily Site Log</div>
+          <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Per-project site diary — manpower, work done, weather, delays. The daily record behind progress & claims.</div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <select value={projF} onChange={e=>setProjF(e.target.value)} style={{...inp,width:"auto",background:"#fff"}}>
+            <option value="all">All projects</option>
+            {wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client}</option>)}
+          </select>
+          {canLog&&<button onClick={()=>{setF({...blank,dealId:projF!=="all"?projF:(wonDeals[0]?.id||"")});setShow(s=>!s);}} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 16px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".8rem",cursor:"pointer",whiteSpace:"nowrap"}}>{show?"✕ Close":"+ New Log"}</button>}
+        </div>
+      </div>
+
+      {show&&canLog&&(
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16}}>
+          <div style={{fontWeight:800,color:"#0f172a",marginBottom:12}}>New Site Log Entry</div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"2fr 1fr 1fr 1fr",gap:10,marginBottom:10}}>
+            <div>{lbl("Project *")}<select value={f.dealId} onChange={e=>up("dealId",e.target.value)} style={{...inp,background:"#fff"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.contact||d.client} · {d.ceNo||""}</option>)}</select></div>
+            <div>{lbl("Date")}<input type="date" value={f.date} onChange={e=>up("date",e.target.value)} style={inp}/></div>
+            <div>{lbl("Weather")}<select value={f.weather} onChange={e=>up("weather",e.target.value)} style={{...inp,background:"#fff"}}>{WEATHER_OPTS.map(w=><option key={w}>{w}</option>)}</select></div>
+            <div>{lbl("Manpower")}<input type="number" min="0" value={f.manpower} onChange={e=>up("manpower",e.target.value)} placeholder="0" style={inp}/></div>
+          </div>
+          <div style={{marginBottom:10}}>{lbl("Work accomplished today *")}<textarea rows={3} value={f.workDone} onChange={e=>up("workDone",e.target.value)} placeholder="What was completed on site today…" style={{...inp,resize:"vertical"}}/></div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:10}}>
+            <div>{lbl("Delays / issues")}<textarea rows={2} value={f.issues} onChange={e=>up("issues",e.target.value)} placeholder="Blockers, delays, safety, rework…" style={{...inp,resize:"vertical"}}/></div>
+            <div>{lbl("Materials received")}<textarea rows={2} value={f.materials} onChange={e=>up("materials",e.target.value)} placeholder="Deliveries to site…" style={{...inp,resize:"vertical"}}/></div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
+            <div>{lbl("Equipment on site")}<input value={f.equipment} onChange={e=>up("equipment",e.target.value)} placeholder="e.g. scaffold, welding set" style={inp}/></div>
+            <div>{lbl("Progress note")}<input value={f.progressNote} onChange={e=>up("progressNote",e.target.value)} placeholder="e.g. ~60% fabrication done" style={inp}/></div>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={submit} style={{background:"#059669",border:"none",borderRadius:9,padding:"9px 20px",color:"#fff",fontFamily:"inherit",fontWeight:800,fontSize:".85rem",cursor:"pointer"}}>Save Log</button>
+            <button onClick={()=>setShow(false)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",color:"#475569",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {logs.length===0?(
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:30,textAlign:"center",color:"#94a3b8"}}>No site logs yet{projF!=="all"?" for this project":""}. {canLog?"Tap “+ New Log” to record today’s site activity.":""}</div>
+        ):logs.map(l=>{
+          const canDel=role==="Manager"||l.loggedBy===session?.name;
+          return(
+            <div key={l.id} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem"}}>{dealName(l.dealId)}</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{l.date} · {l.weather||""} · 👷 {l.manpower||0} on site · by {l.loggedBy||"—"}</div>
+                </div>
+                {canDel&&<button onClick={()=>{if(window.confirm("Delete this site log?"))delDailyLog(l.id);}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"3px 9px",color:"#dc2626",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Delete</button>}
+              </div>
+              {l.workDone&&<div style={{fontSize:".85rem",color:"#334155",marginTop:8,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{l.workDone}</div>}
+              <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:8}}>
+                {l.issues&&<span style={{fontSize:".76rem",background:"#fef2f2",color:"#b91c1c",border:"1px solid #fecaca",borderRadius:8,padding:"4px 9px"}}>⚠️ {l.issues}</span>}
+                {l.materials&&<span style={{fontSize:".76rem",background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe",borderRadius:8,padding:"4px 9px"}}>📦 {l.materials}</span>}
+                {l.equipment&&<span style={{fontSize:".76rem",background:"#f5f3ff",color:"#6d28d9",border:"1px solid #ddd6fe",borderRadius:8,padding:"4px 9px"}}>🔧 {l.equipment}</span>}
+                {l.progressNote&&<span style={{fontSize:".76rem",background:"#f0fdf4",color:"#047857",border:"1px solid #bbf7d0",borderRadius:8,padding:"4px 9px"}}>📈 {l.progressNote}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Wrap>
+  );
+}
+
 export default function App(){
   const[users,      setUsers]     = useState(DEFAULT_USERS);
   const[cashPositions,setCashPos]  = useState({});
@@ -3349,6 +3444,7 @@ export default function App(){
   const[projs,    setProjs]   = useState({});
   const[exps,     setExps]    = useState([]);
   const[evouchers,setEvouchers]= useState([]);
+  const[dailyLogs,setDailyLogs]= useState([]);
   const[infs,     setInfs]    = useState([]);
   const[jos,      setJos]     = useState([]);
   const[swatches, setSwatches]= useState([]);
@@ -3388,7 +3484,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts"
+          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -3424,6 +3520,7 @@ export default function App(){
         if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
         if(idb[KEYS.vouchers])    setVouchers(idb[KEYS.vouchers]);
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
+        if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
       } catch(err){ console.error("IDB load error:", err); }
       setReady(true);
 
@@ -3489,6 +3586,8 @@ export default function App(){
             if(_loans!=null){setLoans(_loans);idbE.push(["gmdv5:loans",_loans]);}
             const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
             if(_vouchers){setVouchers(_vouchers);idbE.push([KEYS.vouchers,_vouchers]);}
+            const _dl=data.dailyLogs?.length?data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at})):null;
+            if(_dl){setDailyLogs(_dl);idbE.push([KEYS.dailylogs,_dl]);}
             if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(bl);idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));if(bs.token){sessionStorage.setItem('fabhub:bottoken',bs.token);idbE.push([KEYS.botsettings,bs]);}}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
@@ -3695,6 +3794,7 @@ export default function App(){
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(us);idbE.push([KEYS.users,us]);}
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null}));setPayables(ps);idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(ls);idbE.push(["gmdv5:loans",ls]);}
+    if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(dl);idbE.push([KEYS.dailylogs,dl]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
 
@@ -6368,6 +6468,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const delInf=async id=>{const rec=infs.find(i=>i.id===id);if(!await confirmFinancialDelete("inflows",rec))return;upInfs(is=>is.filter(i=>i.id!==id));if(isSupabaseReady()) sbDelete('inflows',id).catch(()=>{});};
 
+  // ── DAILY SITE LOG ─────────────────────────────────────────────────────────
+  const upDailyLogs=fn=>{const next=fn(dailyLogs);setDailyLogs(next);persist(KEYS.dailylogs,next);};
+  const dailyLogToSb=r=>({id:r.id,deal_id:r.dealId||null,log_date:r.date||null,weather:r.weather||"",manpower:Number(r.manpower)||0,work_done:r.workDone||"",issues:r.issues||"",materials:r.materials||"",equipment:r.equipment||"",progress_note:r.progressNote||"",logged_by:r.loggedBy||""});
+  const addDailyLog=(rec)=>{
+    const r={...rec,id:uid(),createdAt:today};
+    upDailyLogs(ls=>[r,...ls]);
+    if(isSupabaseReady()) sbUpsert("daily_logs",dailyLogToSb(r),"id").catch(()=>{});
+    logActivity(r.dealId||null,"Daily Log",`Site log${r.workDone?`: ${r.workDone.slice(0,80)}`:""}`,r.loggedBy);
+    return r;
+  };
+  const delDailyLog=(id)=>{upDailyLogs(ls=>ls.filter(l=>l.id!==id));if(isSupabaseReady()) sbDelete("daily_logs",id).catch(()=>{});};
+
   const saveSwatch=()=>{
     if(!swForm.name) return;
     const rec={...swForm,estCost:Number(swForm.estCost||0),id:editSw||uid(),date:today};
@@ -6421,7 +6533,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
-      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
+      {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"dailylog",l:"Daily Site Log"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
@@ -6464,7 +6576,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Operations:[
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
-      {group:"On-Site",   items:[{id:"projects",l:"Project Cards"}]},
+      {group:"On-Site",   items:[{id:"projects",l:"Project Cards"},{id:"dailylog",l:"Daily Site Log"}]},
       {group:"Materials", items:[{id:"swatchboard",l:"Swatchboard"}]},
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"requests",l:"Requests"}]},
     ],
@@ -6476,7 +6588,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ProjectMover:[
       {group:"Overview", items:[{id:"home",l:"My Projects"},{id:"calendar",l:"Calendar"}]},
       {group:"Updates",  items:[{id:"pmupdates",l:"PM Updates"},{id:"addenda",l:"Scope Changes"}]},
-      {group:"Work",     items:[{id:"projects",l:"Project Cards"}]},
+      {group:"Work",     items:[{id:"projects",l:"Project Cards"},{id:"dailylog",l:"Daily Site Log"}]},
     ],
     Warehouse:[
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
@@ -6486,7 +6598,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -6611,7 +6723,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊",
+      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -13060,6 +13172,9 @@ First few:
   );
   if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
+  );
+  if(page==="dailylog") return(
+    <DailySiteLogView dailyLogs={dailyLogs} wonDeals={wonDeals} addDailyLog={addDailyLog} delDailyLog={delDailyLog} session={session} role={role} Wrap={Wrap} isMobile={isMobile} setPage={setPage}/>
   );
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <Wrap>
@@ -20512,7 +20627,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
           terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
         ].filter(Boolean);
-        milestones.forEach(m=>addMilestone({...m,dealId:d.id,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
+        const start=invMax()+1;
+        milestones.forEach((m,idx)=>addMilestone({...m,dealId:d.id,invoiceNo:invNo(start+idx),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
         setAutoGenDone(p=>({...p,[d.id]:true}));
       }
     });
@@ -20550,9 +20666,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   })();
   const overdue      =billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
 
-  const submitMS=()=>{
+  // Collision-free invoice number from the shared server counter (falls back to
+  // local allocation offline / before the migration). Used at save time.
+  const claimInv=()=>claimDocNumber("INV",billings.map(b=>b.invoiceNo||""));
+  // Local sequential helpers for batch auto-generation (one device, one deal).
+  const invMax=()=>billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
+  const invNo=x=>`INV-${String(x).padStart(4,"0")}`;
+  const submitMS=async()=>{
     if(!msForm.name||!msForm.amount) return;
-    addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||nextInvoiceNo(),createdBy:session?.name||role});
+    addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setShowForm(false);
   };
@@ -20595,12 +20717,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
     const released=ms.filter(m=>m.isRetentionRelease).reduce((s,m)=>s+n(m.amount),0);
     return {held,released,outstanding:Math.round((held-released)*100)/100};
   })();
-  const releaseRetention=()=>{
+  const releaseRetention=async()=>{
     if(!deal) return;
     const out=retentionState.outstanding;
     if(out<=0){toastEmit&&toastEmit("No retention outstanding to release.","info");return;}
     if(!window.confirm(`Release retention of ₱${out.toLocaleString("en-PH")} for ${deal.client||"this project"}? This creates a Draft retention-release invoice.`)) return;
-    addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
+    addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
   const submitPay=()=>{
@@ -21196,7 +21318,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                 t.final>0&&{name:`Final Billing (${t.final}%)`,amount:Math.round(val*t.final/100),description:"Upon delivery and installation completion"},
                 t.retention>0&&{name:`Retention (${t.retention}%) — Release: ${t.retentionRelease||"Project Completion"}`,amount:Math.round(val*t.retention/100),description:`Held as retention. Release condition: ${t.retentionRelease||"Project Completion"}`},
               ].filter(Boolean);
-              milestones.forEach(m=>addMilestone({...m,dealId:selDeal,invoiceNo:nextInvoiceNo(),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
+              {const start=invMax()+1;milestones.forEach((m,idx)=>addMilestone({...m,dealId:selDeal,invoiceNo:invNo(start+idx),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));}
               toastEmit&&toastEmit(`${milestones.length} billing milestones generated from payment terms`,"success");
             };
             return(
