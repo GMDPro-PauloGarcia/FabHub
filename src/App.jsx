@@ -4902,6 +4902,46 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }));
     }
   };
+  // Build the milestone schedule from payment terms and add it immediately —
+  // called at the moment terms are captured (Award flow or the standalone Set
+  // Payment Terms modal) instead of waiting for someone to happen to open the
+  // Billing page for that specific project. Previously auto-generation only
+  // ran in a useEffect inside BillingView keyed on wonDeals.length/billings.length,
+  // so setting terms on an EXISTING awarded deal (no new deal added) never
+  // changed that dependency and the schedule silently never got created until
+  // Billing was remounted — "every awarded deal has a proper billing" wasn't
+  // actually guaranteed.
+  const generateBillingSchedule=(dealId,terms,contractVal)=>{
+    const val=Number(contractVal)||0;
+    if(!terms||val<=0) return;
+    if(billings.some(b=>b.dealId===dealId)) return; // already has milestones — never duplicate
+    const milestones=[
+      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
+      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:Math.round(val*terms.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
+      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
+      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
+    ].filter(Boolean);
+    if(!milestones.length) return;
+    // Add the whole batch in one state update and do ONE deal.invoiced recompute
+    // from the complete set — calling addMilestone in a loop would have each
+    // call sync deal.invoiced from a stale, pre-batch `billings` closure, so
+    // only the LAST milestone's amount would stick instead of the full total.
+    const invMax=billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
+    const recs=milestones.map((m,idx)=>({...m,id:uid(),dealId,invoiceNo:`INV-${String(invMax+1+idx).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[],createdDate:today}));
+    upBillings(bs=>[...bs,...recs]);
+    recs.forEach(rec=>{
+      if(!isSupabaseReady()) toastEmit("⚠️ Billing schedule saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
+      else if(!isUUID(rec.dealId)) toastEmit("⚠️ This billing can't sync — the project has an invalid ID. Saved on this device only.","warning",9000);
+      else sbSyncOne("billing_milestones",rec,toSbBilling);
+    });
+    const totalInvoiced=recs.reduce((s,r)=>s+Number(r.amount||0),0);
+    upDeals(ds=>ds.map(d=>{
+      if(d.id!==dealId) return d;
+      const nd={...d,invoiced:Math.round((Number(d.invoiced||0)+totalInvoiced)*100)/100};
+      if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+      return nd;
+    }));
+  };
   const updateMilestone=(id,ch)=>{
     if(ch.status==='Fully Paid'){
       const ms=billings.find(b=>b.id===id);
@@ -5666,8 +5706,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
     return list;
   },[billings,addenda,wonDeals,projs,drfs,prs,breqs,deals,today]);
-  const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
-  const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
+  // Billing milestones are the source of truth for "collected" once a deal has a schedule —
+  // deal.amountPaid can drift (legacy imports, manual edits) with nothing to catch it, which is
+  // exactly how Sales Pipeline and Billing ended up showing different numbers for the same deal.
+  // Falls back to deal.amountPaid only for deals that never got a billing schedule.
+  const dealCollected=(d)=>{
+    const ms=billings.filter(b=>b.dealId===d.id);
+    if(!ms.length) return Number(d.amountPaid||0);
+    return ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  };
+  const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+dealCollected(d),0),[wonDeals,billings]);
+  const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0)),[wonDeals,billings]);
 
   // Auto-mark overdue billing milestones — runs once when billings load, then daily
   useEffect(()=>{
@@ -6227,10 +6276,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       (form.specialInstructions?`\n⚠️ Special Instructions:\n${form.specialInstructions}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
-    // Save payment terms if set in Step 3
+    // Save payment terms if set in Step 3, and generate the billing schedule
+    // immediately so an awarded project never sits with terms on file but no
+    // invoices — see generateBillingSchedule for why this can't wait for
+    // someone to happen to open the Billing page.
     if(form.paymentTerms){
       upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentTerms:form.paymentTerms}:d));
       if(isSupabaseReady())sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}).catch(()=>{});
+      generateBillingSchedule(id,form.paymentTerms,contractVal);
     }
     setAwardModal(null);
   };
@@ -7126,9 +7179,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
         const myPipe=myDeals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
         const myUnpriced=myPipe.filter(d=>!Number(d.value)||Number(d.value)===0);
-        const myColl=myWon.reduce((s,d)=>s+Number(d.amountPaid||0),0);
+        const myColl=myWon.reduce((s,d)=>s+dealCollected(d),0);
         const myRev=myWon.reduce((s,d)=>s+Number(d.value||0),0);
-        const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0));
+        const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0));
         const pendingAddenda=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected"&&myWon.some(d=>d.id===a.dealId));
         const fmtK=v=>v>=1000000?"₱"+Math.round(v/1000000*10)/10+"M":"₱"+Math.round(v/1000)+"K";
         return(
@@ -7184,7 +7237,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)",cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("pipeline")}>See all →</span>
                 </div>
                 {myWon.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").slice(0,6).map((d,i,arr)=>{
-                  const paid=Number(d.amountPaid||0);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const paid=dealCollected(d);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
                   const sc={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"}[d.stage]||"#94a3b8";
                   return(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f8fafc":""}}>
@@ -10084,7 +10137,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const pc=pcards[d.id];
-                  const paid=Number(d.amountPaid)||0;
+                  const paid=dealCollected(d);
                   const inv=Number(d.invoiced)||0;
                   const contractVal=Number(d.value)||0;
                   const outstanding=Math.max(0,contractVal-paid);
@@ -10157,7 +10210,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       const gd=parentList.filter(d=>(d.ceType||"Other")===grp);
                       const gdChildren=allChildren.filter(c=>gd.some(p=>p.id===c.parentDealId));
                       const total=[...gd,...gdChildren].reduce((s,d)=>s+Number(d.value||0),0);
-                      const paid=[...gd,...gdChildren].reduce((s,d)=>s+Number(d.amountPaid||0),0);
+                      const paid=[...gd,...gdChildren].reduce((s,d)=>s+dealCollected(d),0);
                       const isOpen=openGroups[grp]!==false;
                       return(
                         <div key={grp} style={{marginBottom:10}}>
@@ -10301,7 +10354,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           setAwardReqModal(null);
         }}/>}
       {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward} drfs={drfs}/>}
-      {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});toastEmit("Payment terms saved — Finance can now build the billing schedule","success");setPayTermsModal(null);}} session={session}/>}
+      {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});generateBillingSchedule(dealId,terms,deals.find(d=>d.id===dealId)?.value);toastEmit("✅ Payment terms saved — billing schedule generated.","success");setPayTermsModal(null);}} session={session}/>}
       {priceModal&&<SetPriceModal deal={priceModal} today={today} onClose={()=>setPriceModal(null)} onSave={(val,note)=>{
         upDeals(ds=>ds.map(x=>{
           if(x.id!==priceModal.id) return x;
@@ -11316,15 +11369,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontSize:".78rem",color:"#64748b"}}>{d.product} · {d.contact}</div>
                 {d.followUp&&<div style={{fontSize:".73rem",color:d.followUp<today&&!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"?"#ef4444":"#94a3b8",marginTop:5}}>📅 Follow-up: {d.followUp}{d.followUp<today&&!WON_STAGES.includes(d.stage)?" — OVERDUE":""}</div>}
                 {d.notes&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>{d.notes}</div>}
-                {WON_STAGES.includes(d.stage)&&d.invoiced>0&&(
+                {WON_STAGES.includes(d.stage)&&d.invoiced>0&&(()=>{
+                  const paid=dealCollected(d);
+                  return(
                   <div style={{marginTop:10}}>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:4}}>
-                      <span>{fmt(d.amountPaid)} of {fmt(d.invoiced)} collected</span>
-                      <span>{d.invoiced>0?Math.round(d.amountPaid/d.invoiced*100):0}%</span>
+                      <span>{fmt(paid)} of {fmt(d.invoiced)} collected</span>
+                      <span>{d.invoiced>0?Math.round(paid/d.invoiced*100):0}%</span>
                     </div>
-                    <ProgBar pct={d.invoiced>0?d.amountPaid/d.invoiced*100:0} color={d.amountPaid>=d.invoiced?"#059669":"#10b981"}/>
+                    <ProgBar pct={d.invoiced>0?paid/d.invoiced*100:0} color={paid>=d.invoiced?"#059669":"#10b981"}/>
                   </div>
-                )}
+                  );
+                })()}
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontWeight:800,color:"#10b981",fontSize:"1.15rem"}}>{fmt(d.value)}</div>
