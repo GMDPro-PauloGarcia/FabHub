@@ -6914,6 +6914,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               const reason=lastError?.kind==="offline"?"This device appears to be offline.":
                 lastError?.kind==="auth"?"Your session can't reach the server — try logging out and back in.":
                 lastError?.kind==="network"?"Network request failed — check your connection or try a different network.":
+                lastError?.kind==="busy"?"A sync attempt was already running — try tapping again in a few seconds.":
                 lastError?.message?`Server said: "${lastError.message}"`:"Unknown error — check your connection.";
               toastEmit(`Still can't sync. ${reason}`,"error",9000);
             }
