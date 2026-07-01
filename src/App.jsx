@@ -377,6 +377,33 @@ const PR_CATS      = ["Materials","Hardware","Fixtures","Signage","Electrical","
 const BUDGET_CATS  = ["Materials","Labor","Overhead","Subcon"];
 const BUDGET_CAT_CLR = {Materials:"#3b82f6",Labor:"#10b981",Overhead:"#f59e0b",Subcon:"#8b5cf6"};
 
+// Split a project's costs into Committed (open POs not yet delivered — money
+// ordered but not yet spent, i.e. ongoing exposure) and Actual (delivered POs +
+// logged expenses — money actually gone out). Delivered POs already turned into
+// an expense (matched by PO ref) are not double-counted. Shared by BudgetView
+// and the Project Card finance snapshot so both agree on the same numbers.
+const projectCostBreakdown=(dealId,prs,exps)=>{
+  const n=v=>Number(String(v).replace(/,/g,""))||0;
+  const committed={Materials:0,Labor:0,Overhead:0,Subcon:0};
+  const actual={Materials:0,Labor:0,Overhead:0,Subcon:0};
+  const projExps=exps.filter(e=>e.projectId===dealId);
+  const expensedPORefs=new Set(projExps.map(e=>e.poRef).filter(Boolean));
+  prs.filter(p=>p.projectId===dealId&&p.status!=="Cancelled").forEach(p=>{
+    const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+    const cat=committed[p.budgetCategory]!==undefined?p.budgetCategory:"Materials";
+    if(p.status==="Delivered"){
+      if(!(p.poNumber&&expensedPORefs.has(p.poNumber))) actual[cat]+=cost;
+    } else {
+      committed[cat]+=cost;
+    }
+  });
+  projExps.forEach(e=>{
+    const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
+    actual[cat]+=n(e.amount);
+  });
+  return {committed,actual};
+};
+
 const emptyPR = () => ({
   id:"", projectId:"", projectName:"",
   itemName:"", category:"Materials", description:"",
@@ -947,7 +974,7 @@ const emptyDeal={
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
   // Design Request (inline DRF)
   designRequestDate:"",designRequestNote:"",designApprovalDate:"",
-  drfProjectTitle:"",drfSize:"",drfDescription:"",drfAccessories:[],drfRefLinks:["","",""],drfDeadline:"",drfDesigner:"",drfNotes:"",
+  drfReqCreate:false,drfProjectTitle:"",drfSize:"",drfDescription:"",drfAccessories:[],drfRefLinks:["","",""],drfDeadline:"",drfNotes:"",
   // CE/QS Request (inline — auto-creates a CE request for Rodney's queue)
   ceReqCreate:false,ceReqType:"retail",ceReqPriority:"Normal",ceReqDeadline:"",ceReqSubmitDeadline:"",ceReqBudget:"",ceReqMargin:"",ceReqPlansLink:"",ceReqSkpLink:"",ceReqSchedule:"",ceReqNotes:"",
   // Comms
@@ -1918,13 +1945,25 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         {editId&&<FileAttachments folder={`deals/${editId}`} label="Deal Attachments"/>}
       </div>
 
-      {/* Design Request Form (DRF) — always shown */}
+      {/* Design Request Form (DRF) — tickbox like the CE/QS request below: the
+          requester flags that design work is needed, the Design lead picks who
+          on the team handles it (see DRFView "Assign" action) instead of the
+          requester naming a specific designer up front. */}
+      {!editId&&(
       <div style={{background:"#faf5ff",borderRadius:12,padding:"14px 16px",marginTop:8,border:"1.5px solid #ddd6fe"}}>
-        <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem",marginBottom:4}}>🎨 Design Request</div>
-        <div style={{fontSize:".72rem",color:"#a78bfa",marginBottom:12}}>Fill this out to auto-create a DRF when the deal is saved.</div>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+          <div>
+            <div style={{fontWeight:700,color:"#6d28d9",fontSize:".85rem"}}>🎨 Request Design</div>
+            <div style={{fontSize:".72rem",color:"#a78bfa",marginTop:2}}>Tick to create a Design Request when the deal is saved — the Design lead will assign who works on it.</div>
+          </div>
+          <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:".8rem",fontWeight:700,color:"#6d28d9"}}>
+            <input type="checkbox" checked={!!form.drfReqCreate} onChange={e=>f("drfReqCreate",e.target.checked)} style={{width:18,height:18,cursor:"pointer",accentColor:"#7c3aed"}}/>
+            {form.drfReqCreate?"Will create Design Request":"Create Design Request"}
+          </label>
+        </div>
+        {form.drfReqCreate&&(
+        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12,marginTop:12}}>
           <Fld label="Size / Dimensions"><Inp value={form.drfSize||""} onChange={e=>f("drfSize",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
-          <Fld label="Assigned Designer"><Sel value={form.drfDesigner||""} onChange={e=>f("drfDesigner",e.target.value)}><option value="">— Assign later —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
           <Fld label="Design Deadline"><Inp type="date" value={form.drfDeadline||""} onChange={e=>f("drfDeadline",e.target.value)}/></Fld>
           <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={4} value={form.drfDescription||""} onChange={e=>f("drfDescription",e.target.value)} placeholder={"RE-CREATE: Golf bag organizer rack\nSIZE: Must fit two large golf bags\nFUNCTION: Store bags + shoe shelf"}/></Fld></div>
           <div style={{gridColumn:"1/-1"}}>
@@ -1947,7 +1986,9 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </div>
           <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.drfNotes||""} onChange={e=>f("drfNotes",e.target.value)} placeholder="Brand guidelines, restrictions, additional references…"/></Fld></div>
         </div>
+        )}
       </div>
+      )}
 
       {/* CE/QS Request — auto-creates a cost-estimation request for Rodney's queue */}
       {!editId&&(
@@ -2070,7 +2111,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 }
 
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
-function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[]}){
+function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[],suppliers=[]}){
   const todayStr=new Date().toISOString().slice(0,10);
   const emptyRow=()=>({expDate:todayStr,supplier:"",payee:"",projectId:null,note:"",qty:"1",pricePerQty:"",tin:"",category:"Materials",accountCode:"",remarks:"",bankAccount:"",receipt:"",month:new Date().getMonth(),year:new Date().getFullYear(),_exp:false});
   const expenseAccounts=(chartOfAccounts||[]).filter(a=>a.type==="COGS"||a.type==="Expense").sort((x,y)=>String(x.code).localeCompare(String(y.code)));
@@ -2173,7 +2214,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
           <div style={{padding:"10px 12px"}}>
             <div style={{display:"grid",gridTemplateColumns:"130px 1fr 1fr",gap:7,marginBottom:7}}>
               <div>{lbl("Date")}<input type="date" value={r.expDate||""} onChange={e=>upRow(i,"expDate",e.target.value)} style={inp}/></div>
-              <div>{lbl("Supplier / Payee")}<input value={r.supplier||r.payee||""} onChange={e=>{upRow(i,"supplier",e.target.value);upRow(i,"payee",e.target.value);}} placeholder="e.g. Wilcon Home Depot" style={inp}/></div>
+              <div>{lbl("Supplier / Payee")}<input list="expSupplierOptions" value={r.supplier||r.payee||""} onChange={e=>{upRow(i,"supplier",e.target.value);upRow(i,"payee",e.target.value);}} placeholder="e.g. Wilcon Home Depot — new names are added to Suppliers" style={inp}/></div>
               <div>{lbl("Project")}<select value={r.projectId||""} onChange={e=>upRow(i,"projectId",e.target.value||null)} style={{...inp,background:"#fff"}}><option value="">— Company-wide —</option>{projList.map(d=><option key={d.id} value={d.id}>{(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:"")}</option>)}</select></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 72px 120px 110px",gap:7,marginBottom:7}}>
@@ -2233,6 +2274,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
           </button>
         </div>
       </div>
+      <datalist id="expSupplierOptions">{suppliers.map(s=><option key={s.id} value={s.companyName}/>)}</datalist>
     </Modal>
   );
 }
@@ -3332,7 +3374,10 @@ export default function App(){
       try {
         const s=localStorage.getItem(KEYS.session);
         if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
-        const r=localStorage.getItem(KEYS.role); if(r) setRole(r);
+        // Session (KEYS.session) is the single source of truth for role — don't
+        // let a stale KEYS.role value (e.g. left over from a previous user/role on
+        // this browser, never updated by the Supabase-auth SIGNED_IN path) silently
+        // override it and strip role-gated UI like the Sales "Award" button.
       } catch {}
       // Step 1b: Data from IndexedDB — async, no 5 MB limit
       try {
@@ -3400,7 +3445,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){setDeals(_deals);idbE.push([KEYS.deals,_deals]);}
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(_jos);idbE.push([KEYS.jos,_jos]);}
@@ -3571,11 +3616,16 @@ export default function App(){
   // of the 160+ silent .catch() sites that hid sync failures from the user.
   useEffect(()=>{
     let last=0;
-    setSbErrorHandler(()=>{
+    setSbErrorHandler((op,table,msg,kind)=>{
       const n=Date.now();
       if(n-last>30000){
         last=n;
-        toastEmit("⚠️ Some changes aren't reaching the server — you may be offline. Working locally; they'll sync when the connection returns.","error",8000);
+        const text=kind==="auth"
+          ?"⚠️ Your session can't reach the server — try logging out and back in. Changes aren't being saved."
+          :kind==="data"
+          ?"⚠️ The server rejected a change (bad data) — it won't be retried automatically. Please redo it or contact support."
+          :"⚠️ Some changes aren't reaching the server — you may be offline. Working locally; they'll sync when the connection returns.";
+        toastEmit(text,"error",8000);
       }
     });
     return ()=>setSbErrorHandler(null);
@@ -3603,7 +3653,7 @@ export default function App(){
       lastRefresh=now;
       try{
         const data=await sbLoadAll();
-        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null})));
+        if(data?.deals?.length) setDeals(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})));
         if(data?.jos?.length) setJos(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})));
         if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
         if(data?.checklist?.length) setChecklist(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})));
@@ -3626,7 +3676,7 @@ export default function App(){
     const data = await sbLoadAll();
     if(!data) return;
     const idbE=[];
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null}));setDeals(ds);idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(ds);idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(js);idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined}));setBillings(bs);idbE.push([KEYS.billings,bs]);}
@@ -4024,6 +4074,14 @@ export default function App(){
     if(isSupabaseReady()) sbInsert('suppliers',supToSb(rec)).catch(()=>{});
     return[...ss,rec];
   });
+  // Typing a not-yet-known supplier/payee name while logging an expense adds it
+  // to the Supplier Master so it shows up as a pick next time (mirrors how a
+  // typed-in team member name gets remembered for the Project Team roster).
+  const rememberSupplierNames=(names)=>{
+    const known=new Set(suppliers.map(s=>(s.companyName||"").trim().toLowerCase()).filter(Boolean));
+    const fresh=[...new Set(names.map(n=>(n||"").trim()).filter(n=>n&&!known.has(n.toLowerCase())))];
+    fresh.forEach(name=>addSupplier({companyName:name,status:"Active"}));
+  };
   const updateSupplier=(id,ch)=>{
     upSuppliers(ss=>ss.map(s=>s.id===id?{...s,...ch}:s));
     if(isSupabaseReady()) sbUpdate('suppliers',id,supToSb(ch)).catch(()=>{});
@@ -4406,7 +4464,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
-          awardRequestData:rec.award_request_data||null};
+          awardRequestData:rec.award_request_data||null,
+          paymentTerms:rec.payment_terms_json?(()=>{try{return JSON.parse(rec.payment_terms_json);}catch(e){return null;}})():null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
       }
@@ -5308,9 +5367,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(st==="Done") toastEmit("Task marked done!","success");
   };
 
-  const pickRole=r=>{setRole(r);localStorage.setItem(KEYS.role,r);};
-
-
   // ── Auth helpers ───────────────────────────────────────────────────────────
   const login=async(username,password)=>{
     const unameLower=username.toLowerCase().trim();
@@ -5777,11 +5833,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       GMD_CLIENTS.push(newClient);
       setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
     }
-    // Auto-create DRF if design brief was filled in the deal form
-    if(!editDeal && (data.drfDescription||data.drfProjectTitle)){
+    // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
+    // left unset here; the Design lead assigns who handles it (DRFView "Assign").
+    if(!editDeal && data.drfReqCreate){
       addDRF({
         dealId:rec.id, client:rec.client, location:"",
-        designer:data.drfDesigner||"", designDeadline:data.drfDeadline||"",
+        designer:"", designDeadline:data.drfDeadline||"",
         projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
         type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
         description:data.drfDescription||"",
@@ -6097,6 +6154,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const tx=calcInputTax(computedAmt,data.vatable,data.ewtRate);
     const rec={...data,qty,pricePerQty:price,amount:computedAmt,id:editExpId||uid(),vatable:!!data.vatable,ewtRate:tx.ewtRate,inputVat:tx.inputVat,ewtAmount:tx.ewtAmount,netAmount:tx.net};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
+    rememberSupplierNames([rec.supplier||rec.payee]);
     if(isSupabaseReady()){
       sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>{
         console.error("FabHub expense save:",e.message);
@@ -6120,6 +6178,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }).filter(Boolean);
     if(!valid.length) return;
     upExps(es=>[...es,...valid]);
+    rememberSupplierNames(valid.map(rec=>rec.supplier||rec.payee));
     if(isSupabaseReady()){valid.forEach(rec=>sbUpsert("expenses",toSbExpense(rec),"id").catch(e=>{console.error("FabHub batch expense:",e.message);toastEmit("⚠️ Some expenses saved locally only — no server sync","warning",9000);}));}
     else{toastEmit("⚠️ Expenses saved locally only — no server connection. Do not close this tab!","warning",9000);}
     setEditExpId(null);
@@ -6774,7 +6833,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} role={role}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
           <>
@@ -6953,7 +7012,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{a.title||"Untitled Scope Change"}</div>
                         <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.status}</div>
                       </div>
-                      <button onClick={()=>setPage("addenda")} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>Review →</button>
+                      <button onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>Review →</button>
                     </div>
                   );
                 })}
@@ -7300,7 +7359,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {unpricedScope.slice(0,5).map((a,i)=>{
                   const d=wonDeals.find(x=>x.id===a.dealId);
                   return(
-                    <div key={a.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<unpricedScope.length-1?"1px solid #f8fafc":""}}>
+                    <div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"9px 16px",borderBottom:i<unpricedScope.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}>
                       <div>
                         <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{a.title}</div>
                         <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy||"?"}</div>
@@ -8236,7 +8295,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
                 :newScope.slice(0,5).map((a,i)=>{
                   const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} style={{padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":""}}>
+                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",cursor:"pointer"}}>
                     <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
                     <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy} · ₱{Number(a.value||0).toLocaleString()}</div>
                   </div>);
@@ -8358,7 +8417,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
                 :newScope.slice(0,5).map((a,i)=>{
                   const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} style={{padding:"9px 14px",borderBottom:i<newScope.length-1?"1px solid #f8fafc":""}}>
+                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<newScope.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}>
                     <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
                     <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · AE: {d?.salesOwner||"—"} · {a.status}</div>
                     {a.value>0&&<div style={{fontSize:".72rem",color:"#059669",marginTop:1}}>Est. ₱{Number(a.value).toLocaleString()} additional</div>}
@@ -8433,10 +8492,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const now=new Date();
         const months=[];
         for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push({yr:d.getFullYear(),mo:d.getMonth(),label:["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()]});}
-        const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=d.dateAcquired?new Date(d.dateAcquired):null;return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        const salesData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).reduce((s,d)=>s+Number(d.value||0),0));
         const expData=months.map(({yr,mo})=>exps.filter(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);if(!ds)return false;const d=new Date(ds);return d.getFullYear()===yr&&d.getMonth()===mo;}).reduce((s,e)=>s+Number(e.amount||0),0));
         const collData=months.map(({yr,mo})=>{let sum=0;billings.forEach(b=>{(b.payments||[]).forEach(p=>{if(!p.date)return;const d=new Date(p.date);if(d.getFullYear()===yr&&d.getMonth()===mo)sum+=Number(p.amount||0);});});return sum;});
-        const awardData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=d.dateAcquired?new Date(d.dateAcquired):null;return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).length);
+        const awardData=months.map(({yr,mo})=>deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=awardedMonth(d);return dt&&dt.getFullYear()===yr&&dt.getMonth()===mo;}).length);
         const fmtM=v=>v>=1000000?"₱"+Math.round(v/100000)/10+"M":v>=1000?"₱"+Math.round(v/1000)+"K":v>0?"₱"+v:"₱0";
         const BarChart=({data,color,labels})=>{
           const max=Math.max(...data,1);
@@ -8491,12 +8551,29 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* ── ALERT BANNERS ───────────────────────────────────────────── */}
       {(()=>{
         const alerts=[];
-        if(escalations.length) alerts.push({icon:"⚠️",msg:`${escalations.length} escalation${escalations.length>1?"s":""}${escalations.filter(e=>e.severity==="high").length>0?" · "+escalations.filter(e=>e.severity==="high").length+" high severity":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
-        if(overdueInvCnt)      alerts.push({icon:"🚨",msg:`${overdueInvCnt} overdue invoice${overdueInvCnt>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:()=>setPage("billing")});
+        // Single-item alerts jump straight to the exact record via setJumpDeal instead
+        // of dumping the user onto a generic list page they then have to search again.
+        if(escalations.length){
+          const jumpToEscalation=escalations.length===1?(()=>{setJumpDeal(escalations[0].dealId);setPage("projects");}):(()=>setPage("projects"));
+          alerts.push({icon:"⚠️",msg:`${escalations.length} escalation${escalations.length>1?"s":""}${escalations.filter(e=>e.severity==="high").length>0?" · "+escalations.filter(e=>e.severity==="high").length+" high severity":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:jumpToEscalation});
+        }
+        if(overdueInvCnt){
+          const overdueInv=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
+          const jumpToInv=overdueInv.length===1?(()=>{setJumpDeal(overdueInv[0].dealId);setPage("projects");}):(()=>setPage("billing"));
+          alerts.push({icon:"🚨",msg:`${overdueInvCnt} overdue invoice${overdueInvCnt>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:jumpToInv});
+        }
         if(overdueTATCnt)      alerts.push({icon:"⏰",msg:`${overdueTATCnt} project${overdueTATCnt>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>{setJumpFilter("overdue");setPage("projects");}});
-        if(awardReqCnt)        alerts.push({icon:"🏆",msg:`${awardReqCnt} deal${awardReqCnt>1?"s":""} pending award approval`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
+        if(awardReqCnt){
+          const awardReqDeals=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
+          const jumpToAwardReq=awardReqDeals.length===1?(()=>{setJumpDeal(awardReqDeals[0].id);setPage("projects");}):(()=>setPage("pipeline"));
+          alerts.push({icon:"🏆",msg:`${awardReqCnt} deal${awardReqCnt>1?"s":""} pending award approval`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:jumpToAwardReq});
+        }
         if(mrPendingCnt)       alerts.push({icon:"📋",msg:`${mrPendingCnt} material request${mrPendingCnt>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("requests")});
-        if(addendaAlertCnt)    alerts.push({icon:"⚠️",msg:`${addendaAlertCnt} scope change${addendaAlertCnt>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:()=>setPage("pipeline")});
+        if(addendaAlertCnt){
+          const scopeChangeDeals=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");
+          const jumpToScope=scopeChangeDeals.length===1?(()=>{setJumpDeal(scopeChangeDeals[0].dealId);setPage("projects");}):(()=>setPage("addenda"));
+          alerts.push({icon:"⚠️",msg:`${addendaAlertCnt} scope change${addendaAlertCnt>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:jumpToScope});
+        }
         if(!alerts.length) return null;
         return(
           <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
@@ -8604,8 +8681,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const aeCode=(name)=>{if(!name)return"—";const skip=new Set(["de","del","ng","la","the"]);return name.split(" ").filter(w=>w&&!skip.has(w.toLowerCase())).map(w=>w[0].toUpperCase()).join("");};
     const getPCount=()=>repPeriod==="monthly"?12:repPeriod==="quarterly"?4:1;
     const getPLabel=(i)=>repPeriod==="monthly"?MONTHS[i]:repPeriod==="quarterly"?`Q${i+1}`:`${CY}`;
-    // acqDate: falls back to project card awardDate for WON deals with no dateAcquired
-    const acqDate=(d)=>d.dateAcquired||(WON_STAGES.includes(d.stage)?pcards[d.id]?.awardDate:null)||null;
+    // acqDate: for WON deals, the actual award date (set on the project card at award
+    // time) is the correct "when it happened" timestamp — dateAcquired is just the
+    // original lead-intake date and is a poor stand-in once a deal is won. Fall back
+    // to dateAcquired only when no award date has been recorded yet.
+    const acqDate=(d)=>(WON_STAGES.includes(d.stage)?pcards[d.id]?.awardDate:null)||d.dateAcquired||null;
     const getDealPeriod=(d)=>{const ds=acqDate(d);if(!ds)return -1;const dt=new Date(ds);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
     const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
     const n=getPCount();
@@ -8680,6 +8760,155 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         window.XLSX.writeFile(wb,`FabHub-Report-${CY}-${repPeriod}.xlsx`);
       }
     };
+    // Proper printable report — letterhead + KPI strip + sectioned tables,
+    // instead of just window.print()-ing whatever screen tab happens to be
+    // open (which prints filter dropdowns, tab buttons, etc. with no letterhead).
+    const printReports=()=>{
+      const esc=(s)=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      const periodLabel=repPeriod==="monthly"?monthLabel:repPeriod==="quarterly"?`${CY} — Quarterly`:`${CY} — Full Year`;
+      const dateStr=new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
+      const closedRowsHtml=(repPeriod==="monthly"?monthWon:yearWon).map((d,i)=>{
+        const t=dealTax(d);
+        return`<tr>
+          <td style="text-align:center;color:#64748b">${i+1}</td>
+          <td>${esc(d.client||"—")}</td>
+          <td>${esc(d.ceNo||"—")}</td>
+          <td>${esc(aeCode(d.salesOwner||""))}</td>
+          <td style="text-align:right">${fmt(t.base)}</td>
+          <td style="text-align:right">${fmt(t.vat)}</td>
+          <td style="text-align:right;font-weight:700">${fmt(t.gross)}</td>
+        </tr>`;
+      }).join("")||`<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:14px">No won deals in this period</td></tr>`;
+      const aeRowsHtml=aeRows.map(r=>`<tr>
+        <td>${esc(r.name)}</td><td style="text-align:center">${r.code}</td>
+        <td style="text-align:center">${r.won}</td><td style="text-align:center">${r.clients}</td>
+        <td style="text-align:right;font-weight:700">${fmt(r.gross)}</td>
+        <td style="text-align:right">${aeTotal>0?Math.round(r.gross/aeTotal*100):0}%</td>
+      </tr>`).join("")||`<tr><td colspan="6" style="text-align:center;color:#94a3b8;padding:14px">No closed deals to attribute</td></tr>`;
+      const finRowsHtml=finPeriods.map(p=>`<tr>
+        <td>${esc(p.label)}</td>
+        <td style="text-align:right">${fmt(p.revenue)}</td>
+        <td style="text-align:right">${fmt(p.collections)}</td>
+        <td style="text-align:right">${fmt(p.outstanding)}</td>
+        <td style="text-align:right">${fmt(p.expenses)}</td>
+        <td style="text-align:right;font-weight:700;color:${p.net>=0?"#059669":"#dc2626"}">${fmt(p.net)}</td>
+      </tr>`).join("");
+      const agingRowsHtml=agingMs.slice(0,10).map(b=>`<tr>
+        <td>${esc(b.clientName)}</td>
+        <td>${esc(b.name||b.label||"Invoice")}</td>
+        <td style="text-align:right">${fmt(b.amount)}</td>
+        <td style="text-align:center;font-weight:700;color:${(b.daysOver||0)>30?"#dc2626":"#92400e"}">${b.daysOver||0}d</td>
+      </tr>`).join("")||`<tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:14px">No outstanding receivables</td></tr>`;
+      const flagsHtml=dataFlags.length?dataFlags.map(f=>`<tr>
+        <td style="text-align:center">${f.n}</td><td>${esc(f.issue)}</td><td>${esc(f.detail)}</td><td style="text-align:right">${typeof f.stake==="string"?esc(f.stake):fmt(f.stake)}</td>
+      </tr>`).join(""):`<tr><td colspan="4" style="text-align:center;color:#059669;padding:10px">✅ No data-quality issues detected</td></tr>`;
+      const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>FabHub Report — ${esc(periodLabel)}</title><style>
+        @page{size:A4 portrait;margin:14mm 15mm}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#0f172a;background:#fff}
+        .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+        .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit}
+        @media print{.print-btn{display:none}}
+        .header{background:#1e293b;padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
+        .co-name{font-size:20px;font-weight:900;color:#fff;letter-spacing:-.5px}
+        .sub-bar{background:#1e293b;padding:2px 22px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c}
+        .tagline{color:rgba(255,255,255,.45);font-size:9px}
+        .wrap{padding:14px 22px 8px}
+        .title{font-size:15px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+        .subtitle{font-size:10px;color:#64748b;margin-bottom:14px}
+        .kpis{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #e2e8f0;margin-bottom:18px}
+        .kb{padding:10px 12px;background:#f8fafc;border-right:1px solid #e2e8f0;text-align:center}
+        .kb:last-child{border-right:none;background:#fff7ed}
+        .kl{font-size:7.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px}
+        .kv{font-size:14px;font-weight:800;color:#0f172a}
+        .sec{margin-bottom:20px}
+        .sec-title{font-size:10.5px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;color:#ea580c;border-bottom:1.5px solid #ea580c;padding-bottom:4px;margin-bottom:8px}
+        table{width:100%;border-collapse:collapse;font-size:10px}
+        thead tr{background:#1e293b}
+        thead th{color:rgba(255,255,255,.85);font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:7px 9px;text-align:left}
+        tbody tr:nth-child(even){background:#f9fafb}
+        tbody td{padding:6px 9px;border-bottom:1px solid #f1f5f9}
+        .sig{display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:14px 0 0;margin-top:8px;border-top:1px solid #e2e8f0}
+        .sl2{font-size:9px;color:#64748b;margin-bottom:18px}
+        .sn{font-size:11px;font-weight:700}
+        .sc{font-size:9px;color:#64748b}
+        .footer{margin-top:10px;font-size:8.5px;color:#94a3b8;text-align:right}
+      </style></head><body>
+      <div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
+      <div class="header">
+        <div class="co-name">GMD PRODUCTIONS INC.</div>
+        <div style="text-align:right">
+          <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
+          <span style="color:#f97316;font-weight:700;font-size:12px">${dateStr}</span>
+        </div>
+      </div>
+      <div class="sub-bar">
+        <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
+        <span class="tagline">PREPARED BY: ${esc(session?.name||"FabHub")}</span>
+      </div>
+      <div class="wrap">
+        <div class="title">${repPeriod==="monthly"?"Sales &amp; Finance Report":"Sales &amp; Finance Summary"}</div>
+        <div class="subtitle">${esc(periodLabel)} · Values include 12% VAT where applicable (OR)${dataFlags.length?" · Review Data Flags before circulating":""}</div>
+        <div class="kpis">
+          <div class="kb"><div class="kl">Deals Won</div><div class="kv">${repPeriod==="monthly"?monthWon.length:yearWon.length}</div></div>
+          <div class="kb"><div class="kl">Closed Revenue</div><div class="kv">${fmt(repPeriod==="monthly"?totalWonGross:yearWon.reduce((s,d)=>s+dealTax(d).gross,0))}</div></div>
+          <div class="kb"><div class="kl">Collections</div><div class="kv">${fmt(finTot.collections)}</div></div>
+          <div class="kb"><div class="kl">Net Profit</div><div class="kv" style="color:${finTot.net>=0?"#059669":"#dc2626"}">${fmt(finTot.net)}</div></div>
+        </div>
+
+        <div class="sec">
+          <div class="sec-title">Closed Deals</div>
+          <table>
+            <thead><tr><th style="width:26px;text-align:center">#</th><th>Client</th><th>CE #</th><th>AE</th><th style="text-align:right">Ex-VAT</th><th style="text-align:right">VAT</th><th style="text-align:right">Total</th></tr></thead>
+            <tbody>${closedRowsHtml}</tbody>
+          </table>
+        </div>
+
+        <div class="sec">
+          <div class="sec-title">Revenue by Sales Owner</div>
+          <table>
+            <thead><tr><th>AE</th><th style="text-align:center">Code</th><th style="text-align:center">Won</th><th style="text-align:center">Clients</th><th style="text-align:right">Closed (incl. VAT)</th><th style="text-align:right">% of Total</th></tr></thead>
+            <tbody>${aeRowsHtml}</tbody>
+          </table>
+        </div>
+
+        <div class="sec">
+          <div class="sec-title">Finance by Period</div>
+          <table>
+            <thead><tr><th>Period</th><th style="text-align:right">Revenue</th><th style="text-align:right">Collections</th><th style="text-align:right">Outstanding</th><th style="text-align:right">Expenses</th><th style="text-align:right">Net Profit</th></tr></thead>
+            <tbody>${finRowsHtml}</tbody>
+          </table>
+        </div>
+
+        <div class="sec">
+          <div class="sec-title">AR Aging — Top Outstanding</div>
+          <table>
+            <thead><tr><th>Client</th><th>Invoice</th><th style="text-align:right">Amount</th><th style="text-align:center">Days Overdue</th></tr></thead>
+            <tbody>${agingRowsHtml}</tbody>
+          </table>
+        </div>
+
+        <div class="sec">
+          <div class="sec-title">Data Flags</div>
+          <table>
+            <thead><tr><th style="width:26px;text-align:center">#</th><th>Issue</th><th>Detail</th><th style="text-align:right">₱ at Stake</th></tr></thead>
+            <tbody>${flagsHtml}</tbody>
+          </table>
+        </div>
+
+        <div class="sig">
+          <div><div class="sl2">Prepared by:</div><div class="sn">${esc(session?.name||"—")}</div><div class="sc">GMD Productions Inc.</div></div>
+          <div><div class="sl2">Reviewed by:</div><div class="sn">&nbsp;</div><div class="sc">GMD Productions Inc.</div></div>
+        </div>
+        <div class="footer">Generated by FabHub · ${esc(periodLabel)}</div>
+      </div>
+      </body></html>`;
+      const w=window.open("","_blank","width=1000,height=800");
+      if(!w){toastEmit&&toastEmit("Popup blocked — please allow popups for this site","warning");return;}
+      w.document.write(html);
+      w.document.close();
+      setTimeout(()=>w.print(),500);
+    };
     const TH=(l,right)=><th style={{padding:"9px 12px",fontWeight:700,fontSize:".72rem",color:"#64748b",textTransform:"uppercase",letterSpacing:".04em",textAlign:right?"right":"left",background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>{l}</th>;
     const TD=(v,opts={})=><td style={{padding:"8px 12px",fontSize:".82rem",textAlign:opts.right?"right":"left",borderBottom:"1px solid #f1f5f9",fontWeight:opts.bold?700:400,color:opts.color||"#374151",...(opts.style||{})}}>{v}</td>;
     const monthLabel=`${MONTHS[CM]} ${CY}`;
@@ -8702,7 +8931,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </select>
           <div style={{flex:1}}/>
           <button onClick={exportReports} style={{background:"#10b981",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>📥 Export Excel</button>
-          <button onClick={()=>window.print()} style={{background:"#64748b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
+          <button onClick={printReports} style={{background:"#64748b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
         </div>
         <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,flexWrap:"wrap"}}>
           {[["sales","📊 Sales Report"],["finance","💰 Finance Report"],["ar-aging","📋 AR Aging"],["ap-aging","📑 AP Aging"]].map(([t,l])=>(
@@ -11928,6 +12157,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         blockers={blockers} addBlocker={addBlocker} resolveBlocker={resolveBlocker}
         logActivity={logActivity} actLog={actLog}
         addenda={addenda} billings={billings} mreqs={mreqs} breqs={breqs}
+        prs={prs} exps={exps}
         isMobile={isMobile} createCard={createProjectCard}
         swos={swos}
         updateJO={updateJO} upPcards={upPcards}
@@ -12377,11 +12607,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         deals={deals} exps={exps} inflows={infs} jos={jos} prs={prs}
         mreqs={mreqs} breqs={breqs} addenda={addenda} billings={billings}
         pcards={pcards} checklist={checklist} cashPositions={cashPositions}
-        actLog={actLog} budgets={budgets}
+        actLog={actLog} budgets={budgets} payables={payables} vouchers={vouchers}
         upDeals={upDeals} upExps={upExps} upInflows={upInflows} upJos={upJos}
         upPrs={upPrs} upMreqs={upMreqs} upBreqs={upBreqs} upAddenda={upAddenda}
         upBillings={upBillings} upPcards={upPcards} upChecklist={upChecklist}
         upCashPos={upCashPos} setActLog={setActLog} upBudgets={upBudgets}
+        upPayables={upPayables} upVouchers={upVouchers}
         persist={persist}/>
     </Wrap>
   );
@@ -12570,7 +12801,7 @@ First few:
         );
       })()}
       <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers}/>
     </Wrap>
   );
 
@@ -13160,7 +13391,7 @@ First few:
         );
       })()}
       {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers}/>
     </Wrap>
   );
 
@@ -14228,7 +14459,12 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
             <div style={{gridColumn:"1/-1"}}><Fld label="Project Title" required><Inp value={form.projectTitle} onChange={e=>f("projectTitle",e.target.value)} placeholder="e.g. Golf Bag Organizer Rack / Shirts Display"/></Fld></div>
             <Fld label="Type"><Sel value={form.type} onChange={e=>f("type",e.target.value)}>{DRF_TYPES.map(t=><option key={t}>{t}</option>)}</Sel></Fld>
             <Fld label="Size / Dimensions"><Inp value={form.size} onChange={e=>f("size",e.target.value)} placeholder="e.g. W1200 x H1800 x D600mm"/></Fld>
-            <Fld label="Assigned Designer"><Sel value={form.designer} onChange={e=>f("designer",e.target.value)}><option value="">— Assign later —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+            {/* Only the Design lead (Manager/Design) assigns who works the brief —
+                Sales/Ops requesting it don't pick the designer. */}
+            {canAcknowledge
+              ?<Fld label="Assigned Designer"><Sel value={form.designer} onChange={e=>f("designer",e.target.value)}><option value="">— Unassigned —</option>{DESIGN_MEMBERS.map(m=><option key={m}>{m}</option>)}</Sel></Fld>
+              :<Fld label="Assigned Designer"><div style={{padding:"8px 12px",borderRadius:8,background:"#f1f5f9",fontSize:".85rem",color:"#94a3b8"}}>{form.designer||"— Design lead will assign —"}</div></Fld>
+            }
             <Fld label="Design Deadline"><Inp type="date" value={form.designDeadline} onChange={e=>f("designDeadline",e.target.value)}/></Fld>
             <Fld label="Linked Deal / Project"><Sel value={form.dealId} onChange={e=>{const d=wonDeals.find(x=>x.id===e.target.value);f("dealId",e.target.value);if(d&&!form.client)f("client",d.client);}}><option value="">— Link to deal (optional) —</option>{[...wonDeals].sort((a,b)=>(a.client||"").localeCompare(b.client||"")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""} ({d.stage?.replace(/^\d+ · /,"")||d.stage})</option>)}</Sel></Fld>
             <div style={{gridColumn:"1/-1"}}><Fld label="Description / Details" hint="What needs to be designed? Include dimensions, function, and key specs."><Inp rows={5} value={form.description} onChange={e=>f("description",e.target.value)} placeholder="RE-CREATE: Golf bag organizer rack with shelving&#10;SIZE: Must fit two large golf bags&#10;FUNCTION: Store 2 bags + shoe shelf (3-4 pairs) + drawer cabinet"/></Fld></div>
@@ -14354,7 +14590,15 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                       </div>
                     </div>
                     {/* Action buttons */}
-                    <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+                    <div style={{display:"flex",gap:7,flexWrap:"wrap",alignItems:"center"}}>
+                      {canAcknowledge&&(
+                        <select value={drf.designer||""} onClick={e=>e.stopPropagation()}
+                          onChange={e=>{const designer=e.target.value;updateDRF(drf.id,{designer,status:drf.status==="New"?"Acknowledged":drf.status});}}
+                          style={{border:"1.5px solid #ddd6fe",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#6d28d9",background:"#faf5ff",cursor:"pointer",fontWeight:700}}>
+                          <option value="">— Assign designer —</option>
+                          {DESIGN_MEMBERS.map(m=><option key={m} value={m}>{m}</option>)}
+                        </select>
+                      )}
                       {isNew&&canAcknowledge&&(
                         <button onClick={e=>{e.stopPropagation();updateDRF(drf.id,{status:"Acknowledged"});setExpandedId(null);}}
                           style={{background:"#3b82f6",border:"none",borderRadius:8,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",cursor:"pointer"}}>
@@ -17024,30 +17268,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
   const f=(k,v)=>{setSaved(false);setForm(p=>({...p,[k]:v}));};
   const n=v=>Number(String(v).replace(/,/g,""))||0;
 
-  // Split project costs into Committed (open POs not yet delivered) and Actual
-  // (delivered POs + logged expenses). Committed = money you've ordered but not
-  // yet spent; Actual = money actually gone out. Delivered POs already turned
-  // into an expense (matched by PO ref) are not double-counted.
-  const costFor=useCallback((dealId)=>{
-    const committed={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    const actual={Materials:0,Labor:0,Overhead:0,Subcon:0};
-    const projExps=exps.filter(e=>e.projectId===dealId);
-    const expensedPORefs=new Set(projExps.map(e=>e.poRef).filter(Boolean));
-    prs.filter(p=>p.projectId===dealId&&p.status!=="Cancelled").forEach(p=>{
-      const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
-      const cat=committed[p.budgetCategory]!==undefined?p.budgetCategory:"Materials";
-      if(p.status==="Delivered"){
-        if(!(p.poNumber&&expensedPORefs.has(p.poNumber))) actual[cat]+=cost;
-      } else {
-        committed[cat]+=cost;
-      }
-    });
-    projExps.forEach(e=>{
-      const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
-      actual[cat]+=n(e.amount);
-    });
-    return {committed,actual};
-  },[prs,exps]);
+  const costFor=useCallback((dealId)=>projectCostBreakdown(dealId,prs,exps),[prs,exps]);
 
   // Compute per-project budget data for card grid (exclude closed stages)
   const allProjectData=useMemo(()=>{
@@ -21367,7 +21588,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[]}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[]}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
@@ -21378,7 +21599,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const[pcSort,setPcSort]=useState("tat");
   const[pcShowClosed,setPcShowClosed]=useState(false);
   const[pcSearch,setPcSearch]=useState("");
-  const[expandDept,setExpandDept]=useState(null);
   const[showBForm,setShowBForm]=useState(false);
   const[bfTitle,setBfTitle]=useState(""); const[bfDept,setBfDept]=useState("Operations"); const[bfDetail,setBfDetail]=useState("");
   const[showUForm,setShowUForm]=useState(false); const[uText,setUText]=useState("");
@@ -21504,7 +21724,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               ))}
             </div>
           )}
-          {selDeal&&<button onClick={()=>{setSelDeal(null);setExpandDept(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setShowScopeForm(false);setScopeForm({title:"",desc:"",value:"",ceNo:""});setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
+          {selDeal&&<button onClick={()=>{setSelDeal(null);setShowBForm(false);setShowUForm(false);setTatOpen(false);setShowTeamEdit(false);setShowScopeForm(false);setScopeForm({title:"",desc:"",value:"",ceNo:""});setPcSearch("");}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#475569",cursor:"pointer",fontWeight:600}}>← All Projects</button>}
         </div>
       </div>
 
@@ -21782,7 +22002,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         (()=>{
           const pct=projPct(card,deal);
           const h=getHealth(deal,card);const[hc,hl]=HC[h];
-          const cardGrade=calcCardGrade(deal,card);
           const pi=phaseIdx(deal?.stage);
           const elapsed=card?.awardDate?Math.ceil((today2-new Date(card.awardDate))/86400000):0;
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
@@ -21795,6 +22014,12 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           const projBillings=(billings||[]).filter(b=>b.dealId===selDeal);
           const totalBilled=projBillings.reduce((s,b)=>s+Number(b.amountBilled||0),0);
           const totalColl=projBillings.reduce((s,b)=>s+Number(b.amountPaid||0),0);
+          const {committed:projCommitted,actual:projActual}=projectCostBreakdown(selDeal,prs,exps);
+          const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+projCommitted[c],0);
+          const totalActualCost=BUDGET_CATS.reduce((s,c)=>s+projActual[c],0);
+          const totalExposure=totalCommitted+totalActualCost;
+          const contractVal=Number(deal?.value||0);
+          const profitMargin=contractVal>0?Math.round((contractVal-totalExposure)/contractVal*100):null;
           const pendingMRs=(mreqs||[]).filter(m=>m.projectId===selDeal&&(m.status==="Submitted"||m.status==="Reviewed")).length;
           const pendingBRs=(breqs||[]).filter(b=>(b.projectId===selDeal||b.dealId===selDeal)&&(b.status==="Pending"||b.status==="Under Review")).length;
           const canFlagBlocker=["Manager","Operations","ProjectMover","Sales","Design","QS","Procurement","Finance"].includes(role);
@@ -21802,193 +22027,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
           const canSetTAT=role==="Manager"||role==="QS"||role==="Operations";
 
-          // ── Client Progress Report PDF ────────────────────────────────────
-          const generateClientReport=()=>{
-            const reportDate=new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
-            const pms=[jo?.pm1,jo?.pm2,jo?.pm3,jo?.coordinator].filter(Boolean).join(", ")||"Not assigned";
-            const allUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date));
-            const projName=deal?.contact||deal?.client||"—";
-            const deptRows=DEPT_ORDER.map(dept=>{
-              const d=card?.departments?.[dept];
-              const dk=(d?.tasks||[]).filter(t=>t.done).length;
-              const dt=(d?.tasks||[]).length||DEFAULT_DEPT_TASKS[dept]?.length||0;
-              return{dept,done:d?.done,dk,dt};
-            });
-            const phaseRows=PHASES.map(ph=>{
-              const pi=phaseIdx(deal?.stage);
-              const myIdx=PHASES.indexOf(ph);
-              return{...ph,status:myIdx<pi?"done":myIdx===pi?"current":"pending"};
-            });
-            const progressBar=(pct,color="#f97316",height=14)=>`
-              <div style="background:#e8e8e8;border-radius:${height/2}px;height:${height}px;overflow:hidden;margin:4px 0;">
-                <div style="height:100%;width:${Math.max(0,Math.min(100,pct))}%;background:${color};border-radius:${height/2}px;"></div>
-              </div>`;
-            const deptClr={Sales:"#10b981",Design:"#8b5cf6",QS:"#f59e0b",Procurement:"#06b6d4",Operations:"#f97316",Finance:"#3b82f6"};
-            const win=window.open("","_blank","width=960,height=1100");
-            if(!win){alert("Please allow pop-ups to generate the report.");return;}
-            win.document.write(`<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8">
-<title>Progress Report — ${projName}</title>
-<style>
-  *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;font-size:11.5px;color:#1a1a1a;background:#fff;line-height:1.5;}
-  .page{max-width:780px;margin:0 auto;padding:40px 48px;}
-  /* ── Letterhead ── */
-  .letterhead{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:18px;border-bottom:3px solid #f97316;margin-bottom:24px;}
-  .co-info{font-size:10.5px;color:#555;line-height:1.7;}
-  .co-name{font-weight:900;font-size:13px;color:#1a1a1a;margin-bottom:3px;letter-spacing:.3px;}
-  .logo-wrap{text-align:right;}
-  /* ── Doc title ── */
-  .doc-title{font-size:18px;font-weight:900;color:#f97316;letter-spacing:.5px;margin-bottom:4px;}
-  .doc-meta{font-size:10.5px;color:#666;margin-bottom:24px;}
-  /* ── Section ── */
-  .section{margin-bottom:22px;}
-  .section-title{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;color:#f97316;border-bottom:1.5px solid #f97316;padding-bottom:4px;margin-bottom:12px;}
-  /* ── Info grid ── */
-  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;}
-  .info-row{display:flex;gap:6px;font-size:11px;}
-  .info-label{font-weight:700;color:#555;min-width:90px;flex-shrink:0;}
-  .info-val{color:#1a1a1a;}
-  /* ── Phase timeline ── */
-  .phase-row{display:flex;gap:0;margin:8px 0;}
-  .phase-box{flex:1;text-align:center;padding:10px 4px 8px;border:1.5px solid #e0e0e0;border-right:none;font-size:10px;position:relative;}
-  .phase-box:last-child{border-right:1.5px solid #e0e0e0;}
-  .phase-box.done{background:#f0fdf4;border-color:#6ee7b7;color:#059669;}
-  .phase-box.current{background:#fff7ed;border-color:#f97316;color:#f97316;}
-  .phase-box.pending{background:#f8fafc;color:#94a3b8;}
-  .phase-icon{font-size:16px;display:block;margin-bottom:3px;}
-  .phase-label{font-weight:700;font-size:9.5px;display:block;}
-  .phase-badge{font-size:8.5px;margin-top:2px;display:block;}
-  /* ── Dept grid ── */
-  .dept-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;}
-  .dept-box{padding:8px 6px;border-radius:6px;text-align:center;border:1.5px solid #e0e0e0;}
-  .dept-box.done{border-color:currentColor;}
-  .dept-name{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
-  .dept-status{font-size:10px;margin-top:3px;}
-  /* ── Updates table ── */
-  .upd-table{width:100%;border-collapse:collapse;}
-  .upd-table th{background:#1e293b;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:7px 10px;text-align:left;}
-  .upd-table td{padding:9px 10px;border-bottom:1px solid #f0f0f0;font-size:11px;vertical-align:top;}
-  .upd-table tr:last-child td{border-bottom:none;}
-  .upd-table tr:nth-child(even) td{background:#f8fafc;}
-  .upd-date{white-space:nowrap;color:#64748b;font-size:10.5px;}
-  .upd-stage{color:#f97316;font-weight:700;font-size:10px;white-space:nowrap;}
-  .upd-text{color:#1a1a1a;line-height:1.55;}
-  /* ── Footer ── */
-  .footer{margin-top:32px;padding-top:14px;border-top:1px solid #e0e0e0;display:flex;justify-content:space-between;font-size:9.5px;color:#999;}
-  @media print{
-    body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-    .page{padding:28px 36px;}
-    .no-print{display:none!important;}
-  }
-</style>
-</head><body>
-<div class="page">
-
-  <!-- Letterhead -->
-  <div class="letterhead">
-    <div>
-      <div class="co-name">GMD Productions Inc.</div>
-      <div class="co-info">
-        Interior Design &amp; Fabrication<br>
-        Metro Manila, Philippines<br>
-        www.gmd.ph
-      </div>
-    </div>
-    <div class="logo-wrap">
-      <img src="/gmd-logo.png" alt="GMD PRO" style="height:56px;width:auto;display:block;margin-left:auto;">
-    </div>
-  </div>
-
-  <!-- Doc title -->
-  <div class="doc-title">PROJECT PROGRESS REPORT</div>
-  <div class="doc-meta">Report Date: ${reportDate} &nbsp;·&nbsp; Prepared by: ${session?.name||"—"} &nbsp;·&nbsp; ${session?.title||session?.role||""}</div>
-
-  <!-- Project Info -->
-  <div class="section">
-    <div class="section-title">Project Information</div>
-    <div class="info-grid">
-      <div class="info-row"><span class="info-label">Project Name</span><span class="info-val" style="font-weight:700;color:#f97316;">${projName}</span></div>
-      <div class="info-row"><span class="info-label">Client</span><span class="info-val">${deal?.client||"—"}</span></div>
-      <div class="info-row"><span class="info-label">CE No.</span><span class="info-val">${deal?.ceNo||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Contract Value</span><span class="info-val" style="font-weight:700;">₱${Number(deal?.value||0).toLocaleString("en-PH",{maximumFractionDigits:0})}</span></div>
-      <div class="info-row"><span class="info-label">Assigned PMs</span><span class="info-val">${pms}</span></div>
-      <div class="info-row"><span class="info-label">Location</span><span class="info-val">${deal?.location||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Award Date</span><span class="info-val">${card?.awardDate||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Target Due</span><span class="info-val">${card?.targetEndDate||"Not set"}</span></div>
-      <div class="info-row"><span class="info-label">Current Stage</span><span class="info-val" style="font-weight:700;color:#8b5cf6;">${deal?.stage?.replace(/^\d+ · /,"")||"—"}</span></div>
-      <div class="info-row"><span class="info-label">Overall Progress</span><span class="info-val" style="font-weight:700;">${pct}% complete</span></div>
-    </div>
-    <div style="margin-top:10px;">${progressBar(pct,"#f97316",16)}</div>
-  </div>
-
-  <!-- Phase Timeline -->
-  <div class="section">
-    <div class="section-title">Phase Timeline</div>
-    <div class="phase-row">
-      ${phaseRows.map(ph=>`
-        <div class="phase-box ${ph.status}">
-          <span class="phase-icon">${ph.status==="done"?"✅":ph.status==="current"?"🔄":"⬜"}</span>
-          <span class="phase-label">${ph.icon} ${ph.label}</span>
-          <span class="phase-badge">${ph.status==="done"?"Complete":ph.status==="current"?"In Progress":"Pending"}</span>
-        </div>`).join("")}
-    </div>
-  </div>
-
-  <!-- Department Status -->
-  <div class="section">
-    <div class="section-title">Department Status</div>
-    <div class="dept-grid">
-      ${deptRows.map(({dept,done,dk,dt})=>`
-        <div class="dept-box ${done?"done":""}" style="${done?`color:${deptClr[dept]||"#64748b"};background:${deptClr[dept]||"#64748b"}11;border-color:${deptClr[dept]||"#64748b"}66;`:`color:#94a3b8;`}">
-          <div class="dept-name">${dept}</div>
-          <div class="dept-status">${done?"✅":"◯"}</div>
-          <div style="font-size:9px;margin-top:2px;">${dk}/${dt} tasks</div>
-        </div>`).join("")}
-    </div>
-  </div>
-
-  <!-- PM Updates -->
-  <div class="section">
-    <div class="section-title">Progress Updates (${allUpdates.length} total)</div>
-    ${allUpdates.length===0?`<p style="color:#94a3b8;font-size:11px;font-style:italic;">No progress updates logged yet.</p>`:`
-    <table class="upd-table">
-      <thead><tr><th style="width:80px;">Date</th><th style="width:120px;">Stage / %</th><th>Update</th></tr></thead>
-      <tbody>
-        ${allUpdates.map(u=>{
-          const match=u.detail?.match(/^\[([^\]]+)\]:\s*(.*)/s);
-          const meta=match?match[1]:"";const text=match?match[2]:u.detail||"";
-          const stagePart=meta.split("·").find(p=>p.trim()&&!p.includes("%"))?.trim()||"";
-          const pctPart=meta.match(/(\d+)%/)?.[1]||"";
-          return`<tr>
-            <td class="upd-date">${u.date}</td>
-            <td><span class="upd-stage">${stagePart||"—"}</span>${pctPart?`<br><span style="font-size:10px;color:#64748b;">${pctPart}% complete</span>`:""}</td>
-            <td class="upd-text">${text||u.detail||""}</td>
-          </tr>`;
-        }).join("")}
-      </tbody>
-    </table>`}
-  </div>
-
-  <!-- Footer -->
-  <div class="footer">
-    <span>GMD Productions Inc. &nbsp;|&nbsp; Internal use — FabHub Project Report</span>
-    <span>Generated: ${reportDate}</span>
-  </div>
-
-  <!-- Print button (hidden on print) -->
-  <div class="no-print" style="text-align:center;margin-top:28px;">
-    <button onclick="window.print()" style="background:#f97316;color:#fff;border:none;border-radius:8px;padding:12px 32px;font-size:14px;font-weight:700;cursor:pointer;font-family:Arial,sans-serif;letter-spacing:.3px;">
-      🖨️ Print / Save as PDF
-    </button>
-    <p style="margin-top:10px;font-size:11px;color:#94a3b8;">In the print dialog, select <strong>Save as PDF</strong> and set paper to A4 or Letter</p>
-  </div>
-
-</div>
-</body></html>`);
-            win.document.close();
-            win.focus();
-          };
 
           const projCl=(checklist||[]).filter(c=>c.projectId===selDeal).sort((a,b)=>{
             const pri={Urgent:0,High:1,Normal:2};
@@ -22172,7 +22210,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 )}
                 <div style={{marginTop:10,display:"flex",justifyContent:"flex-end",gap:8}}>
                   {addAddendum2&&<button onClick={()=>{setScopeForm({title:"",desc:"",value:"",ceNo:""});setShowScopeForm(true);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#c2410c",cursor:"pointer",fontWeight:700}}>➕ Scope Change</button>}
-                  <button onClick={generateClientReport} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>📄 Client Report</button>
                 </div>
                 {showScopeForm&&addAddendum2&&(
                   <div style={{marginTop:12,background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"14px 16px"}}>
@@ -22207,56 +22244,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   </div>
                 )}
               </div>
-
-              {/* ── Card Grade ── */}
-              {(()=>{
-                const{score,grade,color,gcolor,breakdown}=cardGrade;
-                const{completeness,recency,timeline}=breakdown;
-                const missingItems=[];
-                if(!completeness.items.hasPM) missingItems.push("Assign a PM");
-                if(!completeness.items.hasDate) missingItems.push("Set target date");
-                if(!completeness.items.hasBudget) missingItems.push("Enter budget");
-                if(!completeness.items.hasDesigner) missingItems.push("Assign designer");
-                if(!completeness.items.hasCE) missingItems.push("Set CE number");
-                return(
-                  <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${color}44`,padding:isMobile?"12px 14px":"14px 20px"}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
-                      <div style={{flex:1}}>
-                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:8}}>🏅 Card Score</div>
-                        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-                          {[
-                            {label:"Completeness",earned:completeness.earned,max:40,hint:completeness.items.hasPM&&completeness.items.hasDate&&completeness.items.hasBudget?"All filled":"Missing info",color:"#8b5cf6"},
-                            {label:"Update Recency",earned:recency.earned,max:30,hint:recency.label,color:"#0ea5e9"},
-                            {label:"Timeline",earned:timeline.earned,max:30,hint:timeline.label,color:"#f59e0b"},
-                          ].map(({label,earned,max,hint,color:c})=>(
-                            <div key={label} style={{background:"#f8fafc",borderRadius:10,padding:"10px 12px"}}>
-                              <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:4}}>{label}</div>
-                              <div style={{display:"flex",alignItems:"baseline",gap:4}}>
-                                <span style={{fontWeight:800,fontSize:"1.1rem",color:c}}>{earned}</span>
-                                <span style={{fontSize:".7rem",color:"#94a3b8"}}>/{max}</span>
-                              </div>
-                              <div style={{height:4,background:"#e2e8f0",borderRadius:2,marginTop:4,overflow:"hidden"}}>
-                                <div style={{height:"100%",width:(earned/max*100)+"%",background:c,borderRadius:2}}/>
-                              </div>
-                              <div style={{fontSize:".6rem",color:"#64748b",marginTop:3}}>{hint}</div>
-                            </div>
-                          ))}
-                        </div>
-                        {missingItems.length>0&&(
-                          <div style={{marginTop:8,fontSize:".68rem",color:"#64748b"}}>
-                            <span style={{fontWeight:700,color:"#94a3b8"}}>To improve: </span>
-                            {missingItems.map((m,i)=><span key={i}><span style={{color:"#ef4444"}}>•</span> {m}{i<missingItems.length-1?" ":""}</span>)}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,flexShrink:0}}>
-                        <div style={{width:62,height:62,borderRadius:14,background:gcolor,border:`2.5px solid ${color}`,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:900,fontSize:"1.7rem",color,fontFamily:"'Barlow Condensed',sans-serif",letterSpacing:"-1px"}}>{pct===100?"✅":grade}</div>
-                        <div style={{fontSize:".6rem",color:"#94a3b8",fontWeight:600}}>{score}/100</div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
 
               {/* ── Project Team ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -22449,65 +22436,6 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     </div>
                   </div>
                 )}
-              </div>
-
-              {/* ── Department Tasks (accordion) ── */}
-              <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                <div style={{padding:isMobile?"12px 14px":"14px 20px",borderBottom:"1px solid #f1f5f9"}}>
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>✅ Department Tasks</div>
-                </div>
-                {!card&&<div style={{padding:"14px 20px",background:"#fffbeb",fontSize:".82rem",color:"#92400e"}}>No project card yet.{role==="Manager"&&<button onClick={()=>createCard(selDeal,deal)} style={{marginLeft:8,background:"#f59e0b",border:"none",borderRadius:6,padding:"3px 10px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Create Card</button>}</div>}
-                {card&&DEPT_ORDER.map(dept=>{
-                  const deptData=card.departments?.[dept];
-                  const tasks=deptData?.tasks||[];
-                  const doneCount=tasks.filter(t=>t.done).length;
-                  const isOpen=expandDept===dept;
-                  const clr=DEPT_CLR[dept];
-                  const canEdit=editableDepts.includes(dept);
-                  const allTasksDone=tasks.length>0&&tasks.every(t=>t.done);
-                  return(
-                    <div key={dept} style={{borderBottom:"1px solid #f1f5f9"}}>
-                      <div onClick={()=>setExpandDept(e=>e===dept?null:dept)} style={{display:"flex",alignItems:"center",gap:12,padding:isMobile?"10px 14px":"12px 20px",cursor:"pointer",background:isOpen?(clr+"08"):"#fff"}}>
-                        <div style={{width:10,height:10,borderRadius:"50%",background:deptData?.done?clr:"#e2e8f0",flexShrink:0}}/>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem"}}>{dept}</div>
-                          <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1}}>{doneCount}/{tasks.length} tasks{deptData?.done?" · Done by "+deptData.doneBy:""}</div>
-                        </div>
-                        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                          <span style={{fontSize:".63rem",background:deptData?.done?(clr+"22"):doneCount>0?"#fef3c7":"#f8fafc",color:deptData?.done?clr:doneCount>0?"#92400e":"#94a3b8",borderRadius:20,padding:"2px 8px",fontWeight:600}}>{deptData?.done?"✓ DONE":doneCount>0?"In Progress":"Pending"}</span>
-                          <div style={{width:36,height:4,background:"#f1f5f9",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:(tasks.length>0?doneCount/tasks.length*100:0)+"%",background:deptData?.done?clr:clr+"88",borderRadius:2}}/></div>
-                          <span style={{fontSize:".72rem",color:"#94a3b8"}}>{isOpen?"▲":"▼"}</span>
-                        </div>
-                      </div>
-                      {isOpen&&(
-                        <div style={{padding:"0 16px 14px",background:clr+"05"}}>
-                          <div style={{display:"flex",flexDirection:"column",gap:5,marginBottom:10,paddingTop:8}}>
-                            {tasks.map(task=>(
-                              <div key={task.id} onClick={()=>canEdit&&toggleDeptTask(selDeal,dept,task.id)}
-                                style={{display:"flex",alignItems:"flex-start",gap:10,padding:"9px 10px",borderRadius:8,background:task.done?(clr+"09"):"#fff",cursor:canEdit?"pointer":"default",border:`1px solid ${task.done?(clr+"33"):"#f1f5f9"}`}}>
-                                <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${task.done?clr:"#cbd5e1"}`,background:task.done?clr:"#fff",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",marginTop:1}}>
-                                  {task.done&&<span style={{color:"#fff",fontSize:".65rem",fontWeight:900}}>✓</span>}
-                                </div>
-                                <div style={{flex:1}}>
-                                  <div style={{fontSize:".82rem",color:task.done?"#64748b":"#0f172a",textDecoration:task.done?"line-through":"none",fontWeight:task.done?400:500}}>{task.text}</div>
-                                  {task.done&&task.doneBy&&<div style={{fontSize:".65rem",color:"#94a3b8",marginTop:1}}>✓ {task.doneBy} · {task.doneAt?.split("T")[0]}</div>}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          {canEdit&&(
-                            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                              {!deptData?.done&&allTasksDone&&<button onClick={()=>markDeptDone(selDeal,dept,true)} style={{background:clr,border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>✓ Mark {dept} Done</button>}
-                              {deptData?.done&&<button onClick={()=>markDeptDone(selDeal,dept,false)} style={{background:"transparent",border:`1.5px solid ${clr}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontWeight:600,fontSize:".75rem",color:clr,cursor:"pointer"}}>Reopen</button>}
-                              {!deptData?.done&&!allTasksDone&&<span style={{fontSize:".72rem",color:"#94a3b8",padding:"7px 0"}}>{tasks.length-doneCount} task{tasks.length-doneCount!==1?"s":""} remaining</span>}
-                            </div>
-                          )}
-                          {!canEdit&&<div style={{fontSize:".72rem",color:"#94a3b8",fontStyle:"italic"}}>View only — {dept} team updates their own tasks</div>}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
               </div>
 
               {/* ── TAT (collapsible) ── */}
@@ -22722,6 +22650,19 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     {l:"Billed",v:totalBilled>0?fmtPHP(totalBilled):"Not yet billed",c:totalBilled>0?"#3b82f6":"#94a3b8"},
                     {l:"Collected",v:fmtPHP(totalColl),c:totalColl>0?"#059669":"#94a3b8"},
                     {l:"Outstanding",v:totalBilled>totalColl?fmtPHP(totalBilled-totalColl):"—",c:totalBilled>totalColl?"#f59e0b":"#94a3b8"},
+                  ].map(({l,v,c})=>(
+                    <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
+                      <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
+                      <div style={{fontWeight:800,fontSize:".88rem",color:c,lineHeight:1.3,wordBreak:"break-all"}}>{v}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8,marginTop:8}}>
+                  {[
+                    {l:"Committed (open POs)",v:totalCommitted>0?fmtPHP(totalCommitted):"—",c:totalCommitted>0?"#a16207":"#94a3b8"},
+                    {l:"Actual Spend",v:totalActualCost>0?fmtPHP(totalActualCost):"—",c:totalActualCost>0?"#0f172a":"#94a3b8"},
+                    {l:"Total Exposure",v:totalExposure>0?fmtPHP(totalExposure):"—",c:totalExposure>0?"#dc2626":"#94a3b8"},
+                    {l:"Profit Margin",v:profitMargin!==null?profitMargin+"%":"—",c:profitMargin===null?"#94a3b8":profitMargin>=20?"#059669":profitMargin>=10?"#f59e0b":"#ef4444"},
                   ].map(({l,v,c})=>(
                     <div key={l} style={{background:"#f8fafc",borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:".58rem",textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",marginBottom:2}}>{l}</div>
@@ -24120,7 +24061,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
       const d=wonDeals.find(x=>x.id===(p.projectId||p.dealId));
       list.push({date:p.deliveryDate,type:"delivery",label:d?.client||"?",sub:p.itemName||"Delivery",detail:d?.ceNo||"",color:"#f97316",icon:"📦",dealId:d?.id});
     });
-    billings.filter(b=>b.dueDate&&b.status!=="Fully Paid").forEach(b=>{
+    billings.filter(b=>b.dueDate&&b.status!=="Fully Paid"&&Number(b.amount||0)>0).forEach(b=>{
       const d=wonDeals.find(x=>x.id===b.dealId);
       list.push({date:b.dueDate,type:"billing",label:d?.client||"?",sub:b.name||"Billing",detail:"₱"+Number(b.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0}),color:"#10b981",icon:"💵",dealId:d?.id});
     });
@@ -24186,7 +24127,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
 
   const cashFlowByMonth=React.useMemo(()=>{
     const map={};
-    billings.filter(b=>b.dueDate&&b.status!=="Fully Paid").forEach(b=>{
+    billings.filter(b=>b.dueDate&&b.status!=="Fully Paid"&&Number(b.amount||0)>0).forEach(b=>{
       const ym=b.dueDate.slice(0,7);if(!map[ym])map[ym]={month:ym,expected:0,count:0};
       map[ym].expected+=Number(b.amount||0);map[ym].count++;
     });
@@ -24237,6 +24178,14 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     return gaps;
   },[wonDeals,pcards,jos,drfs,prs,billings]);
   const[gapOpen,setGapOpen]=React.useState(false);
+  // Once the user has seen a given set of gaps, stop nagging about that exact
+  // set on every visit — only resurface the banner when the gap list actually
+  // changes (new/different missing details), not just because they reopened
+  // the calendar.
+  const gapSignature=calendarGaps.map(g=>`${g.type}:${g.dealId||g.ceId||""}:${g.issue}`).sort().join("|");
+  const[dismissedGapSig,setDismissedGapSig]=React.useState(()=>{try{return localStorage.getItem("fabhub:dismissedGapSig")||"";}catch{return "";}});
+  const gapBannerVisible=calendarGaps.length>0&&gapSignature!==dismissedGapSig;
+  const dismissGaps=()=>{try{localStorage.setItem("fabhub:dismissedGapSig",gapSignature);}catch{}setDismissedGapSig(gapSignature);};
 
   const TABS=[{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"schedule",l:`📋 Items${opsEvents.length>0?" ("+opsEvents.length+")":""}`},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"},{id:"gaps",l:`🔍 Data Gaps${calendarGaps.length>0?" ("+calendarGaps.length+")":""}`}];
   const BTN=(p)=><button onClick={p.onClick} style={{...{background:p.active?"#1e293b":"#f8fafc",color:p.active?"#fff":"#64748b",border:`1.5px solid ${p.active?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"},...(p.style||{})}}>{p.children}</button>;
@@ -24254,14 +24203,17 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
         </div>
       </div>
 
-      {calendarGaps.length>0&&(
+      {gapBannerVisible&&(
         <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"10px 16px",marginBottom:14}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>setGapOpen(o=>!o)}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",flex:1}} onClick={()=>setGapOpen(o=>!o)}>
               <span style={{background:"#ef4444",color:"#fff",fontWeight:800,fontSize:".72rem",borderRadius:20,padding:"2px 8px",minWidth:24,textAlign:"center"}}>{calendarGaps.length}</span>
               <span style={{fontWeight:700,color:"#c2410c",fontSize:".85rem"}}>Calendar data gaps — some events won't appear on the calendar</span>
             </div>
-            <span style={{color:"#c2410c",fontSize:".78rem",fontWeight:600}}>{gapOpen?"▲ Hide":"▼ Show"}</span>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <span onClick={()=>setGapOpen(o=>!o)} style={{color:"#c2410c",fontSize:".78rem",fontWeight:600,cursor:"pointer"}}>{gapOpen?"▲ Hide":"▼ Show"}</span>
+              <span onClick={dismissGaps} title="Dismiss until this list changes" style={{color:"#c2410c",fontSize:".9rem",fontWeight:700,cursor:"pointer",padding:"0 2px"}}>✕</span>
+            </div>
           </div>
           {gapOpen&&(
             <div style={{marginTop:10,display:"flex",flexDirection:"column",gap:4}}>
@@ -24838,9 +24790,10 @@ function BotSettingsView({botSettings,saveBotSettings,sendTelegramNotification,W
 // ─── DATA MANAGEMENT (Manager Only) ──────────────────────────────────────────
 function DataManagement({
   deals,exps,inflows,jos,prs,mreqs,breqs,addenda,billings,pcards,checklist,
-  cashPositions,actLog,budgets,
+  cashPositions,actLog,budgets,payables,vouchers,
   upDeals,upExps,upInflows,upJos,upPrs,upMreqs,upBreqs,upAddenda,
-  upBillings,upPcards,upChecklist,upCashPos,setActLog,upBudgets,persist
+  upBillings,upPcards,upChecklist,upCashPos,setActLog,upBudgets,
+  upPayables,upVouchers,persist
 }){
   const[confirmPurge,setConfirmPurge]=useState(null); // holds purge config
   const[purgeWord,setPurgeWord]=useState("");
@@ -24863,6 +24816,8 @@ function DataManagement({
     "Checklist Items":     checklist.length,
     "Cash Position Days":  Object.keys(cashPositions).length,
     "Activity Log":        actLog.length,
+    "Payables":            payables.length,
+    "Check Vouchers":      vouchers.length,
   };
 
   const totalRecords = Object.values(counts).reduce((s,v)=>s+v,0);
@@ -24876,15 +24831,15 @@ function DataManagement({
       color:"#dc2626",
       bgColor:"#fef2f2",
       borderColor:"#fecaca",
-      items:["Deals / Pipeline","Expenses","Inflows","Job Orders","Purchase Requests","Material Requests","Budget Requests","Addenda","Billing Milestones","Project Cards","Checklist Items","Cash Position Days","Activity Log"],
+      items:["Deals / Pipeline","Expenses","Inflows","Job Orders","Purchase Requests","Material Requests","Budget Requests","Addenda","Billing Milestones","Project Cards","Checklist Items","Cash Position Days","Activity Log","Payables","Check Vouchers"],
       action:()=>{
         upDeals(()=>[]);upExps(()=>[]);upInflows(()=>[]);upJos(()=>[]);
         upPrs(()=>[]);upMreqs(()=>[]);upBreqs(()=>[]);upAddenda(()=>[]);
         upBillings(()=>[]);upPcards(()=>({}));upChecklist(()=>[]);
-        upCashPos(()=>({}));upBudgets(()=>({}));
+        upCashPos(()=>({}));upBudgets(()=>({}));upPayables(()=>[]);upVouchers(()=>[]);
         setActLog([]);persist("gmdv5:actlog",[]);
         if(isSupabaseReady()){
-          ["deals","expenses","inflows","job_orders","purchase_requests","material_requests","budget_requests","addenda","billing_payments","billing_milestones","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","activity_log"].forEach(t=>sbClear(t).catch(()=>{}));
+          ["deals","expenses","inflows","job_orders","purchase_requests","material_requests","budget_requests","addenda","billing_payments","billing_milestones","project_card_dept_tasks","project_card_dept_status","project_cards","checklists","activity_log","payables","check_vouchers"].forEach(t=>sbClear(t).catch(()=>{}));
           sbDeleteWhere('cash_positions','date','1900-01-01','gte');
           sbDeleteWhere('project_budgets','deal_id',null,'not_null');
           sbDeleteWhere('projects','deal_id',null,'not_null');
@@ -24913,15 +24868,15 @@ function DataManagement({
     {
       key:"finance_only",
       label:"🗑 Clear Finance Data Only",
-      desc:"Removes expenses, inflows, billing milestones, and cash position history. Pipeline and project cards untouched.",
+      desc:"Removes expenses, inflows, billing milestones, cash position history, payables, and check vouchers. Pipeline and project cards untouched.",
       color:"#3b82f6",
       bgColor:"#eff6ff",
       borderColor:"#93c5fd",
-      items:["Expenses","Inflows","Billing Milestones","Cash Position Days"],
+      items:["Expenses","Inflows","Billing Milestones","Cash Position Days","Payables","Check Vouchers"],
       action:()=>{
-        upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));
+        upExps(()=>[]);upInflows(()=>[]);upBillings(()=>[]);upCashPos(()=>({}));upPayables(()=>[]);upVouchers(()=>[]);
         if(isSupabaseReady()){
-          ["expenses","inflows","billing_payments","billing_milestones"].forEach(t=>sbClear(t).catch(()=>{}));
+          ["expenses","inflows","billing_payments","billing_milestones","payables","check_vouchers"].forEach(t=>sbClear(t).catch(()=>{}));
           sbDeleteWhere('cash_positions','date','1900-01-01','gte');
         }
         return "Finance data cleared. Pipeline and projects untouched.";
