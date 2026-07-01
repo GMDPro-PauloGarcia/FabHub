@@ -5993,96 +5993,106 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // request occasionally reach the server before the deal committed, failing
     // an FK check that sync retry then permanently drops (same bug class fixed
     // in createProjectCard for department tasks).
-    const dealSynced=isSupabaseReady()?await sbSyncOne("deals",rec,toSbDeal):true;
-    // Save new client to master list if not already present
-    if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
-      const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
-      GMD_CLIENTS.push(newClient);
-      setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
-    }
-    // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
-    // left unset here; the Design lead assigns who handles it (DRFView "Assign").
-    // Gated on dealSynced: firing this before the deal committed would fail
-    // design_requests' foreign key to deals.id. If the deal write itself failed,
-    // it's already queued for retry — the DRF stays local-only rather than
-    // risk an unwinnable, permanently-dropped FK violation.
-    if(!editDeal && data.drfReqCreate && dealSynced){
-      addDRF({
-        dealId:rec.id, client:rec.client, location:"",
-        designer:"", designDeadline:data.drfDeadline||"",
-        projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
-        type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
-        description:data.drfDescription||"",
-        accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
-        notes:data.drfNotes||"", approvedLink:"", status:"New",
-        createdBy:session?.name||""
-      });
-    }
-    // Auto-create CE/QS request if the Sales rep ticked "Send to CE/QS for Costing"
-    if(!editDeal && data.ceReqCreate){
-      const num=v=>Number(String(v||0).replace(/,/g,""))||0;
-      addCEReq({
-        client_name:rec.client, project_name:rec.contact||"", location:rec.location||"",
-        project_type:data.ceReqType||"retail", priority:data.ceReqPriority||"Normal", status:"Pending",
-        submitted_by:session?.name||"", target_deadline:data.ceReqDeadline||null,
-        submission_deadline:data.ceReqSubmitDeadline||null,
-        target_budget:num(data.ceReqBudget)||null, target_margin:num(data.ceReqMargin)||null,
-        plans_link:data.ceReqPlansLink||rec.salesRepoLink||"", skp_link:data.ceReqSkpLink||"",
-        schedule_of_finish:data.ceReqSchedule||"", notes:data.ceReqNotes||"",
-        deal_id:String(rec.id), updated_at:new Date().toISOString(),
-      }).catch(()=>{});
-      sendTelegramNotification("management",`📐 <b>New CE Request</b>\nClient: <b>${rec.client}</b>${rec.contact?`\nProject: ${rec.contact}`:""}\nType: ${data.ceReqType||"retail"} · ${data.ceReqPriority||"Normal"} priority${data.ceReqDeadline?`\nCE Deadline: ${data.ceReqDeadline}`:""}\nFor: Rodney (CE/QS)\nFrom: ${session?.name||"Sales"}`);
-    }
-    if(!editDeal){
-      logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
-      sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo}\n`:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Added by: ${session?.name||"Sales"}`);
-    } else {
-      logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
-      // Fire award notification when stage is changed to an awarded stage via edit
-      const prevStage=deals.find(d=>d.id===editDeal)?.stage||"";
-      if(WON_STAGES.includes(rec.stage)&&!WON_STAGES.includes(prevStage)){
-        sendToAllChannels(
-          `🏆 <b>PROJECT AWARDED!</b>\n\n`+
-          `Client: <b>${rec.client}</b>\n`+
-          (rec.contact?`Project: <b>${rec.contact}</b>\n`:"")+
-          (rec.ceNo?`CE No: ${rec.ceNo}\n`:"")+
-          (rec.ceType?`${rec.ceType}\n`:"")+
-          (rec.location?`📍 ${rec.location}\n`:"")+
-          (!botSettings.hideValueInBots&&rec.value?`Value: ₱${Number(rec.value).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`:"")+
-          `\nAwarded by: ${session?.name||"Manager"}`
-        );
-        logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
+    // The deal itself is already saved above (upDeals + optimistic UI update) —
+    // everything below is a secondary side-effect (client-list registration,
+    // DRF/CE auto-create, Telegram notifications, turnover-date sync). None of
+    // it may ever leave the form stuck open on top of an already-saved deal, so
+    // any failure here is swallowed and the modal still closes in the finally.
+    try{
+      const dealSynced=isSupabaseReady()?await sbSyncOne("deals",rec,toSbDeal):true;
+      // Save new client to master list if not already present
+      if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
+        const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
+        GMD_CLIENTS.push(newClient);
+        setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
       }
-      // Fire notification when stage moves back out of awarded (e.g. cancelled)
-      if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
-        sendTelegramNotification("management",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
-        sendTelegramNotification("sales",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+      // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
+      // left unset here; the Design lead assigns who handles it (DRFView "Assign").
+      // Gated on dealSynced: firing this before the deal committed would fail
+      // design_requests' foreign key to deals.id. If the deal write itself failed,
+      // it's already queued for retry — the DRF stays local-only rather than
+      // risk an unwinnable, permanently-dropped FK violation.
+      if(!editDeal && data.drfReqCreate && dealSynced){
+        addDRF({
+          dealId:rec.id, client:rec.client, location:"",
+          designer:"", designDeadline:data.drfDeadline||"",
+          projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
+          type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
+          description:data.drfDescription||"",
+          accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
+          notes:data.drfNotes||"", approvedLink:"", status:"New",
+          createdBy:session?.name||""
+        });
       }
-    }
-    // Save turnover date to project card if provided and deal is a won project
-    if(rec.turnoverDate&&WON_STAGES.includes(rec.stage)){
-      const card=pcards[rec.id];
-      if(card){
-        upPcards(ps=>({...ps,[rec.id]:{...ps[rec.id],targetEndDate:rec.turnoverDate}}));
-        if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-          sbUpdate('project_cards',card.id,{target_end_date:rec.turnoverDate}).catch(()=>{});
+      // Auto-create CE/QS request if the Sales rep ticked "Send to CE/QS for Costing"
+      if(!editDeal && data.ceReqCreate){
+        const num=v=>Number(String(v||0).replace(/,/g,""))||0;
+        addCEReq({
+          client_name:rec.client, project_name:rec.contact||"", location:rec.location||"",
+          project_type:data.ceReqType||"retail", priority:data.ceReqPriority||"Normal", status:"Pending",
+          submitted_by:session?.name||"", target_deadline:data.ceReqDeadline||null,
+          submission_deadline:data.ceReqSubmitDeadline||null,
+          target_budget:num(data.ceReqBudget)||null, target_margin:num(data.ceReqMargin)||null,
+          plans_link:data.ceReqPlansLink||rec.salesRepoLink||"", skp_link:data.ceReqSkpLink||"",
+          schedule_of_finish:data.ceReqSchedule||"", notes:data.ceReqNotes||"",
+          deal_id:String(rec.id), updated_at:new Date().toISOString(),
+        }).catch(()=>{});
+        sendTelegramNotification("management",`📐 <b>New CE Request</b>\nClient: <b>${rec.client}</b>${rec.contact?`\nProject: ${rec.contact}`:""}\nType: ${data.ceReqType||"retail"} · ${data.ceReqPriority||"Normal"} priority${data.ceReqDeadline?`\nCE Deadline: ${data.ceReqDeadline}`:""}\nFor: Rodney (CE/QS)\nFrom: ${session?.name||"Sales"}`);
+      }
+      if(!editDeal){
+        logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
+        sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo}\n`:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Added by: ${session?.name||"Sales"}`);
+      } else {
+        logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+        // Fire award notification when stage is changed to an awarded stage via edit
+        const prevStage=deals.find(d=>d.id===editDeal)?.stage||"";
+        if(WON_STAGES.includes(rec.stage)&&!WON_STAGES.includes(prevStage)){
+          sendToAllChannels(
+            `🏆 <b>PROJECT AWARDED!</b>\n\n`+
+            `Client: <b>${rec.client}</b>\n`+
+            (rec.contact?`Project: <b>${rec.contact}</b>\n`:"")+
+            (rec.ceNo?`CE No: ${rec.ceNo}\n`:"")+
+            (rec.ceType?`${rec.ceType}\n`:"")+
+            (rec.location?`📍 ${rec.location}\n`:"")+
+            (!botSettings.hideValueInBots&&rec.value?`Value: ₱${Number(rec.value).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`:"")+
+            `\nAwarded by: ${session?.name||"Manager"}`
+          );
+          logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
         }
-        if(rec.turnoverDate!==(card.targetEndDate||"")){
-          const tgMsg=`📅 <b>Turnover Date Updated</b>\nProject: <b>${rec.contact||rec.client}</b>${rec.ceNo?` — ${rec.ceNo}`:""}\n🏁 Turnover Date: <b>${rec.turnoverDate}</b>\nUpdated by: ${session?.name||"Sales"}`;
-          sendTelegramNotification("ops",tgMsg);
-          sendTelegramNotification("management",tgMsg);
-          const existingTov=checklist.find(c=>c.type==="Turnover"&&(c.projectId===rec.id||c.dealId===rec.id));
-          if(existingTov){
-            upChecklist(cs=>cs.map(c=>c.id===existingTov.id?{...c,dueDate:rec.turnoverDate}:c));
-            if(isSupabaseReady())sbUpdate('checklists',existingTov.id,{due_date:rec.turnoverDate}).catch(()=>{});
-          }else{
-            const tov={id:uid(),type:"Turnover",title:"Client Turnover",dueDate:rec.turnoverDate,projectId:rec.id,dealId:rec.id,dept:"Operations",status:"Scheduled",priority:"Normal",createdDate:today,createdBy:session?.name||role,notes:""};
-            upChecklist(cs=>[...cs,tov]);
-            if(isSupabaseReady())sbInsert('checklists',toSbChecklist(tov)).catch(()=>{});
+        // Fire notification when stage moves back out of awarded (e.g. cancelled)
+        if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
+          sendTelegramNotification("management",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+          sendTelegramNotification("sales",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+        }
+      }
+      // Save turnover date to project card if provided and deal is a won project
+      if(rec.turnoverDate&&WON_STAGES.includes(rec.stage)){
+        const card=pcards[rec.id];
+        if(card){
+          upPcards(ps=>({...ps,[rec.id]:{...ps[rec.id],targetEndDate:rec.turnoverDate}}));
+          if(isSupabaseReady()&&card.id&&isUUID(card.id)){
+            sbUpdate('project_cards',card.id,{target_end_date:rec.turnoverDate}).catch(()=>{});
+          }
+          if(rec.turnoverDate!==(card.targetEndDate||"")){
+            const tgMsg=`📅 <b>Turnover Date Updated</b>\nProject: <b>${rec.contact||rec.client}</b>${rec.ceNo?` — ${rec.ceNo}`:""}\n🏁 Turnover Date: <b>${rec.turnoverDate}</b>\nUpdated by: ${session?.name||"Sales"}`;
+            sendTelegramNotification("ops",tgMsg);
+            sendTelegramNotification("management",tgMsg);
+            const existingTov=checklist.find(c=>c.type==="Turnover"&&(c.projectId===rec.id||c.dealId===rec.id));
+            if(existingTov){
+              upChecklist(cs=>cs.map(c=>c.id===existingTov.id?{...c,dueDate:rec.turnoverDate}:c));
+              if(isSupabaseReady())sbUpdate('checklists',existingTov.id,{due_date:rec.turnoverDate}).catch(()=>{});
+            }else{
+              const tov={id:uid(),type:"Turnover",title:"Client Turnover",dueDate:rec.turnoverDate,projectId:rec.id,dealId:rec.id,dept:"Operations",status:"Scheduled",priority:"Normal",createdDate:today,createdBy:session?.name||role,notes:""};
+              upChecklist(cs=>[...cs,tov]);
+              if(isSupabaseReady())sbInsert('checklists',toSbChecklist(tov)).catch(()=>{});
+            }
           }
         }
       }
+    }catch(err){
+      console.error("saveDeal side-effect failed:",err);
+      toastEmit("Deal saved, but a follow-up step failed — check console.","warning");
     }
     setEditDeal(null);
     setDealModal(false);
@@ -6179,6 +6189,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const confirmAward=async(form)=>{
     if(!awardModal) return;
     const id=awardModal.id;
+    // Everything below is wrapped so a failure anywhere in this long chain
+    // (JO numbering, project card, budget, notifications, billing schedule)
+    // can never leave the Award modal stuck open with the button appearing to
+    // do nothing — see the identical issue fixed in saveDeal.
+    try{
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
     const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo));
@@ -6284,6 +6299,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentTerms:form.paymentTerms}:d));
       if(isSupabaseReady())sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}).catch(()=>{});
       generateBillingSchedule(id,form.paymentTerms,contractVal);
+    }
+    }catch(err){
+      console.error("confirmAward failed:",err);
+      toastEmit("Award may be incomplete — a follow-up step failed. Check the project card and console.","warning",9000);
     }
     setAwardModal(null);
   };
