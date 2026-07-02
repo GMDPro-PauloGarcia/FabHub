@@ -4018,12 +4018,15 @@ export default function App(){
       return sbUpsert(table,payload,'id');
     })).catch(e=>console.error("FabHub sbSync "+table+":",e.message));
   };
+  // Returns the sbUpsert outcome (true/false) so a caller that's about to write
+  // a DEPENDENT row (one referencing this record by foreign key) can await
+  // confirmation first — see createProjectCard for why this matters.
   const sbSyncOne=(table,record,mapper)=>{
-    if(!isSupabaseReady()||!record) return;
+    if(!isSupabaseReady()||!record) return Promise.resolve(false);
     const payload=mapper?mapper(record):record;
-    if(!hasValidUUIDs(payload)) return;
-    sbUpsert(table,payload,'id')
-      .catch(e=>console.error("FabHub sbSyncOne "+table+":",e.message));
+    if(!hasValidUUIDs(payload)) return Promise.resolve(false);
+    return sbUpsert(table,payload,'id')
+      .catch(e=>{console.error("FabHub sbSyncOne "+table+":",e.message);return false;});
   };
   const sbSyncDelete=(table,id)=>{
     if(!isSupabaseReady()||!id) return;
@@ -4461,17 +4464,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setTimeout(()=>w.print(),400);
   };
 
-  const createProjectCard=(dealId,dealData)=>{
+  const createProjectCard=async(dealId,dealData)=>{
     const card=emptyProjectCard(dealId,dealData);
     upPcards(ps=>({...ps,[dealId]:card}));
     logActivity(dealId,"Project Card Created",`${dealData?.client} — project card created for all departments`,session?.name);
     if(isSupabaseReady()){
-      sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id').catch(()=>{});
-      DEPT_ORDER.forEach(dept=>{
-        (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
-          sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
+      // Await the parent card write before firing the ~39 department-task
+      // inserts that reference it by foreign key — firing them in parallel
+      // let a task occasionally reach the server before the card committed,
+      // failing an FK check that sync retry then permanently drops (a
+      // constraint violation is a "data" error, never retried, only dropped —
+      // this silently lost individual checklist tasks in production).
+      const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id');
+      if(cardSynced){
+        DEPT_ORDER.forEach(dept=>{
+          (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
+            sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
+          });
         });
-      });
+      }
+      // If the parent write itself failed, it's already queued for retry —
+      // the tasks stay local-only until the next createProjectCard-style
+      // flow or a manual resync; queuing them now would just fail the FK too.
     }
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
@@ -4879,6 +4893,46 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         return nd;
       }));
     }
+  };
+  // Build the milestone schedule from payment terms and add it immediately —
+  // called at the moment terms are captured (Award flow or the standalone Set
+  // Payment Terms modal) instead of waiting for someone to happen to open the
+  // Billing page for that specific project. Previously auto-generation only
+  // ran in a useEffect inside BillingView keyed on wonDeals.length/billings.length,
+  // so setting terms on an EXISTING awarded deal (no new deal added) never
+  // changed that dependency and the schedule silently never got created until
+  // Billing was remounted — "every awarded deal has a proper billing" wasn't
+  // actually guaranteed.
+  const generateBillingSchedule=(dealId,terms,contractVal)=>{
+    const val=Number(contractVal)||0;
+    if(!terms||val<=0) return;
+    if(billings.some(b=>b.dealId===dealId)) return; // already has milestones — never duplicate
+    const milestones=[
+      terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
+      terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:Math.round(val*terms.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
+      terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
+      terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
+    ].filter(Boolean);
+    if(!milestones.length) return;
+    // Add the whole batch in one state update and do ONE deal.invoiced recompute
+    // from the complete set — calling addMilestone in a loop would have each
+    // call sync deal.invoiced from a stale, pre-batch `billings` closure, so
+    // only the LAST milestone's amount would stick instead of the full total.
+    const invMax=billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
+    const recs=milestones.map((m,idx)=>({...m,id:uid(),dealId,invoiceNo:`INV-${String(invMax+1+idx).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[],createdDate:today}));
+    upBillings(bs=>[...bs,...recs]);
+    recs.forEach(rec=>{
+      if(!isSupabaseReady()) toastEmit("⚠️ Billing schedule saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
+      else if(!isUUID(rec.dealId)) toastEmit("⚠️ This billing can't sync — the project has an invalid ID. Saved on this device only.","warning",9000);
+      else sbSyncOne("billing_milestones",rec,toSbBilling);
+    });
+    const totalInvoiced=recs.reduce((s,r)=>s+Number(r.amount||0),0);
+    upDeals(ds=>ds.map(d=>{
+      if(d.id!==dealId) return d;
+      const nd={...d,invoiced:Math.round((Number(d.invoiced||0)+totalInvoiced)*100)/100};
+      if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+      return nd;
+    }));
   };
   const updateMilestone=(id,ch)=>{
     if(ch.status==='Fully Paid'){
@@ -5644,8 +5698,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
     return list;
   },[billings,addenda,wonDeals,projs,drfs,prs,breqs,deals,today]);
-  const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+d.amountPaid,0),[wonDeals]);
-  const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0)),[wonDeals]);
+  // Billing milestones are the source of truth for "collected" once a deal has a schedule —
+  // deal.amountPaid can drift (legacy imports, manual edits) with nothing to catch it, which is
+  // exactly how Sales Pipeline and Billing ended up showing different numbers for the same deal.
+  // Falls back to deal.amountPaid only for deals that never got a billing schedule.
+  const dealCollected=(d)=>{
+    const ms=billings.filter(b=>b.dealId===d.id);
+    if(!ms.length) return Number(d.amountPaid||0);
+    return ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+  };
+  const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+dealCollected(d),0),[wonDeals,billings]);
+  const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0)),[wonDeals,billings]);
 
   // Auto-mark overdue billing milestones — runs once when billings load, then daily
   useEffect(()=>{
@@ -5889,7 +5952,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return rec.id;
   };
 
-  const saveDeal=(overrideData,skipDupCheck=false)=>{
+  const saveDeal=async(overrideData,skipDupCheck=false)=>{
     const data = overrideData||dealForm;
     if(!data.client||!data.client.trim()){toastEmit("Client name is required.","error");return;}
     if(!data.stage){toastEmit("Stage is required.","error");return;}
@@ -5917,92 +5980,111 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const wasAlreadyAwarded = editDeal && WON_STAGES.includes(deals.find(d=>d.id===editDeal)?.stage);
     if(WON_STAGES.includes(data.stage) && !editDeal) upProjs(ps=>ps[rec.id]?ps:{...ps,[rec.id]:emptyProject()});
     upDeals(ds=>editDeal?ds.map(d=>d.id===editDeal?rec:d):[...ds,rec]);
-    if(isSupabaseReady()) sbSyncOne("deals",rec,toSbDeal);
-    // Save new client to master list if not already present
-    if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
-      const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
-      const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
-      GMD_CLIENTS.push(newClient);
-      setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
-    }
-    // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
-    // left unset here; the Design lead assigns who handles it (DRFView "Assign").
-    if(!editDeal && data.drfReqCreate){
-      addDRF({
-        dealId:rec.id, client:rec.client, location:"",
-        designer:"", designDeadline:data.drfDeadline||"",
-        projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
-        type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
-        description:data.drfDescription||"",
-        accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
-        notes:data.drfNotes||"", approvedLink:"", status:"New",
-        createdBy:session?.name||""
-      });
-    }
-    // Auto-create CE/QS request if the Sales rep ticked "Send to CE/QS for Costing"
-    if(!editDeal && data.ceReqCreate){
-      const num=v=>Number(String(v||0).replace(/,/g,""))||0;
-      addCEReq({
-        client_name:rec.client, project_name:rec.contact||"", location:rec.location||"",
-        project_type:data.ceReqType||"retail", priority:data.ceReqPriority||"Normal", status:"Pending",
-        submitted_by:session?.name||"", target_deadline:data.ceReqDeadline||null,
-        submission_deadline:data.ceReqSubmitDeadline||null,
-        target_budget:num(data.ceReqBudget)||null, target_margin:num(data.ceReqMargin)||null,
-        plans_link:data.ceReqPlansLink||rec.salesRepoLink||"", skp_link:data.ceReqSkpLink||"",
-        schedule_of_finish:data.ceReqSchedule||"", notes:data.ceReqNotes||"",
-        deal_id:String(rec.id), updated_at:new Date().toISOString(),
-      }).catch(()=>{});
-      sendTelegramNotification("management",`📐 <b>New CE Request</b>\nClient: <b>${rec.client}</b>${rec.contact?`\nProject: ${rec.contact}`:""}\nType: ${data.ceReqType||"retail"} · ${data.ceReqPriority||"Normal"} priority${data.ceReqDeadline?`\nCE Deadline: ${data.ceReqDeadline}`:""}\nFor: Rodney (CE/QS)\nFrom: ${session?.name||"Sales"}`);
-    }
-    if(!editDeal){
-      logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
-      sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo}\n`:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Added by: ${session?.name||"Sales"}`);
-    } else {
-      logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
-      // Fire award notification when stage is changed to an awarded stage via edit
-      const prevStage=deals.find(d=>d.id===editDeal)?.stage||"";
-      if(WON_STAGES.includes(rec.stage)&&!WON_STAGES.includes(prevStage)){
-        sendToAllChannels(
-          `🏆 <b>PROJECT AWARDED!</b>\n\n`+
-          `Client: <b>${rec.client}</b>\n`+
-          (rec.contact?`Project: <b>${rec.contact}</b>\n`:"")+
-          (rec.ceNo?`CE No: ${rec.ceNo}\n`:"")+
-          (rec.ceType?`${rec.ceType}\n`:"")+
-          (rec.location?`📍 ${rec.location}\n`:"")+
-          (!botSettings.hideValueInBots&&rec.value?`Value: ₱${Number(rec.value).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`:"")+
-          `\nAwarded by: ${session?.name||"Manager"}`
-        );
-        logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
+    // Await the deal's own write before firing the DRF auto-create below, which
+    // references rec.id by foreign key — firing it unawaited let the design
+    // request occasionally reach the server before the deal committed, failing
+    // an FK check that sync retry then permanently drops (same bug class fixed
+    // in createProjectCard for department tasks).
+    // The deal itself is already saved above (upDeals + optimistic UI update) —
+    // everything below is a secondary side-effect (client-list registration,
+    // DRF/CE auto-create, Telegram notifications, turnover-date sync). None of
+    // it may ever leave the form stuck open on top of an already-saved deal, so
+    // any failure here is swallowed and the modal still closes in the finally.
+    try{
+      const dealSynced=isSupabaseReady()?await sbSyncOne("deals",rec,toSbDeal):true;
+      // Save new client to master list if not already present
+      if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
+        const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
+        GMD_CLIENTS.push(newClient);
+        setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
       }
-      // Fire notification when stage moves back out of awarded (e.g. cancelled)
-      if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
-        sendTelegramNotification("management",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
-        sendTelegramNotification("sales",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+      // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
+      // left unset here; the Design lead assigns who handles it (DRFView "Assign").
+      // Gated on dealSynced: firing this before the deal committed would fail
+      // design_requests' foreign key to deals.id. If the deal write itself failed,
+      // it's already queued for retry — the DRF stays local-only rather than
+      // risk an unwinnable, permanently-dropped FK violation.
+      if(!editDeal && data.drfReqCreate && dealSynced){
+        addDRF({
+          dealId:rec.id, client:rec.client, location:"",
+          designer:"", designDeadline:data.drfDeadline||"",
+          projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
+          type:data.ceType||DRF_TYPES[0], size:data.drfSize||"",
+          description:data.drfDescription||"",
+          accessories:data.drfAccessories||[], refLinks:data.drfRefLinks||["","",""],
+          notes:data.drfNotes||"", approvedLink:"", status:"New",
+          createdBy:session?.name||""
+        });
       }
-    }
-    // Save turnover date to project card if provided and deal is a won project
-    if(rec.turnoverDate&&WON_STAGES.includes(rec.stage)){
-      const card=pcards[rec.id];
-      if(card){
-        upPcards(ps=>({...ps,[rec.id]:{...ps[rec.id],targetEndDate:rec.turnoverDate}}));
-        if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-          sbUpdate('project_cards',card.id,{target_end_date:rec.turnoverDate}).catch(()=>{});
+      // Auto-create CE/QS request if the Sales rep ticked "Send to CE/QS for Costing"
+      if(!editDeal && data.ceReqCreate){
+        const num=v=>Number(String(v||0).replace(/,/g,""))||0;
+        addCEReq({
+          client_name:rec.client, project_name:rec.contact||"", location:rec.location||"",
+          project_type:data.ceReqType||"retail", priority:data.ceReqPriority||"Normal", status:"Pending",
+          submitted_by:session?.name||"", target_deadline:data.ceReqDeadline||null,
+          submission_deadline:data.ceReqSubmitDeadline||null,
+          target_budget:num(data.ceReqBudget)||null, target_margin:num(data.ceReqMargin)||null,
+          plans_link:data.ceReqPlansLink||rec.salesRepoLink||"", skp_link:data.ceReqSkpLink||"",
+          schedule_of_finish:data.ceReqSchedule||"", notes:data.ceReqNotes||"",
+          deal_id:String(rec.id), updated_at:new Date().toISOString(),
+        }).catch(()=>{});
+        sendTelegramNotification("management",`📐 <b>New CE Request</b>\nClient: <b>${rec.client}</b>${rec.contact?`\nProject: ${rec.contact}`:""}\nType: ${data.ceReqType||"retail"} · ${data.ceReqPriority||"Normal"} priority${data.ceReqDeadline?`\nCE Deadline: ${data.ceReqDeadline}`:""}\nFor: Rodney (CE/QS)\nFrom: ${session?.name||"Sales"}`);
+      }
+      if(!editDeal){
+        logActivity(rec.id,"New Deal",`${rec.client} added at ${rec.stage}`,session?.name);
+        sendTelegramNotification("sales",`🆕 <b>New Deal Added</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}${rec.ceNo?`CE: ${rec.ceNo}\n`:""}${(!botSettings.hideValueInBots&&rec.value)?`₱${Number(rec.value).toLocaleString("en-PH")}\n`:""}Added by: ${session?.name||"Sales"}`);
+      } else {
+        logActivity(rec.id,"Deal Updated",`${rec.client} — ${rec.stage}`,session?.name);
+        // Fire award notification when stage is changed to an awarded stage via edit
+        const prevStage=deals.find(d=>d.id===editDeal)?.stage||"";
+        if(WON_STAGES.includes(rec.stage)&&!WON_STAGES.includes(prevStage)){
+          sendToAllChannels(
+            `🏆 <b>PROJECT AWARDED!</b>\n\n`+
+            `Client: <b>${rec.client}</b>\n`+
+            (rec.contact?`Project: <b>${rec.contact}</b>\n`:"")+
+            (rec.ceNo?`CE No: ${rec.ceNo}\n`:"")+
+            (rec.ceType?`${rec.ceType}\n`:"")+
+            (rec.location?`📍 ${rec.location}\n`:"")+
+            (!botSettings.hideValueInBots&&rec.value?`Value: ₱${Number(rec.value).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`:"")+
+            `\nAwarded by: ${session?.name||"Manager"}`
+          );
+          logActivity(rec.id,"Project Awarded",`${rec.client} moved to awarded stage by ${session?.name}`,session?.name);
         }
-        if(rec.turnoverDate!==(card.targetEndDate||"")){
-          const tgMsg=`📅 <b>Turnover Date Updated</b>\nProject: <b>${rec.contact||rec.client}</b>${rec.ceNo?` — ${rec.ceNo}`:""}\n🏁 Turnover Date: <b>${rec.turnoverDate}</b>\nUpdated by: ${session?.name||"Sales"}`;
-          sendTelegramNotification("ops",tgMsg);
-          sendTelegramNotification("management",tgMsg);
-          const existingTov=checklist.find(c=>c.type==="Turnover"&&(c.projectId===rec.id||c.dealId===rec.id));
-          if(existingTov){
-            upChecklist(cs=>cs.map(c=>c.id===existingTov.id?{...c,dueDate:rec.turnoverDate}:c));
-            if(isSupabaseReady())sbUpdate('checklists',existingTov.id,{due_date:rec.turnoverDate}).catch(()=>{});
-          }else{
-            const tov={id:uid(),type:"Turnover",title:"Client Turnover",dueDate:rec.turnoverDate,projectId:rec.id,dealId:rec.id,dept:"Operations",status:"Scheduled",priority:"Normal",createdDate:today,createdBy:session?.name||role,notes:""};
-            upChecklist(cs=>[...cs,tov]);
-            if(isSupabaseReady())sbInsert('checklists',toSbChecklist(tov)).catch(()=>{});
+        // Fire notification when stage moves back out of awarded (e.g. cancelled)
+        if(!WON_STAGES.includes(rec.stage)&&WON_STAGES.includes(prevStage)&&rec.stage==="Cancelled"){
+          sendTelegramNotification("management",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+          sendTelegramNotification("sales",`❌ <b>Project Cancelled</b>\nClient: <b>${rec.client}</b>\n${rec.contact?`Project: ${rec.contact}\n`:""}By: ${session?.name||"Manager"}`);
+        }
+      }
+      // Save turnover date to project card if provided and deal is a won project
+      if(rec.turnoverDate&&WON_STAGES.includes(rec.stage)){
+        const card=pcards[rec.id];
+        if(card){
+          upPcards(ps=>({...ps,[rec.id]:{...ps[rec.id],targetEndDate:rec.turnoverDate}}));
+          if(isSupabaseReady()&&card.id&&isUUID(card.id)){
+            sbUpdate('project_cards',card.id,{target_end_date:rec.turnoverDate}).catch(()=>{});
+          }
+          if(rec.turnoverDate!==(card.targetEndDate||"")){
+            const tgMsg=`📅 <b>Turnover Date Updated</b>\nProject: <b>${rec.contact||rec.client}</b>${rec.ceNo?` — ${rec.ceNo}`:""}\n🏁 Turnover Date: <b>${rec.turnoverDate}</b>\nUpdated by: ${session?.name||"Sales"}`;
+            sendTelegramNotification("ops",tgMsg);
+            sendTelegramNotification("management",tgMsg);
+            const existingTov=checklist.find(c=>c.type==="Turnover"&&(c.projectId===rec.id||c.dealId===rec.id));
+            if(existingTov){
+              upChecklist(cs=>cs.map(c=>c.id===existingTov.id?{...c,dueDate:rec.turnoverDate}:c));
+              if(isSupabaseReady())sbUpdate('checklists',existingTov.id,{due_date:rec.turnoverDate}).catch(()=>{});
+            }else{
+              const tov={id:uid(),type:"Turnover",title:"Client Turnover",dueDate:rec.turnoverDate,projectId:rec.id,dealId:rec.id,dept:"Operations",status:"Scheduled",priority:"Normal",createdDate:today,createdBy:session?.name||role,notes:""};
+              upChecklist(cs=>[...cs,tov]);
+              if(isSupabaseReady())sbInsert('checklists',toSbChecklist(tov)).catch(()=>{});
+            }
           }
         }
       }
+    }catch(err){
+      console.error("saveDeal side-effect failed:",err);
+      toastEmit("Deal saved, but a follow-up step failed — check console.","warning");
     }
     setEditDeal(null);
     setDealModal(false);
@@ -6099,6 +6181,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const confirmAward=async(form)=>{
     if(!awardModal) return;
     const id=awardModal.id;
+    // Everything below is wrapped so a failure anywhere in this long chain
+    // (JO numbering, project card, budget, notifications, billing schedule)
+    // can never leave the Award modal stuck open with the button appearing to
+    // do nothing — see the identical issue fixed in saveDeal.
+    try{
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
     const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo));
@@ -6196,10 +6283,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       (form.specialInstructions?`\n⚠️ Special Instructions:\n${form.specialInstructions}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
-    // Save payment terms if set in Step 3
+    // Save payment terms if set in Step 3, and generate the billing schedule
+    // immediately so an awarded project never sits with terms on file but no
+    // invoices — see generateBillingSchedule for why this can't wait for
+    // someone to happen to open the Billing page.
     if(form.paymentTerms){
       upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentTerms:form.paymentTerms}:d));
       if(isSupabaseReady())sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}).catch(()=>{});
+      generateBillingSchedule(id,form.paymentTerms,contractVal);
+    }
+    }catch(err){
+      console.error("confirmAward failed:",err);
+      toastEmit("Award may be incomplete — a follow-up step failed. Check the project card and console.","warning",9000);
     }
     setAwardModal(null);
   };
@@ -6897,7 +6992,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <Toaster/>
         {!isOnline&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#1e293b",color:"#fcd34d",padding:"8px 16px",textAlign:"center",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>⚠️ You're offline — changes are saved locally and will sync when you reconnect.</div>}
         {pendingSync>0&&(
-          <div onClick={()=>{toastEmit("Retrying sync…","info",2000);sbFlushQueue();}} title="Some changes haven't reached the server yet. Tap to retry now."
+          <div onClick={async()=>{
+            toastEmit("Retrying sync…","info",2000);
+            const{synced,remaining,lastError}=await sbFlushQueue(true); // force — bypass the unreliable navigator.onLine check
+            if(remaining===0) toastEmit("✅ Synced — all changes reached the server.","success",5000);
+            else if(synced>0) toastEmit(`Synced ${synced}, ${remaining} still pending — ${lastError?.message||"retrying…"}`,"warning",6000);
+            else{
+              const reason=lastError?.kind==="offline"?"This device appears to be offline.":
+                lastError?.kind==="auth"?"Your session can't reach the server — try logging out and back in.":
+                lastError?.kind==="network"?"Network request failed — check your connection or try a different network.":
+                lastError?.kind==="busy"?"A sync attempt was already running — try tapping again in a few seconds.":
+                lastError?.message?`Server said: "${lastError.message}"`:"Unknown error — check your connection.";
+              toastEmit(`Still can't sync. ${reason}`,"error",9000);
+            }
+          }} title="Some changes haven't reached the server yet. Tap to retry now."
             style={{position:"fixed",bottom:isMobile?80:18,right:18,zIndex:2100,background:"#b45309",color:"#fff",padding:"8px 14px",borderRadius:24,fontSize:".76rem",fontWeight:800,cursor:"pointer",boxShadow:"0 4px 14px rgba(180,83,9,.35)",display:"flex",alignItems:"center",gap:7}}>
             <span style={{display:"inline-block",animation:"fhspin 1.1s linear infinite"}}>⟳</span>
             {pendingSync} change{pendingSync!==1?"s":""} pending sync — tap to retry
@@ -7082,9 +7190,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
         const myPipe=myDeals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
         const myUnpriced=myPipe.filter(d=>!Number(d.value)||Number(d.value)===0);
-        const myColl=myWon.reduce((s,d)=>s+Number(d.amountPaid||0),0);
+        const myColl=myWon.reduce((s,d)=>s+dealCollected(d),0);
         const myRev=myWon.reduce((s,d)=>s+Number(d.value||0),0);
-        const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-Number(d.amountPaid||0),0));
+        const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0));
         const pendingAddenda=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected"&&myWon.some(d=>d.id===a.dealId));
         const fmtK=v=>v>=1000000?"₱"+Math.round(v/1000000*10)/10+"M":"₱"+Math.round(v/1000)+"K";
         return(
@@ -7140,7 +7248,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)",cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("pipeline")}>See all →</span>
                 </div>
                 {myWon.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed").slice(0,6).map((d,i,arr)=>{
-                  const paid=Number(d.amountPaid||0);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const paid=dealCollected(d);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
                   const sc={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"}[d.stage]||"#94a3b8";
                   return(
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f8fafc":""}}>
@@ -10040,7 +10148,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const pc=pcards[d.id];
-                  const paid=Number(d.amountPaid)||0;
+                  const paid=dealCollected(d);
                   const inv=Number(d.invoiced)||0;
                   const contractVal=Number(d.value)||0;
                   const outstanding=Math.max(0,contractVal-paid);
@@ -10113,7 +10221,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       const gd=parentList.filter(d=>(d.ceType||"Other")===grp);
                       const gdChildren=allChildren.filter(c=>gd.some(p=>p.id===c.parentDealId));
                       const total=[...gd,...gdChildren].reduce((s,d)=>s+Number(d.value||0),0);
-                      const paid=[...gd,...gdChildren].reduce((s,d)=>s+Number(d.amountPaid||0),0);
+                      const paid=[...gd,...gdChildren].reduce((s,d)=>s+dealCollected(d),0);
                       const isOpen=openGroups[grp]!==false;
                       return(
                         <div key={grp} style={{marginBottom:10}}>
@@ -10257,7 +10365,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           setAwardReqModal(null);
         }}/>}
       {awardModal&&<AwardModal deal={awardModal} session={session} today={today} onClose={()=>setAwardModal(null)} onConfirm={confirmAward} drfs={drfs}/>}
-      {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});toastEmit("Payment terms saved — Finance can now build the billing schedule","success");setPayTermsModal(null);}} session={session}/>}
       {priceModal&&<SetPriceModal deal={priceModal} today={today} onClose={()=>setPriceModal(null)} onSave={(val,note)=>{
         upDeals(ds=>ds.map(x=>{
           if(x.id!==priceModal.id) return x;
@@ -11272,15 +11379,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontSize:".78rem",color:"#64748b"}}>{d.product} · {d.contact}</div>
                 {d.followUp&&<div style={{fontSize:".73rem",color:d.followUp<today&&!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"?"#ef4444":"#94a3b8",marginTop:5}}>📅 Follow-up: {d.followUp}{d.followUp<today&&!WON_STAGES.includes(d.stage)?" — OVERDUE":""}</div>}
                 {d.notes&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>{d.notes}</div>}
-                {WON_STAGES.includes(d.stage)&&d.invoiced>0&&(
+                {WON_STAGES.includes(d.stage)&&d.invoiced>0&&(()=>{
+                  const paid=dealCollected(d);
+                  return(
                   <div style={{marginTop:10}}>
                     <div style={{display:"flex",justifyContent:"space-between",fontSize:".7rem",color:"#94a3b8",marginBottom:4}}>
-                      <span>{fmt(d.amountPaid)} of {fmt(d.invoiced)} collected</span>
-                      <span>{d.invoiced>0?Math.round(d.amountPaid/d.invoiced*100):0}%</span>
+                      <span>{fmt(paid)} of {fmt(d.invoiced)} collected</span>
+                      <span>{d.invoiced>0?Math.round(paid/d.invoiced*100):0}%</span>
                     </div>
-                    <ProgBar pct={d.invoiced>0?d.amountPaid/d.invoiced*100:0} color={d.amountPaid>=d.invoiced?"#059669":"#10b981"}/>
+                    <ProgBar pct={d.invoiced>0?paid/d.invoiced*100:0} color={paid>=d.invoiced?"#059669":"#10b981"}/>
                   </div>
-                )}
+                  );
+                })()}
               </div>
               <div style={{textAlign:"right",flexShrink:0}}>
                 <div style={{fontWeight:800,color:"#10b981",fontSize:"1.15rem"}}>{fmt(d.value)}</div>
@@ -12607,6 +12717,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── BILLING ─────────────────────────────────────────────────────────────────
   if(page==="billing") return(
+    <>
     <Wrap>
       {/* Aging Summary */}
       {(()=>{
@@ -12695,6 +12806,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
+    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});generateBillingSchedule(dealId,terms,deals.find(d=>d.id===dealId)?.value);toastEmit("✅ Payment terms saved — billing schedule generated.","success");setPayTermsModal(null);}} session={session}/>}
+    </>
   );
 
   // ── DATA MANAGEMENT (Manager only) ──────────────────────────────────────────

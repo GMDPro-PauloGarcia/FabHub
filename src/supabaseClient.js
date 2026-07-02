@@ -56,59 +56,93 @@ export const sbQueueSize = () => _queue.length
 export const sbOnQueueChange = (fn) => { _queueListeners.push(fn); return () => { _queueListeners = _queueListeners.filter(f => f !== fn) } }
 const _enqueue = (op) => { _queue.push({ qid: `${Date.now()}_${_seq++}`, attempts: 0, ...op }); _saveQueue() }
 
+// A hung request (no error, no success — seen on some flaky/restrictive
+// networks) must not block forever: without a timeout it holds the single
+// in-flight flush lock open indefinitely, so every later retry — automatic
+// AND manual — silently no-ops with no explanation ("Unknown error"). Racing
+// against a timeout guarantees _replay always resolves so the lock releases.
+const _REPLAY_TIMEOUT_MS = 12000
+const _withTimeout = (promise) => Promise.race([
+  promise,
+  new Promise(resolve => setTimeout(() => resolve({ error: { message: 'Request timed out — the server did not respond in time.' } }), _REPLAY_TIMEOUT_MS)),
+])
 const _replay = async (op) => {
   try {
     let error
     if (op.kind === 'insert' || op.kind === 'upsert') {
       // Replay inserts as upserts when an id is present so a lost-response retry
       // can't create a duplicate; fall back to insert only when there's no id.
-      if (op.data && op.data.id != null) error = (await supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' })).error
-      else error = (await supabase.from(op.table).insert(op.data)).error
+      if (op.data && op.data.id != null) error = (await _withTimeout(supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' }))).error
+      else error = (await _withTimeout(supabase.from(op.table).insert(op.data))).error
     } else if (op.kind === 'update') {
-      error = (await supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id)).error
+      // .select('id') so a 0-row match (e.g. the target still doesn't exist on
+      // the server — a parent write is itself still queued) isn't reported as
+      // success. Without this the op gets shifted out of the queue as "done"
+      // while nothing actually happened, and no one is ever told.
+      const res = await _withTimeout(supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id).select('id'))
+      error = res.error
+      if (!error && (!res.data || res.data.length === 0)) error = { message: `No row matched id=${op.id} — it may not exist on the server yet.` }
     } else if (op.kind === 'delete') {
-      error = (await supabase.from(op.table).delete().eq('id', op.id)).error
+      error = (await _withTimeout(supabase.from(op.table).delete().eq('id', op.id))).error
     } else if (op.kind === 'deleteWhere') {
       let q = supabase.from(op.table).delete()
       if (op.op === 'in') q = q.in(op.column, op.value)
       else q = q.eq(op.column, op.value)
-      error = (await q).error
+      error = (await _withTimeout(q)).error
     }
-    if (error) { console.warn(`sync replay ${op.kind} ${op.table}:`, error.message); return { ok: false, kind: _classifyError(error.message) } }
+    if (error) { console.warn(`sync replay ${op.kind} ${op.table}:`, error.message); return { ok: false, kind: _classifyError(error.message), message: error.message } }
     return { ok: true }
-  } catch (e) { console.warn(`sync replay threw ${op.kind} ${op.table}:`, e.message); return { ok: false, kind: _classifyError(e.message) } }
+  } catch (e) { console.warn(`sync replay threw ${op.kind} ${op.table}:`, e.message); return { ok: false, kind: _classifyError(e.message), message: e.message } }
 }
 
 let _flushing = false
-export const sbFlushQueue = async () => {
-  if (!supabase || _flushing || !_queue.length) return
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+// force=true (user tapped "retry now", or the periodic heartbeat) skips the
+// navigator.onLine check — that flag is unreliable on some networks/browsers
+// (VPNs, captive portals, mobile Safari) and can report false while the
+// connection is actually fine, which silently blocked every retry forever
+// even though nothing was actually wrong.
+// Returns { synced, remaining, lastError } so a caller (e.g. the retry badge)
+// can tell the user WHY it's still stuck instead of a generic "can't reach
+// the server" — the classified kind plus the raw message from Supabase.
+export const sbFlushQueue = async (force = false) => {
+  if (!supabase) return { synced: 0, remaining: _queue.length, lastError: { kind: 'no-client', message: 'Supabase is not configured on this device.' } }
+  if (_flushing) return { synced: 0, remaining: _queue.length, lastError: { kind: 'busy', message: 'A sync attempt is already in progress.' } }
+  if (!_queue.length) return { synced: 0, remaining: 0, lastError: null }
+  if (!force && typeof navigator !== 'undefined' && navigator.onLine === false) {
+    return { synced: 0, remaining: _queue.length, lastError: { kind: 'offline', message: 'This device is offline.' } }
+  }
   _flushing = true
+  let synced = 0, lastError = null
   try {
     while (_queue.length) {
       const op = _queue[0]
-      const { ok, kind } = await _replay(op)
-      if (ok) { _queue.shift(); _saveQueue() }
+      const { ok, kind, message } = await _replay(op)
+      if (ok) { _queue.shift(); _saveQueue(); synced++ }
       else if (!_isRetryable(kind)) {
         // Permission/schema/constraint errors will never succeed by replaying
         // the same payload — drop immediately instead of wedging every write
         // queued behind it for up to 8 retry cycles.
         console.error(`sync queue: dropping non-retryable op (${kind}) — ${op.kind} ${op.table}`)
+        lastError = { kind, message, table: op.table }
         _queue.shift(); _saveQueue()
       } else {
         op.attempts = (op.attempts || 0) + 1
+        lastError = { kind, message, table: op.table }
         if (op.attempts >= 8) { console.error(`sync queue: dropping op after 8 tries — ${op.kind} ${op.table}`); _queue.shift() }
         _saveQueue()
         if (op.attempts < 8) break // preserve order; retry whole queue later
       }
     }
   } finally { _flushing = false }
+  return { synced, remaining: _queue.length, lastError }
 }
 
 // Auto-flush on reconnect and on a slow heartbeat while anything is pending.
+// The heartbeat forces through the same unreliable-onLine gap noted above — a
+// stuck "online: false" reading should not mean a queued write waits forever.
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => { sbFlushQueue() })
-  setInterval(() => { if (_queue.length) sbFlushQueue() }, 45000)
+  setInterval(() => { if (_queue.length) sbFlushQueue(true) }, 45000)
 }
 
 export const sbInsert = async (table, data) => {
@@ -119,15 +153,32 @@ export const sbInsert = async (table, data) => {
 }
 
 export const sbUpdate = async (table, id, data) => {
-  if (!supabase) return
-  const { error } = await supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id)
-  if (error) { console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }) }
+  if (!supabase) return false
+  // .select('id') so we can tell "updated 0 rows" apart from "updated 1 row" —
+  // without it, Postgres reports success for an UPDATE that matched nothing
+  // (e.g. the target row hasn't finished its own insert yet, on another device
+  // or an unawaited parent write), and the change silently goes nowhere: no
+  // error, so nothing queues it for retry, and no one is ever told.
+  const { data: rows, error } = await supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id).select('id')
+  if (error) { console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); return false }
+  if (!rows || rows.length === 0) {
+    console.warn(`SB UPDATE ${table}: no row matched id=${id} (not created yet on the server?) — queuing for retry`)
+    _enqueue({ kind: 'update', table, id, data })
+    return false
+  }
+  return true
 }
 
+// Returns true/false so a caller that's about to write a DEPENDENT row (e.g. a
+// child referencing this row's id via a foreign key) can wait for and confirm
+// success first — otherwise the child write can reach the server before the
+// parent commits and fail an FK check, which sync retry can never fix (a "data"
+// error like a constraint violation is never retried, only dropped).
 export const sbUpsert = async (table, data, conflictCol = 'id') => {
-  if (!supabase) return
+  if (!supabase) return false
   const { error } = await supabase.from(table).upsert(data, { onConflict: conflictCol })
-  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }) }
+  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); return false }
+  return true
 }
 
 export const sbDelete = async (table, id) => {
