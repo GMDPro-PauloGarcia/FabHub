@@ -8594,12 +8594,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const newScope=addenda.filter(a=>a.status==="Discovered"||a.status==="Sales Notified");
         const overdue=allMs.filter(m=>m.dueDate&&new Date(m.dueDate)<today2&&m.status!=="Fully Paid");
 
-        // AE performance
-        const aeNames=["Gail De Ello","April Gail De Ello","Jena De Asis","Don Wyn Celmar"];
+        // AE performance — derive from actual deal data instead of a hardcoded
+        // roster, so a new AE (or one who was simply missing from a stale list,
+        // like Paolo Gomez) always shows up without a code change.
+        const aeNames=[...new Set(deals.map(d=>d.salesOwner).filter(Boolean))];
         const aeStats=aeNames.map(ae=>({
           name:ae.split(" ")[0]+(ae.includes("Gail")?" (Gail)":""),
-          deals:deals.filter(d=>d.salesOwner===ae||d.salesOwner?.includes(ae.split(" ")[0])).length,
-          awarded:wonDeals.filter(d=>d.salesOwner===ae||d.salesOwner?.includes(ae.split(" ")[0])).length,
+          deals:deals.filter(d=>d.salesOwner===ae).length,
+          awarded:wonDeals.filter(d=>d.salesOwner===ae).length,
         })).filter(a=>a.deals>0);
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
