@@ -4327,22 +4327,14 @@ export default function App(){
     {rating:"NO",specialty:"Metal Works (Supply & Install)",strengthsWeaknesses:"W: Work errors/Design concerns about metal works/Billing",contactNo:"0917-802-6014",companyName:"Alba Motors/Elijah Mojares",paymentTerms:"Cash Basis",address:"88 Jenny's Avenue, Maybunga Pasig City",rateStructure:"Material/Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",remarks:"",notes:""},
   ];
 
-  // Seed initial data if tables are empty (runs once)
-  useEffect(()=>{
-    if(suppliers.length===0&&SEED_SUPPLIERS.length>0&&isSupabaseReady()){
-      SEED_SUPPLIERS.forEach(s=>{
-        addSupplier({...s,status:"Active"});
-      });
-    }
-  },[/* one-time seed */]);
-
-  useEffect(()=>{
-    if(subcons.length===0&&SEED_SUBCONS.length>0&&isSupabaseReady()){
-      SEED_SUBCONS.forEach(s=>{
-        addSubcon({...s,status:"Active"});
-      });
-    }
-  },[/* one-time seed */]);
+  // NOTE: this used to auto-seed SEED_SUPPLIERS/SEED_SUBCONS into Supabase on
+  // mount whenever `suppliers.length===0`/`subcons.length===0`. That check ran
+  // against local React state, which starts empty on every fresh mount BEFORE
+  // sbLoadAll() has hydrated it from the server — so it looked "empty" (and
+  // re-seeded the full list with brand-new random IDs, so nothing deduped)
+  // essentially every time the app mounted, not just once ever. Removed —
+  // suppliers/subcontractors are already fully seeded; use the Supplier/Subcon
+  // Master "+ Add" UI for anything new instead of an automatic effect.
 
   const logStockMove=(move)=>{
     if(move.moveType?.startsWith("OUT")){
