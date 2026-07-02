@@ -480,17 +480,41 @@ const claimWoNumber=async({typed,suggested,swos})=>{
 // next number via the next_doc_number RPC (atomic across devices), passing the
 // current local max as a floor; falls back to local count if the RPC is
 // unavailable (e.g. before supabase_doc_numbers.sql is applied, or offline).
-const claimDocNumber=async(prefix,existingNumbers)=>{
+const claimDocNumber=async(prefix,existingNumbers,digits=4)=>{
   const re=new RegExp(`^${prefix}-(\\d+)$`);
   const localMax=(existingNumbers||[]).reduce((m,s)=>{const mt=re.exec(String(s||""));return mt?Math.max(m,Number(mt[1])):m;},0);
   if(isSupabaseReady()){
     try{
       const {data,error}=await supabase.rpc('next_doc_number',{p_prefix:prefix,p_min:localMax});
-      if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${prefix}-${String(Number(data)).padStart(4,"0")}`;
+      if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${prefix}-${String(Number(data)).padStart(digits,"0")}`;
     }catch(e){ /* fall back to local allocation */ }
   }
-  return `${prefix}-${String(localMax+1).padStart(4,"0")}`;
+  return `${prefix}-${String(localMax+1).padStart(digits,"0")}`;
 };
+// Year-scoped document numbers (FOO-YYYY-NNN, e.g. CE-2026-005, EV-2026-003) —
+// a distinct shape from the flat PREFIX-NNNN docs above, but reuses the same
+// atomic next_doc_number RPC keyed by a year-scoped prefix (e.g. "CE-2026").
+// Two offline devices previously each computed "next" from their own stale
+// local list and could both save the same number — same collision class
+// already fixed for PO/CV/JO. Only re-claims when the number looks like this
+// year's auto-format; a manually customized or prior-year number (e.g. an
+// addendum suffix) is left untouched.
+const claimYearScopedNo=async(base,digits,currentNo,existingNos)=>{
+  const yr=new Date().getFullYear();
+  const re=new RegExp(`^${base}-(\\d{4})-(\\d+)$`);
+  const m=re.exec((currentNo||"").trim());
+  if(!m||Number(m[1])!==yr) return (currentNo||"").trim();
+  const localMax=(existingNos||[]).reduce((mx,s)=>{const mt=re.exec(String(s||""));return(mt&&Number(mt[1])===yr)?Math.max(mx,Number(mt[2])):mx;},0);
+  if(isSupabaseReady()){
+    try{
+      const{data,error}=await supabase.rpc('next_doc_number',{p_prefix:`${base}-${yr}`,p_min:localMax});
+      if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${base}-${yr}-${String(Number(data)).padStart(digits,"0")}`;
+    }catch(e){ /* fall back to local allocation */ }
+  }
+  return `${base}-${yr}-${String(localMax+1).padStart(digits,"0")}`;
+};
+const claimCENo=(dealCeNo,existingCeNos)=>claimYearScopedNo("CE",3,dealCeNo,existingCeNos);
+const claimEvNo=(evNo,existingEvNos)=>claimYearScopedNo("EV",3,evNo,existingEvNos);
 const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
 const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
 const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
@@ -2457,7 +2481,7 @@ function ActivityDashboard({actLog,users,session,isMobile}){
 }
 
 // ── MY ACCOUNT PAGE (proper component — fixes focus loss) ─────────────────
-function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog}){
+function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:setSessionExt,logActivity:logActivityExt,checkPw,hashPw,actLog,verifyCurrentPassword}){
           const[tab,setTab]=useState("password");
           const[curPw,setCurPw]=useState("");
           const[newPw,setNewPw]=useState("");
@@ -2471,7 +2495,7 @@ function MyAccountPage({session,users,setUsers,upUsers:upUsersExt,setSession:set
           const savePassword=async()=>{
             const u=users.find(x=>x.id===session?.userId);
             if(!u){setMsg({type:"error",text:"Session error. Please log out and log back in."});return;}
-            if(!(await checkPw(curPw,u.passwordHash,u.username))){setMsg({type:"error",text:"Current password is incorrect."});return;}
+            if(!(await verifyCurrentPassword(u.username,curPw))){setMsg({type:"error",text:"Current password is incorrect."});return;}
             if(newPw.length<6){setMsg({type:"error",text:"New password must be at least 6 characters."});return;}
             if(newPw!==confPw){setMsg({type:"error",text:"New passwords do not match."});return;}
             if(newPw===curPw){setMsg({type:"error",text:"New password must be different from current password."});return;}
@@ -4043,9 +4067,14 @@ export default function App(){
   const upUsers    =useCallback(fn=>setUsers(p=>{const n=fn(p);persist(KEYS.users,n);return n;}),[persist]);
   const upCashPos  =useCallback(fn=>setCashPos(p=>{const n=fn(p);persist(KEYS.cashPos,n);return n;}),[persist]);
   const upEvouchers=useCallback(fn=>setEvouchers(p=>{const n=fn(p);persist(KEYS.evouchers,n);if(isSupabaseReady())sbUpsert('app_settings',{key:'evouchers',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;}),[persist]);
-  const nextEvNo=()=>{const nums=evouchers.map(e=>parseInt((e.evNo||"").replace(/[^0-9]/g,"")||0)).filter(n=>!isNaN(n)&&n>0);const nx=nums.length?Math.max(...nums)+1:1;return`EV-${new Date().getFullYear()}-${String(nx).padStart(3,"0")}`;};
-  const nextLqNo=()=>{const nums=evouchers.map(e=>parseInt((e.lqNo||"").replace(/[^0-9]/g,"")||0)).filter(n=>!isNaN(n)&&n>0);const nx=nums.length?Math.max(...nums)+1:1;return`LQ-${String(nx).padStart(6,"0")}`;};
-  const addEV=(ev)=>{const ne={...ev,id:uid(),evNo:nextEvNo(),lqNo:nextLqNo(),status:ev.status||"Draft",createdBy:session?.name||"",createdAt:new Date().toISOString(),items:ev.items||[]};upEvouchers(es=>[...es,ne]);};
+  // EV/LQ numbers used local max+1 with no server-side atomicity — the same
+  // cross-device collision risk already fixed for PO/CV/JO/CE.
+  const addEV=async(ev)=>{
+    const evNo=await claimEvNo(`EV-${new Date().getFullYear()}-000`,evouchers.map(e=>e.evNo));
+    const lqNo=await claimDocNumber("LQ",evouchers.map(e=>e.lqNo),6);
+    const ne={...ev,id:uid(),evNo,lqNo,status:ev.status||"Draft",createdBy:session?.name||"",createdAt:new Date().toISOString(),items:ev.items||[]};
+    upEvouchers(es=>[...es,ne]);
+  };
   const updateEV=(id,ch)=>upEvouchers(es=>es.map(e=>e.id===id?{...e,...ch}:e));
   const deleteEV=(id)=>upEvouchers(es=>es.filter(e=>e.id!==id));
   const addEVItem=(evId,item)=>upEvouchers(es=>es.map(e=>e.id===evId?{...e,items:[...(e.items||[]),{...item,id:uid()}]}:e));
@@ -5415,13 +5444,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
   },[session,deals,sendTelegramNotification]);
 
-  const addDRF=(drf)=>upDrfs(ds=>{
-    const no=`DRF-${String(ds.length+1).padStart(3,"0")}`;
+  const addDRF=async(drf)=>{
+    // Was `DRF-${ds.length+1}` — generated from array LENGTH, so deleting any
+    // DRF made the next one reuse a number, on top of the same cross-device
+    // collision risk the other doc numbers already had. Atomic counter fixes both.
+    const no=await claimDocNumber("DRF",drfs.map(d=>d.drfNo));
     const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New",createdBy:drf.createdBy||session?.name||role};
+    upDrfs(ds=>[...ds,rec]);
     sendTelegramNotification("design",`📝 <b>New Design Request</b>\n${no} · ${drf.client||"?"}\nProject: ${drf.projectTitle||"—"}\nDeadline: ${drf.designDeadline||"TBD"}\nBy: ${drf.createdBy||"?"}`);
     if(isSupabaseReady()) sbInsert('design_requests',drfToSb(rec)).catch(()=>{});
-    return[...ds,rec];
-  });
+  };
   const updateDRF=(id,data)=>{
     upDrfs(ds=>ds.map(d=>d.id===id?{...d,...data}:d));
     if(isSupabaseReady()) sbUpdate('design_requests',id,drfToSb(data)).catch(()=>{});
@@ -5516,29 +5548,50 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Auth helpers ───────────────────────────────────────────────────────────
   const login=async(username,password)=>{
     const unameLower=username.toLowerCase().trim();
-    // Always check DEFAULT_USERS first as guaranteed fallback (works before Supabase loads)
     const defUser=DEFAULT_USERS.find(x=>x.username===unameLower);
-    let u=users.find(x=>x.username.toLowerCase()===unameLower);
-    // If not in local state yet (Supabase still loading), query Supabase directly
-    if(!u&&isSupabaseReady()){
+    let u=null, viaServer=false, needsUpgrade=false;
+    // Verify the password server-side via the verify_login RPC — the hash
+    // comparison happens in Postgres, so the actual password_hash never has to
+    // be read into the browser (previously fetched via select('*') and
+    // compared client-side, which — combined with RLS being open to `anon` —
+    // let anyone with the public anon key bulk-read every user's hash with no
+    // login at all). Falls back to the old local/DEFAULT_USERS check only if
+    // Supabase is unreachable (offline / pre-load / RPC not yet applied).
+    if(isSupabaseReady()){
       try{
-        const{data}=await supabase.from('user_profiles').select('*').ilike('username',unameLower).single();
-        if(data) u={id:data.id,username:data.username||"",name:data.name||data.full_name||"",role:data.role||"Sales",title:data.title||data.role||"",status:data.status||"active",passwordHash:data.password_hash||""};
-      }catch(e){}
+        const{data,error}=await supabase.rpc('verify_login',{p_username:unameLower,p_password:password});
+        const row=Array.isArray(data)?data[0]:data;
+        if(!error&&row?.found){
+          viaServer=true;
+          u={id:row.id,username:row.username,name:row.name,role:row.role,title:row.title||row.role,status:row.status};
+          if(!row.password_ok&&!defUser) return "Incorrect password.";
+          if(row.password_ok){ needsUpgrade=!!row.needs_upgrade; }
+          else if(defUser){
+            // DB row exists but didn't match — still allow the DEFAULT_USERS
+            // hash as a secondary check (handles a blank password_hash in Supabase).
+            if(!(await checkPw(password,defUser.passwordHash,unameLower))) return "Incorrect password.";
+          }
+        }
+      }catch(e){ /* fall back to local/default check below */ }
     }
-    // If Supabase hasn't loaded yet or user not in DB, fall back to DEFAULT_USERS
-    if(!u&&defUser) u={...defUser,status:"active"};
+    if(!viaServer){
+      let localU=users.find(x=>x.username.toLowerCase()===unameLower);
+      if(!localU&&defUser) localU={...defUser,status:"active"};
+      if(!localU) return "Username not found.";
+      if(localU.status==="pending") return "Your account is pending approval by a Manager.";
+      if(localU.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
+      const hashToCheck=localU.passwordHash||(defUser?.passwordHash||"");
+      let valid=hashToCheck?await checkPw(password,hashToCheck,localU.username):false;
+      if(!valid&&defUser) valid=await checkPw(password,defUser.passwordHash,localU.username);
+      if(!valid) return "Incorrect password.";
+      needsUpgrade=!hashToCheck.startsWith("sha256:");
+      u=localU;
+    }
     if(!u) return "Username not found.";
     if(u.status==="pending") return "Your account is pending approval by a Manager.";
     if(u.status==="inactive") return "Your account has been deactivated. Contact Paulo.";
-    // Try password; if DB hash is missing, fall back to DEFAULT_USERS hash
-    const hashToCheck=u.passwordHash||(defUser?.passwordHash||"");
-    let valid=hashToCheck?await checkPw(password,hashToCheck,u.username):false;
-    // Secondary check using DEFAULT_USERS hash (handles empty password_hash in Supabase)
-    if(!valid&&defUser) valid=await checkPw(password,defUser.passwordHash,u.username);
-    if(!valid) return "Incorrect password.";
     // Auto-upgrade legacy btoa hash to SHA-256 on successful login
-    if(!hashToCheck.startsWith("sha256:")){
+    if(needsUpgrade){
       const newHash=await sha256Hash(password,u.username);
       const upgraded={...u,passwordHash:newHash};
       upUsers(us=>us.map(x=>x.id===u.id?upgraded:x));
@@ -5553,6 +5606,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     localStorage.setItem(KEYS.role,u.role);
     loadAllFromSupabase();
     return null;
+  };
+  // Verify a password against the CURRENT logged-in user's own stored hash
+  // (used by the "change my password" flow) via the same server-side RPC as
+  // login — u.passwordHash is no longer readable from the client, so this is
+  // the only way to check the current password without knowing it in advance.
+  const verifyCurrentPassword=async(username,password)=>{
+    if(isSupabaseReady()){
+      try{
+        const{data,error}=await supabase.rpc('verify_login',{p_username:username,p_password:password});
+        const row=Array.isArray(data)?data[0]:data;
+        if(!error&&row?.found) return !!row.password_ok;
+      }catch(e){ /* fall back to local check below */ }
+    }
+    const u=users.find(x=>x.username.toLowerCase()===username.toLowerCase());
+    return u?checkPw(password,u.passwordHash,u.username):false;
   };
   const logout=async()=>{
     if(supabase){ try{ await Promise.race([supabase.auth.signOut(),new Promise(r=>setTimeout(r,2000))]); }catch(e){} }
@@ -5584,16 +5652,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upUsers(us=>[...us,newUser]);
     if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(newUser),'id').catch(()=>{});
   };
-  const changePw    =async(oldPw,newPw)=>{
-    const u=users.find(x=>x.id===session?.userId);
-    if(!u||!(await checkPw(oldPw,u.passwordHash,u.username))) return "Current password is incorrect.";
-    if(newPw.length<6) return "New password must be at least 6 characters.";
-    const n={...u,passwordHash:await sha256Hash(newPw,u.username)};
-    upUsers(us=>us.map(x=>x.id===u.id?n:x));
-    if(isSupabaseReady()) sbUpsert('user_profiles',toSbUser(n),'id').catch(()=>{});
-    return null;
-  };
-
   // ── Derived ───────────────────────────────────────────────────────────────
   const wonDeals    =useMemo(()=>deals.filter(d=>WON_STAGES.includes(d.stage)),[deals]);
   const completedDeals=useMemo(()=>deals.filter(d=>d.stage==="14 · Completed"),[deals]);
@@ -5971,8 +6029,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       });
       if(dupes.length>0){setDupPrompt({newData:data,matches:dupes});return;}
     }
+    // Re-claim the CE number atomically for new deals — the value sitting in
+    // the form is only ever a local suggestion (set when the Add Deal form
+    // opened), which can be stale/colliding if another device saved a deal
+    // since then.
+    const claimedCeNo=editDeal?data.ceNo:await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
     const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
-    const rec={...data,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
+    const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,
     };
@@ -12294,7 +12357,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             }} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🔄 Reload from Cloud</button>
           </div>
         )}
-        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog}/>
+        <MyAccountPage session={session} users={users} setUsers={setUsers} upUsers={upUsers} setSession={setSession} logActivity={logActivity} checkPw={checkPw} hashPw={hashPw} actLog={actLog} verifyCurrentPassword={verifyCurrentPassword}/>
       </div>
     </Wrap>
   );
