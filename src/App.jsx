@@ -198,6 +198,12 @@ const mergeLocalOnly=(serverList,localList)=>{
   const localOnly=(localList||[]).filter(x=>x.id&&!ids.has(x.id));
   return localOnly.length?[...serverList,...localOnly]:serverList;
 };
+// Same idea as mergeLocalOnly but for the dict-shaped tables (pcards/budgets/
+// projs/cashPositions, keyed by dealId or date, not a list of {id,...}) — the
+// server's value for a key always wins (it's the synced truth for anything
+// that DID make it), but a key that only exists locally (not yet synced)
+// is kept instead of vanishing.
+const mergeLocalOnlyObj=(serverObj,localObj)=>({...(localObj||{}),...(serverObj||{})});
 
 const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",swos:"gmdv5:swos",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",loans:"gmdv5:loans",evouchers:"gmdv5:evouchers",dailylogs:"gmdv5:dailylogs"};
 
@@ -3613,7 +3619,7 @@ export default function App(){
             if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
-            if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
+            if(Object.keys(data.pcards||{}).length){setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));idbE.push([KEYS.pcards,data.pcards]);}
             const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined})):null;
             if(_billings){
               // Merge: preserve any locally-recorded payments that didn't sync to Supabase yet
@@ -3642,10 +3648,10 @@ export default function App(){
             if(_checklist){setChecklist(prev=>mergeLocalOnly(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
             const _swatches=data.swatches?.length?data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link})):null;
             if(_swatches){setSwatches(prev=>mergeLocalOnly(_swatches,prev));idbE.push([KEYS.swatches,_swatches]);}
-            if(data.actLog?.length) setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
-            if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
+            if(data.actLog?.length) setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
+            if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
-            if(_budgets){setBudgets(_budgets);idbE.push([KEYS.budgets,_budgets]);}
+            if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
             const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
@@ -3675,7 +3681,7 @@ export default function App(){
               const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";
               return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};
             }):null;
-            if(_users){setUsers(_users);idbE.push([KEYS.users,_users]);}
+            if(_users){setUsers(prev=>mergeLocalOnly(_users,prev));idbE.push([KEYS.users,_users]);}
             if(data.settings?.vvip){const sv=new Set(data.settings.vvip);setVvip(sv);idbE.push([KEYS.vvip,[...sv]]);}
             if(data.settings?.customclients){const cc=data.settings.customclients;setCustomClients(cc);idbE.push([KEYS.customclients,cc]);cc.forEach(c=>{if(!GMD_CLIENTS.find(x=>x.name.toLowerCase()===c.name.toLowerCase())) GMD_CLIENTS.push(c);}); }
             if(data.settings?.custom_members){const cm=data.settings.custom_members;setCustomMembers(cm);localStorage.setItem("gmdv5:customMembers",JSON.stringify(cm));idbE.push(["gmdv5:customMembers",cm]);}
@@ -3683,7 +3689,7 @@ export default function App(){
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
             if(data.settings?.standalone_boqs){const sbq=data.settings.standalone_boqs;setStandaloneBoqs(sbq);localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(sbq));idbE.push(["gmdv5:standaloneBoqs",sbq]);}
             if(data.settings?.chart_of_accounts){const coa=data.settings.chart_of_accounts;setChartOfAccounts(coa);localStorage.setItem("gmdv5:chartOfAccounts",JSON.stringify(coa));idbE.push(["gmdv5:chartOfAccounts",coa]);}
-            if(data.projs&&Object.keys(data.projs).length){setProjs(data.projs);idbE.push([KEYS.projects,data.projs]);}
+            if(data.projs&&Object.keys(data.projs).length){setProjs(prev=>mergeLocalOnlyObj(data.projs,prev));idbE.push([KEYS.projects,data.projs]);}
             console.log("\u2705 FabHub: Loaded from Supabase \u2014 "+(data.deals?.length||0)+" deals");
             // Auto-sync: push any local records that Supabase is missing.
             // This covers saves made while offline or before Supabase was ready.
@@ -3825,7 +3831,7 @@ export default function App(){
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
         if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
-        if(Object.keys(data?.pcards||{}).length) setPcards(data.pcards);
+        if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         if(data?.checklist?.length) setChecklist(prev=>mergeLocalOnly(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})),prev));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
@@ -3864,10 +3870,10 @@ export default function App(){
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mergeLocalOnly(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mergeLocalOnly(ss,prev));idbE.push([KEYS.swatches,ss]);}
-    if(data.actLog?.length)      setActLog(data.actLog.map(a=>({...a,dealId:a.deal_id})));
-    if(Object.keys(data.cashPositions||{}).length) setCashPos(convertSbCashPos(data.cashPositions));
-    if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(bg);idbE.push([KEYS.budgets,bg]);}
-    if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(us);idbE.push([KEYS.users,us]);}
+    if(data.actLog?.length)      setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
+    if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
+    if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
+    if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
