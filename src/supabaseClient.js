@@ -253,7 +253,13 @@ export const sbLoadAll = async () => {
       sbList('checklists',               { order: 'sort_order', asc: true, limit: 1000 }),
       sbList('swatches',                 { order: 'created_at', limit: 500 }),
       sbList('activity_log',             { order: 'created_at', limit: 200 }),
-      sbList('user_profiles',            { order: 'role',       limit: 500 }),
+      // Explicit column list, NOT '*' — password_hash's column-level SELECT was
+      // revoked from anon/authenticated (migration 017), and PostgREST returns
+      // a flat 403 "permission denied" for select=* the moment ANY column in
+      // the table lacks a grant for the caller's role, even if every other
+      // column is readable. This was silently breaking every user_profiles
+      // load (empty `users` array on every session) until fixed 2026-07-03.
+      sbList('user_profiles',            { select: 'id,username,name,role,title,status,email,created_at', order: 'role', limit: 500 }),
       sbList('app_settings',             { limit: 200 }),
       sbList('design_requests',          { order: 'created_at', limit: 2000 }),
       sbList('inventory_items',          { order: 'created_at', limit: 2000 }),

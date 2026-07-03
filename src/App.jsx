@@ -3587,7 +3587,7 @@ export default function App(){
             }
             const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",accountCode:e.account_code||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps!=null){setExps(_exps);idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_disc_type||"none",poDiscValue:Number(p.po_disc_value)||0})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(_mreqs);idbE.push([KEYS.mreqs,_mreqs]);}
@@ -3712,9 +3712,9 @@ export default function App(){
       if (event === 'SIGNED_IN' && session) {
         // Silently sync Supabase data in background — never blocks login
         try {
-          const { data: profile } = await supabase.from('user_profiles').select('*').eq('id', session.user.id).single();
+          const { data: profile } = await supabase.from('user_profiles').select('id,username,name,role,title,status').eq('id', session.user.id).single();
           if (profile && profile.status === 'active') {
-            const sess = { userId: session.user.id, name: profile.full_name, username: profile.username, role: profile.role, title: profile.title||profile.role };
+            const sess = { userId: session.user.id, name: profile.name, username: profile.username, role: profile.role, title: profile.title||profile.role };
             setSession(sess);
             setRole(profile.role);
             persist(KEYS.session, sess);
@@ -3964,7 +3964,7 @@ export default function App(){
     paid_ref:r.paidRef||"", paid_date:r.paidDate||null,
     paid_amt:r.paidAmt!=null?Number(r.paidAmt):null, paid_by:r.paidBy||"",
     disc_type:r.discType||"none", disc_value:Number(r.discValue)||0,
-    po_disc_type:r.poDiscType||"none", po_disc_value:Number(r.poDiscValue)||0,
+    po_discount_type:r.poDiscType||"none", po_discount_value:Number(r.poDiscValue)||0,
   });};
   const toSbMR = r=>{const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;const rawId=r.projectId||r.dealId||null;const dealId=rawId&&uuidRe.test(rawId)?rawId:null;return({
     id:r.id, deal_id:dealId,
@@ -4259,13 +4259,22 @@ export default function App(){
     upSwos(ws=>ws.filter(w=>w.id!==id));if(isSupabaseReady()) sbDelete('subcon_work_orders',id).catch(()=>{});
   };
 
-  const addCEReq=async(rec)=>{
-    const row=await sbInsert('ce_requests',rec);
-    if(row)setCeReqs(p=>[...p,{id:row.id,clientName:row.client_name,projectName:row.project_name,location:row.location,projectType:row.project_type,priority:row.priority,status:row.status,submittedBy:row.submitted_by,targetDeadline:row.target_deadline,submissionDeadline:row.submission_deadline,targetBudget:row.target_budget,targetMargin:row.target_margin,plansLink:row.plans_link,skpLink:row.skp_link,scheduleOfFinish:row.schedule_of_finish,notes:row.notes,ceNotes:row.ce_notes,bidAmount:row.bid_amount,bidMarginPct:row.bid_margin_pct,awarded:row.awarded,awardDate:row.award_date,dealId:row.deal_id,createdAt:row.created_at}]);
+  // addCEReq/updateCEReq used to await the server round-trip before touching
+  // local state, while the CEQSView caller showed a hardcoded "Saved" toast
+  // regardless of the outcome — on any transient failure (flaky connection,
+  // stale session) the CE Request a Sales rep just submitted vanished with no
+  // trace: never shown locally, never queued for retry, no error surfaced.
+  // Rewritten to the optimistic local-update + background-sync pattern used
+  // everywhere else in the app (see addSWO/addDRF) so the record always shows
+  // up immediately and failed writes are queued/retried instead of dropped.
+  const addCEReq=(rec)=>{
+    const nr={...rec,id:rec.id||uid(),created_at:rec.created_at||new Date().toISOString()};
+    setCeReqs(p=>[...p,{id:nr.id,clientName:nr.client_name,projectName:nr.project_name,location:nr.location,projectType:nr.project_type,priority:nr.priority,status:nr.status,submittedBy:nr.submitted_by,targetDeadline:nr.target_deadline,submissionDeadline:nr.submission_deadline,targetBudget:nr.target_budget,targetMargin:nr.target_margin,plansLink:nr.plans_link,skpLink:nr.skp_link,scheduleOfFinish:nr.schedule_of_finish,notes:nr.notes,ceNotes:nr.ce_notes,bidAmount:nr.bid_amount,bidMarginPct:nr.bid_margin_pct,awarded:nr.awarded,awardDate:nr.award_date,dealId:nr.deal_id,createdAt:nr.created_at}]);
+    return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>{}):Promise.resolve();
   };
-  const updateCEReq=async(id,updates)=>{
-    await sbUpdate('ce_requests',id,updates);
+  const updateCEReq=(id,updates)=>{
     setCeReqs(p=>p.map(r=>{if(r.id!==id)return r;return{...r,...(updates.status!==undefined?{status:updates.status}:{}),clientName:updates.client_name??r.clientName,projectName:updates.project_name??r.projectName,location:updates.location??r.location,projectType:updates.project_type??r.projectType,priority:updates.priority??r.priority,submittedBy:updates.submitted_by??r.submittedBy,targetDeadline:updates.target_deadline??r.targetDeadline,submissionDeadline:updates.submission_deadline??r.submissionDeadline,targetBudget:updates.target_budget??r.targetBudget,targetMargin:updates.target_margin??r.targetMargin,plansLink:updates.plans_link??r.plansLink,skpLink:updates.skp_link??r.skpLink,scheduleOfFinish:updates.schedule_of_finish??r.scheduleOfFinish,notes:updates.notes??r.notes,ceNotes:updates.ce_notes??r.ceNotes,bidAmount:updates.bid_amount??r.bidAmount,bidMarginPct:updates.bid_margin_pct??r.bidMarginPct,awarded:updates.awarded??r.awarded,awardDate:updates.award_date??r.awardDate};}));
+    return isSupabaseReady()?sbUpdate('ce_requests',id,updates).catch(()=>{}):Promise.resolve();
   };
   const deleteCEReq=async(id)=>{
     setCeReqs(p=>p.filter(r=>r.id!==id));
