@@ -468,7 +468,7 @@ const claimWoNumber=async({typed,suggested,swos})=>{
   if(t&&t!==suggested&&!taken.has(t)) return t;
   if(isSupabaseReady()){
     try{
-      const {data,error}=await supabase.rpc('next_wo_number');
+      const {data,error}=await _rpcWithTimeout(supabase.rpc('next_wo_number'));
       if(!error&&typeof data==="string"&&WO_NO_RE.test(data)) return data;
     }catch(e){ /* fall back to local allocation */ }
   }
@@ -476,6 +476,16 @@ const claimWoNumber=async({typed,suggested,swos})=>{
   while(taken.has(`WO-${String(nn).padStart(4,"0")}`)) nn++;
   return `WO-${String(nn).padStart(4,"0")}`;
 };
+// A hung Supabase request (no error, no success — seen on some flaky/
+// restrictive networks) must not block forever: without a timeout, callers
+// that `await` this RPC (saveDeal via claimCENo, JO/PO/CV numbering via
+// claimDocNumber) hang indefinitely with no toast and no console output —
+// the form just sits there looking broken. Same fix as the offline retry
+// queue's _withTimeout in supabaseClient.js, applied here too.
+const _rpcWithTimeout=(promise,ms=12000)=>Promise.race([
+  promise,
+  new Promise(resolve=>setTimeout(()=>resolve({data:null,error:{message:'next_doc_number timed out'}}),ms)),
+]);
 // Collision-free document numbers (PO / CV / INV / JO). Asks the server for the
 // next number via the next_doc_number RPC (atomic across devices), passing the
 // current local max as a floor; falls back to local count if the RPC is
@@ -485,7 +495,7 @@ const claimDocNumber=async(prefix,existingNumbers,digits=4)=>{
   const localMax=(existingNumbers||[]).reduce((m,s)=>{const mt=re.exec(String(s||""));return mt?Math.max(m,Number(mt[1])):m;},0);
   if(isSupabaseReady()){
     try{
-      const {data,error}=await supabase.rpc('next_doc_number',{p_prefix:prefix,p_min:localMax});
+      const {data,error}=await _rpcWithTimeout(supabase.rpc('next_doc_number',{p_prefix:prefix,p_min:localMax}));
       if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${prefix}-${String(Number(data)).padStart(digits,"0")}`;
     }catch(e){ /* fall back to local allocation */ }
   }
@@ -507,7 +517,7 @@ const claimYearScopedNo=async(base,digits,currentNo,existingNos)=>{
   const localMax=(existingNos||[]).reduce((mx,s)=>{const mt=re.exec(String(s||""));return(mt&&Number(mt[1])===yr)?Math.max(mx,Number(mt[2])):mx;},0);
   if(isSupabaseReady()){
     try{
-      const{data,error}=await supabase.rpc('next_doc_number',{p_prefix:`${base}-${yr}`,p_min:localMax});
+      const{data,error}=await _rpcWithTimeout(supabase.rpc('next_doc_number',{p_prefix:`${base}-${yr}`,p_min:localMax}));
       if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${base}-${yr}-${String(Number(data)).padStart(digits,"0")}`;
     }catch(e){ /* fall back to local allocation */ }
   }
@@ -5591,7 +5601,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Supabase is unreachable (offline / pre-load / RPC not yet applied).
     if(isSupabaseReady()){
       try{
-        const{data,error}=await supabase.rpc('verify_login',{p_username:unameLower,p_password:password});
+        const{data,error}=await _rpcWithTimeout(supabase.rpc('verify_login',{p_username:unameLower,p_password:password}));
         const row=Array.isArray(data)?data[0]:data;
         if(!error&&row?.found){
           viaServer=true;
@@ -5646,7 +5656,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const verifyCurrentPassword=async(username,password)=>{
     if(isSupabaseReady()){
       try{
-        const{data,error}=await supabase.rpc('verify_login',{p_username:username,p_password:password});
+        const{data,error}=await _rpcWithTimeout(supabase.rpc('verify_login',{p_username:username,p_password:password}));
         const row=Array.isArray(data)?data[0]:data;
         if(!error&&row?.found) return !!row.password_ok;
       }catch(e){ /* fall back to local check below */ }
