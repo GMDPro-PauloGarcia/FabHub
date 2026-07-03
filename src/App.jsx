@@ -4669,6 +4669,51 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   useEffect(()=>{
     if(!session||!isSupabaseReady()) return;
 
+    // Role gating: skip live-update channels for tables this role's UI never
+    // reads (audited per-role via navMap reachability + each page's actual
+    // props, including indirect paths like Accounting's dashboard buttons into
+    // WIP/Cash Flow and the role-unguarded calendar route). This only skips the
+    // realtime push — initial load and the tab-focus auto-refresh still fetch
+    // everything, so a wrong entry here degrades to "updates on next refresh"
+    // rather than missing data. Rules that must hold when editing this map:
+    // - null = every role subscribes; unknown/missing role = subscribe to all.
+    // - project_cards / project_card_dept_status / project_card_dept_tasks all
+    //   write into the same pcards state — keep their lists identical.
+    // - billing_milestones / billing_payments share the billings state (payments
+    //   nest inside milestones) — keep their lists identical.
+    // - inflows' only consumer is the username-gated (paulo) Data Management
+    //   screen; its modal is dead UI, so Manager-only.
+    const RT_SUB_ROLES={
+      deals:null,
+      purchase_requests:null,
+      project_cards:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover","Warehouse"],
+      project_card_dept_status:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover","Warehouse"],
+      project_card_dept_tasks:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover","Warehouse"],
+      billing_milestones:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover"],
+      billing_payments:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover"],
+      addenda:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover"],
+      activity_log:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover"],
+      job_orders:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover","Warehouse"],
+      material_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
+      budget_requests:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
+      expenses:["Manager","Sales","Finance","Accounting","QS","Procurement","Operations","Design","ProjectMover"],
+      subcon_work_orders:["Manager","Sales","Finance","Accounting","Procurement","Operations","Design","ProjectMover"],
+      inflows:["Manager"],
+      checklists:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
+      swatches:["Manager","Finance","Procurement","Operations","Design"],
+      ae_updates:["Manager","Sales","Finance","QS","Operations","Design"],
+      project_blockers:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover"],
+      inventory_items:["Manager","Finance","Procurement","Warehouse"],
+      stock_movements:["Manager","Finance","Procurement","Warehouse"],
+      design_requests:["Manager","Sales","Finance","Design","Operations","ProjectMover"],
+    };
+    // Only trim subscriptions for roles the audit actually covered — a role
+    // string we don't recognize (new role added later, legacy value in the DB)
+    // subscribes to everything rather than silently losing live updates.
+    const RT_AUDITED_ROLES=new Set(["Manager","Sales","Finance","Accounting","Procurement","QS","Operations","Design","ProjectMover","Warehouse"]);
+    const rtRole=session?.role||role||"";
+    const wantsRT=t=>{const allow=RT_SUB_ROLES[t];return !allow||!RT_AUDITED_ROLES.has(rtRole)||allow.includes(rtRole);};
+
     // Deals — Paulo awards, Paolo sees it; Aerwin updates billing, everyone sees it
     const dealsSub = sbSubscribe('deals-rt', 'deals', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
@@ -4689,7 +4734,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Project card dept status — Ryon checks a task, Arrius sees it live
-    const pcardSub = sbSubscribe('pcards-rt', 'project_card_dept_status', payload=>{
+    const pcardSub = !wantsRT('project_card_dept_status')?null:sbSubscribe('pcards-rt', 'project_card_dept_status', payload=>{
       if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
         const{card_id,department,done,done_at,done_by}=payload.new;
         setPcards(pc=>{
@@ -4705,7 +4750,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Billing — Aerwin logs a payment, Mar's dashboard updates
-    const billSub = sbSubscribe('bill-rt', 'billing_milestones', payload=>{
+    const billSub = !wantsRT('billing_milestones')?null:sbSubscribe('bill-rt', 'billing_milestones', payload=>{
       if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
         const rec=payload.new;
         const mapped={...rec,dealId:rec.deal_id,invoiceNo:rec.invoice_no,
@@ -4718,7 +4763,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Addenda — PM flags scope, AE + Paolo see it on their dashboard immediately
-    const addSub = sbSubscribe('add-rt', 'addenda', payload=>{
+    const addSub = !wantsRT('addenda')?null:sbSubscribe('add-rt', 'addenda', payload=>{
       if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
         const rec=payload.new;
         const mapped={...rec,dealId:rec.deal_id,receiptType:rec.receipt_type,
@@ -4729,13 +4774,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Activity log — PM update shows on Arrius's dashboard live
-    const actSub = sbSubscribe('actlog-rt', 'activity_log', payload=>{
+    const actSub = !wantsRT('activity_log')?null:sbSubscribe('actlog-rt', 'activity_log', payload=>{
       if(payload.eventType==='INSERT')
         setActLog(al=>[{...payload.new,dealId:payload.new.deal_id},...al].slice(0,200));
     });
 
     // Job Orders — PM assigned, everyone sees it live
-    const joSub = sbSubscribe('jos-rt', 'job_orders', payload=>{
+    const joSub = !wantsRT('job_orders')?null:sbSubscribe('jos-rt', 'job_orders', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,dealId:rec.deal_id,joNo:rec.jo_no,projectName:rec.project_name,
@@ -4765,7 +4810,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Material Requests — submitted on site, office sees it live
-    const mreqSub = sbSubscribe('mreqs-rt', 'material_requests', payload=>{
+    const mreqSub = !wantsRT('material_requests')?null:sbSubscribe('mreqs-rt', 'material_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,dealId:rec.deal_id,estimatedCost:rec.estimated_cost,
@@ -4777,7 +4822,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Budget Requests — Finance approves, PM notified instantly
-    const breqSub = sbSubscribe('breqs-rt', 'budget_requests', payload=>{
+    const breqSub = !wantsRT('budget_requests')?null:sbSubscribe('breqs-rt', 'budget_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,dealId:rec.deal_id,dateNeeded:rec.date_needed,
@@ -4789,7 +4834,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Billing payments — payment logged, Finance dashboard updates immediately
-    const paymentSub = sbSubscribe('payments-rt', 'billing_payments', payload=>{
+    const paymentSub = !wantsRT('billing_payments')?null:sbSubscribe('payments-rt', 'billing_payments', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,milestoneId:rec.milestone_id,refNo:rec.ref_no,
@@ -4806,7 +4851,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Expenses — anyone logs cost, Finance sees it live
-    const expSub = sbSubscribe('exps-rt', 'expenses', payload=>{
+    const expSub = !wantsRT('expenses')?null:sbSubscribe('exps-rt', 'expenses', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const dt=rec.date?new Date(rec.date):null;
@@ -4819,7 +4864,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(eventType==='DELETE') setExps(es=>es.filter(e=>e.id!==oldRow.id));
     });
 
-    const swoSub = sbSubscribe('swos-rt','subcon_work_orders',payload=>{
+    const swoSub = !wantsRT('subcon_work_orders')?null:sbSubscribe('swos-rt','subcon_work_orders',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped=swoFromSb(rec);
@@ -4829,7 +4874,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Inflows — payment received, cash position updates across all devices
-    const inflowSub = sbSubscribe('inflows-rt', 'inflows', payload=>{
+    const inflowSub = !wantsRT('inflows')?null:sbSubscribe('inflows-rt', 'inflows', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,dealId:rec.deal_id,refNo:rec.ref_no};
@@ -4840,7 +4885,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     });
 
     // Project card tasks — Ryon checks off a task, Arrius sees it live
-    const taskSub = sbSubscribe('tasks-rt', 'project_card_dept_tasks', payload=>{
+    const taskSub = !wantsRT('project_card_dept_tasks')?null:sbSubscribe('tasks-rt', 'project_card_dept_tasks', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const task={id:rec.id,text:rec.task_text,done:rec.done,doneAt:rec.done_at,doneBy:rec.done_by};
@@ -4876,7 +4921,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }
     });
 
-    const checkSub = sbSubscribe('checklist-rt','checklists',payload=>{
+    const checkSub = !wantsRT('checklists')?null:sbSubscribe('checklist-rt','checklists',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setChecklist(cs=>cs.filter(c=>c.id!==oldRow.id));return;}
       if(rec){
@@ -4884,7 +4929,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setChecklist(cs=>eventType==='UPDATE'?cs.map(c=>c.id===rec.id?{...c,...item}:c):cs.find(c=>c.id===rec.id)?cs:[...cs,item]);
       }
     });
-    const swatchSub = sbSubscribe('swatches-rt','swatches',payload=>{
+    const swatchSub = !wantsRT('swatches')?null:sbSubscribe('swatches-rt','swatches',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setSwatches(ss=>ss.filter(s=>s.id!==oldRow.id));return;}
       if(rec){
@@ -4892,7 +4937,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setSwatches(ss=>eventType==='UPDATE'?ss.map(s=>s.id===rec.id?{...s,...item}:s):ss.find(s=>s.id===rec.id)?ss:[...ss,item]);
       }
     });
-    const aeUpdateSub = sbSubscribe('ae-updates-rt','ae_updates',payload=>{
+    const aeUpdateSub = !wantsRT('ae_updates')?null:sbSubscribe('ae-updates-rt','ae_updates',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setAeUpdates(us=>us.filter(u=>u.id!==oldRow.id));return;}
       if(rec){
@@ -4904,7 +4949,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         });
       }
     });
-    const blockerSub = sbSubscribe('blockers-rt','project_blockers',payload=>{
+    const blockerSub = !wantsRT('project_blockers')?null:sbSubscribe('blockers-rt','project_blockers',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setBlockers(bs=>bs.filter(b=>b.id!==oldRow.id));return;}
       if(rec){
@@ -4912,7 +4957,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setBlockers(bs=>eventType==='UPDATE'?bs.map(b=>b.id===rec.id?{...b,...item}:b):bs.find(b=>b.id===rec.id)?bs:[item,...bs]);
       }
     });
-    const invSub = sbSubscribe('inv-rt','inventory_items',payload=>{
+    const invSub = !wantsRT('inventory_items')?null:sbSubscribe('inv-rt','inventory_items',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setInventory(iv=>iv.filter(i=>i.id!==oldRow.id));return;}
       if(rec){
@@ -4920,7 +4965,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setInventory(iv=>eventType==='UPDATE'?iv.map(i=>i.id===rec.id?{...i,...item}:i):iv.find(i=>i.id===rec.id)?iv:[...iv,item]);
       }
     });
-    const stockSub = sbSubscribe('stock-rt','stock_movements',payload=>{
+    const stockSub = !wantsRT('stock_movements')?null:sbSubscribe('stock-rt','stock_movements',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setStocklog(sl=>sl.filter(m=>m.id!==oldRow.id));return;}
       if(rec){
@@ -4928,7 +4973,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setStocklog(sl=>sl.find(m=>m.id===rec.id)?sl:[...sl,item]);
       }
     });
-    const drfSub = sbSubscribe('drfs-rt','design_requests',payload=>{
+    const drfSub = !wantsRT('design_requests')?null:sbSubscribe('drfs-rt','design_requests',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setDrfs(ds=>ds.filter(d=>d.id!==oldRow.id));return;}
       if(rec){
@@ -4936,7 +4981,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         setDrfs(ds=>eventType==='UPDATE'?ds.map(d=>d.id===rec.id?{...d,...item}:d):ds.find(d=>d.id===rec.id)?ds:[item,...ds]);
       }
     });
-    const pcardsTableSub = sbSubscribe('pcards-table-rt','project_cards',payload=>{
+    const pcardsTableSub = !wantsRT('project_cards')?null:sbSubscribe('pcards-table-rt','project_cards',payload=>{
       const{eventType,new:rec}=payload;
       if(eventType==='DELETE'||!rec) return;
       const dealId=rec.deal_id;
@@ -4960,6 +5005,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       breqSub?.unsubscribe?.();
       paymentSub?.unsubscribe?.();
       expSub?.unsubscribe?.();
+      swoSub?.unsubscribe?.();
       inflowSub?.unsubscribe?.();
       taskSub?.unsubscribe?.();
       checkSub?.unsubscribe?.();
@@ -4971,7 +5017,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       drfSub?.unsubscribe?.();
       pcardsTableSub?.unsubscribe?.();
     };
-  },[session?.userId]);
+  },[session?.userId,session?.role]);
 
 
   const toggleVvip=(name)=>{
