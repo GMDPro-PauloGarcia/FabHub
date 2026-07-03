@@ -145,9 +145,19 @@ if (typeof window !== 'undefined') {
   setInterval(() => { if (_queue.length) sbFlushQueue(true) }, 45000)
 }
 
+// Every one of these was a bare `await supabase.from(...)` with no timeout —
+// only the offline-queue's _replay (above) raced against _withTimeout. A live,
+// first-attempt call that hangs (no error, no success — the same flaky-network
+// failure mode _replay was built to survive) left callers like saveDeal
+// permanently suspended: the "Add Deal" button shows "Saving…" forever, the
+// modal never closes, and if the user gives up and refreshes, sbLoadAll's
+// fresh fetch (which never saw the write) replaces local state — data that
+// only ever existed in memory is gone. Reported live 2026-07-03: Sales team
+// stuck on "Saving…", deal lost on refresh. Wrapping every live call in the
+// same _withTimeout race used for replay closes that hole.
 export const sbInsert = async (table, data) => {
   if (!supabase) return null
-  const { data: result, error } = await supabase.from(table).insert(data).select().single()
+  const { data: result, error } = await _withTimeout(supabase.from(table).insert(data).select().single())
   if (error) { console.error(`SB INSERT ${table}:`, error.message); const kind=_writeFailed('insert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'insert', table, data }) }
   return result
 }
@@ -159,7 +169,7 @@ export const sbUpdate = async (table, id, data) => {
   // (e.g. the target row hasn't finished its own insert yet, on another device
   // or an unawaited parent write), and the change silently goes nowhere: no
   // error, so nothing queues it for retry, and no one is ever told.
-  const { data: rows, error } = await supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id).select('id')
+  const { data: rows, error } = await _withTimeout(supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id).select('id'))
   if (error) { console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); return false }
   if (!rows || rows.length === 0) {
     console.warn(`SB UPDATE ${table}: no row matched id=${id} (not created yet on the server?) — queuing for retry`)
@@ -176,14 +186,14 @@ export const sbUpdate = async (table, id, data) => {
 // error like a constraint violation is never retried, only dropped).
 export const sbUpsert = async (table, data, conflictCol = 'id') => {
   if (!supabase) return false
-  const { error } = await supabase.from(table).upsert(data, { onConflict: conflictCol })
+  const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol }))
   if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); return false }
   return true
 }
 
 export const sbDelete = async (table, id) => {
   if (!supabase) return
-  const { error } = await supabase.from(table).delete().eq('id', id)
+  const { error } = await _withTimeout(supabase.from(table).delete().eq('id', id))
   if (error) { console.error(`SB DELETE ${table}:`, error.message); const kind=_writeFailed('delete', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'delete', table, id }) }
 }
 
@@ -197,7 +207,7 @@ export const sbDeleteWhere = async (table, column, value, op = 'eq') => {
   else if (op === 'gte') q = q.gte(column, value)
   else if (op === 'not_null') q = q.not(column, 'is', null)
   else q = q.eq(column, value)
-  const { error } = await q
+  const { error } = await _withTimeout(q)
   if (error) {
     console.error(`SB DELETE ${table} where ${column}:`, error.message); const kind=_writeFailed('delete', table, error.message)
     // Only re-queue targeted deletes; never replay bulk admin wipes (gte/not_null)
@@ -212,7 +222,7 @@ export const sbList = async (table, opts = {}) => {
   if (opts.order) q = q.order(opts.order, { ascending: opts.asc ?? false })
   if (opts.limit) q = q.limit(opts.limit)
   if (opts.eq) Object.entries(opts.eq).forEach(([col, val]) => { q = q.eq(col, val) })
-  const { data, error } = await q
+  const { data, error } = await _withTimeout(q)
   if (error) console.error(`SB LIST ${table}:`, error.message)
   return data || []
 }
@@ -347,7 +357,7 @@ export const sbLoadAll = async () => {
 
 export const sbClear = async (table) => {
   if (!supabase) return
-  const { error } = await supabase.from(table).delete().not('id', 'is', null)
+  const { error } = await _withTimeout(supabase.from(table).delete().not('id', 'is', null))
   if (error) { console.error(`SB CLEAR ${table}:`, error.message); _writeFailed('delete', table, error.message) }
 }
 
