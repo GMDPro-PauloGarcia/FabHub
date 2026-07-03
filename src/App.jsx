@@ -1430,7 +1430,13 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
   const req=deal?.awardRequestData||{};
   const drf=(drfs||[]).filter(d=>d.dealId===deal?.id||(d.client&&d.client===deal?.client)).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))[0]||{};
   const[form,setForm]=React.useState({
-    awardTrigger:req.awardTrigger||"CE Signed",
+    // Must match one of the <Sel> options below exactly — this previously
+    // defaulted to "CE Signed" (no "by Client"), which matches none of them.
+    // React then shows the first option in the dropdown while form.awardTrigger
+    // silently holds the mismatched string, so any Manager who awards a deal
+    // directly (no prior award request) without touching this field saves a
+    // bogus, non-standard trigger value onto the Job Order.
+    awardTrigger:req.awardTrigger||"CE Signed by Client",
     triggerDate:req.triggerDate||today,
     triggerNote:req.triggerNote||"",
     pm1:req.pm1Suggestion||"",pm2:"",pm3:"",coordinator:"",
