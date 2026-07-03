@@ -22004,6 +22004,29 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const fdt=(k,v)=>setDateForm(p=>({...p,[k]:v}));
   const[pmUpdateModal,setPmUpdateModal]=useState(null);
 
+  // useMemo — projectCostBreakdown scans the FULL company-wide prs/exps arrays,
+  // and the blockers/actLog/addenda/billings filters scan full company-wide
+  // lists too. Without this, opening a project card recomputed all of it on
+  // every keystroke into any of this component's own local forms (blocker
+  // flag, PM update, team edit, scope/date edit — all local state that
+  // re-renders this whole component).
+  const projStats=useMemo(()=>{
+    const projBlockers=(blockers||[]).filter(b=>b.dealId===selDeal);
+    const openProjB=projBlockers.filter(b=>b.status==="Open");
+    const projUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+    const projAddenda=(addenda||[]).filter(a=>a.dealId===selDeal);
+    const projBillings=(billings||[]).filter(b=>b.dealId===selDeal);
+    const totalBilled=projBillings.reduce((s,b)=>s+Number(b.amountBilled||0),0);
+    const totalColl=projBillings.reduce((s,b)=>s+Number(b.amountPaid||0),0);
+    const {committed:projCommitted,actual:projActual}=projectCostBreakdown(selDeal,prs,exps);
+    const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+projCommitted[c],0);
+    const totalActualCost=BUDGET_CATS.reduce((s,c)=>s+projActual[c],0);
+    const totalExposure=totalCommitted+totalActualCost;
+    const pendingMRs=(mreqs||[]).filter(m=>m.projectId===selDeal&&(m.status==="Submitted"||m.status==="Reviewed")).length;
+    const pendingBRs=(breqs||[]).filter(b=>(b.projectId===selDeal||b.dealId===selDeal)&&(b.status==="Pending"||b.status==="Under Review")).length;
+    return{projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,projCommitted,projActual,totalCommitted,totalActualCost,totalExposure,pendingMRs,pendingBRs};
+  },[selDeal,blockers,actLog,addenda,billings,prs,exps,mreqs,breqs]);
+
   const today2=new Date();
   const card=selDeal?pcards[selDeal]:null;
   const deal=wonDeals.find(d=>d.id===selDeal)||completedDeals.find(d=>d.id===selDeal);
@@ -22398,21 +22421,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           const end=card?.targetEndDate?new Date(card.targetEndDate):null;
           const dLeft=end?Math.ceil((end-today2)/86400000):null;
           const isOver=dLeft!==null&&dLeft<0;
-          const projBlockers=(blockers||[]).filter(b=>b.dealId===selDeal);
-          const openProjB=projBlockers.filter(b=>b.status==="Open");
-          const projUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
-          const projAddenda=(addenda||[]).filter(a=>a.dealId===selDeal);
-          const projBillings=(billings||[]).filter(b=>b.dealId===selDeal);
-          const totalBilled=projBillings.reduce((s,b)=>s+Number(b.amountBilled||0),0);
-          const totalColl=projBillings.reduce((s,b)=>s+Number(b.amountPaid||0),0);
-          const {committed:projCommitted,actual:projActual}=projectCostBreakdown(selDeal,prs,exps);
-          const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+projCommitted[c],0);
-          const totalActualCost=BUDGET_CATS.reduce((s,c)=>s+projActual[c],0);
-          const totalExposure=totalCommitted+totalActualCost;
+          const {projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,totalCommitted,totalActualCost,totalExposure,pendingMRs,pendingBRs}=projStats;
           const contractVal=Number(deal?.value||0);
           const profitMargin=contractVal>0?Math.round((contractVal-totalExposure)/contractVal*100):null;
-          const pendingMRs=(mreqs||[]).filter(m=>m.projectId===selDeal&&(m.status==="Submitted"||m.status==="Reviewed")).length;
-          const pendingBRs=(breqs||[]).filter(b=>(b.projectId===selDeal||b.dealId===selDeal)&&(b.status==="Pending"||b.status==="Under Review")).length;
           const canFlagBlocker=["Manager","Operations","ProjectMover","Sales","Design","QS","Procurement","Finance"].includes(role);
           const ceType=deal?.ceType||"Fabrication / General";
           const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
