@@ -1445,6 +1445,11 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
     ptNetDays:30,ptRetentionRelease:"Project Completion",ptNotes:"",
   });
   const[step,setStep]=React.useState(1);
+  const[submitting,setSubmitting]=React.useState(false);
+  // confirmAward is async (awaits claimDocNumber for the JO, project card and
+  // budget creation) — an unguarded double-click on either final button below
+  // could fire it twice and create duplicate JOs/project cards/billing.
+  const confirmOnce=(payload)=>{ if(submitting) return; setSubmitting(true); onConfirm(payload); };
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const mob=window.innerWidth<768;
   const ptTotal=(Number(form.ptDp)||0)+(Number(form.ptProgress)||0)+(Number(form.ptFinal)||0)+(Number(form.ptRetention)||0);
@@ -1616,10 +1621,11 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:4}}>
           <button onClick={()=>setStep(2)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
           <div style={{display:"flex",gap:10}}>
-            <button onClick={()=>onConfirm({...form,paymentTerms:null})} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Skip Terms & Award</button>
-            <button onClick={()=>onConfirm({...form,paymentTerms:ptOk?{dp:form.ptDp,progress:form.ptProgress,final:form.ptFinal,retention:form.ptRetention,netDays:form.ptNetDays,retentionRelease:form.ptRetentionRelease,notes:form.ptNotes}:null})}
-              style={{background:"#059669",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:"#fff",cursor:"pointer",letterSpacing:".3px"}}>
-              🏆 Confirm Award Deal
+            <button onClick={()=>confirmOnce({...form,paymentTerms:null})} disabled={submitting} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:submitting?"not-allowed":"pointer",opacity:submitting?.6:1}}>Skip Terms & Award</button>
+            <button onClick={()=>confirmOnce({...form,paymentTerms:ptOk?{dp:form.ptDp,progress:form.ptProgress,final:form.ptFinal,retention:form.ptRetention,netDays:form.ptNetDays,retentionRelease:form.ptRetentionRelease,notes:form.ptNotes}:null})}
+              disabled={submitting}
+              style={{background:submitting?"#94a3b8":"#059669",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:"#fff",cursor:submitting?"not-allowed":"pointer",letterSpacing:".3px"}}>
+              {submitting?"⏳ Awarding…":"🏆 Confirm Award Deal"}
             </button>
           </div>
         </div>
@@ -1859,17 +1865,23 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   const remDrfAcc=(i)=>f("drfAccessories",(form.drfAccessories||[]).filter((_,ai)=>ai!==i));
   const setDrfRef=(i,v)=>f("drfRefLinks",(form.drfRefLinks||["","",""]).map((r,ri)=>ri===i?v:r));
   const mob=window.innerWidth<768;
+  const[saving,setSaving]=useState(false);
 
   // Sync when modal opens or editId changes
   const formKey=`${open}-${editId||"new"}`;
   useEffect(()=>{
-    if(open) setForm(initialForm||emptyDeal);
+    if(open){setForm(initialForm||emptyDeal);setSaving(false);}
   },[open,editId]);
 
-  const handleSave=()=>{
+  const handleSave=async()=>{
+    // saveDeal is async (claims a CE number, awaits the Supabase write) — a
+    // fast double-click before it resolves could re-run the whole save and
+    // risk a second deal record. Guard with a local submitting lock.
+    if(saving) return;
+    setSaving(true);
     // Pass local form data directly to saveDeal — bypasses async state sync
     _setForm(()=>form);
-    onSave(form);
+    try{ await onSave(form); } finally { setSaving(false); }
   };
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
@@ -2127,7 +2139,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       )}
 
       <div style={{display:"flex",gap:10,marginTop:20}}>
-        <Btn full onClick={handleSave}>{editId?"Save Changes":"Add Deal"}</Btn>
+        <Btn full onClick={handleSave} disabled={saving}>{saving?"Saving…":editId?"Save Changes":"Add Deal"}</Btn>
         <Btn variant="ghost" onClick={onClose}>Cancel</Btn>
       </div>
     </Modal>
@@ -3003,7 +3015,8 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
   },[]);
   useEffect(()=>{load();},[load]);
   const onRestore=async(r)=>{
-    if(!window.confirm("Restore this record back into the live data?")) return;
+    const amt=r.snapshot?.amount!=null?fmt(Number(r.snapshot.amount)):null;
+    if(!window.confirm(`Restore this ${labelFor(r.table_name)}${amt?` (${amt})`:""}, deleted ${r.performed_at?new Date(r.performed_at).toLocaleDateString("en-PH"):"previously"}${r.performed_by?` by ${r.performed_by}`:""}?\n\nReason given for deletion: ${r.reason||"—"}`)) return;
     setBusy(r.id);
     const ok=await restoreFinancial(r);
     setBusy("");
@@ -4079,7 +4092,17 @@ export default function App(){
   const deleteEV=(id)=>upEvouchers(es=>es.filter(e=>e.id!==id));
   const addEVItem=(evId,item)=>upEvouchers(es=>es.map(e=>e.id===evId?{...e,items:[...(e.items||[]),{...item,id:uid()}]}:e));
   const updateEVItem=(evId,itemId,ch)=>upEvouchers(es=>es.map(e=>e.id===evId?{...e,items:(e.items||[]).map(i=>i.id===itemId?{...i,...ch}:i)}:e));
-  const deleteEVItem=(evId,itemId)=>upEvouchers(es=>es.map(e=>e.id===evId?{...e,items:(e.items||[]).filter(i=>i.id!==itemId)}:e));
+  // Liquidation line items are the one financial delete in the app that had no
+  // confirmation and no trace afterward (evouchers is outside FIN_AUDIT, whose
+  // archive/restore is built for whole table rows, not items nested inside a
+  // record) — at minimum, gate it and leave a trail in the activity log.
+  const deleteEVItem=(evId,itemId)=>{
+    const ev=evouchers.find(e=>e.id===evId);
+    const item=ev?.items?.find(i=>i.id===itemId);
+    if(item&&!window.confirm(`Delete this liquidation item?\n\n${item.description||"Item"} — ₱${Number(item.amount||0).toLocaleString("en-PH")}\n\nThis cannot be undone.`)) return;
+    upEvouchers(es=>es.map(e=>e.id===evId?{...e,items:(e.items||[]).filter(i=>i.id!==itemId)}:e));
+    if(item) logActivity(ev?.dealId||null,"EV Item Deleted",`Liquidation item removed from ${ev?.evNo||evId}: ${item.description||"item"} (₱${Number(item.amount||0).toLocaleString("en-PH")})`,session?.name);
+  };
   const submitEV=(id)=>upEvouchers(es=>es.map(e=>e.id===id?{...e,status:"For Payment",submittedAt:new Date().toISOString()}:e));
   const markEVPaid=(id,bank,ref)=>upEvouchers(es=>es.map(e=>e.id===id?{...e,status:"Paid",paidBank:bank,paidRef:ref,paidAt:new Date().toISOString(),paidBy:session?.name||"Finance"}:e));
   // Activity log helper — called whenever something meaningful happens
@@ -6409,7 +6432,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const qty=Number(String(data.qty||1).replace(/,/g,""))||1;
     const price=Number(String(data.pricePerQty||0).replace(/,/g,""))||0;
     const computedAmt=qty*price||Number(String(data.amount||0).replace(/,/g,""))||0;
-    if(!computedAmt) return;
+    if(qty<0||price<0){toastEmit("Quantity and price cannot be negative.","error");return;}
+    if(!computedAmt||computedAmt<0){toastEmit(computedAmt<0?"Amount cannot be negative.":"Enter a valid amount.","error");return;}
     const tx=calcInputTax(computedAmt,data.vatable,data.ewtRate);
     const rec={...data,qty,pricePerQty:price,amount:computedAmt,id:editExpId||uid(),vatable:!!data.vatable,ewtRate:tx.ewtRate,inputVat:tx.inputVat,ewtAmount:tx.ewtAmount,netAmount:tx.net};
     upExps(es=>editExpId?es.map(e=>e.id===editExpId?rec:e):[...es,rec]);
@@ -6431,7 +6455,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const qty=Number(String(data.qty||1).replace(/,/g,""))||1;
       const price=Number(String(data.pricePerQty||0).replace(/,/g,""))||0;
       const amt=qty*price;
-      if(!amt) return null;
+      if(!amt||amt<0||qty<0||price<0) return null;
       const tx=calcInputTax(amt,data.vatable,data.ewtRate);
       return {...data,qty,pricePerQty:price,amount:amt,id:uid(),acctStatus:"Logged",vatable:!!data.vatable,ewtRate:tx.ewtRate,inputVat:tx.inputVat,ewtAmount:tx.ewtAmount,netAmount:tx.net};
     }).filter(Boolean);
@@ -6484,7 +6508,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const openEditCv=cv=>{setCvForm({...cv});setEditCvId(cv.id);setCvModal(true);};
   const saveCv=()=>{
     if(!cvForm.payee||!cvForm.amount) return;
-    const rec={...cvForm,amount:Number(cvForm.amount),id:editCvId||uid(),createdBy:session?.name||role,createdAt:editCvId?(cvForm.createdAt||today):today};
+    const cvAmt=Number(cvForm.amount);
+    if(!(cvAmt>0)){toastEmit("Amount must be a positive number.","error");return;}
+    const rec={...cvForm,amount:cvAmt,id:editCvId||uid(),createdBy:session?.name||role,createdAt:editCvId?(cvForm.createdAt||today):today};
     upVouchers(vs=>editCvId?vs.map(v=>v.id===editCvId?rec:v):[rec,...vs]);
     if(isSupabaseReady()){
       sbUpsert("check_vouchers",cvToSb(rec),"id").catch(e=>{
@@ -11392,7 +11418,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="suppliers") return(<Wrap><SupplierMasterView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} session={session} role={role}/></Wrap>);
     if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
     if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
@@ -11491,7 +11517,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           name={session?.name?.split(" ")[0]||"Team"}
           subtitle={`QS / Cost Control · ${todayL}`}
           buttons={[
-            {label:"BOQ",   icon:"🧮", bg:"#8b5cf6", action:()=>setPage("boq")},
+            {label:"BOQ",   icon:"🧮", bg:"#8b5cf6", action:()=>{setBoqDealId(null);setBoqStandaloneId(null);setPage("boq");}},
             {label:"CE Request",    icon:"📐", bg:"#06b6d4", action:()=>setPage("ceqs")},
             {label:"Cost Analysis", icon:"💹", bg:"#059669", action:()=>setPage("costanalysis")},
             {label:"Budget",        icon:"📊", bg:"#1e293b", action:()=>setPage("budget")},
@@ -11712,7 +11738,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
@@ -12179,7 +12205,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
-    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
+    if(page==="requests") return(<Wrap><RequestsView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="calendar") return(<ConstructionCalendar wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} pcards={pcards} jos={jos} prs={prs} billings={billings} drfs={drfs} ceReqs={ceReqs} setPage={setPage} setJumpDeal={setJumpDeal} today={today} Wrap={Wrap} checklists={checklist} session={session} addOpsEvent={data=>{const rec={...data,id:uid(),dept:"Operations",createdDate:today,createdBy:session?.name||role};upChecklist(cs=>[...cs,rec]);if(isSupabaseReady())sbInsert('checklists',toSbChecklist(rec)).catch(()=>{});const proj=wonDeals.find(d=>d.id===rec.projectId);const msg=`📅 <b>Calendar Item Added</b>\n<b>${rec.type||"Event"}</b>: ${rec.title||""}\nDate: ${rec.dueDate||"—"}${proj?`\nProject: ${proj.client}${proj.ceNo?" ("+proj.ceNo+")":""}`:""}\nBy: ${rec.createdBy||"—"}`;const _t=(rec.type||"").toLowerCase();if(["installation","backjob","turnover","site visit","repair"].some(t=>_t.includes(t))){sendTelegramNotification("ops",msg);sendTelegramNotification("sales",msg);}else if(_t.includes("drf")||_t.includes("design")){sendTelegramNotification("design",msg);}else if(_t.includes("billing")){sendTelegramNotification("finance",msg);}else{sendTelegramNotification("ops",msg);}}} updateOpsEvent={(id,ch)=>{upChecklist(cs=>cs.map(c=>c.id===id?{...c,...ch}:c));if(isSupabaseReady())sbUpdate('checklists',id,toSbChecklist({...checklist.find(c=>c.id===id),...ch})).catch(()=>{});}} deleteOpsEvent={id=>{upChecklist(cs=>cs.filter(c=>c.id!==id));if(isSupabaseReady())sbDelete('checklists',id).catch(()=>{});}}/>);
   }
 
@@ -12450,6 +12476,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         swos={swos}
         updateJO={updateJO} upPcards={upPcards}
         addAddendum2={addAddendum2}
+        addPmUpdate={addPmUpdate}
         initialDeal={jumpDeal} clearJump={()=>setJumpDeal(null)}
         initialFilter={jumpFilter} clearJumpFilter={()=>setJumpFilter(null)}
         checklist={checklist}
@@ -13241,8 +13268,8 @@ First few:
                               <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
                                 {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
                                 {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
-                                {canRelease&&<button onClick={()=>releaseCv(v.id)} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Release</button>}
-                                {canClear&&<button onClick={()=>clearCv(v.id)} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🏦 Cleared</button>}
+                                {canRelease&&<button onClick={()=>{if(window.confirm(`Release CV ${v.cvNo||""} to ${v.payee||"payee"} for ${fmt(v.amount)}?\n\nThis marks the linked payable as Paid.`))releaseCv(v.id);}} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Release</button>}
+                                {canClear&&<button onClick={()=>{if(window.confirm(`Mark CV ${v.cvNo||""} to ${v.payee||"payee"} for ${fmt(v.amount)} as cleared by the bank?`))clearCv(v.id);}} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🏦 Cleared</button>}
                                 {canVoid&&<button onClick={()=>{if(window.confirm("Void this voucher?"))voidCv(v.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
                               </div>
                             </td>
@@ -15680,7 +15707,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
                     {["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","Manager"].map(r=><option key={r}>{r}</option>)}
                   </select>
                   <button onClick={()=>onApprove(u.id,editRole[u.id]||u.role)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>✓ Approve</button>
-                  <button onClick={()=>onReject(u.id)} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Reject</button>
+                  <button onClick={()=>{if(window.confirm(`Reject ${u.name}'s account request?`))onReject(u.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Reject</button>
                 </div>
               </div>
             </div>
@@ -15733,7 +15760,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
               </div>
               <div style={{display:"flex",gap:7}}>
                 <button onClick={()=>onApprove(u.id,u.role)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#059669",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Reactivate</button>
-                <button onClick={()=>onDelete(u.id)} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Delete</button>
+                <button onClick={()=>{if(window.confirm(`Permanently delete ${u.name}'s account? This cannot be undone.`))onDelete(u.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Delete</button>
               </div>
             </div>
           ))}
@@ -19088,7 +19115,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         solo.push(p);
       }
     });
-    const poGroups=Object.entries(byPO).map(([key,items])=>{const poNo=key.split("|||")[0];return{type:"po",poNo,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)};});
+    const poGroups=Object.entries(byPO).map(([key,items])=>{const poNo=key.split("|||")[0];return{type:"po",poNo,groupKey:key,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)};});
     const soloItems=solo.map(p=>({type:"solo",pr:p}));
     return [...poGroups,...soloItems].sort((a,b)=>{
       const aDate=a.type==="po"?a.poDate:a.pr.createdDate||"";
@@ -19524,13 +19551,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
           })()}
           {poListTab==="list"&&grouped.map((g,gi)=>{
           if(g.type==="po"){
-            const {poNo,items,supplier,status,poDate:poD,total}=g;
+            const {poNo,groupKey,items,supplier,status,poDate:poD,total}=g;
             const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
-            const open=expandedPo===poNo;
+            // Keyed by groupKey (poNumber+supplier), not bare poNo — two different
+            // suppliers can share the same PO number (dupPoColors below exists
+            // specifically to flag that), and keying by poNo alone made both
+            // groups' accordions open/close together.
+            const open=expandedPo===groupKey;
             return(
-              <div key={poNo} style={{borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none"}}>
+              <div key={groupKey} style={{borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none"}}>
                 {/* Compact row */}
-                <div onClick={()=>setExpandedPo(o=>o===poNo?null:poNo)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
+                <div onClick={()=>setExpandedPo(o=>o===groupKey?null:groupKey)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
                   onMouseEnter={e=>{if(!open)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=open?"#f8fafc":"#fff";}}>
                   <div style={{fontWeight:700,color:dupPoColors[poNo]||"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
                     {dupPoColors[poNo]&&<span title="Duplicate PO number" style={{width:7,height:7,borderRadius:"50%",background:dupPoColors[poNo],flexShrink:0,display:"inline-block"}}/>}
@@ -19589,7 +19620,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                     {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                   </select>
                   <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                  {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm("Delete?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                  {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm(`Delete "${pr.itemName||pr.item||"this request"}"${pr.supplier?` from ${pr.supplier}`:""}?`))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                 </div>
               </div>
             );
@@ -20303,6 +20334,7 @@ function BudgetRequestView({breqs,addBR,updateBR,deleteBR,wonDeals,session,role,
 
   const submit=()=>{
     if(!form.amount||!form.projectId||!form.purpose) return;
+    if(!(n(form.amount)>0)){toastEmit&&toastEmit("Amount must be a positive number.","error");return;}
     addBR({...form,status:"Submitted"});
     setForm({projectId:"",purpose:"Installation",amount:"",urgency:"Normal",description:"",requestedBy:session?.name||"",dateNeeded:"",notes:""});
     setShowForm(false);
@@ -20853,6 +20885,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const invNo=x=>`INV-${String(x).padStart(4,"0")}`;
   const submitMS=async()=>{
     if(!msForm.name||!msForm.amount) return;
+    if(!(Number(msForm.amount)>0)){toastEmit&&toastEmit("Amount must be a positive number.","error");return;}
     addMilestone({...msForm,dealId:selDeal,invoiceNo:msForm.invoiceNo||await claimInv(),createdBy:session?.name||role});
     setMsForm({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
     setShowForm(false);
@@ -21889,7 +21922,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[]}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
@@ -22984,7 +23017,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         })()
       )}
     </div>
-    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));}}/>}
+    {pmUpdateModal&&<PmUpdateModal pmUpdateModal={pmUpdateModal} setPmUpdateModal={setPmUpdateModal} session={session} logActivity={logActivity} addPmUpdate={addPmUpdate} updateProjectTurnover={(dealId,date)=>{upPcards(ps=>({...ps,[dealId]:{...ps[dealId],targetEndDate:date}}));if(isSupabaseReady())sbUpsert('project_cards',{deal_id:dealId,target_end_date:date},'deal_id').catch(()=>{});}}/>}
     </>
   );
 }
@@ -23033,6 +23066,37 @@ function SupplierPicker({value,onChange,suppliers=[],addSupplier,placeholder="Su
   );
 }
 
+// ── inline editable cell (proper component — fixes focus loss) ─────────────
+// Was previously defined INSIDE InventoryView's render body, so every
+// re-render of InventoryView created a new component type for it — React
+// unmounts/remounts the <input>, losing focus and cursor position mid-edit.
+// Same bug class as the earlier MyAccountPage fix.
+function InlineCell({value,onSave,isNum,color,mono,canEdit,C,tdS}){
+  const[on,setOn]=useState(false);
+  const[draft,setDraft]=useState("");
+  const ref=useRef();
+  const start=()=>{setDraft(String(value));setOn(true);setTimeout(()=>ref.current?.select(),0);};
+  const commit=()=>{
+    setOn(false);
+    const raw=String(draft).trim().replace(/[₱,]/g,"");
+    const nv=isNum?(isNum==="f"?parseFloat(raw):parseInt(raw)):raw.toUpperCase();
+    if((!isNum||!isNaN(nv))&&nv!==value)onSave(isNum?(isNaN(nv)?value:nv):(nv||value));
+  };
+  const onKey=(e)=>{if(e.key==="Enter"){e.preventDefault();commit();}if(e.key==="Escape")setOn(false);};
+  if(on)return(
+    <td style={tdS({padding:0,...(color?{borderLeft:`1px solid ${C.border}`}:{})})}>
+      <input ref={ref} value={draft} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={onKey}
+        style={{display:"block",width:"100%",padding:"6px 10px",minHeight:32,background:"#fffbf5",border:"none",outline:`2px solid ${C.accent}`,outlineOffset:-2,color:C.text,fontSize:12,fontFamily:mono?"monospace":"inherit"}}/>
+    </td>
+  );
+  return(
+    <td style={tdS({...(color?{borderLeft:`1px solid ${C.border}`}:{})})} onClick={canEdit?start:undefined} title={canEdit?"Click to edit":undefined}
+      onMouseEnter={canEdit?e=>{e.currentTarget.style.background="#fffbf5";}:undefined}
+      onMouseLeave={canEdit?e=>{e.currentTarget.style.background="";}:undefined}>
+      <span style={{display:"block",padding:"0",fontSize:12,color:color||C.text,fontFamily:mono?"monospace":"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:220,cursor:canEdit?"text":"default"}}>{value}</span>
+    </td>
+  );
+}
 // ─── TAT SETTER COMPONENT ─────────────────────────────────────────────────────
 function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventoryItem,updateInventoryItem,deleteInventoryItem,clearAllInventory,logStockMove,suppliers=[],addSupplier,projs={},upProjs,deals=[],session,role}){
   // ── theme colours matching the warehouse standalone app ─────────────────
@@ -23334,34 +23398,6 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const cardS={background:C.card,border:`1px solid ${C.border}`,borderRadius:10,padding:"16px 18px",boxShadow:"0 1px 4px rgba(0,0,0,.05)"};
   const thS=(extra)=>({background:"#f8fafc",padding:"7px 10px",textAlign:"left",fontSize:10,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".5px",borderBottom:`1px solid ${C.border}`,whiteSpace:"nowrap",cursor:"pointer",userSelect:"none",...(extra||{})});
   const tdS=(extra)=>({padding:"6px 10px",borderBottom:`1px solid ${C.border}`,fontSize:12,...(extra||{})});
-
-  // ── inline editable cell ──────────────────────────────────────────────
-  function InlineCell({value,onSave,isNum,color,mono}){
-    const[on,setOn]=useState(false);
-    const[draft,setDraft]=useState("");
-    const ref=useRef();
-    const start=()=>{setDraft(String(value));setOn(true);setTimeout(()=>ref.current?.select(),0);};
-    const commit=()=>{
-      setOn(false);
-      const raw=String(draft).trim().replace(/[₱,]/g,"");
-      const nv=isNum?(isNum==="f"?parseFloat(raw):parseInt(raw)):raw.toUpperCase();
-      if((!isNum||!isNaN(nv))&&nv!==value)onSave(isNum?(isNaN(nv)?value:nv):(nv||value));
-    };
-    const onKey=(e)=>{if(e.key==="Enter"){e.preventDefault();commit();}if(e.key==="Escape")setOn(false);};
-    if(on)return(
-      <td style={tdS({padding:0,...(color?{borderLeft:`1px solid ${C.border}`}:{})})}>
-        <input ref={ref} value={draft} onChange={e=>setDraft(e.target.value)} onBlur={commit} onKeyDown={onKey}
-          style={{display:"block",width:"100%",padding:"6px 10px",minHeight:32,background:"#fffbf5",border:"none",outline:`2px solid ${C.accent}`,outlineOffset:-2,color:C.text,fontSize:12,fontFamily:mono?"monospace":"inherit"}}/>
-      </td>
-    );
-    return(
-      <td style={tdS({...(color?{borderLeft:`1px solid ${C.border}`}:{})})} onClick={canEdit?start:undefined} title={canEdit?"Click to edit":undefined}
-        onMouseEnter={canEdit?e=>{e.currentTarget.style.background="#fffbf5";}:undefined}
-        onMouseLeave={canEdit?e=>{e.currentTarget.style.background="";}:undefined}>
-        <span style={{display:"block",padding:"0",fontSize:12,color:color||C.text,fontFamily:mono?"monospace":"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:220,cursor:canEdit?"text":"default"}}>{value}</span>
-      </td>
-    );
-  }
 
   // ── DASHBOARD ─────────────────────────────────────────────────────────
   function Dashboard(){
@@ -23881,9 +23917,9 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                   const qv=qtyMap[item.id]||1;
                   return(
                     <tr key={item.id} style={{background:"#fff"}}>
-                      <InlineCell value={item.name} onSave={v=>updateInventoryItem(item.id,{...item,name:v,lastUpdated:today})} color={C.text}/>
-                      <InlineCell value={item.unit} onSave={v=>updateInventoryItem(item.id,{...item,unit:v.toLowerCase(),lastUpdated:today})} color={C.muted} mono/>
-                      <InlineCell value={price} onSave={v=>updateInventoryItem(item.id,{...item,lastPurchasePrice:v,avgCost:v,lastUpdated:today})} isNum="f" color={C.muted} mono/>
+                      <InlineCell value={item.name} onSave={v=>updateInventoryItem(item.id,{...item,name:v,lastUpdated:today})} color={C.text} canEdit={canEdit} C={C} tdS={tdS}/>
+                      <InlineCell value={item.unit} onSave={v=>updateInventoryItem(item.id,{...item,unit:v.toLowerCase(),lastUpdated:today})} color={C.muted} mono canEdit={canEdit} C={C} tdS={tdS}/>
+                      <InlineCell value={price} onSave={v=>updateInventoryItem(item.id,{...item,lastPurchasePrice:v,avgCost:v,lastUpdated:today})} isNum="f" color={C.muted} mono canEdit={canEdit} C={C} tdS={tdS}/>
                       {/* BEG */}
                       <td style={tdS({fontFamily:"monospace",color:C.accent,fontWeight:700,borderLeft:`1px solid ${C.border}`})}>{item._beg}</td>
                       <td style={tdS({fontFamily:"monospace",color:C.accent+"80",fontSize:11})}>{item._beg&&price?fp(item._beg*price):"—"}</td>
@@ -23940,7 +23976,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                   );
                 })}
                 {canEdit&&filtered.length>0&&(
-                  <tr><td colSpan={canEdit?13:12} style={{padding:"7px 10px",color:C.muted,fontSize:11,cursor:"pointer",fontStyle:"italic",borderTop:`1px dashed ${C.border}`}} onClick={openNew}>＋ Click to add a new item…</td></tr>
+                  <tr><td colSpan={canEdit?13:12} style={{padding:"7px 10px",color:C.muted,fontSize:11,cursor:"pointer",fontStyle:"italic",borderTop:`1px dashed ${C.border}`}} onClick={openAddModal}>＋ Click to add a new item…</td></tr>
                 )}
               </tbody>
             </table>
@@ -24609,7 +24645,15 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                   <span style={{fontSize:".68rem",fontWeight:700,color:e.color,background:e.color+"18",border:`1px solid ${e.color}44`,borderRadius:20,padding:"2px 8px"}}>
                     {e.type==="end"?"Turnover":e.type==="delivery"?"PO Delivery":e.type==="billing"?"Billing Due":e.type==="drf"?"DRF Deadline":e.type==="ce"?"CE Request":e.sub||e.type}
                   </span>
-                  {e.dealId&&<button onClick={()=>{setPage("billing");}} style={{fontSize:".7rem",fontWeight:700,background:"#eff6ff",color:"#3b82f6",border:"1px solid #bfdbfe",borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit"}}>→ View</button>}
+                  {e.dealId&&<button onClick={()=>{
+                    // Route by event type like eventModal's buttons do below —
+                    // this list previously always sent Turnover/DRF/PO Delivery
+                    // events to Billing regardless of what they actually were.
+                    if(e.type==="end"){setJumpDeal&&setJumpDeal(e.dealId);setPage("projects");}
+                    else if(e.type==="drf")setPage("drf");
+                    else if(e.type==="delivery")setPage("budget");
+                    else setPage("billing");
+                  }} style={{fontSize:".7rem",fontWeight:700,background:"#eff6ff",color:"#3b82f6",border:"1px solid #bfdbfe",borderRadius:6,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit"}}>→ View</button>}
                 </div>
               </div>
             ))}
@@ -25426,6 +25470,10 @@ const PAYMENT_TERMS_OPTS = ["Cash Basis","7 Days","15 Days","30 Days","30-45 Day
 function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier,session,role}){
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
+  // Duplicate rows (same company name) collapse into one display row — a
+  // rating/terms edit made there should apply to every underlying duplicate,
+  // not just the first one, or the others silently keep stale data.
+  const[editIds,setEditIds]=useState([]);
   const emptySupplier=()=>({rating:"4 - GOOD",companyName:"",email:"",materials:"",contactNos:"",contactPerson:"",paymentTerms:"Cash Basis",address:"",tinNo:"",notes:"",status:"Active"});
   const[form,setForm]=useState(emptySupplier());
   const[search,setSearch]=useState("");
@@ -25451,13 +25499,13 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
     "1 - POOR":"#ef4444",
   };
 
-  const openEdit=(s)=>{setForm({...s,companyName:s.companyName||s.company_name||""});setEditId(s.id);setShowForm(true);};
-  const openNew=()=>{setForm(emptySupplier());setEditId(null);setShowForm(true);};
+  const openEdit=(s)=>{setForm({...s,companyName:s.companyName||s.company_name||""});setEditId(s.id);setEditIds(s._ids&&s._ids.length?s._ids:[s.id]);setShowForm(true);};
+  const openNew=()=>{setForm(emptySupplier());setEditId(null);setEditIds([]);setShowForm(true);};
   const save=()=>{
     if(!form.companyName) return;
-    if(editId) updateSupplier(editId,form);
+    if(editId) (editIds.length?editIds:[editId]).forEach(id=>updateSupplier(id,form));
     else addSupplier(form);
-    setShowForm(false);setEditId(null);
+    setShowForm(false);setEditId(null);setEditIds([]);
   };
 
   const topMat=[...new Set(suppliers.map(s=>s.materials).filter(Boolean))].sort();
@@ -25612,7 +25660,7 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
                 </div>
                 {canEdit&&(
                   <div style={{display:"flex",gap:5,flexShrink:0}}>
-                    <button onClick={()=>openEdit(g._allItems[0])} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
+                    <button onClick={()=>openEdit(g)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
                     <button onClick={()=>{if(window.confirm(`Remove all ${g._ids.length} entr${g._ids.length===1?"y":"ies"} for ${name}?`))g._ids.forEach(id=>deleteSupplier(id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
                   </div>
                 )}
@@ -25632,6 +25680,9 @@ const SUBCON_SPECIALTIES=["General Works","Electrical (Install only)","Stone Wor
 function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,role}){
   const[showForm,setShowForm]=useState(false);
   const[editId,setEditId]=useState(null);
+  // Duplicate rows (same company name) collapse into one display row — see
+  // the identical fix/comment in SupplierMasterView.
+  const[editIds,setEditIds]=useState([]);
   const emptySubcon=()=>({rating:"YES - ACCEPTABLE",specialty:"General Works",strengthsWeaknesses:"",contactNo:"",companyName:"",paymentTerms:"Cash Basis",address:"",remarks:"",rateStructure:"Project Rate",paymentStructure:"50% Start/50% Completion",locationNote:"",notes:"",status:"Active"});
   const[form,setForm]=useState(emptySubcon());
   const[search,setSearch]=useState("");
@@ -25665,13 +25716,13 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
     return list;
   },[grouped,filterRating,filterSpecialty,search]);
 
-  const openEdit=(s)=>{setForm({...s,companyName:s.companyName||s.company_name||"",strengthsWeaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contactNo:s.contactNo||s.contact_no||"",paymentTerms:s.paymentTerms||s.payment_terms||"Cash Basis",rateStructure:s.rateStructure||s.rate_structure||"Project Rate",paymentStructure:s.paymentStructure||s.payment_structure||"50% Start/50% Completion",locationNote:s.locationNote||s.location_note||""});setEditId(s.id);setShowForm(true);};
-  const openNew=()=>{setForm(emptySubcon());setEditId(null);setShowForm(true);};
+  const openEdit=(s)=>{setForm({...s,companyName:s.companyName||s.company_name||"",strengthsWeaknesses:s.strengthsWeaknesses||s.strengths_weaknesses||"",contactNo:s.contactNo||s.contact_no||"",paymentTerms:s.paymentTerms||s.payment_terms||"Cash Basis",rateStructure:s.rateStructure||s.rate_structure||"Project Rate",paymentStructure:s.paymentStructure||s.payment_structure||"50% Start/50% Completion",locationNote:s.locationNote||s.location_note||""});setEditId(s.id);setEditIds(s._ids&&s._ids.length?s._ids:[s.id]);setShowForm(true);};
+  const openNew=()=>{setForm(emptySubcon());setEditId(null);setEditIds([]);setShowForm(true);};
   const save=()=>{
     if(!form.companyName) return;
-    if(editId) updateSubcon(editId,form);
+    if(editId) (editIds.length?editIds:[editId]).forEach(id=>updateSubcon(id,form));
     else addSubcon(form);
-    setShowForm(false);setEditId(null);
+    setShowForm(false);setEditId(null);setEditIds([]);
   };
 
   const specialties=[...new Set(subcons.map(s=>s.specialty).filter(Boolean)),...SUBCON_SPECIALTIES].filter((v,i,a)=>a.indexOf(v)===i);
@@ -25785,7 +25836,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
   );
 }
 
-function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,toastEmit,suppliers,poApprovers}){
+function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breqs,addBR,updateBR,deleteBR,toastEmit,suppliers,poApprovers}){
   const[tab,setTab]=useState("Material Request");
   const tabStyle=(active)=>({padding:"10px 24px",border:"none",borderBottom:`3px solid ${active?"#f59e0b":"transparent"}`,background:"transparent",color:active?"#f59e0b":"#64748b",fontWeight:active?700:400,cursor:"pointer",fontFamily:"inherit",fontSize:".9rem",transition:"all .15s",whiteSpace:"nowrap"});
   return(
@@ -25796,7 +25847,7 @@ function RequestsView({mreqs,addMR,updateMR,prs,addPR,wonDeals,session,role,breq
         ))}
       </div>
       {tab==="Material Request"&&<MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={poApprovers}/>}
-      {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
+      {tab==="Budget Request"&&<BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={deleteBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/>}
     </div>
   );
 }
@@ -27116,7 +27167,14 @@ tr:nth-child(even) td{background:#f9f9f9;}
                               <td style={{padding:"9px 14px"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
                                   {canEdit&&<button onClick={()=>openEdit(ev)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>✏ Edit</button>}
-                                  {canEdit&&<button onClick={()=>{setAddingItemFor(isAddingItem?null:ev.id);if(!isItemsOpen)setExpandedItems(s=>{const n=new Set(s);n.add(ev.id);return n;});}} style={{background:"#f5f3ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>+ Item</button>}
+                                  {canEdit&&<button onClick={()=>{
+                                    // Reset the draft whenever this opens — otherwise a half-typed item
+                                    // for another voucher (still in state from switching targets without
+                                    // saving) attaches to the wrong voucher on Add.
+                                    if(!isAddingItem)setNewItem({itemDate:today,supplier:"",project:"",description:"",qty:"1",pricePerQty:"",tin:"",remarks:""});
+                                    setAddingItemFor(isAddingItem?null:ev.id);
+                                    if(!isItemsOpen)setExpandedItems(s=>{const n=new Set(s);n.add(ev.id);return n;});
+                                  }} style={{background:"#f5f3ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>+ Item</button>}
                                   {(role==="Accounting"||role==="Manager")&&ev.status==="Draft"&&<button onClick={()=>{if(window.confirm("Submit for payment?"))submitEV(ev.id);}} style={{background:"#fffbeb",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
                                   {(role==="Finance"||role==="Manager")&&ev.status==="For Payment"&&<button onClick={()=>{setShowPay(ev.id);setPayBank(ev.bank||"");setPayRef("");}} style={{background:"#f0fdf4",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#166534",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✅ Paid</button>}
                                   {(role==="Accounting"||role==="Manager")&&ev.status==="Draft"&&<button onClick={()=>{if(window.confirm("Void this EV?"))updateEV(ev.id,{status:"Cancelled"});}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
