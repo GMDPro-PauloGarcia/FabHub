@@ -3123,7 +3123,11 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
 // earned revenue (contract × % complete) against what's actually been billed,
 // surfacing over-billing (billed ahead of work — a liability) and under-billing
 // (work done but not yet billed — revenue/cash to catch up).
-function WIPView({wonDeals,projs,billings,exps,prs,overallProg,setPage,Wrap,isMobile}){
+// React.memo — this recomputes a full earned-vs-billed pass over every active
+// project on every render; without memo it re-ran on any unrelated App
+// re-render (e.g. typing in a search box elsewhere) even though its own
+// inputs hadn't changed.
+const WIPView=React.memo(function WIPView({wonDeals,projs,billings,exps,prs,overallProg,setPage,Wrap,isMobile}){
   const money=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
   const actualCostOf=(dealId)=>{
     const projExps=exps.filter(e=>e.projectId===dealId);
@@ -3235,7 +3239,7 @@ function WIPView({wonDeals,projs,billings,exps,prs,overallProg,setPage,Wrap,isMo
       </div>
     </Wrap>
   );
-}
+});
 
 // ─── CASH-FLOW FORECAST ──────────────────────────────────────────────────────
 // Forward view of working cash: projects expected collections (outstanding
@@ -5762,7 +5766,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const projList  =useMemo(()=>wonDeals.filter(d=>projs[d.id]),[wonDeals,projs]);
   const isPauloGate = stage => PAULO_GATE.includes(stage);
   const clientName=useCallback(id=>deals.find(d=>d.id===id)?.client||`Project #${id}`,[deals]);
-  const overallProg=p=>{const si=PROD_STAGES.indexOf(p.currentStage);return Math.round(si*25+(p.progress[p.currentStage]||0)*0.25);};
+  // useCallback so this stays referentially stable across renders — otherwise
+  // a plain inline function is a NEW reference every render, which defeats
+  // React.memo on anything it's passed to (e.g. WIPView below) since one of
+  // its props would always look "changed" even when nothing did.
+  const overallProg=useCallback(p=>{const si=PROD_STAGES.indexOf(p.currentStage);return Math.round(si*25+(p.progress[p.currentStage]||0)*0.25);},[]);
   const costOf    =p=>(p.materials||[]).reduce((s,m)=>s+m.cost,0)+(p.laborCost||0)+(p.overhead||0);
   const marginOf  =(p,d)=>d&&costOf(p)<d.value?Math.round((d.value-costOf(p))/d.value*100):0;
   const totRev    =useMemo(()=>wonDeals.reduce((s,d)=>s+d.value,0),[wonDeals]);
@@ -20907,11 +20915,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const canEdit=role==="Manager"||role==="Finance";
   const deal=wonDeals.find(d=>d.id===selDeal);
 
-  // Company-wide stats
-  const allBilled    =billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
-  const allCollected =billings.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+  // Company-wide stats — memoized on [billings] only. These re-scan the FULL
+  // billings list (every milestone × every payment) and previously recomputed
+  // on every keystroke into any form on this page (msForm/payForm/search/etc
+  // are all local state here, so any edit re-rendered the whole component)
+  // even though the underlying billing data hadn't changed.
+  const allBilled=useMemo(()=>billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0),[billings]);
+  const allCollected=useMemo(()=>billings.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0),[billings]);
   // Per-deal outstanding: floor each deal at 0 so overpayments don't offset other clients
-  const allOutstanding=(()=>{
+  const allOutstanding=useMemo(()=>{
     const dealIds=[...new Set(billings.map(b=>b.dealId))];
     return dealIds.reduce((total,did)=>{
       const dms=billings.filter(m=>m.dealId===did&&m.status!=="Cancelled");
@@ -20919,8 +20931,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
       const collected=dms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
       return total+Math.max(0,billed-collected);
     },0);
-  })();
-  const overdue      =billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+  },[billings]);
+  const overdue=useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled"),[billings]);
 
   // Collision-free invoice number from the shared server counter (falls back to
   // local allocation offline / before the migration). Used at save time.
