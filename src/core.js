@@ -1,0 +1,473 @@
+// Pure constants and stateless helpers extracted from App.jsx. Plain data and
+// pure functions with no component state, no Supabase, no closures. Kept in one
+// module so their inter-references resolve without cross-import churn.
+import {today, uid} from './shared';
+
+export const DEAL_STAGES = [
+  "01 · BizDev",
+  "02 · Engagement",
+  "03 · Design & Folder",
+  "04 · CE in Progress",
+  "05 · For Approval",
+  "06 · Kickoff",
+  "07 · Briefing",
+  "08 · Fabrication",
+  "09 · Site & Billing",
+  "10 · Installation",
+  "11 · Punchlist",
+  "12 · Close-Out",
+  "14 · Completed",
+  "Cancelled",
+  "Did Not Win",
+];
+
+export const STAGE_ALIASES={
+  "bizdev":"01 · BizDev","biz dev":"01 · BizDev","01":"01 · BizDev","1":"01 · BizDev",
+  "client engagement":"02 · Engagement","engagement":"02 · Engagement","02":"02 · Engagement","2":"02 · Engagement",
+  "design request":"03 · Design & Folder","folder setup":"03 · Design & Folder","03":"03 · Design & Folder","3":"03 · Design & Folder",
+  "design & ce in progress":"04 · CE in Progress","ce in progress":"04 · CE in Progress","04":"04 · CE in Progress","4":"04 · CE in Progress",
+  "client approval":"05 · For Approval","approval":"05 · For Approval","revision":"05 · For Approval","05":"05 · For Approval","5":"05 · For Approval",
+  "project kickoff":"06 · Kickoff","kickoff":"06 · Kickoff","awarded":"06 · Kickoff","06":"06 · Kickoff","6":"06 · Kickoff",
+  "budget & briefing":"07 · Briefing","briefing":"07 · Briefing","07":"07 · Briefing","7":"07 · Briefing",
+  "fabrication":"08 · Fabrication","construction":"08 · Fabrication","fabrication / construction":"08 · Fabrication","08":"08 · Fabrication","8":"08 · Fabrication",
+  "site visit":"09 · Site & Billing","progress billing":"09 · Site & Billing","09":"09 · Site & Billing","9":"09 · Site & Billing",
+  "installation":"10 · Installation","10":"10 · Installation",
+  "punchlist":"11 · Punchlist","punch list":"11 · Punchlist","11":"11 · Punchlist",
+  "project close-out":"12 · Close-Out","close out":"12 · Close-Out","closeout":"12 · Close-Out","close-out":"12 · Close-Out","12":"12 · Close-Out",
+  "completed":"14 · Completed","project completed":"14 · Completed","closed":"14 · Completed","project closed":"14 · Completed","done":"14 · Completed","14":"14 · Completed",
+  "cancelled":"Cancelled","canceled":"Cancelled",
+};
+
+export const normalizeStage=(s)=>{
+  if(!s) return "01 · BizDev";
+  const clean=String(s).trim();
+  if(DEAL_STAGES.includes(clean)) return clean;
+  const lower=clean.toLowerCase().replace(/·/g,"").replace(/\s+/g," ").trim();
+  if(STAGE_ALIASES[lower]) return STAGE_ALIASES[lower];
+  // Try numeric prefix match
+  const m=clean.match(/^(\d+)/);
+  if(m){const f=DEAL_STAGES.find(x=>x.startsWith(m[1].padStart(2,"0")+" ·"));if(f)return f;}
+  // Partial match
+  for(const [alias,canonical] of Object.entries(STAGE_ALIASES)){
+    if(lower.includes(alias)) return canonical;
+  }
+  return "01 · BizDev";
+};
+
+export const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out","14 · Completed"];
+
+export const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];
+
+export const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
+
+export const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
+
+export const STAGE_OWNER   = {
+  "01 · BizDev":                       "BizDev Director",
+  "02 · Engagement":            "Account Executive",
+  "03 · Design & Folder":"Account Executive",
+  "04 · CE in Progress":      "Design + Cost Estimator",
+  "05 · For Approval":   "Account Executive + Paulo",
+  "06 · Kickoff":              "Sales + Finance + Ops",
+  "07 · Briefing":            "Cost Control + Project Manager",
+  "08 · Fabrication":   "Operations + Procurement",
+  "09 · Site & Billing":"Project Manager + Finance",
+  "10 · Installation":                 "Operations",
+  "11 · Punchlist":                    "Project Manager",
+  "12 · Close-Out":            "Project Manager + Finance",
+};
+
+export const STAGE_DURATION = {
+  "04 · CE in Progress":      "Design: 5–15 days · CE: 5–7 days",
+  "08 · Fabrication":   "Fab: 45 days · Construction: 45–60 days",
+};
+
+export const PROD_STAGES     = ["Design","Fabrication","QC","Delivery"];
+
+export const DESIGN_STATUSES = ["Briefing","On-going","First Pass","Revision","Production Plans","Done"];
+
+export const PRODUCT_TYPES   = ["Custom Shelving","Display Fixtures","Signage","Countertops","Retail Cabinetry","Kiosks","Wall Panels","Millwork","Other"];
+
+export const SALES_TEAM        = ["Paulo Garcia","Paolo Gomez","April Gail De Ello","Jena De Asis","Don Wyn Celmar","Aerwin Del Rosario (CE)","Marian Prile (CE)"];
+
+export const COST_CONTROL_TEAM = ["Aerwin Del Rosario (Finance Manager)","Marian Prile (Procurement Manager)"];
+
+export const OPS_TEAM          = ["Arrius Catubay (Ops Director)","Ryon Santiago (PM)","David Melendez (PM)","Jay Bernardo (PM)","Angelo Nogra (Coordinator)","Arvin Jaca (Coordinator)","Jessie Singun (Coordinator)","Anthony Nogra (Coordinator)","Steve Jazmin (Coordinator)"];
+
+export const DESIGN_MEMBERS    = ["Gab Florita","Miaa Villoria","Miel Vidallo","Adrian Adriano","Tisha Leyva","Freelancer / Outsourced"];
+
+export const ALL_MEMBERS       = [...new Set([...SALES_TEAM,...COST_CONTROL_TEAM,...OPS_TEAM,...DESIGN_MEMBERS])];
+
+export const PROD_MEMBERS      = ALL_MEMBERS; // backward compat
+
+export const MAT_UNITS       = ["pcs","sheets","meters","kg","sets","rolls","liters","sqm"];
+
+export const PO_UNITS        = ["pcs","sheets","meters","sqm","sqft","lnm","kg","sets","rolls","liters","gallons","bags","boxes","pairs","lengths","bundles","cu.m","lots","units"];
+
+export const EXP_CATS        = ["Materials","Labor","Overhead","Utilities","Rent","Transport","Marketing","Salaries","Subcontractor","Reimbursement","Other"];
+
+export const SWATCH_CATS     = ["Fabric","Paint","Hardware","Wood","Metal","Glass","Laminate","Tile","Lighting","Fixture","Trim","Adhesive","Other"];
+
+export const SWATCH_STATUS   = ["To Buy","Ordered","Received","Client Approved","MR Submitted"];
+
+export const PAY_STATUS      = ["Unpaid","Partial","Deposited","Paid"];
+
+export const MONTHS          = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+export const PRIORITIES      = ["Normal","High","Urgent"];
+
+export const STAGE_CLR = {
+  "01 · BizDev":                       "#94a3b8",
+  "02 · Engagement":            "#60a5fa",
+  "03 · Design & Folder":"#a78bfa",
+  "04 · CE in Progress":      "#f59e0b",
+  "05 · For Approval":   "#f97316",
+  "06 · Kickoff":              "#10b981",
+  "07 · Briefing":            "#06b6d4",
+  "08 · Fabrication":   "#3b82f6",
+  "09 · Site & Billing":"#8b5cf6",
+  "10 · Installation":                 "#ec4899",
+  "11 · Punchlist":                    "#eab308",
+  "12 · Close-Out":            "#059669",
+  "Cancelled":                         "#ef4444",
+  "Did Not Win":                       "#94a3b8",
+};
+
+export const PROD_CLR  = { Design:"#8b5cf6",Fabrication:"#f97316",QC:"#eab308",Delivery:"#10b981" };
+
+export const PAY_CLR   = { Unpaid:"#ef4444",Partial:"#f59e0b","Partially Paid":"#f59e0b",Deposited:"#10b981","Fully Paid":"#059669",Paid:"#059669" };
+
+export const PRI_CLR   = { Normal:"#3b82f6",High:"#f59e0b",Urgent:"#ef4444" };
+
+export const DS_CLR    = { Briefing:"#94a3b8","On-going":"#3b82f6","First Pass":"#8b5cf6",Revision:"#f97316","Production Plans":"#eab308",Done:"#10b981" };
+
+export const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b981","Client Approved":"#059669" };
+
+export const DRF_TYPES = ["Module / Display Fixture","Signage","Retail Fit-Out","Counter / Reception","Kiosk","Wall Panel / Decor","Custom Furniture","Other"];
+
+export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Done"];
+
+export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f97316","For Review":"#8b5cf6",Revision:"#ef4444",Approved:"#10b981",Done:"#059669"};
+
+export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],size:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
+
+export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b" };
+
+export const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval","Module","Swatch","Risk Flag"];
+
+export const CL_STATUS = ["To Do","In Progress","Done"];
+
+export const CL_DEPT   = ["Operations","Design","Procurement","Sales","Finance","Management"];
+
+export const TYPE_ICON = { Purchase:"🛒","Supplier Job":"🏭",Permit:"📋",Task:"✅","Site Visit":"📍","Client Approval":"🤝",Module:"📦",Swatch:"🎨","Risk Flag":"⚠️" };
+
+export const TYPE_CLR  = { Purchase:"#f59e0b","Supplier Job":"#f97316",Permit:"#3b82f6",Task:"#8b5cf6","Site Visit":"#10b981","Client Approval":"#ec4899",Module:"#0ea5e9",Swatch:"#d946ef","Risk Flag":"#ef4444" };
+
+export const CS_CLR    = { "To Do":"#94a3b8","In Progress":"#f59e0b",Done:"#10b981" };
+
+export const fmtK  = n => n>=1000000?"₱"+(n/1000000).toFixed(1)+"M":n>=1000?"₱"+(n/1000).toFixed(0)+"k":"₱"+(n||0);
+
+export const fmtPHP= n => "Php "+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+
+export const BUSINESS_DAYS_SLA = 5;
+
+export function bizDaysElapsed(startDateStr){
+  if(!startDateStr) return 0;
+  const start = new Date(startDateStr); const now = new Date();
+  let count = 0; const d = new Date(start);
+  while(d <= now){ const dow = d.getDay(); if(dow!==0&&dow!==6) count++; d.setDate(d.getDate()+1); }
+  return Math.max(0, count - 1);
+}
+
+export function bizDaysRemaining(startDateStr, sla=BUSINESS_DAYS_SLA){
+  return sla - bizDaysElapsed(startDateStr);
+}
+
+export const calcTax = (base, receiptType="OR", withholding=false) => {
+  const b   = Number(base)||0;
+  const vat = receiptType==="OR" ? b*0.12 : 0;        // 12% VAT on base (OR only)
+  const gross = b + vat;                                // total amount billed to client
+  const ewt = (receiptType==="OR" && withholding) ? b*0.02 : 0; // EWT only on OR, not AR
+  const netReceivable = gross - ewt;                    // what GMD actually receives
+  return { base:b, vat, gross, ewt, netReceivable };
+};
+
+export const calcInputTax = (gross, vatable=false, ewtRate=0) => {
+  const g = Number(gross)||0;
+  const net = vatable ? Math.round(g/1.12*100)/100 : g;
+  const inputVat = Math.round((g-net)*100)/100;
+  const rate = Number(ewtRate)||0;
+  const ewtAmount = Math.round(net*rate/100*100)/100;
+  const netPayable = Math.round((g-ewtAmount)*100)/100; // cash actually paid to supplier
+  return { gross:g, net, inputVat, ewtRate:rate, ewtAmount, netPayable };
+};
+
+export const EWT_RATES = [
+  {v:0,   l:"None"},
+  {v:1,   l:"1% — Goods"},
+  {v:2,   l:"2% — Services / Contractors"},
+  {v:5,   l:"5% — Rentals / Pros"},
+  {v:10,  l:"10% — Professionals"},
+  {v:15,  l:"15% — Professionals (high)"},
+];
+
+export const todayL= new Date().toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"});
+
+export const mergeLocalOnly=(serverList,localList)=>{
+  const ids=new Set(serverList.map(x=>x.id));
+  const localOnly=(localList||[]).filter(x=>x.id&&!ids.has(x.id));
+  return localOnly.length?[...serverList,...localOnly]:serverList;
+};
+
+export const mergeLocalOnlyObj=(serverObj,localObj)=>({...(localObj||{}),...(serverObj||{})});
+
+export const addDaysISO=(fromISO,days)=>{const b=fromISO?new Date(fromISO+"T00:00:00"):new Date();const d=new Date(b.getTime()+(Number(days)||0)*86400000);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+
+export const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowerCase();if(/\b(cod|cash|cwo)\b/.test(t))return addDaysISO(fromISO,0);const m=t.match(/(\d+)/);if(!m)return "";return addDaysISO(fromISO,parseInt(m[1],10));};
+
+export const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
+
+export const ADDENDUM_STATUS_CLR = {
+  "Discovered":"#94a3b8",
+  "Sales Notified":"#f59e0b",
+  "Client Coordinating":"#3b82f6",
+  "Approved":"#10b981",
+  "Billed":"#8b5cf6",
+  "Collected":"#059669",
+  "Rejected":"#ef4444",
+};
+
+export const TAT_REFERENCE = {
+  "Fabrication / General": {
+    "Kiosk / Modules / Activation":  { days:30,  note:"Simple modular builds" },
+    "Signage Only":                   { days:15,  note:"Fabrication + delivery only" },
+    "Fit-Out — Simple":               { days:35,  note:"Basic fit-out, limited scope" },
+    "Fit-Out — Full Retail":          { days:45,  note:"Standard GMD retail interior" },
+    "Fit-Out — Multi-Brand/Complex":  { days:60,  note:"Multiple brands or complex scope" },
+    "Display Fixtures / POP":         { days:21,  note:"Fabrication + delivery" },
+    "Custom Shelving / Cabinetry":    { days:30,  note:"Standard mill work" },
+    "Other":                          { days:30,  note:"Estimate per scope" },
+  },
+  "Construction": {
+    "F&B Fit-Out":                    { days:60,  note:"Includes MEP, exhaust, hood" },
+    "Commercial — Light":             { days:60,  note:"Limited civil work" },
+    "Commercial — Full":              { days:90,  note:"Full structural + MEP" },
+    "Other":                          { days:60,  note:"Estimate per scope" },
+  },
+};
+
+export const DEPT_ORDER = ["Sales","Design","QS","Procurement","Operations","Finance"];
+
+export const HAS_ADDENDA_PAGE = ["Manager","Operations","ProjectMover"];
+
+export const DEPT_CLR   = {Sales:"#10b981",Design:"#8b5cf6",QS:"#f59e0b",Procurement:"#06b6d4",Operations:"#f97316",Finance:"#3b82f6"};
+
+export const ACT_SCORE  = {"Login":1,"New Deal":10,"Deal Updated":3,"Stage Change":5,"Project Awarded":15,"PM Update":8,"Department Done":12,"Blocker Flagged":4,"TAT Set":3,"Project Card Created":5,"Password Changed":1,"Profile Updated":1,"JO Deleted":-2,"AE Update":4};
+
+export const emptyProjectCard=(dealId,dealData)=>({
+  id:uid(),
+  dealId,
+  client:dealData?.client||"",
+  ceNo:dealData?.ceNo||"",
+  value:dealData?.value||0,
+  createdAt:new Date().toISOString(),
+  awardDate:dealData?.awardDate||today,
+  targetDays:null,           // Set by QS or Operations Director
+  targetEndDate:null,        // Calculated: awardDate + targetDays
+  tatCategory:"",            // Project type used for reference
+  tatSetBy:null,             // Who set the turnaround time
+  tatSetAt:null,
+  aeAssigned:dealData?.aeAssigned||dealData?.salesOwner||"",
+  pm1:dealData?.pm1||dealData?.pmAssigned||"",
+  pm2:dealData?.pm2||"",
+  pm3:dealData?.pm3||"",
+  designer:dealData?.designer||"",
+  coordinator:dealData?.coordinator||"",
+  manualProgress:dealData?.manualProgress??null,
+  departments:Object.fromEntries(DEPT_ORDER.map(dept=>([dept,{
+    done:false,
+    doneAt:null,
+    doneBy:null,
+    tasks:DEFAULT_DEPT_TASKS[dept].map((t)=>({id:uid(),text:t,done:false,doneAt:null,doneBy:null})),
+  }]))),
+});
+
+export const nextItemCode=(items)=>{
+  const nums=items.map(i=>parseInt((i.code||"").replace(/\D/g,""))||0);
+  return"INV-"+String((nums.length?Math.max(...nums):0)+1).padStart(3,"0");
+};
+
+export const BILLING_STATUSES = ["Draft","Sent to Client","Partially Paid","Fully Paid","Overdue","Cancelled"];
+
+export const BILLING_STATUS_CLR = {
+  "Draft":"#94a3b8","Sent to Client":"#3b82f6",
+  "Partially Paid":"#f59e0b","Fully Paid":"#059669",
+  "Overdue":"#ef4444","Cancelled":"#475569",
+};
+
+export const emptyMilestone=()=>({
+  id:"",dealId:"",name:"",description:"",
+  amount:0,invoiceNo:"",invoiceDate:"",dueDate:"",
+  status:"Draft",payments:[],
+  createdBy:"",createdDate:"",sentDate:"",
+  deductions:[], // [{id,reason,amount,approvedBy,approvedOn,netAmount}]
+});
+
+export const MR_STATUSES  = ["Submitted","Reviewed","Converted to PR","Rejected"];
+
+export const BR_STATUSES  = ["Submitted","Under Review","Approved","Released","Rejected"];
+
+export const BR_PURPOSES  = ["Installation","Mobilization","Site Expenses","Equipment Rental","Permits & Fees","Labor Additional","Emergency","Other"];
+
+export const PR_STATUSES  = ["Draft","Pending Approval","PO Issued","Partially Delivered","Delivered","Cancelled"];
+
+export const PROC_STATUSES = ["Draft","Pending Approval","PO Issued","Cancelled"]; // Procurement only; delivery statuses owned by Warehouse
+
+export const PR_CATS      = ["Materials","Hardware","Fixtures","Signage","Electrical","Structural","Finishing","Tools & Equipment","Subcon","Other"];
+
+export const BUDGET_CATS  = ["Materials","Labor","Overhead","Subcon"];
+
+export const BUDGET_CAT_CLR = {Materials:"#3b82f6",Labor:"#10b981",Overhead:"#f59e0b",Subcon:"#8b5cf6"};
+
+export const projectCostBreakdown=(dealId,prs,exps)=>{
+  const n=v=>Number(String(v).replace(/,/g,""))||0;
+  const committed={Materials:0,Labor:0,Overhead:0,Subcon:0};
+  const actual={Materials:0,Labor:0,Overhead:0,Subcon:0};
+  const projExps=exps.filter(e=>e.projectId===dealId);
+  const expensedPORefs=new Set(projExps.map(e=>e.poRef).filter(Boolean));
+  prs.filter(p=>p.projectId===dealId&&p.status!=="Cancelled").forEach(p=>{
+    const cost=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);
+    const cat=committed[p.budgetCategory]!==undefined?p.budgetCategory:"Materials";
+    if(p.status==="Delivered"){
+      if(!(p.poNumber&&expensedPORefs.has(p.poNumber))) actual[cat]+=cost;
+    } else {
+      committed[cat]+=cost;
+    }
+  });
+  projExps.forEach(e=>{
+    const cat=e.category==="Labor"?"Labor":e.category==="Subcon"?"Subcon":e.category==="Overhead"?"Overhead":"Materials";
+    actual[cat]+=n(e.amount);
+  });
+  return {committed,actual};
+};
+
+export const emptyPR = () => ({
+  id:"", projectId:"", projectName:"",
+  itemName:"", category:"Materials", description:"",
+  qty:1, unit:"pcs", estUnitCost:0, actUnitCost:0,
+  supplier:"", poNumber:"", poDate:"",
+  qtyDelivered:0, deliveryDate:"", deliveryNote:"",
+  status:"Draft", requestedBy:"", approvedBy:"", approvedAt:"",
+  budgetCategory:"Materials",  // which budget line this hits
+  notes:"", createdDate:"",
+});
+
+export const canApprovePO=(role,sessionName,requestedBy,approvers)=>{
+  if(role==="Manager") return true;
+  if(role!=="Procurement"||!sessionName) return false;
+  const list=String(approvers||"").split(",").map(s=>s.trim().toLowerCase()).filter(Boolean);
+  if(list.length) return list.includes(sessionName.trim().toLowerCase());
+  // P3: only allow approval when requestedBy is a different known person — empty requestedBy doesn't grant approval
+  return !!requestedBy&&sessionName.trim().toLowerCase()!==requestedBy.trim().toLowerCase();
+};
+
+export const woRetentionAmt=w=>Math.min(Number(w.retentionPct)||0,100)/100*(Number(w.contractAmount)||0);
+
+export const SWO_STATUSES=["Draft","Pending Approval","Issued","In Progress","Completed","Cancelled"];
+
+export const SWO_STATUS_CLR={Draft:"#94a3b8","Pending Approval":"#f59e0b",Issued:"#6366f1","In Progress":"#3b82f6",Completed:"#10b981",Cancelled:"#ef4444"};
+
+export const emptySWO=()=>({subcontractor:"",projectId:"",projectName:"",woNumber:"",woDate:"",specialty:"",status:"Draft",startDate:"",targetEndDate:"",scopeOfWork:"",contractAmount:0,retentionPct:0,paymentStructure:"",paymentTerms:"",notes:"",requestedBy:"",approvedBy:"",acctStatus:"",delivery:null});
+
+export const emptyDelivery=()=>({mode:"",deliveredDate:"",inspectedBy:"",inspectedOn:"",checkQty:false,checkDimensions:false,checkFinish:false,defectNotes:"",inspectionNotes:"",signedOffBy:"",signedOffOn:"",status:"Pending",retentionReleased:false});
+
+export const projDisplayName=d=>d?(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:""):"";
+
+export const projOptions=deals=>(deals||[]).map(d=>({value:d.id,label:projDisplayName(d)}));
+
+export const emptyBudget = () => ({
+  Materials:0, Labor:0, Overhead:0, Subcon:0,
+  notes:"", lockedAt:null,
+});
+
+export const ACCT_CLR={"For Accounting":"#f59e0b","Checked":"#3b82f6","Payment Ordered":"#8b5cf6","Paid":"#059669"};
+
+export const emptyDeal={
+  // Core
+  client:"",product:"",value:"",stage:"01 · BizDev",
+  probability:10,contact:"",followUp:"",notes:"",priority:"Normal",
+  // Payment
+  invoiced:"",amountPaid:"",paymentStatus:"Unpaid",dueDate:"",discount:0,
+  progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
+  // GMD fields
+  ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,
+  assignedAE:"",bizDevSource:"",location:"",
+  // File links (Drive + FabHub)
+  salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
+  // Design Request (inline DRF)
+  designRequestDate:"",designRequestNote:"",designApprovalDate:"",
+  drfReqCreate:false,drfProjectTitle:"",drfSize:"",drfDescription:"",drfAccessories:[],drfRefLinks:["","",""],drfDeadline:"",drfNotes:"",
+  // CE/QS Request (inline — auto-creates a CE request for Rodney's queue)
+  ceReqCreate:false,ceReqType:"retail",ceReqPriority:"Normal",ceReqDeadline:"",ceReqSubmitDeadline:"",ceReqBudget:"",ceReqMargin:"",ceReqPlansLink:"",ceReqSkpLink:"",ceReqSchedule:"",ceReqNotes:"",
+  // Comms
+  commsGroup:"",commsGroupLink:"",
+  // Addenda
+  addenda:[],
+  // Parent-child linking
+  parentDealId:null,
+  // Feedback
+  clientFeedback:"",feedbackDate:"",feedbackScore:"",
+  // Payment Terms (set at award)
+  paymentTerms:null, // {dp:30,progress:40,final:20,retention:10,retentionRelease:"Project Completion",netDays:30,notes:""}
+};
+
+export const emptyProject=()=>({
+  currentStage:"Design",
+  progress:{Design:0,Fabrication:0,QC:0,Delivery:0,Installation:0,Punchlist:0},
+  stageDates:{Design:{s:"",e:""},Fabrication:{s:"",e:""},QC:{s:"",e:""},Delivery:{s:"",e:""},Installation:{s:"",e:""},Punchlist:{s:"",e:""}},
+  team:[],pmAssigned:"",coordinatorAssigned:"",
+  materials:[],laborCost:0,overhead:0,notes:"",
+  design:mkDesign(),
+  // Budget (Cost Control)
+  budgetCreated:false,budgetLink:"",budgetNotes:"",
+  // COC
+  cocCreated:false,cocDate:"",cocLink:"",
+  // Warranty
+  warranty:{active:false,type:"30",startDate:"",endDate:"",notes:""},
+  // PM Updates
+  pmUpdates:[],
+  // Addenda
+  addenda:[],
+});
+
+export const dealCompleteness=(d)=>{
+  const checks=[
+    {field:"ceNo",         label:"CE Number"},
+    {field:"salesOwner",   label:"Assigned AE"},
+    {field:"salesRepoLink",label:"Sales Repository"},
+    {field:"proposalFolderLink",label:"Proposal Folder"},
+    {field:"commsGroup",   label:"Comms Group"},
+    {field:"value",        label:"Contract Value"},
+    {field:"ceType",       label:"CE Type"},
+    {field:"dateAcquired", label:"Date Acquired"},
+  ];
+  const missing=checks.filter(c=>!d[c.field]).map(c=>c.label);
+  const pct=Math.round(((checks.length-missing.length)/checks.length)*100);
+  return{pct,missing,complete:missing.length===0};
+};
+
+export function calcStreak(actLog,userName){
+  const days=new Set((actLog||[]).filter(e=>e.by===userName).map(e=>e.date));
+  if(!days.size)return 0;
+  let streak=0;const d=new Date();
+  while(true){const ds=d.toISOString().slice(0,10);if(days.has(ds)){streak++;d.setDate(d.getDate()-1);}else break;}
+  return streak;
+}
+
+export const PM_UPDATE_TYPES=["General Progress","Materials Needed","Design Request","Blocker"];
+
+export const PM_TYPE_COLOR={"General Progress":"#0ea5e9","Materials Needed":"#f59e0b","Design Request":"#8b5cf6","Blocker":"#ef4444"};
+
+export const PM_TYPE_ICON={"General Progress":"📋","Materials Needed":"📦","Design Request":"🎨","Blocker":"🚨"};
+
+export const WEATHER_OPTS=["☀️ Sunny","⛅ Cloudy","🌧️ Rainy","⛈️ Storm","🥵 Hot"];
