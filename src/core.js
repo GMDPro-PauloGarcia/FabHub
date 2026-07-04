@@ -2,6 +2,7 @@
 // pure functions with no component state, no Supabase, no closures. Kept in one
 // module so their inter-references resolve without cross-import churn.
 import {today, uid} from './shared';
+import {mkDesign, DEFAULT_DEPT_TASKS} from './data/seed';
 
 export const DEAL_STAGES = [
   "01 · BizDev",
