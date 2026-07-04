@@ -737,9 +737,10 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
           <button onClick={()=>setStep(2)} style={{background:"#f1f5f9",border:"none",borderRadius:10,padding:"10px 20px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>← Back</button>
           <div style={{display:"flex",gap:10}}>
             <button onClick={()=>confirmOnce({...form,paymentTerms:null})} disabled={submitting} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".82rem",color:"#64748b",cursor:submitting?"not-allowed":"pointer",opacity:submitting?.6:1}}>Skip Terms & Award</button>
-            <button onClick={()=>confirmOnce({...form,paymentTerms:ptOk?{dp:form.ptDp,progress:form.ptProgress,final:form.ptFinal,retention:form.ptRetention,netDays:form.ptNetDays,retentionRelease:form.ptRetentionRelease,notes:form.ptNotes}:null})}
-              disabled={submitting}
-              style={{background:submitting?"#94a3b8":"#059669",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:"#fff",cursor:submitting?"not-allowed":"pointer",letterSpacing:".3px"}}>
+            <button onClick={()=>confirmOnce({...form,paymentTerms:{dp:form.ptDp,progress:form.ptProgress,final:form.ptFinal,retention:form.ptRetention,netDays:form.ptNetDays,retentionRelease:form.ptRetentionRelease,notes:form.ptNotes}})}
+              disabled={submitting||!ptOk}
+              title={!ptOk?"Payment terms must total 100% — or use “Skip Terms & Award” to award without a billing schedule":""}
+              style={{background:(submitting||!ptOk)?"#94a3b8":"#059669",border:"none",borderRadius:10,padding:"12px 28px",fontFamily:"inherit",fontWeight:800,fontSize:".9rem",color:"#fff",cursor:(submitting||!ptOk)?"not-allowed":"pointer",letterSpacing:".3px"}}>
               {submitting?"⏳ Awarding…":"🏆 Confirm Award Deal"}
             </button>
           </div>
@@ -966,7 +967,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" min={0} value={form.value} onChange={e=>f("value",Math.max(0,e.target.value))} placeholder="To be confirmed"/></Fld>
+        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" min={0} value={form.value} onChange={e=>{const v=e.target.value;f("value",v===""?"":Math.max(0,Number(v)||0));}} placeholder="To be confirmed"/></Fld>
         <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
         <Fld label="CE Type">
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
