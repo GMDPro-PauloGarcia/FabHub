@@ -2553,7 +2553,16 @@ export default function App(){
 
   // ── SUPABASE: Initialize auth + load all data ──────────────────────────────
   useEffect(()=>{
+    // Temporary load-timing instrumentation — prints to the browser console so
+    // we can see where cold-load time actually goes (bundle boot vs IndexedDB
+    // cache read vs the Supabase refresh) before optimizing the startup path.
+    const _perf=(typeof performance!=="undefined"&&performance.now)?()=>performance.now():()=>Date.now();
+    const _t0=_perf();
+    const _log=(label,since)=>{try{console.info(`[FabHub timing] ${label}: ${Math.round(_perf()-since)}ms`);}catch{}};
     const init = async () => {
+      // _t0 is measured from navigation start, so this first number is the cost
+      // of downloading + parsing the JS bundle and booting React up to here.
+      try{console.info(`[FabHub timing] bundle download + parse + React boot: ${Math.round(_t0)}ms`);}catch{}
       // Step 1: Session/role from localStorage (sync, tiny)
       try {
         const s=localStorage.getItem(KEYS.session);
@@ -2610,6 +2619,7 @@ export default function App(){
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
       } catch(err){ console.error("IDB load error:", err); }
+      _log("IndexedDB cache read → app interactive",_t0);
       setReady(true);
 
       // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
@@ -2624,7 +2634,9 @@ export default function App(){
       supabase.auth.getSession().then(({data:{session:s}})=>{ if(!s) supabase.auth.signInAnonymously().catch(()=>{}); }).catch(()=>{});
       if(isSupabaseReady()){
         try{
+          const _tLoad=_perf();
           const data = await sbLoadAll();
+          _log("sbLoadAll (server refresh of all tables)",_tLoad);
           if(!data) toastEmit&&toastEmit("⚠️ Couldn't load from the server. Check your connection, then tap the 🔄 sync button.","error",12000);
           // Diagnostic — visible in browser console AND stored for the sync banner
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
