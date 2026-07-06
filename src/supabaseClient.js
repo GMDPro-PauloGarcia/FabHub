@@ -16,6 +16,13 @@ export const isSupabaseReady = () => !!supabase
 // aren't reaching the server (instead of failing silently in 160+ call sites).
 let _onWriteError = null
 export const setSbErrorHandler = (fn) => { _onWriteError = fn }
+// Fired only when a queued write is given up on for good (non-retryable, or
+// 8 retries exhausted) — distinct from _onWriteError, which fires on every
+// transient failure and is throttled. A permanent drop must never be
+// throttled or silent: it's the one path left where a change the user
+// believes saved will NEVER reach the server on its own.
+let _onWriteDropped = null
+export const setSbDropHandler = (fn) => { _onWriteDropped = fn }
 // Classify a write failure so the UI can show an accurate message instead of
 // always blaming "you may be offline" — a stale/expired session, a permission
 // error, or a schema mismatch (all common right after a domain/project
@@ -125,10 +132,15 @@ export const sbFlushQueue = async (force = false) => {
         console.error(`sync queue: dropping non-retryable op (${kind}) — ${op.kind} ${op.table}`)
         lastError = { kind, message, table: op.table }
         _queue.shift(); _saveQueue()
+        try { _onWriteDropped && _onWriteDropped(op, kind, message) } catch (_) {}
       } else {
         op.attempts = (op.attempts || 0) + 1
         lastError = { kind, message, table: op.table }
-        if (op.attempts >= 8) { console.error(`sync queue: dropping op after 8 tries — ${op.kind} ${op.table}`); _queue.shift() }
+        if (op.attempts >= 8) {
+          console.error(`sync queue: dropping op after 8 tries — ${op.kind} ${op.table}`)
+          _queue.shift()
+          try { _onWriteDropped && _onWriteDropped(op, kind, message) } catch (_) {}
+        }
         _saveQueue()
         if (op.attempts < 8) break // preserve order; retry whole queue later
       }

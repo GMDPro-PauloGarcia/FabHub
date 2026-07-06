@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
@@ -2828,6 +2828,20 @@ export default function App(){
       }
     });
     return ()=>setSbErrorHandler(null);
+  },[]);
+
+  // A queued write that's non-retryable (bad data/permission) or has failed 8
+  // retry cycles is dropped from the queue for good — until now that drop was
+  // a console.error only, so the pending-sync badge count would quietly go
+  // down as if it synced, while the change never reached the server at all.
+  // This must never be throttled like the generic warning above: it's the
+  // one remaining path where something the user believes saved is gone.
+  useEffect(()=>{
+    setSbDropHandler((op,kind,msg)=>{
+      const label=op?.data?.client||op?.data?.client_name||op?.data?.name||op?.data?.title||(op?.id?`id ${op.id}`:"a record");
+      toastEmit(`❌ Could not save a change to ${op?.table||"the server"} (${label}) after several attempts — it was NOT saved. Please redo it. ${msg?`(${msg})`:""}`,"error",15000);
+    });
+    return ()=>setSbDropHandler(null);
   },[]);
 
   // Offline write queue: track how many writes are still pending and keep
