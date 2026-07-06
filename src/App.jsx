@@ -5420,6 +5420,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     try{
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
+    const savingToastId=isSupabaseReady()?toastEmit(`⏳ Awarding ${awardModal.client} — saving to server…`,"pending",15000):null;
     const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo));
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
       stage:"06 · Kickoff",
@@ -5428,15 +5429,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       notes:form.scopeNotes||d.notes,
       dateAcquired:d.dateAcquired||awardedDate,
     }:d));
-    // Persist stage change to Supabase immediately so refresh doesn't lose the award
-    if(isSupabaseReady()) sbUpdate('deals',id,{
+    // Persist stage change to Supabase before anything else — awaited, not
+    // fire-and-forget: this is the write that actually marks the deal as
+    // awarded server-side, and a Telegram "PROJECT AWARDED!" notification
+    // firing regardless of whether this succeeded is exactly how an award
+    // could look confirmed in chat while never actually landing in FabHub.
+    // sbUpdate bounds itself to ~12s via its own timeout, so this can't hang.
+    const awardSynced=isSupabaseReady()?await sbUpdate('deals',id,{
       stage:"06 · Kickoff",
       probability:100,
       payment_status:"Unpaid",
       notes:form.scopeNotes||awardModal.notes||"",
       date_acquired:awardModal.dateAcquired||awardedDate,
       updated_at:new Date().toISOString(),
-    }).catch(()=>{});
+    }).catch(()=>false):true;
+    if(savingToastId){
+      if(awardSynced) toastUpdate(savingToastId,`✅ ${awardModal.client} awarded and saved to server`,"success",3000);
+      else toastUpdate(savingToastId,`⚠️ ${awardModal.client} awarded on this device only — didn't reach the server yet. Keep this browser/tab around so it can sync.`,"warning",12000);
+    }
     // Create project record
     if(!projs[id]) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     // Build PM list
@@ -5470,9 +5480,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       status:"Active",
     };
     upJos(js=>[jo,...js]);
-    if(isSupabaseReady()) sbSyncOne("job_orders",jo,toSbJO);
-    // Create project card with PM/AE pre-populated
-    createProjectCard(id,{...awardModal,
+    if(isSupabaseReady()) await sbSyncOne("job_orders",jo,toSbJO);
+    // Create project card with PM/AE pre-populated — awaited so Ops/Sales
+    // don't see "awarded" without the department task checklists existing yet.
+    await createProjectCard(id,{...awardModal,
       aeAssigned:jo.aeAssigned,
       pm1:jo.pm1||"",
       pm2:jo.pm2||"",
