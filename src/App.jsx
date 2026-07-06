@@ -5208,28 +5208,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // it may ever leave the form stuck open on top of an already-saved deal, so
     // any failure here is swallowed and the modal still closes in the finally.
     try{
-      // The deal is already in local state (upDeals above) and the offline
-      // queue retries any failed/slow write, so we only BLOCK the modal on the
-      // network round-trip when a dependent record is about to be created in
-      // the same save — the auto-DRF references this deal by foreign key, so
-      // the deal must land server-side first. In every other case (which is
-      // the common one) we fire the write in the background and let the modal
-      // close immediately instead of making the user wait on the network.
-      const needAwaitSync=!editDeal&&!!data.drfReqCreate;
+      // The write to Supabase is always awaited before the form closes — a
+      // deal that only ever reached local state and never got confirmed on
+      // the server is exactly how a sales rep's deal went missing (confirmed
+      // via direct DB query: it never landed, no error the rep could see).
+      // sbUpsert already bounds this to ~12s via its own internal timeout, so
+      // this can't hang indefinitely the way an earlier, unrelated RPC bug did.
       const syncP=isSupabaseReady()?sbSyncOne("deals",rec,toSbDeal):Promise.resolve(true);
-      // New deals get a visible, persistent "saving…" prompt that morphs into
-      // saved/failed once the background write actually resolves — the modal
-      // still closes immediately (see comment above), but a failed sync on a
-      // deal the user has already stopped watching must not depend solely on
-      // the generic, 30s-throttled app-wide sync banner to be noticed.
-      if(!editDeal&&isSupabaseReady()){
-        const savingToastId=toastEmit(`⏳ Saving ${rec.client} to server…`,"pending",15000);
-        syncP.then(ok=>{
-          if(ok) toastUpdate(savingToastId,`✅ ${rec.client} saved to server`,"success",3000);
-          else toastUpdate(savingToastId,`⚠️ ${rec.client} didn't reach the server yet — saved on this device only for now. Keep this browser/tab around so it can sync.`,"warning",12000);
-        });
+      // New deals get a visible "saving…" prompt while that wait is happening,
+      // so it's clear something is in flight rather than the form just sitting
+      // there — updates in place to saved/failed once syncP resolves.
+      const savingToastId=(!editDeal&&isSupabaseReady())?toastEmit(`⏳ Saving ${rec.client} to server…`,"pending",15000):null;
+      const dealSynced=await syncP;
+      if(savingToastId){
+        if(dealSynced) toastUpdate(savingToastId,`✅ ${rec.client} saved to server`,"success",3000);
+        else toastUpdate(savingToastId,`⚠️ ${rec.client} didn't reach the server yet — saved on this device only for now. Keep this browser/tab around so it can sync.`,"warning",12000);
       }
-      const dealSynced=needAwaitSync?await syncP:true;
       // Save new client to master list if not already present
       if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
         const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
