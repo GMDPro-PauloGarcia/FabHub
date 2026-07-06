@@ -3365,7 +3365,7 @@ export default function App(){
   const addCEReq=(rec)=>{
     const nr={...rec,id:rec.id||uid(),created_at:rec.created_at||new Date().toISOString()};
     setCeReqs(p=>[...p,{id:nr.id,clientName:nr.client_name,projectName:nr.project_name,location:nr.location,projectType:nr.project_type,priority:nr.priority,status:nr.status,submittedBy:nr.submitted_by,targetDeadline:nr.target_deadline,submissionDeadline:nr.submission_deadline,targetBudget:nr.target_budget,targetMargin:nr.target_margin,plansLink:nr.plans_link,skpLink:nr.skp_link,scheduleOfFinish:nr.schedule_of_finish,notes:nr.notes,ceNotes:nr.ce_notes,bidAmount:nr.bid_amount,bidMarginPct:nr.bid_margin_pct,awarded:nr.awarded,awardDate:nr.award_date,dealId:nr.deal_id,createdAt:nr.created_at}]);
-    return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>{}):Promise.resolve();
+    return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>false):Promise.resolve(true);
   };
   const updateCEReq=(id,updates)=>{
     setCeReqs(p=>p.map(r=>{if(r.id!==id)return r;return{...r,...(updates.status!==undefined?{status:updates.status}:{}),clientName:updates.client_name??r.clientName,projectName:updates.project_name??r.projectName,location:updates.location??r.location,projectType:updates.project_type??r.projectType,priority:updates.priority??r.priority,submittedBy:updates.submitted_by??r.submittedBy,targetDeadline:updates.target_deadline??r.targetDeadline,submissionDeadline:updates.submission_deadline??r.submissionDeadline,targetBudget:updates.target_budget??r.targetBudget,targetMargin:updates.target_margin??r.targetMargin,plansLink:updates.plans_link??r.plansLink,skpLink:updates.skp_link??r.skpLink,scheduleOfFinish:updates.schedule_of_finish??r.scheduleOfFinish,notes:updates.notes??r.notes,ceNotes:updates.ce_notes??r.ceNotes,bidAmount:updates.bid_amount??r.bidAmount,bidMarginPct:updates.bid_margin_pct??r.bidMarginPct,awarded:updates.awarded??r.awarded,awardDate:updates.award_date??r.awardDate};}));
@@ -3619,7 +3619,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // If the parent write itself failed, it's already queued for retry —
       // the tasks stay local-only until the next createProjectCard-style
       // flow or a manual resync; queuing them now would just fail the FK too.
+      return cardSynced;
     }
+    return true;
   };
   const toggleDeptTask=(dealId,dept,taskId)=>{
     const existingCard=pcards[dealId];
@@ -4403,10 +4405,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
   };
   const upBudgets  =useCallback(fn=>setBudgets(p=>{const n=fn(p);persist(KEYS.budgets,n);return n;}),[persist]);
-  const saveBudget=(dealId,budget)=>{
+  const saveBudget=async(dealId,budget)=>{
     const saved={...budget,savedAt:new Date().toISOString()};
     upBudgets(bs=>({...bs,[dealId]:saved}));
-    if(isSupabaseReady()) sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id").catch(e=>console.error("budget sync:",e.message));
+    if(!isSupabaseReady()) return true;
+    return await sbUpsert("project_budgets",toSbBudget(dealId,saved),"deal_id");
   };
   const addPR=(pr,{silent=false}={})=>{
     const rec={...pr,id:uid(),createdDate:today};
@@ -4602,7 +4605,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New",createdBy:drf.createdBy||session?.name||role};
     upDrfs(ds=>[...ds,rec]);
     sendTelegramNotification("design",`📝 <b>New Design Request</b>\n${no} · ${drf.client||"?"}\nProject: ${drf.projectTitle||"—"}\nDeadline: ${drf.designDeadline||"TBD"}\nBy: ${drf.createdBy||"?"}`);
-    if(isSupabaseReady()) sbInsert('design_requests',drfToSb(rec)).catch(()=>{});
+    if(!isSupabaseReady()) return true;
+    const result=await sbInsert('design_requests',drfToSb(rec));
+    return !!result;
   };
   const updateDRF=(id,data)=>{
     upDrfs(ds=>ds.map(d=>d.id===id?{...d,...data}:d));
@@ -5224,12 +5229,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         if(dealSynced) toastUpdate(savingToastId,`✅ ${rec.client} saved to server`,"success",3000);
         else toastUpdate(savingToastId,`⚠️ ${rec.client} didn't reach the server yet — saved on this device only for now. Keep this browser/tab around so it can sync.`,"warning",12000);
       }
+      // Each optional/secondary step below tracks its own pass/fail instead of
+      // one generic "something failed" — collected into stepResults and
+      // reported as a single, specific summary toast at the end, so you know
+      // exactly which step needs a retry instead of guessing from a vague
+      // warning + the console.
+      const stepResults=[];
       // Save new client to master list if not already present
       if(rec.client && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===rec.client.toLowerCase())){
         const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
         const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
         GMD_CLIENTS.push(newClient);
-        setCustomClients(prev=>{const n=[...prev,newClient];localStorage.setItem(KEYS.customclients,JSON.stringify(n));if(isSupabaseReady()) sbUpsert('app_settings',{key:'customclients',value:n,updated_at:new Date().toISOString()},'key').catch(()=>{});return n;});
+        let newClientList=null;
+        setCustomClients(prev=>{const n=[...prev,newClient];newClientList=n;localStorage.setItem(KEYS.customclients,JSON.stringify(n));return n;});
+        const clientOk=isSupabaseReady()?await sbUpsert('app_settings',{key:'customclients',value:newClientList,updated_at:new Date().toISOString()},'key'):true;
+        stepResults.push({label:"Client directory",ok:clientOk});
       }
       // Auto-create DRF when the Sales rep ticked "Request Design" — designer is
       // left unset here; the Design lead assigns who handles it (DRFView "Assign").
@@ -5238,7 +5252,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // it's already queued for retry — the DRF stays local-only rather than
       // risk an unwinnable, permanently-dropped FK violation.
       if(!editDeal && data.drfReqCreate && dealSynced){
-        addDRF({
+        const drfOk=await addDRF({
           dealId:rec.id, client:rec.client, location:"",
           designer:"", designDeadline:data.drfDeadline||"",
           projectTitle:data.drfProjectTitle||rec.contact||rec.client||"",
@@ -5248,11 +5262,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           notes:data.drfNotes||"", approvedLink:"", status:"New",
           createdBy:session?.name||""
         });
+        stepResults.push({label:"Design Request",ok:drfOk});
       }
       // Auto-create CE/QS request if the Sales rep ticked "Send to CE/QS for Costing"
       if(!editDeal && data.ceReqCreate){
         const num=v=>Number(String(v||0).replace(/,/g,""))||0;
-        addCEReq({
+        const ceOk=await addCEReq({
           client_name:rec.client, project_name:rec.contact||"", location:rec.location||"",
           project_type:data.ceReqType||"retail", priority:data.ceReqPriority||"Normal", status:"Pending",
           submitted_by:session?.name||"", target_deadline:data.ceReqDeadline||null,
@@ -5261,7 +5276,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           plans_link:data.ceReqPlansLink||rec.salesRepoLink||"", skp_link:data.ceReqSkpLink||"",
           schedule_of_finish:data.ceReqSchedule||"", notes:data.ceReqNotes||"",
           deal_id:String(rec.id), updated_at:new Date().toISOString(),
-        }).catch(()=>{});
+        });
+        stepResults.push({label:"CE/QS Request",ok:ceOk});
         sendTelegramNotification("management",`📐 <b>New CE Request</b>\nClient: <b>${rec.client}</b>${rec.contact?`\nProject: ${rec.contact}`:""}\nType: ${data.ceReqType||"retail"} · ${data.ceReqPriority||"Normal"} priority${data.ceReqDeadline?`\nCE Deadline: ${data.ceReqDeadline}`:""}\nFor: Rodney (CE/QS)\nFrom: ${session?.name||"Sales"}`);
       }
       if(!editDeal){
@@ -5295,8 +5311,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const card=pcards[rec.id];
         if(card){
           upPcards(ps=>({...ps,[rec.id]:{...ps[rec.id],targetEndDate:rec.turnoverDate}}));
+          let turnoverOk=true;
           if(isSupabaseReady()&&card.id&&isUUID(card.id)){
-            sbUpdate('project_cards',card.id,{target_end_date:rec.turnoverDate}).catch(()=>{});
+            turnoverOk=await sbUpdate('project_cards',card.id,{target_end_date:rec.turnoverDate});
           }
           if(rec.turnoverDate!==(card.targetEndDate||"")){
             const tgMsg=`📅 <b>Turnover Date Updated</b>\nProject: <b>${rec.contact||rec.client}</b>${rec.ceNo?` — ${rec.ceNo}`:""}\n🏁 Turnover Date: <b>${rec.turnoverDate}</b>\nUpdated by: ${session?.name||"Sales"}`;
@@ -5305,15 +5322,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             const existingTov=checklist.find(c=>c.type==="Turnover"&&(c.projectId===rec.id||c.dealId===rec.id));
             if(existingTov){
               upChecklist(cs=>cs.map(c=>c.id===existingTov.id?{...c,dueDate:rec.turnoverDate}:c));
-              if(isSupabaseReady())sbUpdate('checklists',existingTov.id,{due_date:rec.turnoverDate}).catch(()=>{});
+              if(isSupabaseReady()){const ok=await sbUpdate('checklists',existingTov.id,{due_date:rec.turnoverDate});turnoverOk=turnoverOk&&ok;}
             }else{
               const tov={id:uid(),type:"Turnover",title:"Client Turnover",dueDate:rec.turnoverDate,projectId:rec.id,dealId:rec.id,dept:"Operations",status:"Scheduled",priority:"Normal",createdDate:today,createdBy:session?.name||role,notes:""};
               upChecklist(cs=>[...cs,tov]);
-              if(isSupabaseReady())sbInsert('checklists',toSbChecklist(tov)).catch(()=>{});
+              if(isSupabaseReady()){const result=await sbInsert('checklists',toSbChecklist(tov));turnoverOk=turnoverOk&&!!result;}
             }
           }
+          stepResults.push({label:"Turnover checklist",ok:turnoverOk});
         }
       }
+      const failedSteps=stepResults.filter(s=>!s.ok);
+      if(failedSteps.length) toastEmit(`⚠️ ${rec.client} saved, but needs attention: ${failedSteps.map(f=>f.label).join(", ")} — saved on this device only, check console.`,"warning",10000);
     }catch(err){
       console.error("saveDeal side-effect failed:",err);
       toastEmit("Deal saved, but a follow-up step failed — check console.","warning");
@@ -5480,10 +5500,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       status:"Active",
     };
     upJos(js=>[jo,...js]);
-    if(isSupabaseReady()) await sbSyncOne("job_orders",jo,toSbJO);
+    // Each step below tracks its own pass/fail instead of one generic
+    // "something failed" — reported as a single, specific summary toast at
+    // the end so it's clear exactly which step needs a retry.
+    const stepResults=[];
+    if(isSupabaseReady()){
+      const joOk=await sbSyncOne("job_orders",jo,toSbJO);
+      stepResults.push({label:"Job Order",ok:joOk});
+    }
     // Create project card with PM/AE pre-populated — awaited so Ops/Sales
     // don't see "awarded" without the department task checklists existing yet.
-    await createProjectCard(id,{...awardModal,
+    const cardOk=await createProjectCard(id,{...awardModal,
       aeAssigned:jo.aeAssigned,
       pm1:jo.pm1||"",
       pm2:jo.pm2||"",
@@ -5492,11 +5519,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       coordinator:jo.coordinator||"",
       awardDate:form.triggerDate||today,
     });
+    stepResults.push({label:"Project Card & Checklists",ok:cardOk});
     // Auto-set QS budget at 30% margin target (70% cost of contract value)
     const contractVal=Number(awardModal.value||0);
     if(contractVal>0){
       const costTarget=contractVal*0.70;
-      saveBudget(id,{
+      const budgetOk=await saveBudget(id,{
         Materials: Math.round(costTarget*0.50),
         Labor:     Math.round(costTarget*0.25),
         Overhead:  Math.round(costTarget*0.15),
@@ -5505,6 +5533,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         autoGenerated:true,
         autoGeneratedAt:today,
       });
+      stepResults.push({label:"Starting Budget",ok:budgetOk});
     }
     // Log
     logActivity(id,"Project Awarded",`${awardModal.client} — JO ${jo.joNo} issued. PM: ${pmDisplay}. AE: ${jo.aeAssigned||"—"}. Awarded by: ${session?.name}.`,session?.name);
@@ -5532,9 +5561,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // someone to happen to open the Billing page.
     if(form.paymentTerms){
       upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentTerms:form.paymentTerms}:d));
-      if(isSupabaseReady())sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}).catch(()=>{});
+      const termsOk=isSupabaseReady()?await sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}):true;
+      stepResults.push({label:"Payment Terms",ok:termsOk});
       generateBillingSchedule(id,form.paymentTerms,contractVal);
     }
+    const failedSteps=stepResults.filter(s=>!s.ok);
+    if(failedSteps.length) toastEmit(`⚠️ ${awardModal.client} awarded, but needs attention: ${failedSteps.map(f=>f.label).join(", ")} — check console.`,"warning",10000);
     }catch(err){
       console.error("confirmAward failed:",err);
       toastEmit("Award may be incomplete — a follow-up step failed. Check the project card and console.","warning",9000);
