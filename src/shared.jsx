@@ -90,9 +90,18 @@ export const KPI=({label,value,color,sub,small})=>(
   </div>
 );
 export let _toastListeners=[];
+export let _toastUpdateListeners=[];
 export const toastEmit=(msg,type="success",duration=3500)=>{
   const id=Date.now()+Math.random();
   _toastListeners.forEach(fn=>fn({id,msg,type,duration}));
+  return id;
+};
+// Updates an in-place toast (by the id toastEmit returned) instead of firing a
+// new one — used for "saving… / saved / failed" sequences where the same slot
+// should morph through states rather than stacking. Passing duration=null
+// leaves the toast up (its original timer, if any, still applies).
+export const toastUpdate=(id,msg,type,duration)=>{
+  _toastUpdateListeners.forEach(fn=>fn({id,msg,type,duration}));
 };
 export function Toaster(){
   const[toasts,setToasts]=useState([]);
@@ -101,8 +110,16 @@ export function Toaster(){
       setToasts(p=>[...p,t]);
       setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==t.id)),t.duration||3500);
     };
+    const updateHandler=t=>{
+      setToasts(p=>p.map(x=>x.id===t.id?{...x,msg:t.msg,type:t.type||x.type}:x));
+      if(t.duration!=null) setTimeout(()=>setToasts(p=>p.filter(x=>x.id!==t.id)),t.duration);
+    };
     _toastListeners.push(handler);
-    return()=>{_toastListeners=_toastListeners.filter(f=>f!==handler);};
+    _toastUpdateListeners.push(updateHandler);
+    return()=>{
+      _toastListeners=_toastListeners.filter(f=>f!==handler);
+      _toastUpdateListeners=_toastUpdateListeners.filter(f=>f!==updateHandler);
+    };
   },[]);
   if(!toasts.length) return null;
   const TYPE_STYLE={
@@ -110,6 +127,7 @@ export function Toaster(){
     error:  {bg:"#fef2f2",border:"#fca5a5",color:"#dc2626",icon:"❌"},
     warning:{bg:"#fffbeb",border:"#fde68a",color:"#92400e",icon:"⚠️"},
     info:   {bg:"#eff6ff",border:"#93c5fd",color:"#1d4ed8",icon:"ℹ️"},
+    pending:{bg:"#f8fafc",border:"#cbd5e1",color:"#334155",icon:"⏳"},
   };
   return(
     <div style={{position:"fixed",bottom:24,right:24,zIndex:9999,display:"flex",flexDirection:"column",gap:10,pointerEvents:"none"}}>
