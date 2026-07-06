@@ -227,6 +227,25 @@ export const sbList = async (table, opts = {}) => {
   return data || []
 }
 
+// Concurrency-limited runner (preserves input order). sbLoadAll fires ~34 table
+// reads; firing all at once floods a constrained connection (PH<->Singapore) so
+// that a brief network hiccup stalls the whole batch to the 12s timeout at
+// once, and failed writes pile up in the retry queue. Running a few at a time
+// keeps the app resilient on flaky networks. It's a background refresh (the UI
+// is already live from the IndexedDB cache), so pacing it is imperceptible.
+const _mapLimit = async (thunks, limit) => {
+  const results = new Array(thunks.length)
+  let next = 0
+  const worker = async () => {
+    while (next < thunks.length) {
+      const i = next++
+      results[i] = await thunks[i]()
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, thunks.length) }, worker))
+  return results
+}
+
 export const sbLoadAll = async () => {
   if (!supabase) return null
   try {
@@ -239,53 +258,53 @@ export const sbLoadAll = async () => {
       suppliers, subcontractors,
       payables, loans, loanPayments,
       swos, boqLibrary, checkVouchers, blockers, dailyLogs
-    ] = await Promise.all([
-      sbList('deals',                    { order: 'created_at', limit: 1000 }),
-      sbList('job_orders',               { order: 'created_at', limit: 500 }),
+    ] = await _mapLimit([
+      () => sbList('deals',                    { order: 'created_at', limit: 1000 }),
+      () => sbList('job_orders',               { order: 'created_at', limit: 500 }),
       // Defensive limits below: none of these are expected to approach these
       // ceilings under normal use, but an unbounded fetch is exactly the shape
       // of bug that silently grew suppliers/subcontractors to 60,000+/10,000+
       // rows before anyone noticed — a limit turns a future repeat of that into
       // a visibly-missing-data bug instead of an invisible, ever-slower one.
-      sbList('project_cards',            { order: 'created_at', limit: 1000 }),
-      sbList('project_card_dept_tasks',  { order: 'sort_order', asc: true, limit: 5000 }),
-      sbList('project_card_dept_status', { limit: 2000 }),
-      sbList('billing_milestones',       { order: 'created_at', limit: 2000 }),
-      sbList('billing_payments',         { order: 'created_at', limit: 5000 }),
-      sbList('expenses',                 { order: 'date',       limit: 1000 }),
-      sbList('inflows',                  { order: 'date',       limit: 1000 }),
-      sbList('purchase_requests',        { order: 'created_at', limit: 500 }),
-      sbList('material_requests',        { order: 'created_at', limit: 500 }),
-      sbList('budget_requests',          { order: 'created_at', limit: 500 }),
-      sbList('addenda',                  { order: 'created_at', limit: 500 }),
-      sbList('cash_positions',           { order: 'date',       limit: 2000 }),
-      sbList('project_budgets',          { limit: 1000 }),
-      sbList('checklists',               { order: 'sort_order', asc: true, limit: 1000 }),
-      sbList('swatches',                 { order: 'created_at', limit: 500 }),
-      sbList('activity_log',             { order: 'created_at', limit: 200 }),
+      () => sbList('project_cards',            { order: 'created_at', limit: 1000 }),
+      () => sbList('project_card_dept_tasks',  { order: 'sort_order', asc: true, limit: 5000 }),
+      () => sbList('project_card_dept_status', { limit: 2000 }),
+      () => sbList('billing_milestones',       { order: 'created_at', limit: 2000 }),
+      () => sbList('billing_payments',         { order: 'created_at', limit: 5000 }),
+      () => sbList('expenses',                 { order: 'date',       limit: 1000 }),
+      () => sbList('inflows',                  { order: 'date',       limit: 1000 }),
+      () => sbList('purchase_requests',        { order: 'created_at', limit: 500 }),
+      () => sbList('material_requests',        { order: 'created_at', limit: 500 }),
+      () => sbList('budget_requests',          { order: 'created_at', limit: 500 }),
+      () => sbList('addenda',                  { order: 'created_at', limit: 500 }),
+      () => sbList('cash_positions',           { order: 'date',       limit: 2000 }),
+      () => sbList('project_budgets',          { limit: 1000 }),
+      () => sbList('checklists',               { order: 'sort_order', asc: true, limit: 1000 }),
+      () => sbList('swatches',                 { order: 'created_at', limit: 500 }),
+      () => sbList('activity_log',             { order: 'created_at', limit: 200 }),
       // Explicit column list, NOT '*' — password_hash's column-level SELECT was
       // revoked from anon/authenticated (migration 017), and PostgREST returns
       // a flat 403 "permission denied" for select=* the moment ANY column in
       // the table lacks a grant for the caller's role, even if every other
       // column is readable. This was silently breaking every user_profiles
       // load (empty `users` array on every session) until fixed 2026-07-03.
-      sbList('user_profiles',            { select: 'id,username,name,role,title,status,email,created_at', order: 'role', limit: 500 }),
-      sbList('app_settings',             { limit: 200 }),
-      sbList('design_requests',          { order: 'created_at', limit: 2000 }),
-      sbList('inventory_items',          { order: 'created_at', limit: 2000 }),
-      sbList('stock_movements',          { order: 'created_at', limit: 5000 }),
-      sbList('projects',                 { limit: 1000 }),
-      sbList('suppliers',       { order: 'company_name', asc: true, limit: 2000 }),
-      sbList('subcontractors',  { order: 'company_name', asc: true, limit: 2000 }),
-      sbList('payables',        { order: 'created_at', limit: 500 }),
-      sbList('loans',           { order: 'created_at', limit: 200 }),
-      sbList('loan_payments',   { order: 'date',        limit: 1000 }),
-      sbList('subcon_work_orders', { order: 'created_at', limit: 500 }),
-      sbList('boq_library',        { order: 'name', asc: true, limit: 2000 }),
-      sbList('check_vouchers',     { order: 'date', limit: 500 }),
-      sbList('project_blockers',   { order: 'created_at', limit: 1000 }),
-      sbList('daily_logs',         { order: 'log_date', limit: 1000 }),
-    ])
+      () => sbList('user_profiles',            { select: 'id,username,name,role,title,status,email,created_at', order: 'role', limit: 500 }),
+      () => sbList('app_settings',             { limit: 200 }),
+      () => sbList('design_requests',          { order: 'created_at', limit: 2000 }),
+      () => sbList('inventory_items',          { order: 'created_at', limit: 2000 }),
+      () => sbList('stock_movements',          { order: 'created_at', limit: 5000 }),
+      () => sbList('projects',                 { limit: 1000 }),
+      () => sbList('suppliers',       { order: 'company_name', asc: true, limit: 2000 }),
+      () => sbList('subcontractors',  { order: 'company_name', asc: true, limit: 2000 }),
+      () => sbList('payables',        { order: 'created_at', limit: 500 }),
+      () => sbList('loans',           { order: 'created_at', limit: 200 }),
+      () => sbList('loan_payments',   { order: 'date',        limit: 1000 }),
+      () => sbList('subcon_work_orders', { order: 'created_at', limit: 500 }),
+      () => sbList('boq_library',        { order: 'name', asc: true, limit: 2000 }),
+      () => sbList('check_vouchers',     { order: 'date', limit: 500 }),
+      () => sbList('project_blockers',   { order: 'created_at', limit: 1000 }),
+      () => sbList('daily_logs',         { order: 'log_date', limit: 1000 }),
+    ], 6)
 
     // Build pcards object with departments embedded
     const DEPT_ORDER = ['Sales','Design','QS','Procurement','Operations','Finance']
