@@ -2836,12 +2836,35 @@ export default function App(){
   // down as if it synced, while the change never reached the server at all.
   // This must never be throttled like the generic warning above: it's the
   // one remaining path where something the user believes saved is gone.
+  // Tables that are derived/audit records, not something a person typed in —
+  // losing one means the history feed is missing an entry, not that someone's
+  // work vanished. A dropped write here should read as low-stakes, not as a
+  // wall of identical "NOT SAVED, please redo it" errors (which is exactly
+  // what a burst of same-cause drops used to produce, one toast per item).
+  const LOW_STAKES_DROP_TABLES=useRef(new Set(["activity_log","project_card_dept_tasks","project_card_dept_status"])).current;
+  const dropBufferRef=useRef([]);
+  const dropTimerRef=useRef(null);
   useEffect(()=>{
     setSbDropHandler((op,kind,msg)=>{
-      const label=op?.data?.client||op?.data?.client_name||op?.data?.name||op?.data?.title||(op?.id?`id ${op.id}`:"a record");
-      toastEmit(`❌ Could not save a change to ${op?.table||"the server"} (${label}) after several attempts — it was NOT saved. Please redo it. ${msg?`(${msg})`:""}`,"error",15000);
+      dropBufferRef.current.push({table:op?.table||"the server",msg});
+      if(dropTimerRef.current) return;
+      // Collect drops for a short window instead of firing one toast per
+      // item — a single doomed batch (e.g. 20 activity_log entries pointing
+      // at a deal that never synced) used to paint 20 identical red toasts.
+      dropTimerRef.current=setTimeout(()=>{
+        const batch=dropBufferRef.current; dropBufferRef.current=[]; dropTimerRef.current=null;
+        const byTable={};
+        batch.forEach(({table,msg})=>{ (byTable[table]=byTable[table]||{count:0,msg}).count++; });
+        Object.entries(byTable).forEach(([table,{count,msg}])=>{
+          const low=LOW_STAKES_DROP_TABLES.has(table);
+          const text=low
+            ? `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
+            : `❌ ${count} change${count===1?"":"s"} to ${table} could not be saved after several attempts — ${count===1?"it":"they"} were NOT saved. Please redo ${count===1?"it":"them"}. ${msg?`(${msg})`:""}`;
+          toastEmit(text,low?"warning":"error",low?8000:15000);
+        });
+      },500);
     });
-    return ()=>setSbDropHandler(null);
+    return ()=>{ setSbDropHandler(null); if(dropTimerRef.current){clearTimeout(dropTimerRef.current);dropTimerRef.current=null;} };
   },[]);
 
   // Offline write queue: track how many writes are still pending and keep
