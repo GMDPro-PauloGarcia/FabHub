@@ -6290,7 +6290,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </div>
   ):null;
 
-  const Wrap=React.useCallback(({children})=>{
+  // Not memoized with useCallback: this closes over ~15 pieces of modal state
+  // (confirmDel, dealModal, expModal, swModal, infModal, ...) that all live in
+  // the Global Modals block below. An explicit dependency array here previously
+  // omitted every one of them, so Wrap kept a stale closure between renders —
+  // e.g. clicking delete on Pipeline set confirmDel, but Wrap's memoized
+  // closure still had the OLD confirmDel value until something that WAS in
+  // the deps list (like `page`) changed, which is why navigating to Dashboard
+  // and back made the confirmation modal "suddenly" appear. Recreating this
+  // function fresh on every render costs nothing meaningful (App re-renders
+  // on every one of these state changes anyway) and removes the whole bug
+  // class rather than chasing down every missing dependency by hand.
+  const Wrap=({children})=>{
     const W=navCollapsed?64:220;
     const alreadyWrapped=useContext(WrapCtx);
     return(
@@ -6491,7 +6502,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </div>
     </WrapCtx.Provider>
   );
-  },[navCollapsed, isMobile, role, page, fromHome]);
+  };
   // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
   if(!ready) return(
     <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -9690,8 +9701,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
           );
         })()}
-
-        <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} role={role}/>
       </Wrap>
       {awardReqModal&&<AwardReqModal deal={awardReqModal} session={session} today={today} onClose={()=>setAwardReqModal(null)} onSubmit={formData=>{
           const d=awardReqModal;
