@@ -5357,40 +5357,52 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const delDeal=id=>{
     if(role!=="Manager"){toastEmit("Only Managers can delete deals.","error");return;}
-    const deal=deals.find(d=>d.id===id);
-    // Cascade-clear all related local state
-    const dealMsIds=billings.filter(b=>b.dealId===id).map(b=>b.id);
-    upDeals(ds=>ds.filter(d=>d.id!==id));
-    upProjs(ps=>{const n={...ps};delete n[id];return n;});
-    upBillings(bs=>bs.filter(b=>b.dealId!==id));
-    upPrs(ps=>ps.filter(p=>(p.dealId||p.projectId)!==id));
-    upMreqs(ms=>ms.filter(m=>m.dealId!==id));
-    upBreqs(bs=>bs.filter(b=>b.dealId!==id));
-    upAddenda(as=>as.filter(a=>a.dealId!==id));
-    upDrfs(ds=>ds.filter(d=>d.dealId!==id));
-    upChecklist(cs=>cs.filter(c=>(c.projectId||c.dealId)!==id));
-    upSwatches(ss=>ss.filter(s=>(s.projectId||s.dealId)!==id));
-    upExps(es=>es.filter(e=>(e.projectId||e.dealId)!==id));
+    // Close the confirmation modal immediately and unconditionally — closing
+    // it is a pure UI action and must never depend on the cascade below
+    // succeeding. Previously setConfirmDel(null) sat after ~10 local state
+    // updates with no try/catch: if any one of them threw, the modal was
+    // left stuck open even though earlier updates (e.g. the deal itself
+    // disappearing from Pipeline) had already gone through — reported live
+    // as "delete didn't close but the deal was deleted".
     setConfirmDel(null);
-    logActivity(id,"Deal Deleted",`${deal?.client||id} permanently deleted`,session?.name||role);
-    if(isSupabaseReady()&&isUUID(id)){
-      sbDelete('deals',id)
-        .then(()=>{ toastEmit("Deal deleted","success"); })
-        .catch(e=>{ toastEmit("Supabase delete failed — check console","error"); console.error("delDeal:",e); });
-      // Cascade deletes (DB has ON DELETE CASCADE but clean up explicitly too)
-      dealMsIds.forEach(msId=>sbDeleteWhere('billing_payments','milestone_id',msId));
-      const tables=['projects','billing_milestones','job_orders','purchase_requests',
-        'material_requests','budget_requests','addenda','design_requests',
-        'checklists','project_cards','project_budgets','swatches'];
-      tables.forEach(t=>sbDeleteWhere(t,'deal_id',id));
-      sbDeleteWhere('expenses','deal_id',id);
-      const cardIds=pcards[id]?.id?[pcards[id].id]:[];
-      if(cardIds.length){
-        sbDeleteWhere('project_card_dept_tasks','card_id',cardIds,'in');
-        sbDeleteWhere('project_card_dept_status','card_id',cardIds,'in');
+    const deal=deals.find(d=>d.id===id);
+    try{
+      // Cascade-clear all related local state
+      const dealMsIds=billings.filter(b=>b.dealId===id).map(b=>b.id);
+      upDeals(ds=>ds.filter(d=>d.id!==id));
+      upProjs(ps=>{const n={...ps};delete n[id];return n;});
+      upBillings(bs=>bs.filter(b=>b.dealId!==id));
+      upPrs(ps=>ps.filter(p=>(p.dealId||p.projectId)!==id));
+      upMreqs(ms=>ms.filter(m=>m.dealId!==id));
+      upBreqs(bs=>bs.filter(b=>b.dealId!==id));
+      upAddenda(as=>as.filter(a=>a.dealId!==id));
+      upDrfs(ds=>ds.filter(d=>d.dealId!==id));
+      upChecklist(cs=>cs.filter(c=>(c.projectId||c.dealId)!==id));
+      upSwatches(ss=>ss.filter(s=>(s.projectId||s.dealId)!==id));
+      upExps(es=>es.filter(e=>(e.projectId||e.dealId)!==id));
+      logActivity(id,"Deal Deleted",`${deal?.client||id} permanently deleted`,session?.name||role);
+      if(isSupabaseReady()&&isUUID(id)){
+        sbDelete('deals',id)
+          .then(()=>{ toastEmit("Deal deleted","success"); })
+          .catch(e=>{ toastEmit("Supabase delete failed — check console","error"); console.error("delDeal:",e); });
+        // Cascade deletes (DB has ON DELETE CASCADE but clean up explicitly too)
+        dealMsIds.forEach(msId=>sbDeleteWhere('billing_payments','milestone_id',msId));
+        const tables=['projects','billing_milestones','job_orders','purchase_requests',
+          'material_requests','budget_requests','addenda','design_requests',
+          'checklists','project_cards','project_budgets','swatches'];
+        tables.forEach(t=>sbDeleteWhere(t,'deal_id',id));
+        sbDeleteWhere('expenses','deal_id',id);
+        const cardIds=pcards[id]?.id?[pcards[id].id]:[];
+        if(cardIds.length){
+          sbDeleteWhere('project_card_dept_tasks','card_id',cardIds,'in');
+          sbDeleteWhere('project_card_dept_status','card_id',cardIds,'in');
+        }
+      } else if(isSupabaseReady()&&!isUUID(id)){
+        toastEmit("Deal removed locally — not synced (legacy ID)","warning");
       }
-    } else if(isSupabaseReady()&&!isUUID(id)){
-      toastEmit("Deal removed locally — not synced (legacy ID)","warning");
+    }catch(err){
+      console.error("delDeal cascade failed:",err);
+      toastEmit(`⚠️ ${deal?.client||"Deal"} removed, but cleaning up related records failed — check console.`,"warning",9000);
     }
   };
 
