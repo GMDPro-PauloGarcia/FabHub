@@ -129,7 +129,7 @@ const claimDocNumber=async(prefix,existingNumbers,digits=4)=>{
 // already fixed for PO/CV/JO. Only re-claims when the number looks like this
 // year's auto-format; a manually customized or prior-year number (e.g. an
 // addendum suffix) is left untouched.
-const claimYearScopedNo=async(base,digits,currentNo,existingNos)=>{
+const claimYearScopedNo=async(base,digits,currentNo,existingNos,dbAssigns=false)=>{
   const yr=new Date().getFullYear();
   const re=new RegExp(`^${base}-(\\d{4})-(\\d+)$`);
   const m=re.exec((currentNo||"").trim());
@@ -139,11 +139,21 @@ const claimYearScopedNo=async(base,digits,currentNo,existingNos)=>{
     try{
       const{data,error}=await _rpcWithTimeout(supabase.rpc('next_doc_number',{p_prefix:`${base}-${yr}`,p_min:localMax}));
       if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${base}-${yr}-${String(Number(data)).padStart(digits,"0")}`;
-    }catch(e){ /* fall back to local allocation */ }
+    }catch(e){ /* fall back below */ }
   }
+  // RPC unreachable (offline, or the timeout fired on a flaky connection). For a
+  // DB-assigned series, DO NOT guess "localMax + 1" from this device's possibly
+  // stale list — that is exactly what let two offline devices both save the same
+  // CE number. Leave it blank so the server's BEFORE INSERT trigger stamps a
+  // guaranteed-unique value when the deal actually syncs (migration 020); the
+  // realtime feed then delivers the assigned number back into local state.
+  if(dbAssigns) return "";
   return `${base}-${yr}-${String(localMax+1).padStart(digits,"0")}`;
 };
-const claimCENo=(dealCeNo,existingCeNos)=>claimYearScopedNo("CE",3,dealCeNo,existingCeNos);
+// CE numbers are server-assigned on insert (see supabase_migration_020.sql), so
+// an offline claim that can't reach the RPC resolves to blank ("CE pending")
+// rather than a collision-prone local guess.
+const claimCENo=(dealCeNo,existingCeNos)=>claimYearScopedNo("CE",3,dealCeNo,existingCeNos,true);
 const claimEvNo=(evNo,existingEvNos)=>claimYearScopedNo("EV",3,evNo,existingEvNos);
 
 
@@ -685,7 +695,7 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
             <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>JO Preview</div>
             <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:".8rem"}}>
               <div><span style={{color:"#94a3b8"}}>Client: </span><strong>{deal.client}</strong></div>
-              <div><span style={{color:"#94a3b8"}}>CE: </span><strong>{deal.ceNo||"TBA"}</strong></div>
+              <div><span style={{color:"#94a3b8"}}>CE: </span><strong>{deal.ceNo||"CE pending"}</strong></div>
               <div><span style={{color:"#94a3b8"}}>PM: </span><strong>{[form.pm1,form.pm2,form.pm3].filter(Boolean).join(", ")}</strong></div>
               {form.coordinator&&<div><span style={{color:"#94a3b8"}}>Coordinator: </span><strong>{form.coordinator}</strong></div>}
               <div><span style={{color:"#94a3b8"}}>AE: </span><strong>{form.aeAssigned||"—"}</strong></div>
@@ -15458,7 +15468,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                 <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f8fafc",borderRadius:9,border:"1px solid #e2e8f0",flexWrap:"wrap",gap:8}}>
                   <div>
                     <div style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.ceNo||"No project name"}</div>
-                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {d.ceType} · {d.dateAcquired||""}</div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"CE pending"} · {d.ceType} · {d.dateAcquired||""}</div>
                   </div>
                   <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                     <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>₱{Number(d.value||0).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
