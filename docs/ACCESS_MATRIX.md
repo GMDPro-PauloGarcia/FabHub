@@ -11,7 +11,27 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 
 ---
 
-## ⚠️ Decisions needed before we build (read this first)
+## ✅ Decisions — RESOLVED (2026-07-08)
+
+1. **`Operations` = `ProjectMover`** — merged in policies.
+2. **`Cost Control` = `Finance`** — merged. (Finance therefore approves Budget Requests.)
+3. **Manager-only delete** on deals & financial records (deals, expenses, inflows,
+   billing, vouchers, payables, cash, budgets). **`audit_log` is append-only** — no
+   edit/delete for anyone, including Manager. This overrides the stray `D` cells in
+   the workbook (Sales→Deals, Finance/Accounting→Expenses, Finance→cash) per the
+   owner's Decision #3.
+4. **Sales sees the entire pipeline** (no per-rep siloing).
+5. **Coarse gating** for the `app_settings` JSON blobs (e-vouchers, cash position,
+   bot settings): Manager/Finance only; e-vouchers may migrate to a real table later.
+6. **`Accounting` is a first-class role** — added to the app's role picker.
+7. **Procurement** has full control (VCEDA) of PRs, material requests, budget
+   requests, subcon work orders, suppliers, subcontractors.
+8. Added view grants: Accounting & Warehouse can view Project Cards; Warehouse can
+   view Expenses; Sales can view the Daily Site Log.
+
+---
+
+## (historical) Decisions needed before we build
 
 1. **"Operations" vs "ProjectMover".** The code constantly checks a role called
    **`Operations`**, but no user actually has it — the 8 operations staff are
