@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
@@ -110,15 +110,20 @@ const _rpcWithTimeout=(promise,ms=12000)=>Promise.race([
 // next number via the next_doc_number RPC (atomic across devices), passing the
 // current local max as a floor; falls back to local count if the RPC is
 // unavailable (e.g. before supabase_doc_numbers.sql is applied, or offline).
-const claimDocNumber=async(prefix,existingNumbers,digits=4)=>{
+const claimDocNumber=async(prefix,existingNumbers,digits=4,dbAssigns=false)=>{
   const re=new RegExp(`^${prefix}-(\\d+)$`);
   const localMax=(existingNumbers||[]).reduce((m,s)=>{const mt=re.exec(String(s||""));return mt?Math.max(m,Number(mt[1])):m;},0);
   if(isSupabaseReady()){
     try{
       const {data,error}=await _rpcWithTimeout(supabase.rpc('next_doc_number',{p_prefix:prefix,p_min:localMax}));
       if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${prefix}-${String(Number(data)).padStart(digits,"0")}`;
-    }catch(e){ /* fall back to local allocation */ }
+    }catch(e){ /* fall back below */ }
   }
+  // RPC unreachable (offline / timeout). For DB-assigned series (migration 022:
+  // JO/CV/DRF) leave the number blank so the server's BEFORE INSERT trigger
+  // stamps a collision-free value on sync — don't guess "localMax + 1" from a
+  // possibly-stale local list, the same trap that duplicated CE numbers.
+  if(dbAssigns) return "";
   return `${prefix}-${String(localMax+1).padStart(digits,"0")}`;
 };
 // Year-scoped document numbers (FOO-YYYY-NNN, e.g. CE-2026-005, EV-2026-003) —
@@ -129,7 +134,7 @@ const claimDocNumber=async(prefix,existingNumbers,digits=4)=>{
 // already fixed for PO/CV/JO. Only re-claims when the number looks like this
 // year's auto-format; a manually customized or prior-year number (e.g. an
 // addendum suffix) is left untouched.
-const claimYearScopedNo=async(base,digits,currentNo,existingNos)=>{
+const claimYearScopedNo=async(base,digits,currentNo,existingNos,dbAssigns=false)=>{
   const yr=new Date().getFullYear();
   const re=new RegExp(`^${base}-(\\d{4})-(\\d+)$`);
   const m=re.exec((currentNo||"").trim());
@@ -139,11 +144,21 @@ const claimYearScopedNo=async(base,digits,currentNo,existingNos)=>{
     try{
       const{data,error}=await _rpcWithTimeout(supabase.rpc('next_doc_number',{p_prefix:`${base}-${yr}`,p_min:localMax}));
       if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${base}-${yr}-${String(Number(data)).padStart(digits,"0")}`;
-    }catch(e){ /* fall back to local allocation */ }
+    }catch(e){ /* fall back below */ }
   }
+  // RPC unreachable (offline, or the timeout fired on a flaky connection). For a
+  // DB-assigned series, DO NOT guess "localMax + 1" from this device's possibly
+  // stale list — that is exactly what let two offline devices both save the same
+  // CE number. Leave it blank so the server's BEFORE INSERT trigger stamps a
+  // guaranteed-unique value when the deal actually syncs (migration 020); the
+  // realtime feed then delivers the assigned number back into local state.
+  if(dbAssigns) return "";
   return `${base}-${yr}-${String(localMax+1).padStart(digits,"0")}`;
 };
-const claimCENo=(dealCeNo,existingCeNos)=>claimYearScopedNo("CE",3,dealCeNo,existingCeNos);
+// CE numbers are server-assigned on insert (see supabase_migration_020.sql), so
+// an offline claim that can't reach the RPC resolves to blank ("CE pending")
+// rather than a collision-prone local guess.
+const claimCENo=(dealCeNo,existingCeNos)=>claimYearScopedNo("CE",3,dealCeNo,existingCeNos,true);
 const claimEvNo=(evNo,existingEvNos)=>claimYearScopedNo("EV",3,evNo,existingEvNos);
 
 
@@ -685,7 +700,7 @@ function AwardModal({deal,session,today,onClose,onConfirm,drfs}){
             <div style={{fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>JO Preview</div>
             <div style={{display:"flex",gap:20,flexWrap:"wrap",fontSize:".8rem"}}>
               <div><span style={{color:"#94a3b8"}}>Client: </span><strong>{deal.client}</strong></div>
-              <div><span style={{color:"#94a3b8"}}>CE: </span><strong>{deal.ceNo||"TBA"}</strong></div>
+              <div><span style={{color:"#94a3b8"}}>CE: </span><strong>{deal.ceNo||"CE pending"}</strong></div>
               <div><span style={{color:"#94a3b8"}}>PM: </span><strong>{[form.pm1,form.pm2,form.pm3].filter(Boolean).join(", ")}</strong></div>
               {form.coordinator&&<div><span style={{color:"#94a3b8"}}>Coordinator: </span><strong>{form.coordinator}</strong></div>}
               <div><span style={{color:"#94a3b8"}}>AE: </span><strong>{form.aeAssigned||"—"}</strong></div>
@@ -2566,7 +2581,11 @@ export default function App(){
       // Step 1: Session/role from localStorage (sync, tiny)
       try {
         const s=localStorage.getItem(KEYS.session);
-        if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
+        // Only restore a session if we still hold a valid role token (RLS needs it).
+        // Offline (no Supabase) we allow the cached session so the app still opens.
+        const hasToken = isSupabaseReady() ? restoreAppToken() : true;
+        if(s && hasToken){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
+        else if(s){ localStorage.removeItem(KEYS.session); localStorage.removeItem(KEYS.role); }
         // Session (KEYS.session) is the single source of truth for role — don't
         // let a stale KEYS.role value (e.g. left over from a previous user/role on
         // this browser, never updated by the Supabase-auth SIGNED_IN path) silently
@@ -2624,14 +2643,11 @@ export default function App(){
 
       // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
       if(!isSupabaseReady()){ setSbReady(true); return; }
-      // RLS allows the public anon key to read/write directly (policies grant the `anon` role),
-      // so data access does NOT require a per-device Supabase session. We enable the app
-      // immediately and load with the anon key — this is what makes every device/browser sync
-      // reliably (no session = no stale-token / rate-limit / in-app-browser failures).
+      // Data access now requires the role-bearing token minted at login (RLS,
+      // migration 024). restoreAppToken() in Step 1 already re-loaded it if still
+      // valid, and the client's accessToken option attaches it to every request —
+      // no anonymous session needed.
       setSbReady(true);
-      // Best-effort session in the BACKGROUND (not required for data access) — keeps the
-      // authenticated role / realtime warm without blocking or churning anonymous users.
-      supabase.auth.getSession().then(({data:{session:s}})=>{ if(!s) supabase.auth.signInAnonymously().catch(()=>{}); }).catch(()=>{});
       if(isSupabaseReady()){
         try{
           const _tLoad=_perf();
@@ -2781,33 +2797,8 @@ export default function App(){
     };
     init();
 
-    // Listen for auth state changes (login/logout)
-    if(!supabase) return;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Silently sync Supabase data in background — never blocks login
-        try {
-          const { data: profile } = await supabase.from('user_profiles').select('id,username,name,role,title,status').eq('id', session.user.id).single();
-          if (profile && profile.status === 'active') {
-            const sess = { userId: session.user.id, name: profile.name, username: profile.username, role: profile.role, title: profile.title||profile.role };
-            setSession(sess);
-            setRole(profile.role);
-            persist(KEYS.session, sess);
-            loadAllFromSupabase(); // fire-and-forget, don't await
-          }
-        } catch(e) { /* Supabase profile not found — user logged in via localStorage, that's fine */ }
-      } else if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setRole(null);
-        setAuthView("login");
-        setPage("home");
-        localStorage.removeItem(KEYS.session);
-        localStorage.removeItem(KEYS.role);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // (Supabase auth-state listener removed — FabHub now uses its own token-based
+    // login: appLogin mints the role token, restoreAppToken rehydrates it on boot.)
   },[]);
 
   // App-wide sync-failure warning: when ANY Supabase write fails (offline, RLS,
@@ -4638,7 +4629,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Was `DRF-${ds.length+1}` — generated from array LENGTH, so deleting any
     // DRF made the next one reuse a number, on top of the same cross-device
     // collision risk the other doc numbers already had. Atomic counter fixes both.
-    const no=await claimDocNumber("DRF",drfs.map(d=>d.drfNo));
+    const no=await claimDocNumber("DRF",drfs.map(d=>d.drfNo),4,true);
     const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New",createdBy:drf.createdBy||session?.name||role};
     upDrfs(ds=>[...ds,rec]);
     sendTelegramNotification("design",`📝 <b>New Design Request</b>\n${no} · ${drf.client||"?"}\nProject: ${drf.projectTitle||"—"}\nDeadline: ${drf.designDeadline||"TBD"}\nBy: ${drf.createdBy||"?"}`);
@@ -4751,20 +4742,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Supabase is unreachable (offline / pre-load / RPC not yet applied).
     if(isSupabaseReady()){
       try{
-        const{data,error}=await _rpcWithTimeout(supabase.rpc('verify_login',{p_username:unameLower,p_password:password}));
-        const row=Array.isArray(data)?data[0]:data;
-        if(!error&&row?.found){
+        // mint-session verifies the password in Postgres and returns a signed,
+        // role-bearing token (stored by appLogin) that RLS uses for every request.
+        const{user,error}=await appLogin(unameLower,password);
+        if(user){
           viaServer=true;
-          u={id:row.id,username:row.username,name:row.name,role:row.role,title:row.title||row.role,status:row.status};
-          if(!row.password_ok&&!defUser) return "Incorrect password.";
-          if(row.password_ok){ needsUpgrade=!!row.needs_upgrade; }
-          else if(defUser){
-            // DB row exists but didn't match — still allow the DEFAULT_USERS
-            // hash as a secondary check (handles a blank password_hash in Supabase).
-            if(!(await checkPw(password,defUser.passwordHash,unameLower))) return "Incorrect password.";
-          }
+          u={id:user.id,username:user.username,name:user.name,role:user.role,title:user.title||user.role,status:user.status};
+          needsUpgrade=!!user.needs_upgrade;
+        } else if(error && !defUser){
+          return error;   // server rejected credentials and no built-in default to fall back to
         }
-      }catch(e){ /* fall back to local/default check below */ }
+        // else: rejected but a DEFAULT_USERS entry exists → fall through to the local check
+      }catch(e){ /* network/offline → fall back to local/default check below */ }
     }
     if(!viaServer){
       let localU=users.find(x=>x.username.toLowerCase()===unameLower);
@@ -4815,7 +4804,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return u?checkPw(password,u.passwordHash,u.username):false;
   };
   const logout=async()=>{
-    if(supabase){ try{ await Promise.race([supabase.auth.signOut(),new Promise(r=>setTimeout(r,2000))]); }catch(e){} }
+    appLogout();
     setSession(null);
     setRole(null);
     setAuthView("login");
@@ -5490,7 +5479,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
     const savingToastId=isSupabaseReady()?toastEmit(`⏳ Awarding ${awardModal.client} — saving to server…`,"pending",15000):null;
-    const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo));
+    const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo),4,true);
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
       stage:"06 · Kickoff",
       probability:100,
@@ -5711,7 +5700,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const exp=exps.find(e=>e.id===expId);
     if(!exp) return;
     const cvId=uid();
-    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     const cvRec={date:exp.expDate||today,cvNo:nextNo,payee:exp.supplier||exp.payee||"",amount:Number(exp.amount||0),description:exp.note||"",projectId:exp.projectId||null,bank:bankId||exp.bankAccount||"",notes:exp.remarks||"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:expId,id:cvId,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
     upExps(es=>es.map(e=>e.id===expId?{...e,acctStatus:"For Payment",paymentMethod:"Check",cvId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
@@ -5730,7 +5719,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const openAddCv=async()=>{
-    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     setCvForm({date:today,cvNo:nextNo,payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
     setEditCvId(null);setCvModal(true);
   };
@@ -5819,7 +5808,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!p) return;
     if(p.cvId||p.status==="Check Issued"){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
     const cvId=uid();
-    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     const cvRec={id:cvId,date:today,cvNo:nextNo,payee:p.vendor||"",amount:Number(p.amount||0),description:p.notes||p.invoiceRef||p.poNumber||"",projectId:p.projectId||null,bank:"",notes:p.notes||"",status:"Draft",poRef:p.poNumber||"",payableId:p.id,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:p.expenseId||null,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
     if(isSupabaseReady()) sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});
@@ -6076,11 +6065,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   setSync("saving");
                   // Heal the session (fixes a device that's showing no data due to a stale/expired
                   // token blocked by RLS), then do a full reload so EVERYTHING re-fetches cleanly.
-                  try{
-                    let {data:{session:s}}=await supabase.auth.getSession();
-                    if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
-                    if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
-                  }catch(e){}
+                  // If the role token has expired, reloading lands on the login
+                  // screen (boot clears the session when no valid token remains).
+                  if(!restoreAppToken()){ appLogout(); }
                   window.location.reload();
                 }}
                 title="Re-sync: reconnect to the server and reload all data"
@@ -6275,12 +6262,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // Re-establish the session BEFORE reloading — a missing/stale anonymous session under RLS
         // is the usual reason reads come back empty on one device but not others.
         try{
-          let {data:{session:s}}=await supabase.auth.getSession();
-          if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
-          if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
-          ({data:{session:s}}=await supabase.auth.getSession());
-          console.info("[FabHub] Manual sync — session:",s?.user?.id||"NONE");
-          if(!s) toastEmit("⚠️ Still couldn't sign in to the server on this device — try Chrome/Safari.","error",10000);
+          if(!restoreAppToken()){ toastEmit("⚠️ Your session expired — please log in again.","error",8000); appLogout(); setSession(null); }
         }catch(e){console.warn("retry auth:",e?.message);}
         await loadAllFromSupabase();
         setSyncRetry(false);
@@ -11632,11 +11614,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:2}}>🔄 Data Sync</div>
             <div style={{fontSize:".75rem",color:"#64748b",marginBottom:10}}>If this device is missing data that shows on another device, reconnect to the server and reload everything.</div>
             <button onClick={async()=>{
-              try{
-                let {data:{session:s}}=await supabase.auth.getSession();
-                if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
-                if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
-              }catch(e){}
+              // Expired role token → reload lands on login (boot clears the session).
+              if(!restoreAppToken()){ appLogout(); }
               window.location.reload();
             }} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🔄 Reload from Cloud</button>
           </div>
@@ -12892,7 +12871,7 @@ First few:
             setExpForm({expDate:today,category:"Materials",note:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""} — ${pr.supplier||""}`,amount:amt||"",bankAccount:"",projectId:pr.projectId||null,receipt:pr.deliveryNote||"",acctStatus:"For Payment"});
             setEditExpId(null);setExpModal(true);
           } else {
-            const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+            const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
             setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
             setEditCvId(null);setCvModal(true);
           }
@@ -15458,7 +15437,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
                 <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:"#f8fafc",borderRadius:9,border:"1px solid #e2e8f0",flexWrap:"wrap",gap:8}}>
                   <div>
                     <div style={{fontWeight:600,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.ceNo||"No project name"}</div>
-                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"No CE"} · {d.ceType} · {d.dateAcquired||""}</div>
+                    <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo||"CE pending"} · {d.ceType} · {d.dateAcquired||""}</div>
                   </div>
                   <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                     <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>₱{Number(d.value||0).toLocaleString("en-PH",{minimumFractionDigits:0})}</span>
