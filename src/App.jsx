@@ -4273,16 +4273,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
-    // Reverse the cashPositions update
+    // Reverse the cashPositions update — must mirror logBillingPayment exactly:
+    // it bumped the NESTED banks[bankId].end via upCashPos, so the reversal has
+    // to subtract from the same nested field (not dead flat *_end keys) and go
+    // through upCashPos so the change persists.
     if(payment.bank&&payment.amount){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
-      setCashPos(cp=>{
-        const existing=cp[pDate];if(!existing)return cp;
-        const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
-        const field=fieldMap[bankKey]||null;if(!field)return cp;
-        return{...cp,[pDate]:{...existing,[field]:Math.max(0,Number(existing[field]||0)-Number(payment.amount))}};
-      });
+      const bankIdMap={bpi:"bpi",metrobank:"metro",chinabank:"china",bdo:"bdo",securitybank:"security",unionbank:"union"};
+      const bankId=bankIdMap[bankKey]||null;
+      if(bankId){
+        upCashPos(cp=>{
+          const existing=cp[pDate];if(!existing)return cp;
+          const existingBanks=existing.banks||{};
+          const bankRow=existingBanks[bankId];if(!bankRow)return cp;
+          const newEnd=Math.max(0,Number(bankRow.end||0)-Number(payment.amount));
+          return{...cp,[pDate]:{...existing,banks:{...existingBanks,[bankId]:{...bankRow,end:String(newEnd)}}}};
+        });
+      }
     }
   };
   // Auto invoice number generator
@@ -4946,9 +4954,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // exactly how Sales Pipeline and Billing ended up showing different numbers for the same deal.
   // Falls back to deal.amountPaid only for deals that never got a billing schedule.
   const dealCollected=(d)=>{
-    const ms=billings.filter(b=>b.dealId===d.id);
-    if(!ms.length) return Number(d.amountPaid||0);
-    return ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+    const allMs=billings.filter(b=>b.dealId===d.id);
+    if(!allMs.length) return Number(d.amountPaid||0); // no schedule → legacy fallback
+    // Has a schedule: sum payments on non-cancelled milestones only, so collected
+    // stays consistent with deal.invoiced (which also excludes Cancelled).
+    return allMs.filter(b=>b.status!=='Cancelled').reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   };
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+dealCollected(d),0),[wonDeals,billings]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0)),[wonDeals,billings]);
