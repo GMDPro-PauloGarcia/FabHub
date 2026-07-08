@@ -1,5 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {fmt,today,uid,BANKS,emptyBankRow,emptyDayPosition,KPI} from "../shared";
+import {paymentClearDate,isPaymentCleared} from "../core";
 
 const CurrInp=({value,onChange,placeholder="0.00",style:sx={}})=>{
   const fmt=v=>{
@@ -197,25 +198,39 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
 
   // Normalize billing bank display names → Cash Position bank IDs
   const BILLING_BANK_MAP={"BPI":"bpi","Metrobank":"metro","Chinabank":"china","BDO":"bdo","Security Bank":"security","Unionbank":"union"};
-  // All billing payments on selDate — shown for Finance to review (pending)
-  const todayPayments=useMemo(()=>{
-    const payments=[];
+  const tagPayment=(p,b)=>{const normBank=BILLING_BANK_MAP[p.bank]||p.bank||"";return{...p,bank:normBank,milestoneId:b.id,milestoneName:b.name,milestoneBilling:b,dealId:b.dealId,clientName:(wonDeals.find(d=>d.id===b.dealId)||{}).client||b.name||"Unknown"};};
+  // Collections whose funds CLEAR on selDate — these land in the bank today and
+  // count as available cash. A payment clears on its value date (cash/transfer:
+  // same day; cheque: ~3 banking days), so a cheque received earlier shows up
+  // here on the day it actually clears.
+  const clearedToday=useMemo(()=>{
+    const out=[];
     (billings||[]).forEach(b=>{
+      if(b.status==='Cancelled') return;
       (b.payments||[]).forEach(p=>{
-        if(p.date===selDate){
-          const normBank=BILLING_BANK_MAP[p.bank]||p.bank||"";
-          payments.push({...p,bank:normBank,milestoneId:b.id,milestoneName:b.name,milestoneBilling:b,dealId:b.dealId,clientName:(wonDeals.find(d=>d.id===b.dealId)||{}).client||b.name||"Unknown"});
-        }
+        if(!p.bounced&&paymentClearDate(p)===selDate) out.push(tagPayment(p,b));
       });
     });
-    return payments;
+    return out;
   },[billings,selDate,wonDeals]);
-
-  // Only payments Finance has explicitly approved count toward the balance
-  const approvedPaymentIds=useMemo(()=>new Set(pos.collections?.approvedPayments||[]),[pos.collections?.approvedPayments]);
-  const todayInflows=useMemo(()=>{
-    return todayPayments.filter(p=>approvedPaymentIds.has(p.id)).reduce((s,p)=>s+Number(p.amount||0),0);
-  },[todayPayments,approvedPaymentIds]);
+  // Collections received on/before selDate but NOT yet cleared — money that is
+  // coming but isn't spendable cash yet. Shown in the "Incoming (uncleared)"
+  // panel, mirror of Floating Checks, and deliberately excluded from cash.
+  const pendingIncoming=useMemo(()=>{
+    const out=[];
+    (billings||[]).forEach(b=>{
+      if(b.status==='Cancelled') return;
+      (b.payments||[]).forEach(p=>{
+        if(p.bounced) return;
+        const recv=p.date||"";
+        if(recv&&recv<=selDate&&!isPaymentCleared(p,selDate)) out.push({...tagPayment(p,b),clearDate:paymentClearDate(p)});
+      });
+    });
+    return out;
+  },[billings,selDate,wonDeals]);
+  const pendingIncomingTotal=useMemo(()=>pendingIncoming.reduce((s,p)=>s+Number(p.amount||0),0),[pendingIncoming]);
+  // Billing collections available as cash today = sum of collections clearing today.
+  const todayInflows=useMemo(()=>clearedToday.reduce((s,p)=>s+Number(p.amount||0),0),[clearedToday]);
 
   const f=(path,val)=>{
     setSaved(false);
@@ -288,9 +303,9 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   const cashIn=useMemo(()=>{
     const out={};
     workingBanks.forEach(b=>{out[b.id]=0;});
-    // Approved billing payments
-    todayPayments.forEach(p=>{
-      if(approvedPaymentIds.has(p.id)&&p.bank&&out[p.bank]!=null){
+    // Billing collections that clear today
+    clearedToday.forEach(p=>{
+      if(p.bank&&out[p.bank]!=null){
         out[p.bank]+=Number(p.amount||0);
       }
     });
@@ -301,7 +316,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
       }
     });
     return out;
-  },[todayPayments,approvedPaymentIds,pos.collections?.manualCollections]);
+  },[clearedToday,pos.collections?.manualCollections]);
 
   const txOut=useMemo(()=>{
     const out={};
@@ -331,7 +346,7 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   },[totalMoneyPerBank,txOut]);
 
   const untaggedExps=useMemo(()=>dateExps.filter(e=>!e.bankAccount),[dateExps]);
-  const untaggedPayments=useMemo(()=>todayPayments.filter(p=>!p.bank),[todayPayments]);
+  const untaggedPayments=useMemo(()=>clearedToday.filter(p=>!p.bank),[clearedToday]);
 
   const handleSave=()=>{
     const toSave={...pos,collections:{...pos.collections,fabhubAmt:todayInflows},savedAt:new Date().toISOString()};
@@ -603,6 +618,38 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
           }
         </div>
       </div>
+
+      {/* ── INCOMING (UNCLEARED) COLLECTIONS — inflow mirror of Floating Checks ── */}
+      {pendingIncoming.length>0&&(
+        <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #bfdbfe",overflow:"hidden",marginBottom:16}}>
+          <div style={{background:"#eff6ff",borderBottom:"2px solid #bfdbfe",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontWeight:800,color:"#1d4ed8",fontSize:".82rem"}}>📥 Incoming — Uncleared Collections</div>
+              <div style={{fontSize:".66rem",color:"#3b82f6",marginTop:1}}>Received, awaiting bank clearance — not yet counted as available cash</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.2rem",color:"#1d4ed8"}}>
+                ₱{pendingIncomingTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}
+              </div>
+              <div style={{fontSize:".62rem",color:"#94a3b8"}}>{pendingIncoming.length} pending</div>
+            </div>
+          </div>
+          <div style={{maxHeight:200,overflowY:"auto"}}>
+            {pendingIncoming.map(p=>(
+              <div key={p.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #eff6ff",gap:8}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".78rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{p.clientName}</div>
+                  <div style={{fontSize:".66rem",color:"#94a3b8"}}>{p.milestoneName||"Collection"}{p.method?` · ${p.method}`:""}{p.refNo?` · ${p.refNo}`:""}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontWeight:700,color:"#1d4ed8",fontSize:".8rem"}}>₱{Number(p.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                  <div style={{fontSize:".62rem",color:"#b45309",fontWeight:600}}>clears {p.clearDate||"—"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── MAIN BANK TABLE (Excel-style vertical flow, banks as columns) ── */}
       <div style={{borderRadius:14,border:"1.5px solid #e2e8f0",marginBottom:16,boxShadow:"0 1px 6px rgba(0,0,0,.05)",overflow:"hidden"}}>

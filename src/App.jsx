@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
 // Each of these pages ships as its own chunk, downloaded the first time the
@@ -2663,7 +2663,8 @@ export default function App(){
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
             if(Object.keys(data.pcards||{}).length){setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));idbE.push([KEYS.pcards,data.pcards]);}
-            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined})):null;
+            const mapSbPayment=p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)});
+            const _billings=data.billings?.length?data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,receiptType:m.receipt_type||null,withholding:m.withholding??null,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(mapSbPayment)})):null;
             if(_billings){
               // Merge: preserve any locally-recorded payments that didn't sync to Supabase yet
               const idbBilMap=Object.fromEntries((idb[KEYS.billings]||[]).map(b=>[b.id,b]));
@@ -2915,7 +2916,7 @@ export default function App(){
     if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mergeLocalOnly(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
-    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined}));setBillings(prev=>mergeLocalOnly(bs,prev));idbE.push([KEYS.billings,bs]);}
+    if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mergeLocalOnly(bs,prev));idbE.push([KEYS.billings,bs]);}
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mergeLocalOnly(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mergeLocalOnly(ws,prev));idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mergeLocalOnly(infs,prev));idbE.push([KEYS.inflows,infs]);}
@@ -3024,6 +3025,7 @@ export default function App(){
     date:r.date||null, ref_no:r.refNo||"", note:r.note||"",
     recorded_by:r.recordedBy||"", bank:r.bank||"",
     value_date:r.valueDate||null,
+    payment_method:r.method||"", bounced:!!r.bounced,
   });
   const toSbExpense = r=>{
     let date=r.expDate||null;
@@ -3891,7 +3893,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,milestoneId:rec.milestone_id,refNo:rec.ref_no,
-          recordedBy:rec.recorded_by};
+          recordedBy:rec.recorded_by,valueDate:rec.value_date,method:rec.payment_method,bounced:!!rec.bounced};
         setBillings(bs=>bs.map(b=>{
           if(b.id!==rec.milestone_id) return b;
           const payments=b.payments||[];
@@ -4223,22 +4225,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
-    if(payment.bank&&payment.amount){
-      const pDate=payment.date||today;
-      const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
-      const bankIdMap={bpi:"bpi",metrobank:"metro",chinabank:"china",bdo:"bdo",securitybank:"security",unionbank:"union"};
-      const bankId=bankIdMap[bankKey]||null;
-      if(bankId){
-        upCashPos(cp=>{
-          const existing=cp[pDate]||emptyDayPosition(pDate);
-          const existingBanks=existing.banks||emptyDayPosition(pDate).banks;
-          const bankRow=existingBanks[bankId]||emptyBankRow();
-          const newEnd=Number(bankRow.end||bankRow.book||0)+Number(payment.amount);
-          const newNotes=(existing.notes?existing.notes+" | ":"")+`+₱${Number(payment.amount).toLocaleString()} billing payment received`;
-          return{...cp,[pDate]:{...existing,banks:{...existingBanks,[bankId]:{...bankRow,end:String(newEnd)}},notes:newNotes}};
-        });
-      }
-    }
+    // NOTE: we deliberately do NOT inject this collection into the daily cash
+    // position here. The Daily Cash Position derives collections directly from
+    // billing payments (counting each on its clearance date), so the payment
+    // record is the single source of truth — no hidden bank-balance write to
+    // keep in sync, and deleting a payment reverses automatically.
   };
   const deleteBillingPayment=async(msId,payId)=>{
     const milestone=billings.find(b=>b.id===msId);
@@ -4273,25 +4264,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
-    // Reverse the cashPositions update — must mirror logBillingPayment exactly:
-    // it bumped the NESTED banks[bankId].end via upCashPos, so the reversal has
-    // to subtract from the same nested field (not dead flat *_end keys) and go
-    // through upCashPos so the change persists.
-    if(payment.bank&&payment.amount){
-      const pDate=payment.date||today;
-      const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
-      const bankIdMap={bpi:"bpi",metrobank:"metro",chinabank:"china",bdo:"bdo",securitybank:"security",unionbank:"union"};
-      const bankId=bankIdMap[bankKey]||null;
-      if(bankId){
-        upCashPos(cp=>{
-          const existing=cp[pDate];if(!existing)return cp;
-          const existingBanks=existing.banks||{};
-          const bankRow=existingBanks[bankId];if(!bankRow)return cp;
-          const newEnd=Math.max(0,Number(bankRow.end||0)-Number(payment.amount));
-          return{...cp,[pDate]:{...existing,banks:{...existingBanks,[bankId]:{...bankRow,end:String(newEnd)}}}};
-        });
-      }
-    }
+    // No cash-position reversal needed: collections are no longer injected into
+    // the daily position (see logBillingPayment). The Daily Cash Position reads
+    // billing payments directly, so removing the payment here is the reversal.
   };
   // Auto invoice number generator
   const nextCENo=()=>{
@@ -4958,7 +4933,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!allMs.length) return Number(d.amountPaid||0); // no schedule → legacy fallback
     // Has a schedule: sum payments on non-cancelled milestones only, so collected
     // stays consistent with deal.invoiced (which also excludes Cancelled).
-    return allMs.filter(b=>b.status!=='Cancelled').reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+    // Bounced payments never landed, so they don't count as collected.
+    return allMs.filter(b=>b.status!=='Cancelled').reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   };
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+dealCollected(d),0),[wonDeals,billings]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0)),[wonDeals,billings]);
@@ -18981,7 +18957,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
   const[editMsForm,setEditMsForm]=useState({});
   const[msForm,   setMsForm]   =useState({name:"",description:"",amount:"",invoiceNo:"",invoiceDate:today,dueDate:"",status:"Draft",receiptType:null,withholding:null});
-  const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:""});
+  const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
@@ -19000,14 +18976,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   // are all local state here, so any edit re-rendered the whole component)
   // even though the underlying billing data hadn't changed.
   const allBilled=useMemo(()=>billings.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0),[billings]);
-  const allCollected=useMemo(()=>billings.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0),[billings]);
+  const allCollected=useMemo(()=>billings.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0),[billings]);
   // Per-deal outstanding: floor each deal at 0 so overpayments don't offset other clients
   const allOutstanding=useMemo(()=>{
     const dealIds=[...new Set(billings.map(b=>b.dealId))];
     return dealIds.reduce((total,did)=>{
       const dms=billings.filter(m=>m.dealId===did&&m.status!=="Cancelled");
       const billed=dms.reduce((s,m)=>s+n(m.amount),0);
-      const collected=dms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+      const collected=dms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
       return total+Math.max(0,billed-collected);
     },0);
   },[billings]);
@@ -19086,7 +19062,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
       }
     }
     logBillingPayment(showPay,{...payForm,recordedBy:session?.name||role});
-    setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:""});
+    setPayForm({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
     setShowPay(null);
   };
   const saveEditMs=()=>{
@@ -19792,7 +19768,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
           )}
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {billings.filter(b=>b.dealId===selDeal).map(ms=>{
-              const paidTotal=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
+              const paidTotal=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+n(p.amount),0);
               const tx=calcTax(ms.amount,ms.receiptType??deal?.receiptType??"OR",ms.withholding??deal?.withholding??false);
               const balance=Math.max(0,tx.netReceivable-paidTotal);
               const pct=tx.netReceivable>0?Math.round(paidTotal/tx.netReceivable*100):0;
@@ -19838,6 +19814,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                                     <Fld label="Amount (₱)"><Inp type="number" value={editPayForm.amount??p.amount} onChange={e=>setEditPayForm(f=>({...f,amount:e.target.value}))}/></Fld>
                                     <Fld label="Date"><Inp type="date" value={editPayForm.date??p.date??today} onChange={e=>setEditPayForm(f=>({...f,date:e.target.value}))}/></Fld>
                                     <Fld label="Bank"><Sel value={editPayForm.bank??p.bank??""} onChange={e=>setEditPayForm(f=>({...f,bank:e.target.value}))}><option value="">— Select bank</option>{BANKS.map(b=><option key={b.id} value={b.id}>{b.short}</option>)}</Sel></Fld>
+                                    <Fld label="Method"><Sel value={editPayForm.method??p.method??"Bank Transfer"} onChange={e=>setEditPayForm(f=>({...f,method:e.target.value}))}>{PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}</Sel></Fld>
                                     <Fld label="Value Date"><Inp type="date" value={editPayForm.valueDate??p.valueDate??""} onChange={e=>setEditPayForm(f=>({...f,valueDate:e.target.value}))}/></Fld>
                                     <Fld label="Reference No."><Inp value={editPayForm.refNo??p.refNo??""} onChange={e=>setEditPayForm(f=>({...f,refNo:e.target.value}))} placeholder="Ref…"/></Fld>
                                     <Fld label="Note"><Inp value={editPayForm.note??p.note??""} onChange={e=>setEditPayForm(f=>({...f,note:e.target.value}))} placeholder="Note…"/></Fld>
@@ -19853,15 +19830,37 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                                 </div>
                               ):(
                                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2,gap:4}}>
-                                  <div style={{display:"flex",gap:8,fontSize:".73rem",color:"#475569",flexWrap:"wrap",flex:1}}>
+                                  <div style={{display:"flex",gap:8,fontSize:".73rem",color:"#475569",flexWrap:"wrap",flex:1,alignItems:"center"}}>
                                     <span>{p.date}</span>
                                     <span style={{fontWeight:700,color:"#059669"}}>₱{n(p.amount).toLocaleString("en-PH")}</span>
+                                    {p.method&&<span style={{color:"#64748b"}}>{p.method}</span>}
                                     {p.bank&&<span style={{color:"#64748b"}}>🏦 {p.bank}</span>}
+                                    {(()=>{
+                                      const cd=paymentClearDate(p);
+                                      if(p.bounced) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#fef2f2",color:"#dc2626"}}>✕ Bounced</span>;
+                                      if(isPaymentCleared(p,today)) return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#f0fdf4",color:"#059669"}}>✓ Cleared{cd&&cd!==p.date?` ${cd}`:""}</span>;
+                                      return <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 7px",borderRadius:20,background:"#fffbeb",color:"#b45309"}}>⏳ Clears {cd||"—"}</span>;
+                                    })()}
                                     {p.refNo&&<span style={{color:"#64748b"}}>Ref: {p.refNo}</span>}
                                     {p.note&&<span style={{color:"#94a3b8",fontStyle:"italic"}}>{p.note}</span>}
                                   </div>
                                   {canEdit&&(
                                     <div style={{display:"flex",gap:4,flexShrink:0}}>
+                                      {!p.bounced&&!isPaymentCleared(p,today)&&(
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,valueDate:today,bounced:false}:px)})}
+                                          title="Mark funds cleared today"
+                                          style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>✓ Clear</button>
+                                      )}
+                                      {!p.bounced&&(
+                                        <button onClick={()=>{if(window.confirm("Mark this collection as bounced? It will stop counting as cleared cash."))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)});}}
+                                          title="Mark cheque bounced"
+                                          style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#c2410c",cursor:"pointer",fontWeight:600}}>⤺</button>
+                                      )}
+                                      {p.bounced&&(
+                                        <button onClick={()=>updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:false}:px)})}
+                                          title="Un-bounce"
+                                          style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>↺</button>
+                                      )}
                                       <button onClick={()=>{setEditPay({msId:ms.id,payId:p.id});setEditPayForm({});}}
                                         style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#1d4ed8",cursor:"pointer",fontWeight:600}}>✏</button>
                                       <button onClick={()=>{if(window.confirm("Remove this payment? This will reverse the collected amount."))deleteBillingPayment(ms.id,p.id);}}
@@ -19918,11 +19917,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                                 {[{v:"bpi",l:"BPI"},{v:"metro",l:"Metrobank"},{v:"china",l:"Chinabank"},{v:"bdo",l:"BDO"},{v:"security",l:"Security Bank"},{v:"union",l:"Unionbank"},{v:"cash",l:"Cash"}].map(b=><option key={b.v} value={b.v}>{b.l}</option>)}
                               </Sel>
                             </Fld>
-                            <Fld label="Date"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
-                            <Fld label="Value Date" hint="Date bank actually credits (if different)"><Inp type="date" value={payForm.valueDate||""} onChange={e=>fp("valueDate",e.target.value)}/></Fld>
+                            <Fld label="Payment Method">
+                              <Sel value={payForm.method||"Bank Transfer"} onChange={e=>fp("method",e.target.value)}>
+                                {PAYMENT_METHODS.map(m=><option key={m} value={m}>{m}</option>)}
+                              </Sel>
+                            </Fld>
+                            <Fld label="Date Received"><Inp type="date" value={payForm.date} onChange={e=>fp("date",e.target.value)}/></Fld>
+                            <Fld label="Value Date" hint={payForm.method==="Cheque"?"When the cheque clears — blank = auto ~3 banking days":"When funds are available — blank = same day"}><Inp type="date" value={payForm.valueDate||""} onChange={e=>fp("valueDate",e.target.value)}/></Fld>
                             <Fld label="Reference No."><Inp value={payForm.refNo} onChange={e=>fp("refNo",e.target.value)} placeholder="Cheque / transfer ref…"/></Fld>
                             <Fld label="Note"><Inp value={payForm.note} onChange={e=>fp("note",e.target.value)} placeholder="e.g. BPI online transfer"/></Fld>
                           </div>
+                          {payForm.amount&&payForm.date&&(
+                            <div style={{fontSize:".72rem",color:"#64748b",marginTop:6}}>
+                              {(()=>{const cd=paymentClearDate({...payForm,method:payForm.method});const cleared=isPaymentCleared({...payForm,method:payForm.method},today);return cleared?`✅ Clears immediately — counts as available cash on ${cd}.`:`⏳ Pending clearance — funds count as available cash on ${cd}.`;})()}
+                            </div>
+                          )}
                           <div style={{display:"flex",gap:8,marginTop:8}}>
                             <button onClick={submitPay} disabled={!payForm.amount}
                               style={{background:payForm.amount?"#1d4ed8":"#e2e8f0",border:"none",borderRadius:7,padding:"7px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:payForm.amount?"#fff":"#94a3b8",cursor:payForm.amount?"pointer":"not-allowed"}}>

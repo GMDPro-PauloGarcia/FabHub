@@ -226,6 +226,37 @@ export const addDaysISO=(fromISO,days)=>{const b=fromISO?new Date(fromISO+"T00:0
 
 export const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowerCase();if(/\b(cod|cash|cwo)\b/.test(t))return addDaysISO(fromISO,0);const m=t.match(/(\d+)/);if(!m)return "";return addDaysISO(fromISO,parseInt(m[1],10));};
 
+// ── Collection clearance model ───────────────────────────────────────────────
+// A collection isn't spendable cash until the bank clears it. Cash & confirmed
+// transfers clear same-day; cheques take a few banking days. We reuse each
+// payment's `valueDate` (the date the bank actually credits) as the canonical
+// clearance date; when it isn't set we derive a sensible default from the
+// method. Legacy payments with neither method nor valueDate clear on their
+// receipt date, preserving existing behaviour.
+export const PAYMENT_METHODS=["Cash","Bank Transfer","Cheque","Online","Other"];
+export const CHEQUE_CLEAR_DAYS=3; // banking days a cheque takes to clear
+// Add N banking days (skip Sat/Sun) to an ISO date string.
+export const addBankingDaysISO=(fromISO,n)=>{
+  if(!fromISO) return fromISO;
+  let d=new Date(fromISO+"T00:00:00");let added=0;
+  while(added<Number(n||0)){d=new Date(d.getTime()+86400000);const wd=d.getDay();if(wd!==0&&wd!==6)added++;}
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+// The date a payment's funds are (or will be) available in the bank.
+export const paymentClearDate=(p)=>{
+  if(!p) return "";
+  if(p.valueDate) return p.valueDate;                 // explicit / manually cleared
+  if(p.method==="Cheque") return addBankingDaysISO(p.date,CHEQUE_CLEAR_DAYS);
+  return p.date||"";                                  // cash/transfer/online/legacy → same day
+};
+// Has this payment cleared as of `asOfISO` (default: any date)? Bounced never clears.
+export const isPaymentCleared=(p,asOfISO)=>{
+  if(!p||p.bounced) return false;
+  const cd=paymentClearDate(p);
+  if(!cd) return true;                                // no date info → treat as cleared (legacy)
+  return !asOfISO||cd<=asOfISO;
+};
+
 export const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
 
 export const ADDENDUM_STATUS_CLR = {
