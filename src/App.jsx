@@ -20085,8 +20085,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     const projUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
     const projAddenda=(addenda||[]).filter(a=>a.dealId===selDeal);
     const projBillings=(billings||[]).filter(b=>b.dealId===selDeal);
-    const totalBilled=projBillings.reduce((s,b)=>s+Number(b.amountBilled||0),0);
-    const totalColl=projBillings.reduce((s,b)=>s+Number(b.amountPaid||0),0);
+    const totalBilled=projBillings.filter(b=>b.status!=='Cancelled').reduce((s,b)=>s+Number(b.amount||0),0);
+    const totalColl=projBillings.reduce((s,b)=>s+(b.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
     const {committed:projCommitted,actual:projActual}=projectCostBreakdown(selDeal,prs,exps);
     const totalCommitted=BUDGET_CATS.reduce((s,c)=>s+projCommitted[c],0);
     const totalActualCost=BUDGET_CATS.reduce((s,c)=>s+projActual[c],0);
