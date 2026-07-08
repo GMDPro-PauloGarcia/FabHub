@@ -1,4 +1,4 @@
-import React,{useState,useMemo,useEffect} from "react";
+import React,{useState,useMemo,useEffect,useRef} from "react";
 import {fmt,today,uid,BANKS,emptyBankRow,emptyDayPosition,KPI} from "../shared";
 
 const CurrInp=({value,onChange,placeholder="0.00",style:sx={}})=>{
