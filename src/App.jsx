@@ -110,15 +110,20 @@ const _rpcWithTimeout=(promise,ms=12000)=>Promise.race([
 // next number via the next_doc_number RPC (atomic across devices), passing the
 // current local max as a floor; falls back to local count if the RPC is
 // unavailable (e.g. before supabase_doc_numbers.sql is applied, or offline).
-const claimDocNumber=async(prefix,existingNumbers,digits=4)=>{
+const claimDocNumber=async(prefix,existingNumbers,digits=4,dbAssigns=false)=>{
   const re=new RegExp(`^${prefix}-(\\d+)$`);
   const localMax=(existingNumbers||[]).reduce((m,s)=>{const mt=re.exec(String(s||""));return mt?Math.max(m,Number(mt[1])):m;},0);
   if(isSupabaseReady()){
     try{
       const {data,error}=await _rpcWithTimeout(supabase.rpc('next_doc_number',{p_prefix:prefix,p_min:localMax}));
       if(!error&&Number.isFinite(Number(data))&&Number(data)>0) return `${prefix}-${String(Number(data)).padStart(digits,"0")}`;
-    }catch(e){ /* fall back to local allocation */ }
+    }catch(e){ /* fall back below */ }
   }
+  // RPC unreachable (offline / timeout). For DB-assigned series (migration 022:
+  // JO/CV/DRF) leave the number blank so the server's BEFORE INSERT trigger
+  // stamps a collision-free value on sync — don't guess "localMax + 1" from a
+  // possibly-stale local list, the same trap that duplicated CE numbers.
+  if(dbAssigns) return "";
   return `${prefix}-${String(localMax+1).padStart(digits,"0")}`;
 };
 // Year-scoped document numbers (FOO-YYYY-NNN, e.g. CE-2026-005, EV-2026-003) —
@@ -4648,7 +4653,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Was `DRF-${ds.length+1}` — generated from array LENGTH, so deleting any
     // DRF made the next one reuse a number, on top of the same cross-device
     // collision risk the other doc numbers already had. Atomic counter fixes both.
-    const no=await claimDocNumber("DRF",drfs.map(d=>d.drfNo));
+    const no=await claimDocNumber("DRF",drfs.map(d=>d.drfNo),4,true);
     const rec={...drf,id:uid(),drfNo:no,createdAt:today,status:"New",createdBy:drf.createdBy||session?.name||role};
     upDrfs(ds=>[...ds,rec]);
     sendTelegramNotification("design",`📝 <b>New Design Request</b>\n${no} · ${drf.client||"?"}\nProject: ${drf.projectTitle||"—"}\nDeadline: ${drf.designDeadline||"TBD"}\nBy: ${drf.createdBy||"?"}`);
@@ -5500,7 +5505,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Update deal — payment is Unpaid (Finance will bill separately)
     const awardedDate=form.triggerDate||today;
     const savingToastId=isSupabaseReady()?toastEmit(`⏳ Awarding ${awardModal.client} — saving to server…`,"pending",15000):null;
-    const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo));
+    const joNo=await claimDocNumber("JO",jos.map(j=>j.joNo),4,true);
     upDeals(ds=>ds.map(d=>d.id===id?{...d,
       stage:"06 · Kickoff",
       probability:100,
@@ -5721,7 +5726,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const exp=exps.find(e=>e.id===expId);
     if(!exp) return;
     const cvId=uid();
-    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     const cvRec={date:exp.expDate||today,cvNo:nextNo,payee:exp.supplier||exp.payee||"",amount:Number(exp.amount||0),description:exp.note||"",projectId:exp.projectId||null,bank:bankId||exp.bankAccount||"",notes:exp.remarks||"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:expId,id:cvId,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
     upExps(es=>es.map(e=>e.id===expId?{...e,acctStatus:"For Payment",paymentMethod:"Check",cvId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
@@ -5740,7 +5745,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const openAddCv=async()=>{
-    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     setCvForm({date:today,cvNo:nextNo,payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
     setEditCvId(null);setCvModal(true);
   };
@@ -5829,7 +5834,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!p) return;
     if(p.cvId||p.status==="Check Issued"){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
     const cvId=uid();
-    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+    const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
     const cvRec={id:cvId,date:today,cvNo:nextNo,payee:p.vendor||"",amount:Number(p.amount||0),description:p.notes||p.invoiceRef||p.poNumber||"",projectId:p.projectId||null,bank:"",notes:p.notes||"",status:"Draft",poRef:p.poNumber||"",payableId:p.id,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:p.expenseId||null,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
     if(isSupabaseReady()) sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});
@@ -12902,7 +12907,7 @@ First few:
             setExpForm({expDate:today,category:"Materials",note:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""} — ${pr.supplier||""}`,amount:amt||"",bankAccount:"",projectId:pr.projectId||null,receipt:pr.deliveryNote||"",acctStatus:"For Payment"});
             setEditExpId(null);setExpModal(true);
           } else {
-            const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo));
+            const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
             setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
             setEditCvId(null);setCvModal(true);
           }
