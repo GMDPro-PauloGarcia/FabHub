@@ -3,13 +3,59 @@ import { createClient } from '@supabase/supabase-js'
 const SUPABASE_URL  = process.env.REACT_APP_SUPABASE_URL
 const SUPABASE_ANON = process.env.REACT_APP_SUPABASE_ANON_KEY
 
+// FabHub auth: the login flow mints a short-lived JWT (via the mint-session Edge
+// Function) that carries the user's role; RLS policies (migration 024) read it.
+// We feed that token to supabase-js via the `accessToken` option so every REST
+// and realtime call is made as the logged-in user. When logged out we fall back
+// to the anon key, which RLS denies — so no data is reachable without a login.
+let _appToken = null
+export const setAppToken = (t) => { _appToken = t || null }
+export const getAppToken = () => _appToken
+
 export const supabase = (SUPABASE_URL && SUPABASE_ANON)
   ? createClient(SUPABASE_URL, SUPABASE_ANON, {
-      auth: { persistSession: true, autoRefreshToken: true },
+      auth: { persistSession: false, autoRefreshToken: false },
+      accessToken: async () => _appToken || SUPABASE_ANON,
     })
   : null
 
 export const isSupabaseReady = () => !!supabase
+
+// Verify credentials server-side and obtain the role-bearing token.
+// Returns { user } on success or { error } on bad credentials; throws on network
+// failure (so callers can fall back to offline/local login).
+export const appLogin = async (username, password) => {
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/mint-session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+    body: JSON.stringify({ username, password }),
+  })
+  let data = {}
+  try { data = await res.json() } catch (e) { /* non-JSON */ }
+  if (!res.ok) return { error: data.error || `Login failed (${res.status})` }
+  _appToken = data.access_token
+  try {
+    localStorage.setItem('gmd:token', data.access_token)
+    localStorage.setItem('gmd:token_exp', String(Date.now() + (data.expires_in || 43200) * 1000))
+  } catch (e) { /* storage disabled */ }
+  return { user: data.user }
+}
+
+// Restore a still-valid token on boot; returns true if a usable token was loaded.
+export const restoreAppToken = () => {
+  try {
+    const t = localStorage.getItem('gmd:token')
+    const exp = Number(localStorage.getItem('gmd:token_exp') || 0)
+    if (t && exp > Date.now()) { _appToken = t; return true }
+  } catch (e) { /* storage disabled */ }
+  _appToken = null
+  return false
+}
+
+export const appLogout = () => {
+  _appToken = null
+  try { localStorage.removeItem('gmd:token'); localStorage.removeItem('gmd:token_exp') } catch (e) { /* noop */ }
+}
 
 // App-wide write-failure hook: register a callback to be told when ANY write
 // (insert/update/upsert/delete) fails, so the UI can warn the user that changes

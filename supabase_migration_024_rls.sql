@@ -17,7 +17,11 @@ create or replace function public.is_mgr() returns boolean language sql stable a
   $fn$ select public.app_role() = 'Manager' $fn$;
 create or replace function public.has_role(variadic roles text[]) returns boolean language sql stable as
   $fn$ select public.app_role() = any(roles) $fn$;
-grant execute on function public.app_role(), public.is_user(), public.is_mgr(), public.has_role(text[]) to authenticated, anon;
+-- user_profiles.id is text (e.g. "u16"), not a uuid, so own-row checks compare
+-- the token's `sub` claim as text rather than using auth.uid() (which casts to uuid).
+create or replace function public.app_sub() returns text language sql stable as
+  $fn$ select coalesce(nullif(current_setting('request.jwt.claims', true),'')::jsonb ->> 'sub','') $fn$;
+grant execute on function public.app_role(), public.is_user(), public.is_mgr(), public.has_role(text[]), public.app_sub() to authenticated, anon;
 
 -- user_profiles: own-row access + guard so non-managers can't self-promote -----
 create or replace function public.protect_user_profile() returns trigger
@@ -35,9 +39,9 @@ drop policy if exists user_profiles_sel on public.user_profiles;
 drop policy if exists user_profiles_ins on public.user_profiles;
 drop policy if exists user_profiles_upd on public.user_profiles;
 drop policy if exists user_profiles_del on public.user_profiles;
-create policy user_profiles_sel on public.user_profiles for select to authenticated using ( public.is_mgr() or id = auth.uid() );
+create policy user_profiles_sel on public.user_profiles for select to authenticated using ( public.is_mgr() or id = public.app_sub() );
 create policy user_profiles_ins on public.user_profiles for insert to authenticated with check ( public.is_mgr() );
-create policy user_profiles_upd on public.user_profiles for update to authenticated using ( public.is_mgr() or id = auth.uid() ) with check ( public.is_mgr() or id = auth.uid() );
+create policy user_profiles_upd on public.user_profiles for update to authenticated using ( public.is_mgr() or id = public.app_sub() ) with check ( public.is_mgr() or id = public.app_sub() );
 create policy user_profiles_del on public.user_profiles for delete to authenticated using ( public.is_mgr() );
 
 -- All other tables, generated from the matrix spec ----------------------------

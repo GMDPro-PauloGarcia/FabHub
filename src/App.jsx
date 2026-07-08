@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
@@ -2581,7 +2581,11 @@ export default function App(){
       // Step 1: Session/role from localStorage (sync, tiny)
       try {
         const s=localStorage.getItem(KEYS.session);
-        if(s){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
+        // Only restore a session if we still hold a valid role token (RLS needs it).
+        // Offline (no Supabase) we allow the cached session so the app still opens.
+        const hasToken = isSupabaseReady() ? restoreAppToken() : true;
+        if(s && hasToken){ const sess=JSON.parse(s); setSession(sess); setRole(sess.role||"Sales"); const lp=sessionStorage.getItem("gmd:lastPage"); if(lp)setPage(lp); }
+        else if(s){ localStorage.removeItem(KEYS.session); localStorage.removeItem(KEYS.role); }
         // Session (KEYS.session) is the single source of truth for role — don't
         // let a stale KEYS.role value (e.g. left over from a previous user/role on
         // this browser, never updated by the Supabase-auth SIGNED_IN path) silently
@@ -2639,14 +2643,11 @@ export default function App(){
 
       // Step 2: Pull from Supabase (PRIMARY source of truth) — overrides localStorage
       if(!isSupabaseReady()){ setSbReady(true); return; }
-      // RLS allows the public anon key to read/write directly (policies grant the `anon` role),
-      // so data access does NOT require a per-device Supabase session. We enable the app
-      // immediately and load with the anon key — this is what makes every device/browser sync
-      // reliably (no session = no stale-token / rate-limit / in-app-browser failures).
+      // Data access now requires the role-bearing token minted at login (RLS,
+      // migration 024). restoreAppToken() in Step 1 already re-loaded it if still
+      // valid, and the client's accessToken option attaches it to every request —
+      // no anonymous session needed.
       setSbReady(true);
-      // Best-effort session in the BACKGROUND (not required for data access) — keeps the
-      // authenticated role / realtime warm without blocking or churning anonymous users.
-      supabase.auth.getSession().then(({data:{session:s}})=>{ if(!s) supabase.auth.signInAnonymously().catch(()=>{}); }).catch(()=>{});
       if(isSupabaseReady()){
         try{
           const _tLoad=_perf();
@@ -2796,33 +2797,8 @@ export default function App(){
     };
     init();
 
-    // Listen for auth state changes (login/logout)
-    if(!supabase) return;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // Silently sync Supabase data in background — never blocks login
-        try {
-          const { data: profile } = await supabase.from('user_profiles').select('id,username,name,role,title,status').eq('id', session.user.id).single();
-          if (profile && profile.status === 'active') {
-            const sess = { userId: session.user.id, name: profile.name, username: profile.username, role: profile.role, title: profile.title||profile.role };
-            setSession(sess);
-            setRole(profile.role);
-            persist(KEYS.session, sess);
-            loadAllFromSupabase(); // fire-and-forget, don't await
-          }
-        } catch(e) { /* Supabase profile not found — user logged in via localStorage, that's fine */ }
-      } else if (event === 'SIGNED_OUT') {
-        setSession(null);
-        setRole(null);
-        setAuthView("login");
-        setPage("home");
-        localStorage.removeItem(KEYS.session);
-        localStorage.removeItem(KEYS.role);
-      }
-    });
-
-    return () => subscription.unsubscribe();
+    // (Supabase auth-state listener removed — FabHub now uses its own token-based
+    // login: appLogin mints the role token, restoreAppToken rehydrates it on boot.)
   },[]);
 
   // App-wide sync-failure warning: when ANY Supabase write fails (offline, RLS,
@@ -4766,20 +4742,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Supabase is unreachable (offline / pre-load / RPC not yet applied).
     if(isSupabaseReady()){
       try{
-        const{data,error}=await _rpcWithTimeout(supabase.rpc('verify_login',{p_username:unameLower,p_password:password}));
-        const row=Array.isArray(data)?data[0]:data;
-        if(!error&&row?.found){
+        // mint-session verifies the password in Postgres and returns a signed,
+        // role-bearing token (stored by appLogin) that RLS uses for every request.
+        const{user,error}=await appLogin(unameLower,password);
+        if(user){
           viaServer=true;
-          u={id:row.id,username:row.username,name:row.name,role:row.role,title:row.title||row.role,status:row.status};
-          if(!row.password_ok&&!defUser) return "Incorrect password.";
-          if(row.password_ok){ needsUpgrade=!!row.needs_upgrade; }
-          else if(defUser){
-            // DB row exists but didn't match — still allow the DEFAULT_USERS
-            // hash as a secondary check (handles a blank password_hash in Supabase).
-            if(!(await checkPw(password,defUser.passwordHash,unameLower))) return "Incorrect password.";
-          }
+          u={id:user.id,username:user.username,name:user.name,role:user.role,title:user.title||user.role,status:user.status};
+          needsUpgrade=!!user.needs_upgrade;
+        } else if(error && !defUser){
+          return error;   // server rejected credentials and no built-in default to fall back to
         }
-      }catch(e){ /* fall back to local/default check below */ }
+        // else: rejected but a DEFAULT_USERS entry exists → fall through to the local check
+      }catch(e){ /* network/offline → fall back to local/default check below */ }
     }
     if(!viaServer){
       let localU=users.find(x=>x.username.toLowerCase()===unameLower);
@@ -4830,7 +4804,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return u?checkPw(password,u.passwordHash,u.username):false;
   };
   const logout=async()=>{
-    if(supabase){ try{ await Promise.race([supabase.auth.signOut(),new Promise(r=>setTimeout(r,2000))]); }catch(e){} }
+    appLogout();
     setSession(null);
     setRole(null);
     setAuthView("login");
@@ -6091,11 +6065,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   setSync("saving");
                   // Heal the session (fixes a device that's showing no data due to a stale/expired
                   // token blocked by RLS), then do a full reload so EVERYTHING re-fetches cleanly.
-                  try{
-                    let {data:{session:s}}=await supabase.auth.getSession();
-                    if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
-                    if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
-                  }catch(e){}
+                  // If the role token has expired, reloading lands on the login
+                  // screen (boot clears the session when no valid token remains).
+                  if(!restoreAppToken()){ appLogout(); }
                   window.location.reload();
                 }}
                 title="Re-sync: reconnect to the server and reload all data"
@@ -6290,12 +6262,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         // Re-establish the session BEFORE reloading — a missing/stale anonymous session under RLS
         // is the usual reason reads come back empty on one device but not others.
         try{
-          let {data:{session:s}}=await supabase.auth.getSession();
-          if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
-          if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
-          ({data:{session:s}}=await supabase.auth.getSession());
-          console.info("[FabHub] Manual sync — session:",s?.user?.id||"NONE");
-          if(!s) toastEmit("⚠️ Still couldn't sign in to the server on this device — try Chrome/Safari.","error",10000);
+          if(!restoreAppToken()){ toastEmit("⚠️ Your session expired — please log in again.","error",8000); appLogout(); setSession(null); }
         }catch(e){console.warn("retry auth:",e?.message);}
         await loadAllFromSupabase();
         setSyncRetry(false);
@@ -11647,11 +11614,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",marginBottom:2}}>🔄 Data Sync</div>
             <div style={{fontSize:".75rem",color:"#64748b",marginBottom:10}}>If this device is missing data that shows on another device, reconnect to the server and reload everything.</div>
             <button onClick={async()=>{
-              try{
-                let {data:{session:s}}=await supabase.auth.getSession();
-                if(s){const {error}=await supabase.auth.refreshSession();if(error){await supabase.auth.signOut().catch(()=>{});s=null;}}
-                if(!s){await supabase.auth.signInAnonymously().catch(()=>{});}
-              }catch(e){}
+              // Expired role token → reload lands on login (boot clears the session).
+              if(!restoreAppToken()){ appLogout(); }
               window.location.reload();
             }} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>🔄 Reload from Cloud</button>
           </div>
