@@ -4273,16 +4273,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
-    // Reverse the cashPositions update
+    // Reverse the cashPositions update — must mirror logBillingPayment exactly:
+    // it bumped the NESTED banks[bankId].end via upCashPos, so the reversal has
+    // to subtract from the same nested field (not dead flat *_end keys) and go
+    // through upCashPos so the change persists.
     if(payment.bank&&payment.amount){
       const pDate=payment.date||today;
       const bankKey=(payment.bank||"").toLowerCase().replace(/\s+/g,"");
-      setCashPos(cp=>{
-        const existing=cp[pDate];if(!existing)return cp;
-        const fieldMap={bpi:"bpi_end",metrobank:"metrobank_end",chinabank:"chinabank_end",bdo:"bdo_end",securitybank:"secbank_end",unionbank:"unionbank_end"};
-        const field=fieldMap[bankKey]||null;if(!field)return cp;
-        return{...cp,[pDate]:{...existing,[field]:Math.max(0,Number(existing[field]||0)-Number(payment.amount))}};
-      });
+      const bankIdMap={bpi:"bpi",metrobank:"metro",chinabank:"china",bdo:"bdo",securitybank:"security",unionbank:"union"};
+      const bankId=bankIdMap[bankKey]||null;
+      if(bankId){
+        upCashPos(cp=>{
+          const existing=cp[pDate];if(!existing)return cp;
+          const existingBanks=existing.banks||{};
+          const bankRow=existingBanks[bankId];if(!bankRow)return cp;
+          const newEnd=Math.max(0,Number(bankRow.end||0)-Number(payment.amount));
+          return{...cp,[pDate]:{...existing,banks:{...existingBanks,[bankId]:{...bankRow,end:String(newEnd)}}}};
+        });
+      }
     }
   };
   // Auto invoice number generator
