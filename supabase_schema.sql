@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS deals (
   notes               TEXT,
   probability         INTEGER DEFAULT 0,
   award_request_data  JSONB,
+  payment_terms_json  TEXT,
   location            TEXT DEFAULT '',
   added_by            TEXT DEFAULT '',
   added_at            TIMESTAMPTZ,

@@ -39,6 +39,7 @@ ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS proposal_folder_link text DEFA
 ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS probability     numeric DEFAULT 0;
 ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS biz_dev_source  text    DEFAULT '';
 ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS updated_at      timestamptz DEFAULT now();
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS payment_terms_json text;
 
 -- ── 2. JOB ORDERS ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.job_orders (
