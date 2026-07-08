@@ -255,15 +255,17 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   // Accounting expenses for the selected date (drives Today's Transactions)
   // Exact date match preferred; fall back to month/year match for expenses without a precise date
   const dateExps=useMemo(()=>{
-    const d=new Date(selDate);
-    const selMonth=d.getMonth();
-    const selYear=d.getFullYear();
+    // Parse the ISO string directly (not new Date(), which shifts by timezone).
+    const[selYear,selMonthNum,selDay]=selDate.split("-").map(Number);
+    const selMonth=selMonthNum-1; // 0-indexed to match e.month (getMonth-style)
     // Only count expenses that have actually been paid — "For Payment" and "Logged" are still pending
     return exps.filter(e=>{
       if(e.acctStatus!=="Paid") return false;
       if(e.expDate) return e.expDate===selDate;
       if(e.month!=null){
-        return e.month===selMonth&&(e.year==null||e.year===selYear);
+        // Month-only expense (no exact day): attribute it to the 1st of the
+        // month so it's counted ONCE, not repeated on every day of the month.
+        return selDay===1&&e.month===selMonth&&(e.year==null||e.year===selYear);
       }
       return false;
     });
@@ -383,7 +385,12 @@ function DailyCashPosition({cashPositions,saveDayPos,wonDeals,billings,totRev,to
   const wcBook=workingBanks.reduce((s,b)=>s+n((pos.banks||{})[b.id]?.book||0),0);
   const unionRow2=(pos.banks||{})["union"]||emptyBankRow();
   const unionCapital=n(unionRow2.book||0)||n(unionRow2.end||0)||n(unionRow2.beg||0);
-  const netCashAvail=wcBook+totalCollections-totalLess;
+  // Net Cash Available must be one number everywhere it appears (KPI card,
+  // Position Summary, Standby Funds). Base it on workingBook — the same
+  // Book-with-ending-balance-fallback the Position Summary already uses — so the
+  // headline figure can't disagree with itself. wcBook stays a pure Book sum,
+  // used only for the separate "Working Capital Book" KPI.
+  const netCashAvail=totalCashAvailable;
   const totalGMDAssets=netCashAvail+unionCapital;
 
   // Column template: sticky label col + 5 bank cols + total col

@@ -4954,9 +4954,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // exactly how Sales Pipeline and Billing ended up showing different numbers for the same deal.
   // Falls back to deal.amountPaid only for deals that never got a billing schedule.
   const dealCollected=(d)=>{
-    const ms=billings.filter(b=>b.dealId===d.id);
-    if(!ms.length) return Number(d.amountPaid||0);
-    return ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
+    const allMs=billings.filter(b=>b.dealId===d.id);
+    if(!allMs.length) return Number(d.amountPaid||0); // no schedule → legacy fallback
+    // Has a schedule: sum payments on non-cancelled milestones only, so collected
+    // stays consistent with deal.invoiced (which also excludes Cancelled).
+    return allMs.filter(b=>b.status!=='Cancelled').reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
   };
   const totColl   =useMemo(()=>wonDeals.reduce((s,d)=>s+dealCollected(d),0),[wonDeals,billings]);
   const totOut    =useMemo(()=>Math.max(0,wonDeals.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0)),[wonDeals,billings]);
