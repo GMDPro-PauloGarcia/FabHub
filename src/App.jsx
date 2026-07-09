@@ -12146,12 +12146,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         clientProfiles={clientProfiles}
         upDeals={upDeals}
         onOpenPayTerms={id=>setPayTermsModal(id)}
+        onSetContractValue={(dealId,val)=>{const v=Number(val)||0;if(v<=0)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v,updated_at:new Date().toISOString()}).catch(()=>{});const _d=deals.find(x=>x.id===dealId);if(_d?.paymentTerms){generateBillingSchedule(dealId,_d.paymentTerms,v);toastEmit("✅ Contract value set — billing schedule generated from payment terms.","success");}else{toastEmit("✅ Contract value set.","success");}}}
         initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
         cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
-    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});generateBillingSchedule(dealId,terms,deals.find(d=>d.id===dealId)?.value);toastEmit("✅ Payment terms saved — billing schedule generated.","success");setPayTermsModal(null);}} session={session}/>}
+    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});const _cv=Number(deals.find(d=>d.id===dealId)?.value)||0;generateBillingSchedule(dealId,terms,_cv);toastEmit(_cv>0?"✅ Payment terms saved — billing schedule generated.":"⚠️ Payment terms saved, but this project has a ₱0 contract value — set a contract value to generate its billing schedule.",_cv>0?"success":"warning",_cv>0?4000:9000);setPayTermsModal(null);}} session={session}/>}
     </>
   );
 
@@ -18957,7 +18958,7 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,onSetContractValue,projs,overallProg,toastEmit,sendTelegramNotification}){
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -18991,6 +18992,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
+  const[cvInput,setCvInput]=useState(""); // inline contract-value entry when a deal has terms but ₱0 value
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -18998,7 +19000,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
   const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
   const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Finance";
-  const deal=wonDeals.find(d=>d.id===selDeal);
+  // The project list below also includes addendum child deals (not in wonDeals),
+  // so fall back to the full deals list to resolve the selected row.
+  const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
 
   // Company-wide stats — memoized on [billings] only. These re-scan the FULL
   // billings list (every milestone × every payment) and previously recomputed
@@ -19694,6 +19698,25 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
                     </div>
                   )}
                 </div>
+                {/* Terms exist but the project has no contract value → nothing to bill.
+                    Explain why billing is empty and let the user fix it inline. */}
+                {terms&&val<=0&&existingMs.length===0&&(
+                  <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 14px",marginTop:2}}>
+                    <div style={{fontSize:".78rem",color:"#c2410c",fontWeight:700,marginBottom:canEdit&&onSetContractValue?8:0}}>
+                      ⚠ Payment terms are set, but this project's contract value is ₱0.00 — so no billing milestones can be generated from them yet.
+                    </div>
+                    {canEdit&&onSetContractValue&&(
+                      <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                        <input type="number" value={cvInput} onChange={e=>setCvInput(e.target.value)} placeholder="Enter contract value (₱)"
+                          style={{flex:"1 1 180px",minWidth:160,border:"1.5px solid #fdba74",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"}}/>
+                        <button onClick={()=>{const v=Number(cvInput)||0;if(v>0){onSetContractValue(selDeal,v);setCvInput("");}}} disabled={!(Number(cvInput)>0)}
+                          style={{background:Number(cvInput)>0?"#f97316":"#fed7aa",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:Number(cvInput)>0?"pointer":"not-allowed",whiteSpace:"nowrap"}}>
+                          Set value & generate billing
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {canGenerate&&!autoGenDone[selDeal]&&<AutoGenerateBilling selDeal={selDeal} autoGenerate={autoGenerate} setAutoGenDone={setAutoGenDone}/>}
               </div>
             );
