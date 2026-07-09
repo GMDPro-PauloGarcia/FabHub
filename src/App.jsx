@@ -11710,7 +11710,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
-        delDeal={delDeal} delPcard={delPcard}
+        delDeal={delDeal} delPcard={delPcard} setConfirmDel={setConfirmDel}
         session={session} role={role} budgets={budgets}
         blockers={blockers} addBlocker={addBlocker} resolveBlocker={resolveBlocker}
         logActivity={logActivity} actLog={actLog}
@@ -20097,11 +20097,15 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
   useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
+  // If the open project was deleted (e.g. via the delete button below → the
+  // global confirm modal → delDeal), it vanishes from wonDeals/completedDeals;
+  // fall back to the grid so the detail view never renders against a missing deal.
+  useEffect(()=>{if(selDeal&&!wonDeals.some(d=>d.id===selDeal)&&!completedDeals.some(d=>d.id===selDeal))setSelDeal(null);},[selDeal,wonDeals,completedDeals]);
   const[viewMode,setViewMode]=useState("card");
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
@@ -20395,7 +20399,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                             {pc?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH Only</span>}
                           </div>
                         </div>
-                        <span style={{flexShrink:0,fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                          {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+                        </div>
                       </div>
                       {/* Spec table */}
                       <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -20573,6 +20580,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
                     <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
                     {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={{marginTop:2,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete Project</button>}
                   </div>
                 </div>
 
