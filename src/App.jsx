@@ -7,6 +7,21 @@ import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEAL
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
+// Returns a component whose function IDENTITY is stable across renders while its
+// implementation closure stays fresh (always the latest `impl` passed in). React
+// keys reconciliation off a component's type identity: a component defined inline
+// in a render body is a brand-new function every render, so React tears down and
+// remounts its entire subtree on every parent re-render — replaying mount
+// animations (the "blinking screen") and wiping descendants' local state (e.g. a
+// half-typed modal form). App re-renders constantly here from Supabase realtime
+// pushes, so every inline shell component (Wrap, Nav, headers) hit this. Wrapping
+// them in a stable identity lets React reconcile in place instead. (An explicit
+// useCallback dep list was tried and rejected — it silently went stale; see #112.)
+const useStableComponent=(impl)=>{
+  const ref=useRef(impl); ref.current=impl;
+  return useRef((props)=>ref.current(props)).current;
+};
+
 // ─── CODE-SPLIT VIEWS ────────────────────────────────────────────────────────
 // Each of these pages ships as its own chunk, downloaded the first time the
 // page is opened instead of being part of the initial bundle. _lazyView bakes
@@ -5478,15 +5493,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // awarded server-side, and a Telegram "PROJECT AWARDED!" notification
     // firing regardless of whether this succeeded is exactly how an award
     // could look confirmed in chat while never actually landing in FabHub.
-    // sbUpdate bounds itself to ~12s via its own timeout, so this can't hang.
-    const awardSynced=isSupabaseReady()?await sbUpdate('deals',id,{
+    // The write bounds itself to ~12s via its own timeout, so this can't hang.
+    // Full-record UPSERT, not a partial UPDATE. Awarding is often the first time
+    // a deal is written to the server under real network conditions, and if the
+    // deal's original save is still sitting in the offline queue (or was dropped),
+    // an UPDATE matches zero rows — the deal silently stays absent AND every child
+    // write below (job_orders, project_cards, project_budgets) then fails its
+    // deal_id foreign key. Those FK violations are "data" errors the sync queue
+    // never retries, so the project card and starting budget were lost for good
+    // (exactly the cascade of "could not be saved" toasts reported on award).
+    // Upserting the whole deal guarantees the parent row exists before any child
+    // references it — the same parent-before-child ordering createProjectCard
+    // already enforces for its own dept-task children.
+    const awardedDeal={...awardModal,
       stage:"06 · Kickoff",
       probability:100,
-      payment_status:"Unpaid",
+      paymentStatus:"Unpaid",
       notes:form.scopeNotes||awardModal.notes||"",
-      date_acquired:awardModal.dateAcquired||awardedDate,
-      updated_at:new Date().toISOString(),
-    }).catch(()=>false):true;
+      dateAcquired:awardModal.dateAcquired||awardedDate,
+    };
+    const awardSynced=isSupabaseReady()?await sbSyncOne("deals",awardedDeal,toSbDeal):true;
     if(savingToastId){
       if(awardSynced) toastUpdate(savingToastId,`✅ ${awardModal.client} awarded and saved to server`,"success",3000);
       else toastUpdate(savingToastId,`⚠️ ${awardModal.client} awarded on this device only — didn't reach the server yet. Keep this browser/tab around so it can sync.`,"warning",12000);
@@ -5984,7 +6010,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Stock",    items:[{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
     ],
   };
-  const Nav=()=>{
+  const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
       reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
@@ -6085,9 +6111,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       </aside>
     );
-  };
+  });
   // ── MOBILE HEADER (top bar) ───────────────────────────────────────────────
-  const MobileHeader=()=>{
+  const MobileHeader=useStableComponent(()=>{
     if(!isMobile) return null;
     return(
       <div style={{position:"fixed",top:0,left:0,right:0,height:48,background:"#1e293b",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 14px",zIndex:300,boxShadow:"0 2px 8px rgba(0,0,0,.25)"}} className="noprint">
@@ -6101,10 +6127,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       </div>
     );
-  };
+  });
 
   // ── MOBILE BOTTOM NAV ─────────────────────────────────────────────────────
-  const MobileBottomNav=()=>{
+  const MobileBottomNav=useStableComponent(()=>{
     if(!isMobile) return null;
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
@@ -6234,8 +6260,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       </>
     );
-  };
-  // Always keep ref current so Wrap's stale closure can read the latest nav element
+  });
+  // Rebuild the element each render so it reflects the latest page/badge state;
+  // MobileBottomNav's stable identity keeps React from remounting it on the way.
   mobileNavRef.current = isMobile ? <MobileBottomNav/> : null;
 
   // ── SYNC FAILURE BANNER — must be declared BEFORE Wrap so the closure captures it initialized ─
@@ -6258,18 +6285,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </div>
   ):null;
 
-  // Not memoized with useCallback: this closes over ~15 pieces of modal state
-  // (confirmDel, dealModal, expModal, swModal, infModal, ...) that all live in
-  // the Global Modals block below. An explicit dependency array here previously
-  // omitted every one of them, so Wrap kept a stale closure between renders —
-  // e.g. clicking delete on Pipeline set confirmDel, but Wrap's memoized
-  // closure still had the OLD confirmDel value until something that WAS in
-  // the deps list (like `page`) changed, which is why navigating to Dashboard
-  // and back made the confirmation modal "suddenly" appear. Recreating this
-  // function fresh on every render costs nothing meaningful (App re-renders
-  // on every one of these state changes anyway) and removes the whole bug
-  // class rather than chasing down every missing dependency by hand.
-  const Wrap=({children})=>{
+  // Wrap is the shared page shell (side nav + global modals + fade-in content).
+  // It closes over ~15 modal-open states (confirmDel, dealModal, expModal,
+  // swModal, infModal, …) that live in the Global Modals block below and must be
+  // read fresh every render — an earlier useCallback dep array omitted them, so
+  // Wrap kept a STALE closure (clicking delete on Pipeline set confirmDel, but the
+  // memoized Wrap still had the old value until an in-deps state like `page`
+  // changed — the "modal only appears after visiting Dashboard" bug in #112).
+  // #112 fixed that by inlining Wrap, but an inline component gets a NEW identity
+  // every render, so React then remounted the whole page on each re-render
+  // (constant, from Supabase realtime pushes): the `.fi` fade-in replayed (the
+  // "blinking screen" on Project Cards) and every descendant's local state reset,
+  // wiping a half-typed DealModal form. useStableComponent resolves both — the
+  // closure stays fresh (no stale reads) while the identity stays stable (no
+  // remount), so React reconciles the page in place.
+  const Wrap=useStableComponent(({children})=>{
     const W=navCollapsed?64:220;
     const alreadyWrapped=useContext(WrapCtx);
     return(
@@ -6470,7 +6500,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </div>
     </WrapCtx.Provider>
   );
-  };
+  });
   // ── AUTH SCREENS ─────────────────────────────────────────────────────────────
   if(!ready) return(
     <div style={{minHeight:"100vh",background:"#f8fafc",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -11680,7 +11710,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         pcards={pcards} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
         toggleDeptTask={toggleDeptTask} markDeptDone={markDeptDone}
         setProjectTAT={setProjectTAT} jos={jos}
-        delDeal={delDeal} delPcard={delPcard}
+        delDeal={delDeal} delPcard={delPcard} setConfirmDel={setConfirmDel}
         session={session} role={role} budgets={budgets}
         blockers={blockers} addBlocker={addBlocker} resolveBlocker={resolveBlocker}
         logActivity={logActivity} actLog={actLog}
@@ -20067,11 +20097,15 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
   useEffect(()=>{if(initialFilter){setPcFilter(initialFilter);clearJumpFilter&&clearJumpFilter();}},[]);
+  // If the open project was deleted (e.g. via the delete button below → the
+  // global confirm modal → delDeal), it vanishes from wonDeals/completedDeals;
+  // fall back to the grid so the detail view never renders against a missing deal.
+  useEffect(()=>{if(selDeal&&!wonDeals.some(d=>d.id===selDeal)&&!completedDeals.some(d=>d.id===selDeal))setSelDeal(null);},[selDeal,wonDeals,completedDeals]);
   const[viewMode,setViewMode]=useState("card");
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
@@ -20365,7 +20399,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                             {pc?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH Only</span>}
                           </div>
                         </div>
-                        <span style={{flexShrink:0,fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                          {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+                        </div>
                       </div>
                       {/* Spec table */}
                       <table style={{width:"100%",borderCollapse:"collapse"}}>
@@ -20543,6 +20580,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
                     <span style={{fontSize:".72rem",fontWeight:700,color:hc,background:hc+"18",borderRadius:20,padding:"4px 12px",border:`1px solid ${hc}44`}}>{deal?.stage?.replace(/^\d+ · /,"")||"—"}</span>
                     {pct===100&&<span style={{fontSize:".68rem",fontWeight:700,color:"#059669",background:"#f0fdf4",borderRadius:20,padding:"2px 9px"}}>✅ Done</span>}
+                    {role==="Manager"&&setConfirmDel&&deal&&<button onClick={()=>setConfirmDel(deal.id)} title="Delete this project and all its records" style={{marginTop:2,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑 Delete Project</button>}
                   </div>
                 </div>
 
