@@ -2732,7 +2732,7 @@ export default function App(){
             if(_suppliers){setSuppliers(prev=>mergeLocalOnly(_suppliers,prev));idbE.push([KEYS.suppliers,_suppliers]);}
             const _subcons=data.subcontractors?.length?data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by})):null;
             if(_subcons){setSubcons(prev=>mergeLocalOnly(_subcons,prev));idbE.push([KEYS.subcons,_subcons]);}
-            const _boqLib=data.boqLibrary?.length?data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",category:it.category||"Materials",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""})):null;
+            const _boqLib=data.boqLibrary?.length?data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",section:it.category||"",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""})):null;
             if(_boqLib){setBoqLibrary(prev=>mergeLocalOnly(_boqLib,prev));idbE.push([KEYS.boqLibrary,_boqLib]);}
             const _users=data.users?.length?data.users.map(u=>{
               // If Supabase row has no password_hash, fall back to the DEFAULT_USERS hash

@@ -967,7 +967,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             <button title="Save to library" onMouseDown={e=>{e.preventDefault();
                               const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.baseCost!=null?it.baseCost:it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
                               const newLib=[...boqLibrary,entry];saveLibrary(newLib);
-                              if(isSupabaseReady())sbInsert("boq_library",{id:entry.id,name:entry.name,description:"",section:entry.section,unit:entry.unit,unit_cost:entry.unitCost,tags:[],created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt}).catch(()=>{});
+                              if(isSupabaseReady())sbInsert("boq_library",{id:entry.id,name:entry.name,description:"",category:entry.section,unit:entry.unit,unit_cost:entry.unitCost,tags:[],created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt}).catch(()=>{});
                               toastEmit&&toastEmit(`"${entry.name}" saved to library`,"success");
                             }} style={{background:"none",border:"none",cursor:"pointer",fontSize:".82rem",color:"#7c3aed",opacity:.55,padding:"0 2px",lineHeight:1,flexShrink:0}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.55}>💾</button>
                           )}
