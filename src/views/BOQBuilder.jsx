@@ -93,7 +93,7 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue}){
   // Start blank — sections are added per BOQ, no fixed/preset sections
   const BLANK_ITEMS=()=>[];
   // Draft key used when no project is selected yet (work is migrated onto the deal once picked)
@@ -181,7 +181,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   });
 
   const addLibItemToBoq=(libIt)=>{
-    setItems(its=>[...its,{_id:uid(),section:libIt.section||"B",itemCode:"",description:libIt.name,unit:libIt.unit||"lot",qty:1,unitCost:libIt.unitCost||0,total:libIt.unitCost||0,remarks:""}]);
+    const m=Number(markupPct)||0,base=libIt.unitCost||0,uc=applyMk(base,m);
+    setItems(its=>[...its,{_id:uid(),section:libIt.section||"B",itemCode:"",description:libIt.name,unit:libIt.unit||"lot",qty:1,baseCost:base,markup:m,unitCost:uc,total:uc,remarks:""}]);
     toastEmit(`"${libIt.name}" added to BOQ`);
   };
 
@@ -226,10 +227,178 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(libEditId===id){setLibEditId(null);setLibForm({name:"",description:"",section:"2",unit:"lot",unitCost:"",tags:""});}
   };
 
+  // ── Markup (Contractor's Profit) ──────────────────────────────────────────
+  // BOQ unit costs imported from the QS sheet are DIRECT costs — they exclude the
+  // sales/contractor's-profit markup. We keep each item's direct cost in `baseCost`
+  // and its markup % in `markup`; the client-facing `unitCost`/`total` are the
+  // marked-up figures used everywhere else (print, CSV, totals, VAT).
+  const[markupPct,setMarkupPct]=useState("");
+  const roundP=n=>Math.round((Number(n)||0)*100)/100;
+  const applyMk=(base,m)=>{const b=Number(base)||0,mk=Number(m)||0;return mk?roundP(b*(1+mk/100)):b;};
+  // Ensure legacy items (saved before markup existed) carry baseCost/markup fields.
+  const normItem=it=>({...it,baseCost:it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0),markup:it.markup!=null?it.markup:0});
+  const applyMarkupToAll=()=>{
+    const m=Number(markupPct)||0;
+    setItems(its=>its.map(it=>{const base=it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0);const uc=applyMk(base,m);return{...it,baseCost:base,markup:m,unitCost:uc,total:roundP((it.qty||0)*uc)};}));
+    toastEmit&&toastEmit(m>0?`${m}% standard markup applied to all items`:"Markup cleared — showing direct costs","success");
+  };
+  // Per-section markup: the common markup across a section's items, or "" if they differ.
+  const sectionMarkup=(secId)=>{const si=items.filter(it=>it.section===secId);if(!si.length)return"";const first=Number(si[0].markup)||0;return si.every(it=>(Number(it.markup)||0)===first)?first:"";};
+  const applyMarkupToSection=(secId,m)=>{
+    const mk=Number(m)||0;
+    setItems(its=>its.map(it=>{if(it.section!==secId)return it;const base=it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0);const uc=applyMk(base,mk);return{...it,baseCost:base,markup:mk,unitCost:uc,total:roundP((it.qty||0)*uc)};}));
+  };
+
+  // ── Excel / CSV import ────────────────────────────────────────────────────
+  const importFileRef=useRef(null);
+  const[importOpen,setImportOpen]=useState(false);
+  const[importPreview,setImportPreview]=useState(null);
+  const[importErr,setImportErr]=useState("");
+  const[importFileName,setImportFileName]=useState("");
+  const[importMode,setImportMode]=useState("append"); // append | replace
+  const[importMarkup,setImportMarkup]=useState(""); // markup % to bake in on import
+
+  // Parse a sheet (array-of-arrays) into {sections,items}. Auto-detects the header
+  // row and column positions. Handles GMD's nested layout where the section letter
+  // is in the "Item No." column, sub-group headers sit one column in, and their
+  // items sit another column in (e.g. "Supervision" › "Safety Officer").
+  const parseBoqAoa=(aoa)=>{
+    const norm=s=>String(s==null?"":s).trim().toLowerCase();
+    const toNum=v=>{if(v==null||v==="")return null;const n=parseFloat(String(v).replace(/[₱,\s]/g,""));return isNaN(n)?null:n;};
+    let headerIdx=-1,cm=null;
+    for(let r=0;r<Math.min(aoa.length,25);r++){
+      const cells=(aoa[r]||[]).map(norm);
+      const has=(...keys)=>cells.findIndex(c=>c&&keys.some(k=>c===k||c.includes(k)));
+      const itemNo=has("item no","item #","s/n","sr no","ref no","ref","no.");
+      // Prefer a real "Description" column; only fall back to a bare "item" column
+      // (and never the item-number column) so nested-group detection lines up.
+      let desc=has("description","particular","scope of work","work item","item description","scope");
+      if(desc<0) desc=cells.findIndex((c,i)=>i!==itemNo&&c&&(c==="item"||c.includes("item")));
+      const qty=has("qty","quantity");
+      const unit=cells.findIndex(c=>c==="unit"||c==="uom"||c==="units");
+      let cost=has("unit cost","unit price","rate");
+      if(cost<0) cost=has("cost","price");
+      if(desc>=0&&desc!==itemNo&&(qty>=0||cost>=0||unit>=0)){
+        let total=has("total amount","total cost","line total","total","amount");
+        const remarks=has("remarks","remark","notes","note");
+        cm={itemNo,desc,qty,unit,cost,total:(total>=0&&total!==cost&&total!==desc)?total:-1,remarks};
+        headerIdx=r;break;
+      }
+    }
+    if(!cm) return {items:[],sections:[],error:"header"};
+    const cell=(row,i)=>i>=0&&i<row.length?row[i]:"";
+    // Description may span several columns between the Item No. and Qty columns.
+    const after=[cm.qty,cm.unit,cm.cost,cm.total,cm.remarks].filter(i=>i>cm.desc);
+    const descEnd=after.length?Math.min(...after):cm.desc+1;
+    const descCols=[];for(let i=cm.desc;i<descEnd;i++)descCols.push(i);
+    const nested=descCols.length>1;
+    const skipRe=/^(sub-?\s*total|vat\b|value added|discount|prepared by|approved|accepted|checked by|noted by|bank details|payment terms|general notes?|terms|notes?:|account name|•|bdo|bpi|metrobank)/i;
+    const stopRe=/grand\s*total/i;
+    const secRe=/^\s*([A-Za-z]{1,2}|\d{1,3})[\.\)]\s+(.+)$/;
+    const sections=[],items=[];let curId=null,curGroup=null;
+    for(let r=headerIdx+1;r<aoa.length;r++){
+      const row=aoa[r]||[];
+      const itemNo=String(cell(row,cm.itemNo)||"").trim();
+      const parts=descCols.map(i=>String(cell(row,i)||"").trim());
+      const firstText=parts[0]||"";
+      let deepIdx=-1;for(let k=parts.length-1;k>=0;k--){if(parts[k]){deepIdx=k;break;}}
+      const deepText=deepIdx>=0?parts[deepIdx]:"";
+      const unitVal=String(cell(row,cm.unit)||"").trim();
+      const qtyN=toNum(cell(row,cm.qty)),costN=toNum(cell(row,cm.cost)),totalN=toNum(cell(row,cm.total));
+      // Stop once we reach the grand-total line — everything below is notes/signatures.
+      if(stopRe.test(itemNo)||parts.some(p=>stopRe.test(p))||stopRe.test(String(cell(row,cm.cost)||""))||stopRe.test(String(cell(row,cm.total)||""))) break;
+      if(!deepText&&!itemNo&&qtyN===null&&costN===null) continue;
+      if(skipRe.test(itemNo)||parts.some(p=>skipRe.test(p))) continue;
+      // Label-only row (no qty, no cost): a section, a sub-group, or a flat section.
+      if(deepText&&qtyN===null&&costN===null){
+        const m=deepText.match(secRe);
+        if(itemNo&&itemNo.length<=3){
+          const id=(itemNo).replace(/[.\)]+$/,"").trim();
+          const label=(m?m[2]:deepText).trim();
+          if(!sections.find(s=>s.id===id)) sections.push({id,label});
+          curId=id;curGroup=null;
+        }else if(nested){
+          curGroup=firstText||deepText;
+        }else{
+          const id=(m?m[1]:String(sections.length+1)).replace(/[.\)]+$/,"").trim();
+          const label=(m?m[2]:deepText).trim();
+          if(!sections.find(s=>s.id===id)) sections.push({id,label});
+          curId=id;curGroup=null;
+        }
+        continue;
+      }
+      if(!deepText) continue; // numbers with no label — skip
+      // A line item.
+      let secId=curId;
+      if(!secId&&itemNo.includes(".")) secId=itemNo.split(".")[0].trim();
+      if(!secId){
+        if(!sections.length) sections.push({id:"1",label:"Imported Items"});
+        secId=sections[sections.length-1].id;
+      }
+      // Nested sub-item → prefix with its group; top-level item → clear the group.
+      let name=deepText;
+      if(deepIdx>0){ if(curGroup) name=`${curGroup} — ${deepText}`; }
+      else { curGroup=null; }
+      const q=qtyN==null?1:qtyN,uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
+      items.push({section:String(secId),description:name,unit:unitVal||"lot",qty:q,baseCost:uc,unitCost:uc,total:q*uc,remarks:String(cell(row,cm.remarks)||"").trim(),markup:0});
+    }
+    items.forEach(it=>{if(!sections.find(s=>s.id===it.section)) sections.push({id:it.section,label:`Section ${it.section}`});});
+    const lbls=[];
+    [["Description",cm.desc],["Qty",cm.qty],["Unit",cm.unit],["Unit Cost",cm.cost],["Remarks",cm.remarks]].forEach(([n,i])=>{if(i>=0)lbls.push(n);});
+    return {items,sections,columnsLabel:lbls.join(", ")};
+  };
+
+  const handleImportFile=(file)=>{
+    if(!file) return;
+    setImportErr("");setImportPreview(null);setImportFileName(file.name);
+    if(!window.XLSX){setImportErr("Excel reader not loaded yet — please refresh the page and try again.");return;}
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=window.XLSX.read(new Uint8Array(e.target.result),{type:"array"});
+        const sheetName=wb.SheetNames.find(n=>/bo[qz]|quot|bill|estimate/i.test(n))||wb.SheetNames[0];
+        const aoa=window.XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:"",blankrows:false});
+        const parsed=parseBoqAoa(aoa);
+        if(parsed.error==="header"){setImportErr("Couldn't find the table header. Your sheet needs a row with columns like Description, Qty, Unit and Unit Cost.");return;}
+        if(!parsed.items.length){setImportErr("No line items found under the detected header. Check that item rows have a description plus a quantity or unit cost.");return;}
+        setImportPreview({...parsed,sheetName});
+      }catch(err){setImportErr("Could not read this file: "+(err.message||err));}
+    };
+    reader.onerror=()=>setImportErr("Failed to read the file.");
+    reader.readAsArrayBuffer(file);
+  };
+
+  const applyImport=()=>{
+    if(!importPreview) return;
+    const m=Number(importMarkup)||0;
+    const impSecs=importPreview.sections;
+    const impItems=importPreview.items.map(it=>{const uc=applyMk(it.baseCost,m);return{...it,markup:m,unitCost:uc,total:roundP((it.qty||0)*uc)};});
+    if(importMode==="replace"){
+      setSections(impSecs.map((s,i)=>({id:s.id,label:s.label,color:SEC_COLORS[i%SEC_COLORS.length]})));
+      setItems(impItems.map(it=>({...it,_id:uid()})));
+    }else{
+      const existing=new Set(sections.map(s=>s.id));
+      const remap={},added=[];
+      impSecs.forEach(s=>{
+        const sameLabel=sections.find(p=>p.label.trim().toLowerCase()===s.label.trim().toLowerCase());
+        if(sameLabel){remap[s.id]=sameLabel.id;return;}
+        let nid=s.id||String(sections.length+added.length+1);
+        while(existing.has(nid)) nid=String((parseInt(nid,10)||(sections.length+added.length))+1);
+        remap[s.id]=nid;existing.add(nid);
+        added.push({id:nid,label:s.label,color:SEC_COLORS[(sections.length+added.length)%SEC_COLORS.length]});
+      });
+      setSections([...sections,...added]);
+      setItems([...items,...impItems.map(it=>({...it,_id:uid(),section:remap[it.section]||it.section}))]);
+    }
+    if(m) setMarkupPct(String(m));
+    toastEmit&&toastEmit(`${impItems.length} items imported${m?` with ${m}% markup`:""} from ${importFileName||"file"}`,"success");
+    setImportOpen(false);setImportPreview(null);setImportErr("");setImportFileName("");setImportMarkup("");
+  };
+
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
 
   const applyBoqSrc=(src)=>{
-    if(src.items) setItems(src.items);
+    if(src.items) setItems(src.items.map(normItem));
     if(src.sections) setSections(src.sections);
     if(src.boqTitle!==undefined) setBoqTitle(src.boqTitle);
     if(src.location!==undefined) setLocation(src.location);
@@ -237,13 +406,14 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(src.boqDate!==undefined) setBoqDate(src.boqDate);
     if(src.vatEnabled!==undefined) setVatEnabled(src.vatEnabled);
     if(src.discountedTotal!==undefined) setDiscountedTotal(src.discountedTotal);
+    if(src.markupPct!==undefined) setMarkupPct(src.markupPct);
   };
 
   React.useEffect(()=>{
     if(standaloneId){
       // Standalone BOQ — load from the shared store (read once on open)
       const rec=standaloneBoqs.find(b=>b.id===standaloneId);
-      if(rec){applyBoqSrc({items:rec.items,sections:rec.sections,boqTitle:rec.title,location:rec.location,quotationNo:rec.quotationNo,boqDate:rec.boqDate,vatEnabled:rec.vatEnabled,discountedTotal:rec.discountedTotal});}
+      if(rec){applyBoqSrc({items:rec.items,sections:rec.sections,boqTitle:rec.title,location:rec.location,quotationNo:rec.quotationNo,boqDate:rec.boqDate,vatEnabled:rec.vatEnabled,discountedTotal:rec.discountedTotal,markupPct:rec.markupPct});}
       setDraftSaved(true);
       return;
     }
@@ -285,7 +455,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(false);
       clearTimeout(draftTimerRef.current);
       draftTimerRef.current=setTimeout(()=>{
-        saveStandaloneBoq&&saveStandaloneBoq({id:standaloneId,title:boqTitle,location,quotationNo,boqDate,items,sections,vatEnabled,discountedTotal,updatedAt:new Date().toISOString()});
+        saveStandaloneBoq&&saveStandaloneBoq({id:standaloneId,title:boqTitle,location,quotationNo,boqDate,items,sections,vatEnabled,discountedTotal,markupPct,updatedAt:new Date().toISOString()});
         setDraftSaved(true);
       },1200);
       return()=>clearTimeout(draftTimerRef.current);
@@ -297,27 +467,43 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setDraftSaved(false);
     clearTimeout(draftTimerRef.current);
     draftTimerRef.current=setTimeout(()=>{
-      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal};
+      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal,markupPct};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
+      // Keep the deal's contract value equal to the BOQ (net of VAT): the discounted
+      // total override if set, otherwise the marked-up grand total. Only once the BOQ
+      // has line items, so opening/clearing a BOQ never wipes a manually-set value.
+      if(selDeal&&onBoqValue&&items.length>0){
+        const net=Number(discountedTotal)>0?Number(discountedTotal):grandTotal;
+        onBoqValue(selDeal,net);
+      }
       setDraftSaved(true);
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
-  },[standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal]);
+  },[standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal,markupPct]);
 
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
     const upd={...it,[key]:["description","unit","section","remarks"].includes(key)?val:Number(val)||0};
-    upd.total=(upd.qty||0)*(upd.unitCost||0);
+    // Unit cost / markup / qty all derive the effective cost and line total from
+    // the direct cost (baseCost) and the per-item markup %.
+    const base=upd.baseCost!=null?upd.baseCost:(Number(upd.unitCost)||0);
+    const m=Number(upd.markup)||0;
+    upd.baseCost=base;upd.markup=m;
+    upd.unitCost=applyMk(base,m);
+    upd.total=roundP((upd.qty||0)*upd.unitCost);
     return upd;
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
-  const addRow=(sec)=>setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",description:"",unit:"lot",qty:1,unitCost:0,total:0,remarks:""}]);
+  const addRow=(sec)=>setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",description:"",unit:"lot",qty:1,baseCost:0,unitCost:0,total:0,remarks:"",markup:0}]);
   const applyLibItem=(rowId,lib)=>{
+    const m=Number(markupPct)||0;
     setItems(its=>its.map(it=>{
       if(it._id!==rowId) return it;
-      const upd={...it,description:lib.name,unit:lib.unit||it.unit,unitCost:lib.unitCost>0?lib.unitCost:it.unitCost};
+      const base=lib.unitCost>0?lib.unitCost:(it.baseCost!=null?it.baseCost:it.unitCost);
+      const uc=applyMk(base,m);
+      const upd={...it,description:lib.name,unit:lib.unit||it.unit,baseCost:base,markup:m,unitCost:uc};
       upd.total=(upd.qty||0)*(upd.unitCost||0);
       return upd;
     }));
@@ -449,7 +635,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const mob=window.innerWidth<768;
   const inpSt={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",width:"100%",outline:"none",background:"#fff",boxSizing:"border-box"};
-  const GRID="76px 1fr 58px 62px 110px 110px 118px 30px";
+  const GRID="66px 1fr 52px 56px 104px 62px 116px 96px 28px";
 
   return(
     <div>
@@ -508,15 +694,116 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           <button onClick={()=>setAddSecOpen(o=>!o)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>✚ Section</button>
         </div>
         <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>{setImportMode(items.length>0?"append":"replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}} title="Upload an Excel/CSV BOQ and build from it">⬆ Import Excel</button>
           <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscountedTotal("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscountedTotal("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
         </div>
       </div>
+
+      {/* Markup bar — add Contractor's Profit on top of the direct BOQ costs */}
+      {items.length>0&&(()=>{
+        const m=Number(markupPct)||0;
+        const directTotal=items.reduce((s,it)=>s+((it.baseCost!=null?it.baseCost:it.unitCost)||0)*(it.qty||0),0);
+        const applied=items.some(it=>Number(it.markup)>0);
+        const inSync=items.every(it=>Number(it.markup||0)===m);
+        return(
+          <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:12,padding:"10px 14px",marginBottom:12,display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",alignItems:"center",gap:7}}>
+              <span style={{fontSize:"1rem"}}>📈</span>
+              <div>
+                <div style={{fontWeight:800,color:"#92400e",fontSize:".82rem"}}>Standard markup / Contractor's Profit</div>
+                <div style={{fontSize:".66rem",color:"#a16207"}}>Sets one markup on every line, then fine-tune per section or per item below. VAT is computed on the marked-up total.</div>
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",flexWrap:"wrap"}}>
+              <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+                <input type="number" value={markupPct} onChange={e=>setMarkupPct(e.target.value)} placeholder="0" min="0" step="0.5"
+                  onKeyDown={e=>e.key==="Enter"&&applyMarkupToAll()}
+                  style={{width:78,border:"1.5px solid #fbbf24",borderRadius:7,padding:"6px 22px 6px 10px",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,color:"#92400e",outline:"none",textAlign:"right",background:"#fff"}}/>
+                <span style={{position:"absolute",right:9,color:"#a16207",fontWeight:700,fontSize:".8rem",pointerEvents:"none"}}>%</span>
+              </div>
+              <button onClick={applyMarkupToAll} style={{background:"#d97706",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>Apply to all</button>
+              {applied&&<span style={{fontSize:".7rem",color:"#166534",fontWeight:700,whiteSpace:"nowrap"}} title={`Direct: ₱${directTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}`}>Direct ₱{directTotal.toLocaleString("en-PH",{maximumFractionDigits:0})} → w/ markup ₱{grandTotal.toLocaleString("en-PH",{maximumFractionDigits:0})}</span>}
+              {applied&&!inSync&&<span style={{fontSize:".66rem",color:"#b45309",fontStyle:"italic"}}>mixed — click Apply to unify</span>}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Import Excel / CSV modal */}
+      {importOpen&&(
+        <div onClick={()=>setImportOpen(false)} style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:2000,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"36px 16px",overflowY:"auto"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",padding:22,maxWidth:660,width:"100%",boxShadow:"0 24px 60px #0006"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>⬆ Import BOQ from Excel / CSV</div>
+              <button onClick={()=>setImportOpen(false)} style={{background:"none",border:"none",fontSize:"1.1rem",color:"#94a3b8",cursor:"pointer"}}>✕</button>
+            </div>
+            <div style={{fontSize:".76rem",color:"#64748b",marginBottom:14,lineHeight:1.55}}>
+              Upload an Excel (.xlsx/.xls) or CSV file. FabHub auto-detects the <b>Description</b>, <b>Qty</b>, <b>Unit</b>, <b>Unit&nbsp;Cost</b> and <b>Remarks</b> columns and rebuilds your sections and line items — including nested groups like “Supervision → Safety Officer”. An at-cost BOQ defaults to a <b>50% standard markup</b> so the direct costs become client-ready prices — adjust it here, then fine-tune per section or item after. You'll preview everything before it's added.
+            </div>
+            <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
+              <button onClick={()=>importFileRef.current&&importFileRef.current.click()} style={{background:"#4f46e5",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>📂 Choose file</button>
+              <input ref={importFileRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={e=>{handleImportFile(e.target.files[0]);e.target.value="";}}/>
+              {importFileName&&<span style={{fontSize:".76rem",color:"#475569",fontWeight:600}}>{importFileName}</span>}
+            </div>
+            {importErr&&<div style={{background:"#fef2f2",border:"1.5px solid #fca5a5",borderRadius:10,padding:"10px 14px",color:"#b91c1c",fontSize:".78rem",marginBottom:12}}>{importErr}</div>}
+            {importPreview&&(()=>{
+              const mk=Number(importMarkup)||0;
+              const eff=b=>applyMk(b,mk);
+              const grand=importPreview.items.reduce((s,it)=>s+eff(it.baseCost)*(it.qty||0),0);
+              return(
+                <>
+                  <div style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:10,padding:"10px 14px",marginBottom:12}}>
+                    <div style={{fontWeight:700,color:"#15803d",fontSize:".82rem",marginBottom:4}}>✓ {importPreview.items.length} line items · {importPreview.sections.length} section{importPreview.sections.length!==1?"s":""} detected{importPreview.sheetName?` — sheet “${importPreview.sheetName}”`:""}</div>
+                    <div style={{fontSize:".68rem",color:"#3f6212"}}>Columns matched: {importPreview.columnsLabel}</div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap",background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"9px 12px"}}>
+                    <span style={{fontSize:".76rem",fontWeight:700,color:"#92400e"}}>Standard markup on import <span style={{fontWeight:500,color:"#a16207"}}>(at-cost → 50%)</span></span>
+                    <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+                      <input type="number" value={importMarkup} onChange={e=>setImportMarkup(e.target.value)} placeholder="0" min="0" step="0.5" style={{width:74,border:"1.5px solid #fbbf24",borderRadius:7,padding:"5px 20px 5px 9px",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,color:"#92400e",outline:"none",textAlign:"right",background:"#fff"}}/>
+                      <span style={{position:"absolute",right:8,color:"#a16207",fontWeight:700,fontSize:".76rem",pointerEvents:"none"}}>%</span>
+                    </div>
+                    <span style={{fontSize:".72rem",color:"#a16207",marginLeft:"auto",fontWeight:700}}>Total {mk>0?"w/ markup ":""}₱{grand.toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                  </div>
+                  <div style={{maxHeight:250,overflowY:"auto",border:"1.5px solid #e2e8f0",borderRadius:10,marginBottom:12}}>
+                    {importPreview.sections.map(sec=>{
+                      const si=importPreview.items.filter(it=>it.section===sec.id);
+                      if(!si.length) return null;
+                      const st=si.reduce((t,it)=>t+eff(it.baseCost)*(it.qty||0),0);
+                      return(
+                        <div key={sec.id}>
+                          <div style={{background:"#f1f5f9",padding:"5px 12px",fontWeight:800,fontSize:".72rem",color:"#1e293b",textTransform:"uppercase",letterSpacing:".5px",display:"flex",justifyContent:"space-between"}}><span>{sec.id}. {sec.label}</span><span style={{color:"#64748b"}}>₱{st.toLocaleString("en-PH",{minimumFractionDigits:2})}</span></div>
+                          {si.map((it,i)=>(
+                            <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 42px 50px 96px",gap:6,padding:"4px 12px",borderBottom:"1px solid #f1f5f9",fontSize:".72rem",color:"#374151",alignItems:"center"}}>
+                              <span style={{whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}} title={it.description}>{it.description}</span>
+                              <span style={{textAlign:"right"}}>{it.qty}</span>
+                              <span style={{textAlign:"center",color:"#94a3b8"}}>{it.unit}</span>
+                              <span style={{textAlign:"right"}}>₱{eff(it.baseCost).toLocaleString("en-PH",{minimumFractionDigits:2})}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{display:"flex",gap:16,marginBottom:14,fontSize:".78rem",color:"#475569",flexWrap:"wrap"}}>
+                    <label style={{display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="radio" name="impmode" checked={importMode==="append"} onChange={()=>setImportMode("append")}/>Add to current BOQ</label>
+                    <label style={{display:"flex",gap:6,alignItems:"center",cursor:"pointer"}}><input type="radio" name="impmode" checked={importMode==="replace"} onChange={()=>setImportMode("replace")}/>Replace everything</label>
+                  </div>
+                  <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button onClick={()=>setImportOpen(false)} style={{background:"none",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:600,color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                    <button onClick={applyImport} style={{background:"#16a34a",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".8rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>{importMode==="replace"?"Replace BOQ":"Add to BOQ"}</button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Library Panel */}
       {libOpen&&(
@@ -603,9 +890,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         <div style={{background:"#fff",borderRadius:14,border:"1.5px dashed #cbd5e1",padding:"40px 24px",marginBottom:12,textAlign:"center"}}>
           <div style={{fontSize:"1.6rem",marginBottom:8}}>📋</div>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem",marginBottom:4}}>No sections yet</div>
-          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>Add a section to start building this BOQ. You decide which sections this quotation needs.{!selDeal&&" Tip: pick a Project above to link this BOQ — your work is saved either way."}</div>
+          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>Add a section to start building this BOQ, or upload an Excel/CSV BOQ to build from it. You decide which sections this quotation needs.{!selDeal&&" Tip: pick a Project above to link this BOQ — your work is saved either way."}</div>
           <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
             <button onClick={()=>setAddSecOpen(true)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>✚ Add Section</button>
+            <button onClick={()=>{setImportMode("replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"9px 18px",color:"#4338ca",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>⬆ Import from Excel</button>
             <button onClick={loadStandardSections} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 18px",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Load GMD standard sections</button>
           </div>
         </div>
@@ -613,11 +901,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       {sections.length>0&&(
         <>
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"auto",marginBottom:12}}>
-            <div style={{minWidth:760}}>
+            <div style={{minWidth:820}}>
               {/* Column headers */}
               <div style={{display:"grid",gridTemplateColumns:GRID,background:"#f8fafc",borderBottom:"2px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
-                {["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks",""].map((h,i)=>(
-                  <div key={i} style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",textAlign:[4,5].includes(i)?"right":"left"}}>{h}</div>
+                {["Item No.","Description","Qty","Unit","Unit Cost (₱)","Mk %","Amount (₱)","Remarks",""].map((h,i)=>(
+                  <div key={i} style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",textAlign:[4,6].includes(i)?"right":(i===5?"center":"left")}}>{h}</div>
                 ))}
               </div>
               {/* Rows by section */}
@@ -639,6 +927,17 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                         }
                         <button onClick={()=>deleteSection(sec.id)} title="Delete section (must be empty first)" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:"0 2px",opacity:.4}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=.4}>🗑</button>
                       </div>
+                      {si.length>0&&(()=>{const sm=sectionMarkup(sec.id);return(
+                        <div style={{display:"flex",alignItems:"center",gap:4}} title="Markup for every item in this section">
+                          <span style={{fontSize:".62rem",fontWeight:700,color:sec.color,opacity:.75,textTransform:"uppercase",letterSpacing:".4px"}}>Mk</span>
+                          <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+                            <input type="number" value={sm} placeholder={sm===""?"mixed":"0"} min="0" step="0.5"
+                              onChange={e=>applyMarkupToSection(sec.id,e.target.value)}
+                              style={{width:56,border:"1.5px solid "+sec.color+"55",borderRadius:6,padding:"3px 16px 3px 7px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:sec.color,textAlign:"right",outline:"none",background:"#fff"}}/>
+                            <span style={{position:"absolute",right:6,fontSize:".68rem",fontWeight:700,color:sec.color,opacity:.7,pointerEvents:"none"}}>%</span>
+                          </div>
+                        </div>
+                      );})()}
                     </div>
                     {/* Item rows */}
                     {si.map((it,idx)=>(
@@ -666,7 +965,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1,resize:"none",lineHeight:1.4,minHeight:28,fontFamily:"inherit",overflow:"hidden"}}/>
                           {it.description.trim().length>=2&&!boqLibrary.some(lib=>lib.name.toLowerCase()===it.description.trim().toLowerCase())&&(
                             <button title="Save to library" onMouseDown={e=>{e.preventDefault();
-                              const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+                              const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.baseCost!=null?it.baseCost:it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
                               const newLib=[...boqLibrary,entry];saveLibrary(newLib);
                               if(isSupabaseReady())sbInsert("boq_library",{id:entry.id,name:entry.name,description:"",section:entry.section,unit:entry.unit,unit_cost:entry.unitCost,tags:[],created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt}).catch(()=>{});
                               toastEmit&&toastEmit(`"${entry.name}" saved to library`,"success");
@@ -691,15 +990,22 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                         </div>
                         <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
                         <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)} placeholder="lot" style={{...inpSt,fontSize:".72rem",padding:"4px 4px",textAlign:"center"}}/>
-                        <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
-                        <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".82rem",paddingRight:4}}>{it.total.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM, c/o owner…" style={{...inpSt,fontSize:".68rem",padding:"4px 5px",color:"#64748b"}}/>
+                        <input type="number" value={it.baseCost!=null?it.baseCost:it.unitCost} onChange={e=>updateItem(it._id,"baseCost",e.target.value)} title="Direct cost per unit (before markup)" style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
+                        <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+                          <input type="number" value={it.markup||0} onChange={e=>updateItem(it._id,"markup",e.target.value)} min="0" step="0.5" title="Markup % for this item" style={{...inpSt,fontSize:".74rem",padding:"4px 13px 4px 4px",textAlign:"right",color:Number(it.markup)>0?"#b45309":"#94a3b8",fontWeight:Number(it.markup)>0?700:400}}/>
+                          <span style={{position:"absolute",right:4,fontSize:".64rem",color:"#a16207",pointerEvents:"none"}}>%</span>
+                        </div>
+                        <div style={{textAlign:"right",paddingRight:4,lineHeight:1.15}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{it.total.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                          {Number(it.markup)>0&&(it.baseCost>0)&&<div style={{fontSize:".6rem",color:"#94a3b8"}}>@ ₱{(it.unitCost||0).toLocaleString("en-PH",{maximumFractionDigits:2})}/{it.unit||"unit"}</div>}
+                        </div>
+                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM…" style={{...inpSt,fontSize:".68rem",padding:"4px 5px",color:"#64748b"}}/>
                         <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
                       </div>
                     ))}
                     {/* Sub-total row */}
                     <div style={{display:"grid",gridTemplateColumns:GRID,background:sec.color+"0a",borderBottom:"1.5px solid "+sec.color+"22",alignItems:"center"}}>
-                      <div style={{gridColumn:"1/6",display:"flex",alignItems:"center"}}>
+                      <div style={{gridColumn:"1/7",display:"flex",alignItems:"center"}}>
                         <button onClick={()=>addRow(sec.id)} style={{background:"none",border:"none",color:sec.color,cursor:"pointer",fontSize:".72rem",fontWeight:700,padding:"5px 12px",opacity:.7}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.7}>+ Add row</button>
                         <span style={{fontSize:".68rem",color:"#94a3b8",fontStyle:"italic"}}>Sub-total {sec.label}</span>
                       </div>
@@ -711,13 +1017,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               })}
               {/* Grand Total */}
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#1e293b",alignItems:"center"}}>
-                <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
+                <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
                 <div style={{textAlign:"right",fontWeight:900,color:"#f59e0b",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
                 <div/><div/>
               </div>
               {/* VAT */}
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",alignItems:"center"}}>
-                <div style={{gridColumn:"1/6",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",gap:8}}>
                   <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:".78rem",color:"#64748b",fontWeight:600}}>
                     <input type="checkbox" checked={vatEnabled} onChange={e=>setVatEnabled(e.target.checked)} style={{cursor:"pointer"}}/>
                     VAT 12%
@@ -728,14 +1034,14 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               </div>
               {vatEnabled&&(
                 <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#0f172a",alignItems:"center"}}>
-                  <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total w/ VAT</div>
+                  <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total w/ VAT</div>
                   <div style={{textAlign:"right",fontWeight:900,color:"#34d399",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{(grandTotal+vatAmount).toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
                   <div/><div/>
                 </div>
               )}
               {/* Discounted Total */}
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#fffbeb",borderTop:"1px solid #fde68a",alignItems:"center"}}>
-                <div style={{gridColumn:"1/6",fontSize:".76rem",fontWeight:600,color:"#92400e"}}>Discounted Total w/o VAT <span style={{fontWeight:400,color:"#a16207"}}>(optional override)</span></div>
+                <div style={{gridColumn:"1/7",fontSize:".76rem",fontWeight:600,color:"#92400e"}}>Discounted Total w/o VAT <span style={{fontWeight:400,color:"#a16207"}}>(optional override)</span></div>
                 <div style={{textAlign:"right"}}>
                   <input type="number" value={discountedTotal} onChange={e=>setDiscountedTotal(e.target.value)} placeholder="—"
                     style={{border:"none",borderBottom:"1.5px solid #fde68a",background:"transparent",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#92400e",textAlign:"right",width:130,outline:"none"}}/>
