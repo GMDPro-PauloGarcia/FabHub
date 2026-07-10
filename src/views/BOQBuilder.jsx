@@ -240,7 +240,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const applyMarkupToAll=()=>{
     const m=Number(markupPct)||0;
     setItems(its=>its.map(it=>{const base=it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0);const uc=applyMk(base,m);return{...it,baseCost:base,markup:m,unitCost:uc,total:roundP((it.qty||0)*uc)};}));
-    toastEmit&&toastEmit(m>0?`${m}% markup applied to all items`:"Markup cleared — showing direct costs","success");
+    toastEmit&&toastEmit(m>0?`${m}% standard markup applied to all items`:"Markup cleared — showing direct costs","success");
+  };
+  // Per-section markup: the common markup across a section's items, or "" if they differ.
+  const sectionMarkup=(secId)=>{const si=items.filter(it=>it.section===secId);if(!si.length)return"";const first=Number(si[0].markup)||0;return si.every(it=>(Number(it.markup)||0)===first)?first:"";};
+  const applyMarkupToSection=(secId,m)=>{
+    const mk=Number(m)||0;
+    setItems(its=>its.map(it=>{if(it.section!==secId)return it;const base=it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0);const uc=applyMk(base,mk);return{...it,baseCost:base,markup:mk,unitCost:uc,total:roundP((it.qty||0)*uc)};}));
   };
 
   // ── Excel / CSV import ────────────────────────────────────────────────────
@@ -473,9 +479,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
     const upd={...it,[key]:["description","unit","section","remarks"].includes(key)?val:Number(val)||0};
-    // Editing the unit cost directly sets a new direct cost with no markup on top.
-    if(key==="unitCost"){upd.baseCost=upd.unitCost;upd.markup=0;}
-    upd.total=(upd.qty||0)*(upd.unitCost||0);
+    // Unit cost / markup / qty all derive the effective cost and line total from
+    // the direct cost (baseCost) and the per-item markup %.
+    const base=upd.baseCost!=null?upd.baseCost:(Number(upd.unitCost)||0);
+    const m=Number(upd.markup)||0;
+    upd.baseCost=base;upd.markup=m;
+    upd.unitCost=applyMk(base,m);
+    upd.total=roundP((upd.qty||0)*upd.unitCost);
     return upd;
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
@@ -618,7 +628,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const mob=window.innerWidth<768;
   const inpSt={border:"1.5px solid #e2e8f0",borderRadius:6,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",width:"100%",outline:"none",background:"#fff",boxSizing:"border-box"};
-  const GRID="76px 1fr 58px 62px 110px 110px 118px 30px";
+  const GRID="66px 1fr 52px 56px 104px 62px 116px 96px 28px";
 
   return(
     <div>
@@ -699,8 +709,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
             <div style={{display:"flex",alignItems:"center",gap:7}}>
               <span style={{fontSize:"1rem"}}>📈</span>
               <div>
-                <div style={{fontWeight:800,color:"#92400e",fontSize:".82rem"}}>Markup / Contractor's Profit</div>
-                <div style={{fontSize:".66rem",color:"#a16207"}}>Adds margin on top of the direct QS costs. VAT is computed on the marked-up total.</div>
+                <div style={{fontWeight:800,color:"#92400e",fontSize:".82rem"}}>Standard markup / Contractor's Profit</div>
+                <div style={{fontSize:".66rem",color:"#a16207"}}>Sets one markup on every line, then fine-tune per section or per item below. VAT is computed on the marked-up total.</div>
               </div>
             </div>
             <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:"auto",flexWrap:"wrap"}}>
@@ -884,11 +894,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       {sections.length>0&&(
         <>
           <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"auto",marginBottom:12}}>
-            <div style={{minWidth:760}}>
+            <div style={{minWidth:820}}>
               {/* Column headers */}
               <div style={{display:"grid",gridTemplateColumns:GRID,background:"#f8fafc",borderBottom:"2px solid #e2e8f0",padding:"8px 12px",alignItems:"center"}}>
-                {["Item No.","Description","Qty","Unit","Unit Cost (₱)","Total Amount (₱)","Remarks",""].map((h,i)=>(
-                  <div key={i} style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",textAlign:[4,5].includes(i)?"right":"left"}}>{h}</div>
+                {["Item No.","Description","Qty","Unit","Unit Cost (₱)","Mk %","Amount (₱)","Remarks",""].map((h,i)=>(
+                  <div key={i} style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".8px",color:"#94a3b8",textAlign:[4,6].includes(i)?"right":(i===5?"center":"left")}}>{h}</div>
                 ))}
               </div>
               {/* Rows by section */}
@@ -910,6 +920,17 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                         }
                         <button onClick={()=>deleteSection(sec.id)} title="Delete section (must be empty first)" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".7rem",padding:"0 2px",opacity:.4}} onMouseOver={e=>e.currentTarget.style.opacity=1} onMouseOut={e=>e.currentTarget.style.opacity=.4}>🗑</button>
                       </div>
+                      {si.length>0&&(()=>{const sm=sectionMarkup(sec.id);return(
+                        <div style={{display:"flex",alignItems:"center",gap:4}} title="Markup for every item in this section">
+                          <span style={{fontSize:".62rem",fontWeight:700,color:sec.color,opacity:.75,textTransform:"uppercase",letterSpacing:".4px"}}>Mk</span>
+                          <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+                            <input type="number" value={sm} placeholder={sm===""?"mixed":"0"} min="0" step="0.5"
+                              onChange={e=>applyMarkupToSection(sec.id,e.target.value)}
+                              style={{width:56,border:"1.5px solid "+sec.color+"55",borderRadius:6,padding:"3px 16px 3px 7px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:sec.color,textAlign:"right",outline:"none",background:"#fff"}}/>
+                            <span style={{position:"absolute",right:6,fontSize:".68rem",fontWeight:700,color:sec.color,opacity:.7,pointerEvents:"none"}}>%</span>
+                          </div>
+                        </div>
+                      );})()}
                     </div>
                     {/* Item rows */}
                     {si.map((it,idx)=>(
@@ -937,7 +958,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1,resize:"none",lineHeight:1.4,minHeight:28,fontFamily:"inherit",overflow:"hidden"}}/>
                           {it.description.trim().length>=2&&!boqLibrary.some(lib=>lib.name.toLowerCase()===it.description.trim().toLowerCase())&&(
                             <button title="Save to library" onMouseDown={e=>{e.preventDefault();
-                              const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
+                              const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.baseCost!=null?it.baseCost:it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
                               const newLib=[...boqLibrary,entry];saveLibrary(newLib);
                               if(isSupabaseReady())sbInsert("boq_library",{id:entry.id,name:entry.name,description:"",section:entry.section,unit:entry.unit,unit_cost:entry.unitCost,tags:[],created_by:entry.createdBy,created_at:entry.createdAt,updated_at:entry.updatedAt}).catch(()=>{});
                               toastEmit&&toastEmit(`"${entry.name}" saved to library`,"success");
@@ -962,15 +983,22 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                         </div>
                         <input type="number" value={it.qty} onChange={e=>updateItem(it._id,"qty",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 4px",textAlign:"right"}}/>
                         <input value={it.unit} onChange={e=>updateItem(it._id,"unit",e.target.value)} placeholder="lot" style={{...inpSt,fontSize:".72rem",padding:"4px 4px",textAlign:"center"}}/>
-                        <input type="number" value={it.unitCost} onChange={e=>updateItem(it._id,"unitCost",e.target.value)} style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
-                        <div style={{textAlign:"right",fontWeight:600,color:"#0f172a",fontSize:".82rem",paddingRight:4}}>{it.total.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM, c/o owner…" style={{...inpSt,fontSize:".68rem",padding:"4px 5px",color:"#64748b"}}/>
+                        <input type="number" value={it.baseCost!=null?it.baseCost:it.unitCost} onChange={e=>updateItem(it._id,"baseCost",e.target.value)} title="Direct cost per unit (before markup)" style={{...inpSt,fontSize:".78rem",padding:"4px 6px",textAlign:"right"}}/>
+                        <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+                          <input type="number" value={it.markup||0} onChange={e=>updateItem(it._id,"markup",e.target.value)} min="0" step="0.5" title="Markup % for this item" style={{...inpSt,fontSize:".74rem",padding:"4px 13px 4px 4px",textAlign:"right",color:Number(it.markup)>0?"#b45309":"#94a3b8",fontWeight:Number(it.markup)>0?700:400}}/>
+                          <span style={{position:"absolute",right:4,fontSize:".64rem",color:"#a16207",pointerEvents:"none"}}>%</span>
+                        </div>
+                        <div style={{textAlign:"right",paddingRight:4,lineHeight:1.15}}>
+                          <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{it.total.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                          {Number(it.markup)>0&&(it.baseCost>0)&&<div style={{fontSize:".6rem",color:"#94a3b8"}}>@ ₱{(it.unitCost||0).toLocaleString("en-PH",{maximumFractionDigits:2})}/{it.unit||"unit"}</div>}
+                        </div>
+                        <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM…" style={{...inpSt,fontSize:".68rem",padding:"4px 5px",color:"#64748b"}}/>
                         <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
                       </div>
                     ))}
                     {/* Sub-total row */}
                     <div style={{display:"grid",gridTemplateColumns:GRID,background:sec.color+"0a",borderBottom:"1.5px solid "+sec.color+"22",alignItems:"center"}}>
-                      <div style={{gridColumn:"1/6",display:"flex",alignItems:"center"}}>
+                      <div style={{gridColumn:"1/7",display:"flex",alignItems:"center"}}>
                         <button onClick={()=>addRow(sec.id)} style={{background:"none",border:"none",color:sec.color,cursor:"pointer",fontSize:".72rem",fontWeight:700,padding:"5px 12px",opacity:.7}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.7}>+ Add row</button>
                         <span style={{fontSize:".68rem",color:"#94a3b8",fontStyle:"italic"}}>Sub-total {sec.label}</span>
                       </div>
@@ -982,13 +1010,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               })}
               {/* Grand Total */}
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#1e293b",alignItems:"center"}}>
-                <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
+                <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total</div>
                 <div style={{textAlign:"right",fontWeight:900,color:"#f59e0b",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
                 <div/><div/>
               </div>
               {/* VAT */}
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",alignItems:"center"}}>
-                <div style={{gridColumn:"1/6",display:"flex",alignItems:"center",gap:8}}>
+                <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",gap:8}}>
                   <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:".78rem",color:"#64748b",fontWeight:600}}>
                     <input type="checkbox" checked={vatEnabled} onChange={e=>setVatEnabled(e.target.checked)} style={{cursor:"pointer"}}/>
                     VAT 12%
@@ -999,14 +1027,14 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               </div>
               {vatEnabled&&(
                 <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#0f172a",alignItems:"center"}}>
-                  <div style={{gridColumn:"1/6",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total w/ VAT</div>
+                  <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total w/ VAT</div>
                   <div style={{textAlign:"right",fontWeight:900,color:"#34d399",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{(grandTotal+vatAmount).toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
                   <div/><div/>
                 </div>
               )}
               {/* Discounted Total */}
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#fffbeb",borderTop:"1px solid #fde68a",alignItems:"center"}}>
-                <div style={{gridColumn:"1/6",fontSize:".76rem",fontWeight:600,color:"#92400e"}}>Discounted Total w/o VAT <span style={{fontWeight:400,color:"#a16207"}}>(optional override)</span></div>
+                <div style={{gridColumn:"1/7",fontSize:".76rem",fontWeight:600,color:"#92400e"}}>Discounted Total w/o VAT <span style={{fontWeight:400,color:"#a16207"}}>(optional override)</span></div>
                 <div style={{textAlign:"right"}}>
                   <input type="number" value={discountedTotal} onChange={e=>setDiscountedTotal(e.target.value)} placeholder="—"
                     style={{border:"none",borderBottom:"1.5px solid #fde68a",background:"transparent",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#92400e",textAlign:"right",width:130,outline:"none"}}/>
