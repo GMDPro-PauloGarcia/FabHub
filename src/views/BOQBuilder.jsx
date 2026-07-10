@@ -687,7 +687,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           <button onClick={()=>setAddSecOpen(o=>!o)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>✚ Section</button>
         </div>
         <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>{setImportMode(items.length>0?"append":"replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}} title="Upload an Excel/CSV BOQ and build from it">⬆ Import Excel</button>
+          <button onClick={()=>{setImportMode(items.length>0?"append":"replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}} title="Upload an Excel/CSV BOQ and build from it">⬆ Import Excel</button>
           <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
           </button>
@@ -737,7 +737,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <button onClick={()=>setImportOpen(false)} style={{background:"none",border:"none",fontSize:"1.1rem",color:"#94a3b8",cursor:"pointer"}}>✕</button>
             </div>
             <div style={{fontSize:".76rem",color:"#64748b",marginBottom:14,lineHeight:1.55}}>
-              Upload an Excel (.xlsx/.xls) or CSV file. FabHub auto-detects the <b>Description</b>, <b>Qty</b>, <b>Unit</b>, <b>Unit&nbsp;Cost</b> and <b>Remarks</b> columns and rebuilds your sections and line items — including nested groups like “Supervision → Safety Officer”. Optionally apply a markup so the imported direct costs become client-ready prices. You'll preview everything before it's added.
+              Upload an Excel (.xlsx/.xls) or CSV file. FabHub auto-detects the <b>Description</b>, <b>Qty</b>, <b>Unit</b>, <b>Unit&nbsp;Cost</b> and <b>Remarks</b> columns and rebuilds your sections and line items — including nested groups like “Supervision → Safety Officer”. An at-cost BOQ defaults to a <b>50% standard markup</b> so the direct costs become client-ready prices — adjust it here, then fine-tune per section or item after. You'll preview everything before it's added.
             </div>
             <div style={{display:"flex",gap:10,alignItems:"center",marginBottom:14,flexWrap:"wrap"}}>
               <button onClick={()=>importFileRef.current&&importFileRef.current.click()} style={{background:"#4f46e5",border:"none",borderRadius:8,padding:"9px 18px",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>📂 Choose file</button>
@@ -756,7 +756,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                     <div style={{fontSize:".68rem",color:"#3f6212"}}>Columns matched: {importPreview.columnsLabel}</div>
                   </div>
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap",background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"9px 12px"}}>
-                    <span style={{fontSize:".76rem",fontWeight:700,color:"#92400e"}}>Apply markup on import</span>
+                    <span style={{fontSize:".76rem",fontWeight:700,color:"#92400e"}}>Standard markup on import <span style={{fontWeight:500,color:"#a16207"}}>(at-cost → 50%)</span></span>
                     <div style={{position:"relative",display:"flex",alignItems:"center"}}>
                       <input type="number" value={importMarkup} onChange={e=>setImportMarkup(e.target.value)} placeholder="0" min="0" step="0.5" style={{width:74,border:"1.5px solid #fbbf24",borderRadius:7,padding:"5px 20px 5px 9px",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,color:"#92400e",outline:"none",textAlign:"right",background:"#fff"}}/>
                       <span style={{position:"absolute",right:8,color:"#a16207",fontWeight:700,fontSize:".76rem",pointerEvents:"none"}}>%</span>
@@ -886,7 +886,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>Add a section to start building this BOQ, or upload an Excel/CSV BOQ to build from it. You decide which sections this quotation needs.{!selDeal&&" Tip: pick a Project above to link this BOQ — your work is saved either way."}</div>
           <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
             <button onClick={()=>setAddSecOpen(true)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>✚ Add Section</button>
-            <button onClick={()=>{setImportMode("replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"9px 18px",color:"#4338ca",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>⬆ Import from Excel</button>
+            <button onClick={()=>{setImportMode("replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"9px 18px",color:"#4338ca",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>⬆ Import from Excel</button>
             <button onClick={loadStandardSections} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 18px",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Load GMD standard sections</button>
           </div>
         </div>
