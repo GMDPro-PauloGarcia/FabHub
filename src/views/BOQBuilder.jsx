@@ -93,7 +93,7 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue}){
   // Start blank — sections are added per BOQ, no fixed/preset sections
   const BLANK_ITEMS=()=>[];
   // Draft key used when no project is selected yet (work is migrated onto the deal once picked)
@@ -470,6 +470,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal,markupPct};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
+      // Keep the deal's contract value equal to the BOQ (net of VAT): the discounted
+      // total override if set, otherwise the marked-up grand total. Only once the BOQ
+      // has line items, so opening/clearing a BOQ never wipes a manually-set value.
+      if(selDeal&&onBoqValue&&items.length>0){
+        const net=Number(discountedTotal)>0?Number(discountedTotal):grandTotal;
+        onBoqValue(selDeal,net);
+      }
       setDraftSaved(true);
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
