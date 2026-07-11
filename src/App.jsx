@@ -2803,7 +2803,10 @@ export default function App(){
                 const mapped=aeRows.map(r=>({id:r.id,by:r.by,role:r.role,date:r.date,time:r.time,text:r.text,dealId:r.deal_id||null}));
                 const remoteIds=new Set(mapped.map(u=>u.id));
                 const localCache=((await idbGetMany(["gmdv5:aeUpdates"]))||{})["gmdv5:aeUpdates"]||[];
-                const localOnly=localCache.filter(u=>u&&u.id&&!remoteIds.has(u.id));
+                // Server is the source of truth for the shared feed. Only keep local-only
+                // rows posted TODAY (in-flight posts still syncing) — stale browser-only
+                // rows that were never synced are dropped so old updates don't linger.
+                const localOnly=localCache.filter(u=>u&&u.id&&!remoteIds.has(u.id)&&u.date===today);
                 const merged=[...mapped,...localOnly]
                   .sort((a,b)=>String((b.date||"")+(b.time||"")).localeCompare(String((a.date||"")+(a.time||""))))
                   .slice(0,300);
