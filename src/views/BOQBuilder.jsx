@@ -258,6 +258,20 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[importMode,setImportMode]=useState("append"); // append | replace
   const[importMarkup,setImportMarkup]=useState(""); // markup % to bake in on import
 
+  // ── Deal value ↔ BOQ reconciliation ───────────────────────────────────────
+  // When a deal is opened whose pegged value disagrees with its BOQ (BOQ is the
+  // source of truth), or which has a value but no BOQ yet, prompt for the amount
+  // actually awarded. Fires on open only — never mid-edit. `reconciledRef` keeps
+  // it to one prompt per deal per session.
+  const[reconcile,setReconcile]=useState(null); // {net, dealValue, hasBoq}
+  const[reconcileCustom,setReconcileCustom]=useState("");
+  const reconciledRef=useRef({});
+  const boqNetOf=(src)=>{
+    const dt=Number(src?.discountedTotal)||0;
+    if(dt>0) return dt;
+    return (src?.items||[]).reduce((s,it)=>s+(Number(it.total)||0),0);
+  };
+
   // Parse a sheet (array-of-arrays) into {sections,items}. Auto-detects the header
   // row and column positions. Handles GMD's nested layout where the section letter
   // is in the "Item No." column, sub-group headers sit one column in, and their
@@ -447,6 +461,18 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       }
       setDraftSaved(false);
     }
+    // Reconcile the deal's pegged value against its BOQ — once per deal per session, on open.
+    if(!reconciledRef.current[selDeal]){
+      const dealValue=Number(deal?.value)||0;
+      const hasBoq=(existing?.items?.length||0)>0;
+      const net=hasBoq?Math.round(boqNetOf(existing)*100)/100:0;
+      const dv=Math.round(dealValue*100)/100;
+      if(hasBoq&&dealValue>0&&Math.abs(net-dv)>=0.01){
+        setReconcile({net,dealValue:dv,hasBoq:true});setReconcileCustom("");
+      } else if(!hasBoq&&dealValue>0){
+        setReconcile({net:0,dealValue:dv,hasBoq:false});setReconcileCustom("");
+      }
+    }
   },[selDeal,standaloneId]);
 
   React.useEffect(()=>{
@@ -470,12 +496,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal,markupPct};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
-      // Keep the deal's contract value equal to the BOQ (net of VAT): the discounted
-      // total override if set, otherwise the marked-up grand total. Only once the BOQ
-      // has line items, so opening/clearing a BOQ never wipes a manually-set value.
+      // Seed the deal's contract value from the BOQ (net of VAT) ONLY when the deal has
+      // no value yet. A pegged, non-zero value is never silently overwritten — a mismatch
+      // is surfaced via the reconcile prompt when the deal is opened instead.
       if(selDeal&&onBoqValue&&items.length>0){
         const net=Number(discountedTotal)>0?Number(discountedTotal):grandTotal;
-        onBoqValue(selDeal,net);
+        const cur=Number(deal?.value)||0;
+        if(cur===0&&net>0) onBoqValue(selDeal,net);
       }
       setDraftSaved(true);
     },1200);
@@ -730,6 +757,59 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               <button onClick={applyMarkupToAll} style={{background:"#d97706",border:"none",borderRadius:7,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:800,color:"#fff",cursor:"pointer"}}>Apply to all</button>
               {applied&&<span style={{fontSize:".7rem",color:"#166534",fontWeight:700,whiteSpace:"nowrap"}} title={`Direct: ₱${directTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}`}>Direct ₱{directTotal.toLocaleString("en-PH",{maximumFractionDigits:0})} → w/ markup ₱{grandTotal.toLocaleString("en-PH",{maximumFractionDigits:0})}</span>}
               {applied&&!inSync&&<span style={{fontSize:".66rem",color:"#b45309",fontStyle:"italic"}}>mixed — click Apply to unify</span>}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Deal value ↔ BOQ reconciliation prompt */}
+      {reconcile&&(()=>{
+        const done=(v)=>{if(selDeal)reconciledRef.current[selDeal]=true;if(v!=null&&onBoqValue&&selDeal)onBoqValue(selDeal,Math.round((Number(v)||0)*100)/100);setReconcile(null);};
+        const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
+        const custom=Number(reconcileCustom);
+        return(
+          <div style={{position:"fixed",inset:0,background:"#0f172acc",zIndex:2100,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"48px 16px",overflowY:"auto"}}>
+            <div style={{background:"#fff",borderRadius:16,border:"1.5px solid #e2e8f0",padding:22,maxWidth:520,width:"100%",boxShadow:"0 24px 60px #0006"}}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💰 Confirm the awarded amount</div>
+              {reconcile.hasBoq?(
+                <>
+                  <div style={{fontSize:".8rem",color:"#64748b",marginBottom:14,lineHeight:1.5}}>
+                    This deal's contract value doesn't match its BOQ. Which amount was actually awarded? <b>The BOQ is your source of truth</b>, so it's recommended — but confirm what the client approved.
+                  </div>
+                  <div style={{display:"flex",gap:10,marginBottom:14}}>
+                    <div style={{flex:1,background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:10,padding:"10px 12px"}}>
+                      <div style={{fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#15803d"}}>BOQ total (net of VAT)</div>
+                      <div style={{fontWeight:800,fontSize:"1.05rem",color:"#166534",marginTop:2}}>{peso(reconcile.net)}</div>
+                    </div>
+                    <div style={{flex:1,background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 12px"}}>
+                      <div style={{fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".05em",color:"#94a3b8"}}>Current deal value</div>
+                      <div style={{fontWeight:800,fontSize:"1.05rem",color:"#475569",marginTop:2}}>{peso(reconcile.dealValue)}</div>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <button onClick={()=>done(reconcile.net)} style={{background:"#16a34a",border:"none",borderRadius:9,padding:"11px 14px",fontFamily:"inherit",fontSize:".82rem",fontWeight:800,color:"#fff",cursor:"pointer",textAlign:"left"}}>Use BOQ total — {peso(reconcile.net)} <span style={{fontWeight:600,opacity:.85}}>(recommended)</span></button>
+                    <button onClick={()=>done(null)} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"11px 14px",fontFamily:"inherit",fontSize:".82rem",fontWeight:700,color:"#475569",cursor:"pointer",textAlign:"left"}}>Keep current deal value — {peso(reconcile.dealValue)}</button>
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginTop:2}}>
+                      <input type="number" value={reconcileCustom} onChange={e=>setReconcileCustom(e.target.value)} placeholder="Or enter awarded amount…" style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 12px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/>
+                      <button disabled={!(custom>0)} onClick={()=>done(custom)} style={{background:custom>0?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"10px 16px",fontFamily:"inherit",fontSize:".82rem",fontWeight:800,color:"#fff",cursor:custom>0?"pointer":"default"}}>Set</button>
+                    </div>
+                  </div>
+                </>
+              ):(
+                <>
+                  <div style={{fontSize:".8rem",color:"#64748b",marginBottom:14,lineHeight:1.5}}>
+                    This deal has a contract value of <b>{peso(reconcile.dealValue)}</b> but no BOQ yet. Confirm the closed amount, then build the BOQ below to itemize it (recommended so the quote and costs are tracked).
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <button onClick={()=>done(null)} style={{background:"#16a34a",border:"none",borderRadius:9,padding:"11px 14px",fontFamily:"inherit",fontSize:".82rem",fontWeight:800,color:"#fff",cursor:"pointer",textAlign:"left"}}>Keep {peso(reconcile.dealValue)} as awarded</button>
+                    <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                      <input type="number" value={reconcileCustom} onChange={e=>setReconcileCustom(e.target.value)} placeholder="Or enter the closed amount…" style={{flex:1,border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 12px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/>
+                      <button disabled={!(custom>0)} onClick={()=>done(custom)} style={{background:custom>0?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"10px 16px",fontFamily:"inherit",fontSize:".82rem",fontWeight:800,color:"#fff",cursor:custom>0?"pointer":"default"}}>Set</button>
+                    </div>
+                    <div style={{fontSize:".72rem",color:"#a16207",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 10px",marginTop:2}}>💡 Tip: import your Excel BOQ or add sections below — once it has items, the deal value will follow the BOQ.</div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );

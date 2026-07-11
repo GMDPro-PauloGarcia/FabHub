@@ -2793,12 +2793,24 @@ export default function App(){
               });
             },2000); // 2s delay \u2014 let all state settle before comparing
             try{
-              const{data:aeRows,error:aeErr}=await supabase.from('ae_updates').select('*').order('created_at',{ascending:false}).limit(300);
-              if(!aeErr&&aeRows?.length){
+              // Load via sbList (the same helper every other table uses) — the previous
+              // raw supabase.from('ae_updates').select('*') call wasn't populating the
+              // feed, so recently-posted updates stayed invisible behind the stale local
+              // cache. Merge with any local-only rows so nothing is lost, and push those
+              // local-only rows up so Supabase becomes the complete source of truth.
+              const aeRows=await sbList('ae_updates',{order:'created_at',limit:300});
+              if(aeRows){
                 const mapped=aeRows.map(r=>({id:r.id,by:r.by,role:r.role,date:r.date,time:r.time,text:r.text,dealId:r.deal_id||null}));
-                setAeUpdates(mapped);idbE.push(["gmdv5:aeUpdates",mapped]);
+                const remoteIds=new Set(mapped.map(u=>u.id));
+                const localCache=((await idbGetMany(["gmdv5:aeUpdates"]))||{})["gmdv5:aeUpdates"]||[];
+                const localOnly=localCache.filter(u=>u&&u.id&&!remoteIds.has(u.id));
+                const merged=[...mapped,...localOnly]
+                  .sort((a,b)=>String((b.date||"")+(b.time||"")).localeCompare(String((a.date||"")+(a.time||""))))
+                  .slice(0,300);
+                setAeUpdates(merged);idbE.push(["gmdv5:aeUpdates",merged]);
+                localOnly.forEach(u=>sbInsert('ae_updates',{id:u.id,by:u.by,role:u.role,date:u.date,time:u.time,text:u.text,deal_id:u.dealId||null}).catch(()=>{}));
               }
-            }catch{}
+            }catch(e){console.error('ae_updates load failed:',e);}
             try{
               sbList('ce_requests',{order:'created_at',limit:500}).then(rows=>{if(rows?.length)setCeReqs(rows.map(r=>({id:r.id,clientName:r.client_name,projectName:r.project_name,location:r.location,projectType:r.project_type,priority:r.priority,status:r.status,submittedBy:r.submitted_by,targetDeadline:r.target_deadline,submissionDeadline:r.submission_deadline,targetBudget:r.target_budget,targetMargin:r.target_margin,plansLink:r.plans_link,skpLink:r.skp_link,scheduleOfFinish:r.schedule_of_finish,notes:r.notes,ceNotes:r.ce_notes,bidAmount:r.bid_amount,bidMarginPct:r.bid_margin_pct,awarded:r.awarded,awardDate:r.award_date,dealId:r.deal_id,createdAt:r.created_at})));}).catch(()=>{});
             }catch{}
@@ -9486,13 +9498,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* Awarded Projects — active only (stages 06–11) */}
               {(()=>{
                 const matchSearch=d=>!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase());
-                const activeWonBase=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
-                const doneWonBase  =wonDeals.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
-                // Include addenda linked to won parents even if the addendum itself is in a pipeline stage
-                const wonIds=new Set(wonDeals.map(d=>d.id));
-                const addendaOfWon=deals.filter(d=>d.parentDealId&&wonIds.has(d.parentDealId)&&!wonIds.has(d.id));
-                const activeWon=[...activeWonBase,...addendaOfWon.filter(d=>activeWonBase.find(p=>p.id===d.parentDealId))];
-                const doneWon  =[...doneWonBase, ...addendaOfWon.filter(d=>doneWonBase.find(p=>p.id===d.parentDealId))];
+                // Project cards are the parent deals (no parentDealId); bucket them by their own stage.
+                const wonParents=wonDeals.filter(d=>!d.parentDealId);
+                const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
+                const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
+                // Addenda always nest under their parent's card, following the PARENT's bucket
+                // regardless of the addendum's own stage. (Otherwise a won-stage addendum whose
+                // parent is closed-out lands in the other bucket and disappears from both.)
+                const activeIds=new Set(activeWonBase.map(d=>d.id));
+                const doneIds  =new Set(doneWonBase.map(d=>d.id));
+                const addenda=deals.filter(d=>d.parentDealId&&(activeIds.has(d.parentDealId)||doneIds.has(d.parentDealId)));
+                const activeWon=[...activeWonBase,...addenda.filter(d=>activeIds.has(d.parentDealId))];
+                const doneWon  =[...doneWonBase, ...addenda.filter(d=>doneIds.has(d.parentDealId))];
                 const STAGE_CLR_PIPE={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
