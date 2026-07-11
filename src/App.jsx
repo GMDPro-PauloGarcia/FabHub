@@ -9486,13 +9486,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* Awarded Projects — active only (stages 06–11) */}
               {(()=>{
                 const matchSearch=d=>!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase());
-                const activeWonBase=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
-                const doneWonBase  =wonDeals.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
-                // Include addenda linked to won parents even if the addendum itself is in a pipeline stage
-                const wonIds=new Set(wonDeals.map(d=>d.id));
-                const addendaOfWon=deals.filter(d=>d.parentDealId&&wonIds.has(d.parentDealId)&&!wonIds.has(d.id));
-                const activeWon=[...activeWonBase,...addendaOfWon.filter(d=>activeWonBase.find(p=>p.id===d.parentDealId))];
-                const doneWon  =[...doneWonBase, ...addendaOfWon.filter(d=>doneWonBase.find(p=>p.id===d.parentDealId))];
+                // Project cards are the parent deals (no parentDealId); bucket them by their own stage.
+                const wonParents=wonDeals.filter(d=>!d.parentDealId);
+                const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
+                const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
+                // Addenda always nest under their parent's card, following the PARENT's bucket
+                // regardless of the addendum's own stage. (Otherwise a won-stage addendum whose
+                // parent is closed-out lands in the other bucket and disappears from both.)
+                const activeIds=new Set(activeWonBase.map(d=>d.id));
+                const doneIds  =new Set(doneWonBase.map(d=>d.id));
+                const addenda=deals.filter(d=>d.parentDealId&&(activeIds.has(d.parentDealId)||doneIds.has(d.parentDealId)));
+                const activeWon=[...activeWonBase,...addenda.filter(d=>activeIds.has(d.parentDealId))];
+                const doneWon  =[...doneWonBase, ...addenda.filter(d=>doneIds.has(d.parentDealId))];
                 const STAGE_CLR_PIPE={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
