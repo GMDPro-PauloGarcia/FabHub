@@ -2793,12 +2793,24 @@ export default function App(){
               });
             },2000); // 2s delay \u2014 let all state settle before comparing
             try{
-              const{data:aeRows,error:aeErr}=await supabase.from('ae_updates').select('*').order('created_at',{ascending:false}).limit(300);
-              if(!aeErr&&aeRows?.length){
+              // Load via sbList (the same helper every other table uses) — the previous
+              // raw supabase.from('ae_updates').select('*') call wasn't populating the
+              // feed, so recently-posted updates stayed invisible behind the stale local
+              // cache. Merge with any local-only rows so nothing is lost, and push those
+              // local-only rows up so Supabase becomes the complete source of truth.
+              const aeRows=await sbList('ae_updates',{order:'created_at',limit:300});
+              if(aeRows){
                 const mapped=aeRows.map(r=>({id:r.id,by:r.by,role:r.role,date:r.date,time:r.time,text:r.text,dealId:r.deal_id||null}));
-                setAeUpdates(mapped);idbE.push(["gmdv5:aeUpdates",mapped]);
+                const remoteIds=new Set(mapped.map(u=>u.id));
+                const localCache=((await idbGetMany(["gmdv5:aeUpdates"]))||{})["gmdv5:aeUpdates"]||[];
+                const localOnly=localCache.filter(u=>u&&u.id&&!remoteIds.has(u.id));
+                const merged=[...mapped,...localOnly]
+                  .sort((a,b)=>String((b.date||"")+(b.time||"")).localeCompare(String((a.date||"")+(a.time||""))))
+                  .slice(0,300);
+                setAeUpdates(merged);idbE.push(["gmdv5:aeUpdates",merged]);
+                localOnly.forEach(u=>sbInsert('ae_updates',{id:u.id,by:u.by,role:u.role,date:u.date,time:u.time,text:u.text,deal_id:u.dealId||null}).catch(()=>{}));
               }
-            }catch{}
+            }catch(e){console.error('ae_updates load failed:',e);}
             try{
               sbList('ce_requests',{order:'created_at',limit:500}).then(rows=>{if(rows?.length)setCeReqs(rows.map(r=>({id:r.id,clientName:r.client_name,projectName:r.project_name,location:r.location,projectType:r.project_type,priority:r.priority,status:r.status,submittedBy:r.submitted_by,targetDeadline:r.target_deadline,submissionDeadline:r.submission_deadline,targetBudget:r.target_budget,targetMargin:r.target_margin,plansLink:r.plans_link,skpLink:r.skp_link,scheduleOfFinish:r.schedule_of_finish,notes:r.notes,ceNotes:r.ce_notes,bidAmount:r.bid_amount,bidMarginPct:r.bid_margin_pct,awarded:r.awarded,awardDate:r.award_date,dealId:r.deal_id,createdAt:r.created_at})));}).catch(()=>{});
             }catch{}
