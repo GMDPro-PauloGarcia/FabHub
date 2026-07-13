@@ -9617,6 +9617,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </td>
                       <td style={{padding:"10px 10px",verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                        {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                       </td>
                     </tr>
@@ -22425,10 +22426,12 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
             <div style={{maxHeight:"46vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
               {pickable.map(d=>{
                 const hasBoq=!!(d.boqData&&((d.boqData.items?.length)||(d.boqData.sections?.length)));
+                const parent=d.parentDealId?deals.find(x=>x.id===d.parentDealId):null;
                 return(
                   <button key={d.id} onClick={()=>{setPicking(false);onOpenDeal(d.id);}}
-                    style={{textAlign:"left",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 13px",cursor:"pointer",fontFamily:"inherit"}}
-                    onMouseEnter={ev=>ev.currentTarget.style.borderColor="#94a3b8"} onMouseLeave={ev=>ev.currentTarget.style.borderColor="#e2e8f0"}>
+                    style={{textAlign:"left",background:d.parentDealId?"#fffbeb":"#f8fafc",border:`1.5px solid ${d.parentDealId?"#fde68a":"#e2e8f0"}`,borderRadius:10,padding:"10px 13px",cursor:"pointer",fontFamily:"inherit"}}
+                    onMouseEnter={ev=>ev.currentTarget.style.borderColor="#94a3b8"} onMouseLeave={ev=>ev.currentTarget.style.borderColor=d.parentDealId?"#fde68a":"#e2e8f0"}>
+                    {d.parentDealId&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:700,color:"#d97706",letterSpacing:".5px",marginBottom:2}}>↳ ADDENDUM{parent?` OF ${(parent.client||parent.contact||"").toUpperCase()}`:""}</div>}
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.client||d.contact||"Untitled deal"}{d.ceNo?` · ${d.ceNo}`:""}</div>
                     <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{d.stage||"—"}{hasBoq?" · already has a BOQ":""}</div>
                   </button>
