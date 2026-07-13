@@ -958,7 +958,7 @@ function ClientAutocomplete({value:initVal, onChange}){
 }
 
 // ─── CLIENT DIRECTORY ────────────────────────────────────────────────────────
-function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],role}){
+function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId,deals=[],addenda=[],role}){
   // Local state — prevents App re-render on every keystroke (fixes focus bug)
   const[form,setForm]=useState(initialForm||emptyDeal);
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -988,6 +988,11 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   };
   return(
     <Modal open={open} onClose={onClose} title={editId?"Edit Deal":"Add New Deal"} wide key={formKey}>
+
+      {/* Contract breakdown (original + addenda) — shown when this deal has change orders */}
+      {editId&&(addenda||[]).some(a=>a.dealId===editId&&a.status!=="Rejected")&&(
+        <div style={{marginBottom:16}}><ContractBreakdown deal={deals.find(d=>d.id===editId)} addenda={addenda}/></div>
+      )}
 
       {/* ── SECTION 1: DEAL ESSENTIALS ─────────────────────────────────── */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
@@ -6447,7 +6452,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
       )}
       {/* Global Modals */}
-      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} role={role}/>
+      <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
@@ -12201,7 +12206,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         );
       })()}
       <BillingView
-        billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals}
+        billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} addenda={addenda}
         addMilestone={addMilestone} updateMilestone={updateMilestone}
         deleteMilestone={deleteMilestone} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
@@ -19045,7 +19050,7 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -19726,6 +19731,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addMilestone,update
               </div>
             );
           })()}
+
+          {/* Contract breakdown (original + addenda) — shown when this project has change orders */}
+          {(addenda||[]).some(a=>a.dealId===selDeal&&a.status!=="Rejected")&&<div style={{marginBottom:12}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
 
           {/* COC-to-Finance notification banner */}
           {(()=>{
