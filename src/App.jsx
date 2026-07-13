@@ -5318,8 +5318,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const safeName=rec.client.replace(/</g,"&lt;").replace(/>/g,"&gt;");
         const newClient={name:safeName,id:"c"+Date.now(),addedBy:session?.name||"",addedAt:today};
         GMD_CLIENTS.push(newClient);
-        let newClientList=null;
-        setCustomClients(prev=>{const n=[...prev,newClient];newClientList=n;localStorage.setItem(KEYS.customclients,JSON.stringify(n));return n;});
+        // Compute the new list up front. Reading it out of the setState updater
+        // (which React 18 runs asynchronously, after this line) left it null when
+        // the upsert fired, sending value:null and hitting app_settings' NOT NULL
+        // constraint — the "server rejected a change (bad data)" drop.
+        const newClientList=[...customClients,newClient];
+        setCustomClients(newClientList);
+        try{localStorage.setItem(KEYS.customclients,JSON.stringify(newClientList));}catch{}
         const clientOk=isSupabaseReady()?await sbUpsert('app_settings',{key:'customclients',value:newClientList,updated_at:new Date().toISOString()},'key'):true;
         stepResults.push({label:"Client directory",ok:clientOk});
       }
