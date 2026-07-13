@@ -78,7 +78,14 @@ const _classifyError = (msg) => {
   const m = (msg || '').toLowerCase()
   if (m.includes('failed to fetch') || m.includes('load failed') || m.includes('network')) return 'network'
   if (m.includes('permission denied') || m.includes('row-level security') || m.includes('jwt') || m.includes('not authorized')) return 'auth'
-  if (m.includes('does not exist') || m.includes('violates') || m.includes('invalid input syntax') || m.includes('duplicate key')) return 'data'
+  // PostgREST PGRST204 ("Could not find the 'x' column of 'y' in the schema
+  // cache") is a schema mismatch — replaying the identical payload can never
+  // succeed, so it must be non-retryable ('data'), not the retryable 'server'
+  // it used to fall through to. Left as 'server' it re-fired "Still can't sync"
+  // every heartbeat for 8 cycles before dropping the whole write. Seen live:
+  // an older cached client queued a PO carrying the pre-rename 'po_disc_type'
+  // column, which this schema no longer has.
+  if (m.includes('does not exist') || m.includes('violates') || m.includes('invalid input syntax') || m.includes('duplicate key') || m.includes('schema cache') || m.includes('could not find')) return 'data'
   return 'server'
 }
 // Non-retryable failures will never succeed by replaying the same op — retrying
@@ -119,32 +126,64 @@ const _withTimeout = (promise) => Promise.race([
   promise,
   new Promise(resolve => setTimeout(() => resolve({ error: { message: 'Request timed out — the server did not respond in time.' } }), _REPLAY_TIMEOUT_MS)),
 ])
+// PostgREST PGRST204 names the offending column: "Could not find the 'x'
+// column of 'y' in the schema cache". Capture it so a payload written by an
+// older client can be self-healed by dropping just that field.
+const _MISSING_COL_RE = /could not find the '([^']+)' column/i
+// Run the op's actual write once and return its { error }.
+const _runOp = async (op) => {
+  if (op.kind === 'insert' || op.kind === 'upsert') {
+    // Replay inserts as upserts when an id is present so a lost-response retry
+    // can't create a duplicate; fall back to insert only when there's no id.
+    if (op.data && op.data.id != null) return await _withTimeout(supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' }))
+    return await _withTimeout(supabase.from(op.table).insert(op.data))
+  } else if (op.kind === 'update') {
+    // .select('id') so a 0-row match (e.g. the target still doesn't exist on
+    // the server — a parent write is itself still queued) isn't reported as
+    // success. Without this the op gets shifted out of the queue as "done"
+    // while nothing actually happened, and no one is ever told.
+    const res = await _withTimeout(supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id).select('id'))
+    if (!res.error && (!res.data || res.data.length === 0)) return { error: { message: `No row matched id=${op.id} — it may not exist on the server yet.` } }
+    return res
+  } else if (op.kind === 'delete') {
+    return await _withTimeout(supabase.from(op.table).delete().eq('id', op.id))
+  } else if (op.kind === 'deleteWhere') {
+    let q = supabase.from(op.table).delete()
+    if (op.op === 'in') q = q.in(op.column, op.value)
+    else q = q.eq(op.column, op.value)
+    return await _withTimeout(q)
+  }
+  return { error: null }
+}
 const _replay = async (op) => {
   try {
-    let error
-    if (op.kind === 'insert' || op.kind === 'upsert') {
-      // Replay inserts as upserts when an id is present so a lost-response retry
-      // can't create a duplicate; fall back to insert only when there's no id.
-      if (op.data && op.data.id != null) error = (await _withTimeout(supabase.from(op.table).upsert(op.data, { onConflict: op.conflictCol || 'id' }))).error
-      else error = (await _withTimeout(supabase.from(op.table).insert(op.data))).error
-    } else if (op.kind === 'update') {
-      // .select('id') so a 0-row match (e.g. the target still doesn't exist on
-      // the server — a parent write is itself still queued) isn't reported as
-      // success. Without this the op gets shifted out of the queue as "done"
-      // while nothing actually happened, and no one is ever told.
-      const res = await _withTimeout(supabase.from(op.table).update({ ...op.data, updated_at: new Date().toISOString() }).eq('id', op.id).select('id'))
-      error = res.error
-      if (!error && (!res.data || res.data.length === 0)) error = { message: `No row matched id=${op.id} — it may not exist on the server yet.` }
-    } else if (op.kind === 'delete') {
-      error = (await _withTimeout(supabase.from(op.table).delete().eq('id', op.id))).error
-    } else if (op.kind === 'deleteWhere') {
-      let q = supabase.from(op.table).delete()
-      if (op.op === 'in') q = q.in(op.column, op.value)
-      else q = q.eq(op.column, op.value)
-      error = (await _withTimeout(q)).error
+    const stripped = []
+    // Bounded loop: a stuck payload from an older client can reference more
+    // than one column this schema no longer has. Each PGRST204 tells us exactly
+    // which one — drop it and retry so the rest of the row still lands instead
+    // of the whole write being dropped and the change lost. The cap guards
+    // against ever looping on an error we can't act on.
+    for (let guard = 0; guard < 16; guard++) {
+      const { error } = await _runOp(op)
+      if (!error) {
+        if (stripped.length) console.warn(`sync replay ${op.kind} ${op.table}: succeeded after dropping unknown column(s) not in the server schema: ${stripped.join(', ')}`)
+        return { ok: true }
+      }
+      const miss = _MISSING_COL_RE.exec(error.message || '')
+      const col = miss && miss[1]
+      if (col && op.data && Object.prototype.hasOwnProperty.call(op.data, col)) {
+        // The DB has no such column, so this field's value has nowhere to go —
+        // strip it and persist the cleaned payload so the queue stops replaying
+        // the obsolete shape even across reloads.
+        delete op.data[col]
+        stripped.push(col)
+        _saveQueue()
+        continue
+      }
+      console.warn(`sync replay ${op.kind} ${op.table}:`, error.message)
+      return { ok: false, kind: _classifyError(error.message), message: error.message }
     }
-    if (error) { console.warn(`sync replay ${op.kind} ${op.table}:`, error.message); return { ok: false, kind: _classifyError(error.message), message: error.message } }
-    return { ok: true }
+    return { ok: false, kind: 'data', message: 'Write dropped: too many unknown columns for the current schema.' }
   } catch (e) { console.warn(`sync replay threw ${op.kind} ${op.table}:`, e.message); return { ok: false, kind: _classifyError(e.message), message: e.message } }
 }
 
