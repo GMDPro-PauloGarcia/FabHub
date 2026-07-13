@@ -2746,7 +2746,23 @@ export default function App(){
             if(data.settings?.custom_members){const cm=data.settings.custom_members;setCustomMembers(cm);localStorage.setItem("gmdv5:customMembers",JSON.stringify(cm));idbE.push(["gmdv5:customMembers",cm]);}
             if(data.settings?.evouchers){const ev=data.settings.evouchers;setEvouchers(ev);idbE.push([KEYS.evouchers,ev]);}
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
-            if(data.settings?.standalone_boqs){const sbq=data.settings.standalone_boqs;setStandaloneBoqs(sbq);localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(sbq));idbE.push(["gmdv5:standaloneBoqs",sbq]);}
+            if(data.settings?.standalone_boqs){
+              const serverBoqs=data.settings.standalone_boqs;
+              // Merge local-only BOQs instead of blindly replacing. Standalone
+              // BOQs all share ONE app_settings blob, so a client that saved
+              // with a stale array could have clobbered a BOQ another user had
+              // just added. Keeping local-only entries (and pushing the union
+              // back up) recovers such a BOQ and makes the server whole again —
+              // same server-authoritative-with-local-merge pattern as deals/JOs.
+              setStandaloneBoqs(prev=>{
+                const merged=mergeLocalOnly(serverBoqs,prev);
+                localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(merged));
+                idbSetMany([["gmdv5:standaloneBoqs",merged]]).catch(()=>{});
+                if(merged.length>serverBoqs.length&&isSupabaseReady())
+                  sbUpsert('app_settings',{key:'standalone_boqs',value:merged,updated_at:new Date().toISOString()},'key').catch(()=>{});
+                return merged;
+              });
+            }
             if(data.settings?.chart_of_accounts){const coa=data.settings.chart_of_accounts;setChartOfAccounts(coa);localStorage.setItem("gmdv5:chartOfAccounts",JSON.stringify(coa));idbE.push(["gmdv5:chartOfAccounts",coa]);}
             if(data.projs&&Object.keys(data.projs).length){setProjs(prev=>mergeLocalOnlyObj(data.projs,prev));idbE.push([KEYS.projects,data.projs]);}
             console.log("\u2705 FabHub: Loaded from Supabase \u2014 "+(data.deals?.length||0)+" deals");
@@ -5134,24 +5150,44 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[boqDealId,   setBoqDealId]    = useState(null);
   const[standaloneBoqs,setStandaloneBoqs]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:standaloneBoqs")||"[]");}catch{return [];}});
   const[boqStandaloneId,setBoqStandaloneId]=useState(null);
+  // Standalone BOQs all live in ONE app_settings blob. Writing the local array
+  // wholesale is last-write-wins: a client with a stale copy clobbers BOQs
+  // other users added (reported live — a saved BOQ vanished for everyone). So
+  // read the server's current blob, apply this single change on top of it, and
+  // write the result — server-only BOQs survive. A failed read keeps the local
+  // copy, which the load-time merge re-syncs. `transform` maps the server array
+  // (or []) to the array to persist.
+  const _pushStandaloneBoqs=useCallback(async(transform)=>{
+    if(!isSupabaseReady()) return;
+    try{
+      const rows=await sbList('app_settings',{eq:{key:'standalone_boqs'}});
+      const server=Array.isArray(rows?.[0]?.value)?rows[0].value:[];
+      const merged=transform(server);
+      await sbUpsert('app_settings',{key:'standalone_boqs',value:merged,updated_at:new Date().toISOString()},'key');
+    }catch(_){/* offline/failed — local copy retained, re-synced on next load */}
+  },[]);
   const saveStandaloneBoq=useCallback((boq)=>{
     setStandaloneBoqs(prev=>{
       const next=prev.some(b=>b.id===boq.id)?prev.map(b=>b.id===boq.id?{...b,...boq}:b):[...prev,boq];
       localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(next));
       idbSetMany([["gmdv5:standaloneBoqs",next]]).catch(()=>{});
-      if(isSupabaseReady()) sbUpsert('app_settings',{key:'standalone_boqs',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+      // Apply this save on top of the server's latest array (local wins per id,
+      // server-only BOQs kept) rather than overwriting with the local array.
+      _pushStandaloneBoqs(server=>mergeLocalOnly(next,server));
       return next;
     });
-  },[]);
+  },[_pushStandaloneBoqs]);
   const deleteStandaloneBoq=useCallback((id)=>{
     setStandaloneBoqs(prev=>{
       const next=prev.filter(b=>b.id!==id);
       localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(next));
       idbSetMany([["gmdv5:standaloneBoqs",next]]).catch(()=>{});
-      if(isSupabaseReady()) sbUpsert('app_settings',{key:'standalone_boqs',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
+      // Merge with the server's latest, then drop the deleted id, so a
+      // concurrent BOQ added elsewhere isn't resurrected or clobbered.
+      _pushStandaloneBoqs(server=>mergeLocalOnly(next,server).filter(b=>b.id!==id));
       return next;
     });
-  },[]);
+  },[_pushStandaloneBoqs]);
   // ── Chart of Accounts (synced via app_settings, like standalone BOQs) ──
   const[chartOfAccounts,setChartOfAccounts]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:chartOfAccounts")||"[]");}catch{return [];}});
   const saveChartOfAccounts=useCallback((next)=>{
