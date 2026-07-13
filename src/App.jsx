@@ -22351,6 +22351,8 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
   const boqTotal=(items=[])=>items.reduce((s,it)=>s+(it.total||0),0);
   const fmtDate=d=>d?new Date(d+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"short",day:"numeric"}):"—";
   const[q,setQ]=React.useState("");
+  const[picking,setPicking]=React.useState(false);
+  const[dq,setDq]=React.useState("");
   let drafts={};
   try{drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");}catch{}
   // Pipeline-linked BOQs: any deal whose BOQ (Supabase or local draft) actually has content
@@ -22369,9 +22371,9 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-end",gap:12,marginBottom:6,flexWrap:"wrap"}}>
         <div>
           <h2 style={{margin:"0 0 4px",fontWeight:900,fontSize:"1.4rem",color:"#0f172a",fontFamily:"'Barlow Condensed',sans-serif"}}>🧮 Bills of Quantities</h2>
-          <p style={{margin:0,fontSize:".8rem",color:"#64748b"}}>All BOQs — standalone and pipeline-linked. Create one anytime, with or without a deal.</p>
+          <p style={{margin:0,fontSize:".8rem",color:"#64748b"}}>Every BOQ belongs to a pipeline deal. Pick a deal to start or edit its BOQ.</p>
         </div>
-        <button onClick={onNewStandalone} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 20px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer",whiteSpace:"nowrap"}}>＋ New BOQ</button>
+        <button onClick={()=>{setDq("");setPicking(true);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 20px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer",whiteSpace:"nowrap"}}>＋ New BOQ</button>
       </div>
       <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search BOQs by name, client, or quotation no…"
         style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 13px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",boxSizing:"border-box",margin:"14px 0 16px",outline:"none"}}/>
@@ -22379,8 +22381,8 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
         <div style={{background:"#fff",borderRadius:14,border:"1.5px dashed #cbd5e1",padding:"48px 24px",textAlign:"center"}}>
           <div style={{fontSize:"1.8rem",marginBottom:8}}>🧮</div>
           <div style={{fontWeight:700,color:"#0f172a",fontSize:".95rem",marginBottom:4}}>{all.length===0?"No BOQs yet":"No matches"}</div>
-          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>{all.length===0?"Create your first BOQ — no pipeline deal required.":"Try a different search."}</div>
-          {all.length===0&&<button onClick={onNewStandalone} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>＋ New BOQ</button>}
+          <div style={{fontSize:".8rem",color:"#64748b",marginBottom:16}}>{all.length===0?"Pick a pipeline deal to create its BOQ.":"Try a different search."}</div>
+          {all.length===0&&<button onClick={()=>{setDq("");setPicking(true);}} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>＋ New BOQ</button>}
         </div>
       ):(
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
@@ -22403,6 +22405,34 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
           ))}
         </div>
       )}
+      <Modal open={picking} onClose={()=>setPicking(false)} title="New BOQ — choose its deal">
+        <p style={{margin:"0 0 10px",fontSize:".78rem",color:"#64748b"}}>Every BOQ belongs to a deal. Choose the deal this BOQ is for — if it isn't in the pipeline yet, add the deal there first.</p>
+        <input value={dq} onChange={e=>setDq(e.target.value)} autoFocus placeholder="Search deals by client, contact, or CE no…"
+          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 13px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",boxSizing:"border-box",marginBottom:12,outline:"none"}}/>
+        {(()=>{
+          const s=dq.trim().toLowerCase();
+          const pickable=deals
+            .filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win")
+            .filter(d=>!s||(d.client||"").toLowerCase().includes(s)||(d.ceNo||"").toLowerCase().includes(s)||(d.contact||"").toLowerCase().includes(s))
+            .sort((a,b)=>String(b.dateAcquired||b.addedAt||"").localeCompare(String(a.dateAcquired||a.addedAt||"")));
+          if(!pickable.length) return <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No matching deals. Create the deal in the Pipeline first, then come back to build its BOQ.</div>;
+          return(
+            <div style={{maxHeight:"46vh",overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+              {pickable.map(d=>{
+                const hasBoq=!!(d.boqData&&((d.boqData.items?.length)||(d.boqData.sections?.length)));
+                return(
+                  <button key={d.id} onClick={()=>{setPicking(false);onOpenDeal(d.id);}}
+                    style={{textAlign:"left",background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 13px",cursor:"pointer",fontFamily:"inherit"}}
+                    onMouseEnter={ev=>ev.currentTarget.style.borderColor="#94a3b8"} onMouseLeave={ev=>ev.currentTarget.style.borderColor="#e2e8f0"}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>{d.client||d.contact||"Untitled deal"}{d.ceNo?` · ${d.ceNo}`:""}</div>
+                    <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>{d.stage||"—"}{hasBoq?" · already has a BOQ":""}</div>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </Modal>
     </div>
   );
 }
