@@ -13372,6 +13372,42 @@ function OpsUpdateForm({selProj,selProjName,session,addPmUpdate,logActivity,open
   );
 }
 
+// Contract breakdown — original contract + each scope-change addendum, with the
+// current (revised) contract total. Approved/Billed/Collected addenda are already
+// rolled into deal.value (rollDealContract) and original_value isn't persisted,
+// so the original base is derived as (current value − rolled addenda) — correct
+// even after a reload, and never double-counting. Reused across Project Cards,
+// Billing, Sales, and Pipeline so every team sees the same numbers.
+function ContractBreakdown({deal,addenda,compact}){
+  if(!deal) return null;
+  const ROLLED=s=>["Approved","Billed","Collected"].includes(s);
+  const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
+  const items=(addenda||[]).filter(a=>(a.dealId||a.projectId)===deal.id&&a.status!=="Rejected");
+  if(compact&&!items.length) return null;
+  const rolledSum=items.filter(a=>ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const current=Number(deal.value)||0;
+  const original=Math.round((current-rolledSum)*100)/100;
+  const pendingSum=items.filter(a=>!ROLLED(a.status)).reduce((s,a)=>s+(Number(a.value)||0),0);
+  const approvedCount=items.filter(a=>ROLLED(a.status)).length;
+  const row=(key,label,sub,amt,clr,strong)=>(
+    <div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:10,padding:"5px 0",borderTop:strong?"1.5px solid #e2e8f0":"1px solid #f1f5f9"}}>
+      <div style={{minWidth:0}}>
+        <div style={{fontSize:strong?".82rem":".78rem",fontWeight:strong?800:600,color:"#0f172a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</div>
+        {sub&&<div style={{fontSize:".65rem",color:"#94a3b8"}}>{sub}</div>}
+      </div>
+      <div style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:strong?800:700,fontSize:strong?".85rem":".8rem",color:clr||"#0f172a",whiteSpace:"nowrap"}}>{amt}</div>
+    </div>
+  );
+  return(
+    <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 14px"}}>
+      <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700,marginBottom:2}}>Contract Breakdown</div>
+      {row("orig","Original Contract"+(deal.ceNo?" · "+deal.ceNo:""),null,peso(original),"#0f172a",false)}
+      {items.map(a=>row(a.id,(ROLLED(a.status)?"":"⏳ ")+(a.title||"Addendum"),(a.ceNo?a.ceNo+" · ":"")+(a.status||"")+(ROLLED(a.status)?"":" — not yet in contract"),peso(Number(a.value)||0),ROLLED(a.status)?"#059669":"#d97706",false))}
+      {row("cur","Current Contract",rolledSum>0?`original + ${approvedCount} approved addend${approvedCount===1?"um":"a"}`:null,peso(current),"#10b981",true)}
+      {pendingSum>0&&row("pot","If pending approved","+"+peso(pendingSum)+" awaiting client approval",peso(current+pendingSum),"#d97706",false)}
+    </div>
+  );
+}
 function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,projDeal,upProj,overallProg,costOf,marginOf,openDesignEdit,swatches,swQ,openAddSwatch,openEditSwatch,delSwatch,exps,openAddExp,openEditExp,delExp,clientName,matModal,setMatModal,matForm,setMatForm,editMat,setEditMat,saveMat,addPmUpdate,addAddendum,updateAddendumStatus,session,Wrap,addenda,addAddendum2,updateAddendum,deleteAddendum,pcards,setPage,logActivity,drfs,jos,budgets,role,onCloseProject,openPmModal}){
   const BUDGET_ONLY_OPS=["Operations","ProjectMover"];
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
@@ -13774,22 +13810,11 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         const[showAF,setShowAF]=useState(false);
         const[af,setAf]=useState({title:"",desc:"",value:"",ceNo:"",receiptType:"OR",withholding:false,discoveredBy:session?.name||"",notes:""});
         const faf=(k,v)=>setAf(p=>({...p,[k]:v}));
-        const totalApproved=projAddenda.filter(a=>a.status!=="Rejected").reduce((s,a)=>s+Number(a.value||0),0);
-        const originalVal=Number(projDeal?.value||0);
         return(
           <div>
-            {/* Header summary */}
-            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10,marginBottom:14}}>
-              {[
-                {l:"Original Contract",  v:"₱"+originalVal.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#0f172a"},
-                {l:"Addenda Value",      v:"₱"+totalApproved.toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#f59e0b"},
-                {l:"Total Project Value",v:"₱"+(originalVal+totalApproved).toLocaleString("en-PH",{minimumFractionDigits:0}), c:"#10b981"},
-              ].map(({l,v,c})=>(
-                <div key={l} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #e2e8f0"}}>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
-                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
-                </div>
-              ))}
+            {/* Header summary — original contract + addenda with the correct revised total */}
+            <div style={{marginBottom:14}}>
+              <ContractBreakdown deal={projDeal} addenda={addenda}/>
             </div>
 
             <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:10,padding:"10px 14px",marginBottom:14,fontSize:".8rem",color:"#92400e"}}>
@@ -21176,6 +21201,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:projAddenda.length>0?10:0}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>⚠️ Scope Changes{projAddenda.length>0&&<span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:400,marginLeft:5}}>({projAddenda.length})</span>}</div>
                 </div>
+                {projAddenda.length>0&&<div style={{marginBottom:10}}><ContractBreakdown deal={deal} addenda={addenda}/></div>}
                 {projAddenda.length===0&&<div style={{fontSize:".78rem",color:"#94a3b8"}}>No scope changes for this project.</div>}
                 {projAddenda.slice(0,3).map(a=>{
                   const sc={"Discovered":"#94a3b8","Sales Notified":"#f59e0b","Client Coordinating":"#3b82f6","Approved":"#059669","Billed":"#8b5cf6","Collected":"#10b981","Rejected":"#ef4444"}[a.status]||"#94a3b8";
