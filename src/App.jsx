@@ -17313,11 +17313,24 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       sendTelegramNotification("procurement",poMsg);
       sendTelegramNotification("management",poMsg);
       if(poStatus==="PO Issued"){
-        const poTotal=poItems.reduce((s,i)=>s+Number(i.qty||0)*Number(i.actUnitCost||i.estUnitCost||0),0);
+        // Payable owed to the supplier must equal the true PO total — apply line
+        // discounts, the PO-level discount, and VAT, exactly like the printed PO
+        // and the on-screen Grand Total. The old gross reduce ignored all three,
+        // so the payable (which feeds cash-flow forecasting and Cash Vouchers)
+        // over-stated the amount on any discounted PO and under-stated it on VAT POs.
+        const grossTotal=poItems.reduce((s,i)=>s+(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty),0);
+        const lineDiscTotal=poItems.reduce((s,i)=>{const base=(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty);if(i.discType==="pct")return s+base*(n(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(n(i.discValue),base);return s;},0);
+        const afterLineDisc=grossTotal-lineDiscTotal;
+        const afterPoDisc=afterLineDisc-calcPoLevelDisc(afterLineDisc);
+        const poTotal=afterPoDisc+(poWithVat?afterPoDisc*0.12:0);
         if(poTotal>0){
+          // Only link a real deal UUID — a free-typed project name would be passed
+          // straight into the payable's uuid project_id column and silently fail to sync.
+          const uuidRe=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const linkedProjectId=poItems.find(x=>x.projectId&&x.projectId!=="__gmd_stocks__"&&uuidRe.test(x.projectId))?.projectId||null;
           const newPayable={id:uid(),vendor:poSupplier,amount:poTotal,dueDate:"",category:"Supplier",
             invoiceRef:poNo,notes:`Auto-created from PO ${poNo}`,
-            projectId:poItems.find(x=>x.projectId&&x.projectId!=="__gmd_stocks__")?.projectId||null,
+            projectId:linkedProjectId,
             poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
           upPayables(ps=>[newPayable,...ps]);
           if(isSupabaseReady()) sbUpsert("payables",payableToSb(newPayable),"id").catch(()=>{});
