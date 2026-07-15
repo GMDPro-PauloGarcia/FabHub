@@ -1903,24 +1903,41 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
       </div>
       {filteredAddenda.length===0
         ? <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No scope changes found.</div>
-        : filteredAddenda.slice(0,12).map((a,i)=>{
-            const d=wonDeals.find(x=>x.id===a.dealId);
-            return(
-              <div key={a.id} style={{padding:"11px 16px",borderBottom:i<filteredAddenda.length-1?"1px solid #f8fafc":""}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{d?.client||"?"} · {d?.ceNo||"?"} · By {a.discoveredBy||"—"}</div>
-                    {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
+        : (()=>{
+            // Group scope changes by project (deal) so all addendum CEs for the same
+            // project sit together instead of being scattered across a flat list.
+            const groups=[];const byDeal={};
+            filteredAddenda.forEach(a=>{
+              if(!byDeal[a.dealId]){byDeal[a.dealId]={dealId:a.dealId,items:[]};groups.push(byDeal[a.dealId]);}
+              byDeal[a.dealId].items.push(a);
+            });
+            return groups.map(g=>{
+              const d=wonDeals.find(x=>x.id===g.dealId);
+              const grpTotal=g.items.reduce((s,a)=>s+Number(a.value||0),0);
+              return(
+                <div key={g.dealId||"unassigned"}>
+                  <div style={{padding:"8px 16px",background:"#f8fafc",borderBottom:"1px solid #eef2f7",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d?.client||"Unassigned"}{d?.ceNo?` · ${d.ceNo}`:""} <span style={{color:"#94a3b8",fontWeight:500}}>({g.items.length})</span></span>
+                    {grpTotal>0&&<span style={{fontSize:".72rem",color:"#059669",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>+₱{Number(grpTotal).toLocaleString("en-PH")}</span>}
                   </div>
-                  <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{a.status}</span>
+                  {g.items.map((a,i)=>(
+                    <div key={a.id} style={{padding:"11px 16px 11px 24px",borderBottom:i<g.items.length-1?"1px solid #f8fafc":"1px solid #eef2f7"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
+                          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>By {a.discoveredBy||"—"}</div>
+                          {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
+                        </div>
+                        <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{a.status}</span>
+                      </div>
+                      {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3,fontWeight:600}}>+₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+                    </div>
+                  ))}
                 </div>
-                {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3,fontWeight:600}}>+₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
-              </div>
-            );
-          })
+              );
+            });
+          })()
       }
-      {filteredAddenda.length>12&&<div style={{padding:"10px 16px",fontSize:".72rem",color:"#94a3b8",textAlign:"center"}}>+{filteredAddenda.length-12} more — use search to narrow down</div>}
     </div>
   );
 
@@ -3831,7 +3848,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
-          awardRequestData:rec.award_request_data||null,
+          awardRequestData:rec.award_request_data||null,boqData:rec.boq_data||null,
           paymentTerms:rec.payment_terms_json?(()=>{try{return JSON.parse(rec.payment_terms_json);}catch(e){return null;}})():null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
@@ -6007,12 +6024,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"dailylog",l:"Daily Site Log"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
-      {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
