@@ -544,6 +544,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const fmtP=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
     const dateStr=boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"-";
+    // Project / Location fall back to the linked pipeline deal so a BOQ tied to a
+    // project never prints with a blank "Project" field (e.g. imported BOQs, or
+    // when the title was never typed on the builder header).
+    const dealLabel=deal?`${deal.client||""}${deal.contact?" · "+deal.contact:""}${deal.ceNo?" ("+deal.ceNo+")":""}`.trim():"";
+    const projectName=(boqTitle&&boqTitle.trim())||dealLabel||"—";
+    const locationName=(location&&location.trim())||deal?.location||"—";
     let rows="";
     sections.forEach(sec=>{
       const si=items.filter(it=>it.section===sec.id);
@@ -554,7 +560,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       rows+=`<tr style="background:${sec.color?sec.color+"11":"#f0fdf4"}"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
     });
     const vatAmt=grandTotal*0.12;
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc(boqTitle||"Draft")}</title>
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc((boqTitle&&boqTitle.trim())||dealLabel||"Draft")}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
@@ -594,8 +600,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   <div><div class="doc-label">Bill of Quantities</div><div class="doc-title">QUOTATION</div><div style="font-size:11px;color:#64748b;text-align:right;margin-top:3px">${quotationNo?`No. ${esc(quotationNo)}`:""} &nbsp; ${dateStr}</div></div>
 </div>
 <div class="meta-box">
-  <div class="meta-item"><label>Project</label><span>${esc(boqTitle||"—")}</span></div>
-  <div class="meta-item"><label>Location</label><span>${esc(location||"—")}</span></div>
+  <div class="meta-item"><label>Project</label><span>${esc(projectName)}</span></div>
+  <div class="meta-item"><label>Location</label><span>${esc(locationName)}</span></div>
   <div class="meta-item"><label>Contractor</label><span>GMD Productions Inc.</span></div>
   <div class="meta-item"><label>Date</label><span>${dateStr}</span></div>
 </div>
