@@ -410,6 +410,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   };
 
   const deal=wonDeals.find(d=>d.id===selDeal)||deals.find(d=>d.id===selDeal);
+  // Human-readable project label for a deal — same format as the project dropdown.
+  const dealLabel=(d)=>d?`${d.client||""}${d.contact?" · "+d.contact:""}${d.ceNo?" ("+d.ceNo+")":""}`.trim():"";
 
   const applyBoqSrc=(src)=>{
     if(src.items) setItems(src.items.map(normItem));
@@ -441,6 +443,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     const existing=deal?.boqData||loadDraft(selDeal);
     if(existing){
       applyBoqSrc(existing);
+      // Backfill a missing project title from the linked deal so existing BOQs
+      // (imported, or saved with a blank header) still carry their project name.
+      // The autosave effect then persists it back onto the deal's BOQ data.
+      if(!(existing.boqTitle&&String(existing.boqTitle).trim())&&deal){
+        setBoqTitle(dealLabel(deal));
+      }
       setDraftSaved(true);
     } else {
       // No saved BOQ for this deal yet — adopt a scratch draft built before a project was chosen
@@ -544,6 +552,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const fmtP=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
     const dateStr=boqDate?new Date(boqDate+"T00:00:00").toLocaleDateString("en-PH",{year:"numeric",month:"long",day:"numeric"}):"-";
+    // Project / Location fall back to the linked pipeline deal so a BOQ tied to a
+    // project never prints with a blank "Project" field (e.g. imported BOQs, or
+    // when the title was never typed on the builder header).
+    const projectName=(boqTitle&&boqTitle.trim())||dealLabel(deal)||"—";
+    const locationName=(location&&location.trim())||deal?.location||"—";
     let rows="";
     sections.forEach(sec=>{
       const si=items.filter(it=>it.section===sec.id);
@@ -554,7 +567,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       rows+=`<tr style="background:${sec.color?sec.color+"11":"#f0fdf4"}"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
     });
     const vatAmt=grandTotal*0.12;
-    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc(boqTitle||"Draft")}</title>
+    const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc((boqTitle&&boqTitle.trim())||dealLabel(deal)||"Draft")}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
@@ -594,8 +607,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   <div><div class="doc-label">Bill of Quantities</div><div class="doc-title">QUOTATION</div><div style="font-size:11px;color:#64748b;text-align:right;margin-top:3px">${quotationNo?`No. ${esc(quotationNo)}`:""} &nbsp; ${dateStr}</div></div>
 </div>
 <div class="meta-box">
-  <div class="meta-item"><label>Project</label><span>${esc(boqTitle||"—")}</span></div>
-  <div class="meta-item"><label>Location</label><span>${esc(location||"—")}</span></div>
+  <div class="meta-item"><label>Project</label><span>${esc(projectName)}</span></div>
+  <div class="meta-item"><label>Location</label><span>${esc(locationName)}</span></div>
   <div class="meta-item"><label>Contractor</label><span>GMD Productions Inc.</span></div>
   <div class="meta-item"><label>Date</label><span>${dateStr}</span></div>
 </div>
