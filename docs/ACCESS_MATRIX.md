@@ -11,6 +11,18 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 
 ---
 
+## ✅ Decisions — RESOLVED (2026-07-16)
+
+1. **Sales gets read-only Billing (SOA) access.** Sales can view billing
+   milestones/payments and print Statements of Account to send client billings,
+   but **cannot** create/edit/delete milestones or log payments (Manager/Finance
+   only). This reconciles the prior inconsistency where `RT_SUB_ROLES` and the
+   read-access reference already included Sales for `billing_*` but the matrix
+   row and migration 024's SELECT policy did not. Enforced by: a "Billing" nav
+   item for Sales, BillingView's `canEdit = Manager|Finance` gate (mutations
+   already hidden for Sales), and `supabase_migration_027_sales_billing_soa.sql`
+   (adds Sales to the `billing_*` SELECT policy).
+
 ## ✅ Decisions — RESOLVED (2026-07-08)
 
 1. **`Operations` = `ProjectMover`** — merged in policies.
@@ -79,7 +91,7 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 | Module | Table(s) | Mgr | PM | Sales | Fin | Acct | Proc | QS | WH | Dsgn |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Finance / cash position | `inflows`, `app_settings` | VCED | — | — | VCED | — | — | — | — | — |
-| Billing | `billing_milestones`, `billing_payments` | VCE | — | — | VCE | V | — | — | — | — |
+| Billing | `billing_milestones`, `billing_payments` | VCE | — | V (SOA / read-only) | VCE | V | — | — | — | — |
 | Expenses | `expenses` | VCED | V | V | VCED | VCED | V | V | — | V |
 | Daily Payables | `expenses`, `payables` | VA | — | — | VA | VA (mark paid) | — | — | — | — |
 | Check Vouchers | `check_vouchers` | VCEA (void) | — | — | V (release, clear) | VCE (submit, clear, void) | — | — | — | — |
