@@ -11,6 +11,38 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 
 ---
 
+## ✅ Decisions — RESOLVED (2026-07-16)
+
+> **Note on production RLS state (verified 2026-07-16):** the live database has
+> **not** had migration 024 applied — every table still carries the blanket
+> `fabhub_app_access` policy (`ALL / USING true`), i.e. allow-all for any
+> authenticated user, and `has_role()` does not exist. This whole matrix is
+> therefore still the *plan* for a future role-based RLS rollout, not what the DB
+> enforces today. The decisions below were shipped as **frontend** changes; their
+> DB-policy halves are deferred to that rollout.
+
+1. **Sales gets read-only Billing (SOA) access.** Sales can view billing
+   milestones/payments and print Statements of Account to send client billings,
+   but **cannot** create/edit/delete milestones or log payments (Manager/Finance
+   only). Shipped as a frontend change: a "Billing" nav item for Sales, relying
+   on BillingView's `canEdit = Manager|Finance` gate to keep it read-only. No DB
+   change was needed (production RLS is allow-all). When the role-based RLS
+   rollout happens, the `billing_*` SELECT policy must include `Sales` — the
+   matrix row below reflects that intent.
+
+2. **AE Updates (`ae_updates`) visibility — NOT an access-control issue.**
+   Reported as: an AE (Sales) posts on the Pipeline → "AE Updates" tab but
+   Managers can't see it. Investigation (2026-07-16) showed this was **not** RLS:
+   production is allow-all, and the posts persist to the server correctly. The
+   real cause was the feed-load path (a stale local cache masking server rows),
+   already fixed in commit `91ed0f1` ("AE Updates feed") which loads the feed via
+   `sbList` — and that fix is deployed. For the future RLS rollout, `ae_updates`
+   should allow the app's consumer roles for SELECT/INSERT/DELETE
+   (`RT_SUB_ROLES.ae_updates`: Manager, ProjectMover, Sales, Finance, QS, Design);
+   migration 024's Manager/ProjectMover-only rule would otherwise reintroduce this
+   bug once RLS is enforced. Also added `ProjectMover` to `RT_SUB_ROLES.ae_updates`
+   so ops users receive live updates.
+
 ## ✅ Decisions — RESOLVED (2026-07-08)
 
 1. **`Operations` = `ProjectMover`** — merged in policies.
@@ -79,7 +111,7 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 | Module | Table(s) | Mgr | PM | Sales | Fin | Acct | Proc | QS | WH | Dsgn |
 |---|---|---|---|---|---|---|---|---|---|---|
 | Finance / cash position | `inflows`, `app_settings` | VCED | — | — | VCED | — | — | — | — | — |
-| Billing | `billing_milestones`, `billing_payments` | VCE | — | — | VCE | V | — | — | — | — |
+| Billing | `billing_milestones`, `billing_payments` | VCE | — | V (SOA / read-only) | VCE | V | — | — | — | — |
 | Expenses | `expenses` | VCED | V | V | VCED | VCED | V | V | — | V |
 | Daily Payables | `expenses`, `payables` | VA | — | — | VA | VA (mark paid) | — | — | — | — |
 | Check Vouchers | `check_vouchers` | VCEA (void) | — | — | V (release, clear) | VCE (submit, clear, void) | — | — | — | — |
@@ -108,7 +140,8 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 |---|---|---|---|---|---|---|---|---|---|---|
 | Users / Accounts | `user_profiles` | VCED (+approve) | own | own | V (Mgr mutates) | own | own | own | own | own |
 | Activity / Leaderboard | `activity_log` | V (all) | C | C | C | C | C | C | C | C |
-| PM Updates | `ae_updates`, `project_cards` | VC | VC | — | — | — | — | — | — | — |
+| AE Updates | `ae_updates` | VCD | VCD | VCD | VCD | — | — | VCD | — | VCD | (Pipeline → AE Updates tab; see 2026-07-16 decision #2. UPDATE is Mgr/PM only — no edit path.) |
+| PM Updates | `activity_log` (action=`PM Update`), `project_cards` | VC | VC | — | — | — | — | — | — | — | (PM Updates are logged to `activity_log`, not `ae_updates`.) |
 | Bot Settings | `app_settings` | VE | — | — | VE | — | — | — | — | — |
 | Data Management | all (migrate) | V (Manager + paulo) | — | — | — | — | — | — | — | — |
 

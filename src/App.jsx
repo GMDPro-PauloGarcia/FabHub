@@ -3824,7 +3824,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       inflows:["Manager"],
       checklists:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       swatches:["Manager","Finance","Procurement","Operations","Design"],
-      ae_updates:["Manager","Sales","Finance","QS","Operations","Design"],
+      ae_updates:["Manager","Sales","Finance","QS","Operations","ProjectMover","Design"],
       project_blockers:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover"],
       inventory_items:["Manager","Finance","Procurement","Warehouse"],
       stock_movements:["Manager","Finance","Procurement","Warehouse"],
@@ -6076,6 +6076,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"reports",l:"Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+      {group:"Billing",      items:[{id:"billing",l:"Billing"}]},
       {group:"Deliverables", items:[{id:"drf",l:"Design Requests"}]},
       {group:"QS",           items:[{id:"ceqs",l:"CE Requests"},{id:"boq",l:"BOQ"}]},
     ],
@@ -10783,7 +10784,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
@@ -11104,7 +11105,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -11589,7 +11590,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -13165,7 +13166,7 @@ First few:
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
         wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
-        upPayables={upPayables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/>
+        upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/>
     </Wrap>
   );
 
@@ -17189,7 +17190,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
@@ -17212,6 +17213,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const[poLevelDiscValue,setPoLevelDiscValue]=useState("");
   const[poWithVat,setPoWithVat]=useState(false);
   const[editingPrIds,setEditingPrIds]=useState(null);
+  const[selectedPOs,setSelectedPOs]=useState(()=>new Set()); // groupKeys picked for bulk delete
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -17439,6 +17441,28 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     dupNos.forEach((no,i)=>{map[no]=DUP_PALETTE[i%DUP_PALETTE.length];});
     return map;
   })();
+
+  // ── Multi-select bulk delete (PO groups only) ──────────────────────────────
+  const poGroupList=grouped.filter(g=>g.type==="po");
+  const selectedVisibleCount=poGroupList.filter(g=>selectedPOs.has(g.groupKey)).length;
+  const allPosSelected=poGroupList.length>0&&selectedVisibleCount===poGroupList.length;
+  const toggleSelectPO=(k)=>setSelectedPOs(prev=>{const s=new Set(prev);s.has(k)?s.delete(k):s.add(k);return s;});
+  const toggleSelectAllPOs=()=>setSelectedPOs(prev=>poGroupList.every(g=>prev.has(g.groupKey))?new Set():new Set(poGroupList.map(g=>g.groupKey)));
+  const bulkDeletePOs=()=>{
+    const groups=poGroupList.filter(g=>selectedPOs.has(g.groupKey));
+    if(!groups.length) return;
+    const poCount=groups.length;
+    const itemCount=groups.reduce((s,g)=>s+g.items.length,0);
+    const poNos=new Set(groups.map(g=>g.poNo));
+    // Auto-created PO payables are keyed by poId=PO number (and carry poNumber);
+    // deletePR doesn't touch payables, so warn how many will be left behind.
+    const linked=(payables||[]).filter(p=>poNos.has(p.poId)||poNos.has(p.poNumber));
+    const note=linked.length?`\n\n⚠️ ${linked.length} linked Accounts Payable ${linked.length>1?"entries":"entry"} will remain — remove ${linked.length>1?"them":"it"} in Accounts Payable if needed.`:"";
+    if(!window.confirm(`Delete ${poCount} purchase order${poCount>1?"s":""} (${itemCount} line item${itemCount>1?"s":""})? This cannot be undone.${note}`)) return;
+    groups.forEach(g=>g.items.forEach(i=>deletePR(i.id)));
+    setSelectedPOs(new Set());
+    toastEmit&&toastEmit(`Deleted ${poCount} purchase order${poCount>1?"s":""}.`,"success");
+  };
 
   // Edit single PR inline
   if(mode==="editpr"&&editingId){
@@ -17773,6 +17797,19 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       </div>
 
       {grouped.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No purchase orders yet. Hit + New Purchase Order to start.</div>}
+      {(role==="Manager"||role==="Procurement")&&poListTab==="list"&&poGroupList.length>0&&(
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:10,flexWrap:"wrap"}}>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:".78rem",color:"#475569",cursor:"pointer",fontWeight:600}}>
+            <input type="checkbox" checked={allPosSelected} onChange={toggleSelectAllPOs} style={{width:16,height:16,cursor:"pointer",accentColor:"#dc2626"}}/>
+            Select all POs ({poGroupList.length})
+          </label>
+          {selectedVisibleCount>0&&(<>
+            <span style={{fontSize:".78rem",color:"#64748b"}}>{selectedVisibleCount} selected</span>
+            <button onClick={bulkDeletePOs} style={{background:"#dc2626",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer"}}>🗑 Delete selected ({selectedVisibleCount})</button>
+            <button onClick={()=>setSelectedPOs(new Set())} style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontFamily:"inherit",fontSize:".78rem",textDecoration:"underline"}}>Clear</button>
+          </>)}
+        </div>
+      )}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
         {/* Table header */}
         {grouped.length>0&&<div style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"7px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8,alignItems:"center"}}>
@@ -17867,6 +17904,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                 <div onClick={()=>setExpandedPo(o=>o===groupKey?null:groupKey)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
                   onMouseEnter={e=>{if(!open)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=open?"#f8fafc":"#fff";}}>
                   <div style={{fontWeight:700,color:dupPoColors[poNo]||"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
+                    {(role==="Manager"||role==="Procurement")&&<input type="checkbox" checked={selectedPOs.has(groupKey)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelectPO(groupKey)} title="Select for bulk delete" style={{width:14,height:14,cursor:"pointer",accentColor:"#dc2626",flexShrink:0,margin:0}}/>}
                     {dupPoColors[poNo]&&<span title="Duplicate PO number" style={{width:7,height:7,borderRadius:"50%",background:dupPoColors[poNo],flexShrink:0,display:"inline-block"}}/>}
                     {poNo}
                   </div>
