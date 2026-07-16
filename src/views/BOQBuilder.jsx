@@ -93,7 +93,7 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData}){
   // Start blank — sections are added per BOQ, no fixed/preset sections
   const BLANK_ITEMS=()=>[];
   // Draft key used when no project is selected yet (work is migrated onto the deal once picked)
@@ -504,6 +504,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal,markupPct};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
+      // Reflect the saved BOQ in the shared deals state immediately so surfaces
+      // that read deal.boqData (BOQ list "has BOQ", print, contract breakdown)
+      // update without waiting for the realtime echo / a manual refresh.
+      if(selDeal&&onBoqData) onBoqData(selDeal,boqData);
       // Seed the deal's contract value from the BOQ (net of VAT) ONLY when the deal has
       // no value yet. A pegged, non-zero value is never silently overwritten — a mismatch
       // is surfaced via the reconcile prompt when the deal is opened instead.

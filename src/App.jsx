@@ -3922,14 +3922,48 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const prSub = sbSubscribe('prs-rt', 'purchase_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={...rec,dealId:rec.deal_id,estimatedCost:rec.estimated_cost,
-          actualCost:rec.actual_cost,budgetCategory:rec.budget_category,
-          qtyDelivered:rec.qty_delivered,deliveryDate:rec.delivery_date,
-          drNo:rec.dr_no,createdBy:rec.created_by};
+        // Mirror the initial-load mapping (snake_case → camelCase) in full. A
+        // partial mapping here meant a teammate's new PO arrived without
+        // poNumber / est-act unit costs / itemName, so it failed to group as a
+        // PO and showed a blank amount until a full reload ("need to logout for
+        // other POs to appear").
+        const mapped={...rec,dealId:rec.deal_id,projectId:rec.deal_id,itemName:rec.item||"",
+          estimatedCost:Number(rec.estimated_cost)||0,estUnitCost:Number(rec.estimated_cost)||0,
+          actualCost:Number(rec.actual_cost)||0,actUnitCost:Number(rec.actual_cost)||0,
+          budgetCategory:rec.budget_category,qtyDelivered:Number(rec.qty_delivered)||0,
+          deliveryDate:rec.delivery_date,deliveryNote:rec.delivery_note||"",drNo:rec.dr_no,
+          createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",
+          requestedBy:rec.requested_by||rec.created_by||"",approvedBy:rec.approved_by||"",
+          projectName:rec.project_name||"",fromMrId:rec.from_mr_id||null,urgency:rec.urgency||"Normal",
+          approvedAt:rec.approved_at||null,
+          deliveryHistory:rec.delivery_history?(()=>{try{return JSON.parse(rec.delivery_history);}catch(e){return [];}})():undefined,
+          acctStatus:rec.acct_status||"",acctNotes:rec.acct_notes||"",acctCheckedBy:rec.acct_checked_by||"",
+          acctCheckedAt:rec.acct_checked_at||"",paymentBank:rec.payment_bank||"",paymentRef:rec.payment_ref||"",
+          paymentOrderedBy:rec.payment_ordered_by||"",paymentOrderedAt:rec.payment_ordered_at||"",
+          paidRef:rec.paid_ref||"",paidDate:rec.paid_date||"",paidAmt:rec.paid_amt!=null?Number(rec.paid_amt):null,
+          paidBy:rec.paid_by||"",discType:rec.disc_type||"none",discValue:Number(rec.disc_value)||0,
+          poDiscType:rec.po_discount_type||"none",poDiscValue:Number(rec.po_discount_value)||0,withVat:rec.with_vat||false};
         setPrs(ps=>{const ex=ps.find(p=>p.id===rec.id);
           return ex?ps.map(p=>p.id===rec.id?{...p,...mapped}:p):[...ps,mapped];});
       }
       if(eventType==='DELETE') setPrs(ps=>ps.filter(p=>p.id!==oldRow.id));
+    });
+
+    // CE/QS cost-estimation requests — Sales submits, Rodney's queue updates live.
+    // Previously ce_requests had NO realtime subscription, so a submitted CE
+    // request only reached other users' queues after a logout/refresh.
+    const ceReqSub = sbSubscribe('ce-rt', 'ce_requests', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={id:rec.id,clientName:rec.client_name,projectName:rec.project_name,location:rec.location,
+          projectType:rec.project_type,priority:rec.priority,status:rec.status,submittedBy:rec.submitted_by,
+          targetDeadline:rec.target_deadline,submissionDeadline:rec.submission_deadline,targetBudget:rec.target_budget,
+          targetMargin:rec.target_margin,plansLink:rec.plans_link,skpLink:rec.skp_link,scheduleOfFinish:rec.schedule_of_finish,
+          notes:rec.notes,ceNotes:rec.ce_notes,bidAmount:rec.bid_amount,bidMarginPct:rec.bid_margin_pct,
+          awarded:rec.awarded,awardDate:rec.award_date,dealId:rec.deal_id,createdAt:rec.created_at};
+        setCeReqs(cs=>{const ex=cs.find(c=>c.id===rec.id);return ex?cs.map(c=>c.id===rec.id?{...c,...mapped}:c):[mapped,...cs];});
+      }
+      if(eventType==='DELETE') setCeReqs(cs=>cs.filter(c=>c.id!==oldRow.id));
     });
 
     // Material Requests — submitted on site, office sees it live
@@ -4124,6 +4158,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       actSub?.unsubscribe?.();
       joSub?.unsubscribe?.();
       prSub?.unsubscribe?.();
+      ceReqSub?.unsubscribe?.();
       mreqSub?.unsubscribe?.();
       breqSub?.unsubscribe?.();
       paymentSub?.unsubscribe?.();
@@ -12178,8 +12213,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
   if(page==="boq"){
-    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discountedTotal:b.discountedTotal||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
-    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const net=Math.round((Number(boqData.discountedTotal)>0?Number(boqData.discountedTotal):grand)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discountedTotal:b.discountedTotal||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
+    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const net=Math.round((Number(boqData.discountedTotal)>0?Number(boqData.discountedTotal):grand)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discountedTotal:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
