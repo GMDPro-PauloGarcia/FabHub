@@ -23,6 +23,17 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
    already hidden for Sales), and `supabase_migration_027_sales_billing_soa.sql`
    (adds Sales to the `billing_*` SELECT policy).
 
+2. **AE Updates (`ae_updates`) access fixed.** The Pipeline → "AE Updates" tab is
+   authored by Sales AEs and consumed by the management/ops group, but migration
+   024 restricted `ae_updates` to Manager/ProjectMover for both SELECT and INSERT.
+   A Sales AE's post was silently rejected by RLS (the insert error is swallowed
+   by a `.catch`) and lived only in their local cache — so no one else, including
+   Managers, ever saw it. Fixed by `supabase_migration_028_ae_updates_access.sql`,
+   which aligns `ae_updates` SELECT/INSERT/DELETE with the app's consumer list
+   (`RT_SUB_ROLES.ae_updates`): Manager, ProjectMover, Sales, Finance, QS, Design.
+   UPDATE stays Manager/ProjectMover (no edit path exists). Also added
+   `ProjectMover` to `RT_SUB_ROLES.ae_updates` so they receive live updates.
+
 ## ✅ Decisions — RESOLVED (2026-07-08)
 
 1. **`Operations` = `ProjectMover`** — merged in policies.
@@ -120,7 +131,8 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 |---|---|---|---|---|---|---|---|---|---|---|
 | Users / Accounts | `user_profiles` | VCED (+approve) | own | own | V (Mgr mutates) | own | own | own | own | own |
 | Activity / Leaderboard | `activity_log` | V (all) | C | C | C | C | C | C | C | C |
-| PM Updates | `ae_updates`, `project_cards` | VC | VC | — | — | — | — | — | — | — |
+| AE Updates | `ae_updates` | VCD | VCD | VCD | VCD | — | — | VCD | — | VCD | (Pipeline → AE Updates tab; see 2026-07-16 decision #2. UPDATE is Mgr/PM only — no edit path.) |
+| PM Updates | `activity_log` (action=`PM Update`), `project_cards` | VC | VC | — | — | — | — | — | — | — | (PM Updates are logged to `activity_log`, not `ae_updates`.) |
 | Bot Settings | `app_settings` | VE | — | — | VE | — | — | — | — | — |
 | Data Management | all (migrate) | V (Manager + paulo) | — | — | — | — | — | — | — | — |
 

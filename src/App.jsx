@@ -3824,7 +3824,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       inflows:["Manager"],
       checklists:["Manager","Sales","Finance","Procurement","Operations","Design","ProjectMover"],
       swatches:["Manager","Finance","Procurement","Operations","Design"],
-      ae_updates:["Manager","Sales","Finance","QS","Operations","Design"],
+      ae_updates:["Manager","Sales","Finance","QS","Operations","ProjectMover","Design"],
       project_blockers:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover"],
       inventory_items:["Manager","Finance","Procurement","Warehouse"],
       stock_movements:["Manager","Finance","Procurement","Warehouse"],
