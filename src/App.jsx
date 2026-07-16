@@ -17240,6 +17240,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const[poImportStatus,setPoImportStatus]=useState("");
   const[poSupplier,setPoSupplier]=useState("");
   const[poNumber,setPoNumber]=useState("");
+  const[poNumberAuto,setPoNumberAuto]=useState(false); // true = auto-filled preview, claim real no. at save
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
   const[poStatus,setPoStatus]=useState("Draft");
   const[poExpectedDelivery,setPoExpectedDelivery]=useState("");
@@ -17252,15 +17253,32 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
+  // Canonical PO total — gross − line discounts − PO-level discount (+ VAT), the
+  // same formula the printed PO and the auto-created payable use (syncPoPayable).
+  // The PO list row must show THIS, not a bare qty×cost gross, so the amount
+  // doesn't appear to "change" when the PO is opened/printed.
+  const poTotalOf=(its)=>{
+    const gross=(its||[]).reduce((s,i)=>s+(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty),0);
+    const lineDisc=(its||[]).reduce((s,i)=>{const b=(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty);if(i.discType==="pct")return s+b*(n(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(n(i.discValue),b);return s;},0);
+    const afterLine=gross-lineDisc;
+    const pdt=its?.[0]?.poDiscType||"none",pdv=n(its?.[0]?.poDiscValue);
+    const poDisc=pdt==="pct"?afterLine*(pdv/100):pdt==="fixed"?Math.min(pdv,afterLine):0;
+    const afterPo=afterLine-poDisc;
+    return Math.round((afterPo+(its?.[0]?.withVat?afterPo*0.12:0))*100)/100;
+  };
 
   function emptyPoItem(){
     return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
   }
 
   const nextPoNo=()=>claimDocNumber("PO",prs.map(p=>p.poNumber));
+  // Preview only — a local next-number guess for the form. It does NOT advance
+  // the server counter, so opening the form (and cancelling) never burns a PO
+  // number. The real, collision-free number is claimed via nextPoNo() at save.
+  const previewPoNo=()=>{const mx=prs.reduce((m,p)=>{const t=/^PO-(\d+)$/.exec(String(p.poNumber||""));return t?Math.max(m,Number(t[1])):m;},0);return `PO-${String(mx+1).padStart(4,"0")}`;};
 
-  const openNewPO=async()=>{
-    setPoSupplier(""); setPoNumber(await nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
+  const openNewPO=()=>{
+    setPoSupplier(""); setPoNumber(previewPoNo()); setPoNumberAuto(true); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
     setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false);
     setEditingPrIds(null); setMode("newpo");
@@ -17269,7 +17287,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const openEditPO=(poNo,items)=>{
     const first=items[0]||{};
     setPoSupplier(first.supplier||"");
-    setPoNumber(poNo);
+    setPoNumber(poNo); setPoNumberAuto(false);
     setPoDate(first.poDate||today);
     setPoStatus(first.status||"Draft");
     setPoExpectedDelivery(first.deliveryDate||"");
@@ -17387,12 +17405,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     return 0;
   };
 
-  const submitPO=()=>{
+  const submitPO=async()=>{
     if(!poSupplier){toastEmit&&toastEmit("Please enter a supplier name.","error");return;}
     if(!poNumber){toastEmit&&toastEmit("Please enter a PO number.","error");return;}
     if(poItems.some(i=>!i.itemName)){toastEmit&&toastEmit("Every item must have a description.","error");return;}
     if(poItems.some(i=>!(Number(i.qty)>0))){toastEmit&&toastEmit("Every item must have a quantity greater than 0.","error");return;}
-    const poNo=poNumber.trim();
+    // Claim the real, collision-free PO number now (at save), not when the form
+    // opened — so opening + cancelling never burns a number and the sequence
+    // doesn't skip. Only for a brand-new PO whose number is still the auto
+    // preview; a manually-typed or edited number is kept as-is.
+    let poNo=poNumber.trim();
+    if(!editingPrIds&&poNumberAuto){const claimed=await nextPoNo();if(claimed)poNo=claimed;}
     const buildUpdate=(item)=>{
       // Resolve against all active deals, not just awarded ones — procurement
       // often buys swatches/materials for deals that haven't been won yet, and
@@ -17455,7 +17478,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         solo.push(p);
       }
     });
-    const poGroups=Object.entries(byPO).map(([key,items])=>{const poNo=key.split("|||")[0];return{type:"po",poNo,groupKey:key,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)};});
+    const poGroups=Object.entries(byPO).map(([key,items])=>{const poNo=key.split("|||")[0];return{type:"po",poNo,groupKey:key,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:poTotalOf(items)};});
     const soloItems=solo.map(p=>({type:"solo",pr:p}));
     return [...poGroups,...soloItems].sort((a,b)=>{
       const aDate=a.type==="po"?a.poDate:a.pr.createdDate||"";
@@ -17589,7 +17612,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                 </button>
               )}
             </Fld>
-            <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
+            <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>{setPoNumber(e.target.value);setPoNumberAuto(false);}} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
             <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PROC_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="Expected Delivery"><Inp type="date" value={poExpectedDelivery} onChange={e=>setPoExpectedDelivery(e.target.value)}/></Fld>
