@@ -3922,14 +3922,48 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const prSub = sbSubscribe('prs-rt', 'purchase_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={...rec,dealId:rec.deal_id,estimatedCost:rec.estimated_cost,
-          actualCost:rec.actual_cost,budgetCategory:rec.budget_category,
-          qtyDelivered:rec.qty_delivered,deliveryDate:rec.delivery_date,
-          drNo:rec.dr_no,createdBy:rec.created_by};
+        // Mirror the initial-load mapping (snake_case → camelCase) in full. A
+        // partial mapping here meant a teammate's new PO arrived without
+        // poNumber / est-act unit costs / itemName, so it failed to group as a
+        // PO and showed a blank amount until a full reload ("need to logout for
+        // other POs to appear").
+        const mapped={...rec,dealId:rec.deal_id,projectId:rec.deal_id,itemName:rec.item||"",
+          estimatedCost:Number(rec.estimated_cost)||0,estUnitCost:Number(rec.estimated_cost)||0,
+          actualCost:Number(rec.actual_cost)||0,actUnitCost:Number(rec.actual_cost)||0,
+          budgetCategory:rec.budget_category,qtyDelivered:Number(rec.qty_delivered)||0,
+          deliveryDate:rec.delivery_date,deliveryNote:rec.delivery_note||"",drNo:rec.dr_no,
+          createdBy:rec.created_by,poNumber:rec.po_number||"",poDate:rec.po_date||"",
+          requestedBy:rec.requested_by||rec.created_by||"",approvedBy:rec.approved_by||"",
+          projectName:rec.project_name||"",fromMrId:rec.from_mr_id||null,urgency:rec.urgency||"Normal",
+          approvedAt:rec.approved_at||null,
+          deliveryHistory:rec.delivery_history?(()=>{try{return JSON.parse(rec.delivery_history);}catch(e){return [];}})():undefined,
+          acctStatus:rec.acct_status||"",acctNotes:rec.acct_notes||"",acctCheckedBy:rec.acct_checked_by||"",
+          acctCheckedAt:rec.acct_checked_at||"",paymentBank:rec.payment_bank||"",paymentRef:rec.payment_ref||"",
+          paymentOrderedBy:rec.payment_ordered_by||"",paymentOrderedAt:rec.payment_ordered_at||"",
+          paidRef:rec.paid_ref||"",paidDate:rec.paid_date||"",paidAmt:rec.paid_amt!=null?Number(rec.paid_amt):null,
+          paidBy:rec.paid_by||"",discType:rec.disc_type||"none",discValue:Number(rec.disc_value)||0,
+          poDiscType:rec.po_discount_type||"none",poDiscValue:Number(rec.po_discount_value)||0,withVat:rec.with_vat||false};
         setPrs(ps=>{const ex=ps.find(p=>p.id===rec.id);
           return ex?ps.map(p=>p.id===rec.id?{...p,...mapped}:p):[...ps,mapped];});
       }
       if(eventType==='DELETE') setPrs(ps=>ps.filter(p=>p.id!==oldRow.id));
+    });
+
+    // CE/QS cost-estimation requests — Sales submits, Rodney's queue updates live.
+    // Previously ce_requests had NO realtime subscription, so a submitted CE
+    // request only reached other users' queues after a logout/refresh.
+    const ceReqSub = sbSubscribe('ce-rt', 'ce_requests', payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='INSERT'||eventType==='UPDATE'){
+        const mapped={id:rec.id,clientName:rec.client_name,projectName:rec.project_name,location:rec.location,
+          projectType:rec.project_type,priority:rec.priority,status:rec.status,submittedBy:rec.submitted_by,
+          targetDeadline:rec.target_deadline,submissionDeadline:rec.submission_deadline,targetBudget:rec.target_budget,
+          targetMargin:rec.target_margin,plansLink:rec.plans_link,skpLink:rec.skp_link,scheduleOfFinish:rec.schedule_of_finish,
+          notes:rec.notes,ceNotes:rec.ce_notes,bidAmount:rec.bid_amount,bidMarginPct:rec.bid_margin_pct,
+          awarded:rec.awarded,awardDate:rec.award_date,dealId:rec.deal_id,createdAt:rec.created_at};
+        setCeReqs(cs=>{const ex=cs.find(c=>c.id===rec.id);return ex?cs.map(c=>c.id===rec.id?{...c,...mapped}:c):[mapped,...cs];});
+      }
+      if(eventType==='DELETE') setCeReqs(cs=>cs.filter(c=>c.id!==oldRow.id));
     });
 
     // Material Requests — submitted on site, office sees it live
@@ -4124,6 +4158,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       actSub?.unsubscribe?.();
       joSub?.unsubscribe?.();
       prSub?.unsubscribe?.();
+      ceReqSub?.unsubscribe?.();
       mreqSub?.unsubscribe?.();
       breqSub?.unsubscribe?.();
       paymentSub?.unsubscribe?.();
@@ -12178,8 +12213,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
   if(page==="boq"){
-    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discountedTotal:b.discountedTotal||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
-    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const net=Math.round((Number(boqData.discountedTotal)>0?Number(boqData.discountedTotal):grand)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
+    if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discountedTotal:b.discountedTotal||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
+    if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const net=Math.round((Number(boqData.discountedTotal)>0?Number(boqData.discountedTotal):grand)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
     return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discountedTotal:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
@@ -17205,6 +17240,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const[poImportStatus,setPoImportStatus]=useState("");
   const[poSupplier,setPoSupplier]=useState("");
   const[poNumber,setPoNumber]=useState("");
+  const[poNumberAuto,setPoNumberAuto]=useState(false); // true = auto-filled preview, claim real no. at save
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
   const[poStatus,setPoStatus]=useState("Draft");
   const[poExpectedDelivery,setPoExpectedDelivery]=useState("");
@@ -17217,15 +17253,32 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
+  // Canonical PO total — gross − line discounts − PO-level discount (+ VAT), the
+  // same formula the printed PO and the auto-created payable use (syncPoPayable).
+  // The PO list row must show THIS, not a bare qty×cost gross, so the amount
+  // doesn't appear to "change" when the PO is opened/printed.
+  const poTotalOf=(its)=>{
+    const gross=(its||[]).reduce((s,i)=>s+(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty),0);
+    const lineDisc=(its||[]).reduce((s,i)=>{const b=(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty);if(i.discType==="pct")return s+b*(n(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(n(i.discValue),b);return s;},0);
+    const afterLine=gross-lineDisc;
+    const pdt=its?.[0]?.poDiscType||"none",pdv=n(its?.[0]?.poDiscValue);
+    const poDisc=pdt==="pct"?afterLine*(pdv/100):pdt==="fixed"?Math.min(pdv,afterLine):0;
+    const afterPo=afterLine-poDisc;
+    return Math.round((afterPo+(its?.[0]?.withVat?afterPo*0.12:0))*100)/100;
+  };
 
   function emptyPoItem(){
     return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
   }
 
   const nextPoNo=()=>claimDocNumber("PO",prs.map(p=>p.poNumber));
+  // Preview only — a local next-number guess for the form. It does NOT advance
+  // the server counter, so opening the form (and cancelling) never burns a PO
+  // number. The real, collision-free number is claimed via nextPoNo() at save.
+  const previewPoNo=()=>{const mx=prs.reduce((m,p)=>{const t=/^PO-(\d+)$/.exec(String(p.poNumber||""));return t?Math.max(m,Number(t[1])):m;},0);return `PO-${String(mx+1).padStart(4,"0")}`;};
 
-  const openNewPO=async()=>{
-    setPoSupplier(""); setPoNumber(await nextPoNo()); setPoDate(new Date().toISOString().split("T")[0]);
+  const openNewPO=()=>{
+    setPoSupplier(""); setPoNumber(previewPoNo()); setPoNumberAuto(true); setPoDate(new Date().toISOString().split("T")[0]);
     setPoStatus("PO Issued"); setPoExpectedDelivery(""); setPoItems([emptyPoItem()]);
     setPoLevelDiscType("none"); setPoLevelDiscValue(""); setPoWithVat(false);
     setEditingPrIds(null); setMode("newpo");
@@ -17234,7 +17287,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const openEditPO=(poNo,items)=>{
     const first=items[0]||{};
     setPoSupplier(first.supplier||"");
-    setPoNumber(poNo);
+    setPoNumber(poNo); setPoNumberAuto(false);
     setPoDate(first.poDate||today);
     setPoStatus(first.status||"Draft");
     setPoExpectedDelivery(first.deliveryDate||"");
@@ -17352,12 +17405,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     return 0;
   };
 
-  const submitPO=()=>{
+  const submitPO=async()=>{
     if(!poSupplier){toastEmit&&toastEmit("Please enter a supplier name.","error");return;}
     if(!poNumber){toastEmit&&toastEmit("Please enter a PO number.","error");return;}
     if(poItems.some(i=>!i.itemName)){toastEmit&&toastEmit("Every item must have a description.","error");return;}
     if(poItems.some(i=>!(Number(i.qty)>0))){toastEmit&&toastEmit("Every item must have a quantity greater than 0.","error");return;}
-    const poNo=poNumber.trim();
+    // Claim the real, collision-free PO number now (at save), not when the form
+    // opened — so opening + cancelling never burns a number and the sequence
+    // doesn't skip. Only for a brand-new PO whose number is still the auto
+    // preview; a manually-typed or edited number is kept as-is.
+    let poNo=poNumber.trim();
+    if(!editingPrIds&&poNumberAuto){const claimed=await nextPoNo();if(claimed)poNo=claimed;}
     const buildUpdate=(item)=>{
       // Resolve against all active deals, not just awarded ones — procurement
       // often buys swatches/materials for deals that haven't been won yet, and
@@ -17420,7 +17478,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         solo.push(p);
       }
     });
-    const poGroups=Object.entries(byPO).map(([key,items])=>{const poNo=key.split("|||")[0];return{type:"po",poNo,groupKey:key,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0)};});
+    const poGroups=Object.entries(byPO).map(([key,items])=>{const poNo=key.split("|||")[0];return{type:"po",poNo,groupKey:key,items,supplier:items[0]?.supplier||"",status:items[0]?.status||"Draft",poDate:items[0]?.poDate||"",total:poTotalOf(items)};});
     const soloItems=solo.map(p=>({type:"solo",pr:p}));
     return [...poGroups,...soloItems].sort((a,b)=>{
       const aDate=a.type==="po"?a.poDate:a.pr.createdDate||"";
@@ -17554,7 +17612,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                 </button>
               )}
             </Fld>
-            <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>setPoNumber(e.target.value)} placeholder="PO-0001"/></Fld>
+            <Fld label="PO Number" required><Inp value={poNumber} onChange={e=>{setPoNumber(e.target.value);setPoNumberAuto(false);}} placeholder="PO-0001"/></Fld>
             <Fld label="PO Date"><Inp type="date" value={poDate} onChange={e=>setPoDate(e.target.value)}/></Fld>
             <Fld label="Status"><Sel value={poStatus} onChange={e=>setPoStatus(e.target.value)}>{PROC_STATUSES.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             <Fld label="Expected Delivery"><Inp type="date" value={poExpectedDelivery} onChange={e=>setPoExpectedDelivery(e.target.value)}/></Fld>
