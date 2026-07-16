@@ -13,26 +13,35 @@ Roles (as seeded in `DEFAULT_USERS`): **Manager, ProjectMover, Sales, Finance, A
 
 ## ✅ Decisions — RESOLVED (2026-07-16)
 
+> **Note on production RLS state (verified 2026-07-16):** the live database has
+> **not** had migration 024 applied — every table still carries the blanket
+> `fabhub_app_access` policy (`ALL / USING true`), i.e. allow-all for any
+> authenticated user, and `has_role()` does not exist. This whole matrix is
+> therefore still the *plan* for a future role-based RLS rollout, not what the DB
+> enforces today. The decisions below were shipped as **frontend** changes; their
+> DB-policy halves are deferred to that rollout.
+
 1. **Sales gets read-only Billing (SOA) access.** Sales can view billing
    milestones/payments and print Statements of Account to send client billings,
    but **cannot** create/edit/delete milestones or log payments (Manager/Finance
-   only). This reconciles the prior inconsistency where `RT_SUB_ROLES` and the
-   read-access reference already included Sales for `billing_*` but the matrix
-   row and migration 024's SELECT policy did not. Enforced by: a "Billing" nav
-   item for Sales, BillingView's `canEdit = Manager|Finance` gate (mutations
-   already hidden for Sales), and `supabase_migration_027_sales_billing_soa.sql`
-   (adds Sales to the `billing_*` SELECT policy).
+   only). Shipped as a frontend change: a "Billing" nav item for Sales, relying
+   on BillingView's `canEdit = Manager|Finance` gate to keep it read-only. No DB
+   change was needed (production RLS is allow-all). When the role-based RLS
+   rollout happens, the `billing_*` SELECT policy must include `Sales` — the
+   matrix row below reflects that intent.
 
-2. **AE Updates (`ae_updates`) access fixed.** The Pipeline → "AE Updates" tab is
-   authored by Sales AEs and consumed by the management/ops group, but migration
-   024 restricted `ae_updates` to Manager/ProjectMover for both SELECT and INSERT.
-   A Sales AE's post was silently rejected by RLS (the insert error is swallowed
-   by a `.catch`) and lived only in their local cache — so no one else, including
-   Managers, ever saw it. Fixed by `supabase_migration_028_ae_updates_access.sql`,
-   which aligns `ae_updates` SELECT/INSERT/DELETE with the app's consumer list
-   (`RT_SUB_ROLES.ae_updates`): Manager, ProjectMover, Sales, Finance, QS, Design.
-   UPDATE stays Manager/ProjectMover (no edit path exists). Also added
-   `ProjectMover` to `RT_SUB_ROLES.ae_updates` so they receive live updates.
+2. **AE Updates (`ae_updates`) visibility — NOT an access-control issue.**
+   Reported as: an AE (Sales) posts on the Pipeline → "AE Updates" tab but
+   Managers can't see it. Investigation (2026-07-16) showed this was **not** RLS:
+   production is allow-all, and the posts persist to the server correctly. The
+   real cause was the feed-load path (a stale local cache masking server rows),
+   already fixed in commit `91ed0f1` ("AE Updates feed") which loads the feed via
+   `sbList` — and that fix is deployed. For the future RLS rollout, `ae_updates`
+   should allow the app's consumer roles for SELECT/INSERT/DELETE
+   (`RT_SUB_ROLES.ae_updates`: Manager, ProjectMover, Sales, Finance, QS, Design);
+   migration 024's Manager/ProjectMover-only rule would otherwise reintroduce this
+   bug once RLS is enforced. Also added `ProjectMover` to `RT_SUB_ROLES.ae_updates`
+   so ops users receive live updates.
 
 ## ✅ Decisions — RESOLVED (2026-07-08)
 
