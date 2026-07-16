@@ -2717,7 +2717,7 @@ export default function App(){
             }
             const _exps=data.exps!=null?data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,projectId:e.deal_id||null,receiptNo:e.receipt_no,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",note:e.note||e.description||"",accountCode:e.account_code||"",month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};}) : null;
             if(_exps!=null){setExps(prev=>mergeLocalOnly(_exps,prev));idbE.push([KEYS.expenses,_exps]);}
-            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0})):null;
+            const _prs=data.prs?.length?data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",fromMrId:p.from_mr_id||null,urgency:p.urgency||"Normal",approvedAt:p.approved_at||null,deliveryHistory:p.delivery_history?(() => { try { return JSON.parse(p.delivery_history); } catch(e) { return []; } })():undefined,acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false})):null;
             if(_prs){setPrs(prev=>{const sbIds=new Set(_prs.map(p=>p.id));const localOnly=prev.filter(p=>!sbIds.has(p.id));return localOnly.length?[..._prs,...localOnly]:_prs;});idbE.push([KEYS.prs,_prs]);}
             const _mreqs=data.mreqs?.length?data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at,urgency:m.urgency||"Normal"})):null;
             if(_mreqs){setMreqs(prev=>mergeLocalOnly(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
@@ -2988,7 +2988,7 @@ export default function App(){
     if(data.exps?.length){const mappedExps=data.exps.map(e=>{const dt=e.date?new Date(e.date):null;return{...e,dealId:e.deal_id,receiptNo:e.receipt_no,createdBy:e.created_by,bankAccount:e.bank_account||"",expDate:e.date||null,poRef:e.po_ref||"",payee:e.supplier||"",vatable:e.vatable??undefined,inputVat:e.input_vat!=null?Number(e.input_vat):undefined,ewtRate:e.ewt_rate!=null?Number(e.ewt_rate):undefined,ewtAmount:e.ewt_amount!=null?Number(e.ewt_amount):undefined,netAmount:e.net_amount!=null?Number(e.net_amount):undefined,month:e.month!=null?e.month:(dt?dt.getMonth():new Date().getMonth()),year:e.year||(dt?dt.getFullYear():new Date().getFullYear())};});setExps(prev=>mergeLocalOnly(mappedExps,prev));idbE.push([KEYS.expenses,mappedExps]);}
     if(data.swos?.length){const ws=data.swos.map(swoFromSb);setSwos(prev=>mergeLocalOnly(ws,prev));idbE.push([KEYS.swos,ws]);}
     if(data.inflows?.length){const infs=data.inflows.map(i=>({...i,dealId:i.deal_id,refNo:i.ref_no}));setInfs(prev=>mergeLocalOnly(infs,prev));idbE.push([KEYS.inflows,infs]);}
-    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
+    if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mergeLocalOnly(ms,prev));idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mergeLocalOnly(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
     if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
@@ -5866,6 +5866,46 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
+  // One payable per issued PO (keyed by poId = PO number). Created when a PO is
+  // issued and kept in sync when it's edited; the delivery/receive flow reconciles
+  // the SAME payable (stamps a due date, links the receipt expense) rather than
+  // creating a duplicate. `lines` is the PO's current line items (PR-shaped).
+  const syncPoPayable=(poNo,lines)=>{
+    if(!poNo) return null;
+    const N=v=>Number(String(v).replace(/,/g,""))||0;
+    const active=(lines||[]).filter(p=>p.poNumber===poNo&&p.status!=="Cancelled");
+    const existing=payables.find(p=>p.poId===poNo);
+    const issued=active.some(p=>["PO Issued","Partially Delivered","Delivered"].includes(p.status));
+    if(!issued) return existing||null; // still Draft/Pending — no payable yet
+    // True amount owed: gross − line discounts − PO-level discount (+ VAT), the
+    // same formula the printed PO and on-screen Grand Total use. Actual unit cost
+    // wins over the estimate once it's known.
+    const gross=active.reduce((s,i)=>s+(N(i.actUnitCost)||N(i.estUnitCost))*N(i.qty),0);
+    const lineDisc=active.reduce((s,i)=>{const b=(N(i.actUnitCost)||N(i.estUnitCost))*N(i.qty);if(i.discType==="pct")return s+b*(N(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(N(i.discValue),b);return s;},0);
+    const afterLine=gross-lineDisc;
+    const pdt=active[0]?.poDiscType||"none",pdv=N(active[0]?.poDiscValue);
+    const poDisc=pdt==="pct"?afterLine*(pdv/100):pdt==="fixed"?Math.min(pdv,afterLine):0;
+    const afterPo=afterLine-poDisc;
+    const amount=Math.round((afterPo+(active[0]?.withVat?afterPo*0.12:0))*100)/100;
+    if(!(amount>0)) return existing||null;
+    // Only link a real deal UUID — a free-typed project name would be written to
+    // the payable's uuid project_id column and silently fail to sync.
+    const linkedProjectId=active.find(x=>x.projectId&&x.projectId!=="__gmd_stocks__"&&isUUID(x.projectId))?.projectId||null;
+    const supplier=active[0]?.supplier||"";
+    if(existing){
+      if(existing.status==="Paid") return existing; // never disturb a settled payable
+      const upd={...existing,amount,vendor:supplier||existing.vendor,projectId:linkedProjectId||existing.projectId};
+      upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
+      if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+      return upd;
+    }
+    const rec={id:uid(),vendor:supplier,amount,dueDate:"",category:"Supplier",
+      invoiceRef:poNo,notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
+      poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+    upPayables(ps=>[rec,...ps]);
+    if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
+    return rec;
+  };
   const savePayable=(data)=>{
     if(!data.vendor||!data.amount) return;
     const rec={...data,amount:Number(data.amount),id:editPayId||uid(),status:editPayId?(data.status||"Unpaid"):"Unpaid",createdAt:editPayId?data.createdAt:today,createdBy:session?.name||""};
@@ -10744,7 +10784,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
       </Wrap>
     );
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
@@ -11065,7 +11105,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -11322,18 +11362,36 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const alreadyLogged=recvAmt>0&&exps.some(e=>e.fromPrId===receivingPr.id&&e.expDate===today&&Number(e.amount)===recvAmt);
                   let paymentStatus="Pending Payment";
                   if(recvAmt>0&&!isStock&&!alreadyLogged){
-                    const expId=uid();const payId=uid();
+                    const expId=uid();
+                    const supTerms=(suppliers.find(s=>(s.companyName||"").toLowerCase()===(receivingPr.supplier||"").toLowerCase())||{}).paymentTerms||"";
+                    const due=dueDateFromTerms(supTerms,today);
+                    // Reconcile the PO's existing payable (created when the PO was issued) instead of
+                    // creating a duplicate: stamp its due date from the supplier's terms on first
+                    // receipt and link this receipt's expense to it. Only fall back to a fresh
+                    // per-line payable when the PO has none yet — legacy POs issued before the
+                    // auto-payable, or solo requests with no PO number.
+                    const existingPoPay=receivingPr.poNumber?payables.find(p=>p.poId===receivingPr.poNumber):null;
+                    let payId;
+                    if(existingPoPay){
+                      payId=existingPoPay.id;
+                      if(!existingPoPay.dueDate&&existingPoPay.status!=="Paid"){
+                        const upd={...existingPoPay,dueDate:due};
+                        upPayables(ps=>ps.map(p=>p.id===existingPoPay.id?upd:p));
+                        if(isSupabaseReady()&&isUUID(existingPoPay.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+                      }
+                    } else {
+                      payId=uid();
+                      // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
+                      // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
+                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
+                      upPayables(ps=>[payRec,...ps]);
+                      if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
+                    }
                     // payableId links the expense to its payable so it isn't offered for re-routing
                     // (which would create a duplicate payable/CV for the same PO).
                     const expRec={id:expId,expDate:today,month:new Date().getMonth(),year:new Date().getFullYear(),category:receivingPr.category||"Materials",note:`${receivingPr.itemName||""}${receivingPr.poNumber?" — "+receivingPr.poNumber:""}`,payee:receivingPr.supplier||"",supplier:receivingPr.supplier||"",qty:Number(rxQty),pricePerQty:unitCost,amount:recvAmt,projectId:sProjId,dealId:sProjId,bankAccount:"",poRef:receivingPr.poNumber||"",receipt:rxDrNo?`DR ${rxDrNo}`:"",acctStatus:"Logged",payableId:payId,createdBy:session?.name||"",createdAt:today,fromPrId:receivingPr.id};
                     upExps(es=>[...es,expRec]);
                     if(isSupabaseReady()) sbUpsert("expenses",toSbExpense(expRec),"id").catch(()=>{});
-                    // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
-                    // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
-                    const supTerms=(suppliers.find(s=>(s.companyName||"").toLowerCase()===(receivingPr.supplier||"").toLowerCase())||{}).paymentTerms||"";
-                    const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:dueDateFromTerms(supTerms,today),projectId:sProjId,category:"Supplier",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
-                    upPayables(ps=>[payRec,...ps]);
-                    if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
                     paymentStatus="Expense Logged";
                   }
                   updatePR(receivingPr.id,{status:newStatus,qtyDelivered:Number(rxQty),deliveryDate:today,deliveryNote:noteStr,paymentStatus});
@@ -11532,7 +11590,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
-    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb}/></Wrap>);
+    if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/></Wrap>);
     if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -13108,7 +13166,7 @@ First few:
       <ProcurementView2
         prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR}
         wonDeals={wonDeals} deals={deals} budgets={budgets} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers}
-        upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb}/>
+        upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable}/>
     </Wrap>
   );
 
@@ -17132,7 +17190,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 // ─── COSTING STUDY ────────────────────────────────────────────────────────────
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
-function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb}){
+function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
@@ -17301,7 +17359,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     if(poItems.some(i=>!(Number(i.qty)>0))){toastEmit&&toastEmit("Every item must have a quantity greater than 0.","error");return;}
     const poNo=poNumber.trim();
     const buildUpdate=(item)=>{
-      const deal=wonDeals.find(d=>d.id===item.projectId);
+      // Resolve against all active deals, not just awarded ones — procurement
+      // often buys swatches/materials for deals that haven't been won yet, and
+      // those costs still need to be tracked against the project.
+      const deal=activeDeals.find(d=>d.id===item.projectId);
       return{itemName:item.itemName,category:item.category,budgetCategory:item.budgetCategory,
         qty:Number(item.qty)||1,unit:item.unit,estUnitCost:Number(item.estUnitCost)||0,
         discType:item.discType||"none",discValue:item.discValue||0,
@@ -17327,23 +17388,17 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         },{silent:true});
       });
       const itemLines=poItems.map(item=>`  • ${item.itemName||"?"} — ${item.qty||"?"} ${item.unit||""} @ ₱${Number(item.estUnitCost||0).toLocaleString("en-PH")}`).join("\n");
-      const projects=[...new Set(poItems.map(item=>{const d=wonDeals.find(x=>x.id===item.projectId);return d?.client||item.projectName||item.projectId||"?";}).filter(Boolean))].join(", ");
+      const projects=[...new Set(poItems.map(item=>{const d=activeDeals.find(x=>x.id===item.projectId);return d?.client||item.projectName||item.projectId||"?";}).filter(Boolean))].join(", ");
       const poMsg=`🛒 <b>New Purchase Order ${poNo}</b>\nSupplier: ${poSupplier}\nProject: ${projects}\n\n${itemLines}\n\nBy: ${session?.name||"?"}`;
       sendTelegramNotification("procurement",poMsg);
       sendTelegramNotification("management",poMsg);
-      if(poStatus==="PO Issued"){
-        const poTotal=poItems.reduce((s,i)=>s+Number(i.qty||0)*Number(i.actUnitCost||i.estUnitCost||0),0);
-        if(poTotal>0){
-          const newPayable={id:uid(),vendor:poSupplier,amount:poTotal,dueDate:"",category:"Supplier",
-            invoiceRef:poNo,notes:`Auto-created from PO ${poNo}`,
-            projectId:poItems.find(x=>x.projectId&&x.projectId!=="__gmd_stocks__")?.projectId||null,
-            poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
-          upPayables(ps=>[newPayable,...ps]);
-          if(isSupabaseReady()) sbUpsert("payables",payableToSb(newPayable),"id").catch(()=>{});
-        }
-      }
       toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     }
+    // Create-or-update the single payable for this PO (only once it's issued).
+    // syncPoPayable computes the true total (line + PO discounts + VAT) and keeps
+    // one payable per PO number; the delivery/receive flow later reconciles the
+    // same payable instead of creating a duplicate.
+    syncPoPayable&&syncPoPayable(poNo,poItems.map(buildUpdate));
     setMode("list");
   };
 
@@ -17461,7 +17516,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={editForm.notes} onChange={e=>ef("notes",e.target.value)}/></Fld></div>
           </div>
           <div style={{display:"flex",gap:10,marginTop:16}}>
-            <button onClick={()=>{updatePR(editingId,editForm);toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
+            <button onClick={()=>{updatePR(editingId,editForm);if(editForm.poNumber&&syncPoPayable)syncPoPayable(editForm.poNumber,prs.map(p=>p.id===editingId?{...p,...editForm}:p));toastEmit&&toastEmit("PR updated","success");setMode("list");setEditingId(null);}} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".87rem",color:"#fff",cursor:"pointer"}}>Save Changes</button>
             <button onClick={()=>{setMode("list");setEditingId(null);}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
           </div>
         </div>
@@ -17733,7 +17788,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
         <select value={filterProj} onChange={e=>setFilterProj(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Projects</option>
-          {wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
+          {activeDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?` — ${d.contact}`:""}</option>)}
         </select>
         <select value={filterStat} onChange={e=>setFilterStat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
           <option value="all">All Statuses</option>
@@ -17877,7 +17932,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                             {delivPct>0&&delivPct<100&&<span style={{fontSize:".68rem",color:"#f59e0b",fontWeight:600,marginLeft:8}}>{delivPct}% delivered</span>}
                           </div>
                           <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",flexShrink:0}}>{fmt(actTotal)}</span>
-                          <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
+                          <select value={pr.status} onClick={e=>e.stopPropagation()} onChange={e=>{const st=e.target.value;const extra=st==="PO Issued"&&pr.status!=="PO Issued"?{approvedBy:session?.name||"",approvedAt:today}:{};updatePR(pr.id,{status:st,...extra});syncPoPayable&&syncPoPayable(pr.poNumber,items.map(x=>x.id===pr.id?{...x,status:st,...extra}:x));}} style={{border:"1.5px solid #e2e8f0",borderRadius:6,padding:"3px 6px",fontFamily:"inherit",fontSize:".7rem",color:"#0f172a",background:"#fff",cursor:"pointer",flexShrink:0}}>
                             {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                           </select>
                           <button onClick={e=>{e.stopPropagation();setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
