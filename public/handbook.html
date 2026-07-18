@@ -101,13 +101,14 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <div class="gmd">GMD <span>PROD</span></div>
-    <div class="sub">FabHub Team Handbook v1.6</div>
-    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: June 14, 2026</div>
+    <div class="sub">FabHub Team Handbook v1.7</div>
+    <div style="font-size:10px;color:#475569;margin-top:4px">Updated: July 18, 2026</div>
   </div>
   <nav>
     <div class="nav-group">General</div>
     <a href="#ch1"><span class="nav-num">1</span> Getting Started</a>
     <a href="#ch2"><span class="nav-num">2</span> Login Credentials</a>
+    <a href="#ch27"><span class="nav-num">✦</span> What's New in v1.7</a>
     <a href="#ch25"><span class="nav-num">✦</span> What's New in v1.5</a>
     <div class="nav-group">Management</div>
     <a href="#ch24"><span class="nav-num">0</span> Manager / OM / GM Roles</a>
@@ -144,20 +145,50 @@
     <h1>FabHub <span>Handbook</span></h1>
     <p>GMD Productions Inc. — Internal Operations Platform</p>
     <div class="meta">
-      <span class="badge">Version 1.6</span>
-      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: June 14, 2026</span>
+      <span class="badge">Version 1.7</span>
+      <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b;border:1px solid rgba(245,158,11,.3)">Last Updated: July 18, 2026</span>
       <span class="badge">fab-hub.vercel.app</span>
       <span class="badge">9 Roles</span>
-      <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3)">v1.6 — Card Grades, PM Updates, Workflow Gap Inspection</span>
+      <span class="badge" style="background:rgba(8,145,178,.15);color:#0891b2;border:1px solid rgba(8,145,178,.3)">v1.7 — BOQ Amount Discount</span>
     </div>
   </div>
 
   <div class="content">
 
+    <!-- CH27 — WHAT'S NEW v1.7 -->
+    <div class="chapter" id="ch27">
+      <div class="chapter-header" style="background:linear-gradient(135deg,#0f766e,#0891b2)">
+        <span class="ch-num">✦</span><h2>What's New in v1.7 <span class="new-badge">LATEST</span></h2>
+      </div>
+      <div class="roles">
+        <span class="role-badge" style="background:#0891b2">Sales · QS</span>
+      </div>
+      <p>Version 1.7 (July 18, 2026) adds a proper discount field to the BOQ Builder and clarifies how BOQs are stored and displayed.</p>
+
+      <h3>💸 BOQ Builder — Amount Discount (before VAT)</h3>
+      <p>The BOQ Builder now has a dedicated <strong>Discount</strong> field. Enter a peso amount and it is subtracted from the subtotal <strong>before VAT is calculated</strong>, so the numbers match how our quotations have always worked:</p>
+      <div class="note" style="background:#ecfeff;border-color:#67e8f9;color:#155e75;">🧮 <strong>Subtotal − Discount = Net Total</strong>, then <strong>VAT 12% is charged on the Net Total</strong>. Example: Subtotal ₱154,412.22 − ₱8,000.00 = Net ₱146,412.22 → VAT ₱17,569.47 → Grand Total w/ VAT ₱163,981.69.</div>
+      <ul>
+        <li>The <strong>Discount (₱ off, before VAT)</strong> input sits just under Grand Total in the totals panel</li>
+        <li>A <strong>Net Total after Discount</strong> row appears whenever a discount is entered</li>
+        <li>VAT and Grand Total w/ VAT automatically recompute on the net figure</li>
+        <li>The discount and net figures flow through to the <strong>Preview / Print</strong> quotation and the <strong>CSV export</strong></li>
+        <li>The deal's pipeline value is set from the net (post-discount) total</li>
+      </ul>
+      <p>This <strong>replaces the old "Discounted Total w/o VAT (optional override)"</strong> field, which set a manual net figure but did not recalculate VAT. Any BOQ that used the old override is converted automatically on open, so existing totals are preserved.</p>
+
+      <h3>📂 "No BOQs yet"? Your BOQs are safe — just refresh</h3>
+      <p>Your BOQs live in the database, attached to their pipeline deal. If the BOQ list ever shows <em>"No BOQs yet"</em> when you know you have BOQs, it means your device hasn't finished syncing — <strong>the data is not lost</strong>.</p>
+      <ul>
+        <li><strong>Fix:</strong> hard-refresh the page (or log out and back in). This forces a fresh load from the server and your BOQs reappear.</li>
+        <li>A BOQ is created and edited from a <strong>pipeline deal</strong> — open the deal to find its BOQ if it isn't in the list yet.</li>
+      </ul>
+    </div>
+
     <!-- CH25 — WHAT'S NEW v1.5 -->
     <div class="chapter" id="ch25">
       <div class="chapter-header" style="background:linear-gradient(135deg,#7c3aed,#4f46e5)">
-        <span class="ch-num">✦</span><h2>What's New in v1.5 <span class="new-badge">LATEST</span></h2>
+        <span class="ch-num">✦</span><h2>What's New in v1.5</h2>
       </div>
       <div class="roles">
         <span class="role-badge" style="background:#f59e0b">All Roles</span>
