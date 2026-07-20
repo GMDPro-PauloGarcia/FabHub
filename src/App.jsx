@@ -19572,12 +19572,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const payments=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
       const ewt=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).ewt,0);
       const due=Math.max(0,gross-payments-ewt);
-      return{d,vatable,vat,gross,payments,ewt,due};
+      const balance=Math.max(0,gross-payments);
+      return{d,vatable,vat,gross,payments,ewt,due,balance};
     }).filter(r=>r.vatable>0||r.payments>0);
     if(!rows.length){alert("No billing data found for "+clientName);return;}
     const tV=rows.reduce((s,r)=>s+r.vatable,0),tVat=rows.reduce((s,r)=>s+r.vat,0);
     const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
+    const tB=rows.reduce((s,r)=>s+r.balance,0);
     const dateStr=new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
     const preparedBy=session?.name||"";
     const invoiceNos=[...new Set(billings.filter(b=>clientDeals.some(d=>d.id===b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
@@ -19591,6 +19593,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
       <td style="text-align:right">${f(r.ewt)}</td>
       <td style="text-align:right;color:#ea580c;font-weight:700">${f(r.due)}</td>
+      <td style="text-align:right;font-weight:700">${f(r.balance)}</td>
     </tr>`).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
       @page{size:A4 landscape;margin:12mm 15mm}
@@ -19608,7 +19611,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       .client-grid{display:grid;grid-template-columns:auto 1fr 40px auto 1fr;gap:6px 10px;align-items:end;margin-bottom:16px}
       .cl{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;white-space:nowrap}
       .cv{border-bottom:1.5px solid #0f172a;padding-bottom:2px;font-weight:600;font-size:11px;color:#1e40af}
-      .summary{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #e2e8f0;margin-bottom:16px}
+      .summary{display:grid;grid-template-columns:repeat(5,1fr);border:1.5px solid #e2e8f0;margin-bottom:16px}
       .sb{padding:10px 14px;background:#f8fafc;border-right:1px solid #e2e8f0;text-align:center}
       .sb:last-child{border-right:none;background:#fff7ed}
       .sl{font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
@@ -19658,6 +19661,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <div class="sb"><div class="sl">TOTAL VATABLE AMOUNT</div><div class="sv">${f(tV)}</div></div>
         <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
         <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
+        <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
         <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
       </div>
       <table>
@@ -19665,14 +19669,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           <th style="width:30px;text-align:center">#</th>
           <th>CLIENT NAME</th><th>PROJECT NAME</th>
           <th>VATABLE AMOUNT</th><th>VAT</th><th>SALES AMOUNT</th>
-          <th>FOR PAYMENT</th><th>WHT</th><th>TOTAL AMOUNT DUE</th>
+          <th>PAYMENT MADE</th><th>WHT</th><th>TOTAL AMOUNT DUE</th><th>BALANCE</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
         <tfoot><tr>
           <td></td><td colspan="2">TOTAL AMOUNT DUE</td>
           <td>${f(tV)}</td><td>${f(tVat)}</td><td>${f(tG)}</td>
           <td>${f(tP)}</td><td>${f(tE)}</td>
-          <td class="total-due">${f(tD)}</td>
+          <td class="total-due">${f(tD)}</td><td>${f(tB)}</td>
         </tr></tfoot>
       </table>
       <div class="notes">
