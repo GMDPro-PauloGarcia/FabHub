@@ -19378,87 +19378,86 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const win=window.open("","_blank");
     const issuedDate=new Date().toLocaleDateString("en-PH",{month:"2-digit",day:"2-digit",year:"numeric"});
     const clientAddr=[cp.billingAddress,cp.city,cp.province,cp.zipCode].filter(Boolean).join(", ");
-    win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${ms.invoiceNo}</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${ms.invoiceNo}</title>
 <style>
+  @page{size:A4;margin:12mm 14mm}
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:12px;background:#fff;}
-  .page{max-width:780px;margin:0 auto;padding:36px 44px;}
-  /* Header */
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
-  .co-name{font-weight:900;font-size:14px;margin-bottom:4px;}
-  .co-info{font-size:11px;color:#444;line-height:1.65;}
-  .logo-box{text-align:right;}
-  .logo-hex{font-size:48px;line-height:1;}
-  .logo-text{font-size:22px;font-weight:900;letter-spacing:1px;color:#1a1a1a;}
-  .logo-text span{color:#c0883a;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:11px;background:#fff;}
+  /* Print button */
+  .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+  .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;}
+  /* Header — matches Statement of Account template */
+  .header{background:#1e293b;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
+  .co-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;}
+  .sub-bar{background:#1e293b;padding:2px 20px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c;}
+  .tagline{color:rgba(255,255,255,.45);font-size:9.5px;}
+  .wrap{padding:16px 20px 8px;}
   /* Doc title */
-  .doc-title{font-size:22px;font-weight:700;color:#4a90d9;margin-bottom:18px;}
+  .doc-title{font-size:16px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;}
   /* Bill-to + meta grid */
-  .meta-row{display:grid;grid-template-columns:1fr auto;gap:40px;margin-bottom:24px;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:12px 0;}
-  .bill-label{font-size:10px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:4px;letter-spacing:.5px;}
-  .bill-name{font-weight:700;font-size:13px;}
-  .bill-addr{font-size:11px;color:#555;margin-top:3px;line-height:1.6;}
-  .meta-table td{font-size:11.5px;padding:2px 0 2px 24px;vertical-align:top;}
-  .meta-table .label{color:#888;padding-left:0;white-space:nowrap;}
+  .meta-row{display:grid;grid-template-columns:1fr auto;gap:40px;margin-bottom:16px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:12px 0;}
+  .bill-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px;letter-spacing:.5px;}
+  .bill-name{font-weight:700;font-size:13px;color:#0f172a;}
+  .bill-addr{font-size:11px;color:#475569;margin-top:3px;line-height:1.6;}
+  .meta-table td{font-size:11px;padding:2px 0 2px 24px;vertical-align:top;}
+  .meta-table .label{color:#64748b;padding-left:0;white-space:nowrap;text-transform:uppercase;font-size:9px;font-weight:700;letter-spacing:.5px;}
   .meta-table .val{font-weight:600;}
-  /* Items table */
+  /* Items table — navy header like SOA */
   table.items{width:100%;border-collapse:collapse;margin-bottom:0;}
-  table.items thead tr{background:#d6e4f0;}
-  table.items th{padding:8px 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;color:#4a4a4a;text-align:left;letter-spacing:.3px;}
+  table.items thead tr{background:#1e293b;}
+  table.items th{padding:8px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:left;letter-spacing:.5px;}
   table.items th.r{text-align:right;}
-  table.items td{padding:10px 10px;font-size:11.5px;border-bottom:1px solid #eee;vertical-align:top;}
+  table.items td{padding:9px 10px;font-size:11px;border-bottom:1px solid #f1f5f9;vertical-align:top;}
+  table.items tbody tr:nth-child(even){background:#f9fafb;}
   table.items td.r{text-align:right;white-space:nowrap;}
   table.items td.bold{font-weight:700;}
   /* Footer row: terms left, totals right */
-  .footer-row{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:0;border-top:1px dashed #ccc;padding-top:14px;}
-  .terms{font-size:11px;color:#444;line-height:1.7;}
-  .terms strong{display:block;margin-bottom:4px;font-size:11.5px;}
-  .totals-tbl{width:260px;}
-  .totals-tbl td{font-size:11.5px;padding:3px 0 3px 16px;}
-  .totals-tbl .label{color:#666;padding-left:0;}
-  .totals-tbl .sep{border-top:1px dashed #ccc;}
-  .totals-tbl .grand-sep td{border-top:2px solid #555;font-weight:900;font-size:13px;}
-  .bal{font-size:14px;font-weight:900;}
-  /* Tax summary */
+  .footer-row{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:0;border-top:1px dashed #cbd5e1;padding-top:14px;}
+  .terms{font-size:11px;color:#475569;line-height:1.7;}
+  .terms strong{display:block;margin-bottom:4px;font-size:11px;color:#0f172a;}
+  .totals-tbl{width:270px;}
+  .totals-tbl td{font-size:11px;padding:3px 0 3px 16px;}
+  .totals-tbl .label{color:#64748b;padding-left:0;}
+  .totals-tbl .sep{border-top:1px dashed #cbd5e1;}
+  .totals-tbl .grand-sep td{border-top:2px solid #1e293b;font-weight:900;font-size:13px;padding-top:8px;}
+  .totals-tbl .grand-sep .label{color:#0f172a;text-transform:uppercase;letter-spacing:.5px;}
+  /* Tax summary — navy header like SOA */
   .tax-summary{margin-top:20px;}
-  .tax-summary .ts-title{font-weight:700;color:#4a90d9;font-size:12px;margin-bottom:4px;}
+  .tax-summary .ts-title{font-weight:700;font-size:11px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;color:#0f172a;}
   table.ts{width:100%;border-collapse:collapse;}
-  table.ts thead tr{background:#d6e4f0;}
-  table.ts th{padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:#4a4a4a;text-align:right;}
+  table.ts thead tr{background:#1e293b;}
+  table.ts th{padding:6px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:right;letter-spacing:.5px;}
   table.ts th:first-child{text-align:center;}
-  table.ts td{padding:6px 10px;font-size:11.5px;text-align:right;}
+  table.ts td{padding:6px 10px;font-size:11px;text-align:right;border-bottom:1px solid #f1f5f9;}
   table.ts td:first-child{text-align:center;}
   /* Signature */
-  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;border-top:1px solid #eee;}
-  .sig-block{font-size:11px;color:#555;}
-  .sig-line{border-top:1px solid #999;margin-top:28px;padding-top:4px;}
-  /* Print */
-  .print-btn{text-align:center;margin-top:24px;}
-  .print-btn button{padding:10px 28px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;}
+  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;}
+  .sig-block{font-size:11px;color:#64748b;}
+  .sig-line{border-top:1px solid #94a3b8;margin-top:28px;padding-top:4px;}
+  /* Company footer */
+  .co-footer{text-align:center;margin-top:22px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#94a3b8;line-height:1.7;}
   @media print{
     .print-btn{display:none;}
-    table.items thead tr,table.ts thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+    .header,.sub-bar,table.items thead tr,table.ts thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
   }
 </style>
-</head><body><div class="page">
+</head><body>
+<div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
 
-  <!-- Header -->
-  <div class="hdr">
-    <div>
-      <div class="co-name">GMD PRODUCTIONS INC</div>
-      <div class="co-info">
-        32 Santan Unit H Brgy Fortune Marikina<br/>
-        Marikina, NCR 1802 PH<br/>
-        +63 9189338436<br/>
-        sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph<br/>
-        TIN 010-063-229-000
-      </div>
-    </div>
-    <div class="logo-box">
-      <img src="/gmd-logo.png" alt="GMD PRO" style="height:56px;width:auto;display:block;margin-left:auto;">
-    </div>
+<!-- Header -->
+<div class="header">
+  <div class="co-name">GMD PRODUCTIONS INC.</div>
+  <div style="text-align:right">
+    <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
+    <span style="color:#f97316;font-weight:700;font-size:12px">${ms.invoiceDate||today}</span>
   </div>
+</div>
+<div class="sub-bar">
+  <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
+  <span class="tagline">INVOICE NO.: ${ms.invoiceNo||"—"}</span>
+</div>
 
+<div class="wrap">
   <!-- Document title -->
   <div class="doc-title">${d?.receiptType==="SI"?"Tax Invoice":"Invoice"}</div>
 
@@ -19476,7 +19475,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <tr><td class="label">INVOICE</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
       <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
       <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
-      <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#c0392b":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
+      <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#dc2626":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
     </table>
   </div>
 
@@ -19522,11 +19521,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <tr><td class="label">SUBTOTAL</td><td style="text-align:right">${fmt(ms.amount)}</td></tr>
       <tr><td class="label sep">TAX</td><td style="text-align:right" class="sep">${fmt(tx.vat)}</td></tr>
       <tr><td class="label">TOTAL</td><td style="text-align:right">${fmt(tx.gross)}</td></tr>
-      ${tx.ewt>0?`<tr><td class="label" style="color:#c0392b">Less: EWT</td><td style="text-align:right;color:#c0392b">(${fmt(tx.ewt)})</td></tr>`:""}
-      ${totalPaid>0?`<tr><td class="label" style="color:#2980b9">AMOUNT PAID</td><td style="text-align:right;color:#2980b9">(${fmt(totalPaid)})</td></tr>`:""}
+      ${tx.ewt>0?`<tr><td class="label" style="color:#dc2626">Less: EWT</td><td style="text-align:right;color:#dc2626">(${fmt(tx.ewt)})</td></tr>`:""}
+      ${totalPaid>0?`<tr><td class="label" style="color:#2563eb">AMOUNT PAID</td><td style="text-align:right;color:#2563eb">(${fmt(totalPaid)})</td></tr>`:""}
       <tr class="grand-sep">
         <td class="label">BALANCE DUE</td>
-        <td style="text-align:right;color:${balance>0?"#c0392b":"#27ae60"}">PHP ${balance>0?Number(balance).toLocaleString("en-PH",{minimumFractionDigits:2}):"0.00"}</td>
+        <td style="text-align:right;color:${balance>0?"#ea580c":"#059669"}">PHP ${balance>0?Number(balance).toLocaleString("en-PH",{minimumFractionDigits:2}):"0.00"}</td>
       </tr>
     </table>
   </div>
@@ -19534,7 +19533,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   <!-- Tax summary -->
   ${tx.vat>0?`
   <div class="tax-summary">
-    <div class="ts-title">TAX SUMMARY</div>
+    <div class="ts-title">Tax Summary</div>
     <table class="ts">
       <thead><tr><th>RATE</th><th>TAX</th><th>NET</th></tr></thead>
       <tbody><tr><td>VAT @ 12%</td><td>${fmt(tx.vat)}</td><td>${fmt(ms.amount)}</td></tr></tbody>
@@ -19551,9 +19550,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     </div>
   </div>
 
-  <div style="text-align:center;margin-top:12px;font-size:10px;color:#aaa">Page 1 of 1</div>
+  <!-- Company footer -->
+  <div class="co-footer">
+    GMD PRODUCTIONS INC &nbsp;·&nbsp; 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH &nbsp;·&nbsp; TIN 010-063-229-000<br/>
+    +63 9189338436 &nbsp;·&nbsp; sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph
+  </div>
+
+  <div style="text-align:center;margin-top:10px;font-size:9px;color:#cbd5e1">Page 1 of 1</div>
 </div>
-<div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
 </body></html>`);
     win.document.close();
   };
