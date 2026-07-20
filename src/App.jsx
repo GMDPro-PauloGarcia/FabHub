@@ -19219,6 +19219,7 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
 }
 
 function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+  const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -19819,21 +19820,39 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 
       {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-        {/* Table header */}
+        {/* Table header — desktop only; mobile uses self-labeling cards */}
+        {!mob&&(
         <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",background:"#1e293b",padding:"10px 18px",gap:12}}>
           {["Project","Billed","Collected","Balance","Status","Actions"].map(h=>(
             <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
           ))}
         </div>
+        )}
         {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
-        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>(
-          <div key={d.id}
-            onClick={()=>setSelDeal(d.id)}
-            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
-            onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>{
+          const statusBadge=(
+            <>
+              {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
+              {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
+              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
+              {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
+            </>
+          );
+          const actionButtons=(
+            <>
+              <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
+                style={{background:"#1e293b",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600,flex:mob?1:undefined}}>
+                Open →
+              </button>
+              <button onClick={e=>{e.stopPropagation();printSOA(d.client);}}
+                style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,flex:mob?1:undefined}}>
+                📄 SOA
+              </button>
+            </>
+          );
+          const projectCell=(
             <div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 {hasOverdue&&<span style={{color:"#ef4444",fontSize:".8rem"}}>🔴</span>}
                 <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
                 {d.contact&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>— {d.contact}</span>}
@@ -19843,33 +19862,54 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
               </div>
             </div>
-            <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>
-              {billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>}
+          );
+          const billedCell=billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>;
+          const collectedCell=collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>;
+          const balanceCell=balance>0?fmt(balance):"✓ Clear";
+
+          if(mob){
+            // Stacked card — no horizontal scroll, everything visible incl. SOA button
+            return(
+              <div key={d.id} onClick={()=>setSelDeal(d.id)}
+                style={{padding:"14px 16px",borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":"#fff",cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                  {projectCell}
+                  <div style={{flexShrink:0}}>{statusBadge}</div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,margin:"12px 0",padding:"10px 0",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}>
+                  <div>
+                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Billed</div>
+                    <div style={{fontWeight:600,color:"#3b82f6",fontSize:".82rem",marginTop:2}}>{billedCell}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Collected</div>
+                    <div style={{fontWeight:600,color:"#059669",fontSize:".82rem",marginTop:2}}>{collectedCell}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Balance</div>
+                    <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".82rem",marginTop:2}}>{balanceCell}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>{actionButtons}</div>
+              </div>
+            );
+          }
+
+          return(
+            <div key={d.id}
+              onClick={()=>setSelDeal(d.id)}
+              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+              onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+              {projectCell}
+              <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>{billedCell}</div>
+              <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>{collectedCell}</div>
+              <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>{balanceCell}</div>
+              <div>{statusBadge}</div>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>{actionButtons}</div>
             </div>
-            <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>
-              {collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>}
-            </div>
-            <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>
-              {balance>0?fmt(balance):"✓ Clear"}
-            </div>
-            <div>
-              {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
-              {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
-              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
-              {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
-            </div>
-            <div style={{display:"flex",gap:5,alignItems:"center"}}>
-              <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
-                style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
-                Open →
-              </button>
-              <button onClick={e=>{e.stopPropagation();printSOA(d.client);}}
-                style={{background:"#f97316",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                📄 SOA
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
