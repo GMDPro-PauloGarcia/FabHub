@@ -1041,6 +1041,13 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             </Fld>
           </div>
         )}
+        {isWon&&(
+          <div style={{gridColumn:"1/-1"}}>
+            <Fld label="✅ Actual Date Finished" hint="Real completion date — when the project was actually finished on site">
+              <Inp type="date" value={form.actualFinishDate||""} onChange={e=>f("actualFinishDate",e.target.value)}/>
+            </Fld>
+          </div>
+        )}
         {editId&&form.addedBy&&(
           <div style={{gridColumn:"1/-1"}}>
             <div style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"8px 12px",fontSize:".75rem",color:"#4338ca",display:"flex",gap:8,alignItems:"center"}}>
@@ -2695,7 +2702,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,actualFinishDate:d.actual_finish_date||"",dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
@@ -2953,7 +2960,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,actualFinishDate:d.actual_finish_date||"",dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         if(data?.checklist?.length) setChecklist(prev=>mergeLocalOnly(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})),prev));
@@ -2981,7 +2988,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,actualFinishDate:d.actual_finish_date||"",dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mergeLocalOnly(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mergeLocalOnly(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -5284,6 +5291,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ce_type:rec.ceType, product:rec.product||rec.ceType||"", stage:rec.stage,
         priority:rec.priority, sales_owner:rec.salesOwner,
         biz_dev_source:rec.bizDevSource, date_acquired:rec.dateAcquired||null,
+        actual_finish_date:rec.actualFinishDate||null,
         due_date:rec.dueDate||null, value:Number(rec.value)||0,
         invoiced:Number(rec.invoiced)||0, amount_paid:Number(rec.amountPaid)||0,
         payment_status:rec.paymentStatus, receipt_type:rec.receiptType,
@@ -17227,6 +17235,14 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
 function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable}){
   const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"),[allDeals,wonDeals]);
+  // Resolve a PR/PO item to its client + project name from the linked deal.
+  const resolveProjParts=React.useCallback((item)=>{
+    if(!item) return {client:"",project:""};
+    if(item.projectId==="__gmd_stocks__"||item.projectName==="GMD Stocks") return {client:"GMD Stocks",project:""};
+    const d=activeDeals.find(x=>x.id===item.projectId)||(wonDeals||[]).find(x=>x.id===item.projectId);
+    if(d) return {client:d.client||"",project:d.contact||""};
+    return {client:item.projectName||"",project:""};
+  },[activeDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -17328,6 +17344,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     const receivedBy=supplierName||"";
     const allProjDeals=[...activeDeals,...(wonDeals||[])];
     const projectList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?projDisplayName(d):(i.projectName||"");}).filter(Boolean))].join(" / ")||"—";
+    const clientList=[...new Set(items.map(i=>{if(i.projectId==="__gmd_stocks__"||i.projectName==="GMD Stocks")return"GMD Stocks";const d=allProjDeals.find(x=>x.id===i.projectId);return d?.client||i.projectName||"";}).filter(Boolean))].join(" / ")||"—";
     const rows=items.map((i,idx)=>{
       const deal=i.projectId==="__gmd_stocks__"?null:allProjDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
@@ -17370,7 +17387,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   <div class="meta-item"><label>PO Number</label><span>${poNo}</span></div>
   <div class="meta-item"><label>Date Issued</label><span>${poD||"—"}</span></div>
 </div>
-<div class="meta-proj"><label>Project(s)</label><span>${projectList}</span></div>
+<div class="meta-proj"><label>Client</label><span>${clientList}</span><label style="margin-top:8px">Project(s)</label><span>${projectList}</span></div>
 <table>
   <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Gross</th><th style="text-align:right">Net</th></tr></thead>
   <tbody>${rows}</tbody>
@@ -17871,7 +17888,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
         {/* Table header */}
         {grouped.length>0&&<div style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"7px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8,alignItems:"center"}}>
-          {["PO #","Supplier","Project","Amount","Status",""].map((h,i)=>(
+          {["PO #","Supplier","Client / Project","Amount","Status",""].map((h,i)=>(
             <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:i===3?"right":"left"}}>{h}</div>
           ))}
         </div>}
@@ -17950,7 +17967,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
           {poListTab==="list"&&grouped.map((g,gi)=>{
           if(g.type==="po"){
             const {poNo,groupKey,items,supplier,status,poDate:poD,total}=g;
-            const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
+            const projParts=items.map(i=>resolveProjParts(i));
+            const clientList=[...new Set(projParts.map(p=>p.client).filter(Boolean))].join(", ")||"—";
+            const projNameList=[...new Set(projParts.map(p=>p.project).filter(Boolean))].join(", ");
             // Keyed by groupKey (poNumber+supplier), not bare poNo — two different
             // suppliers can share the same PO number (dupPoColors below exists
             // specifically to flag that), and keying by poNo alone made both
@@ -17967,7 +17986,10 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                     {poNo}
                   </div>
                   <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{supplier||"—"}</div>
-                  <div style={{fontSize:".75rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projects}</div>
+                  <div style={{minWidth:0,overflow:"hidden"}}>
+                    <div style={{fontSize:".75rem",color:"#0f172a",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{clientList}</div>
+                    {projNameList&&<div style={{fontSize:".68rem",color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projNameList}</div>}
+                  </div>
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
                   <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
@@ -18005,13 +18027,16 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
           } else {
             const {pr}=g;
             const actTotal=(n(pr.actUnitCost)||n(pr.estUnitCost))*n(pr.qty);
-            const projName=pr.projectName||activeDeals.find(d=>d.id===pr.projectId)?.contact||activeDeals.find(d=>d.id===pr.projectId)?.client||"—";
+            const {client:prClient,project:prProject}=resolveProjParts(pr);
             return(
               <div key={pr.id} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                 <div style={{fontWeight:600,color:"#94a3b8",fontSize:".72rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>—</div>
                 <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.supplier||pr.itemName||"—"}</div>
-                <div style={{fontSize:".75rem",color:"#64748b",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projName}</div>
+                <div style={{minWidth:0,overflow:"hidden"}}>
+                  <div style={{fontSize:".75rem",color:"#0f172a",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{prClient||"—"}</div>
+                  {prProject&&<div style={{fontSize:".68rem",color:"#94a3b8",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{prProject}</div>}
+                </div>
                 <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(actTotal)}</div>
                 <div><span style={{fontSize:".62rem",background:STATUS_CLR[pr.status]+"22",color:STATUS_CLR[pr.status],border:`1px solid ${STATUS_CLR[pr.status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{pr.status}</span></div>
                 <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
