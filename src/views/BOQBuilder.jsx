@@ -138,6 +138,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[sections,setSections]=useState([]);
   const loadStandardSections=()=>setSections(ss=>ss.length?ss:BOQ_SECTIONS);
   const[editingSecId,setEditingSecId]=useState(null);
+  const[editingSubKey,setEditingSubKey]=useState(null); // "<secId>::<subLabel>" while renaming a sub-section
   const[addSecOpen,setAddSecOpen]=useState(false);
   const[newSecForm,setNewSecForm]=useState({id:"",label:""});
 
@@ -349,12 +350,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         if(!sections.length) sections.push({id:"1",label:"Imported Items"});
         secId=sections[sections.length-1].id;
       }
-      // Nested sub-item → prefix with its group; top-level item → clear the group.
-      let name=deepText;
-      if(deepIdx>0){ if(curGroup) name=`${curGroup} — ${deepText}`; }
+      // Nested sub-item → file it under its sub-group as a real sub-section;
+      // top-level item → clear the group so it sits directly under the section.
+      let name=deepText,subsection="";
+      if(deepIdx>0){ if(curGroup) subsection=curGroup; }
       else { curGroup=null; }
       const q=qtyN==null?1:qtyN,uc=costN==null?(totalN!=null&&q?totalN/q:0):costN;
-      items.push({section:String(secId),description:name,unit:unitVal||"lot",qty:q,baseCost:uc,unitCost:uc,total:q*uc,remarks:String(cell(row,cm.remarks)||"").trim(),markup:0});
+      items.push({section:String(secId),subsection,description:name,unit:unitVal||"lot",qty:q,baseCost:uc,unitCost:uc,total:q*uc,remarks:String(cell(row,cm.remarks)||"").trim(),markup:0});
     }
     items.forEach(it=>{if(!sections.find(s=>s.id===it.section)) sections.push({id:it.section,label:`Section ${it.section}`});});
     const lbls=[];
@@ -524,7 +526,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
-    const upd={...it,[key]:["description","unit","section","remarks"].includes(key)?val:Number(val)||0};
+    const upd={...it,[key]:["description","unit","section","subsection","remarks"].includes(key)?val:Number(val)||0};
     // Unit cost / markup / qty all derive the effective cost and line total from
     // the direct cost (baseCost) and the per-item markup %.
     const base=upd.baseCost!=null?upd.baseCost:(Number(upd.unitCost)||0);
@@ -535,7 +537,29 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     return upd;
   }));
   const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
-  const addRow=(sec)=>setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",description:"",unit:"lot",qty:1,baseCost:0,unitCost:0,total:0,remarks:"",markup:0}]);
+  const addRow=(sec,subsection="")=>setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",subsection,description:"",unit:"lot",qty:1,baseCost:0,unitCost:0,total:0,remarks:"",markup:0}]);
+
+  // ── Sub-sections ───────────────────────────────────────────────────────────
+  // A section groups its items by an optional per-item `subsection` label. Items
+  // with no label render flat directly under the section; named sub-sections
+  // render after them with their own heading and sub-total. groupSection returns
+  // the ungrouped items plus each named sub-section in first-appearance order,
+  // with `num` = the trailing figure of its number (e.g. sec 2, num 3 → "2.3").
+  const groupSection=(si)=>{
+    const ungrouped=[],subMap=new Map();
+    si.forEach(it=>{const sub=(it.subsection||"").trim();if(!sub)ungrouped.push(it);else{if(!subMap.has(sub))subMap.set(sub,[]);subMap.get(sub).push(it);}});
+    const subs=[...subMap.entries()].map(([label,its],i)=>({label,items:its,num:ungrouped.length+i+1}));
+    return {ungrouped,subs};
+  };
+  const subsectionsOf=(secId)=>{const seen=[];items.forEach(it=>{if(it.section!==secId)return;const s=(it.subsection||"").trim();if(s&&!seen.includes(s))seen.push(s);});return seen;};
+  const renameSubsection=(secId,oldLabel,newLabel)=>{const nl=(newLabel||"").trim();if(nl===oldLabel)return;setItems(its=>its.map(it=>(it.section===secId&&(it.subsection||"").trim()===oldLabel)?{...it,subsection:nl}:it));};
+  // Delete a sub-section by ungrouping its items (non-destructive — items stay).
+  const removeSubsection=(secId,label)=>setItems(its=>its.map(it=>(it.section===secId&&(it.subsection||"").trim()===label)?{...it,subsection:""}:it));
+  const addSubsection=(secId)=>{
+    const existing=subsectionsOf(secId);let n=existing.length+1,label=`Sub-section ${n}`;
+    while(existing.includes(label)){n++;label=`Sub-section ${n}`;}
+    addRow(secId,label);setEditingSubKey(secId+"::"+label);
+  };
   const applyLibItem=(rowId,lib)=>{
     const m=Number(markupPct)||0;
     setItems(its=>its.map(it=>{
@@ -566,14 +590,30 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const si=items.filter(it=>it.section===sec.id);
       if(!si.length) return;
       const secTotal=si.reduce((s,it)=>s+it.total,0);
-      rows+=`<tr style="background:#f1f5f9"><td colspan="2" style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px;color:#1e293b">${esc(sec.id)}. ${esc(sec.label)}</td><td colspan="5" style="text-align:right;padding:8px 10px;font-size:10px;color:#64748b"></td></tr>`;
-      si.forEach((it,idx)=>{rows+=`<tr style="background:${idx%2===0?"#fff":"#f8fafc"}"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap">${esc(sec.id)}.${idx+1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b">${esc(it.remarks||"")}</td></tr>`;});
-      rows+=`<tr style="background:${sec.color?sec.color+"11":"#f0fdf4"}"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
+      // Color-code each section by its assigned colour: a solid colour band for
+      // the header, a matching left accent on every item row, and a tinted
+      // sub-total. clr falls back to slate when a section has no colour set.
+      const clr=sec.color||"#64748b";
+      rows+=`<tr style="background:${clr}"><td colspan="2" style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px;color:#fff;border-left:4px solid ${clr}">${esc(sec.id)}. ${esc(sec.label)}</td><td colspan="5" style="padding:8px 10px"></td></tr>`;
+      // One line item, prefixed with its (possibly nested) number.
+      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b">${esc(it.remarks||"")}</td></tr>`;
+      const {ungrouped,subs}=groupSection(si);
+      ungrouped.forEach((it,idx)=>{rows+=itemRowHtml(it,`${sec.id}.${idx+1}`);});
+      subs.forEach(sub=>{
+        const subTotal=sub.items.reduce((s,it)=>s+it.total,0);
+        // Sub-section heading row: lighter tint + numbered label, indented accent.
+        rows+=`<tr style="background:${clr}18"><td colspan="7" style="font-weight:700;font-size:11px;padding:6px 10px 6px 22px;color:${clr};border-left:4px solid ${clr}">${esc(sec.id)}.${sub.num} &nbsp;${esc(sub.label)}</td></tr>`;
+        sub.items.forEach((it,mi)=>{rows+=itemRowHtml(it,`${sec.id}.${sub.num}.${mi+1}`);});
+        rows+=`<tr style="background:${clr}11"><td colspan="5" style="text-align:right;font-size:10px;font-style:italic;padding:5px 10px;color:#64748b;border-left:4px solid ${clr}">Sub-total ${esc(sub.label)}</td><td style="text-align:right;font-weight:700;padding:5px 10px;font-size:11px;color:#334155">${fmtP(subTotal)}</td><td></td></tr>`;
+      });
+      rows+=`<tr style="background:${clr}22"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569;border-left:4px solid ${clr}">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
     });
     const vatAmt=grandTotal*0.12;
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc((boqTitle&&boqTitle.trim())||dealLabel(deal)||"Draft")}</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
+  /* colour-adjust:exact forces section/header/total background colours to
+     render when saving as PDF — browsers drop them on print otherwise. */
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
   .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:3px solid #1e293b;padding-bottom:14px}
   .co{font-size:22px;font-weight:800;letter-spacing:-.5px;color:#1e293b}
@@ -664,7 +704,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const si=items.filter(it=>it.section===sec.id);
       if(!si.length) return;
       rows.push([sec.id,sec.label,"","","","",""]);
-      si.forEach((it,idx)=>rows.push([`${sec.id}.${idx+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
+      const {ungrouped,subs}=groupSection(si);
+      ungrouped.forEach((it,idx)=>rows.push([`${sec.id}.${idx+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
+      subs.forEach(sub=>{
+        rows.push([`${sec.id}.${sub.num}`,sub.label,"","","","",""]);
+        sub.items.forEach((it,mi)=>rows.push([`${sec.id}.${sub.num}.${mi+1}`,it.description,it.qty,it.unit,it.unitCost,it.total,it.remarks||""]));
+        rows.push(["",`Sub-total ${sub.label}`,"","","","",sub.items.reduce((s,it)=>s+it.total,0)]);
+      });
       rows.push(["",`Sub-total ${sec.label}`,"","","","",si.reduce((s,it)=>s+it.total,0)]);
     });
     rows.push(["","GRAND TOTAL","","","","",grandTotal]);
@@ -1035,10 +1081,23 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                         </div>
                       );})()}
                     </div>
-                    {/* Item rows */}
-                    {si.map((it,idx)=>(
+                    {/* Item rows — grouped by sub-section. `itemRow` renders one line;
+                        ungrouped items render flat, then each named sub-section. */}
+                    {(()=>{
+                    const subLabels=subsectionsOf(sec.id);
+                    const {ungrouped,subs}=groupSection(si);
+                    const itemRow=(it,label,idx)=>(
                       <div key={it._id} style={{display:"grid",gridTemplateColumns:GRID,padding:"3px 12px",borderBottom:"1px solid #f1f5f9",alignItems:"center",background:idx%2===0?"#fff":"#fafafa"}}>
-                        <div style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8"}}>{sec.id}.{idx+1}</div>
+                        <div>
+                          <div style={{fontSize:".72rem",fontWeight:700,color:"#94a3b8"}}>{label}</div>
+                          {subLabels.length>0&&(
+                            <select value={it.subsection||""} onChange={e=>updateItem(it._id,"subsection",e.target.value)} title="Move to sub-section"
+                              style={{marginTop:2,maxWidth:"100%",border:"1px solid #e2e8f0",borderRadius:4,fontSize:".55rem",color:"#64748b",background:"#fff",padding:"1px 2px",outline:"none",fontFamily:"inherit"}}>
+                              <option value="">— no sub —</option>
+                              {subLabels.map(s=><option key={s} value={s}>{s}</option>)}
+                            </select>
+                          )}
+                        </div>
                         <div style={{position:"relative",display:"flex",alignItems:"center",gap:3}}>
                           <textarea value={it.description}
                             onChange={e=>{
@@ -1098,16 +1157,56 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                         <input value={it.remarks||""} onChange={e=>updateItem(it._id,"remarks",e.target.value)} placeholder="OSM…" style={{...inpSt,fontSize:".68rem",padding:"4px 5px",color:"#64748b"}}/>
                         <button onClick={()=>removeItem(it._id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".85rem",padding:2}}>✕</button>
                       </div>
-                    ))}
-                    {/* Sub-total row */}
-                    <div style={{display:"grid",gridTemplateColumns:GRID,background:sec.color+"0a",borderBottom:"1.5px solid "+sec.color+"22",alignItems:"center"}}>
-                      <div style={{gridColumn:"1/7",display:"flex",alignItems:"center"}}>
-                        <button onClick={()=>addRow(sec.id)} style={{background:"none",border:"none",color:sec.color,cursor:"pointer",fontSize:".72rem",fontWeight:700,padding:"5px 12px",opacity:.7}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.7}>+ Add row</button>
-                        <span style={{fontSize:".68rem",color:"#94a3b8",fontStyle:"italic"}}>Sub-total {sec.label}</span>
-                      </div>
-                      <div style={{textAlign:"right",fontWeight:700,fontSize:".78rem",color:sec.color,paddingRight:4}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
-                      <div/><div/>
-                    </div>
+                    );
+                    return(
+                      <>
+                        {/* Loose items — directly under the section */}
+                        {ungrouped.map((it,idx)=>itemRow(it,`${sec.id}.${idx+1}`,idx))}
+                        {/* Named sub-sections */}
+                        {subs.map(sub=>{
+                          const subTotal=sub.items.reduce((t,it)=>t+it.total,0);
+                          return(
+                            <React.Fragment key={sub.label}>
+                              {/* Sub-section header */}
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",background:sec.color+"0f",borderTop:"1px dashed "+sec.color+"55",padding:"4px 12px 4px 26px"}}>
+                                <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                  <span style={{fontWeight:800,fontSize:".66rem",color:sec.color,opacity:.9,letterSpacing:".3px"}}>{sec.id}.{sub.num}</span>
+                                  {editingSubKey===sec.id+"::"+sub.label
+                                    ?<input autoFocus defaultValue={sub.label}
+                                        onBlur={e=>{renameSubsection(sec.id,sub.label,e.target.value||sub.label);setEditingSubKey(null);}}
+                                        onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape"){renameSubsection(sec.id,sub.label,e.target.value||sub.label);setEditingSubKey(null);}}}
+                                        style={{fontSize:".7rem",fontWeight:700,border:"none",borderBottom:"1.5px solid "+sec.color,background:"transparent",color:sec.color,outline:"none",padding:"0 2px",minWidth:150}}/>
+                                    :<span onClick={()=>setEditingSubKey(sec.id+"::"+sub.label)} style={{fontSize:".7rem",fontWeight:700,color:sec.color,cursor:"pointer"}} title="Click to rename sub-section">{sub.label} ✎</span>
+                                  }
+                                  <button onClick={()=>removeSubsection(sec.id,sub.label)} title="Remove sub-section — its items move back up to the section" style={{background:"none",border:"1px solid "+sec.color+"44",borderRadius:5,color:sec.color,cursor:"pointer",fontSize:".58rem",fontWeight:700,padding:"1px 6px",opacity:.7}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.7}>ungroup</button>
+                                </div>
+                              </div>
+                              {sub.items.map((it,mi)=>itemRow(it,`${sec.id}.${sub.num}.${mi+1}`,mi))}
+                              {/* Sub-section sub-total */}
+                              <div style={{display:"grid",gridTemplateColumns:GRID,background:sec.color+"08",borderBottom:"1px solid "+sec.color+"22",alignItems:"center"}}>
+                                <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",paddingLeft:14}}>
+                                  <button onClick={()=>addRow(sec.id,sub.label)} style={{background:"none",border:"none",color:sec.color,cursor:"pointer",fontSize:".7rem",fontWeight:700,padding:"5px 12px",opacity:.7}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.7}>+ Add row</button>
+                                  <span style={{fontSize:".66rem",color:"#94a3b8",fontStyle:"italic"}}>Sub-total {sub.label}</span>
+                                </div>
+                                <div style={{textAlign:"right",fontWeight:700,fontSize:".74rem",color:sec.color,opacity:.9,paddingRight:4}}>₱{subTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                                <div/><div/>
+                              </div>
+                            </React.Fragment>
+                          );
+                        })}
+                        {/* Section total + add controls */}
+                        <div style={{display:"grid",gridTemplateColumns:GRID,background:sec.color+"14",borderBottom:"1.5px solid "+sec.color+"33",alignItems:"center"}}>
+                          <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",flexWrap:"wrap"}}>
+                            <button onClick={()=>addRow(sec.id)} style={{background:"none",border:"none",color:sec.color,cursor:"pointer",fontSize:".72rem",fontWeight:700,padding:"5px 12px",opacity:.75}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.75}>+ Add row</button>
+                            <button onClick={()=>addSubsection(sec.id)} title="Group items under a named sub-section" style={{background:"none",border:"none",color:sec.color,cursor:"pointer",fontSize:".72rem",fontWeight:700,padding:"5px 10px",opacity:.75}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.75}>+ Sub-section</button>
+                            <span style={{fontSize:".68rem",color:"#64748b",fontWeight:700}}>Section total {sec.label}</span>
+                          </div>
+                          <div style={{textAlign:"right",fontWeight:800,fontSize:".8rem",color:sec.color,paddingRight:4}}>₱{secTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                          <div/><div/>
+                        </div>
+                      </>
+                    );
+                    })()}
                   </React.Fragment>
                 );
               })}
