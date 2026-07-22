@@ -566,14 +566,20 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const si=items.filter(it=>it.section===sec.id);
       if(!si.length) return;
       const secTotal=si.reduce((s,it)=>s+it.total,0);
-      rows+=`<tr style="background:#f1f5f9"><td colspan="2" style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px;color:#1e293b">${esc(sec.id)}. ${esc(sec.label)}</td><td colspan="5" style="text-align:right;padding:8px 10px;font-size:10px;color:#64748b"></td></tr>`;
-      si.forEach((it,idx)=>{rows+=`<tr style="background:${idx%2===0?"#fff":"#f8fafc"}"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap">${esc(sec.id)}.${idx+1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b">${esc(it.remarks||"")}</td></tr>`;});
-      rows+=`<tr style="background:${sec.color?sec.color+"11":"#f0fdf4"}"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
+      // Color-code each section by its assigned colour: a solid colour band for
+      // the header, a matching left accent on every item row, and a tinted
+      // sub-total. clr falls back to slate when a section has no colour set.
+      const clr=sec.color||"#64748b";
+      rows+=`<tr style="background:${clr}"><td colspan="2" style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px;color:#fff;border-left:4px solid ${clr}">${esc(sec.id)}. ${esc(sec.label)}</td><td colspan="5" style="padding:8px 10px"></td></tr>`;
+      si.forEach((it,idx)=>{rows+=`<tr style="background:${idx%2===0?"#fff":"#f8fafc"}"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;border-left:4px solid ${clr}">${esc(sec.id)}.${idx+1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b">${esc(it.remarks||"")}</td></tr>`;});
+      rows+=`<tr style="background:${clr}22"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569;border-left:4px solid ${clr}">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
     });
     const vatAmt=grandTotal*0.12;
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc((boqTitle&&boqTitle.trim())||dealLabel(deal)||"Draft")}</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
+  /* colour-adjust:exact forces section/header/total background colours to
+     render when saving as PDF — browsers drop them on print otherwise. */
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{font-family:Arial,sans-serif;padding:32px;color:#0f172a;font-size:12px}
   .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:3px solid #1e293b;padding-bottom:14px}
   .co{font-size:22px;font-weight:800;letter-spacing:-.5px;color:#1e293b}
