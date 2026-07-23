@@ -4,7 +4,7 @@ import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDe
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
-import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb} from './data/mappers';
+import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -2637,7 +2637,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs
+          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -2674,6 +2674,7 @@ export default function App(){
         if(idb[KEYS.vouchers])    setVouchers(idb[KEYS.vouchers]);
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
+        if(idb[KEYS.ceReqs])      setCeReqs(idb[KEYS.ceReqs]);
       } catch(err){ console.error("IDB load error:", err); }
       _log("IndexedDB cache read → app interactive",_t0);
       setReady(true);
@@ -2742,6 +2743,8 @@ export default function App(){
             if(_vouchers){setVouchers(prev=>mergeLocalOnly(_vouchers,prev));idbE.push([KEYS.vouchers,_vouchers]);}
             const _dl=data.dailyLogs?.length?data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at})):null;
             if(_dl){setDailyLogs(prev=>mergeLocalOnly(_dl,prev));idbE.push([KEYS.dailylogs,_dl]);}
+            const _ceReqs=data.ceReqs?.length?data.ceReqs.map(ceReqFromSb):null;
+            if(_ceReqs){setCeReqs(prev=>mergeLocalOnly(_ceReqs,prev));idbE.push([KEYS.ceReqs,_ceReqs]);}
             if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mergeLocalOnly(bl,prev));idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));if(bs.token){sessionStorage.setItem('fabhub:bottoken',bs.token);idbE.push([KEYS.botsettings,bs]);}}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
@@ -3001,6 +3004,7 @@ export default function App(){
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
+    if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
 
@@ -3462,7 +3466,7 @@ export default function App(){
   // up immediately and failed writes are queued/retried instead of dropped.
   const addCEReq=(rec)=>{
     const nr={...rec,id:rec.id||uid(),created_at:rec.created_at||new Date().toISOString()};
-    setCeReqs(p=>[...p,{id:nr.id,clientName:nr.client_name,projectName:nr.project_name,location:nr.location,projectType:nr.project_type,priority:nr.priority,status:nr.status,submittedBy:nr.submitted_by,targetDeadline:nr.target_deadline,submissionDeadline:nr.submission_deadline,targetBudget:nr.target_budget,targetMargin:nr.target_margin,plansLink:nr.plans_link,skpLink:nr.skp_link,scheduleOfFinish:nr.schedule_of_finish,notes:nr.notes,ceNotes:nr.ce_notes,bidAmount:nr.bid_amount,bidMarginPct:nr.bid_margin_pct,awarded:nr.awarded,awardDate:nr.award_date,dealId:nr.deal_id,createdAt:nr.created_at}]);
+    setCeReqs(p=>[...p,ceReqFromSb(nr)]);
     return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>false):Promise.resolve(true);
   };
   const updateCEReq=(id,updates)=>{
@@ -3955,12 +3959,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const ceReqSub = sbSubscribe('ce-rt', 'ce_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={id:rec.id,clientName:rec.client_name,projectName:rec.project_name,location:rec.location,
-          projectType:rec.project_type,priority:rec.priority,status:rec.status,submittedBy:rec.submitted_by,
-          targetDeadline:rec.target_deadline,submissionDeadline:rec.submission_deadline,targetBudget:rec.target_budget,
-          targetMargin:rec.target_margin,plansLink:rec.plans_link,skpLink:rec.skp_link,scheduleOfFinish:rec.schedule_of_finish,
-          notes:rec.notes,ceNotes:rec.ce_notes,bidAmount:rec.bid_amount,bidMarginPct:rec.bid_margin_pct,
-          awarded:rec.awarded,awardDate:rec.award_date,dealId:rec.deal_id,createdAt:rec.created_at};
+        const mapped=ceReqFromSb(rec);
         setCeReqs(cs=>{const ex=cs.find(c=>c.id===rec.id);return ex?cs.map(c=>c.id===rec.id?{...c,...mapped}:c):[mapped,...cs];});
       }
       if(eventType==='DELETE') setCeReqs(cs=>cs.filter(c=>c.id!==oldRow.id));
