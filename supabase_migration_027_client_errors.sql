@@ -1,17 +1,24 @@
 -- ── Migration 027: client_errors — production crash telemetry ────────────────
 -- Records render crashes caught by the app's React error boundaries (see
 -- src/index.js and the ErrorBoundary / ViewErrorBoundary in src/App.jsx) so a
--- crash in the field is visible here instead of depending on a user to
--- screenshot the "Something went wrong" screen and forward it.
+-- crash in the field is visible instead of depending on a user to screenshot
+-- the "Something went wrong" screen and forward it.
 --
 -- The client writer (logClientError in src/supabaseClient.js) is fail-safe: it
--- never throws, never enters the offline sync queue, and silently no-ops if
--- this table is absent — so the app is unaffected whether or not this migration
--- has been applied. Applying it simply starts capturing the reports.
+-- never throws, never enters the offline sync queue, dedupes repeats, and
+-- silently no-ops if this table is absent — so the app is unaffected whether or
+-- not this migration has been applied. Applying it simply starts capturing.
 --
--- Append-only: any logged-in user may INSERT their own crash; only Manager may
--- read. No UPDATE/DELETE policy = nobody can rewrite or purge history from the
--- app (retention is handled separately, see supabase_retention.sql).
+-- RLS NOTE (important): this project's LIVE database gates every table with a
+-- single permissive policy `fabhub_app_access` (FOR ALL TO authenticated, anon
+-- USING (true) WITH CHECK (true)). The role-aware helper functions that
+-- migration 024 defines — public.is_user() / public.is_mgr() — are NOT present
+-- in the deployed database (migration 024 was authored but never applied here),
+-- so a helper-based policy would fail to create. This table therefore matches
+-- the convention that is actually deployed. Crash reports are read out-of-band
+-- (Supabase SQL editor / dashboard as the service role), not from the app, so
+-- no app-facing SELECT distinction is needed. Applied to project
+-- gfgneirzkgzarllzztie (fabhub-gmd) on 2026-07-23.
 
 create table if not exists public.client_errors (
   id              bigint generated always as identity primary key,
@@ -30,15 +37,7 @@ create index if not exists client_errors_created_at_idx
 
 alter table public.client_errors enable row level security;
 
--- INSERT: any authenticated user (relies on public.is_user() from migration 024).
-drop policy if exists client_errors_ins on public.client_errors;
-create policy client_errors_ins on public.client_errors
-  for insert to authenticated with check (public.is_user());
-
--- SELECT: Manager only (relies on public.is_mgr() from migration 024).
-drop policy if exists client_errors_sel on public.client_errors;
-create policy client_errors_sel on public.client_errors
-  for select to authenticated using (public.is_mgr());
-
--- No UPDATE or DELETE policy is defined, so with RLS enabled both are denied to
--- all app roles — the table is append-only from the application's point of view.
+-- Match the live app-wide convention (see RLS NOTE above).
+drop policy if exists fabhub_app_access on public.client_errors;
+create policy fabhub_app_access on public.client_errors
+  for all to authenticated, anon using (true) with check (true);
