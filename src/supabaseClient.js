@@ -523,3 +523,40 @@ export const sbListFiles = async (folder) => {
   if (error) { console.error('SB LIST FILES:', error.message); return [] }
   return (data || []).filter(f => f.name !== '.emptyFolderPlaceholder')
 }
+
+// ── CRASH TELEMETRY (best-effort, fail-safe) ─────────────────────────────────
+// Records render crashes caught by the app's error boundaries into a
+// `client_errors` table so production crashes are visible instead of relying on
+// a user to screenshot and forward them. This path is deliberately isolated
+// from every other write helper: it must NEVER throw, NEVER enqueue into the
+// offline sync queue (a crash report is disposable — it must not compete with
+// real user data for retries), and must silently no-op if the table doesn't
+// exist yet (i.e. migration 027 hasn't been applied). Until that migration is
+// run, calling this is completely harmless — the insert 404s and is swallowed.
+let _lastErrKey = null, _lastErrAt = 0
+export const logClientError = (err, info, view) => {
+  try {
+    if (!supabase) return
+    const message = (err && (err.message || String(err))) || 'Unknown error'
+    const stack = (err && err.stack) || ''
+    // Dedupe: a render error often re-throws in a tight loop. Skip an identical
+    // message fired within 10s so one crash can't spam the table (or the
+    // network) hundreds of times.
+    const key = `${view}|${message}`
+    const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : 0
+    if (key === _lastErrKey && now - _lastErrAt < 10000) return
+    _lastErrKey = key; _lastErrAt = now
+    const row = {
+      message: message.slice(0, 2000),
+      stack: stack.slice(0, 8000),
+      component_stack: ((info && info.componentStack) || '').slice(0, 8000),
+      view: (view || '').slice(0, 120),
+      url: (typeof location !== 'undefined' && location.href) || '',
+      user_agent: (typeof navigator !== 'undefined' && navigator.userAgent) || '',
+    }
+    // Fire and forget — bare insert, no _withTimeout/_enqueue, all errors eaten.
+    Promise.resolve(supabase.from('client_errors').insert(row))
+      .then(({ error }) => { if (error) console.warn('client_errors log skipped:', error.message) })
+      .catch(() => {})
+  } catch (_) { /* telemetry must never break the crash handler */ }
+}

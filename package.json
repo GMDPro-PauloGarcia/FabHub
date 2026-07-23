@@ -10,8 +10,10 @@
     "xlsx": "^0.18.5"
   },
   "scripts": {
+    "prebuild": "node scripts/check-imports.js",
     "build": "react-scripts build",
-    "check-imports": "node scripts/check-imports.js"
+    "check-imports": "node scripts/check-imports.js",
+    "smoke": "node scripts/smoke.js"
   },
   "browserslist": {
     "production": [
