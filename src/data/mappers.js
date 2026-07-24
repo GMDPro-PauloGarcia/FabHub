@@ -43,6 +43,8 @@ export const swoToSb=r=>({
   created_at:r.createdDate||r.woDate||null,
 });
 
+export const ceReqFromSb=r=>({id:r.id,clientName:r.client_name,projectName:r.project_name,location:r.location,projectType:r.project_type,priority:r.priority,status:r.status,submittedBy:r.submitted_by,targetDeadline:r.target_deadline,submissionDeadline:r.submission_deadline,targetBudget:r.target_budget,targetMargin:r.target_margin,plansLink:r.plans_link,skpLink:r.skp_link,scheduleOfFinish:r.schedule_of_finish,notes:r.notes,ceNotes:r.ce_notes,bidAmount:r.bid_amount,bidMarginPct:r.bid_margin_pct,awarded:r.awarded,awardDate:r.award_date,dealId:r.deal_id,createdAt:r.created_at});
+
 export const swoFromSb=r=>({...r,
   woNumber:r.wo_number||"", projectId:r.deal_id, dealId:r.deal_id,
   projectName:r.project_name||"", scopeOfWork:r.scope_of_work||"",
