@@ -4,7 +4,7 @@ import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDe
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
-import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb} from './data/mappers';
+import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -2673,7 +2673,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs
+          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -2710,6 +2710,7 @@ export default function App(){
         if(idb[KEYS.vouchers])    setVouchers(idb[KEYS.vouchers]);
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
+        if(idb[KEYS.ceReqs])      setCeReqs(idb[KEYS.ceReqs]);
       } catch(err){ console.error("IDB load error:", err); }
       _log("IndexedDB cache read → app interactive",_t0);
       setReady(true);
@@ -2778,6 +2779,8 @@ export default function App(){
             if(_vouchers){setVouchers(prev=>mergeLocalOnly(_vouchers,prev));idbE.push([KEYS.vouchers,_vouchers]);}
             const _dl=data.dailyLogs?.length?data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at})):null;
             if(_dl){setDailyLogs(prev=>mergeLocalOnly(_dl,prev));idbE.push([KEYS.dailylogs,_dl]);}
+            const _ceReqs=data.ceReqs?.length?data.ceReqs.map(ceReqFromSb):null;
+            if(_ceReqs){setCeReqs(prev=>mergeLocalOnly(_ceReqs,prev));idbE.push([KEYS.ceReqs,_ceReqs]);}
             if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mergeLocalOnly(bl,prev));idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));if(bs.token){sessionStorage.setItem('fabhub:bottoken',bs.token);idbE.push([KEYS.botsettings,bs]);}}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
@@ -3037,6 +3040,7 @@ export default function App(){
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
+    if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
 
@@ -3498,7 +3502,7 @@ export default function App(){
   // up immediately and failed writes are queued/retried instead of dropped.
   const addCEReq=(rec)=>{
     const nr={...rec,id:rec.id||uid(),created_at:rec.created_at||new Date().toISOString()};
-    setCeReqs(p=>[...p,{id:nr.id,clientName:nr.client_name,projectName:nr.project_name,location:nr.location,projectType:nr.project_type,priority:nr.priority,status:nr.status,submittedBy:nr.submitted_by,targetDeadline:nr.target_deadline,submissionDeadline:nr.submission_deadline,targetBudget:nr.target_budget,targetMargin:nr.target_margin,plansLink:nr.plans_link,skpLink:nr.skp_link,scheduleOfFinish:nr.schedule_of_finish,notes:nr.notes,ceNotes:nr.ce_notes,bidAmount:nr.bid_amount,bidMarginPct:nr.bid_margin_pct,awarded:nr.awarded,awardDate:nr.award_date,dealId:nr.deal_id,createdAt:nr.created_at}]);
+    setCeReqs(p=>[...p,ceReqFromSb(nr)]);
     return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>false):Promise.resolve(true);
   };
   const updateCEReq=(id,updates)=>{
@@ -3991,12 +3995,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const ceReqSub = sbSubscribe('ce-rt', 'ce_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={id:rec.id,clientName:rec.client_name,projectName:rec.project_name,location:rec.location,
-          projectType:rec.project_type,priority:rec.priority,status:rec.status,submittedBy:rec.submitted_by,
-          targetDeadline:rec.target_deadline,submissionDeadline:rec.submission_deadline,targetBudget:rec.target_budget,
-          targetMargin:rec.target_margin,plansLink:rec.plans_link,skpLink:rec.skp_link,scheduleOfFinish:rec.schedule_of_finish,
-          notes:rec.notes,ceNotes:rec.ce_notes,bidAmount:rec.bid_amount,bidMarginPct:rec.bid_margin_pct,
-          awarded:rec.awarded,awardDate:rec.award_date,dealId:rec.deal_id,createdAt:rec.created_at};
+        const mapped=ceReqFromSb(rec);
         setCeReqs(cs=>{const ex=cs.find(c=>c.id===rec.id);return ex?cs.map(c=>c.id===rec.id?{...c,...mapped}:c):[mapped,...cs];});
       }
       if(eventType==='DELETE') setCeReqs(cs=>cs.filter(c=>c.id!==oldRow.id));
@@ -16252,6 +16251,9 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
   const[showForm,setShowForm]=React.useState(false);
   const[editId,setEditId]=React.useState(null);
   const[detailId,setDetailId]=React.useState(null);
+  const[trackQ,setTrackQ]=React.useState("");
+  const[trackStatus,setTrackStatus]=React.useState("All");
+  const[trackPriority,setTrackPriority]=React.useState("All");
   const isQS=["Manager","QS"].includes(role);
   const isSales=["Manager","Sales"].includes(role);
   const TYPES={kiosk:"Kiosk",retail:"Retail Fit-out",office:"Office",fnb:"F&B / Restaurant",signage:"Signage",event:"Event / Activation",repair:"Repair / Refurb",other:"Other"};
@@ -16283,6 +16285,36 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
   const winRate=submitted.length?Math.round(won.length/submitted.length*100):0;
   const avgMarginWon=won.length?Math.round(won.reduce((s,r)=>s+Number(r.bidMarginPct||0),0)/won.length):0;
   const byType=Object.entries(TYPES).map(([k,label])=>{const sub=submitted.filter(r=>r.projectType===k);const w=sub.filter(r=>r.awarded==="Won");return{key:k,label,total:sub.length,won:w.length,rate:sub.length?Math.round(w.length/sub.length*100):0};}).filter(x=>x.total>0);
+
+  // ── Tracking hub: deal linking, master list, SLA ──
+  const dealById=id=>id?(deals||[]).find(d=>String(d.id)===String(id)):null;
+  const nowMs=Date.now();
+  const trackRows=React.useMemo(()=>{
+    const qq=trackQ.trim().toLowerCase();
+    return [...ceReqs]
+      .filter(r=>trackStatus==="All"||r.status===trackStatus)
+      .filter(r=>trackPriority==="All"||r.priority===trackPriority)
+      .filter(r=>!qq||[r.clientName,r.projectName,r.submittedBy,r.location].some(v=>String(v||"").toLowerCase().includes(qq)))
+      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  },[ceReqs,trackQ,trackStatus,trackPriority]);
+  const openReqs=ceReqs.filter(r=>r.status!=="Done");
+  const overdueCount=openReqs.filter(r=>r.targetDeadline&&new Date(r.targetDeadline).getTime()<nowMs).length;
+  const dueSoonCount=openReqs.filter(r=>{const dd=daysDiff(r.targetDeadline);return dd!==null&&dd>=0&&dd<=3;}).length;
+  const agingCount=openReqs.filter(r=>r.createdAt&&(nowMs-new Date(r.createdAt).getTime())/864e5>14).length;
+  const exportTracking=()=>{
+    if(!window.XLSX){toastEmit?.("Excel library still loading — please try again in a moment","error");return;}
+    const wb=window.XLSX.utils.book_new();
+    const header=["Client","Project","Location","Type","Priority","Status","Submitted By","Submitted","Days Pending","Target Deadline","Deadline Status","Submission Deadline","Linked Deal","Deal Stage","CE Outcome","Bid Amount","Margin %","Notes"];
+    const body=trackRows.map(r=>{
+      const d=dealById(r.dealId);
+      const dp=r.createdAt?Math.round((nowMs-new Date(r.createdAt).getTime())/864e5):"";
+      const dl=daysLabel(r.targetDeadline);
+      return [r.clientName||"",r.projectName||"",r.location||"",TYPES[r.projectType]||r.projectType||"",r.priority||"",r.status||"",r.submittedBy||"",r.createdAt?String(r.createdAt).slice(0,10):"",dp,r.targetDeadline||"",dl?dl.txt:"",r.submissionDeadline||"",d?(projDisplayName(d)||d.client||""):"",d?d.stage:"",r.awarded||"",r.bidAmount||"",r.bidMarginPct||"",r.notes||""];
+    });
+    window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet([header,...body]),"CE Tracking");
+    window.XLSX.writeFile(wb,`CE-Tracking-${new Date().toISOString().slice(0,10)}.xlsx`);
+    toastEmit?.(`Exported ${trackRows.length} request${trackRows.length!==1?"s":""}`,"success");
+  };
 
   const Card=({r})=>{
     const dl=daysLabel(r.targetDeadline);
@@ -16347,7 +16379,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
       </div>
       {/* Tabs */}
       <div style={{display:"flex",gap:4,marginBottom:16,borderBottom:"1.5px solid #e2e8f0",paddingBottom:8}}>
-        {[["queue","📋 Queue"],["winloss","🏆 Win/Loss"],["analysis","📊 Analysis"]].map(([t,l])=>(
+        {[["queue","📋 Queue"],["tracking","🗂 Tracking"],["winloss","🏆 Win/Loss"],["analysis","📊 Analysis"]].map(([t,l])=>(
           <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?"#1e293b":"transparent",border:"none",borderRadius:7,padding:"6px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:tab===t?700:500,color:tab===t?"#fff":"#64748b",cursor:"pointer"}}>{l}</button>
         ))}
       </div>
@@ -16381,6 +16413,77 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
               }).map(r=><Card key={r.id} r={r}/>)}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── TRACKING TAB ── master list, deal linking, SLA/deadline tracking */}
+      {tab==="tracking"&&(
+        <div>
+          {/* SLA summary */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:16}}>
+            {[["Overdue",overdueCount,"#ef4444"],["Due ≤ 3 days",dueSoonCount,"#f59e0b"],["Aging > 14 days",agingCount,"#64748b"],["Total Requests",ceReqs.length,"#8b5cf6"]].map(([l,v,c])=>(
+              <div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+                <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+                <div style={{fontSize:"1.3rem",fontWeight:800,color:c,marginTop:4}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {/* Toolbar */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:10}}>
+            <input value={trackQ} onChange={e=>setTrackQ(e.target.value)} placeholder="Search client, project, submitter…" style={{flex:"1 1 220px",minWidth:0,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/>
+            <select value={trackStatus} onChange={e=>setTrackStatus(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".8rem",background:"#fff",outline:"none"}}>
+              {["All","Pending","Ongoing","Done"].map(s=><option key={s} value={s}>{s==="All"?"All statuses":s}</option>)}
+            </select>
+            <select value={trackPriority} onChange={e=>setTrackPriority(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".8rem",background:"#fff",outline:"none"}}>
+              {["All","High","Normal","Low"].map(s=><option key={s} value={s}>{s==="All"?"All priorities":s}</option>)}
+            </select>
+            <button onClick={exportTracking} style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>⬇ Export Excel</button>
+          </div>
+          <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:8}}>{trackRows.length} of {ceReqs.length} shown</div>
+          {/* Master table */}
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
+              <thead><tr style={{background:"#f8fafc"}}>{["Client / Project","Type","Priority","Status","Submitted","Aging","Target Deadline","Linked Deal","Outcome",""].map(h=><th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:".66rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+              <tbody>
+                {trackRows.length===0&&<tr><td colSpan={10} style={{padding:"40px",textAlign:"center",color:"#94a3b8",fontSize:".85rem"}}>No requests match your filters.</td></tr>}
+                {trackRows.map(r=>{
+                  const d=dealById(r.dealId);
+                  const dl=daysLabel(r.targetDeadline);
+                  const isOpen=r.status!=="Done";
+                  const dp=r.createdAt?Math.round((nowMs-new Date(r.createdAt).getTime())/864e5):null;
+                  return(
+                    <tr key={r.id} style={{borderBottom:"1px solid #f1f5f9"}}>
+                      <td style={{padding:"9px 12px"}}>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{r.clientName}</div>
+                        {r.projectName&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{r.projectName}</div>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".76rem",color:"#475569",whiteSpace:"nowrap"}}>{TYPES[r.projectType]||r.projectType}</td>
+                      <td style={{padding:"9px 12px"}}><span style={{background:PRI_CLR[r.priority]+"22",color:PRI_CLR[r.priority],borderRadius:5,padding:"2px 7px",fontSize:".66rem",fontWeight:700}}>{r.priority}</span></td>
+                      <td style={{padding:"9px 12px"}}><span style={{background:STATUS_CLR[r.status]+"22",color:STATUS_CLR[r.status],borderRadius:5,padding:"2px 7px",fontSize:".66rem",fontWeight:700}}>{r.status}</span></td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",whiteSpace:"nowrap"}}>
+                        <div>{r.createdAt?String(r.createdAt).slice(0,10):"—"}</div>
+                        {r.submittedBy&&<div style={{fontSize:".68rem",color:"#94a3b8"}}>{r.submittedBy}</div>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",color:(isOpen&&dp>14)?"#ef4444":"#64748b",fontWeight:(isOpen&&dp>14)?700:400,whiteSpace:"nowrap"}}>{dp!==null?`${dp}d`:"—"}</td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",whiteSpace:"nowrap"}}>
+                        {r.targetDeadline?(<><span style={{color:"#475569"}}>{r.targetDeadline}</span>{isOpen&&dl&&<div style={{fontSize:".68rem",fontWeight:700,color:dl.clr}}>{dl.txt}</div>}</>):<span style={{color:"#cbd5e1"}}>—</span>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem"}}>
+                        {d?(<><div style={{color:"#0f172a",fontWeight:600}}>{projDisplayName(d)||d.client}</div><div style={{fontSize:".66rem",color:"#94a3b8"}}>{d.stage}</div></>):<span style={{color:"#cbd5e1"}}>—</span>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",whiteSpace:"nowrap"}}>
+                        <span style={{background:AWARDED_CLR[r.awarded||"Pending"]+"22",color:AWARDED_CLR[r.awarded||"Pending"],borderRadius:5,padding:"2px 7px",fontSize:".66rem",fontWeight:700}}>{r.awarded||"Pending"}</span>
+                        {r.bidAmount>0&&<div style={{fontSize:".68rem",color:"#059669",fontWeight:700,marginTop:2}}>{fmtPHP2(r.bidAmount)}</div>}
+                      </td>
+                      <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
+                        {(isQS||isSales)&&<button onClick={()=>openEdit(r)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 9px",color:"#475569",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>✏</button>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
