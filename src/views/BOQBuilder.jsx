@@ -128,7 +128,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[boqDate,setBoqDate]=useState(today);
   const[items,setItems]=useState(BLANK_ITEMS);
   const[vatEnabled,setVatEnabled]=useState(true);
-  const[discountedTotal,setDiscountedTotal]=useState("");
+  const[discount,setDiscount]=useState("");   // peso amount subtracted from subtotal before VAT
   const[suggest,setSuggest]=useState({id:null,matches:[]});
   const[draftSaved,setDraftSaved]=useState(false);
   const draftTimerRef=useRef(null);
@@ -268,9 +268,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[reconcileCustom,setReconcileCustom]=useState("");
   const reconciledRef=useRef({});
   const boqNetOf=(src)=>{
-    const dt=Number(src?.discountedTotal)||0;
-    if(dt>0) return dt;
-    return (src?.items||[]).reduce((s,it)=>s+(Number(it.total)||0),0);
+    const sub=(src?.items||[]).reduce((s,it)=>s+(Number(it.total)||0),0);
+    const disc=Number(src?.discount)||0;
+    if(disc>0) return Math.max(0,sub-disc);
+    // Back-compat: older BOQs stored a net-total override in discountedTotal.
+    const legacy=Number(src?.discountedTotal)||0;
+    if(legacy>0) return legacy;
+    return sub;
   };
 
   // Parse a sheet (array-of-arrays) into {sections,items}. Auto-detects the header
@@ -423,7 +427,16 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(src.quotationNo!==undefined) setQuotationNo(src.quotationNo);
     if(src.boqDate!==undefined) setBoqDate(src.boqDate);
     if(src.vatEnabled!==undefined) setVatEnabled(src.vatEnabled);
-    if(src.discountedTotal!==undefined) setDiscountedTotal(src.discountedTotal);
+    if(src.discount!==undefined){
+      setDiscount(src.discount);
+    }else if(Number(src.discountedTotal)>0){
+      // Back-compat: convert an old net-total override into the equivalent discount amount.
+      const sub=(src.items||[]).reduce((s,it)=>s+(Number(it.total)||0),0);
+      const d=sub-Number(src.discountedTotal);
+      setDiscount(d>0?String(Math.round(d*100)/100):"");
+    }else{
+      setDiscount("");
+    }
     if(src.markupPct!==undefined) setMarkupPct(src.markupPct);
   };
 
@@ -431,7 +444,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     if(standaloneId){
       // Standalone BOQ — load from the shared store (read once on open)
       const rec=standaloneBoqs.find(b=>b.id===standaloneId);
-      if(rec){applyBoqSrc({items:rec.items,sections:rec.sections,boqTitle:rec.title,location:rec.location,quotationNo:rec.quotationNo,boqDate:rec.boqDate,vatEnabled:rec.vatEnabled,discountedTotal:rec.discountedTotal,markupPct:rec.markupPct});}
+      if(rec){applyBoqSrc({items:rec.items,sections:rec.sections,boqTitle:rec.title,location:rec.location,quotationNo:rec.quotationNo,boqDate:rec.boqDate,vatEnabled:rec.vatEnabled,discount:rec.discount,discountedTotal:rec.discountedTotal,markupPct:rec.markupPct});}
       setDraftSaved(true);
       return;
     }
@@ -461,7 +474,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       } else {
         setItems(BLANK_ITEMS());
         setSections([]);
-        setDiscountedTotal("");
+        setDiscount("");
         const d=deal;
         if(d){
           setLocation(d.location||"");
@@ -491,7 +504,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(false);
       clearTimeout(draftTimerRef.current);
       draftTimerRef.current=setTimeout(()=>{
-        saveStandaloneBoq&&saveStandaloneBoq({id:standaloneId,title:boqTitle,location,quotationNo,boqDate,items,sections,vatEnabled,discountedTotal,markupPct,updatedAt:new Date().toISOString()});
+        saveStandaloneBoq&&saveStandaloneBoq({id:standaloneId,title:boqTitle,location,quotationNo,boqDate,items,sections,vatEnabled,discount,markupPct,updatedAt:new Date().toISOString()});
         setDraftSaved(true);
       },1200);
       return()=>clearTimeout(draftTimerRef.current);
@@ -503,7 +516,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setDraftSaved(false);
     clearTimeout(draftTimerRef.current);
     draftTimerRef.current=setTimeout(()=>{
-      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal,markupPct};
+      const boqData={items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct};
       saveDraft(selDeal||BOQ_SCRATCH_KEY,boqData);
       if(selDeal&&isSupabaseReady()) sbUpdate('deals',selDeal,{boq_data:boqData}).catch(()=>{});
       // Reflect the saved BOQ in the shared deals state immediately so surfaces
@@ -514,14 +527,14 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       // no value yet. A pegged, non-zero value is never silently overwritten — a mismatch
       // is surfaced via the reconcile prompt when the deal is opened instead.
       if(selDeal&&onBoqValue&&items.length>0){
-        const net=Number(discountedTotal)>0?Number(discountedTotal):grandTotal;
+        const net=netTotal;
         const cur=Number(deal?.value)||0;
         if(cur===0&&net>0) onBoqValue(selDeal,net);
       }
       setDraftSaved(true);
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
-  },[standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal,markupPct]);
+  },[standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct]);
 
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
@@ -574,7 +587,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   };
 
   const grandTotal=items.reduce((s,it)=>s+it.total,0);
-  const vatAmount=grandTotal*0.12;
+  // Discount is a peso amount subtracted from the subtotal BEFORE VAT. VAT and the
+  // VAT-inclusive total are computed on the net (post-discount) figure.
+  const discountVal=Math.min(Math.max(Number(discount)||0,0),grandTotal);
+  const netTotal=roundP(grandTotal-discountVal);
+  const vatAmount=netTotal*0.12;
 
   const printBOQ=()=>{
     const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -608,7 +625,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       });
       rows+=`<tr style="background:${clr}22"><td colspan="5" style="text-align:right;font-size:11px;font-weight:700;padding:6px 10px;color:#475569;border-left:4px solid ${clr}">Sub-total ${esc(sec.label)}</td><td style="text-align:right;font-weight:800;padding:6px 10px;font-size:12px;color:#0f172a">${fmtP(secTotal)}</td><td></td></tr>`;
     });
-    const vatAmt=grandTotal*0.12;
+    const vatAmt=netTotal*0.12;
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>BOQ — ${esc((boqTitle&&boqTitle.trim())||dealLabel(deal)||"Draft")}</title>
 <style>
   /* colour-adjust:exact forces section/header/total background colours to
@@ -660,8 +677,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   <thead><tr><th style="width:68px">Item No.</th><th>Description</th><th style="text-align:center;width:48px">Qty</th><th style="width:56px">Unit</th><th class="r" style="width:110px">Unit Cost</th><th class="r" style="width:120px">Total Amount</th><th style="width:110px">Remarks</th></tr></thead>
   <tbody>${rows}</tbody>
   <tr class="tot-row"><td colspan="5" style="text-align:right">Grand Total</td><td style="text-align:right">${fmtP(grandTotal)}</td><td></td></tr>
-  ${vatEnabled?`<tr class="vat-row"><td colspan="5" style="text-align:right">VAT 12%</td><td style="text-align:right">${fmtP(vatAmt)}</td><td></td></tr><tr class="gtvat-row"><td colspan="5" style="text-align:right">Grand Total w/ VAT</td><td style="text-align:right">${fmtP(grandTotal+vatAmt)}</td><td></td></tr>`:""}
-  ${discountedTotal?`<tr class="disc-row"><td colspan="5" style="text-align:right">Discounted Total w/o VAT</td><td style="text-align:right">${fmtP(discountedTotal)}</td><td></td></tr>`:""}
+  ${discountVal>0?`<tr class="disc-row"><td colspan="5" style="text-align:right">Discount</td><td style="text-align:right">(${fmtP(discountVal)})</td><td></td></tr><tr class="tot-row"><td colspan="5" style="text-align:right">Net Total</td><td style="text-align:right">${fmtP(netTotal)}</td><td></td></tr>`:""}
+  ${vatEnabled?`<tr class="vat-row"><td colspan="5" style="text-align:right">VAT 12%</td><td style="text-align:right">${fmtP(vatAmt)}</td><td></td></tr><tr class="gtvat-row"><td colspan="5" style="text-align:right">Grand Total w/ VAT</td><td style="text-align:right">${fmtP(netTotal+vatAmt)}</td><td></td></tr>`:""}
 </table>
 <div class="notes-section">
   <h3>General Notes</h3>
@@ -714,8 +731,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       rows.push(["",`Sub-total ${sec.label}`,"","","","",si.reduce((s,it)=>s+it.total,0)]);
     });
     rows.push(["","GRAND TOTAL","","","","",grandTotal]);
-    if(vatEnabled){rows.push(["","VAT 12%","","","","",vatAmount]);rows.push(["","GRAND TOTAL w/ VAT","","","","",grandTotal+vatAmount]);}
-    if(discountedTotal) rows.push(["","DISCOUNTED TOTAL w/o VAT","","","","",discountedTotal]);
+    if(discountVal>0){rows.push(["","DISCOUNT","","","","",-discountVal]);rows.push(["","NET TOTAL","","","","",netTotal]);}
+    if(vatEnabled){rows.push(["","VAT 12%","","","","",vatAmount]);rows.push(["","GRAND TOTAL w/ VAT","","","","",netTotal+vatAmount]);}
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a");
     a.href="data:text/csv;charset=utf-8,﻿"+encodeURIComponent(csv);
@@ -743,11 +760,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Project:</span>
             {standaloneId
-              ?<select value="" onChange={e=>{const v=e.target.value;if(!v||!onLinkToDeal)return;const d2=deals.find(d=>d.id===v);if(window.confirm(`Link this BOQ to ${d2?.client||"this project"}${d2?.ceNo?" ("+d2.ceNo+")":""}?\n\nYour sections and items are kept — the BOQ just moves out of Standalone and attaches to the project.`)){onLinkToDeal(v,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal});}}} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer"}}>
+              ?<select value="" onChange={e=>{const v=e.target.value;if(!v||!onLinkToDeal)return;const d2=deals.find(d=>d.id===v);if(window.confirm(`Link this BOQ to ${d2?.client||"this project"}${d2?.ceNo?" ("+d2.ceNo+")":""}?\n\nYour sections and items are kept — the BOQ just moves out of Standalone and attaches to the project.`)){onLinkToDeal(v,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}}} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer"}}>
                 <option value="">📄 Standalone BOQ — link to a project…</option>
                 {deals.filter(d=>d.stage!=="Did Not Win"&&d.stage!=="Cancelled").map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
               </select>
-              :<select value={selDeal} onChange={e=>{const v=e.target.value;if(v==="__unlink__"){if(onUnlinkToStandalone&&window.confirm("Unlink this BOQ from the project and move it to Standalone?\n\nUse this if a project was picked by mistake. Your sections and items are kept; the BOQ is detached from the project.")){onUnlinkToStandalone({items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discountedTotal});}return;}setSelDeal(v);}} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
+              :<select value={selDeal} onChange={e=>{const v=e.target.value;if(v==="__unlink__"){if(onUnlinkToStandalone&&window.confirm("Unlink this BOQ from the project and move it to Standalone?\n\nUse this if a project was picked by mistake. Your sections and items are kept; the BOQ is detached from the project.")){onUnlinkToStandalone({items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}return;}setSelDeal(v);}} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
                 <option value="">— Select —</option>
                 {deals.filter(d=>d.id===selDeal||(d.stage!=="Did Not Win"&&d.stage!=="Cancelled")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
               </select>
@@ -789,7 +806,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
           </button>
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscountedTotal("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
           {draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
         </div>
       </div>
@@ -1216,12 +1233,29 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                 <div style={{textAlign:"right",fontWeight:900,color:"#f59e0b",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{grandTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
                 <div/><div/>
               </div>
+              {/* Discount (peso amount, applied before VAT) */}
+              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#fffbeb",borderTop:"1px solid #fde68a",alignItems:"center"}}>
+                <div style={{gridColumn:"1/7",fontSize:".78rem",fontWeight:600,color:"#92400e"}}>Discount <span style={{fontWeight:400,color:"#a16207"}}>(₱ off, before VAT)</span></div>
+                <div style={{textAlign:"right"}}>
+                  <input type="number" min="0" value={discount} onChange={e=>setDiscount(e.target.value)} placeholder="—"
+                    style={{border:"none",borderBottom:"1.5px solid #fde68a",background:"transparent",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#92400e",textAlign:"right",width:130,outline:"none"}}/>
+                </div>
+                <div/><div/>
+              </div>
+              {/* Net Total after discount */}
+              {discountVal>0&&(
+                <div style={{display:"grid",gridTemplateColumns:GRID,padding:"8px 12px",background:"#fef3c7",borderTop:"1px solid #fde68a",alignItems:"center"}}>
+                  <div style={{gridColumn:"1/7",fontWeight:800,color:"#92400e",fontSize:".8rem",textTransform:"uppercase",letterSpacing:".5px"}}>Net Total after Discount</div>
+                  <div style={{textAlign:"right",fontWeight:900,color:"#b45309",fontSize:".95rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{netTotal.toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                  <div/><div/>
+                </div>
+              )}
               {/* VAT */}
               <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#f8fafc",borderTop:"1px solid #e2e8f0",alignItems:"center"}}>
                 <div style={{gridColumn:"1/7",display:"flex",alignItems:"center",gap:8}}>
                   <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:".78rem",color:"#64748b",fontWeight:600}}>
                     <input type="checkbox" checked={vatEnabled} onChange={e=>setVatEnabled(e.target.checked)} style={{cursor:"pointer"}}/>
-                    VAT 12%
+                    VAT 12%{discountVal>0?" (on net)":""}
                   </label>
                 </div>
                 <div style={{textAlign:"right",fontWeight:700,color:vatEnabled?"#475569":"#cbd5e1",fontSize:".85rem"}}>{vatEnabled?`₱${vatAmount.toLocaleString("en-PH",{minimumFractionDigits:2})}`:"-"}</div>
@@ -1230,19 +1264,10 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
               {vatEnabled&&(
                 <div style={{display:"grid",gridTemplateColumns:GRID,padding:"10px 12px",background:"#0f172a",alignItems:"center"}}>
                   <div style={{gridColumn:"1/7",fontWeight:800,color:"#f1f5f9",fontSize:".82rem",textTransform:"uppercase",letterSpacing:".5px"}}>Grand Total w/ VAT</div>
-                  <div style={{textAlign:"right",fontWeight:900,color:"#34d399",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{(grandTotal+vatAmount).toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
+                  <div style={{textAlign:"right",fontWeight:900,color:"#34d399",fontSize:"1rem",fontFamily:"'Barlow Condensed',sans-serif"}}>₱{(netTotal+vatAmount).toLocaleString("en-PH",{minimumFractionDigits:2})}</div>
                   <div/><div/>
                 </div>
               )}
-              {/* Discounted Total */}
-              <div style={{display:"grid",gridTemplateColumns:GRID,padding:"7px 12px",background:"#fffbeb",borderTop:"1px solid #fde68a",alignItems:"center"}}>
-                <div style={{gridColumn:"1/7",fontSize:".76rem",fontWeight:600,color:"#92400e"}}>Discounted Total w/o VAT <span style={{fontWeight:400,color:"#a16207"}}>(optional override)</span></div>
-                <div style={{textAlign:"right"}}>
-                  <input type="number" value={discountedTotal} onChange={e=>setDiscountedTotal(e.target.value)} placeholder="—"
-                    style={{border:"none",borderBottom:"1.5px solid #fde68a",background:"transparent",fontFamily:"inherit",fontSize:".88rem",fontWeight:700,color:"#92400e",textAlign:"right",width:130,outline:"none"}}/>
-                </div>
-                <div/><div/>
-              </div>
             </div>
           </div>
 
