@@ -5947,15 +5947,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const existing=payables.find(p=>p.poId===poNo);
     const issued=active.some(p=>["PO Issued","Partially Delivered","Delivered"].includes(p.status));
     if(!issued) return existing||null; // still Draft/Pending — no payable yet
-    // True amount owed: gross − line discounts − PO-level discount (+ VAT), the
-    // same formula the printed PO and on-screen Grand Total use. Actual unit cost
-    // wins over the estimate once it's known.
+    // True amount owed: gross − PO-level discount (+ VAT), the same formula the
+    // printed PO and on-screen Grand Total use. Actual unit cost wins over the
+    // estimate once it's known.
     const gross=active.reduce((s,i)=>s+(N(i.actUnitCost)||N(i.estUnitCost))*N(i.qty),0);
-    const lineDisc=active.reduce((s,i)=>{const b=(N(i.actUnitCost)||N(i.estUnitCost))*N(i.qty);if(i.discType==="pct")return s+b*(N(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(N(i.discValue),b);return s;},0);
-    const afterLine=gross-lineDisc;
     const pdt=active[0]?.poDiscType||"none",pdv=N(active[0]?.poDiscValue);
-    const poDisc=pdt==="pct"?afterLine*(pdv/100):pdt==="fixed"?Math.min(pdv,afterLine):0;
-    const afterPo=afterLine-poDisc;
+    const poDisc=pdt==="pct"?gross*(pdv/100):pdt==="fixed"?Math.min(pdv,gross):0;
+    const afterPo=gross-poDisc;
     const amount=Math.round((afterPo+(active[0]?.withVat?afterPo*0.12:0))*100)/100;
     if(!(amount>0)) return existing||null;
     // Only link a real deal UUID — a free-typed project name would be written to
@@ -17148,14 +17146,14 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   prs.forEach(p=>{ if(p.acctStatus){const key=p.poNumber||p.id;(byPO[key]=byPO[key]||[]).push(p);} });
   Object.entries(byPO).forEach(([key,items])=>{
     const gross=items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
-    const lineDiscTotal=items.reduce((s,p)=>{const base=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);if(p.discType==="pct")return s+base*(n(p.discValue)/100);if(p.discType==="fixed")return s+Math.min(n(p.discValue),base);return s;},0);
-    const afterLines=gross-lineDiscTotal;
     const d=items.find(i=>n(i.poDiscValue)>0);
-    const discount=(()=>{if(!d)return 0;if(d.poDiscType==="pct")return afterLines*(n(d.poDiscValue)/100);if(d.poDiscType==="fixed")return Math.min(n(d.poDiscValue),afterLines);return 0;})();
+    const poDisc=(()=>{if(!d)return 0;if(d.poDiscType==="pct")return gross*(n(d.poDiscValue)/100);if(d.poDiscType==="fixed")return Math.min(n(d.poDiscValue),gross);return 0;})();
+    const afterPo=gross-poDisc;
+    const amount=Math.round((afterPo+(items[0]?.withVat?afterPo*0.12:0))*100)/100;
     const a=items.find(i=>i.acctStatus)||items[0];
     docs.push({kind:"PO",key:"po:"+key,number:items[0].poNumber||"(no PO #)",payee:items[0].supplier||"—",
       projects:[...new Set(items.map(i=>i.projectName).filter(Boolean))].join(", ")||"—",
-      amount:gross-discount,acct:a,lines:items,
+      amount,acct:a,lines:items,
       apply:changes=>items.forEach(i=>updatePR(i.id,changes,{silent:true}))});
   });
   (swos||[]).forEach(w=>{
@@ -17394,22 +17392,20 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
-  // Canonical PO total — gross − line discounts − PO-level discount (+ VAT), the
-  // same formula the printed PO and the auto-created payable use (syncPoPayable).
-  // The PO list row must show THIS, not a bare qty×cost gross, so the amount
-  // doesn't appear to "change" when the PO is opened/printed.
+  // Canonical PO total — gross − PO-level discount (+ VAT), the same formula the
+  // printed PO and the auto-created payable use (syncPoPayable). The PO list row
+  // must show THIS, not a bare qty×cost gross, so the amount doesn't appear to
+  // "change" when the PO is opened/printed.
   const poTotalOf=(its)=>{
     const gross=(its||[]).reduce((s,i)=>s+(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty),0);
-    const lineDisc=(its||[]).reduce((s,i)=>{const b=(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty);if(i.discType==="pct")return s+b*(n(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(n(i.discValue),b);return s;},0);
-    const afterLine=gross-lineDisc;
     const pdt=its?.[0]?.poDiscType||"none",pdv=n(its?.[0]?.poDiscValue);
-    const poDisc=pdt==="pct"?afterLine*(pdv/100):pdt==="fixed"?Math.min(pdv,afterLine):0;
-    const afterPo=afterLine-poDisc;
+    const poDisc=pdt==="pct"?gross*(pdv/100):pdt==="fixed"?Math.min(pdv,gross):0;
+    const afterPo=gross-poDisc;
     return Math.round((afterPo+(its?.[0]?.withVat?afterPo*0.12:0))*100)/100;
   };
 
   function emptyPoItem(){
-    return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
+    return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0};
   }
 
   const nextPoNo=()=>claimDocNumber("PO",prs.map(p=>p.poNumber));
@@ -17446,8 +17442,6 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       qty:pr.qty||1,
       unit:pr.unit||"pcs",
       estUnitCost:pr.estUnitCost||0,
-      discType:pr.discType||"none",
-      discValue:pr.discValue||0,
     })));
     setEditingPrIds(items.map(i=>i.id));
     setMode("newpo");
@@ -17455,15 +17449,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 
   const printPO=(poNo,supplierName,poD,items,poDiscType,poDiscVal,withVat)=>{
     const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const calcLD=(i)=>{const base=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);if(i.discType==="pct")return base*(Number(i.discValue||0)/100);if(i.discType==="fixed")return Math.min(Number(i.discValue||0),base);return 0;};
     const subtotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
-    const totalLineDisc=items.reduce((s,i)=>s+calcLD(i),0);
-    const afterLineDisc=subtotal-totalLineDisc;
-    const poDisc=poDiscType==="pct"?afterLineDisc*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),afterLineDisc):0;
-    const grandTotal=afterLineDisc-poDisc;
+    const poDisc=poDiscType==="pct"?subtotal*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),subtotal):0;
+    const grandTotal=subtotal-poDisc;
     const vatAmt=withVat?grandTotal*0.12:0;
     const totalWithVat=grandTotal+vatAmt;
-    const hasDiscount=totalLineDisc>0||poDisc>0;
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
     const approvedBy="Marian Prile";
     const receivedBy=supplierName||"";
@@ -17473,10 +17463,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       const deal=i.projectId==="__gmd_stocks__"?null:allProjDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
       const lineGross=unitCost*Number(i.qty||1);
-      const lineDisc=calcLD(i);
-      const lineNet=lineGross-lineDisc;
-      const discCell=lineDisc>0?`<span style="color:#059669;font-size:10px"> −${fmt(lineDisc)}</span>`:"";
-      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal):(i.projectName||"—")}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineGross)}${discCell}</td><td style="text-align:right;font-weight:700">${fmt(lineNet)}</td></tr>`;
+      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal):(i.projectName||"—")}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right;font-weight:700">${fmt(lineGross)}</td></tr>`;
     }).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
 <style>
@@ -17513,13 +17500,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 </div>
 <div class="meta-proj"><label>Project(s)</label><span>${projectList}</span></div>
 <table>
-  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Gross</th><th style="text-align:right">Net</th></tr></thead>
+  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Amount</th></tr></thead>
   <tbody>${rows}</tbody>
-  ${hasDiscount&&totalLineDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">Line Item Discounts</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(totalLineDisc)}</td></tr>`:""}
-  ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
-  ${withVat?`<tr style="background:#f8fafc"><td colspan="7" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="7" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
-  <tr class="total-row"><td colspan="7" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
-  ${withVat?`<tr><td colspan="8" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
+  ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="6" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
+  ${withVat?`<tr style="background:#f8fafc"><td colspan="6" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="6" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
+  <tr class="total-row"><td colspan="6" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
+  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
@@ -17534,12 +17520,6 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const addPoItem=()=>setPoItems(p=>[...p,emptyPoItem()]);
   const removePoItem=(id)=>setPoItems(p=>p.filter(i=>i._id!==id));
   const updatePoItem=(id,k,v)=>setPoItems(p=>p.map(i=>i._id===id?{...i,[k]:v}:i));
-  const calcLineDisc=(item)=>{
-    const base=n(item.estUnitCost)*n(item.qty);
-    if(item.discType==="pct") return base*(n(item.discValue)/100);
-    if(item.discType==="fixed") return Math.min(n(item.discValue),base);
-    return 0;
-  };
   const calcPoLevelDisc=(subtotal)=>{
     if(poLevelDiscType==="pct") return subtotal*(n(poLevelDiscValue)/100);
     if(poLevelDiscType==="fixed") return Math.min(n(poLevelDiscValue),subtotal);
@@ -17564,7 +17544,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       const deal=activeDeals.find(d=>d.id===item.projectId);
       return{itemName:item.itemName,category:item.category,budgetCategory:item.budgetCategory,
         qty:Number(item.qty)||1,unit:item.unit,estUnitCost:Number(item.estUnitCost)||0,
-        discType:item.discType||"none",discValue:item.discValue||0,
+        discType:"none",discValue:0,
         poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
         projectId:item.projectId,projectName:deal?.client||item.projectName||"",
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
@@ -17727,10 +17707,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   if(mode==="newpo"){
     const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectName?.trim()&&i.itemName.trim());
     const subtotalGross=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
-    const totalLineDiscAmt=poItems.reduce((s,i)=>s+calcLineDisc(i),0);
-    const afterLines=subtotalGross-totalLineDiscAmt;
-    const poLevelDiscAmt=calcPoLevelDisc(afterLines);
-    const grandTotal=afterLines-poLevelDiscAmt;
+    const poLevelDiscAmt=calcPoLevelDisc(subtotalGross);
+    const grandTotal=subtotalGross-poLevelDiscAmt;
     return(
       <div>
         <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
@@ -17797,24 +17775,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                     <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1} style={{borderColor:!(Number(item.qty)>0)?"#ef4444":undefined}}/>{!(Number(item.qty)>0)&&<div style={{fontSize:".66rem",color:"#ef4444",marginTop:2}}>Required</div>}</Fld>
                     <Fld label="Unit"><input list="po-units-dl" value={item.unit} onChange={e=>updatePoItem(item._id,"unit",e.target.value)} placeholder="pcs, sqm…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/></Fld>
                     <Fld label="Est Unit Cost (₱)"><Inp type="number" value={item.estUnitCost} onChange={e=>updatePoItem(item._id,"estUnitCost",e.target.value)} placeholder="0"/></Fld>
-                    <Fld label="Item Discount">
-                      <div style={{display:"flex",gap:6}}>
-                        <Sel value={item.discType||"none"} onChange={e=>updatePoItem(item._id,"discType",e.target.value)} style={{flex:"0 0 80px"}}>
-                          <option value="none">None</option>
-                          <option value="pct">%</option>
-                          <option value="fixed">₱</option>
-                        </Sel>
-                        {item.discType!=="none"&&<Inp type="number" value={item.discValue||""} onChange={e=>updatePoItem(item._id,"discValue",e.target.value)} placeholder={item.discType==="pct"?"e.g. 10":"e.g. 500"} style={{flex:1}}/>}
-                      </div>
-                    </Fld>
                     <div style={{display:"flex",alignItems:"flex-end",paddingBottom:2}}>
-                      {(()=>{const disc=calcLineDisc(item);const net=lineTotal-disc;return(
-                        <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 12px",width:"100%"}}>
-                          <div style={{fontSize:".63rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Net Line Total</div>
-                          <div style={{fontWeight:700,color:"#3b82f6",fontSize:".9rem"}}>{fmt(net)}</div>
-                          {disc>0&&<div style={{fontSize:".63rem",color:"#059669",marginTop:1}}>−{fmt(disc)} off</div>}
-                        </div>
-                      );})()}
+                      <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 12px",width:"100%"}}>
+                        <div style={{fontSize:".63rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Line Total</div>
+                        <div style={{fontWeight:700,color:"#3b82f6",fontSize:".9rem"}}>{fmt(lineTotal)}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -17852,17 +17817,14 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
           {/* Totals summary */}
           {(()=>{const vat=poWithVat?grandTotal*0.12:0;const totalWithVat=grandTotal+vat;return(
           <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
-            {(totalLineDiscAmt>0||poLevelDiscAmt>0)&&(
+            {poLevelDiscAmt>0&&(
               <>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#64748b",marginBottom:4}}>
                   <span>Subtotal (gross)</span><span>{fmt(subtotalGross)}</span>
                 </div>
-                {totalLineDiscAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
-                  <span>Line item discounts</span><span>−{fmt(totalLineDiscAmt)}</span>
-                </div>}
-                {poLevelDiscAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
                   <span>PO-level discount</span><span>−{fmt(poLevelDiscAmt)}</span>
-                </div>}
+                </div>
                 <div style={{borderTop:"1.5px solid #bfdbfe",marginTop:6,paddingTop:6}}/>
               </>
             )}
