@@ -1,11 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { logClientError } from './supabaseClient';
 
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
-  componentDidCatch(e, info) { console.error('[FabHub crash]', e, info); }
+  componentDidCatch(e, info) { console.error('[FabHub crash]', e, info); try { logClientError(e, info, 'boot'); } catch (_) {} }
   render() {
     if (this.state.error) {
       return (

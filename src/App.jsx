@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
-import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb} from './data/mappers';
+import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
@@ -1431,7 +1431,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
 class ErrorBoundary extends React.Component{
   constructor(p){super(p);this.state={err:null};}
   static getDerivedStateFromError(e){return{err:e};}
-  componentDidCatch(e,info){console.error("FabHub render error:",e,info);}
+  componentDidCatch(e,info){console.error("FabHub render error:",e,info);try{logClientError(e,info,"app-root");}catch(_){}}
   render(){
     if(this.state.err) return(
       <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -1449,6 +1449,42 @@ class ErrorBoundary extends React.Component{
             If this keeps happening, send a screenshot to your system admin.
           </div>
         </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+// ── PER-VIEW ERROR BOUNDARY ───────────────────────────────────────────────
+// The top-level ErrorBoundary (index.js / above) is a last resort: any throw
+// inside it blanks the ENTIRE app. This lighter boundary wraps only the active
+// view's content (inside Wrap), so a render error in one page (e.g. BOQ)
+// degrades to a small inline card while the sidebar/nav stay usable and every
+// OTHER page keeps working. Render it with key={page} so navigating away
+// mounts a fresh instance and clears the error automatically.
+class ViewErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(e){return{err:e};}
+  componentDidCatch(e,info){
+    console.error("FabHub view error:",e,info);
+    // Best-effort crash telemetry — logClientError is itself fail-safe.
+    try{ logClientError(e,info,this.props.view); }catch(_){}
+  }
+  render(){
+    if(this.state.err) return(
+      <div style={{background:"#fff",borderRadius:14,padding:"28px 24px",maxWidth:520,margin:"32px auto",textAlign:"center",border:"1.5px solid #fecaca",boxShadow:"0 4px 20px rgba(0,0,0,.06)"}}>
+        <div style={{fontSize:"2rem",marginBottom:10}}>⚠️</div>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:8}}>This page hit an error</div>
+        <div style={{color:"#64748b",fontSize:".82rem",marginBottom:18,lineHeight:1.6}}>
+          The rest of FabHub is still working — your other pages and unsaved changes are unaffected. You can go back to the dashboard and try again.
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+          {this.props.onHome&&<button onClick={()=>{this.setState({err:null});this.props.onHome();}}
+            style={{background:"#1e293b",border:"none",borderRadius:8,padding:"9px 20px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".85rem"}}>← Back to Dashboard</button>}
+          <button onClick={()=>window.location.reload()}
+            style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 20px",color:"#334155",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".85rem"}}>🔄 Reload</button>
+        </div>
+        <div style={{marginTop:16,fontSize:".72rem",color:"#94a3b8",wordBreak:"break-word"}}>{this.state.err?.message||"Unknown error"}</div>
       </div>
     );
     return this.props.children;
@@ -2637,7 +2673,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs
+          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -2674,6 +2710,7 @@ export default function App(){
         if(idb[KEYS.vouchers])    setVouchers(idb[KEYS.vouchers]);
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
+        if(idb[KEYS.ceReqs])      setCeReqs(idb[KEYS.ceReqs]);
       } catch(err){ console.error("IDB load error:", err); }
       _log("IndexedDB cache read → app interactive",_t0);
       setReady(true);
@@ -2742,6 +2779,8 @@ export default function App(){
             if(_vouchers){setVouchers(prev=>mergeLocalOnly(_vouchers,prev));idbE.push([KEYS.vouchers,_vouchers]);}
             const _dl=data.dailyLogs?.length?data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at})):null;
             if(_dl){setDailyLogs(prev=>mergeLocalOnly(_dl,prev));idbE.push([KEYS.dailylogs,_dl]);}
+            const _ceReqs=data.ceReqs?.length?data.ceReqs.map(ceReqFromSb):null;
+            if(_ceReqs){setCeReqs(prev=>mergeLocalOnly(_ceReqs,prev));idbE.push([KEYS.ceReqs,_ceReqs]);}
             if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mergeLocalOnly(bl,prev));idbE.push([KEYS.blockers,bl]);localStorage.setItem(KEYS.blockers,JSON.stringify(bl));}
             if(data.settings?.botsettings){const bs=data.settings.botsettings;setBotSettings(prev=>({...bs,token:bs.token||prev.token||sessionStorage.getItem('fabhub:bottoken')||""}));if(bs.token){sessionStorage.setItem('fabhub:bottoken',bs.token);idbE.push([KEYS.botsettings,bs]);}}
             const _drfs=data.drfs?.length?data.drfs.map(drfFromSb):null;
@@ -3001,6 +3040,7 @@ export default function App(){
     if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
+    if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
 
@@ -3462,7 +3502,7 @@ export default function App(){
   // up immediately and failed writes are queued/retried instead of dropped.
   const addCEReq=(rec)=>{
     const nr={...rec,id:rec.id||uid(),created_at:rec.created_at||new Date().toISOString()};
-    setCeReqs(p=>[...p,{id:nr.id,clientName:nr.client_name,projectName:nr.project_name,location:nr.location,projectType:nr.project_type,priority:nr.priority,status:nr.status,submittedBy:nr.submitted_by,targetDeadline:nr.target_deadline,submissionDeadline:nr.submission_deadline,targetBudget:nr.target_budget,targetMargin:nr.target_margin,plansLink:nr.plans_link,skpLink:nr.skp_link,scheduleOfFinish:nr.schedule_of_finish,notes:nr.notes,ceNotes:nr.ce_notes,bidAmount:nr.bid_amount,bidMarginPct:nr.bid_margin_pct,awarded:nr.awarded,awardDate:nr.award_date,dealId:nr.deal_id,createdAt:nr.created_at}]);
+    setCeReqs(p=>[...p,ceReqFromSb(nr)]);
     return isSupabaseReady()?sbUpsert('ce_requests',nr,'id').catch(()=>false):Promise.resolve(true);
   };
   const updateCEReq=(id,updates)=>{
@@ -3955,12 +3995,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const ceReqSub = sbSubscribe('ce-rt', 'ce_requests', payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
-        const mapped={id:rec.id,clientName:rec.client_name,projectName:rec.project_name,location:rec.location,
-          projectType:rec.project_type,priority:rec.priority,status:rec.status,submittedBy:rec.submitted_by,
-          targetDeadline:rec.target_deadline,submissionDeadline:rec.submission_deadline,targetBudget:rec.target_budget,
-          targetMargin:rec.target_margin,plansLink:rec.plans_link,skpLink:rec.skp_link,scheduleOfFinish:rec.schedule_of_finish,
-          notes:rec.notes,ceNotes:rec.ce_notes,bidAmount:rec.bid_amount,bidMarginPct:rec.bid_margin_pct,
-          awarded:rec.awarded,awardDate:rec.award_date,dealId:rec.deal_id,createdAt:rec.created_at};
+        const mapped=ceReqFromSb(rec);
         setCeReqs(cs=>{const ex=cs.find(c=>c.id===rec.id);return ex?cs.map(c=>c.id===rec.id?{...c,...mapped}:c):[mapped,...cs];});
       }
       if(eventType==='DELETE') setCeReqs(cs=>cs.filter(c=>c.id!==oldRow.id));
@@ -5912,15 +5947,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const existing=payables.find(p=>p.poId===poNo);
     const issued=active.some(p=>["PO Issued","Partially Delivered","Delivered"].includes(p.status));
     if(!issued) return existing||null; // still Draft/Pending — no payable yet
-    // True amount owed: gross − line discounts − PO-level discount (+ VAT), the
-    // same formula the printed PO and on-screen Grand Total use. Actual unit cost
-    // wins over the estimate once it's known.
+    // True amount owed: gross − PO-level discount (+ VAT), the same formula the
+    // printed PO and on-screen Grand Total use. Actual unit cost wins over the
+    // estimate once it's known.
     const gross=active.reduce((s,i)=>s+(N(i.actUnitCost)||N(i.estUnitCost))*N(i.qty),0);
-    const lineDisc=active.reduce((s,i)=>{const b=(N(i.actUnitCost)||N(i.estUnitCost))*N(i.qty);if(i.discType==="pct")return s+b*(N(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(N(i.discValue),b);return s;},0);
-    const afterLine=gross-lineDisc;
     const pdt=active[0]?.poDiscType||"none",pdv=N(active[0]?.poDiscValue);
-    const poDisc=pdt==="pct"?afterLine*(pdv/100):pdt==="fixed"?Math.min(pdv,afterLine):0;
-    const afterPo=afterLine-poDisc;
+    const poDisc=pdt==="pct"?gross*(pdv/100):pdt==="fixed"?Math.min(pdv,gross):0;
+    const afterPo=gross-poDisc;
     const amount=Math.round((afterPo+(active[0]?.withVat?afterPo*0.12:0))*100)/100;
     if(!(amount>0)) return existing||null;
     // Only link a real deal UUID — a free-typed project name would be written to
@@ -6525,7 +6558,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ← Dashboard
             </button>
           )}
-          {children}
+          <ViewErrorBoundary key={page} view={page} onHome={()=>{setPage("home");setFromHome(false);}}>
+            {children}
+          </ViewErrorBoundary>
         </div>
       {showExportRef.current&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
@@ -16214,6 +16249,9 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
   const[showForm,setShowForm]=React.useState(false);
   const[editId,setEditId]=React.useState(null);
   const[detailId,setDetailId]=React.useState(null);
+  const[trackQ,setTrackQ]=React.useState("");
+  const[trackStatus,setTrackStatus]=React.useState("All");
+  const[trackPriority,setTrackPriority]=React.useState("All");
   const isQS=["Manager","QS"].includes(role);
   const isSales=["Manager","Sales"].includes(role);
   const TYPES={kiosk:"Kiosk",retail:"Retail Fit-out",office:"Office",fnb:"F&B / Restaurant",signage:"Signage",event:"Event / Activation",repair:"Repair / Refurb",other:"Other"};
@@ -16245,6 +16283,36 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
   const winRate=submitted.length?Math.round(won.length/submitted.length*100):0;
   const avgMarginWon=won.length?Math.round(won.reduce((s,r)=>s+Number(r.bidMarginPct||0),0)/won.length):0;
   const byType=Object.entries(TYPES).map(([k,label])=>{const sub=submitted.filter(r=>r.projectType===k);const w=sub.filter(r=>r.awarded==="Won");return{key:k,label,total:sub.length,won:w.length,rate:sub.length?Math.round(w.length/sub.length*100):0};}).filter(x=>x.total>0);
+
+  // ── Tracking hub: deal linking, master list, SLA ──
+  const dealById=id=>id?(deals||[]).find(d=>String(d.id)===String(id)):null;
+  const nowMs=Date.now();
+  const trackRows=React.useMemo(()=>{
+    const qq=trackQ.trim().toLowerCase();
+    return [...ceReqs]
+      .filter(r=>trackStatus==="All"||r.status===trackStatus)
+      .filter(r=>trackPriority==="All"||r.priority===trackPriority)
+      .filter(r=>!qq||[r.clientName,r.projectName,r.submittedBy,r.location].some(v=>String(v||"").toLowerCase().includes(qq)))
+      .sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  },[ceReqs,trackQ,trackStatus,trackPriority]);
+  const openReqs=ceReqs.filter(r=>r.status!=="Done");
+  const overdueCount=openReqs.filter(r=>r.targetDeadline&&new Date(r.targetDeadline).getTime()<nowMs).length;
+  const dueSoonCount=openReqs.filter(r=>{const dd=daysDiff(r.targetDeadline);return dd!==null&&dd>=0&&dd<=3;}).length;
+  const agingCount=openReqs.filter(r=>r.createdAt&&(nowMs-new Date(r.createdAt).getTime())/864e5>14).length;
+  const exportTracking=()=>{
+    if(!window.XLSX){toastEmit?.("Excel library still loading — please try again in a moment","error");return;}
+    const wb=window.XLSX.utils.book_new();
+    const header=["Client","Project","Location","Type","Priority","Status","Submitted By","Submitted","Days Pending","Target Deadline","Deadline Status","Submission Deadline","Linked Deal","Deal Stage","CE Outcome","Bid Amount","Margin %","Notes"];
+    const body=trackRows.map(r=>{
+      const d=dealById(r.dealId);
+      const dp=r.createdAt?Math.round((nowMs-new Date(r.createdAt).getTime())/864e5):"";
+      const dl=daysLabel(r.targetDeadline);
+      return [r.clientName||"",r.projectName||"",r.location||"",TYPES[r.projectType]||r.projectType||"",r.priority||"",r.status||"",r.submittedBy||"",r.createdAt?String(r.createdAt).slice(0,10):"",dp,r.targetDeadline||"",dl?dl.txt:"",r.submissionDeadline||"",d?(projDisplayName(d)||d.client||""):"",d?d.stage:"",r.awarded||"",r.bidAmount||"",r.bidMarginPct||"",r.notes||""];
+    });
+    window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet([header,...body]),"CE Tracking");
+    window.XLSX.writeFile(wb,`CE-Tracking-${new Date().toISOString().slice(0,10)}.xlsx`);
+    toastEmit?.(`Exported ${trackRows.length} request${trackRows.length!==1?"s":""}`,"success");
+  };
 
   const Card=({r})=>{
     const dl=daysLabel(r.targetDeadline);
@@ -16309,7 +16377,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
       </div>
       {/* Tabs */}
       <div style={{display:"flex",gap:4,marginBottom:16,borderBottom:"1.5px solid #e2e8f0",paddingBottom:8}}>
-        {[["queue","📋 Queue"],["winloss","🏆 Win/Loss"],["analysis","📊 Analysis"]].map(([t,l])=>(
+        {[["queue","📋 Queue"],["tracking","🗂 Tracking"],["winloss","🏆 Win/Loss"],["analysis","📊 Analysis"]].map(([t,l])=>(
           <button key={t} onClick={()=>setTab(t)} style={{background:tab===t?"#1e293b":"transparent",border:"none",borderRadius:7,padding:"6px 16px",fontFamily:"inherit",fontSize:".78rem",fontWeight:tab===t?700:500,color:tab===t?"#fff":"#64748b",cursor:"pointer"}}>{l}</button>
         ))}
       </div>
@@ -16343,6 +16411,77 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
               }).map(r=><Card key={r.id} r={r}/>)}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── TRACKING TAB ── master list, deal linking, SLA/deadline tracking */}
+      {tab==="tracking"&&(
+        <div>
+          {/* SLA summary */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10,marginBottom:16}}>
+            {[["Overdue",overdueCount,"#ef4444"],["Due ≤ 3 days",dueSoonCount,"#f59e0b"],["Aging > 14 days",agingCount,"#64748b"],["Total Requests",ceReqs.length,"#8b5cf6"]].map(([l,v,c])=>(
+              <div key={l} style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px"}}>
+                <div style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{l}</div>
+                <div style={{fontSize:"1.3rem",fontWeight:800,color:c,marginTop:4}}>{v}</div>
+              </div>
+            ))}
+          </div>
+          {/* Toolbar */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:10}}>
+            <input value={trackQ} onChange={e=>setTrackQ(e.target.value)} placeholder="Search client, project, submitter…" style={{flex:"1 1 220px",minWidth:0,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/>
+            <select value={trackStatus} onChange={e=>setTrackStatus(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".8rem",background:"#fff",outline:"none"}}>
+              {["All","Pending","Ongoing","Done"].map(s=><option key={s} value={s}>{s==="All"?"All statuses":s}</option>)}
+            </select>
+            <select value={trackPriority} onChange={e=>setTrackPriority(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 10px",fontFamily:"inherit",fontSize:".8rem",background:"#fff",outline:"none"}}>
+              {["All","High","Normal","Low"].map(s=><option key={s} value={s}>{s==="All"?"All priorities":s}</option>)}
+            </select>
+            <button onClick={exportTracking} style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>⬇ Export Excel</button>
+          </div>
+          <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:8}}>{trackRows.length} of {ceReqs.length} shown</div>
+          {/* Master table */}
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflowX:"auto"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}>
+              <thead><tr style={{background:"#f8fafc"}}>{["Client / Project","Type","Priority","Status","Submitted","Aging","Target Deadline","Linked Deal","Outcome",""].map(h=><th key={h} style={{padding:"10px 12px",textAlign:"left",fontSize:".66rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:".5px",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>)}</tr></thead>
+              <tbody>
+                {trackRows.length===0&&<tr><td colSpan={10} style={{padding:"40px",textAlign:"center",color:"#94a3b8",fontSize:".85rem"}}>No requests match your filters.</td></tr>}
+                {trackRows.map(r=>{
+                  const d=dealById(r.dealId);
+                  const dl=daysLabel(r.targetDeadline);
+                  const isOpen=r.status!=="Done";
+                  const dp=r.createdAt?Math.round((nowMs-new Date(r.createdAt).getTime())/864e5):null;
+                  return(
+                    <tr key={r.id} style={{borderBottom:"1px solid #f1f5f9"}}>
+                      <td style={{padding:"9px 12px"}}>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{r.clientName}</div>
+                        {r.projectName&&<div style={{fontSize:".7rem",color:"#94a3b8"}}>{r.projectName}</div>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".76rem",color:"#475569",whiteSpace:"nowrap"}}>{TYPES[r.projectType]||r.projectType}</td>
+                      <td style={{padding:"9px 12px"}}><span style={{background:PRI_CLR[r.priority]+"22",color:PRI_CLR[r.priority],borderRadius:5,padding:"2px 7px",fontSize:".66rem",fontWeight:700}}>{r.priority}</span></td>
+                      <td style={{padding:"9px 12px"}}><span style={{background:STATUS_CLR[r.status]+"22",color:STATUS_CLR[r.status],borderRadius:5,padding:"2px 7px",fontSize:".66rem",fontWeight:700}}>{r.status}</span></td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",whiteSpace:"nowrap"}}>
+                        <div>{r.createdAt?String(r.createdAt).slice(0,10):"—"}</div>
+                        {r.submittedBy&&<div style={{fontSize:".68rem",color:"#94a3b8"}}>{r.submittedBy}</div>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",color:(isOpen&&dp>14)?"#ef4444":"#64748b",fontWeight:(isOpen&&dp>14)?700:400,whiteSpace:"nowrap"}}>{dp!==null?`${dp}d`:"—"}</td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",whiteSpace:"nowrap"}}>
+                        {r.targetDeadline?(<><span style={{color:"#475569"}}>{r.targetDeadline}</span>{isOpen&&dl&&<div style={{fontSize:".68rem",fontWeight:700,color:dl.clr}}>{dl.txt}</div>}</>):<span style={{color:"#cbd5e1"}}>—</span>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem"}}>
+                        {d?(<><div style={{color:"#0f172a",fontWeight:600}}>{projDisplayName(d)||d.client}</div><div style={{fontSize:".66rem",color:"#94a3b8"}}>{d.stage}</div></>):<span style={{color:"#cbd5e1"}}>—</span>}
+                      </td>
+                      <td style={{padding:"9px 12px",fontSize:".74rem",whiteSpace:"nowrap"}}>
+                        <span style={{background:AWARDED_CLR[r.awarded||"Pending"]+"22",color:AWARDED_CLR[r.awarded||"Pending"],borderRadius:5,padding:"2px 7px",fontSize:".66rem",fontWeight:700}}>{r.awarded||"Pending"}</span>
+                        {r.bidAmount>0&&<div style={{fontSize:".68rem",color:"#059669",fontWeight:700,marginTop:2}}>{fmtPHP2(r.bidAmount)}</div>}
+                      </td>
+                      <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
+                        {(isQS||isSales)&&<button onClick={()=>openEdit(r)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"4px 9px",color:"#475569",fontFamily:"inherit",fontSize:".7rem",cursor:"pointer"}}>✏</button>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -17007,14 +17146,14 @@ function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role
   prs.forEach(p=>{ if(p.acctStatus){const key=p.poNumber||p.id;(byPO[key]=byPO[key]||[]).push(p);} });
   Object.entries(byPO).forEach(([key,items])=>{
     const gross=items.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
-    const lineDiscTotal=items.reduce((s,p)=>{const base=(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty);if(p.discType==="pct")return s+base*(n(p.discValue)/100);if(p.discType==="fixed")return s+Math.min(n(p.discValue),base);return s;},0);
-    const afterLines=gross-lineDiscTotal;
     const d=items.find(i=>n(i.poDiscValue)>0);
-    const discount=(()=>{if(!d)return 0;if(d.poDiscType==="pct")return afterLines*(n(d.poDiscValue)/100);if(d.poDiscType==="fixed")return Math.min(n(d.poDiscValue),afterLines);return 0;})();
+    const poDisc=(()=>{if(!d)return 0;if(d.poDiscType==="pct")return gross*(n(d.poDiscValue)/100);if(d.poDiscType==="fixed")return Math.min(n(d.poDiscValue),gross);return 0;})();
+    const afterPo=gross-poDisc;
+    const amount=Math.round((afterPo+(items[0]?.withVat?afterPo*0.12:0))*100)/100;
     const a=items.find(i=>i.acctStatus)||items[0];
     docs.push({kind:"PO",key:"po:"+key,number:items[0].poNumber||"(no PO #)",payee:items[0].supplier||"—",
       projects:[...new Set(items.map(i=>i.projectName).filter(Boolean))].join(", ")||"—",
-      amount:gross-discount,acct:a,lines:items,
+      amount,acct:a,lines:items,
       apply:changes=>items.forEach(i=>updatePR(i.id,changes,{silent:true}))});
   });
   (swos||[]).forEach(w=>{
@@ -17253,22 +17392,20 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:0});
-  // Canonical PO total — gross − line discounts − PO-level discount (+ VAT), the
-  // same formula the printed PO and the auto-created payable use (syncPoPayable).
-  // The PO list row must show THIS, not a bare qty×cost gross, so the amount
-  // doesn't appear to "change" when the PO is opened/printed.
+  // Canonical PO total — gross − PO-level discount (+ VAT), the same formula the
+  // printed PO and the auto-created payable use (syncPoPayable). The PO list row
+  // must show THIS, not a bare qty×cost gross, so the amount doesn't appear to
+  // "change" when the PO is opened/printed.
   const poTotalOf=(its)=>{
     const gross=(its||[]).reduce((s,i)=>s+(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty),0);
-    const lineDisc=(its||[]).reduce((s,i)=>{const b=(n(i.actUnitCost)||n(i.estUnitCost))*n(i.qty);if(i.discType==="pct")return s+b*(n(i.discValue)/100);if(i.discType==="fixed")return s+Math.min(n(i.discValue),b);return s;},0);
-    const afterLine=gross-lineDisc;
     const pdt=its?.[0]?.poDiscType||"none",pdv=n(its?.[0]?.poDiscValue);
-    const poDisc=pdt==="pct"?afterLine*(pdv/100):pdt==="fixed"?Math.min(pdv,afterLine):0;
-    const afterPo=afterLine-poDisc;
+    const poDisc=pdt==="pct"?gross*(pdv/100):pdt==="fixed"?Math.min(pdv,gross):0;
+    const afterPo=gross-poDisc;
     return Math.round((afterPo+(its?.[0]?.withVat?afterPo*0.12:0))*100)/100;
   };
 
   function emptyPoItem(){
-    return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0,discType:"none",discValue:0};
+    return {_id:Math.random().toString(36).slice(2),_existingId:null,projectId:"",projectName:"",itemName:"",category:"Materials",budgetCategory:"Materials",qty:1,unit:"pcs",estUnitCost:0};
   }
 
   const nextPoNo=()=>claimDocNumber("PO",prs.map(p=>p.poNumber));
@@ -17305,8 +17442,6 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       qty:pr.qty||1,
       unit:pr.unit||"pcs",
       estUnitCost:pr.estUnitCost||0,
-      discType:pr.discType||"none",
-      discValue:pr.discValue||0,
     })));
     setEditingPrIds(items.map(i=>i.id));
     setMode("newpo");
@@ -17314,15 +17449,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 
   const printPO=(poNo,supplierName,poD,items,poDiscType,poDiscVal,withVat)=>{
     const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
-    const calcLD=(i)=>{const base=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);if(i.discType==="pct")return base*(Number(i.discValue||0)/100);if(i.discType==="fixed")return Math.min(Number(i.discValue||0),base);return 0;};
     const subtotal=items.reduce((s,i)=>{const cost=(Number(i.actUnitCost)||Number(i.estUnitCost)||0)*Number(i.qty||1);return s+cost;},0);
-    const totalLineDisc=items.reduce((s,i)=>s+calcLD(i),0);
-    const afterLineDisc=subtotal-totalLineDisc;
-    const poDisc=poDiscType==="pct"?afterLineDisc*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),afterLineDisc):0;
-    const grandTotal=afterLineDisc-poDisc;
+    const poDisc=poDiscType==="pct"?subtotal*(Number(poDiscVal||0)/100):poDiscType==="fixed"?Math.min(Number(poDiscVal||0),subtotal):0;
+    const grandTotal=subtotal-poDisc;
     const vatAmt=withVat?grandTotal*0.12:0;
     const totalWithVat=grandTotal+vatAmt;
-    const hasDiscount=totalLineDisc>0||poDisc>0;
     const preparedBy=items[0]?.requestedBy||items[0]?.createdBy||"";
     const approvedBy="Marian Prile";
     const receivedBy=supplierName||"";
@@ -17332,10 +17463,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       const deal=i.projectId==="__gmd_stocks__"?null:allProjDeals.find(d=>d.id===i.projectId);
       const unitCost=Number(i.actUnitCost)||Number(i.estUnitCost)||0;
       const lineGross=unitCost*Number(i.qty||1);
-      const lineDisc=calcLD(i);
-      const lineNet=lineGross-lineDisc;
-      const discCell=lineDisc>0?`<span style="color:#059669;font-size:10px"> −${fmt(lineDisc)}</span>`:"";
-      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal):(i.projectName||"—")}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right">${fmt(lineGross)}${discCell}</td><td style="text-align:right;font-weight:700">${fmt(lineNet)}</td></tr>`;
+      return `<tr><td>${idx+1}</td><td>${i.itemName||""}</td><td>${deal?projDisplayName(deal):(i.projectName||"—")}</td><td>${i.category||""}</td><td style="text-align:center">${i.qty} ${i.unit||""}</td><td style="text-align:right">${fmt(unitCost)}</td><td style="text-align:right;font-weight:700">${fmt(lineGross)}</td></tr>`;
     }).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PO — ${poNo}</title>
 <style>
@@ -17372,13 +17500,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
 </div>
 <div class="meta-proj"><label>Project(s)</label><span>${projectList}</span></div>
 <table>
-  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Gross</th><th style="text-align:right">Net</th></tr></thead>
+  <thead><tr><th>#</th><th>Description</th><th>Project</th><th>Category</th><th style="text-align:center">Qty</th><th style="text-align:right">Unit Cost</th><th style="text-align:right">Amount</th></tr></thead>
   <tbody>${rows}</tbody>
-  ${hasDiscount&&totalLineDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">Line Item Discounts</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(totalLineDisc)}</td></tr>`:""}
-  ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="7" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
-  ${withVat?`<tr style="background:#f8fafc"><td colspan="7" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="7" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
-  <tr class="total-row"><td colspan="7" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
-  ${withVat?`<tr><td colspan="8" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
+  ${poDisc>0?`<tr style="background:#f0fdf4"><td colspan="6" style="text-align:right;font-size:11px;color:#059669">PO-Level Discount (${poDiscType==="pct"?poDiscVal+"%":"Fixed"})</td><td style="text-align:right;color:#059669;font-weight:700">−${fmt(poDisc)}</td></tr>`:""}
+  ${withVat?`<tr style="background:#f8fafc"><td colspan="6" style="text-align:right;font-size:11px;color:#64748b">Ex-VAT Amount</td><td style="text-align:right;color:#64748b">${fmt(grandTotal)}</td></tr><tr style="background:#fffbeb"><td colspan="6" style="text-align:right;font-size:11px;color:#b45309;font-weight:700">VAT 12% (OR)</td><td style="text-align:right;color:#b45309;font-weight:700">+${fmt(vatAmt)}</td></tr>`:""}
+  <tr class="total-row"><td colspan="6" style="text-align:right">${withVat?"TOTAL (VAT Inclusive)":"Grand Total"}</td><td style="text-align:right">${fmt(totalWithVat)}</td></tr>
+  ${withVat?`<tr><td colspan="7" style="font-size:9px;color:#94a3b8;text-align:right;padding-top:4px">Official Receipt (OR) — VAT Registered Supplier · TIN of GMD Pro Solutions applies</td></tr>`:""}
 </table>
 <div class="sig">
   <div class="sig-box">Prepared by<br><br><br><div style="border-top:1px solid #94a3b8;padding-top:6px;margin-top:4px"><strong style="font-size:11px;color:#0f172a">${preparedBy||"&nbsp;"}</strong><br>Procurement</div></div>
@@ -17393,12 +17520,6 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const addPoItem=()=>setPoItems(p=>[...p,emptyPoItem()]);
   const removePoItem=(id)=>setPoItems(p=>p.filter(i=>i._id!==id));
   const updatePoItem=(id,k,v)=>setPoItems(p=>p.map(i=>i._id===id?{...i,[k]:v}:i));
-  const calcLineDisc=(item)=>{
-    const base=n(item.estUnitCost)*n(item.qty);
-    if(item.discType==="pct") return base*(n(item.discValue)/100);
-    if(item.discType==="fixed") return Math.min(n(item.discValue),base);
-    return 0;
-  };
   const calcPoLevelDisc=(subtotal)=>{
     if(poLevelDiscType==="pct") return subtotal*(n(poLevelDiscValue)/100);
     if(poLevelDiscType==="fixed") return Math.min(n(poLevelDiscValue),subtotal);
@@ -17423,7 +17544,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       const deal=activeDeals.find(d=>d.id===item.projectId);
       return{itemName:item.itemName,category:item.category,budgetCategory:item.budgetCategory,
         qty:Number(item.qty)||1,unit:item.unit,estUnitCost:Number(item.estUnitCost)||0,
-        discType:item.discType||"none",discValue:item.discValue||0,
+        discType:"none",discValue:0,
         poDiscType:poLevelDiscType,poDiscValue:poLevelDiscValue,withVat:poWithVat,
         projectId:item.projectId,projectName:deal?.client||item.projectName||"",
         supplier:poSupplier,poNumber:poNo,poDate:poDate,
@@ -17586,10 +17707,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   if(mode==="newpo"){
     const canSubmit=poSupplier.trim()&&poNumber.trim()&&poItems.every(i=>i.projectName?.trim()&&i.itemName.trim());
     const subtotalGross=poItems.reduce((s,i)=>s+n(i.estUnitCost)*n(i.qty),0);
-    const totalLineDiscAmt=poItems.reduce((s,i)=>s+calcLineDisc(i),0);
-    const afterLines=subtotalGross-totalLineDiscAmt;
-    const poLevelDiscAmt=calcPoLevelDisc(afterLines);
-    const grandTotal=afterLines-poLevelDiscAmt;
+    const poLevelDiscAmt=calcPoLevelDisc(subtotalGross);
+    const grandTotal=subtotalGross-poLevelDiscAmt;
     return(
       <div>
         <button onClick={()=>setMode("list")} style={{background:"none",border:"none",color:"#3b82f6",cursor:"pointer",fontFamily:"inherit",fontSize:".84rem",fontWeight:700,marginBottom:14,padding:0}}>← Back to Purchase Orders</button>
@@ -17656,24 +17775,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                     <Fld label="Qty"><Inp type="number" value={item.qty} onChange={e=>updatePoItem(item._id,"qty",e.target.value)} min={1} style={{borderColor:!(Number(item.qty)>0)?"#ef4444":undefined}}/>{!(Number(item.qty)>0)&&<div style={{fontSize:".66rem",color:"#ef4444",marginTop:2}}>Required</div>}</Fld>
                     <Fld label="Unit"><input list="po-units-dl" value={item.unit} onChange={e=>updatePoItem(item._id,"unit",e.target.value)} placeholder="pcs, sqm…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}/></Fld>
                     <Fld label="Est Unit Cost (₱)"><Inp type="number" value={item.estUnitCost} onChange={e=>updatePoItem(item._id,"estUnitCost",e.target.value)} placeholder="0"/></Fld>
-                    <Fld label="Item Discount">
-                      <div style={{display:"flex",gap:6}}>
-                        <Sel value={item.discType||"none"} onChange={e=>updatePoItem(item._id,"discType",e.target.value)} style={{flex:"0 0 80px"}}>
-                          <option value="none">None</option>
-                          <option value="pct">%</option>
-                          <option value="fixed">₱</option>
-                        </Sel>
-                        {item.discType!=="none"&&<Inp type="number" value={item.discValue||""} onChange={e=>updatePoItem(item._id,"discValue",e.target.value)} placeholder={item.discType==="pct"?"e.g. 10":"e.g. 500"} style={{flex:1}}/>}
-                      </div>
-                    </Fld>
                     <div style={{display:"flex",alignItems:"flex-end",paddingBottom:2}}>
-                      {(()=>{const disc=calcLineDisc(item);const net=lineTotal-disc;return(
-                        <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 12px",width:"100%"}}>
-                          <div style={{fontSize:".63rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Net Line Total</div>
-                          <div style={{fontWeight:700,color:"#3b82f6",fontSize:".9rem"}}>{fmt(net)}</div>
-                          {disc>0&&<div style={{fontSize:".63rem",color:"#059669",marginTop:1}}>−{fmt(disc)} off</div>}
-                        </div>
-                      );})()}
+                      <div style={{background:"#eff6ff",borderRadius:8,padding:"8px 12px",width:"100%"}}>
+                        <div style={{fontSize:".63rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>Line Total</div>
+                        <div style={{fontWeight:700,color:"#3b82f6",fontSize:".9rem"}}>{fmt(lineTotal)}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -17711,17 +17817,14 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
           {/* Totals summary */}
           {(()=>{const vat=poWithVat?grandTotal*0.12:0;const totalWithVat=grandTotal+vat;return(
           <div style={{background:"#eff6ff",borderRadius:10,padding:"12px 16px",marginBottom:16}}>
-            {(totalLineDiscAmt>0||poLevelDiscAmt>0)&&(
+            {poLevelDiscAmt>0&&(
               <>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#64748b",marginBottom:4}}>
                   <span>Subtotal (gross)</span><span>{fmt(subtotalGross)}</span>
                 </div>
-                {totalLineDiscAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
-                  <span>Line item discounts</span><span>−{fmt(totalLineDiscAmt)}</span>
-                </div>}
-                {poLevelDiscAmt>0&&<div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
+                <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",color:"#059669",marginBottom:4}}>
                   <span>PO-level discount</span><span>−{fmt(poLevelDiscAmt)}</span>
-                </div>}
+                </div>
                 <div style={{borderTop:"1.5px solid #bfdbfe",marginTop:6,paddingTop:6}}/>
               </>
             )}
@@ -19219,6 +19322,7 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
 }
 
 function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+  const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
@@ -19377,87 +19481,86 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const win=window.open("","_blank");
     const issuedDate=new Date().toLocaleDateString("en-PH",{month:"2-digit",day:"2-digit",year:"numeric"});
     const clientAddr=[cp.billingAddress,cp.city,cp.province,cp.zipCode].filter(Boolean).join(", ");
-    win.document.write(`<!DOCTYPE html><html><head><title>Invoice ${ms.invoiceNo}</title>
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Invoice ${ms.invoiceNo}</title>
 <style>
+  @page{size:A4;margin:12mm 14mm}
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;font-size:12px;background:#fff;}
-  .page{max-width:780px;margin:0 auto;padding:36px 44px;}
-  /* Header */
-  .hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;}
-  .co-name{font-weight:900;font-size:14px;margin-bottom:4px;}
-  .co-info{font-size:11px;color:#444;line-height:1.65;}
-  .logo-box{text-align:right;}
-  .logo-hex{font-size:48px;line-height:1;}
-  .logo-text{font-size:22px;font-weight:900;letter-spacing:1px;color:#1a1a1a;}
-  .logo-text span{color:#c0883a;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#0f172a;font-size:11px;background:#fff;}
+  /* Print button */
+  .print-btn{text-align:center;padding:12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;}
+  .print-btn button{background:#1e293b;color:#fff;border:none;border-radius:6px;padding:8px 24px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:700;}
+  /* Header — matches Statement of Account template */
+  .header{background:#1e293b;padding:12px 20px;display:flex;justify-content:space-between;align-items:center;}
+  .co-name{font-size:22px;font-weight:900;color:#fff;letter-spacing:-.5px;}
+  .sub-bar{background:#1e293b;padding:2px 20px 10px;display:flex;justify-content:space-between;border-bottom:3px solid #ea580c;}
+  .tagline{color:rgba(255,255,255,.45);font-size:9.5px;}
+  .wrap{padding:16px 20px 8px;}
   /* Doc title */
-  .doc-title{font-size:22px;font-weight:700;color:#4a90d9;margin-bottom:18px;}
+  .doc-title{font-size:16px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;}
   /* Bill-to + meta grid */
-  .meta-row{display:grid;grid-template-columns:1fr auto;gap:40px;margin-bottom:24px;border-top:1px solid #ddd;border-bottom:1px solid #ddd;padding:12px 0;}
-  .bill-label{font-size:10px;font-weight:700;text-transform:uppercase;color:#888;margin-bottom:4px;letter-spacing:.5px;}
-  .bill-name{font-weight:700;font-size:13px;}
-  .bill-addr{font-size:11px;color:#555;margin-top:3px;line-height:1.6;}
-  .meta-table td{font-size:11.5px;padding:2px 0 2px 24px;vertical-align:top;}
-  .meta-table .label{color:#888;padding-left:0;white-space:nowrap;}
+  .meta-row{display:grid;grid-template-columns:1fr auto;gap:40px;margin-bottom:16px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;padding:12px 0;}
+  .bill-label{font-size:9px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:4px;letter-spacing:.5px;}
+  .bill-name{font-weight:700;font-size:13px;color:#0f172a;}
+  .bill-addr{font-size:11px;color:#475569;margin-top:3px;line-height:1.6;}
+  .meta-table td{font-size:11px;padding:2px 0 2px 24px;vertical-align:top;}
+  .meta-table .label{color:#64748b;padding-left:0;white-space:nowrap;text-transform:uppercase;font-size:9px;font-weight:700;letter-spacing:.5px;}
   .meta-table .val{font-weight:600;}
-  /* Items table */
+  /* Items table — navy header like SOA */
   table.items{width:100%;border-collapse:collapse;margin-bottom:0;}
-  table.items thead tr{background:#d6e4f0;}
-  table.items th{padding:8px 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;color:#4a4a4a;text-align:left;letter-spacing:.3px;}
+  table.items thead tr{background:#1e293b;}
+  table.items th{padding:8px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:left;letter-spacing:.5px;}
   table.items th.r{text-align:right;}
-  table.items td{padding:10px 10px;font-size:11.5px;border-bottom:1px solid #eee;vertical-align:top;}
+  table.items td{padding:9px 10px;font-size:11px;border-bottom:1px solid #f1f5f9;vertical-align:top;}
+  table.items tbody tr:nth-child(even){background:#f9fafb;}
   table.items td.r{text-align:right;white-space:nowrap;}
   table.items td.bold{font-weight:700;}
   /* Footer row: terms left, totals right */
-  .footer-row{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:0;border-top:1px dashed #ccc;padding-top:14px;}
-  .terms{font-size:11px;color:#444;line-height:1.7;}
-  .terms strong{display:block;margin-bottom:4px;font-size:11.5px;}
-  .totals-tbl{width:260px;}
-  .totals-tbl td{font-size:11.5px;padding:3px 0 3px 16px;}
-  .totals-tbl .label{color:#666;padding-left:0;}
-  .totals-tbl .sep{border-top:1px dashed #ccc;}
-  .totals-tbl .grand-sep td{border-top:2px solid #555;font-weight:900;font-size:13px;}
-  .bal{font-size:14px;font-weight:900;}
-  /* Tax summary */
+  .footer-row{display:grid;grid-template-columns:1fr auto;gap:24px;margin-top:0;border-top:1px dashed #cbd5e1;padding-top:14px;}
+  .terms{font-size:11px;color:#475569;line-height:1.7;}
+  .terms strong{display:block;margin-bottom:4px;font-size:11px;color:#0f172a;}
+  .totals-tbl{width:270px;}
+  .totals-tbl td{font-size:11px;padding:3px 0 3px 16px;}
+  .totals-tbl .label{color:#64748b;padding-left:0;}
+  .totals-tbl .sep{border-top:1px dashed #cbd5e1;}
+  .totals-tbl .grand-sep td{border-top:2px solid #1e293b;font-weight:900;font-size:13px;padding-top:8px;}
+  .totals-tbl .grand-sep .label{color:#0f172a;text-transform:uppercase;letter-spacing:.5px;}
+  /* Tax summary — navy header like SOA */
   .tax-summary{margin-top:20px;}
-  .tax-summary .ts-title{font-weight:700;color:#4a90d9;font-size:12px;margin-bottom:4px;}
+  .tax-summary .ts-title{font-weight:700;font-size:11px;margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;color:#0f172a;}
   table.ts{width:100%;border-collapse:collapse;}
-  table.ts thead tr{background:#d6e4f0;}
-  table.ts th{padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;color:#4a4a4a;text-align:right;}
+  table.ts thead tr{background:#1e293b;}
+  table.ts th{padding:6px 10px;font-size:8px;font-weight:700;text-transform:uppercase;color:rgba(255,255,255,.8);text-align:right;letter-spacing:.5px;}
   table.ts th:first-child{text-align:center;}
-  table.ts td{padding:6px 10px;font-size:11.5px;text-align:right;}
+  table.ts td{padding:6px 10px;font-size:11px;text-align:right;border-bottom:1px solid #f1f5f9;}
   table.ts td:first-child{text-align:center;}
   /* Signature */
-  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;border-top:1px solid #eee;}
-  .sig-block{font-size:11px;color:#555;}
-  .sig-line{border-top:1px solid #999;margin-top:28px;padding-top:4px;}
-  /* Print */
-  .print-btn{text-align:center;margin-top:24px;}
-  .print-btn button{padding:10px 28px;background:#1e293b;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:700;}
+  .sig-row{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:32px;padding-top:16px;}
+  .sig-block{font-size:11px;color:#64748b;}
+  .sig-line{border-top:1px solid #94a3b8;margin-top:28px;padding-top:4px;}
+  /* Company footer */
+  .co-footer{text-align:center;margin-top:22px;padding-top:10px;border-top:1px solid #e2e8f0;font-size:9px;color:#94a3b8;line-height:1.7;}
   @media print{
     .print-btn{display:none;}
-    table.items thead tr,table.ts thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+    .header,.sub-bar,table.items thead tr,table.ts thead tr{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
   }
 </style>
-</head><body><div class="page">
+</head><body>
+<div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
 
-  <!-- Header -->
-  <div class="hdr">
-    <div>
-      <div class="co-name">GMD PRODUCTIONS INC</div>
-      <div class="co-info">
-        32 Santan Unit H Brgy Fortune Marikina<br/>
-        Marikina, NCR 1802 PH<br/>
-        +63 9189338436<br/>
-        sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph<br/>
-        TIN 010-063-229-000
-      </div>
-    </div>
-    <div class="logo-box">
-      <img src="/gmd-logo.png" alt="GMD PRO" style="height:56px;width:auto;display:block;margin-left:auto;">
-    </div>
+<!-- Header -->
+<div class="header">
+  <div class="co-name">GMD PRODUCTIONS INC.</div>
+  <div style="text-align:right">
+    <span style="color:rgba(255,255,255,.6);font-size:10px">DATE: </span>
+    <span style="color:#f97316;font-weight:700;font-size:12px">${ms.invoiceDate||today}</span>
   </div>
+</div>
+<div class="sub-bar">
+  <span class="tagline">Retail Design &amp; Build | Construction | Modular Fit-outs | Signage | POP Displays</span>
+  <span class="tagline">INVOICE NO.: ${ms.invoiceNo||"—"}</span>
+</div>
 
+<div class="wrap">
   <!-- Document title -->
   <div class="doc-title">${d?.receiptType==="SI"?"Tax Invoice":"Invoice"}</div>
 
@@ -19475,7 +19578,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <tr><td class="label">INVOICE</td><td class="val">${ms.invoiceNo||"—"}</td></tr>
       <tr><td class="label">DATE</td><td class="val">${ms.invoiceDate||today}</td></tr>
       <tr><td class="label">TERMS</td><td class="val">${cp.paymentTerms||"Due on receipt"}</td></tr>
-      <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#c0392b":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
+      <tr><td class="label">DUE DATE</td><td class="val" style="color:${ms.dueDate&&ms.dueDate<today?"#dc2626":"inherit"}">${ms.dueDate||ms.invoiceDate||today}</td></tr>
     </table>
   </div>
 
@@ -19521,11 +19624,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <tr><td class="label">SUBTOTAL</td><td style="text-align:right">${fmt(ms.amount)}</td></tr>
       <tr><td class="label sep">TAX</td><td style="text-align:right" class="sep">${fmt(tx.vat)}</td></tr>
       <tr><td class="label">TOTAL</td><td style="text-align:right">${fmt(tx.gross)}</td></tr>
-      ${tx.ewt>0?`<tr><td class="label" style="color:#c0392b">Less: EWT</td><td style="text-align:right;color:#c0392b">(${fmt(tx.ewt)})</td></tr>`:""}
-      ${totalPaid>0?`<tr><td class="label" style="color:#2980b9">AMOUNT PAID</td><td style="text-align:right;color:#2980b9">(${fmt(totalPaid)})</td></tr>`:""}
+      ${tx.ewt>0?`<tr><td class="label" style="color:#dc2626">Less: EWT</td><td style="text-align:right;color:#dc2626">(${fmt(tx.ewt)})</td></tr>`:""}
+      ${totalPaid>0?`<tr><td class="label" style="color:#2563eb">AMOUNT PAID</td><td style="text-align:right;color:#2563eb">(${fmt(totalPaid)})</td></tr>`:""}
       <tr class="grand-sep">
         <td class="label">BALANCE DUE</td>
-        <td style="text-align:right;color:${balance>0?"#c0392b":"#27ae60"}">PHP ${balance>0?Number(balance).toLocaleString("en-PH",{minimumFractionDigits:2}):"0.00"}</td>
+        <td style="text-align:right;color:${balance>0?"#ea580c":"#059669"}">PHP ${balance>0?Number(balance).toLocaleString("en-PH",{minimumFractionDigits:2}):"0.00"}</td>
       </tr>
     </table>
   </div>
@@ -19533,7 +19636,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   <!-- Tax summary -->
   ${tx.vat>0?`
   <div class="tax-summary">
-    <div class="ts-title">TAX SUMMARY</div>
+    <div class="ts-title">Tax Summary</div>
     <table class="ts">
       <thead><tr><th>RATE</th><th>TAX</th><th>NET</th></tr></thead>
       <tbody><tr><td>VAT @ 12%</td><td>${fmt(tx.vat)}</td><td>${fmt(ms.amount)}</td></tr></tbody>
@@ -19550,9 +19653,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     </div>
   </div>
 
-  <div style="text-align:center;margin-top:12px;font-size:10px;color:#aaa">Page 1 of 1</div>
+  <!-- Company footer -->
+  <div class="co-footer">
+    GMD PRODUCTIONS INC &nbsp;·&nbsp; 32 Santan Unit H Brgy Fortune, Marikina, NCR 1802 PH &nbsp;·&nbsp; TIN 010-063-229-000<br/>
+    +63 9189338436 &nbsp;·&nbsp; sales@gmd.ph &nbsp;·&nbsp; www.gmd.ph
+  </div>
+
+  <div style="text-align:center;margin-top:10px;font-size:9px;color:#cbd5e1">Page 1 of 1</div>
 </div>
-<div class="print-btn"><button onclick="window.print()">🖨 Print / Save as PDF</button></div>
 </body></html>`);
     win.document.close();
   };
@@ -19571,12 +19679,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const payments=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0);
       const ewt=active.reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).ewt,0);
       const due=Math.max(0,gross-payments-ewt);
-      return{d,vatable,vat,gross,payments,ewt,due};
+      const balance=Math.max(0,gross-payments);
+      return{d,vatable,vat,gross,payments,ewt,due,balance};
     }).filter(r=>r.vatable>0||r.payments>0);
     if(!rows.length){alert("No billing data found for "+clientName);return;}
     const tV=rows.reduce((s,r)=>s+r.vatable,0),tVat=rows.reduce((s,r)=>s+r.vat,0);
     const tG=rows.reduce((s,r)=>s+r.gross,0),tP=rows.reduce((s,r)=>s+r.payments,0);
     const tE=rows.reduce((s,r)=>s+r.ewt,0),tD=rows.reduce((s,r)=>s+r.due,0);
+    const tB=rows.reduce((s,r)=>s+r.balance,0);
     const dateStr=new Date().toLocaleDateString("en-US",{month:"numeric",day:"numeric",year:"numeric"});
     const preparedBy=session?.name||"";
     const invoiceNos=[...new Set(billings.filter(b=>clientDeals.some(d=>d.id===b.dealId)&&b.invoiceNo&&b.status!=="Cancelled").map(b=>b.invoiceNo))].join(", ");
@@ -19590,6 +19700,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <td style="text-align:right;color:#2563eb">${f(r.payments)}</td>
       <td style="text-align:right">${f(r.ewt)}</td>
       <td style="text-align:right;color:#ea580c;font-weight:700">${f(r.due)}</td>
+      <td style="text-align:right;font-weight:700">${f(r.balance)}</td>
     </tr>`).join("");
     const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>SOA — ${esc(clientName)}</title><style>
       @page{size:A4 landscape;margin:12mm 15mm}
@@ -19607,7 +19718,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       .client-grid{display:grid;grid-template-columns:auto 1fr 40px auto 1fr;gap:6px 10px;align-items:end;margin-bottom:16px}
       .cl{font-size:9px;font-weight:700;color:#64748b;text-transform:uppercase;white-space:nowrap}
       .cv{border-bottom:1.5px solid #0f172a;padding-bottom:2px;font-weight:600;font-size:11px;color:#1e40af}
-      .summary{display:grid;grid-template-columns:repeat(4,1fr);border:1.5px solid #e2e8f0;margin-bottom:16px}
+      .summary{display:grid;grid-template-columns:repeat(5,1fr);border:1.5px solid #e2e8f0;margin-bottom:16px}
       .sb{padding:10px 14px;background:#f8fafc;border-right:1px solid #e2e8f0;text-align:center}
       .sb:last-child{border-right:none;background:#fff7ed}
       .sl{font-size:8px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px}
@@ -19657,6 +19768,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
         <div class="sb"><div class="sl">TOTAL VATABLE AMOUNT</div><div class="sv">${f(tV)}</div></div>
         <div class="sb"><div class="sl">TOTAL VAT</div><div class="sv">${f(tVat)}</div></div>
         <div class="sb"><div class="sl">TOTAL PAYMENTS MADE</div><div class="sv">${f(tP)}</div></div>
+        <div class="sb"><div class="sl">TOTAL BALANCE</div><div class="sv">${f(tB)}</div></div>
         <div class="sb"><div class="sl">TOTAL AMOUNT DUE</div><div class="sv">${f(tD)}</div></div>
       </div>
       <table>
@@ -19664,14 +19776,14 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           <th style="width:30px;text-align:center">#</th>
           <th>CLIENT NAME</th><th>PROJECT NAME</th>
           <th>VATABLE AMOUNT</th><th>VAT</th><th>SALES AMOUNT</th>
-          <th>FOR PAYMENT</th><th>WHT</th><th>TOTAL AMOUNT DUE</th>
+          <th>PAYMENT MADE</th><th>WHT</th><th>TOTAL AMOUNT DUE</th><th>BALANCE</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
         <tfoot><tr>
           <td></td><td colspan="2">TOTAL AMOUNT DUE</td>
           <td>${f(tV)}</td><td>${f(tVat)}</td><td>${f(tG)}</td>
           <td>${f(tP)}</td><td>${f(tE)}</td>
-          <td class="total-due">${f(tD)}</td>
+          <td class="total-due">${f(tD)}</td><td>${f(tB)}</td>
         </tr></tfoot>
       </table>
       <div class="notes">
@@ -19819,21 +19931,39 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 
       {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-        {/* Table header */}
+        {/* Table header — desktop only; mobile uses self-labeling cards */}
+        {!mob&&(
         <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",background:"#1e293b",padding:"10px 18px",gap:12}}>
           {["Project","Billed","Collected","Balance","Status","Actions"].map(h=>(
             <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
           ))}
         </div>
+        )}
         {wonDeals.length===0&&<div style={{padding:"32px",textAlign:"center",color:"#94a3b8"}}>No awarded projects. Award a deal to start billing.</div>}
-        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>(
-          <div key={d.id}
-            onClick={()=>setSelDeal(d.id)}
-            style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
-            onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
-            onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+        {projectSummaries.map(({d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount},i)=>{
+          const statusBadge=(
+            <>
+              {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
+              {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
+              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
+              {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
+            </>
+          );
+          const actionButtons=(
+            <>
+              <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
+                style={{background:"#1e293b",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600,flex:mob?1:undefined}}>
+                Open →
+              </button>
+              <button onClick={e=>{e.stopPropagation();printSOA(d.client);}}
+                style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,flex:mob?1:undefined}}>
+                📄 SOA
+              </button>
+            </>
+          );
+          const projectCell=(
             <div>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                 {hasOverdue&&<span style={{color:"#ef4444",fontSize:".8rem"}}>🔴</span>}
                 <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.client}</span>
                 {d.contact&&<span style={{fontSize:".72rem",color:"#94a3b8"}}>— {d.contact}</span>}
@@ -19843,33 +19973,54 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 {fullyPaid&&<span style={{color:"#059669",fontWeight:700,marginLeft:6}}>✓ Fully Paid</span>}
               </div>
             </div>
-            <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>
-              {billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>}
+          );
+          const billedCell=billed>0?fmt(billed):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>Not billed</span>;
+          const collectedCell=collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>;
+          const balanceCell=balance>0?fmt(balance):"✓ Clear";
+
+          if(mob){
+            // Stacked card — no horizontal scroll, everything visible incl. SOA button
+            return(
+              <div key={d.id} onClick={()=>setSelDeal(d.id)}
+                style={{padding:"14px 16px",borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":"#fff",cursor:"pointer"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
+                  {projectCell}
+                  <div style={{flexShrink:0}}>{statusBadge}</div>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,margin:"12px 0",padding:"10px 0",borderTop:"1px solid #f1f5f9",borderBottom:"1px solid #f1f5f9"}}>
+                  <div>
+                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Billed</div>
+                    <div style={{fontWeight:600,color:"#3b82f6",fontSize:".82rem",marginTop:2}}>{billedCell}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Collected</div>
+                    <div style={{fontWeight:600,color:"#059669",fontSize:".82rem",marginTop:2}}>{collectedCell}</div>
+                  </div>
+                  <div>
+                    <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",fontWeight:700}}>Balance</div>
+                    <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".82rem",marginTop:2}}>{balanceCell}</div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,alignItems:"center"}}>{actionButtons}</div>
+              </div>
+            );
+          }
+
+          return(
+            <div key={d.id}
+              onClick={()=>setSelDeal(d.id)}
+              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
+              onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
+              {projectCell}
+              <div style={{fontWeight:600,color:"#3b82f6",fontSize:".88rem"}}>{billedCell}</div>
+              <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>{collectedCell}</div>
+              <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>{balanceCell}</div>
+              <div>{statusBadge}</div>
+              <div style={{display:"flex",gap:5,alignItems:"center"}}>{actionButtons}</div>
             </div>
-            <div style={{fontWeight:600,color:"#059669",fontSize:".88rem"}}>
-              {collected>0?fmt(collected):<span style={{color:"#e2e8f0",fontSize:".78rem"}}>—</span>}
-            </div>
-            <div style={{fontWeight:700,color:balance>0?"#ef4444":"#059669",fontSize:".88rem"}}>
-              {balance>0?fmt(balance):"✓ Clear"}
-            </div>
-            <div>
-              {hasOverdue&&<span style={{fontSize:".68rem",background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Overdue</span>}
-              {fullyPaid&&<span style={{fontSize:".68rem",background:"#f0fdf4",color:"#059669",border:"1px solid #6ee7b7",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Paid</span>}
-              {!hasOverdue&&!fullyPaid&&milestoneCount>0&&<span style={{fontSize:".68rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",borderRadius:20,padding:"2px 8px",fontWeight:700}}>Active</span>}
-              {milestoneCount===0&&<span style={{fontSize:".68rem",color:"#e2e8f0"}}>—</span>}
-            </div>
-            <div style={{display:"flex",gap:5,alignItems:"center"}}>
-              <button onClick={e=>{e.stopPropagation();setSelDeal(d.id);}}
-                style={{background:"#1e293b",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#fff",cursor:"pointer",fontWeight:600}}>
-                Open →
-              </button>
-              <button onClick={e=>{e.stopPropagation();printSOA(d.client);}}
-                style={{background:"#f97316",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700}}>
-                📄 SOA
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* ── POPUP: Project Billing Detail ──────────────────────────────── */}
