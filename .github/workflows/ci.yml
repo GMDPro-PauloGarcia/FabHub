@@ -1,0 +1,46 @@
+name: CI
+
+# Stability gate: the import guard + a build + a real-browser smoke boot.
+# Together these block the two crash classes that have historically reached
+# production — a missing cross-module import (ReferenceError at runtime) and a
+# bundle that builds but white-screens on load — before a change can merge.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fast static guard first — fails in seconds on a missing import, before
+      # spending time on a full build. (Also runs automatically via `prebuild`,
+      # but calling it explicitly surfaces it as its own clear CI step.)
+      - name: Check cross-module imports
+        run: npm run check-imports
+
+      - name: Build
+        run: npm run build
+
+      - name: Install Chromium for smoke test
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test (boots the built app in a real browser)
+        run: npm run smoke

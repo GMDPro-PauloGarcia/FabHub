@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, createContext } from "react";
 const WrapCtx = createContext(false);
-import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken} from './supabaseClient';
+import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
@@ -1431,7 +1431,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
 class ErrorBoundary extends React.Component{
   constructor(p){super(p);this.state={err:null};}
   static getDerivedStateFromError(e){return{err:e};}
-  componentDidCatch(e,info){console.error("FabHub render error:",e,info);}
+  componentDidCatch(e,info){console.error("FabHub render error:",e,info);try{logClientError(e,info,"app-root");}catch(_){}}
   render(){
     if(this.state.err) return(
       <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#f8fafc",fontFamily:"'Segoe UI',sans-serif"}}>
@@ -1449,6 +1449,42 @@ class ErrorBoundary extends React.Component{
             If this keeps happening, send a screenshot to your system admin.
           </div>
         </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+// ── PER-VIEW ERROR BOUNDARY ───────────────────────────────────────────────
+// The top-level ErrorBoundary (index.js / above) is a last resort: any throw
+// inside it blanks the ENTIRE app. This lighter boundary wraps only the active
+// view's content (inside Wrap), so a render error in one page (e.g. BOQ)
+// degrades to a small inline card while the sidebar/nav stay usable and every
+// OTHER page keeps working. Render it with key={page} so navigating away
+// mounts a fresh instance and clears the error automatically.
+class ViewErrorBoundary extends React.Component{
+  constructor(p){super(p);this.state={err:null};}
+  static getDerivedStateFromError(e){return{err:e};}
+  componentDidCatch(e,info){
+    console.error("FabHub view error:",e,info);
+    // Best-effort crash telemetry — logClientError is itself fail-safe.
+    try{ logClientError(e,info,this.props.view); }catch(_){}
+  }
+  render(){
+    if(this.state.err) return(
+      <div style={{background:"#fff",borderRadius:14,padding:"28px 24px",maxWidth:520,margin:"32px auto",textAlign:"center",border:"1.5px solid #fecaca",boxShadow:"0 4px 20px rgba(0,0,0,.06)"}}>
+        <div style={{fontSize:"2rem",marginBottom:10}}>⚠️</div>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:8}}>This page hit an error</div>
+        <div style={{color:"#64748b",fontSize:".82rem",marginBottom:18,lineHeight:1.6}}>
+          The rest of FabHub is still working — your other pages and unsaved changes are unaffected. You can go back to the dashboard and try again.
+        </div>
+        <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+          {this.props.onHome&&<button onClick={()=>{this.setState({err:null});this.props.onHome();}}
+            style={{background:"#1e293b",border:"none",borderRadius:8,padding:"9px 20px",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".85rem"}}>← Back to Dashboard</button>}
+          <button onClick={()=>window.location.reload()}
+            style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 20px",color:"#334155",cursor:"pointer",fontFamily:"inherit",fontWeight:700,fontSize:".85rem"}}>🔄 Reload</button>
+        </div>
+        <div style={{marginTop:16,fontSize:".72rem",color:"#94a3b8",wordBreak:"break-word"}}>{this.state.err?.message||"Unknown error"}</div>
       </div>
     );
     return this.props.children;
@@ -6524,7 +6560,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ← Dashboard
             </button>
           )}
-          {children}
+          <ViewErrorBoundary key={page} view={page} onHome={()=>{setPage("home");setFromHome(false);}}>
+            {children}
+          </ViewErrorBoundary>
         </div>
       {showExportRef.current&&(
         <div style={{position:"fixed",top:58,right:16,zIndex:800,background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",boxShadow:"0 8px 32px rgba(0,0,0,.15)",padding:24,width:340,animation:"fi .2s ease"}}>
