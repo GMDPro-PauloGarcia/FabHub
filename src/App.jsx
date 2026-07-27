@@ -19363,6 +19363,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
+  const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -19390,6 +19391,40 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     },0);
   },[billings]);
   const overdue=useMemo(()=>billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled"),[billings]);
+
+  // ── Collection Forecast — how much net cash we can expect to collect within a
+  // horizon (today / next 7 days / next 30 days), driven entirely off billing
+  // inputs. Each outstanding milestone contributes its NET receivable (after
+  // VAT/EWT, via calcTax, using the milestone's own receipt-type/withholding or
+  // the deal default) minus what's already been collected. Bucketed by dueDate;
+  // overdue items are still collectible so they're included in every horizon and
+  // called out separately. Milestones with no due date can't be scheduled and
+  // are surfaced in a dedicated "unscheduled" figure so they aren't lost.
+  const collectionForecast=useMemo(()=>{
+    const now=new Date(); now.setHours(0,0,0,0);
+    const t0=now.getTime(), DAY=86400000;
+    const ends={today:t0, week:t0+6*DAY, month:t0+29*DAY};
+    const rows=[]; let unscheduledAmt=0, unscheduledCount=0;
+    billings.forEach(m=>{
+      if(m.status==="Cancelled"||m.status==="Fully Paid") return;
+      const dl=wonDeals.find(x=>x.id===m.dealId)||deals.find(x=>x.id===m.dealId);
+      const tx=calcTax(n(m.amount),m.receiptType??dl?.receiptType??"OR",m.withholding??dl?.withholding??false);
+      const paid=(m.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+n(p.amount),0);
+      const out=Math.round((tx.netReceivable-paid)*100)/100;
+      if(out<=0.5) return;
+      const dd=m.dueDate?new Date(m.dueDate):null;
+      if(!m.dueDate||isNaN(dd)){unscheduledAmt+=out;unscheduledCount++;return;}
+      dd.setHours(0,0,0,0);
+      rows.push({id:m.id,client:dl?.client||"Unknown",name:m.name||"Milestone",dueDate:m.dueDate,t:dd.getTime(),amount:out});
+    });
+    const build=end=>{
+      const items=rows.filter(r=>r.t<=end).sort((a,b)=>a.t-b.t);
+      const total=items.reduce((s,r)=>s+r.amount,0);
+      const overdueAmt=items.filter(r=>r.t<t0).reduce((s,r)=>s+r.amount,0);
+      return {total,count:items.length,overdue:overdueAmt,items};
+    };
+    return {today:build(ends.today),week:build(ends.week),month:build(ends.month),unscheduledAmt,unscheduledCount};
+  },[billings,wonDeals,deals]);
 
   // Collision-free invoice number from the shared server counter (falls back to
   // local allocation offline / before the migration). Used at save time.
@@ -19888,6 +19923,58 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           </div>
         ))}
       </div>
+
+      {/* ── Collection Forecast — expected net collections by due date ──── */}
+      {(allOutstanding>0||collectionForecast.unscheduledCount>0)&&(()=>{
+        const cur=collectionForecast[forecastRange];
+        const tabs=[["today","Due Today"],["week","This Week"],["month","This Month"]];
+        const rangeNote={today:"due on or before today",week:"due within the next 7 days",month:"due within the next 30 days"}[forecastRange];
+        const shown=cur.items.slice(0,5);
+        return(
+          <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:"16px 18px",marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:12}}>
+              <div>
+                <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem"}}>📥 Collection Forecast</div>
+                <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2}}>Expected net cash (after VAT/EWT) from outstanding invoices, by due date</div>
+              </div>
+              <div style={{display:"flex",gap:6}}>
+                {tabs.map(([v,l])=>(
+                  <button key={v} onClick={()=>setForecastRange(v)}
+                    style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${forecastRange===v?"#f97316":"#e2e8f0"}`,background:forecastRange===v?"#fff7ed":"#fff",color:forecastRange===v?"#c2410c":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:forecastRange===v?700:500,cursor:"pointer",whiteSpace:"nowrap"}}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"minmax(0,240px) 1fr",gap:16,alignItems:"start"}}>
+              <div style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:12,padding:"14px 16px"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.9rem",color:"#059669",lineHeight:1.1}}>{fmt(cur.total)}</div>
+                <div style={{fontSize:".68rem",color:"#059669",fontWeight:700,marginTop:3}}>{cur.count} invoice{cur.count!==1?"s":""} {rangeNote}</div>
+                {cur.overdue>0&&<div style={{fontSize:".7rem",color:"#dc2626",fontWeight:600,marginTop:6}}>Includes {fmt(cur.overdue)} already overdue</div>}
+                {collectionForecast.unscheduledCount>0&&<div style={{fontSize:".68rem",color:"#b45309",fontWeight:600,marginTop:6}}>⚠ {fmt(collectionForecast.unscheduledAmt)} on {collectionForecast.unscheduledCount} invoice{collectionForecast.unscheduledCount!==1?"s":""} with no due date — set one to forecast it</div>}
+              </div>
+              <div>
+                {shown.length===0?(
+                  <div style={{color:"#94a3b8",fontSize:".82rem",padding:"8px 0"}}>Nothing due in this window.</div>
+                ):shown.map((r,i)=>{
+                  const od=r.dueDate<today;
+                  return(
+                    <div key={r.id} style={{display:"grid",gridTemplateColumns:"1fr auto auto",gap:10,padding:"6px 0",borderBottom:i<shown.length-1?"1px solid #f1f5f9":"none",alignItems:"center"}}>
+                      <div style={{minWidth:0}}>
+                        <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.client}</div>
+                        <div style={{fontSize:".7rem",color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
+                      </div>
+                      <div style={{fontSize:".7rem",color:od?"#dc2626":"#64748b",fontWeight:od?700:500,whiteSpace:"nowrap"}}>{od?"⚠ ":""}{r.dueDate}</div>
+                      <div style={{fontWeight:700,color:"#059669",fontSize:".82rem",whiteSpace:"nowrap",fontVariantNumeric:"tabular-nums"}}>{fmt(r.amount)}</div>
+                    </div>
+                  );
+                })}
+                {cur.items.length>5&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:6}}>+{cur.items.length-5} more invoice{cur.items.length-5!==1?"s":""}</div>}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Overdue alert + Aging Summary */}
       {overdue.length>0&&(()=>{
