@@ -3112,7 +3112,11 @@ export default function App(){
     status:r.status||"Active", issued_date:r.issuedDate||r.dateIssued||null,
   });
   const toSbBilling = r=>{
-    const tx=calcTax(Number(r.amount)||0,r.receiptType||"OR",r.withholding??false);
+    // A milestone with no receipt type of its own inherits its deal's — so the
+    // persisted vat/ewt/net_receivable follow the deal form (e.g. an AR / VAT-
+    // exempt addendum) instead of silently defaulting to OR and baking in 12% VAT.
+    const od=deals.find(d=>d.id===r.dealId);
+    const tx=calcTax(Number(r.amount)||0,r.receiptType??od?.receiptType??"OR",r.withholding??od?.withholding??false);
     const base={
       id:r.id, deal_id:r.dealId, name:r.name||"", description:r.description||"",
       amount:Number(r.amount)||0, invoice_no:r.invoiceNo||"",
@@ -4334,7 +4338,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const dealId=milestone?.dealId;
     const payDeal=dealId?deals.find(d=>d.id===dealId):null;
     if(!isSupabaseReady()) toastEmit("⚠️ Collection saved on this device only — no server connection. It won't appear on other devices until reconnected.","warning",9000);
-    const msTx=calcTax(milestone?.amount||0,milestone?.receiptType||milestone?.receipt_type||"OR",milestone?.withholding??false);
+    const msTx=calcTax(milestone?.amount||0,milestone?.receiptType??milestone?.receipt_type??payDeal?.receiptType??"OR",milestone?.withholding??payDeal?.withholding??false);
     const totalPaidAfter=(milestone?.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0)+Number(payment.amount||0);
     const isFullyPaid=totalPaidAfter>=msTx.netReceivable;
     const payMsg=`💵 <b>Payment Received</b>\nClient: <b>${payDeal?.client||milestone?.title||"?"}</b>\nMilestone: ${milestone?.title||"—"}\nAmount: ₱${Number(payment.amount||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\nRef: ${payment.refNo||payment.ref_no||"—"}\nRecorded by: ${payment.recordedBy||session?.name||"Finance"}${isFullyPaid?"\n✅ Milestone fully paid!":""}`;
@@ -4345,7 +4349,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(b.id!==msId) return b;
       const payments=[...(b.payments||[]),{...payment,id:payId,date:payment.date||today}];
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
-      const bTx=calcTax(b.amount||0,b.receiptType||b.receipt_type||"OR",b.withholding??false);
+      const bTx=calcTax(b.amount||0,b.receiptType??b.receipt_type??payDeal?.receiptType??"OR",b.withholding??payDeal?.withholding??false);
       const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':b.status;
       if(isSupabaseReady()){
         sbUpsert("billing_payments",toSbPayment({...payment,id:payId,milestoneId:msId}),"id")
@@ -4375,11 +4379,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!payment) return;
     if(!await confirmFinancialDelete("billing_payments",{...payment,milestoneId:msId,dealId:milestone.dealId}))return;
     const dealId=milestone.dealId;
+    const delDeal=dealId?deals.find(d=>d.id===dealId):null;
     upBillings(bs=>bs.map(b=>{
       if(b.id!==msId) return b;
       const payments=(b.payments||[]).filter(p=>p.id!==payId);
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
-      const bTx=calcTax(b.amount||0,b.receiptType||b.receipt_type||"OR",b.withholding??false);
+      const bTx=calcTax(b.amount||0,b.receiptType??b.receipt_type??delDeal?.receiptType??"OR",b.withholding??delDeal?.withholding??false);
       const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':'Unpaid';
       if(isSupabaseReady()){
         sbDelete('billing_payments',payId).catch(()=>{});
@@ -8917,7 +8922,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
           const msWithBalance=billings.filter(b=>!['Fully Paid','Cancelled'].includes(b.status)&&Number(b.amount||0)>0).map(b=>{
             const deal=deals.find(d=>d.id===b.dealId);
-            const tx=calcTax(Number(b.amount||0),b.receiptType||b.receipt_type||"OR",b.withholding??false);
+            const tx=calcTax(Number(b.amount||0),b.receiptType??b.receipt_type??deal?.receiptType??"OR",b.withholding??deal?.withholding??false);
             const totalPaid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
             const balance=Math.max(0,tx.netReceivable-totalPaid);
             if(balance<=0) return null;
@@ -19370,7 +19375,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
   const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
   const canEdit=role==="Manager"||role==="Finance";
-  const deal=wonDeals.find(d=>d.id===selDeal);
+  // Look up across ALL deals, not just wonDeals — addendum child-deals live in
+  // their own (often non-won) stage, so a wonDeals-only lookup returned undefined
+  // and every tax calc below fell back to "OR", applying 12% VAT to AR/VAT-exempt
+  // addendums. Resolving the real deal makes billing follow the deal form.
+  const deal=deals.find(d=>d.id===selDeal);
 
   // Company-wide stats — memoized on [billings] only. These re-scan the FULL
   // billings list (every milestone × every payment) and previously recomputed
@@ -19480,7 +19489,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     setEditMs(null);setEditMsForm({});
   };
   const printInvoice=(ms)=>{
-    const d=wonDeals.find(x=>x.id===ms.dealId);
+    const d=deals.find(x=>x.id===ms.dealId);
     const tx=calcTax(ms.amount,d?.receiptType||"OR",d?.withholding||false);
     const totalPaid=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
     const balance=Math.max(0,tx.netReceivable-totalPaid);
@@ -19906,13 +19915,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                   <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:clr}}>{grp.length}</div>
                   <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:clr,marginTop:3}}>{lbl}</div>
                   <div style={{fontSize:".72rem",color:clr,fontWeight:600,marginTop:2}}>
-                    ₱{grp.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0);return s+Math.max(0,calcTax(m.amount,"OR",false).netReceivable-p);},0).toLocaleString("en-PH",{minimumFractionDigits:0})}
+                    ₱{grp.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0);const md=deals.find(x=>x.id===m.dealId);return s+Math.max(0,calcTax(m.amount,m.receiptType??md?.receiptType??"OR",m.withholding??md?.withholding??false).netReceivable-p);},0).toLocaleString("en-PH",{minimumFractionDigits:0})}
                   </div>
                 </div>
               ))}
             </div>
             <div style={{fontSize:".78rem",color:"#dc2626"}}>
-              {overdue.slice(0,4).map(m=>{const d=wonDeals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo}, ${age(m)}d overdue)`;}).join(" · ")}
+              {overdue.slice(0,4).map(m=>{const d=deals.find(x=>x.id===m.dealId);return`${d?.client||"?"} (${m.invoiceNo}, ${age(m)}d overdue)`;}).join(" · ")}
               {overdue.length>4&&` +${overdue.length-4} more`}
             </div>
           </div>
