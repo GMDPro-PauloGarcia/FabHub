@@ -152,7 +152,13 @@ export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f
 
 export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],size:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
-export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b" };
+export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6" };
+
+// Human-readable labels for role codes that aren't self-explanatory when shown
+// raw (role codes are used directly in ===/object-key comparisons, so we keep
+// them token-safe and map to a friendly label only at display sites).
+export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin" };
+export const roleLabel = r => ROLE_LABEL[r] || r;
 
 export const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval","Module","Swatch","Risk Flag"];
 
