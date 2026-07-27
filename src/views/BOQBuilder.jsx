@@ -613,7 +613,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       const clr=sec.color||"#64748b";
       rows+=`<tr style="background:${clr}"><td colspan="2" style="font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.8px;padding:8px 10px;color:#fff;border-left:4px solid ${clr}">${esc(sec.id)}. ${esc(sec.label)}</td><td colspan="5" style="padding:8px 10px"></td></tr>`;
       // One line item, prefixed with its (possibly nested) number.
-      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b">${esc(it.remarks||"")}</td></tr>`;
+      // Descriptions & remarks are free-text fields users type multi-line specs
+      // into (title + "Specifications:" + a bulleted list). white-space:pre-line
+      // keeps those line breaks in the PDF so the text can be read line-by-line
+      // instead of collapsing into one run-on paragraph; overflow-wrap breaks any
+      // over-long token so nothing spills past the cell. vertical-align:top keeps
+      // the number/qty/prices aligned to the first line of a tall description.
+      const itemRowHtml=(it,num)=>`<tr style="background:#fff"><td style="font-size:11px;color:#64748b;padding:6px 10px;white-space:nowrap;vertical-align:top;border-left:4px solid ${clr}">${esc(num)}</td><td style="padding:6px 10px;font-size:12px;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.description)||"—"}</td><td style="text-align:center;padding:6px 10px;font-size:12px;vertical-align:top">${it.qty||1}</td><td style="padding:6px 10px;font-size:12px;vertical-align:top">${esc(it.unit||"lot")}</td><td style="text-align:right;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.unitCost)}</td><td style="text-align:right;font-weight:700;padding:6px 10px;font-size:12px;vertical-align:top">${fmtP(it.total)}</td><td style="padding:6px 10px;font-size:11px;color:#64748b;white-space:pre-line;overflow-wrap:break-word;line-height:1.5;vertical-align:top">${esc(it.remarks||"")}</td></tr>`;
       const {ungrouped,subs}=groupSection(si);
       ungrouped.forEach((it,idx)=>{rows+=itemRowHtml(it,`${sec.id}.${idx+1}`);});
       subs.forEach(sub=>{
