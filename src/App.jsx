@@ -9676,7 +9676,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {(()=>{
                 const matchSearch=d=>!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase());
                 // Project cards are the parent deals (no parentDealId); bucket them by their own stage.
-                const wonParents=wonDeals.filter(d=>!d.parentDealId);
+                // Respect the AE chip filter (pipeAE) like the Hot/Cold pipeline does — addenda
+                // still nest under their parent below, so they follow the parent's AE automatically.
+                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE));
                 const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
                 const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
                 // Addenda always nest under their parent's card, following the PARENT's bucket
@@ -21192,7 +21194,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
-                  {(role==="Manager"||role==="Operations")&&!showTeamEdit&&card&&(
+                  {(role==="Manager"||role==="Operations")&&!showTeamEdit&&selDeal&&(
                     <button onClick={()=>{
                       setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
                       setShowTeamEdit(true);
@@ -21228,7 +21230,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         const known=new Set([...SALES_TEAM,...OPS_TEAM,...DESIGN_MEMBERS,...customMembers]);
                         const fresh=[...new Set([tf.ae,tf.pm1,tf.pm2,tf.pm3,tf.designer,tf.coordinator].map(s=>(s||"").trim()).filter(s=>s&&!known.has(s)))];
                         if(fresh.length){const nm=[...customMembers,...fresh];setCustomMembers(nm);try{localStorage.setItem("gmdv5:customMembers",JSON.stringify(nm));}catch{}if(isSupabaseReady())sbUpsert('app_settings',{key:'custom_members',value:nm,updated_at:new Date().toISOString()},'key').catch(()=>{});}
-                        if(upPcards&&pcards[selDeal]) upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouseOnly:tf.warehouseOnly||false}}));
+                        // Create the card locally if this project never had one (the ~70 projects
+                        // that reached a project stage without going through the Award flow). The
+                        // sbUpsert below writes/creates the row in Supabase (id auto-generates); on
+                        // next load sbLoadAll fills in the default department structure.
+                        if(upPcards) upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),aeAssigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouseOnly:tf.warehouseOnly||false}}));
                         if(isSupabaseReady()){
                           sbUpsert('project_cards',{deal_id:selDeal,ae_assigned:tf.ae,pm1:tf.pm1,pm2:tf.pm2,pm3:tf.pm3,designer:tf.designer,coordinator:tf.coordinator,warehouse_only:tf.warehouseOnly||false},'deal_id').catch(()=>{});
                         }
@@ -21265,7 +21271,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
-                  {(role==="Manager"||role==="Operations"||role==="QS")&&card&&!showDateEdit&&(
+                  {(role==="Manager"||role==="Operations"||role==="QS")&&selDeal&&!showDateEdit&&(
                     <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||""});setShowDateEdit(true);}}
                       style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit Dates</button>
                   )}
@@ -21294,7 +21300,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       <button onClick={()=>{
                         if(!dateForm.awardDate) return;
                         const newDays=dateForm.targetEndDate?Math.max(1,Math.ceil((new Date(dateForm.targetEndDate)-new Date(dateForm.awardDate))/86400000)):card?.targetDays;
-                        upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
+                        upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
                         if(isSupabaseReady()){
                           sbUpsert('project_cards',{deal_id:selDeal,award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})},'deal_id').catch(()=>{});
                         }
