@@ -1,6 +1,21 @@
-import React,{useState,useEffect,useRef} from "react";
+import React,{useState,useEffect,useLayoutEffect,useRef} from "react";
 import {today,uid,KEYS,Card} from "../shared";
 import {isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
+
+// A textarea that grows to fit its content. BOQ line-item descriptions are
+// often multi-line spec lists (a title + "Specifications:" + bullets), so a
+// fixed one-row box clips them and makes editing awkward. This re-measures on
+// every value change — including the initial load of a saved BOQ — so existing
+// multi-line text opens at full height instead of clipped to one line, and it
+// grows/shrinks live as you type. minRows sets a comfortable starting height.
+function AutoGrowTextarea({value,minRows=2,style,onInput,...rest}){
+  const ref=useRef(null);
+  const resize=el=>{if(!el)return;el.style.height="auto";el.style.height=Math.max(el.scrollHeight,0)+"px";};
+  useLayoutEffect(()=>{resize(ref.current);},[value]);
+  return <textarea ref={ref} value={value} rows={minRows}
+    onInput={e=>{resize(e.target);onInput&&onInput(e);}}
+    style={{resize:"none",overflow:"hidden",...style}} {...rest}/>;
+}
 
 const BOQ_SECTIONS=[
   {id:"1",label:"General Requirements",color:"#64748b"},
@@ -1122,7 +1137,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                           )}
                         </div>
                         <div style={{position:"relative",display:"flex",alignItems:"center",gap:3}}>
-                          <textarea value={it.description}
+                          <AutoGrowTextarea value={it.description}
                             onChange={e=>{
                               updateItem(it._id,"description",e.target.value);
                               const q=e.target.value;
@@ -1138,9 +1153,8 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                             }}
                             onBlur={()=>setTimeout(()=>setSuggest({id:null,matches:[]}),160)}
                             placeholder="Type to search library or enter description"
-                            rows={1}
-                            onInput={e=>{e.target.style.height="auto";e.target.style.height=e.target.scrollHeight+"px";}}
-                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1,resize:"none",lineHeight:1.4,minHeight:28,fontFamily:"inherit",overflow:"hidden"}}/>
+                            minRows={2}
+                            style={{...inpSt,fontSize:".78rem",padding:"4px 6px",flex:1,lineHeight:1.4,minHeight:44,fontFamily:"inherit"}}/>
                           {it.description.trim().length>=2&&!boqLibrary.some(lib=>lib.name.toLowerCase()===it.description.trim().toLowerCase())&&(
                             <button title="Save to library" onMouseDown={e=>{e.preventDefault();
                               const entry={id:uid(),name:it.description.trim(),description:"",section:sec.id,unit:it.unit||"lot",unitCost:Number(it.baseCost!=null?it.baseCost:it.unitCost)||0,tags:[],createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};
