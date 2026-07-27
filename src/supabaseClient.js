@@ -261,19 +261,45 @@ export const sbInsert = async (table, data) => {
 
 export const sbUpdate = async (table, id, data) => {
   if (!supabase) return false
+  // Every update stamps updated_at — but a few older tables never had that
+  // column, and injecting it made PostgREST return PGRST204 ("Could not find
+  // the 'updated_at' column of 'x' in the schema cache"). That classifies as a
+  // non-retryable 'data' error, so the whole update was dropped and the user
+  // got a scary "server rejected a change (bad data)" toast on an edit that was
+  // otherwise fine (e.g. the turnover-date sync when editing an awarded deal).
+  // Self-heal the same way _replay does for the offline queue: if a column in
+  // the payload doesn't exist on the server, strip just that column and retry
+  // so the rest of the row still lands. Bounded so it can never loop forever.
   // .select('id') so we can tell "updated 0 rows" apart from "updated 1 row" —
   // without it, Postgres reports success for an UPDATE that matched nothing
   // (e.g. the target row hasn't finished its own insert yet, on another device
   // or an unawaited parent write), and the change silently goes nowhere: no
   // error, so nothing queues it for retry, and no one is ever told.
-  const { data: rows, error } = await _withTimeout(supabase.from(table).update({...data, updated_at: new Date().toISOString()}).eq('id', id).select('id'))
-  if (error) { console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); return false }
-  if (!rows || rows.length === 0) {
-    console.warn(`SB UPDATE ${table}: no row matched id=${id} (not created yet on the server?) — queuing for retry`)
-    _enqueue({ kind: 'update', table, id, data })
-    return false
+  const payload = { ...data, updated_at: new Date().toISOString() }
+  const stripped = []
+  for (let guard = 0; guard < 16; guard++) {
+    const { data: rows, error } = await _withTimeout(supabase.from(table).update(payload).eq('id', id).select('id'))
+    if (error) {
+      const miss = _MISSING_COL_RE.exec(error.message || '')
+      const col = miss && miss[1]
+      if (col && Object.prototype.hasOwnProperty.call(payload, col)) {
+        delete payload[col]
+        stripped.push(col)
+        continue
+      }
+      console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); return false
+    }
+    if (stripped.length) console.warn(`SB UPDATE ${table}: succeeded after dropping column(s) not in the server schema: ${stripped.join(', ')}`)
+    if (!rows || rows.length === 0) {
+      console.warn(`SB UPDATE ${table}: no row matched id=${id} (not created yet on the server?) — queuing for retry`)
+      _enqueue({ kind: 'update', table, id, data })
+      return false
+    }
+    return true
   }
-  return true
+  console.error(`SB UPDATE ${table}: too many unknown columns for the current schema — giving up`)
+  _writeFailed('update', table, 'Write dropped: too many unknown columns for the current schema.')
+  return false
 }
 
 // Returns true/false so a caller that's about to write a DEPENDENT row (e.g. a

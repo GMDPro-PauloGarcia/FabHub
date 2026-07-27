@@ -242,7 +242,8 @@ CREATE TABLE IF NOT EXISTS addenda (
   status          TEXT DEFAULT 'Discovered',
   sales_notified  BOOLEAN DEFAULT FALSE,
   discovered_by   TEXT,
-  created_at      TIMESTAMPTZ DEFAULT NOW()
+  created_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 11. SWATCHES ──────────────────────────────────────────
@@ -285,7 +286,8 @@ CREATE TABLE IF NOT EXISTS checklists (
   what_could_go_wrong TEXT,
   qty                 NUMERIC DEFAULT 0,
   unit                TEXT DEFAULT 'pcs',
-  created_at          TIMESTAMPTZ DEFAULT NOW()
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 13. ACTIVITY LOG ──────────────────────────────────────
@@ -322,7 +324,8 @@ CREATE TABLE IF NOT EXISTS project_cards (
   tat_category     TEXT,
   tat_set_by       TEXT,
   tat_set_at       TIMESTAMPTZ,
-  created_at       TIMESTAMPTZ DEFAULT NOW()
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 16. PROJECT CARD DEPARTMENT TASKS ─────────────────────
@@ -334,7 +337,8 @@ CREATE TABLE IF NOT EXISTS project_card_dept_tasks (
   done        BOOLEAN DEFAULT FALSE,
   done_at     TIMESTAMPTZ,
   done_by     TEXT,
-  sort_order  INTEGER DEFAULT 0
+  sort_order  INTEGER DEFAULT 0,
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 17. PROJECT CARD DEPARTMENT STATUS ────────────────────
