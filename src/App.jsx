@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -4907,7 +4907,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
     logActivity(null,"Login",u.role,sess.name);
-    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home"};
+    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home",SalesOpsAdmin:"home"};
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
@@ -6201,6 +6201,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Stock",    items:[{id:"deliveries",l:"Deliveries"},{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"}]},
     ],
+    SalesOpsAdmin:[
+      {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
+      {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"ceqs",l:"CE Requests"}]},
+      {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
+      {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
+    ],
   };
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
@@ -6261,7 +6267,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {!navCollapsed&&(
             <>
               <div style={{background:roleColor+"22",borderRadius:20,padding:"4px 10px",fontSize:".7rem",fontWeight:700,color:roleColor,marginBottom:8,textAlign:"center"}}>
-                {session?.name?.split(" ")[0]} · {session?.title||role}
+                {session?.name?.split(" ")[0]} · {roleLabel(session?.title||role)}
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap",justifyContent:"center",marginBottom:8}}>
                 <span onClick={async()=>{
@@ -6312,7 +6318,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <img src="/gmd-logo.png" alt="GMD" style={{height:30,objectFit:"contain",filter:"brightness(0) invert(1)"}}/>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:".65rem",fontWeight:700,color:roleColor,background:roleColor+"22",borderRadius:20,padding:"2px 8px"}}>
-            {session?.name?.split(" ")[0]} · {session?.title||role}
+            {session?.name?.split(" ")[0]} · {roleLabel(session?.title||role)}
           </span>
           <a href="/handbook.html" target="_blank" rel="noopener noreferrer" style={{background:"rgba(245,158,11,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#f59e0b",fontSize:".72rem",fontWeight:700,textDecoration:"none",display:"inline-flex",alignItems:"center",minHeight:36}}>📘</a>
           <button onClick={logout} style={{background:"rgba(239,68,68,.2)",border:"none",borderRadius:6,padding:"9px 12px",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit",minHeight:36,minWidth:36,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>↩</button>
@@ -6796,6 +6802,75 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontWeight:700,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
                         <div style={{display:"flex",gap:6,marginTop:3,alignItems:"center"}}>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".54rem",fontWeight:600,padding:"1px 6px",borderRadius:3,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
+                          <span style={{fontSize:".68rem",color:"#10b981",fontWeight:700}}>₱{Number(d.value||0).toLocaleString("en-PH")}</span>
+                          <span style={{fontSize:".66rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}% collected</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+    </Wrap>
+  );
+
+  // ── SALES & OPS ADMIN HOME ────────────────────────────────────────────────
+  if(role==="SalesOpsAdmin") return(
+    <Wrap>
+      <DeptHeader
+        name={session?.name?.split(" ")[0]}
+        subtitle={`Sales & Ops Admin · ${todayL}`}
+        buttons={[
+          {label:"+ New Deal",     icon:"🤝", bg:"#6366f1", action:()=>openAddDeal()},
+          {label:"+ Add Client",   icon:"🏢", bg:"#059669", action:()=>{setPage("pipeline");setQuickAddClientOpen(true);}},
+          {label:"Submit CE",      icon:"📐", bg:"#7c3aed", action:()=>setPage("ceqs")},
+          {label:"Billing",        icon:"🧾", bg:"#1e293b", action:()=>setPage("billing")},
+          {label:"Projects",       icon:"📋", bg:"#f97316", action:()=>setPage("projects")},
+        ]}
+      />
+      {(()=>{
+        const activePipe=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
+        const pendingCE=ceReqs.filter(r=>r.status!=="Done");
+        const allMs=billings.filter(b=>b.dealId);
+        const outstanding=Math.max(0,allMs.reduce((s,m)=>s+Number(m.amount||0)-(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0));
+        const activeProjects=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed");
+        const fmtK2=v=>v>=1000000?"₱"+Math.round(v/1000000*10)/10+"M":"₱"+Math.round(v/1000)+"K";
+        return(
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {/* KPI strip */}
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
+              {[
+                {l:"Active Pipeline",    v:activePipe.length,        c:"#6366f1", icon:"📊", action:()=>setPage("pipeline")},
+                {l:"CE Requests Open",   v:pendingCE.length,         c:"#7c3aed", icon:"📐", action:()=>setPage("ceqs")},
+                {l:"Outstanding Billing",v:fmtK2(outstanding),       c:outstanding>0?"#ef4444":"#94a3b8", icon:"🧾", action:()=>setPage("billing")},
+                {l:"Active Projects",    v:activeProjects.length,    c:"#f97316", icon:"📋", action:()=>setPage("projects")},
+              ].map(({l,v,c,icon,action})=>(
+                <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${c}22`,cursor:"pointer",transition:"all .15s"}}>
+                  <div style={{fontSize:"1.1rem"}}>{icon}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c,marginTop:4}}>{v}</div>
+                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            {/* Active projects — operations progress at a glance */}
+            {activeProjects.length>0&&(
+              <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between"}}>
+                  <span style={{fontWeight:700,color:"#f97316",fontSize:".88rem"}}>📋 Projects In Progress ({activeProjects.length})</span>
+                  <span style={{fontSize:".72rem",color:"rgba(255,255,255,.5)",cursor:"pointer",textDecoration:"underline"}} onClick={()=>setPage("projects")}>See all →</span>
+                </div>
+                {activeProjects.slice(0,6).map((d,i,arr)=>{
+                  const paid=dealCollected(d);const inv=Number(d.invoiced||0);const pct=inv>0?Math.min(100,Math.round(paid/inv*100)):0;
+                  const sc={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444"}[d.stage]||"#94a3b8";
+                  return(
+                    <div key={d.id} onClick={()=>{setJumpDeal(d.id);setPage("projects");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<arr.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:700,color:"#0f172a",fontSize:".83rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                        <div style={{display:"flex",gap:6,marginTop:3,alignItems:"center",flexWrap:"wrap"}}>
                           <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".54rem",fontWeight:600,padding:"1px 6px",borderRadius:3,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
                           <span style={{fontSize:".68rem",color:"#10b981",fontWeight:700}}>₱{Number(d.value||0).toLocaleString("en-PH")}</span>
                           <span style={{fontSize:".66rem",color:pct===100?"#059669":"#94a3b8",fontWeight:600}}>{pct}% collected</span>
@@ -10900,7 +10975,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         />
       </Wrap>
     );
-    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse'];
+    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin'];
     if(page==="accounts"&&(role==="Manager"||role==="Finance")) return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
@@ -14242,7 +14317,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
 
   const[expandedId,setExpandedId]=useState(null);
   const shown=filterSt==="All"?drfs:drfs.filter(d=>d.status===filterSt);
-  const canCreate=["Manager","Sales","Operations"].includes(role);
+  const canCreate=["Manager","Sales","Operations","SalesOpsAdmin"].includes(role);
   const canAcknowledge=["Manager","Design"].includes(role);
 
   return(
@@ -14538,7 +14613,7 @@ function ProcurementView({swatches,projList,clientName,openAddSwatch,openEditSwa
 
 // ─── JOB ORDERS VIEW ─────────────────────────────────────────────────────────
 function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtra,setJoExtra,viewJO,setViewJO,issueJO,overallProg,updateJO,delJo,role,Wrap}){
-  const canEdit=role==="Manager"||role==="Finance"||role==="Operations";
+  const canEdit=role==="Manager"||role==="Finance"||role==="Operations"||role==="SalesOpsAdmin";
   const[editJOForm,setEditJOForm]=React.useState({});
 
   if(joStep==="editjo"&&viewJO) return(
@@ -15138,7 +15213,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   const[cf,setCf]=useState({name:"",username:"",password:"",role:"Sales",title:""});
   const[createErr,setCreateErr]=useState("");
   const STATUS_CLR = {active:"#10b981",pending:"#f59e0b",inactive:"#94a3b8",rejected:"#ef4444"};
-  const ALL_ROLES=["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","ProjectMover","Manager"];
+  const ALL_ROLES=["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","ProjectMover","SalesOpsAdmin","Manager"];
 
   const pending  = users.filter(u=>u.status==="pending");
   const active   = users.filter(u=>u.status==="active");
@@ -15173,7 +15248,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
             <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Password * (min 6 chars)</div><input type="password" style={inp} value={cf.password} onChange={e=>setCf(p=>({...p,password:e.target.value}))} placeholder="Temporary password"/></div>
             <div><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Role *</div>
               <select style={{...inp,cursor:"pointer"}} value={cf.role} onChange={e=>setCf(p=>({...p,role:e.target.value}))}>
-                {ALL_ROLES.map(r=><option key={r}>{r}</option>)}
+                {ALL_ROLES.map(r=><option key={r} value={r}>{roleLabel(r)}</option>)}
               </select>
             </div>
             <div style={{gridColumn:"1/-1"}}><div style={{fontSize:".7rem",color:"#64748b",marginBottom:4,fontWeight:600}}>Job Title (optional)</div><input style={inp} value={cf.title} onChange={e=>setCf(p=>({...p,title:e.target.value}))} placeholder="e.g. Account Executive"/></div>
@@ -15195,11 +15270,11 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontWeight:700,color:"#0f172a"}}>{u.name}</div>
-                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>@{u.username} · Requested: <strong>{u.role}</strong> · Registered {u.createdAt}</div>
+                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>@{u.username} · Requested: <strong>{roleLabel(u.role)}</strong> · Registered {u.createdAt}</div>
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                   <select value={editRole[u.id]||u.role} onChange={e=>setEditRole(r=>({...r,[u.id]:e.target.value}))} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>
-                    {["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","Manager"].map(r=><option key={r}>{r}</option>)}
+                    {["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","SalesOpsAdmin","Manager"].map(r=><option key={r} value={r}>{roleLabel(r)}</option>)}
                   </select>
                   <button onClick={()=>onApprove(u.id,editRole[u.id]||u.role)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>✓ Approve</button>
                   <button onClick={()=>{if(window.confirm(`Reject ${u.name}'s account request?`))onReject(u.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Reject</button>
@@ -15222,7 +15297,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
                   <span style={{fontWeight:700,color:"#0f172a"}}>{u.name}</span>
                   {u.id===session?.userId&&<span style={{fontSize:".65rem",background:"#eff6ff",color:"#3b82f6",border:"1px solid #93c5fd",padding:"1px 7px",borderRadius:10,fontWeight:700}}>You</span>}
                 </div>
-                <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>@{u.username} · {u.role}</div>
+                <div style={{fontSize:".73rem",color:"#64748b",marginTop:2}}>@{u.username} · {roleLabel(u.role)}</div>
               </div>
               <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
                 <button onClick={()=>{setResetId(u.id);setNewPw("");setResetMsg("");}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"5px 11px",fontSize:".75rem",color:"#3b82f6",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Reset PW</button>
@@ -16265,7 +16340,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
   const[trackStatus,setTrackStatus]=React.useState("All");
   const[trackPriority,setTrackPriority]=React.useState("All");
   const isQS=["Manager","QS"].includes(role);
-  const isSales=["Manager","Sales"].includes(role);
+  const isSales=["Manager","Sales","SalesOpsAdmin"].includes(role);
   const TYPES={kiosk:"Kiosk",retail:"Retail Fit-out",office:"Office",fnb:"F&B / Restaurant",signage:"Signage",event:"Event / Activation",repair:"Repair / Refurb",other:"Other"};
   const PRI_CLR={High:"#ef4444",Normal:"#3b82f6",Low:"#94a3b8"};
   const STATUS_CLR={Pending:"#f59e0b",Ongoing:"#3b82f6",Done:"#10b981"};
@@ -19375,7 +19450,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const fm =(k,v)=>setMsForm(p=>({...p,[k]:v}));
   const fp =(k,v)=>setPayForm(p=>({...p,[k]:v}));
   const fme=(k,v)=>setEditMsForm(p=>({...p,[k]:v}));
-  const canEdit=role==="Manager"||role==="Finance";
+  const canEdit=role==="Manager"||role==="Finance"||role==="SalesOpsAdmin";
   // Look up across ALL deals, not just wonDeals — addendum child-deals live in
   // their own (often non-won) stage, so a wonDeals-only lookup returned undefined
   // and every tax calc below fell back to "OR", applying 12% VAT to AR/VAT-exempt
@@ -20689,7 +20764,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     const t=["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
-  const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"]}[role]||[];
+  const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"],SalesOpsAdmin:DEPT_ORDER}[role]||[];
   const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100)):0;};
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
@@ -21067,10 +21142,10 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
           const {projBlockers,openProjB,projUpdates,projAddenda,projBillings,totalBilled,totalColl,totalCommitted,totalActualCost,totalExposure,pendingMRs,pendingBRs}=projStats;
           const contractVal=Number(deal?.value||0);
           const profitMargin=contractVal>0?Math.round((contractVal-totalExposure)/contractVal*100):null;
-          const canFlagBlocker=["Manager","Operations","ProjectMover","Sales","Design","QS","Procurement","Finance"].includes(role);
+          const canFlagBlocker=["Manager","Operations","ProjectMover","Sales","Design","QS","Procurement","Finance","SalesOpsAdmin"].includes(role);
           const ceType=deal?.ceType||"Fabrication / General";
           const refTable=TAT_REFERENCE[ceType]||TAT_REFERENCE["Fabrication / General"];
-          const canSetTAT=role==="Manager"||role==="QS"||role==="Operations";
+          const canSetTAT=role==="Manager"||role==="QS"||role==="Operations"||role==="SalesOpsAdmin";
 
 
           const projCl=(checklist||[]).filter(c=>c.projectId===selDeal).sort((a,b)=>{
@@ -21158,7 +21233,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   </div>
                 </div>
                 {/* Stage selector */}
-                {(role==="Manager"||role==="Sales"||role==="Operations"||role==="ProjectMover")&&deal&&upDeals&&(()=>{
+                {(role==="Manager"||role==="Sales"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin")&&deal&&upDeals&&(()=>{
                   const changeStage=st=>{
                     const curIdx=WON_STAGES.indexOf(deal.stage||"");
                     const newIdx=WON_STAGES.indexOf(st);
@@ -21295,7 +21370,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>👥 Project Team</div>
-                  {(role==="Manager"||role==="Operations")&&!showTeamEdit&&selDeal&&(
+                  {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&!showTeamEdit&&selDeal&&(
                     <button onClick={()=>{
                       setTeamForm({ae:card?.aeAssigned||jo?.aeAssigned||deal?.salesOwner||"",pm1:card?.pm1||jo?.pm1||"",pm2:card?.pm2||jo?.pm2||"",pm3:card?.pm3||jo?.pm3||"",designer:card?.designer||jo?.designer||"",coordinator:card?.coordinator||jo?.coordinator||"",warehouseOnly:card?.warehouseOnly||false});
                       setShowTeamEdit(true);
@@ -21372,7 +21447,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
-                  {(role==="Manager"||role==="Operations"||role==="QS")&&selDeal&&!showDateEdit&&(
+                  {(role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin")&&selDeal&&!showDateEdit&&(
                     <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||""});setShowDateEdit(true);}}
                       style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit Dates</button>
                   )}
@@ -21533,7 +21608,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                   <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div style={{fontWeight:700,color:"#4ade80",fontSize:".82rem"}}>💬 Team Updates ({allProjUpdates.length})</div>
-                    {!showUForm&&["Manager","Operations","ProjectMover"].includes(role)&&<button onClick={()=>{setShowUForm(true);setUText("");}} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
+                    {!showUForm&&["Manager","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&<button onClick={()=>{setShowUForm(true);setUText("");}} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
                   </div>
                   {/* Post form */}
                   {showUForm&&(
@@ -21622,7 +21697,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         </div>
                         <div style={{display:"flex",gap:4,flexShrink:0}}>
                           {openEditCl&&<button onClick={()=>openEditCl(c)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
-                          {(role==="Manager"||role==="Operations")&&delCl&&<button onClick={()=>delCl(c.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                          {(role==="Manager"||role==="Operations"||role==="SalesOpsAdmin")&&delCl&&<button onClick={()=>delCl(c.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                         </div>
                       </div>
                     ))}
@@ -21656,7 +21731,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date));
                 const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
-                const canPost=role==="Manager"||role==="Operations"||isPM;
+                const canPost=role==="Manager"||role==="Operations"||isPM||role==="SalesOpsAdmin";
                 return(
                   <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                     <div style={{padding:"12px 18px",background:"#0ea5e9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
