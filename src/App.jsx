@@ -6131,7 +6131,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const navMap={
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
@@ -8486,6 +8486,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const expCatRows=Object.entries(expCatMap).sort((a,b)=>b[1]-a[1]);
     const totalExpCat=expCatRows.reduce((s,[,v])=>s+v,0);
     const agingMs=billings.filter(b=>b.status!=="Paid"&&b.status!=="Cancelled"&&Number(b.amount||0)>0).map(b=>{const deal=deals.find(d=>d.id===b.dealId);const daysOver=b.dueDate?Math.max(0,Math.floor((new Date()-new Date(b.dueDate))/(864e5))):null;return{...b,clientName:deal?.client||"Unknown",daysOver};}).sort((a,b)=>(b.daysOver||0)-(a.daysOver||0)).slice(0,15);
+    // Sales role gets a sales-only Reports experience: only the Sales Report tab
+    // is shown, and exports/prints omit the finance & receivables sections.
+    const salesOnly=role==="Sales";
     const exportReports=()=>{
       if(!window.XLSX){toastEmit("Excel library not loaded — please refresh","error");return;}
       const wb=window.XLSX.utils.book_new();
@@ -8503,10 +8506,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       } else {
         const sh1=[["Period","Acquired","Won","Win Rate %","Pipeline ₱","Won Value ₱"],...salesPeriods.map(p=>[p.label,p.acquired,p.won,p.winRate,p.pipelineValue,p.wonValue]),["TOTAL",yearDeals.length,yearWon.length,yearDeals.length>0?Math.round(yearWon.length/yearDeals.length*100):0,yearDeals.reduce((s,d)=>s+Number(d.value||0),0),yearWon.reduce((s,d)=>s+Number(d.value||0),0)]];
         window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh1),"Sales");
-        const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
-        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh2),"Finance");
-        const sh3=[["Category","Amount ₱","% of Total"],...expCatRows.map(([cat,amt])=>[cat,amt,totalExpCat>0?Math.round(amt/totalExpCat*100):0])];
-        window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh3),"Expenses by Category");
+        if(!salesOnly){
+          const sh2=[["Period","Revenue ₱","Collections ₱","Outstanding ₱","Expenses ₱","Net Profit ₱"],...finPeriods.map(p=>[p.label,p.revenue,p.collections,p.outstanding,p.expenses,p.net]),["TOTAL",finTot.revenue,finTot.collections,finTot.outstanding,finTot.expenses,finTot.net]];
+          window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh2),"Finance");
+          const sh3=[["Category","Amount ₱","% of Total"],...expCatRows.map(([cat,amt])=>[cat,amt,totalExpCat>0?Math.round(amt/totalExpCat*100):0])];
+          window.XLSX.utils.book_append_sheet(wb,window.XLSX.utils.aoa_to_sheet(sh3),"Expenses by Category");
+        }
         window.XLSX.writeFile(wb,`FabHub-Report-${CY}-${repPeriod}.xlsx`);
       }
     };
@@ -8597,13 +8602,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <span class="tagline">PREPARED BY: ${esc(session?.name||"FabHub")}</span>
       </div>
       <div class="wrap">
-        <div class="title">${repPeriod==="monthly"?"Sales &amp; Finance Report":"Sales &amp; Finance Summary"}</div>
+        <div class="title">${salesOnly?(repPeriod==="monthly"?"Sales Report":"Sales Summary"):(repPeriod==="monthly"?"Sales &amp; Finance Report":"Sales &amp; Finance Summary")}</div>
         <div class="subtitle">${esc(periodLabel)} · Values include 12% VAT where applicable (OR)${dataFlags.length?" · Review Data Flags before circulating":""}</div>
         <div class="kpis">
           <div class="kb"><div class="kl">Deals Won</div><div class="kv">${repPeriod==="monthly"?monthWon.length:yearWon.length}</div></div>
           <div class="kb"><div class="kl">Closed Revenue</div><div class="kv">${fmt(repPeriod==="monthly"?totalWonGross:yearWon.reduce((s,d)=>s+dealTax(d).gross,0))}</div></div>
-          <div class="kb"><div class="kl">Collections</div><div class="kv">${fmt(finTot.collections)}</div></div>
-          <div class="kb"><div class="kl">Net Profit</div><div class="kv" style="color:${finTot.net>=0?"#059669":"#dc2626"}">${fmt(finTot.net)}</div></div>
+          ${salesOnly?"":`<div class="kb"><div class="kl">Collections</div><div class="kv">${fmt(finTot.collections)}</div></div>
+          <div class="kb"><div class="kl">Net Profit</div><div class="kv" style="color:${finTot.net>=0?"#059669":"#dc2626"}">${fmt(finTot.net)}</div></div>`}
         </div>
 
         <div class="sec">
@@ -8622,7 +8627,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </table>
         </div>
 
-        <div class="sec">
+        ${salesOnly?"":`<div class="sec">
           <div class="sec-title">Finance by Period</div>
           <table>
             <thead><tr><th>Period</th><th style="text-align:right">Revenue</th><th style="text-align:right">Collections</th><th style="text-align:right">Outstanding</th><th style="text-align:right">Expenses</th><th style="text-align:right">Net Profit</th></tr></thead>
@@ -8636,7 +8641,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <thead><tr><th>Client</th><th>Invoice</th><th style="text-align:right">Amount</th><th style="text-align:center">Days Overdue</th></tr></thead>
             <tbody>${agingRowsHtml}</tbody>
           </table>
-        </div>
+        </div>`}
 
         <div class="sec">
           <div class="sec-title">Data Flags</div>
@@ -8684,7 +8689,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <button onClick={printReports} style={{background:"#64748b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
         </div>
         <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,flexWrap:"wrap"}}>
-          {[["sales","📊 Sales Report"],["finance","💰 Finance Report"],["ar-aging","📋 AR Aging"],["ap-aging","📑 AP Aging"]].map(([t,l])=>(
+          {(role==="Sales"?[["sales","📊 Sales Report"]]:[["sales","📊 Sales Report"],["finance","💰 Finance Report"],["ar-aging","📋 AR Aging"],["ap-aging","📑 AP Aging"]]).map(([t,l])=>(
             <button key={t} onClick={()=>setRepTab(t)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:repTab===t?700:500,color:repTab===t?"#3b82f6":"#64748b",borderBottom:repTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
           ))}
         </div>
