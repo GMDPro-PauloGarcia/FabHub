@@ -145,22 +145,8 @@ function DailyCashPosition({
   },[loans]);
   const outstandingLoan=loanMetrics.totalBalance;
 
-  // ── Bank Account Detail column totals ──
-  const tot={
-    beg:    sum(BANKS,b=>n(bankRow(b.id).beg)),
-    coll:   collTotal,
-    end:    sum(BANKS,b=>n(bankRow(b.id).end)),
-    book:   sum(BANKS,b=>n(bankRow(b.id).book)),
-    bizlink:bizlinkTotal,
-    float:  floatingTotal,
-  };
-
-  // ── Cash-movement reconciliation (all true, no false flags) ──
-  const netClearedOutflow=tot.beg+collTotal-tot.end;   // what actually left the banks today
-  const recordedDisb=bizlinkTotal+floatingTotal;       // everything we recorded going out
-  const inTransit=recordedDisb-netClearedOutflow;      // cheques/pending not yet reflected by the bank
-
   // ── Disbursements: BizLink expenses (Bizlink col) + released cheque vouchers (Float col) ──
+  // NOTE: declared before `tot`/reconciliation below — they consume these totals.
   const manualDisb=pos.disbursements?.manual||[];
   // BizLink outflows = paid, non-cheque expenses tagged to a bank, on the selected date
   const autoBizlink=useMemo(()=>(exps||[])
@@ -177,8 +163,25 @@ function DailyCashPosition({
 
   const bizlinkByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoBizlink.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method!=="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoBizlink,manualDisb]);
   const floatByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoFloat.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method==="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoFloat,manualDisb]);
-  const bizlinkTotal=useMemo(()=>Object.values(bizlinkByBank).reduce((s,v)=>s+v,0),[bizlinkByBank]);
-  const floatingTotal=useMemo(()=>Object.values(floatByBank).reduce((s,v)=>s+v,0),[floatByBank]);
+  // Totals include every recorded row (even any untagged) so cash figures are never understated —
+  // matches how collTotal is computed. Untagged rows are surfaced with a warning in the detail tables.
+  const bizlinkTotal=useMemo(()=>autoBizlink.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method!=="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoBizlink,manualDisb]);
+  const floatingTotal=useMemo(()=>autoFloat.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method==="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoFloat,manualDisb]);
+
+  // ── Bank Account Detail column totals ──
+  const tot={
+    beg:    sum(BANKS,b=>n(bankRow(b.id).beg)),
+    coll:   collTotal,
+    end:    sum(BANKS,b=>n(bankRow(b.id).end)),
+    book:   sum(BANKS,b=>n(bankRow(b.id).book)),
+    bizlink:bizlinkTotal,
+    float:  floatingTotal,
+  };
+
+  // ── Cash-movement reconciliation (all true, no false flags) ──
+  const netClearedOutflow=tot.beg+collTotal-tot.end;   // what actually left the banks today
+  const recordedDisb=bizlinkTotal+floatingTotal;       // everything we recorded going out
+  const inTransit=recordedDisb-netClearedOutflow;      // cheques/pending not yet reflected by the bank
 
   const payablesMetrics=useMemo(()=>{
     const now=new Date(today);const in7=new Date(today);in7.setDate(in7.getDate()+7);const in30=new Date(today);in30.setDate(in30.getDate()+30);
@@ -262,7 +265,6 @@ function DailyCashPosition({
   const numCell={textAlign:"right",padding:"6px 12px",fontSize:".82rem",fontVariantNumeric:"tabular-nums"};
   const th={background:C.gold,color:C.navy,fontWeight:800,fontSize:".72rem",padding:"8px 10px",border:`1px solid ${C.grid}`,textAlign:"center",whiteSpace:"nowrap"};
   const td={padding:"6px 10px",fontSize:".8rem",border:`1px solid ${C.grid}`,fontVariantNumeric:"tabular-nums"};
-  const inpStyle={textAlign:"right",border:"1.5px solid #e2e8f0",borderRadius:6,padding:"6px 10px",fontFamily:"inherit",fontSize:".85rem",color:"#0f172a",background:"#fff",width:"100%",boxSizing:"border-box",outline:"none"};
 
   const editCell=(id,key)=>(
     <td style={{...td,padding:2,background:"#fff"}}>
