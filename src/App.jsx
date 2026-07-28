@@ -2956,8 +2956,17 @@ export default function App(){
         batch.forEach(({table,msg})=>{ (byTable[table]=byTable[table]||{count:0,msg}).count++; });
         Object.entries(byTable).forEach(([table,{count,msg}])=>{
           const low=LOW_STAKES_DROP_TABLES.has(table);
+          // "No row matched … it may not exist on the server yet" means the edit
+          // was fine — its PARENT record just never reached the server, so the
+          // update had nothing to attach to. "Please redo it" is the wrong advice
+          // here (redoing the edit hits the same missing row); the fix is to push
+          // the local record up first via the Data Backup → "Push All Data to
+          // Cloud" button, which recreates the parent so the queued edit lands.
+          const orphan=!low && /no row matched/i.test(msg||"");
           const text=low
             ? `ℹ️ ${count} history/audit ${count===1?"entry":"entries"} for ${table} couldn't be saved — this is internal log data, not something you entered, so nothing you did is lost.`
+            : orphan
+            ? `❌ ${count} change${count===1?"":"s"} to ${table} couldn't sync — the record ${count===1?"it belongs":"they belong"} to isn't on the server yet. Your change is still saved on this device. Open 💾 Data Backup and tap "☁ Push All Data to Cloud" to fix it, then retry sync.`
             : `❌ ${count} change${count===1?"":"s"} to ${table} could not be saved after several attempts — ${count===1?"it":"they"} were NOT saved. Please redo ${count===1?"it":"them"}. ${msg?`(${msg})`:""}`;
           toastEmit(text,low?"warning":"error",low?8000:15000);
         });
