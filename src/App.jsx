@@ -2728,8 +2728,19 @@ export default function App(){
           const data = await sbLoadAll();
           _log("sbLoadAll (server refresh of all tables)",_tLoad);
           if(!data) toastEmit&&toastEmit("⚠️ Couldn't load from the server. Check your connection, then tap the 🔄 sync button.","error",12000);
+          // Some tables can fail to refresh even when the batch as a whole
+          // succeeds (e.g. a single request times out on the PH<->Singapore
+          // link). Those used to fail silently — the app just kept the stale
+          // last-synced copy with no warning, which is how teammates' Design
+          // Requests appeared "missing" on a device whose DRF fetch had hiccuped.
+          // Surface exactly which data is stale so the user knows to re-sync.
+          if(data?._errors?.length){
+            const LABELS={design_requests:"Design Requests",deals:"Deals",job_orders:"Job Orders",project_cards:"Project Cards",billing_milestones:"Billing",billing_payments:"Payments",purchase_requests:"Purchase Requests",material_requests:"Material Requests",budget_requests:"Budget Requests",expenses:"Expenses",inflows:"Inflows",inventory_items:"Inventory",stock_movements:"Stock Movements",user_profiles:"Users",ce_requests:"CE Requests",suppliers:"Suppliers",subcontractors:"Subcontractors",checklists:"Checklist",swatches:"Swatchboard",addenda:"Addenda",payables:"Payables",loans:"Loans"};
+            const names=data._errors.map(t=>LABELS[t]||t).join(", ");
+            toastEmit&&toastEmit(`⚠️ Couldn't refresh: ${names}. Showing your last-synced copy — tap the 🔄 sync button to retry.`,"error",12000);
+          }
           // Diagnostic — visible in browser console AND stored for the sync banner
-          console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
+          console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0,"failed tables:",data?._errors||[]);
           if(data){
             const idbE=[];
             const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
