@@ -97,6 +97,15 @@ const _writeFailed = (op, table, msg) => {
   try { _onWriteError && _onWriteError(op, table, msg, kind) } catch (_) {}
   return kind
 }
+// A non-retryable failure on a LIVE (first-attempt) write is never enqueued, so
+// it never reaches the queue's drop path — it used to fire only the throttled,
+// generic _onWriteError toast and then vanish. That left the true cause silent:
+// e.g. a new deal whose insert is rejected for bad data never lands, and the
+// user only ever sees the downstream mystery ("No row matched id=… — it may not
+// exist on the server yet") when a later edit to that ghost row is dropped.
+// Surface it through the same drop hook a queue give-up uses, so the ACTUAL
+// failing write and its reason are shown, not just its orphaned side effects.
+const _notifyDropped = (op, kind, msg) => { try { _onWriteDropped && _onWriteDropped(op, kind, msg) } catch (_) {} }
 
 // ── OFFLINE WRITE QUEUE ──────────────────────────────────────────────────────
 // When a write fails (offline, transient network, RLS hiccup) the operation is
@@ -255,7 +264,7 @@ if (typeof window !== 'undefined') {
 export const sbInsert = async (table, data) => {
   if (!supabase) return null
   const { data: result, error } = await _withTimeout(supabase.from(table).insert(data).select().single())
-  if (error) { console.error(`SB INSERT ${table}:`, error.message); const kind=_writeFailed('insert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'insert', table, data }) }
+  if (error) { console.error(`SB INSERT ${table}:`, error.message); const kind=_writeFailed('insert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'insert', table, data }); else _notifyDropped({ kind: 'insert', table, data }, kind, error.message) }
   return result
 }
 
@@ -287,7 +296,7 @@ export const sbUpdate = async (table, id, data) => {
         stripped.push(col)
         continue
       }
-      console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); return false
+      console.error(`SB UPDATE ${table}:`, error.message); const kind=_writeFailed('update', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'update', table, id, data }); else _notifyDropped({ kind: 'update', table, id, data }, kind, error.message); return false
     }
     if (stripped.length) console.warn(`SB UPDATE ${table}: succeeded after dropping column(s) not in the server schema: ${stripped.join(', ')}`)
     if (!rows || rows.length === 0) {
@@ -310,14 +319,14 @@ export const sbUpdate = async (table, id, data) => {
 export const sbUpsert = async (table, data, conflictCol = 'id') => {
   if (!supabase) return false
   const { error } = await _withTimeout(supabase.from(table).upsert(data, { onConflict: conflictCol }))
-  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); return false }
+  if (error) { console.error(`SB UPSERT ${table}:`, error.message); const kind=_writeFailed('upsert', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'upsert', table, data, conflictCol }); else _notifyDropped({ kind: 'upsert', table, data, conflictCol }, kind, error.message); return false }
   return true
 }
 
 export const sbDelete = async (table, id) => {
   if (!supabase) return
   const { error } = await _withTimeout(supabase.from(table).delete().eq('id', id))
-  if (error) { console.error(`SB DELETE ${table}:`, error.message); const kind=_writeFailed('delete', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'delete', table, id }) }
+  if (error) { console.error(`SB DELETE ${table}:`, error.message); const kind=_writeFailed('delete', table, error.message); if(_isRetryable(kind)) _enqueue({ kind: 'delete', table, id }); else _notifyDropped({ kind: 'delete', table, id }, kind, error.message) }
 }
 
 // Conditional delete (delete-where) that, like sbDelete, reports failures
@@ -336,6 +345,7 @@ export const sbDeleteWhere = async (table, column, value, op = 'eq') => {
     // Only re-queue targeted deletes; never replay bulk admin wipes (gte/not_null)
     // later, which could remove data added after the fact.
     if ((op === 'eq' || op === 'in') && _isRetryable(kind)) _enqueue({ kind: 'deleteWhere', table, column, value, op })
+    else if (!_isRetryable(kind)) _notifyDropped({ kind: 'deleteWhere', table, column, value, op }, kind, error.message)
   }
 }
 
