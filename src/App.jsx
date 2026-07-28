@@ -11258,6 +11258,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           totColl={totColl}
           totOut={totOut}
           exps={exps}
+          payables={payables}
+          vouchers={vouchers}
+          loans={loans}
+          inventory={inventory}
         />
       </Wrap>
     );
