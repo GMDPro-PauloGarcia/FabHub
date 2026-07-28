@@ -151,13 +151,34 @@ function DailyCashPosition({
     coll:   collTotal,
     end:    sum(BANKS,b=>n(bankRow(b.id).end)),
     book:   sum(BANKS,b=>n(bankRow(b.id).book)),
-    bizlink:sum(BANKS,b=>n(bankRow(b.id).bizlink)),
-    float:  sum(BANKS,b=>n(bankRow(b.id).float)),
+    bizlink:bizlinkTotal,
+    float:  floatingTotal,
   };
 
-  // ── Operational metrics for the panels below the report ──
-  const floatingChecks=useMemo(()=>(vouchers||[]).filter(v=>v.status==="Released"&&!v.isCleared),[vouchers]);
-  const floatingTotal=useMemo(()=>floatingChecks.reduce((s,v)=>s+Number(v.amount||0),0),[floatingChecks]);
+  // ── Cash-movement reconciliation (all true, no false flags) ──
+  const netClearedOutflow=tot.beg+collTotal-tot.end;   // what actually left the banks today
+  const recordedDisb=bizlinkTotal+floatingTotal;       // everything we recorded going out
+  const inTransit=recordedDisb-netClearedOutflow;      // cheques/pending not yet reflected by the bank
+
+  // ── Disbursements: BizLink expenses (Bizlink col) + released cheque vouchers (Float col) ──
+  const manualDisb=pos.disbursements?.manual||[];
+  // BizLink outflows = paid, non-cheque expenses tagged to a bank, on the selected date
+  const autoBizlink=useMemo(()=>(exps||[])
+    .filter(e=>e.acctStatus==="Paid"&&e.paymentMethod!=="Check"&&e.bankAccount&&e.expDate===selDate)
+    .map(e=>({id:e.id,bank:e.bankAccount,payee:e.payee||e.supplier||"Expense",particulars:e.note||e.category||"",method:"BizLink",amount:Number(e.amount||0),ref:e.refNo||e.receipt||"",source:"expense"})),[exps,selDate]);
+  // A cheque is "floating" on selDate if released on/before it and not yet cleared by then
+  const floatVouchers=useMemo(()=>(vouchers||[]).filter(v=>{
+    const rel=v.releasedDate||(v.status==="Released"?(v.date||selDate):null);
+    if(!rel||rel>selDate) return false;
+    if(v.isCleared&&v.clearedDate&&v.clearedDate<=selDate) return false;
+    return true;
+  }),[vouchers,selDate]);
+  const autoFloat=useMemo(()=>floatVouchers.map(v=>({id:v.id,bank:BILLING_BANK_MAP[v.bank]||v.bank||"",payee:v.payee||"Payee",particulars:(v.description||v.cvNo||"Cheque")+(v.checkNo?` · #${v.checkNo}`:""),method:"Cheque",amount:Number(v.amount||0),ref:v.cvNo||"",source:"voucher"})),[floatVouchers]);
+
+  const bizlinkByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoBizlink.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method!=="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoBizlink,manualDisb]);
+  const floatByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoFloat.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method==="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoFloat,manualDisb]);
+  const bizlinkTotal=useMemo(()=>Object.values(bizlinkByBank).reduce((s,v)=>s+v,0),[bizlinkByBank]);
+  const floatingTotal=useMemo(()=>Object.values(floatByBank).reduce((s,v)=>s+v,0),[floatByBank]);
 
   const payablesMetrics=useMemo(()=>{
     const now=new Date(today);const in7=new Date(today);in7.setDate(in7.getDate()+7);const in30=new Date(today);in30.setDate(in30.getDate()+30);
@@ -219,11 +240,14 @@ function DailyCashPosition({
       ["BANK ACCOUNT DETAIL"],
       ["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Ending Bank Balance","Book Balance","Bizlink Transaction","Float Check"],
     ];
-    BANKS.forEach(b=>{const r=bankRow(b.id);rows.push([b.name,b.acctNo,b.branch,b.type,n(r.beg).toFixed(2),(collByBank[b.id]||0).toFixed(2),n(r.end).toFixed(2),n(r.book).toFixed(2),n(r.bizlink).toFixed(2),n(r.float).toFixed(2)]);});
+    BANKS.forEach(b=>{const r=bankRow(b.id);rows.push([b.name,b.acctNo,b.branch,b.type,n(r.beg).toFixed(2),(collByBank[b.id]||0).toFixed(2),n(r.end).toFixed(2),n(r.book).toFixed(2),(bizlinkByBank[b.id]||0).toFixed(2),(floatByBank[b.id]||0).toFixed(2)]);});
     rows.push(["TOTAL","","","",tot.beg.toFixed(2),tot.coll.toFixed(2),tot.end.toFixed(2),tot.book.toFixed(2),tot.bizlink.toFixed(2),tot.float.toFixed(2)]);
     rows.push([],["COLLECTIONS DETAIL (FOR THE DAY)"],["Bank","Particulars","Amount","Source"]);
     [...autoColl,...manualColl].forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars??r.note??"",n(r.amount).toFixed(2),r.source==="billing"?"Billing (auto)":"Manual"]);});
     rows.push(["TOTAL","",collTotal.toFixed(2),""]);
+    rows.push([],["DISBURSEMENTS DETAIL (FOR THE DAY)"],["Bank","Payee / Particulars","Method","Amount","Source"]);
+    [...autoBizlink,...autoFloat,...manualDisb].forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",`${r.payee||""}${r.particulars?" · "+r.particulars:""}`,r.method||"BizLink",n(r.amount).toFixed(2),r.source==="expense"?"Expense (auto)":r.source==="voucher"?"Voucher (auto)":"Manual"]);});
+    rows.push(["TOTAL","","",recordedDisb.toFixed(2),""]);
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a");
     a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);
@@ -338,8 +362,8 @@ function DailyCashPosition({
                     <td style={{...td,...numCell,color:coll>0?C.blue:"#cbd5e1",fontWeight:coll>0?700:400}}>{coll>0?fmt2(coll):"—"}</td>
                     {editCell(b.id,"end")}
                     {editCell(b.id,"book")}
-                    {editCell(b.id,"bizlink")}
-                    {editCell(b.id,"float")}
+                    <td style={{...td,...numCell,color:bizlinkByBank[b.id]>0?"#b45309":"#cbd5e1",fontWeight:bizlinkByBank[b.id]>0?700:400}}>{bizlinkByBank[b.id]>0?fmt2(bizlinkByBank[b.id]):"—"}</td>
+                    <td style={{...td,...numCell,color:floatByBank[b.id]>0?"#b45309":"#cbd5e1",fontWeight:floatByBank[b.id]>0?700:400}}>{floatByBank[b.id]>0?fmt2(floatByBank[b.id]):"—"}</td>
                   </tr>
                 );
               })}
@@ -356,7 +380,7 @@ function DailyCashPosition({
           </table>
         </div>
         <div style={{padding:"6px 14px 12px",fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
-          <span style={{color:C.blue}}>Blue text</span> = collections for the day (auto-filled from billing payments that clear on this date). <b>Operating</b> = working accounts in the Executive Summary totals; <b>Reserve</b> = Chinabank, Security Bank &amp; UnionBank savings, tracked separately. Ending, Book, Bizlink &amp; Float cells are editable.
+          <span style={{color:C.blue}}>Collections</span> auto-fill from billing payments that clear on this date; <span style={{color:"#b45309"}}>Bizlink &amp; Float Check</span> auto-fill from recorded expenses (BizLink transfers) and released cheque vouchers. <b>Beginning, Ending &amp; Book</b> are entered from the bank/BizLink statement. <b>Operating</b> = working accounts in the Executive Summary totals; <b>Reserve</b> = Chinabank, Security Bank &amp; UnionBank savings, tracked separately.
         </div>
 
         {/* COLLECTIONS DETAIL */}
@@ -412,6 +436,85 @@ function DailyCashPosition({
             </tbody>
           </table>
           <button onClick={()=>f("collections.manualCollections",[...manualColl,{id:uid(),bank:"",particulars:"",amount:""}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add manual collection</button>
+        </div>
+
+        {/* DISBURSEMENTS DETAIL */}
+        {sectionHdr("Disbursements Detail (for the day)","#7c2d12")}
+        <div style={{padding:"10px 12px 14px"}}>
+          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:820}}>
+            <thead>
+              <tr>
+                <th style={{...th,textAlign:"left",width:mob?110:180}}>Bank</th>
+                <th style={{...th,textAlign:"left"}}>Payee / Particulars</th>
+                <th style={{...th,width:mob?90:120}}>Method</th>
+                <th style={{...th,width:mob?100:150}}>Amount</th>
+                <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {autoBizlink.length===0&&autoFloat.length===0&&manualDisb.length===0&&(
+                <tr><td colSpan={5} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Paid BizLink expenses and released cheque vouchers appear here automatically; add manual entries below.</td></tr>
+              )}
+              {[...autoBizlink,...autoFloat].map((r,i)=>{const bk=BANKS.find(x=>x.id===r.bank);const isChq=r.method==="Cheque";return(
+                <tr key={"ad"+(r.id||i)} style={{background:"#fdf6f0"}}>
+                  <td style={{...td}}>{bk?bk.name.toUpperCase():<span style={{color:"#dc2626",fontWeight:700}}>⚠ Untagged</span>}</td>
+                  <td style={{...td}}>{r.payee}{r.particulars?` · ${r.particulars}`:""}<span style={{marginLeft:6,fontSize:".62rem",fontWeight:700,color:"#b45309",background:"#fef3c7",border:"1px solid #fde68a",borderRadius:5,padding:"0 5px"}}>auto · {r.source}</span></td>
+                  <td style={{...td,textAlign:"center"}}><span style={{fontSize:".68rem",fontWeight:700,padding:"1px 7px",borderRadius:20,color:isChq?"#7c3aed":"#1d4ed8",background:isChq?"#f5f3ff":"#eff6ff",border:`1px solid ${isChq?"#e9d5ff":"#bfdbfe"}`}}>{isChq?"Cheque":"BizLink"}</span></td>
+                  <td style={{...td,...numCell,color:"#b45309",fontWeight:700}}>{fmt2(r.amount)}</td>
+                  <td style={{...td,border:"none",background:"#fff"}}></td>
+                </tr>
+              );})}
+              {manualDisb.map((row,ri)=>(
+                <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
+                  <td style={{...td,padding:2}}>
+                    <select value={row.bank||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],bank:e.target.value};f("disbursements.manual",md);}} style={{width:"100%",border:"1px solid transparent",borderRadius:4,padding:"5px 6px",fontFamily:"inherit",fontSize:".8rem",background:"transparent",color:"#0f172a",outline:"none"}}>
+                      <option value="">Select bank…</option>
+                      {BANKS.map(b=><option key={b.id} value={b.id}>{b.name.toUpperCase()}</option>)}
+                    </select>
+                  </td>
+                  <td style={{...td,padding:2}}>
+                    <input type="text" value={row.particulars??""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],particulars:e.target.value};f("disbursements.manual",md);}} placeholder="Payee / particulars" style={{width:"100%",border:"1px solid transparent",borderRadius:4,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem",background:"transparent",color:"#0f172a",outline:"none"}}/>
+                  </td>
+                  <td style={{...td,padding:2}}>
+                    <select value={row.method||"BizLink"} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],method:e.target.value};f("disbursements.manual",md);}} style={{width:"100%",border:"1px solid transparent",borderRadius:4,padding:"5px 6px",fontFamily:"inherit",fontSize:".8rem",background:"transparent",color:"#0f172a",outline:"none"}}>
+                      <option value="BizLink">BizLink</option>
+                      <option value="Cheque">Cheque</option>
+                    </select>
+                  </td>
+                  <td style={{...td,padding:2}}>
+                    <CurrInp value={row.amount||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],amount:e.target.value};f("disbursements.manual",md);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
+                  </td>
+                  <td style={{...td,padding:2,textAlign:"center",border:"none"}}>
+                    <button onClick={()=>f("disbursements.manual",manualDisb.filter((_,j)=>j!==ri))} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:4,padding:"2px 7px",cursor:"pointer",color:"#dc2626",fontWeight:700,fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
+                  </td>
+                </tr>
+              ))}
+              <tr style={{background:"#f1e9e2"}}>
+                <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL</td>
+                <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(recordedDisb)}</td>
+                <td style={{...td,border:"none",background:"#fff"}}></td>
+              </tr>
+            </tbody>
+          </table>
+          <button onClick={()=>f("disbursements.manual",[...manualDisb,{id:uid(),bank:"",particulars:"",method:"BizLink",amount:""}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add manual disbursement</button>
+
+          {/* Cash-movement reconciliation */}
+          {tot.end>0&&(
+            <div style={{marginTop:14,maxWidth:520,background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:10,padding:"12px 14px"}}>
+              <div style={{fontSize:".68rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".6px",marginBottom:8}}>Cash-Movement Reconciliation</div>
+              {[
+                ["Beginning balance (all banks)",tot.beg,"#475569","+"],
+                ["Collections",collTotal,"#059669","+"],
+                ["Ending balance (all banks, entered)",tot.end,"#475569","−"],
+              ].map(([l,v,c,s])=>(
+                <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",padding:"3px 0",color:"#475569"}}><span><b style={{color:c}}>{s}</b> {l}</span><span style={{fontVariantNumeric:"tabular-nums"}}>{fmt2(v)}</span></div>
+              ))}
+              <div style={{display:"flex",justifyContent:"space-between",fontSize:".82rem",fontWeight:800,borderTop:`1px solid ${C.grid}`,marginTop:5,paddingTop:6,color:"#0f172a"}}><span>= Net cleared bank movement</span><span style={{fontVariantNumeric:"tabular-nums"}}>{fmt2(netClearedOutflow)}</span></div>
+              <div style={{marginTop:8,fontSize:".72rem",color:"#64748b",lineHeight:1.5}}>
+                Recorded disbursements (Bizlink + Float) <b>{fmt2(recordedDisb)}</b>. Of that, <b style={{color:Math.abs(inTransit)<1?"#059669":"#b45309"}}>{fmt2(inTransit)}</b> is still in transit — cheques &amp; pending transfers not yet reflected in the bank's ending balance.
+              </div>
+            </div>
+          )}
         </div>
 
         {/* NOTES */}
@@ -487,14 +590,14 @@ function DailyCashPosition({
       {/* Obligations: Floating Checks · Payables · Loans */}
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"repeat(3,1fr)",gap:12,marginBottom:16,alignItems:"start"}}>
         {/* Floating Checks */}
-        <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${floatingChecks.length===0?"#e2e8f0":"#fde68a"}`,overflow:"hidden"}}>
-          <div style={{background:floatingChecks.length===0?"#f8fafc":"#fef9c3",borderBottom:`2px solid ${floatingChecks.length===0?"#e2e8f0":"#fde68a"}`,padding:"11px 16px"}}>
-            <div style={{fontWeight:800,color:floatingChecks.length===0?"#94a3b8":"#92400e",fontSize:".82rem"}}>🏦 Floating Checks</div>
-            <div style={{fontSize:".66rem",color:floatingChecks.length===0?"#cbd5e1":"#b45309",marginTop:1}}>Released CVs not yet cleared · {peso(floatingTotal)}</div>
+        <div style={{background:"#fff",borderRadius:14,border:`1.5px solid ${floatVouchers.length===0?"#e2e8f0":"#fde68a"}`,overflow:"hidden"}}>
+          <div style={{background:floatVouchers.length===0?"#f8fafc":"#fef9c3",borderBottom:`2px solid ${floatVouchers.length===0?"#e2e8f0":"#fde68a"}`,padding:"11px 16px"}}>
+            <div style={{fontWeight:800,color:floatVouchers.length===0?"#94a3b8":"#92400e",fontSize:".82rem"}}>🏦 Floating Checks</div>
+            <div style={{fontSize:".66rem",color:floatVouchers.length===0?"#cbd5e1":"#b45309",marginTop:1}}>Released CVs not yet cleared · {peso(floatingTotal)}</div>
           </div>
-          {floatingChecks.length===0
+          {floatVouchers.length===0
             ?<div style={{padding:"16px",fontSize:".76rem",color:"#cbd5e1",textAlign:"center"}}>None released from FabHub yet.</div>
-            :<div style={{maxHeight:180,overflowY:"auto"}}>{floatingChecks.map(cv=>(
+            :<div style={{maxHeight:180,overflowY:"auto"}}>{floatVouchers.map(cv=>(
               <div key={cv.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 16px",borderBottom:"1px solid #fef3c7",gap:8}}>
                 <div style={{minWidth:0}}><div style={{fontWeight:700,color:"#0f172a",fontSize:".78rem"}}>{cv.payee||cv.cvNo||"CV"}</div><div style={{fontSize:".67rem",color:"#94a3b8"}}>{cv.cvNo||""}{cv.checkNo?` · #${cv.checkNo}`:""}{cv.bank?` · ${cv.bank}`:""}</div></div>
                 <span style={{fontWeight:700,color:"#b45309",fontSize:".8rem",flexShrink:0}}>{peso(cv.amount)}</span>
