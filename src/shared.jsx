@@ -11,16 +11,19 @@ export const uid=()=>{
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==="x"?r:(r&0x3|0x8)).toString(16);});
 };
 export const KEYS={deals:"gmdv5:deals",projects:"gmdv5:projects",expenses:"gmdv5:expenses",inflows:"gmdv5:inflows",jos:"gmdv5:jos",swatches:"gmdv5:swatches",checklist:"gmdv5:checklist",role:"gmdv5:role",users:"gmdv5:users",session:"gmdv5:session",cashPos:"gmdv5:cashPos",prs:"gmdv5:prs",budgets:"gmdv5:budgets",mreqs:"gmdv5:mreqs",breqs:"gmdv5:breqs",addenda:"gmdv5:addenda",billings:"gmdv5:billings",vvip:"gmdv5:vvip",actlog:"gmdv5:actlog",pcards:"gmdv5:pcards",inventory:"gmdv5:inventory",stocklog:"gmdv5:stocklog",drfs:"gmdv5:drfs",botsettings:"gmdv5:botsettings",suppliers:"gmdv5:suppliers",subcons:"gmdv5:subcons",swos:"gmdv5:swos",customclients:"gmdv5:customclients",blockers:"gmdv5:blockers",boqLibrary:"gmdv5:boqLibrary",boqDrafts:"gmdv5:boqDrafts",vouchers:"gmdv5:vouchers",payables:"gmdv5:payables",loans:"gmdv5:loans",evouchers:"gmdv5:evouchers",dailylogs:"gmdv5:dailylogs",ceReqs:"gmdv5:ceReqs"};
+// type: "Operating" = working accounts in the Executive Summary totals;
+// "Reserve" = Chinabank/Security/Unionbank savings, tracked separately (per Aerwin's sheet).
+// acctNo/branch mirror the Bank Account Detail columns of the owners' cash-position report.
 export const BANKS = [
-  { id:"bpi",      name:"Bank of Philippine Island",  short:"BPI",        color:"#dc2626", capital:false },
-  { id:"metro",    name:"Metrobank",                  short:"Metrobank",   color:"#1d4ed8", capital:false },
-  { id:"china",    name:"Chinabank",                  short:"Chinabank",   color:"#15803d", capital:false },
-  { id:"bdo",      name:"Banco de Oro",               short:"BDO",         color:"#b45309", capital:false },
-  { id:"security", name:"Security Bank",              short:"Security",    color:"#7c3aed", capital:false },
-  { id:"union",    name:"Unionbank of the Philippines",short:"Unionbank",  color:"#0e7490", capital:true  }, // GMD Capital — excluded from working capital
+  { id:"bpi",      name:"Bank of Philippine Island",  short:"BPI",        color:"#dc2626", capital:false, type:"Operating", acctNo:"6011048203",       branch:"TUAZON"        },
+  { id:"metro",    name:"Metrobank",                  short:"Metrobank",   color:"#1d4ed8", capital:false, type:"Operating", acctNo:"382-7-38202059-2", branch:"BALAGTAS"      },
+  { id:"china",    name:"Chinabank",                  short:"Chinabank",   color:"#15803d", capital:false, type:"Reserve",   acctNo:"—",                branch:"SM MARIKINA"   },
+  { id:"bdo",      name:"Banco de Oro",               short:"BDO",         color:"#b45309", capital:false, type:"Operating", acctNo:"12758000370",      branch:"KATIPUNAN"     },
+  { id:"security", name:"Security Bank",              short:"Security",    color:"#7c3aed", capital:false, type:"Reserve",   acctNo:"000079339805",     branch:"KAMIAS BRANCH" },
+  { id:"union",    name:"Unionbank of the Philippines",short:"Unionbank",  color:"#0e7490", capital:true,  type:"Reserve",   acctNo:"0018 0000 8603",   branch:"ONLINE"        }, // GMD Capital — excluded from working capital
 ];
 
-export const emptyBankRow = () => ({ beg:"", book:"", end:"" });
+export const emptyBankRow = () => ({ beg:"", book:"", end:"", bizlink:"", float:"" });
 export const emptyDayPosition = (date) => ({
   date,
   banks: Object.fromEntries(BANKS.map(b=>[b.id, emptyBankRow()])),

@@ -2356,7 +2356,7 @@ function CashFlowView({billings,payables,vouchers,loans,cashPositions,setPage,Wr
   const opening=(()=>{
     const days=Object.values(cashPositions||{}).filter(p=>p&&p.banks).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
     if(!days[0]) return 0;
-    return BANKS.filter(b=>!b.capital).reduce((s,b)=>{const r=days[0].banks?.[b.id]||{};return s+(Number(r.book)||Number(r.end)||Number(r.beg)||0);},0);
+    return BANKS.filter(b=>b.type==="Operating").reduce((s,b)=>{const r=days[0].banks?.[b.id]||{};return s+(Number(r.book)||Number(r.end)||Number(r.beg)||0);},0);
   })();
 
   const flows=[];
@@ -11258,6 +11258,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           totColl={totColl}
           totOut={totOut}
           exps={exps}
+          payables={payables}
+          vouchers={vouchers}
+          loans={loans}
+          inventory={inventory}
         />
       </Wrap>
     );
