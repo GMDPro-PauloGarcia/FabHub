@@ -41,7 +41,11 @@ function DailyCashPosition({
 }){
   const[selDate,setSelDate]=useState(today);
   const[saved,setSaved]    =useState(false);
+  const[dirty,setDirty]    =useState(false);   // unsaved local edits on the current day
   const[histOpen,setHistOpen]=useState(false);
+  const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
+  const markDirty =()=>{dirtyRef.current=true; setDirty(true);};
+  const clearDirty=()=>{dirtyRef.current=false;setDirty(false);};
 
   const normPos=(p,date)=>p?.banks?p:{...emptyDayPosition(date||today),...(p||{})};
   const[pos,setPos]=useState(()=>normPos(cashPositions[today],today));
@@ -62,19 +66,34 @@ function DailyCashPosition({
     return {...base,banks:newBanks};
   };
 
-  useEffect(()=>{
-    if(cashPositions[selDate]){setPos(normPos(cashPositions[selDate],selDate));setSaved(true);}
-    else{setPos(carryFrom(selDate));setSaved(false);}
-  },[cashPositions]);
-
-  const switchDate=(d)=>{
-    setSelDate(d);
+  const loadDay=(d)=>{
     if(cashPositions[d]){setPos(normPos(cashPositions[d],d));setSaved(true);}
     else{setPos(carryFrom(d));setSaved(false);}
+    clearDirty();
+  };
+
+  // Re-sync from the store when it changes — but never overwrite unsaved local edits
+  // (e.g. a background Supabase sync arriving while the user is still typing the day).
+  useEffect(()=>{
+    if(dirtyRef.current) return;
+    loadDay(selDate);
+  },[cashPositions]);
+
+  // Warn before closing/reloading the tab with unsaved changes
+  useEffect(()=>{
+    const h=(e)=>{if(dirtyRef.current){e.preventDefault();e.returnValue="";}};
+    window.addEventListener("beforeunload",h);
+    return ()=>window.removeEventListener("beforeunload",h);
+  },[]);
+
+  const switchDate=(d)=>{
+    if(dirtyRef.current&&!window.confirm(`You have unsaved changes for ${fmtDate(selDate)}. Discard them and switch to ${fmtDate(d)}?`)) return;
+    setSelDate(d);
+    loadDay(d);
   };
 
   const f=(path,val)=>{
-    setSaved(false);
+    setSaved(false);markDirty();
     setPos(p=>{
       const parts=path.split(".");
       if(parts.length===1) return {...p,[path]:val};
@@ -102,7 +121,7 @@ function DailyCashPosition({
     return{id:p.id,bank:normBank,amount:Number(p.amount||0),
       particulars:(deal.client||deal.contact||b.name||"Collection"),milestone:b.name||"",method:p.method||"",source:"billing"};
   };
-  const autoColl=useMemo(()=>{
+  const autoCollLive=useMemo(()=>{
     const out=[];
     (billings||[]).forEach(b=>{
       if(b.status==="Cancelled") return;
@@ -110,6 +129,11 @@ function DailyCashPosition({
     });
     return out;
   },[billings,selDate,wonDeals]);
+  // A saved day freezes its auto rows in pos.snapshot so later edits to billing/expenses
+  // can't silently rewrite a signed-off report. Unsaved days compute live; "Refresh from
+  // live" (below) clears the snapshot to re-pull.
+  const snapshot=pos.snapshot||null;
+  const autoColl=snapshot?(snapshot.coll||[]):autoCollLive;
 
   const manualColl=pos.collections?.manualCollections||[];
   const collByBank=useMemo(()=>{
@@ -148,10 +172,16 @@ function DailyCashPosition({
   // ── Disbursements: BizLink expenses (Bizlink col) + released cheque vouchers (Float col) ──
   // NOTE: declared before `tot`/reconciliation below — they consume these totals.
   const manualDisb=pos.disbursements?.manual||[];
-  // BizLink outflows = paid, non-cheque expenses tagged to a bank, on the selected date
-  const autoBizlink=useMemo(()=>(exps||[])
-    .filter(e=>e.acctStatus==="Paid"&&e.paymentMethod!=="Check"&&e.bankAccount&&e.expDate===selDate)
-    .map(e=>({id:e.id,bank:e.bankAccount,payee:e.payee||e.supplier||"Expense",particulars:e.note||e.category||"",method:"BizLink",amount:Number(e.amount||0),ref:e.refNo||e.receipt||"",source:"expense"})),[exps,selDate]);
+  // BizLink outflows = paid, non-cheque expenses tagged to a bank. Prefer an exact expDate
+  // match; expenses carrying only a month/year (e.g. bulk uploads with no day) attribute to
+  // day 1 of that month so they surface once instead of vanishing from the report.
+  const autoBizlinkLive=useMemo(()=>{
+    const[selY,selM,selD]=selDate.split("-").map(Number);
+    return (exps||[])
+      .filter(e=>e.acctStatus==="Paid"&&e.paymentMethod!=="Check"&&e.bankAccount&&(
+        e.expDate===selDate || (!e.expDate&&e.month===selM-1&&(e.year==null||e.year===selY)&&selD===1)))
+      .map(e=>({id:e.id,bank:e.bankAccount,payee:e.payee||e.supplier||"Expense",particulars:e.note||e.category||"",method:"BizLink",amount:Number(e.amount||0),ref:e.refNo||e.receipt||"",source:"expense"}));
+  },[exps,selDate]);
   // A cheque is "floating" on selDate if released on/before it and not yet cleared by then
   const floatVouchers=useMemo(()=>(vouchers||[]).filter(v=>{
     const rel=v.releasedDate||(v.status==="Released"?(v.date||selDate):null);
@@ -159,14 +189,23 @@ function DailyCashPosition({
     if(v.isCleared&&v.clearedDate&&v.clearedDate<=selDate) return false;
     return true;
   }),[vouchers,selDate]);
-  const autoFloat=useMemo(()=>floatVouchers.map(v=>({id:v.id,bank:BILLING_BANK_MAP[v.bank]||v.bank||"",payee:v.payee||"Payee",particulars:(v.description||v.cvNo||"Cheque")+(v.checkNo?` · #${v.checkNo}`:""),method:"Cheque",amount:Number(v.amount||0),ref:v.cvNo||"",source:"voucher"})),[floatVouchers]);
+  const autoFloatLive=useMemo(()=>floatVouchers.map(v=>({id:v.id,bank:BILLING_BANK_MAP[v.bank]||v.bank||"",payee:v.payee||"Payee",particulars:(v.description||v.cvNo||"Cheque")+(v.checkNo?` · #${v.checkNo}`:""),method:"Cheque",amount:Number(v.amount||0),ref:v.cvNo||"",source:"voucher"})),[floatVouchers]);
+  // Saved days use the frozen snapshot (see collections above); unsaved days compute live.
+  const autoBizlink=snapshot?(snapshot.biz||[]):autoBizlinkLive;
+  const autoFloat  =snapshot?(snapshot.flt||[]):autoFloatLive;
 
   const bizlinkByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoBizlink.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method!=="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoBizlink,manualDisb]);
   const floatByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoFloat.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method==="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoFloat,manualDisb]);
   // Totals include every recorded row (even any untagged) so cash figures are never understated —
-  // matches how collTotal is computed. Untagged rows are surfaced with a warning in the detail tables.
+  // matches how collTotal is computed. Untagged amounts are surfaced by the warning below.
   const bizlinkTotal=useMemo(()=>autoBizlink.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method!=="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoBizlink,manualDisb]);
   const floatingTotal=useMemo(()=>autoFloat.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method==="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoFloat,manualDisb]);
+
+  // Recorded but not assigned to a bank — surfaced so the TOTAL row and per-bank columns reconcile
+  const untaggedColl =collTotal    -Object.values(collByBank).reduce((s,v)=>s+v,0);
+  const untaggedBiz  =bizlinkTotal -Object.values(bizlinkByBank).reduce((s,v)=>s+v,0);
+  const untaggedFloat=floatingTotal-Object.values(floatByBank).reduce((s,v)=>s+v,0);
+  const untaggedTotal=untaggedColl+untaggedBiz+untaggedFloat;
 
   // ── Bank Account Detail column totals ──
   const tot={
@@ -223,9 +262,15 @@ function DailyCashPosition({
   const standby=operatingCash-floatingTotal-(payablesMetrics.overdue+payablesMetrics.due7)-loanMetrics.monthlyPaymentTotal;
 
   const handleSave=()=>{
-    saveDayPos(selDate,{...pos,collections:{...pos.collections,total:collTotal},savedAt:new Date().toISOString()});
-    setSaved(true);
+    const at=new Date().toISOString();
+    // Freeze the day's auto rows on first save so the report stays fixed even if the
+    // underlying billing/expense records change later. Keep an existing snapshot as-is.
+    const snap=pos.snapshot||{coll:autoCollLive,biz:autoBizlinkLive,flt:autoFloatLive,at};
+    saveDayPos(selDate,{...pos,collections:{...pos.collections,total:collTotal},snapshot:snap,savedAt:at});
+    setSaved(true);clearDirty();
   };
+  // Discard the frozen snapshot and re-pull live data (marks the day unsaved so it can be re-saved)
+  const refreshFromLive=()=>{ f("snapshot",null); };
 
   const histDates=Object.keys(cashPositions).sort().reverse().slice(0,30);
 
@@ -292,12 +337,21 @@ function DailyCashPosition({
 
       {/* ── Toolbar ── */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
-        <div style={{fontSize:".78rem",color:"#64748b"}}>Daily Cash Position — Owners' Review report</div>
+        <div style={{fontSize:".78rem",color:"#64748b",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+          <span>Daily Cash Position — Owners' Review report</span>
+          {snapshot&&(
+            <span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:".7rem",fontWeight:700,color:"#475569",background:"#f1f5f9",border:"1px solid #cbd5e1",borderRadius:20,padding:"2px 8px"}}>
+              🔒 Snapshot {snapshot.at?`· ${new Date(snapshot.at).toLocaleDateString("en-PH",{month:"short",day:"numeric"})}`:""}
+              <button onClick={refreshFromLive} title="Discard snapshot and re-pull live billing/expense data" style={{background:"none",border:"none",padding:0,color:"#1d4ed8",fontWeight:700,fontSize:".7rem",cursor:"pointer",fontFamily:"inherit"}}>↻ Refresh</button>
+            </span>
+          )}
+        </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+          {dirty&&<span style={{fontSize:".72rem",fontWeight:700,color:"#b45309",display:"inline-flex",alignItems:"center",gap:4}}>● Unsaved</span>}
           <button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
           <input type="date" value={selDate} onChange={e=>switchDate(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",cursor:"pointer"}}/>
           <button onClick={()=>setHistOpen(h=>!h)} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".78rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>📅 History ({histDates.length})</button>
-          <button onClick={handleSave} style={{background:saved?"#f0fdf4":C.navy,border:`1.5px solid ${saved?"#6ee7b7":C.navy}`,borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:saved?"#059669":"#fff",cursor:"pointer",fontWeight:700}}>{saved?"✓ Saved":"Save Position"}</button>
+          <button onClick={handleSave} style={{background:(saved&&!dirty)?"#f0fdf4":C.navy,border:`1.5px solid ${(saved&&!dirty)?"#6ee7b7":C.navy}`,borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:(saved&&!dirty)?"#059669":"#fff",cursor:"pointer",fontWeight:700}}>{(saved&&!dirty)?"✓ Saved":"Save Position"}</button>
         </div>
       </div>
 
@@ -384,6 +438,17 @@ function DailyCashPosition({
         <div style={{padding:"6px 14px 12px",fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
           <span style={{color:C.blue}}>Collections</span> auto-fill from billing payments that clear on this date; <span style={{color:"#b45309"}}>Bizlink &amp; Float Check</span> auto-fill from recorded expenses (BizLink transfers) and released cheque vouchers. <b>Beginning, Ending &amp; Book</b> are entered from the bank/BizLink statement. <b>Operating</b> = working accounts in the Executive Summary totals; <b>Reserve</b> = Chinabank, Security Bank &amp; UnionBank savings, tracked separately.
         </div>
+
+        {/* Untagged-amount warning — explains why the TOTAL row can exceed the per-bank columns */}
+        {untaggedTotal>0.005&&(
+          <div style={{margin:"0 14px 12px",background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",fontSize:".72rem",color:"#92400e",lineHeight:1.5}}>
+            ⚠ <b>{peso(untaggedTotal)}</b> is not assigned to a bank, so it's in the TOTAL row but not in any bank column:
+            {untaggedColl>0.005?<> collections {peso(untaggedColl)};</>:null}
+            {untaggedBiz>0.005?<> Bizlink {peso(untaggedBiz)};</>:null}
+            {untaggedFloat>0.005?<> float cheques {peso(untaggedFloat)};</>:null}
+            {" "}assign a bank on the rows marked <b>⚠ Untagged</b> in the detail tables below.
+          </div>
+        )}
 
         {/* COLLECTIONS DETAIL */}
         {sectionHdr("Collections Detail (for the day)","#c00000")}
