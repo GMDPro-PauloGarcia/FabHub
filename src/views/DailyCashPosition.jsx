@@ -169,17 +169,25 @@ function DailyCashPosition({
   const autoBizlink=snapshot?(snapshot.biz||[]):autoBizlinkLive;
   const autoFloat  =snapshot?(snapshot.flt||[]):autoFloatLive;
 
-  const bizlinkByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoBizlink.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method!=="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoBizlink,manualDisb]);
-  const floatByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoFloat.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method==="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoFloat,manualDisb]);
-  // Totals include every recorded row (even any untagged) so cash figures are never understated —
-  // matches how collTotal is computed. Untagged amounts are surfaced by the warning below.
-  const bizlinkTotal=useMemo(()=>autoBizlink.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method!=="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoBizlink,manualDisb]);
-  const floatingTotal=useMemo(()=>autoFloat.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method==="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoFloat,manualDisb]);
+  // Auto per-bank totals from the recorded expenses / cheque vouchers (+ manual disbursement rows)
+  const bizAutoByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoBizlink.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method!=="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoBizlink,manualDisb]);
+  const fltAutoByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoFloat.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method==="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoFloat,manualDisb]);
+  // Effective per-bank = manual override typed into the cell (pos.banks[id].bizlink/float) if set,
+  // else the auto value. Everything downstream (Ending, Book, totals, standby) uses the effective.
+  const hasOv=(v)=>v!==""&&v!=null;
+  const bizlinkByBank={},floatByBank={};
+  BANKS.forEach(b=>{const r=bankRow(b.id);
+    bizlinkByBank[b.id]=hasOv(r.bizlink)?n(r.bizlink):(bizAutoByBank[b.id]||0);
+    floatByBank[b.id]  =hasOv(r.float)  ?n(r.float)  :(fltAutoByBank[b.id]||0);
+  });
+  const bizlinkTotal=BANKS.reduce((s,b)=>s+bizlinkByBank[b.id],0);
+  const floatingTotal=BANKS.reduce((s,b)=>s+floatByBank[b.id],0);
 
   // Recorded but not assigned to a bank — surfaced so the TOTAL row and per-bank columns reconcile
-  const untaggedColl =collTotal    -Object.values(collByBank).reduce((s,v)=>s+v,0);
-  const untaggedBiz  =bizlinkTotal -Object.values(bizlinkByBank).reduce((s,v)=>s+v,0);
-  const untaggedFloat=floatingTotal-Object.values(floatByBank).reduce((s,v)=>s+v,0);
+  const isUntagged=(r)=>!BANKS.some(b=>b.id===r.bank);
+  const untaggedColl =[...autoColl,...manualColl].filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
+  const untaggedBiz  =[...autoBizlink,...manualDisb.filter(r=>r.method!=="Cheque")].filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
+  const untaggedFloat=[...autoFloat,...manualDisb.filter(r=>r.method==="Cheque")].filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
   const untaggedTotal=untaggedColl+untaggedBiz+untaggedFloat;
 
   // ── Ending Bank Balance & Book Balance — AUTO-COMPUTED per bank ──
@@ -340,6 +348,28 @@ function DailyCashPosition({
     </td>
   );
 
+  // Bizlink / Float cell: auto-filled by default, click ✎ to type a manual override, ✕ to revert to auto
+  const flowCell=(id,key,autoVal,clr)=>{
+    const ov=bankRow(id)[key];
+    const overridden=hasOv(ov);
+    if(overridden) return(
+      <td style={{...td,padding:2,background:"#fffbeb"}}>
+        <div style={{display:"flex",alignItems:"center",gap:2}}>
+          <CurrInp value={ov} onChange={e=>f(`banks.${id}.${key}`,e.target.value)} style={{textAlign:"right",fontSize:".8rem",padding:"5px 6px",color:clr,fontWeight:700}}/>
+          <button title="Revert to auto" onClick={()=>f(`banks.${id}.${key}`,"")} style={{background:"none",border:"none",color:"#b45309",cursor:"pointer",fontSize:".72rem",padding:0,lineHeight:1}}>✕</button>
+        </div>
+      </td>
+    );
+    return(
+      <td style={{...td,...numCell}}>
+        <span style={{display:"inline-flex",alignItems:"center",gap:5,justifyContent:"flex-end",width:"100%"}}>
+          <span style={{color:autoVal>0?clr:"#cbd5e1",fontWeight:autoVal>0?700:400}}>{autoVal>0?fmt2(autoVal):"—"}</span>
+          <button title="Override this figure" onClick={()=>f(`banks.${id}.${key}`,String(autoVal||0))} className="ovr-edit" style={{background:"none",border:"none",color:"#cbd5e1",cursor:"pointer",fontSize:".72rem",padding:0,lineHeight:1}}>✎</button>
+        </span>
+      </td>
+    );
+  };
+
   const summaryRows=[
     ["Total Operating Bank Balance – Beginning of Day",opBeg,false,"#0f172a"],
     ["Total Operating Bank Balance – End of Day",opEnd,false,"#0f172a"],
@@ -355,6 +385,8 @@ function DailyCashPosition({
       <style>{`
         .dcp-inp:focus{border:1px solid ${C.blue}!important;background:#eff6ff!important;box-shadow:0 0 0 2px rgba(0,112,192,.12);border-radius:4px;}
         .dcp-inp:hover{background:#f1f5f9;border-radius:4px;}
+        .ovr-edit{opacity:0;transition:opacity .15s;}
+        td:hover .ovr-edit{opacity:1;color:#1d4ed8!important;}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
       `}</style>
 
@@ -456,8 +488,8 @@ function DailyCashPosition({
                     <td style={{...td,...numCell,color:coll>0?C.blue:"#cbd5e1",fontWeight:coll>0?700:400}}>{coll>0?fmt2(coll):"—"}</td>
                     <td style={{...td,...numCell,fontWeight:700,color:endingByBank[b.id]<0?"#dc2626":"#047857"}}>{fmt2(endingByBank[b.id])}</td>
                     <td style={{...td,...numCell,fontWeight:700,color:bookByBank[b.id]<0?"#dc2626":"#92400e"}}>{fmt2(bookByBank[b.id])}</td>
-                    <td style={{...td,...numCell,color:bizlinkByBank[b.id]>0?"#b45309":"#cbd5e1",fontWeight:bizlinkByBank[b.id]>0?700:400}}>{bizlinkByBank[b.id]>0?fmt2(bizlinkByBank[b.id]):"—"}</td>
-                    <td style={{...td,...numCell,color:floatByBank[b.id]>0?"#b45309":"#cbd5e1",fontWeight:floatByBank[b.id]>0?700:400}}>{floatByBank[b.id]>0?fmt2(floatByBank[b.id]):"—"}</td>
+                    {flowCell(b.id,"bizlink",bizAutoByBank[b.id],"#b45309")}
+                    {flowCell(b.id,"float",fltAutoByBank[b.id],"#b45309")}
                   </tr>
                 );
               })}
@@ -474,7 +506,7 @@ function DailyCashPosition({
           </table>
         </div>
         <div style={{padding:"6px 14px 12px",fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
-          Only <b>Beginning Balance</b> is entered (it carries from the prior day's Ending). Everything else auto-computes: <span style={{color:C.blue}}>Collections</span> from cleared billing payments, <span style={{color:"#b45309"}}>Bizlink &amp; Float</span> from expenses/cheque vouchers, then <span style={{color:"#047857"}}>Ending = Beginning + Collections − Bizlink</span> and <span style={{color:"#92400e"}}>Book = Ending − Float</span>. <b>Operating</b> = working accounts in the Executive Summary; <b>Reserve</b> = Chinabank, Security Bank &amp; UnionBank savings, tracked separately.
+          <b>Beginning Balance</b> is entered (carries from the prior day's Ending). <span style={{color:C.blue}}>Collections</span> auto-fill from cleared billing payments; <span style={{color:"#b45309"}}>Bizlink &amp; Float</span> auto-fill from expenses/cheque vouchers — hover a cell and click <b>✎</b> to type a manual override, <b>✕</b> to revert to auto. Then <span style={{color:"#047857"}}>Ending = Beginning + Collections − Bizlink</span> and <span style={{color:"#92400e"}}>Book = Ending − Float</span>. <b>Operating</b> = Executive-Summary working accounts; <b>Reserve</b> = Chinabank, Security Bank &amp; UnionBank savings.
         </div>
 
         {/* Untagged-amount warning — explains why the TOTAL row can exceed the per-bank columns */}
