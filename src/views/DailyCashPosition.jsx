@@ -214,6 +214,13 @@ function DailyCashPosition({
   },[loans]);
   const outstandingLoan=loanMetrics.totalBalance;
 
+  // ── Running memo balances (mirror the daily sheet's top-right block) ──
+  // Running A/R = total outstanding receivables across all billing milestones.
+  const runningAR=useMemo(()=>(billings||[]).filter(b=>b.status!=="Cancelled").reduce((s,b)=>{
+    const paid=(b.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0);
+    return s+Math.max(0,Number(b.amount||0)-paid);
+  },0),[billings]);
+
   // ── Bank Account Detail column totals ──
   const tot={
     beg:    sum(BANKS,b=>n(bankRow(b.id).beg)),
@@ -296,6 +303,11 @@ function DailyCashPosition({
       ["Reserve / Savings Balance",reserveBal.toFixed(2)],
       ["Total Cash – All Accounts (End of Day)",totalCashAll.toFixed(2)],
       ["Outstanding Loan Balance (memo only)",outstandingLoan.toFixed(2)],[],
+      ["RUNNING BALANCES (memo)","Amount (PHP)"],
+      ["Running A/R",runningAR.toFixed(2)],
+      ["Running Payables",payablesMetrics.totalUnpaid.toFixed(2)],
+      ["Running Loan Balance",outstandingLoan.toFixed(2)],
+      ["Total Checks to be Cleared",floatingTotal.toFixed(2)],[],
       ["BANK ACCOUNT DETAIL"],
       ["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Ending Bank Balance","Book Balance","Bizlink Transaction","Float Check"],
     ];
@@ -403,6 +415,21 @@ function DailyCashPosition({
               ))}
             </tbody>
           </table>
+          {/* Running memo balances — mirrors the daily sheet's top-right block */}
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:8,marginTop:4}}>
+            {[
+              {l:"Running A/R",v:runningAR,c:"#1d4ed8",sub:"Outstanding receivables"},
+              {l:"Running Payables",v:payablesMetrics.totalUnpaid,c:"#dc2626",sub:"Unpaid payables"},
+              {l:"Running Loan Balance",v:outstandingLoan,c:C.blue,sub:"Excl. from cash total"},
+              {l:"Total Checks to be Cleared",v:floatingTotal,c:"#b45309",sub:"PDC / released, uncleared"},
+            ].map(({l,v,c,sub})=>(
+              <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"9px 12px"}}>
+                <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8",fontWeight:700}}>{l}</div>
+                <div style={{fontWeight:800,fontSize:"1rem",color:c,marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
+                <div style={{fontSize:".6rem",color:"#cbd5e1",marginTop:1}}>{sub}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* BANK ACCOUNT DETAIL */}
