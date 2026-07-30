@@ -144,33 +144,8 @@ function DailyCashPosition({
   },[autoColl,manualColl]);
   const collTotal=useMemo(()=>autoColl.reduce((s,r)=>s+n(r.amount),0)+manualColl.reduce((s,r)=>s+n(r.amount),0),[autoColl,manualColl]);
 
-  // ── Executive Summary (computed from Bank Account Detail) ──
-  const opBeg  =sum(opBanks, b=>n(bankRow(b.id).beg));
-  const opEnd  =sum(opBanks, b=>n(bankRow(b.id).end));
-  const opBook =sum(opBanks, b=>n(bankRow(b.id).book));
-  const netChange=opEnd-opBeg;
-  const reserveBal=sum(resBanks, b=>n(bankRow(b.id).end));
-  const totalCashAll=opEnd+reserveBal;
-
-  // ── Loan metrics (memo + obligations panel) ──
-  const loanMetrics=useMemo(()=>{
-    const monthlyRate=l=>Number(l.interestRate||0)/100/12;
-    let totalBalance=0,monthlyPaymentTotal=0;const loanRows=[];
-    (loans||[]).filter(l=>l.status!=="Paid Off"&&l.status!=="Cancelled").forEach(l=>{
-      let balance=Number(l.principal||0);const mr=monthlyRate(l);
-      (l.payments||[]).slice().sort((a,b)=>a.date>b.date?1:-1).forEach(p=>{
-        const interest=balance*mr;balance=Math.max(0,balance-Math.max(0,Number(p.amount||0)-interest));
-      });
-      const monthly=Number(l.monthlyPayment||0);
-      totalBalance+=balance;monthlyPaymentTotal+=monthly;
-      loanRows.push({...l,remainingBalance:balance,monthly});
-    });
-    return{totalBalance,monthlyPaymentTotal,loanRows};
-  },[loans]);
-  const outstandingLoan=loanMetrics.totalBalance;
-
   // ── Disbursements: BizLink expenses (Bizlink col) + released cheque vouchers (Float col) ──
-  // NOTE: declared before `tot`/reconciliation below — they consume these totals.
+  // Declared before Ending/Book & the Executive Summary below — they consume these totals.
   const manualDisb=pos.disbursements?.manual||[];
   // BizLink outflows = paid, non-cheque expenses tagged to a bank. Prefer an exact expDate
   // match; expenses carrying only a month/year (e.g. bulk uploads with no day) attribute to
@@ -194,25 +169,72 @@ function DailyCashPosition({
   const autoBizlink=snapshot?(snapshot.biz||[]):autoBizlinkLive;
   const autoFloat  =snapshot?(snapshot.flt||[]):autoFloatLive;
 
-  const bizlinkByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoBizlink.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method!=="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoBizlink,manualDisb]);
-  const floatByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoFloat.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method==="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoFloat,manualDisb]);
-  // Totals include every recorded row (even any untagged) so cash figures are never understated —
-  // matches how collTotal is computed. Untagged amounts are surfaced by the warning below.
-  const bizlinkTotal=useMemo(()=>autoBizlink.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method!=="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoBizlink,manualDisb]);
-  const floatingTotal=useMemo(()=>autoFloat.reduce((s,r)=>s+n(r.amount),0)+manualDisb.filter(r=>r.method==="Cheque").reduce((s,r)=>s+n(r.amount),0),[autoFloat,manualDisb]);
+  // Auto per-bank totals from the recorded expenses / cheque vouchers (+ manual disbursement rows)
+  const bizAutoByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoBizlink.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method!=="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoBizlink,manualDisb]);
+  const fltAutoByBank=useMemo(()=>{const o={};BANKS.forEach(b=>o[b.id]=0);autoFloat.forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});manualDisb.filter(r=>r.method==="Cheque").forEach(r=>{if(o[r.bank]!=null)o[r.bank]+=n(r.amount);});return o;},[autoFloat,manualDisb]);
+  // Effective per-bank = manual override typed into the cell (pos.banks[id].bizlink/float) if set,
+  // else the auto value. Everything downstream (Ending, Book, totals, standby) uses the effective.
+  const hasOv=(v)=>v!==""&&v!=null;
+  const bizlinkByBank={},floatByBank={};
+  BANKS.forEach(b=>{const r=bankRow(b.id);
+    bizlinkByBank[b.id]=hasOv(r.bizlink)?n(r.bizlink):(bizAutoByBank[b.id]||0);
+    floatByBank[b.id]  =hasOv(r.float)  ?n(r.float)  :(fltAutoByBank[b.id]||0);
+  });
+  const bizlinkTotal=BANKS.reduce((s,b)=>s+bizlinkByBank[b.id],0);
+  const floatingTotal=BANKS.reduce((s,b)=>s+floatByBank[b.id],0);
 
   // Recorded but not assigned to a bank — surfaced so the TOTAL row and per-bank columns reconcile
-  const untaggedColl =collTotal    -Object.values(collByBank).reduce((s,v)=>s+v,0);
-  const untaggedBiz  =bizlinkTotal -Object.values(bizlinkByBank).reduce((s,v)=>s+v,0);
-  const untaggedFloat=floatingTotal-Object.values(floatByBank).reduce((s,v)=>s+v,0);
+  const isUntagged=(r)=>!BANKS.some(b=>b.id===r.bank);
+  const untaggedColl =[...autoColl,...manualColl].filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
+  const untaggedBiz  =[...autoBizlink,...manualDisb.filter(r=>r.method!=="Cheque")].filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
+  const untaggedFloat=[...autoFloat,...manualDisb.filter(r=>r.method==="Cheque")].filter(isUntagged).reduce((s,r)=>s+n(r.amount),0);
   const untaggedTotal=untaggedColl+untaggedBiz+untaggedFloat;
+
+  // ── Ending Bank Balance & Book Balance — AUTO-COMPUTED per bank ──
+  // Ending = Beginning + Collections − Bizlink (online transfers hit the bank; cheques still
+  // float and don't reduce the bank balance yet). Book = Ending − Float Check (the books
+  // already reflect released cheques before they clear). Both are derived, not typed.
+  const endingByBank=useMemo(()=>{const o={};BANKS.forEach(b=>{o[b.id]=n(bankRow(b.id).beg)+(collByBank[b.id]||0)-(bizlinkByBank[b.id]||0);});return o;},[pos.banks,collByBank,bizlinkByBank]);
+  const bookByBank  =useMemo(()=>{const o={};BANKS.forEach(b=>{o[b.id]=endingByBank[b.id]-(floatByBank[b.id]||0);});return o;},[endingByBank,floatByBank]);
+
+  // ── Executive Summary (computed from Bank Account Detail) ──
+  const opBeg  =sum(opBanks, b=>n(bankRow(b.id).beg));
+  const opEnd  =sum(opBanks, b=>endingByBank[b.id]);
+  const opBook =sum(opBanks, b=>bookByBank[b.id]);
+  const netChange=opEnd-opBeg;
+  const reserveBal=sum(resBanks, b=>endingByBank[b.id]);
+  const totalCashAll=opEnd+reserveBal;
+
+  // ── Loan metrics (memo + obligations panel) ──
+  const loanMetrics=useMemo(()=>{
+    const monthlyRate=l=>Number(l.interestRate||0)/100/12;
+    let totalBalance=0,monthlyPaymentTotal=0;const loanRows=[];
+    (loans||[]).filter(l=>l.status!=="Paid Off"&&l.status!=="Cancelled").forEach(l=>{
+      let balance=Number(l.principal||0);const mr=monthlyRate(l);
+      (l.payments||[]).slice().sort((a,b)=>a.date>b.date?1:-1).forEach(p=>{
+        const interest=balance*mr;balance=Math.max(0,balance-Math.max(0,Number(p.amount||0)-interest));
+      });
+      const monthly=Number(l.monthlyPayment||0);
+      totalBalance+=balance;monthlyPaymentTotal+=monthly;
+      loanRows.push({...l,remainingBalance:balance,monthly});
+    });
+    return{totalBalance,monthlyPaymentTotal,loanRows};
+  },[loans]);
+  const outstandingLoan=loanMetrics.totalBalance;
+
+  // ── Running memo balances (mirror the daily sheet's top-right block) ──
+  // Running A/R = total outstanding receivables across all billing milestones.
+  const runningAR=useMemo(()=>(billings||[]).filter(b=>b.status!=="Cancelled").reduce((s,b)=>{
+    const paid=(b.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0);
+    return s+Math.max(0,Number(b.amount||0)-paid);
+  },0),[billings]);
 
   // ── Bank Account Detail column totals ──
   const tot={
     beg:    sum(BANKS,b=>n(bankRow(b.id).beg)),
     coll:   collTotal,
-    end:    sum(BANKS,b=>n(bankRow(b.id).end)),
-    book:   sum(BANKS,b=>n(bankRow(b.id).book)),
+    end:    sum(BANKS,b=>endingByBank[b.id]),
+    book:   sum(BANKS,b=>bookByBank[b.id]),
     bizlink:bizlinkTotal,
     float:  floatingTotal,
   };
@@ -266,7 +288,11 @@ function DailyCashPosition({
     // Freeze the day's auto rows on first save so the report stays fixed even if the
     // underlying billing/expense records change later. Keep an existing snapshot as-is.
     const snap=pos.snapshot||{coll:autoCollLive,biz:autoBizlinkLive,flt:autoFloatLive,at};
-    saveDayPos(selDate,{...pos,collections:{...pos.collections,total:collTotal},snapshot:snap,savedAt:at});
+    // Materialize the computed Ending & Book into the saved banks so the next day carries
+    // the right beginning balance and CSV/history export the reconciled figures.
+    const banksOut={};
+    BANKS.forEach(b=>{banksOut[b.id]={...bankRow(b.id),end:String(endingByBank[b.id]),book:String(bookByBank[b.id])};});
+    saveDayPos(selDate,{...pos,banks:banksOut,collections:{...pos.collections,total:collTotal},snapshot:snap,savedAt:at});
     setSaved(true);clearDirty();
   };
   // Discard the frozen snapshot and re-pull live data (marks the day unsaved so it can be re-saved)
@@ -285,10 +311,15 @@ function DailyCashPosition({
       ["Reserve / Savings Balance",reserveBal.toFixed(2)],
       ["Total Cash – All Accounts (End of Day)",totalCashAll.toFixed(2)],
       ["Outstanding Loan Balance (memo only)",outstandingLoan.toFixed(2)],[],
+      ["RUNNING BALANCES (memo)","Amount (PHP)"],
+      ["Running A/R",runningAR.toFixed(2)],
+      ["Running Payables",payablesMetrics.totalUnpaid.toFixed(2)],
+      ["Running Loan Balance",outstandingLoan.toFixed(2)],
+      ["Total Checks to be Cleared",floatingTotal.toFixed(2)],[],
       ["BANK ACCOUNT DETAIL"],
       ["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Ending Bank Balance","Book Balance","Bizlink Transaction","Float Check"],
     ];
-    BANKS.forEach(b=>{const r=bankRow(b.id);rows.push([b.name,b.acctNo,b.branch,b.type,n(r.beg).toFixed(2),(collByBank[b.id]||0).toFixed(2),n(r.end).toFixed(2),n(r.book).toFixed(2),(bizlinkByBank[b.id]||0).toFixed(2),(floatByBank[b.id]||0).toFixed(2)]);});
+    BANKS.forEach(b=>{const r=bankRow(b.id);rows.push([b.name,b.acctNo,b.branch,b.type,n(r.beg).toFixed(2),(collByBank[b.id]||0).toFixed(2),endingByBank[b.id].toFixed(2),bookByBank[b.id].toFixed(2),(bizlinkByBank[b.id]||0).toFixed(2),(floatByBank[b.id]||0).toFixed(2)]);});
     rows.push(["TOTAL","","","",tot.beg.toFixed(2),tot.coll.toFixed(2),tot.end.toFixed(2),tot.book.toFixed(2),tot.bizlink.toFixed(2),tot.float.toFixed(2)]);
     rows.push([],["COLLECTIONS DETAIL (FOR THE DAY)"],["Bank","Particulars","Amount","Source"]);
     [...autoColl,...manualColl].forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars??r.note??"",n(r.amount).toFixed(2),r.source==="billing"?"Billing (auto)":"Manual"]);});
@@ -317,6 +348,28 @@ function DailyCashPosition({
     </td>
   );
 
+  // Bizlink / Float cell: auto-filled by default, click ✎ to type a manual override, ✕ to revert to auto
+  const flowCell=(id,key,autoVal,clr)=>{
+    const ov=bankRow(id)[key];
+    const overridden=hasOv(ov);
+    if(overridden) return(
+      <td style={{...td,padding:2,background:"#fffbeb"}}>
+        <div style={{display:"flex",alignItems:"center",gap:2}}>
+          <CurrInp value={ov} onChange={e=>f(`banks.${id}.${key}`,e.target.value)} style={{textAlign:"right",fontSize:".8rem",padding:"5px 6px",color:clr,fontWeight:700}}/>
+          <button title="Revert to auto" onClick={()=>f(`banks.${id}.${key}`,"")} style={{background:"none",border:"none",color:"#b45309",cursor:"pointer",fontSize:".72rem",padding:0,lineHeight:1}}>✕</button>
+        </div>
+      </td>
+    );
+    return(
+      <td style={{...td,...numCell}}>
+        <span style={{display:"inline-flex",alignItems:"center",gap:5,justifyContent:"flex-end",width:"100%"}}>
+          <span style={{color:autoVal>0?clr:"#cbd5e1",fontWeight:autoVal>0?700:400}}>{autoVal>0?fmt2(autoVal):"—"}</span>
+          <button title="Override this figure" onClick={()=>f(`banks.${id}.${key}`,String(autoVal||0))} className="ovr-edit" style={{background:"none",border:"none",color:"#cbd5e1",cursor:"pointer",fontSize:".72rem",padding:0,lineHeight:1}}>✎</button>
+        </span>
+      </td>
+    );
+  };
+
   const summaryRows=[
     ["Total Operating Bank Balance – Beginning of Day",opBeg,false,"#0f172a"],
     ["Total Operating Bank Balance – End of Day",opEnd,false,"#0f172a"],
@@ -332,6 +385,8 @@ function DailyCashPosition({
       <style>{`
         .dcp-inp:focus{border:1px solid ${C.blue}!important;background:#eff6ff!important;box-shadow:0 0 0 2px rgba(0,112,192,.12);border-radius:4px;}
         .dcp-inp:hover{background:#f1f5f9;border-radius:4px;}
+        .ovr-edit{opacity:0;transition:opacity .15s;}
+        td:hover .ovr-edit{opacity:1;color:#1d4ed8!important;}
         @keyframes fadeIn{from{opacity:0}to{opacity:1}}
       `}</style>
 
@@ -392,6 +447,21 @@ function DailyCashPosition({
               ))}
             </tbody>
           </table>
+          {/* Running memo balances — mirrors the daily sheet's top-right block */}
+          <div style={{display:"grid",gridTemplateColumns:mob?"1fr 1fr":"repeat(4,1fr)",gap:8,marginTop:4}}>
+            {[
+              {l:"Running A/R",v:runningAR,c:"#1d4ed8",sub:"Outstanding receivables"},
+              {l:"Running Payables",v:payablesMetrics.totalUnpaid,c:"#dc2626",sub:"Unpaid payables"},
+              {l:"Running Loan Balance",v:outstandingLoan,c:C.blue,sub:"Excl. from cash total"},
+              {l:"Total Checks to be Cleared",v:floatingTotal,c:"#b45309",sub:"PDC / released, uncleared"},
+            ].map(({l,v,c,sub})=>(
+              <div key={l} style={{background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"9px 12px"}}>
+                <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".6px",color:"#94a3b8",fontWeight:700}}>{l}</div>
+                <div style={{fontWeight:800,fontSize:"1rem",color:c,marginTop:2,fontVariantNumeric:"tabular-nums"}}>{peso(v)}</div>
+                <div style={{fontSize:".6rem",color:"#cbd5e1",marginTop:1}}>{sub}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* BANK ACCOUNT DETAIL */}
@@ -416,10 +486,10 @@ function DailyCashPosition({
                     </td>
                     {editCell(b.id,"beg")}
                     <td style={{...td,...numCell,color:coll>0?C.blue:"#cbd5e1",fontWeight:coll>0?700:400}}>{coll>0?fmt2(coll):"—"}</td>
-                    {editCell(b.id,"end")}
-                    {editCell(b.id,"book")}
-                    <td style={{...td,...numCell,color:bizlinkByBank[b.id]>0?"#b45309":"#cbd5e1",fontWeight:bizlinkByBank[b.id]>0?700:400}}>{bizlinkByBank[b.id]>0?fmt2(bizlinkByBank[b.id]):"—"}</td>
-                    <td style={{...td,...numCell,color:floatByBank[b.id]>0?"#b45309":"#cbd5e1",fontWeight:floatByBank[b.id]>0?700:400}}>{floatByBank[b.id]>0?fmt2(floatByBank[b.id]):"—"}</td>
+                    <td style={{...td,...numCell,fontWeight:700,color:endingByBank[b.id]<0?"#dc2626":"#047857"}}>{fmt2(endingByBank[b.id])}</td>
+                    <td style={{...td,...numCell,fontWeight:700,color:bookByBank[b.id]<0?"#dc2626":"#92400e"}}>{fmt2(bookByBank[b.id])}</td>
+                    {flowCell(b.id,"bizlink",bizAutoByBank[b.id],"#b45309")}
+                    {flowCell(b.id,"float",fltAutoByBank[b.id],"#b45309")}
                   </tr>
                 );
               })}
@@ -436,7 +506,7 @@ function DailyCashPosition({
           </table>
         </div>
         <div style={{padding:"6px 14px 12px",fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
-          <span style={{color:C.blue}}>Collections</span> auto-fill from billing payments that clear on this date; <span style={{color:"#b45309"}}>Bizlink &amp; Float Check</span> auto-fill from recorded expenses (BizLink transfers) and released cheque vouchers. <b>Beginning, Ending &amp; Book</b> are entered from the bank/BizLink statement. <b>Operating</b> = working accounts in the Executive Summary totals; <b>Reserve</b> = Chinabank, Security Bank &amp; UnionBank savings, tracked separately.
+          <b>Beginning Balance</b> is entered (carries from the prior day's Ending). <span style={{color:C.blue}}>Collections</span> auto-fill from cleared billing payments; <span style={{color:"#b45309"}}>Bizlink &amp; Float</span> auto-fill from expenses/cheque vouchers — hover a cell and click <b>✎</b> to type a manual override, <b>✕</b> to revert to auto. Then <span style={{color:"#047857"}}>Ending = Beginning + Collections − Bizlink</span> and <span style={{color:"#92400e"}}>Book = Ending − Float</span>. <b>Operating</b> = Executive-Summary working accounts; <b>Reserve</b> = Chinabank, Security Bank &amp; UnionBank savings.
         </div>
 
         {/* Untagged-amount warning — explains why the TOTAL row can exceed the per-bank columns */}
@@ -568,11 +638,11 @@ function DailyCashPosition({
           {/* Cash-movement reconciliation */}
           {tot.end>0&&(
             <div style={{marginTop:14,maxWidth:520,background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:10,padding:"12px 14px"}}>
-              <div style={{fontSize:".68rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".6px",marginBottom:8}}>Cash-Movement Reconciliation</div>
+              <div style={{fontSize:".68rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".6px",marginBottom:8}}>Cash-Movement Summary</div>
               {[
                 ["Beginning balance (all banks)",tot.beg,"#475569","+"],
                 ["Collections",collTotal,"#059669","+"],
-                ["Ending balance (all banks, entered)",tot.end,"#475569","−"],
+                ["Ending balance (all banks, computed)",tot.end,"#475569","−"],
               ].map(([l,v,c,s])=>(
                 <div key={l} style={{display:"flex",justifyContent:"space-between",fontSize:".78rem",padding:"3px 0",color:"#475569"}}><span><b style={{color:c}}>{s}</b> {l}</span><span style={{fontVariantNumeric:"tabular-nums"}}>{fmt2(v)}</span></div>
               ))}
@@ -738,9 +808,9 @@ function DailyCashPosition({
               </tr>
               <tr style={{background:"#f5f3ff"}}>
                 <td style={{...td,fontWeight:700,color:"#5b21b6"}}>Available to Borrow<div style={{fontWeight:400,fontSize:".62rem",color:"#7c3aed"}}>Credit Line − Book</div></td>
-                {opBanks.map(b=>{const credit=n(bankRow(b.id).creditLine||0);const book=n(bankRow(b.id).book||0)||n(bankRow(b.id).end||0);const avail=credit>0?credit-book:null;
+                {opBanks.map(b=>{const credit=n(bankRow(b.id).creditLine||0);const book=bookByBank[b.id]||0;const avail=credit>0?credit-book:null;
                   return(<td key={b.id} style={{...td,...numCell,fontWeight:avail!=null?800:400,color:avail==null?"#cbd5e1":avail>=0?"#059669":"#dc2626"}}>{avail==null?"—":avail>=0?fmt2(avail):`(${fmt2(Math.abs(avail))})`}</td>);})}
-                {(()=>{const tc=opBanks.reduce((s,b)=>s+n(bankRow(b.id).creditLine||0),0);const tb=opBanks.reduce((s,b)=>s+(n(bankRow(b.id).book||0)||n(bankRow(b.id).end||0)),0);const ta=tc>0?tc-tb:null;
+                {(()=>{const tc=opBanks.reduce((s,b)=>s+n(bankRow(b.id).creditLine||0),0);const tb=opBanks.reduce((s,b)=>s+(bookByBank[b.id]||0),0);const ta=tc>0?tc-tb:null;
                   return(<td style={{...td,...numCell,fontWeight:900,color:ta==null?"#94a3b8":ta>=0?"#059669":"#dc2626"}}>{ta==null?"—":ta>=0?fmt2(ta):`(${fmt2(Math.abs(ta))})`}</td>);})()}
               </tr>
             </tbody>
