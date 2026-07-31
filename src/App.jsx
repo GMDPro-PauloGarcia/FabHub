@@ -5163,6 +5163,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[jumpFilter,setJumpFilter]=useState(null);
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("overview");
+  const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
   const[payables,  setPayables] =useState([]);
   const[payModal,  setPayModal] =useState(false);
   const[payForm,   setPayForm]  =useState({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
@@ -10551,10 +10552,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── CASH POSITION TAB ── */}
         {finTab==="cash"&&(
           <>
-            <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
-              <button onClick={()=>setPage("weeklycashflow")} style={{background:"#1f3864",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📅 Weekly Summary →</button>
+            {/* Cash Position sub-tabs: Daily / Weekly / Monthly */}
+            <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+              {[["daily","📅 Daily"],["weekly","🗓 Weekly"],["monthly","📆 Monthly"]].map(([k,lbl])=>(
+                <button key={k} onClick={()=>setCashSub(k)} style={{padding:"8px 18px",border:"none",borderRadius:9,cursor:"pointer",fontFamily:"inherit",fontWeight:cashSub===k?800:600,fontSize:".82rem",background:cashSub===k?"#1f3864":"#eef2f8",color:cashSub===k?"#fff":"#475569"}}>{lbl}</button>
+              ))}
             </div>
-            <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory}/>
+            {cashSub==="daily"&&(
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory}/>
+            )}
+            {cashSub==="weekly"&&(
+              <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
+            )}
+            {cashSub==="monthly"&&(
+              <WeeklyCashFlow mode="monthly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
+            )}
           </>
         )}
 
