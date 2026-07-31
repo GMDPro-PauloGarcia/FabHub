@@ -135,6 +135,14 @@ const _withTimeout = (promise) => Promise.race([
   promise,
   new Promise(resolve => setTimeout(() => resolve({ error: { message: 'Request timed out — the server did not respond in time.' } }), _REPLAY_TIMEOUT_MS)),
 ])
+const _sleep = (ms) => new Promise(r => setTimeout(r, ms))
+
+// Tables whose most recent read failed after all retries. sbLoadAll snapshots
+// this so the caller can tell "the server genuinely returned no rows" apart from
+// "we never got a usable answer" — the latter must NOT be treated as an empty
+// table (which would look like the data was deleted) and should be surfaced.
+const _readFailures = new Set()
+export const consumeReadFailures = () => { const s = [..._readFailures]; _readFailures.clear(); return s }
 // PostgREST PGRST204 names the offending column: "Could not find the 'x'
 // column of 'y' in the schema cache". Capture it so a payload written by an
 // older client can be self-healed by dropping just that field.
@@ -351,13 +359,29 @@ export const sbDeleteWhere = async (table, column, value, op = 'eq') => {
 
 export const sbList = async (table, opts = {}) => {
   if (!supabase) return []
-  let q = supabase.from(table).select(opts.select || '*')
-  if (opts.order) q = q.order(opts.order, { ascending: opts.asc ?? false })
-  if (opts.limit) q = q.limit(opts.limit)
-  if (opts.eq) Object.entries(opts.eq).forEach(([col, val]) => { q = q.eq(col, val) })
-  const { data, error } = await _withTimeout(q)
-  if (error) console.error(`SB LIST ${table}:`, error.message)
-  return data || []
+  // Rebuild the query per attempt — a PostgREST builder can only be awaited once.
+  const build = () => {
+    let q = supabase.from(table).select(opts.select || '*')
+    if (opts.order) q = q.order(opts.order, { ascending: opts.asc ?? false })
+    if (opts.limit) q = q.limit(opts.limit)
+    if (opts.eq) Object.entries(opts.eq).forEach(([col, val]) => { q = q.eq(col, val) })
+    return q
+  }
+  // Retry transient read failures (a timeout or network blip on the constrained
+  // PH<->server link). Previously ONE hiccup returned [], and the caller's
+  // "only overwrite the cache if the server sent rows" guard then silently kept
+  // the stale cached list — which is exactly how freshly-created rows (e.g. new
+  // DRFs) went missing from the UI while sitting safely in the database. A read
+  // that still fails after retries is recorded so sbLoadAll can flag it instead
+  // of passing back a misleading empty array.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await _sleep(400 * attempt)
+    const { data, error } = await _withTimeout(build())
+    if (!error) { _readFailures.delete(table); return data || [] }
+    console.error(`SB LIST ${table} (attempt ${attempt + 1}/3):`, error.message)
+  }
+  _readFailures.add(table)
+  return []
 }
 
 // Concurrency-limited runner (preserves input order). sbLoadAll fires ~34 table
@@ -501,7 +525,8 @@ export const sbLoadAll = async () => {
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
              checklist: checklists, swatches, actLog, users, settings: settingsObj,
              drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors,
-             payables, loans: loansArr, swos, boqLibrary, checkVouchers, blockers, dailyLogs, ceReqs }
+             payables, loans: loansArr, swos, boqLibrary, checkVouchers, blockers, dailyLogs, ceReqs,
+             _failed: consumeReadFailures() }
   } catch (err) {
     console.error('sbLoadAll failed:', err)
     return null

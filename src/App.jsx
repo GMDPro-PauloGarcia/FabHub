@@ -2728,6 +2728,7 @@ export default function App(){
           const data = await sbLoadAll();
           _log("sbLoadAll (server refresh of all tables)",_tLoad);
           if(!data) toastEmit&&toastEmit("⚠️ Couldn't load from the server. Check your connection, then tap the 🔄 sync button.","error",12000);
+          else if(data._failed?.length) toastEmit&&toastEmit(`⚠️ Some data couldn't refresh (${data._failed.join(", ")}) — you may be seeing a last-synced copy. Tap the 🔄 sync button to retry.`,"warning",12000);
           // Diagnostic — visible in browser console AND stored for the sync banner
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
@@ -6193,6 +6194,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",     items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"On-Site",   items:[{id:"projects",l:"Project Cards"},{id:"dailylog",l:"Daily Site Log"}]},
+      {group:"Design",    items:[{id:"drf",l:"Design Requests"}]},
       {group:"Materials", items:[{id:"swatchboard",l:"Swatchboard"}]},
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"},{id:"requests",l:"Requests"}]},
     ],
