@@ -279,9 +279,6 @@ function DailyCashPosition({
   },[billings,selDate,wonDeals]);
   const pendingIncomingTotal=useMemo(()=>pendingIncoming.reduce((s,p)=>s+Number(p.amount||0),0),[pendingIncoming]);
 
-  // Operating end-of-day cash is the spendable base for standby funds
-  const operatingCash=opEnd;
-  const standby=operatingCash-floatingTotal-(payablesMetrics.overdue+payablesMetrics.due7)-loanMetrics.monthlyPaymentTotal;
 
   const handleSave=()=>{
     const at=new Date().toISOString();
@@ -474,27 +471,53 @@ function DailyCashPosition({
               </tr>
             </thead>
             <tbody>
-              {BANKS.map((b,ri)=>{
-                const coll=collByBank[b.id]||0;
+              {[{label:"Operating",banks:opBanks,clr:"#1d4ed8",bg:"#eff6ff"},{label:"Reserve",banks:resBanks,clr:"#7c3aed",bg:"#faf5ff"}].map(grp=>{
+                const g={
+                  beg:    sum(grp.banks,b=>n(bankRow(b.id).beg)),
+                  coll:   grp.banks.reduce((s,b)=>s+(collByBank[b.id]||0),0),
+                  end:    sum(grp.banks,b=>endingByBank[b.id]),
+                  book:   sum(grp.banks,b=>bookByBank[b.id]),
+                  bizlink:grp.banks.reduce((s,b)=>s+(bizlinkByBank[b.id]||0),0),
+                  float:  grp.banks.reduce((s,b)=>s+(floatByBank[b.id]||0),0),
+                };
                 return(
-                  <tr key={b.id} style={{background:ri%2?C.zebra:"#fff"}}>
-                    <td style={{...td,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{b.name.toUpperCase()}</td>
-                    <td style={{...td,color:"#475569"}}>{b.acctNo}</td>
-                    <td style={{...td,color:"#475569",whiteSpace:"nowrap"}}>{b.branch}</td>
-                    <td style={{...td}}>
-                      <span style={{fontSize:".68rem",fontWeight:700,padding:"1px 7px",borderRadius:20,color:b.type==="Operating"?"#1d4ed8":"#7c3aed",background:b.type==="Operating"?"#eff6ff":"#f5f3ff",border:`1px solid ${b.type==="Operating"?"#bfdbfe":"#e9d5ff"}`}}>{b.type}</span>
-                    </td>
-                    {editCell(b.id,"beg")}
-                    <td style={{...td,...numCell,color:coll>0?C.blue:"#cbd5e1",fontWeight:coll>0?700:400}}>{coll>0?fmt2(coll):"—"}</td>
-                    <td style={{...td,...numCell,fontWeight:700,color:endingByBank[b.id]<0?"#dc2626":"#047857"}}>{fmt2(endingByBank[b.id])}</td>
-                    <td style={{...td,...numCell,fontWeight:700,color:bookByBank[b.id]<0?"#dc2626":"#92400e"}}>{fmt2(bookByBank[b.id])}</td>
-                    {flowCell(b.id,"bizlink",bizAutoByBank[b.id],"#b45309")}
-                    {flowCell(b.id,"float",fltAutoByBank[b.id],"#b45309")}
-                  </tr>
+                  <React.Fragment key={grp.label}>
+                    <tr style={{background:grp.bg}}>
+                      <td colSpan={10} style={{...td,fontWeight:800,color:grp.clr,fontSize:".68rem",letterSpacing:".6px",textTransform:"uppercase",padding:"5px 12px"}}>{grp.label} Accounts</td>
+                    </tr>
+                    {grp.banks.map((b,ri)=>{
+                      const coll=collByBank[b.id]||0;
+                      return(
+                        <tr key={b.id} style={{background:ri%2?C.zebra:"#fff"}}>
+                          <td style={{...td,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{b.name.toUpperCase()}</td>
+                          <td style={{...td,color:"#475569"}}>{b.acctNo}</td>
+                          <td style={{...td,color:"#475569",whiteSpace:"nowrap"}}>{b.branch}</td>
+                          <td style={{...td}}>
+                            <span style={{fontSize:".68rem",fontWeight:700,padding:"1px 7px",borderRadius:20,color:b.type==="Operating"?"#1d4ed8":"#7c3aed",background:b.type==="Operating"?"#eff6ff":"#f5f3ff",border:`1px solid ${b.type==="Operating"?"#bfdbfe":"#e9d5ff"}`}}>{b.type}</span>
+                          </td>
+                          {editCell(b.id,"beg")}
+                          <td style={{...td,...numCell,color:coll>0?C.blue:"#cbd5e1",fontWeight:coll>0?700:400}}>{coll>0?fmt2(coll):"—"}</td>
+                          <td style={{...td,...numCell,fontWeight:700,color:endingByBank[b.id]<0?"#dc2626":"#047857"}}>{fmt2(endingByBank[b.id])}</td>
+                          <td style={{...td,...numCell,fontWeight:700,color:bookByBank[b.id]<0?"#dc2626":"#92400e"}}>{fmt2(bookByBank[b.id])}</td>
+                          {flowCell(b.id,"bizlink",bizAutoByBank[b.id],"#b45309")}
+                          {flowCell(b.id,"float",fltAutoByBank[b.id],"#b45309")}
+                        </tr>
+                      );
+                    })}
+                    <tr style={{background:"#eef2f7"}}>
+                      <td style={{...td,fontWeight:800,color:grp.clr}} colSpan={4}>{grp.label} Subtotal</td>
+                      <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{fmt2(g.beg)}</td>
+                      <td style={{...td,...numCell,fontWeight:800,color:C.blue}}>{g.coll>0?fmt2(g.coll):"—"}</td>
+                      <td style={{...td,...numCell,fontWeight:800,color:"#047857"}}>{fmt2(g.end)}</td>
+                      <td style={{...td,...numCell,fontWeight:800,color:"#92400e"}}>{fmt2(g.book)}</td>
+                      <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{g.bizlink>0?fmt2(g.bizlink):"—"}</td>
+                      <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{g.float>0?fmt2(g.float):"—"}</td>
+                    </tr>
+                  </React.Fragment>
                 );
               })}
               <tr style={{background:"#e8edf5",fontWeight:800}}>
-                <td style={{...td,fontWeight:900,color:C.navy}} colSpan={4}>TOTAL</td>
+                <td style={{...td,fontWeight:900,color:C.navy}} colSpan={4}>GRAND TOTAL — ALL ACCOUNTS</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{fmt2(tot.beg)}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:C.blue}}>{fmt2(tot.coll)}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#047857"}}>{fmt2(tot.end)}</td>
@@ -771,50 +794,6 @@ function DailyCashPosition({
                 </div>
                 <div style={{height:3,background:"#f3e8ff",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:"#8b5cf6",borderRadius:2}}/></div>
               </div>);})}</div>}
-        </div>
-      </div>
-
-      {/* Available Standby Funds */}
-      <div style={{background:standby>=0?"#f0fdf4":"#fef2f2",borderRadius:14,border:`2px solid ${standby>=0?"#6ee7b7":"#fca5a5"}`,padding:"16px 20px",marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
-        <div>
-          <div style={{fontWeight:800,color:standby>=0?"#047857":"#dc2626",fontSize:".92rem"}}>{standby>=0?"✅":"⚠️"} Available Standby Funds</div>
-          <div style={{fontSize:".72rem",color:"#64748b",marginTop:4,lineHeight:1.5}}>
-            Operating Cash (End of Day) <span style={{color:"#1d4ed8"}}>{peso(operatingCash)}</span>
-            {" − "}Floating Checks <span style={{color:"#b45309"}}>{peso(floatingTotal)}</span>
-            {" − "}Overdue+7d Payables <span style={{color:"#dc2626"}}>{peso(payablesMetrics.overdue+payablesMetrics.due7)}</span>
-            {" − "}Monthly Loans <span style={{color:"#7c3aed"}}>{peso(loanMetrics.monthlyPaymentTotal)}</span>
-          </div>
-        </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{fontWeight:900,fontSize:"2rem",color:standby>=0?"#047857":"#dc2626",lineHeight:1}}>{peso(standby)}</div>
-          <div style={{fontSize:".63rem",color:"#94a3b8",marginTop:3,textTransform:"uppercase",letterSpacing:".8px"}}>Standby funds</div>
-        </div>
-      </div>
-
-      {/* Credit Line / Standby Funds table (Operating banks) */}
-      <div style={{background:"#fff",borderRadius:14,border:"2px solid #a5b4fc",overflow:"hidden",marginBottom:16}}>
-        <div style={{background:"#4338ca",padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontWeight:800,color:"#fff",fontSize:".88rem"}}>🏦 Credit Line / Standby Funds</div><div style={{fontSize:".67rem",color:"rgba(255,255,255,.65)",marginTop:2}}>Approved credit limit per operating account</div></div>
-          <div style={{fontWeight:900,fontSize:"1.3rem",color:"#c7d2fe"}}>{peso(opBanks.reduce((s,b)=>s+n(bankRow(b.id).creditLine||0),0))}</div>
-        </div>
-        <div style={{overflowX:"auto"}}>
-          <table style={{borderCollapse:"collapse",width:"100%",minWidth:mob?520:undefined}}>
-            <thead><tr><th style={{...th,textAlign:"left",background:"#e0e7ff",color:"#4338ca"}}>Row</th>{opBanks.map(b=><th key={b.id} style={{...th,background:"#e0e7ff",color:"#4338ca"}}>{b.short}</th>)}<th style={{...th,background:"#e0e7ff",color:"#4338ca"}}>Total</th></tr></thead>
-            <tbody>
-              <tr style={{background:"#eef2ff"}}>
-                <td style={{...td,fontWeight:700,color:"#4338ca"}}>Credit Line</td>
-                {opBanks.map(b=>(<td key={b.id} style={{...td,padding:2}}><CurrInp value={bankRow(b.id).creditLine||""} onChange={e=>f(`banks.${b.id}.creditLine`,e.target.value)} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px",color:"#4338ca"}}/></td>))}
-                <td style={{...td,...numCell,fontWeight:800,color:"#4338ca"}}>{fmt2(opBanks.reduce((s,b)=>s+n(bankRow(b.id).creditLine||0),0))}</td>
-              </tr>
-              <tr style={{background:"#f5f3ff"}}>
-                <td style={{...td,fontWeight:700,color:"#5b21b6"}}>Available to Borrow<div style={{fontWeight:400,fontSize:".62rem",color:"#7c3aed"}}>Credit Line − Book</div></td>
-                {opBanks.map(b=>{const credit=n(bankRow(b.id).creditLine||0);const book=bookByBank[b.id]||0;const avail=credit>0?credit-book:null;
-                  return(<td key={b.id} style={{...td,...numCell,fontWeight:avail!=null?800:400,color:avail==null?"#cbd5e1":avail>=0?"#059669":"#dc2626"}}>{avail==null?"—":avail>=0?fmt2(avail):`(${fmt2(Math.abs(avail))})`}</td>);})}
-                {(()=>{const tc=opBanks.reduce((s,b)=>s+n(bankRow(b.id).creditLine||0),0);const tb=opBanks.reduce((s,b)=>s+(bookByBank[b.id]||0),0);const ta=tc>0?tc-tb:null;
-                  return(<td style={{...td,...numCell,fontWeight:900,color:ta==null?"#94a3b8":ta>=0?"#059669":"#dc2626"}}>{ta==null?"—":ta>=0?fmt2(ta):`(${fmt2(Math.abs(ta))})`}</td>);})()}
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
 
