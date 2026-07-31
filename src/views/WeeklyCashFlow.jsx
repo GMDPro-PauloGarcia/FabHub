@@ -11,7 +11,7 @@ const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","De
 const PIE=["#2f5aa8","#c0504d","#9bbb59","#8064a2","#4bacc6","#f79646","#5b9bd5","#d99694","#c3d69b","#b2a2c7","#92cddc","#fac08f","#c0c0c0","#8db4e2","#e6b9b8","#7f7f7f"];
 const iso=(x)=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
 
-function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]}){
+function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[],setPage}){
   // Default range = Monday..Friday of the current week
   const defaultRange=()=>{
     const d=new Date(today+"T00:00:00");
@@ -195,7 +195,10 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
     <div>
       {/* Toolbar */}
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
-        <div style={{fontSize:".78rem",color:"#64748b"}}>Weekly Cash Flow — Owners' Review roll-up</div>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {setPage&&<button onClick={()=>setPage("finance")} style={{...btn,fontWeight:800,color:"#facc15",background:"#0f172a",border:"none"}}>← Finance</button>}
+          <span style={{fontSize:".78rem",color:"#64748b"}}>Weekly Cash Flow — Owners' Review roll-up</span>
+        </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button onClick={exportCSV} style={{...btn,color:"#1d4ed8",background:"#eff6ff",borderColor:"#bfdbfe"}}>⬇ Export CSV</button>
           <button onClick={()=>shiftWeek(-1)} style={btn}>← Prev</button>
