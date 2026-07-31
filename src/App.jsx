@@ -10551,6 +10551,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* ── CASH POSITION TAB ── */}
         {finTab==="cash"&&(
           <>
+            <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+              <button onClick={()=>setPage("weeklycashflow")} style={{background:"#1f3864",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📅 Weekly Summary →</button>
+            </div>
             <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory}/>
           </>
         )}
@@ -12941,7 +12944,7 @@ First few:
     <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
   if(page==="weeklycashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
-    <Wrap><WeeklyCashFlow cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts}/></Wrap>
+    <Wrap><WeeklyCashFlow cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/></Wrap>
   );
   if(page==="dailylog") return(
     <DailySiteLogView dailyLogs={dailyLogs} wonDeals={wonDeals} addDailyLog={addDailyLog} delDailyLog={delDailyLog} session={session} role={role} Wrap={Wrap} isMobile={isMobile} setPage={setPage}/>
