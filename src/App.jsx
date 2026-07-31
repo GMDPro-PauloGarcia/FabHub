@@ -33,6 +33,7 @@ const ConstructionCalendar=_lazyView(()=>import('./views/ConstructionCalendar'))
 const BOQBuilder=_lazyView(()=>import('./views/BOQBuilder'));
 const LiquidationView=_lazyView(()=>import('./views/LiquidationView'));
 const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
+const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
 const InventoryView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.InventoryView})));
 const StockMovementView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.StockMovementView})));
 
@@ -12939,6 +12940,9 @@ First few:
   if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
+  if(page==="weeklycashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
+    <Wrap><WeeklyCashFlow cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts}/></Wrap>
+  );
   if(page==="dailylog") return(
     <DailySiteLogView dailyLogs={dailyLogs} wonDeals={wonDeals} addDailyLog={addDailyLog} delDailyLog={delDailyLog} session={session} role={role} Wrap={Wrap} isMobile={isMobile} setPage={setPage}/>
   );
@@ -12984,6 +12988,7 @@ First few:
               <button onClick={()=>setPage("evouchers")} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🧾 Liquidation</button>
               <button onClick={()=>setPage("wip")} style={{background:"#0e7490",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📐 WIP Report</button>
               <button onClick={()=>setPage("cashflow")} style={{background:"#0d9488",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>💵 Cash Flow</button>
+              <button onClick={()=>setPage("weeklycashflow")} style={{background:"#1f3864",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📅 Weekly Summary</button>
               <button onClick={()=>setPage("audittrail")} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🕵️ Audit Trail</button>
             </div>
           </div>
