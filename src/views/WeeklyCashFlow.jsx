@@ -11,10 +11,19 @@ const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","De
 const PIE=["#2f5aa8","#c0504d","#9bbb59","#8064a2","#4bacc6","#f79646","#5b9bd5","#d99694","#c3d69b","#b2a2c7","#92cddc","#fac08f","#c0c0c0","#8db4e2","#e6b9b8","#7f7f7f"];
 const iso=(x)=>`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
 
-function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[],setPage}){
-  // Default range = Monday..Friday of the current week
+function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[],setPage,mode="weekly"}){
+  const monthly=mode==="monthly";
+  const label=monthly?"Monthly":"Weekly";
+  const per=monthly?"Month":"Week";       // period noun (capitalised)
+  const perLc=monthly?"month":"week";      // period noun (lower-case)
+  // Default range: current calendar month, or Monday..Friday of the current week
   const defaultRange=()=>{
     const d=new Date(today+"T00:00:00");
+    if(monthly){
+      const first=new Date(d.getFullYear(),d.getMonth(),1);
+      const last=new Date(d.getFullYear(),d.getMonth()+1,0);
+      return{from:iso(first),to:iso(last)};
+    }
     const monday=new Date(d);monday.setDate(d.getDate()-((d.getDay()+6)%7));
     const friday=new Date(monday);friday.setDate(monday.getDate()+4);
     return{from:iso(monday),to:iso(friday)};
@@ -98,16 +107,25 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
   const fmtRange=()=>{const[fy,fm,fd]=from.split("-").map(Number);const[ty,tm,td]=to.split("-").map(Number);
     return`${MON[fm-1]} ${fd} – ${MON[tm-1]} ${td}, ${ty}`;};
 
-  const shiftWeek=(dir)=>{const f=new Date(from+"T00:00:00"),t=new Date(to+"T00:00:00");f.setDate(f.getDate()+7*dir);t.setDate(t.getDate()+7*dir);setRange({from:iso(f),to:iso(t)});};
+  const shiftPeriod=(dir)=>{
+    if(monthly){
+      const f=new Date(from+"T00:00:00");
+      const m=new Date(f.getFullYear(),f.getMonth()+dir,1);
+      const last=new Date(m.getFullYear(),m.getMonth()+1,0);
+      setRange({from:iso(m),to:iso(last)});
+      return;
+    }
+    const f=new Date(from+"T00:00:00"),t=new Date(to+"T00:00:00");f.setDate(f.getDate()+7*dir);t.setDate(t.getDate()+7*dir);setRange({from:iso(f),to:iso(t)});
+  };
 
   const exportCSV=()=>{
-    const rows=[["WEEKLY CASH FLOW SUMMARY"],[fmtRange()],[],
+    const rows=[[`${label.toUpperCase()} CASH FLOW SUMMARY`],[fmtRange()],[],
       ["CASH FLOW OVERVIEW","Amount (PHP)"],
-      ["Beginning Balance (Start of Week, All Accounts)",beginningBalance.toFixed(2)],
-      ["Total Cash Collections (for the week)",totColl.toFixed(2)],
-      ["Total Cash Expenses (for the week)",totExp.toFixed(2)],
-      ["Net Change for the Week",netChange.toFixed(2)],
-      ["Ending Balance (End of Week)",endingBalance.toFixed(2)],
+      [`Beginning Balance (Start of ${per}, All Accounts)`,beginningBalance.toFixed(2)],
+      [`Total Cash Collections (for the ${perLc})`,totColl.toFixed(2)],
+      [`Total Cash Expenses (for the ${perLc})`,totExp.toFixed(2)],
+      [`Net Change for the ${per}`,netChange.toFixed(2)],
+      [`Ending Balance (End of ${per})`,endingBalance.toFixed(2)],
       ["Memo: Loan Proceeds Included Above",loanProceeds.toFixed(2)],
       ["Memo: Loan Repayment Included Above",loanRepayment.toFixed(2)],
       ["Net Operating Cash Flow (excl. loan proceeds & repayment)",netOperating.toFixed(2)],[],
@@ -118,7 +136,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
     byCat.arr.forEach(r=>rows.push([r.name,r.amount.toFixed(2),byCat.total>0?(r.amount/byCat.total*100).toFixed(1)+"%":"0%"]));
     rows.push(["TOTAL",byCat.total.toFixed(2),"100.0%"]);
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
-    const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);a.download=`GMD_WeeklyCashFlow_${from}_${to}.csv`;a.click();
+    const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);a.download=`GMD_${label}CashFlow_${from}_${to}.csv`;a.click();
   };
 
   // ── style tokens (match Daily Cash Position) ──
@@ -129,11 +147,11 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
   const num={textAlign:"right",fontVariantNumeric:"tabular-nums"};
 
   const overviewRows=[
-    ["Beginning Balance (Start of Week, All Accounts)",beginningBalance,false,"#0f172a"],
-    ["Total Cash Collections (for the week)",totColl,false,"#0f172a"],
-    ["Total Cash Expenses (for the week)",totExp,false,"#0f172a"],
-    ["Net Change for the Week (Collections − Expenses)",netChange,true,netChange>=0?"#047857":"#dc2626"],
-    ["Ending Balance (End of Week)",endingBalance,true,"#0f172a"],
+    [`Beginning Balance (Start of ${per}, All Accounts)`,beginningBalance,false,"#0f172a"],
+    [`Total Cash Collections (for the ${perLc})`,totColl,false,"#0f172a"],
+    [`Total Cash Expenses (for the ${perLc})`,totExp,false,"#0f172a"],
+    [`Net Change for the ${per} (Collections − Expenses)`,netChange,true,netChange>=0?"#047857":"#dc2626"],
+    [`Ending Balance (End of ${per})`,endingBalance,true,"#0f172a"],
     ["Memo: Loan Proceeds Included Above",loanProceeds,false,C.blue],
     ["Memo: Loan Repayment Included Above",loanRepayment,false,C.blue],
     ["Net Operating Cash Flow (excl. loan proceeds & repayment)",netOperating,true,netOperating>=0?"#047857":"#dc2626"],
@@ -197,22 +215,22 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           {setPage&&<button onClick={()=>setPage("finance")} style={{...btn,fontWeight:800,color:"#facc15",background:"#0f172a",border:"none"}}>← Finance</button>}
-          <span style={{fontSize:".78rem",color:"#64748b"}}>Weekly Cash Flow — Owners' Review roll-up</span>
+          <span style={{fontSize:".78rem",color:"#64748b"}}>{label} Cash Flow — Owners' Review roll-up</span>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
           <button onClick={exportCSV} style={{...btn,color:"#1d4ed8",background:"#eff6ff",borderColor:"#bfdbfe"}}>⬇ Export CSV</button>
-          <button onClick={()=>shiftWeek(-1)} style={btn}>← Prev</button>
+          <button onClick={()=>shiftPeriod(-1)} style={btn}>← Prev</button>
           <input type="date" value={from} onChange={e=>setRange(r=>({...r,from:e.target.value}))} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
           <span style={{color:"#94a3b8",fontSize:".8rem"}}>→</span>
           <input type="date" value={to} onChange={e=>setRange(r=>({...r,to:e.target.value}))} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",color:"#0f172a"}}/>
-          <button onClick={()=>shiftWeek(1)} style={btn}>Next →</button>
+          <button onClick={()=>shiftPeriod(1)} style={btn}>Next →</button>
         </div>
       </div>
 
       <div style={{background:"#fff",border:`1px solid ${C.grid}`,borderRadius:10,overflow:"hidden",boxShadow:"0 1px 6px rgba(0,0,0,.05)"}}>
         {/* Title band */}
         <div style={{textAlign:"center",padding:"14px 16px 10px",borderBottom:`1px solid ${C.grid}`}}>
-          <div style={{fontWeight:900,fontSize:"1.15rem",color:C.navy,letterSpacing:".5px"}}>WEEKLY CASH FLOW SUMMARY</div>
+          <div style={{fontWeight:900,fontSize:"1.15rem",color:C.navy,letterSpacing:".5px"}}>{`${label.toUpperCase()} CASH FLOW SUMMARY`}</div>
           <div style={{fontSize:".72rem",color:"#64748b",fontStyle:"italic",marginTop:3}}>Prepared for Owners' Review&nbsp;&nbsp;|&nbsp;&nbsp;All amounts in Philippine Peso (PHP)</div>
           <div style={{marginTop:8,fontSize:".85rem",fontWeight:800,color:C.blue}}>{fmtRange()}</div>
         </div>
@@ -303,7 +321,7 @@ function WeeklyCashFlow({cashPositions={},billings=[],exps=[],chartOfAccounts=[]
         </div>
 
         <div style={{padding:"8px 14px 12px",fontSize:".66rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5,borderTop:`1px solid ${C.grid}`}}>
-          Collections = billing payments that clear in the week + manual collections. Expenses = paid expenses, grouped by Chart of Account. Loan proceeds &amp; repayments are included in the totals and called out separately as memo items; Net Operating Cash Flow removes them.
+          Collections = billing payments that clear in the {perLc} + manual collections. Expenses = paid expenses, grouped by Chart of Account. Loan proceeds &amp; repayments are included in the totals and called out separately as memo items; Net Operating Cash Flow removes them.
         </div>
       </div>
     </div>
