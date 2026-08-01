@@ -314,10 +314,10 @@ function DailyCashPosition({
       ["Running Loan Balance",outstandingLoan.toFixed(2)],
       ["Total Checks to be Cleared",floatingTotal.toFixed(2)],[],
       ["BANK ACCOUNT DETAIL"],
-      ["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Ending Bank Balance","Book Balance","Bizlink Transaction","Float Check"],
+      ["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Bizlink Transaction","Ending Bank Balance","Book Balance","Float Check"],
     ];
-    BANKS.forEach(b=>{const r=bankRow(b.id);rows.push([b.name,b.acctNo,b.branch,b.type,n(r.beg).toFixed(2),(collByBank[b.id]||0).toFixed(2),endingByBank[b.id].toFixed(2),bookByBank[b.id].toFixed(2),(bizlinkByBank[b.id]||0).toFixed(2),(floatByBank[b.id]||0).toFixed(2)]);});
-    rows.push(["TOTAL","","","",tot.beg.toFixed(2),tot.coll.toFixed(2),tot.end.toFixed(2),tot.book.toFixed(2),tot.bizlink.toFixed(2),tot.float.toFixed(2)]);
+    BANKS.forEach(b=>{const r=bankRow(b.id);rows.push([b.name,b.acctNo,b.branch,b.type,n(r.beg).toFixed(2),(collByBank[b.id]||0).toFixed(2),(bizlinkByBank[b.id]||0).toFixed(2),endingByBank[b.id].toFixed(2),bookByBank[b.id].toFixed(2),(floatByBank[b.id]||0).toFixed(2)]);});
+    rows.push(["TOTAL","","","",tot.beg.toFixed(2),tot.coll.toFixed(2),tot.bizlink.toFixed(2),tot.end.toFixed(2),tot.book.toFixed(2),tot.float.toFixed(2)]);
     rows.push([],["COLLECTIONS DETAIL (FOR THE DAY)"],["Bank","Particulars","Amount","Source"]);
     [...autoColl,...manualColl].forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars??r.note??"",n(r.amount).toFixed(2),r.source==="billing"?"Billing (auto)":"Manual"]);});
     rows.push(["TOTAL","",collTotal.toFixed(2),""]);
@@ -466,7 +466,7 @@ function DailyCashPosition({
         <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",padding:"10px 12px 4px"}}>
           <table style={{borderCollapse:"collapse",minWidth:mob?860:"100%",width:"100%"}}>
             <thead>
-              <tr>{["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Ending Bank Balance","Book Balance","Bizlink Transaction","Float Check"].map((h,i)=>(
+              <tr>{["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Bizlink Transaction","Ending Bank Balance","Book Balance","Float Check"].map((h,i)=>(
                 <th key={h} style={{...th,textAlign:i<4?"left":"center"}}>{h}</th>))}
               </tr>
             </thead>
@@ -497,9 +497,9 @@ function DailyCashPosition({
                           </td>
                           {editCell(b.id,"beg")}
                           <td style={{...td,...numCell,color:coll>0?C.blue:"#cbd5e1",fontWeight:coll>0?700:400}}>{coll>0?fmt2(coll):"—"}</td>
+                          {flowCell(b.id,"bizlink",bizAutoByBank[b.id],"#b45309")}
                           <td style={{...td,...numCell,fontWeight:700,color:endingByBank[b.id]<0?"#dc2626":"#047857"}}>{fmt2(endingByBank[b.id])}</td>
                           <td style={{...td,...numCell,fontWeight:700,color:bookByBank[b.id]<0?"#dc2626":"#92400e"}}>{fmt2(bookByBank[b.id])}</td>
-                          {flowCell(b.id,"bizlink",bizAutoByBank[b.id],"#b45309")}
                           {flowCell(b.id,"float",fltAutoByBank[b.id],"#b45309")}
                         </tr>
                       );
@@ -508,9 +508,9 @@ function DailyCashPosition({
                       <td style={{...td,fontWeight:800,color:grp.clr}} colSpan={4}>{grp.label} Subtotal</td>
                       <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{fmt2(g.beg)}</td>
                       <td style={{...td,...numCell,fontWeight:800,color:C.blue}}>{g.coll>0?fmt2(g.coll):"—"}</td>
+                      <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{g.bizlink>0?fmt2(g.bizlink):"—"}</td>
                       <td style={{...td,...numCell,fontWeight:800,color:"#047857"}}>{fmt2(g.end)}</td>
                       <td style={{...td,...numCell,fontWeight:800,color:"#92400e"}}>{fmt2(g.book)}</td>
-                      <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{g.bizlink>0?fmt2(g.bizlink):"—"}</td>
                       <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{g.float>0?fmt2(g.float):"—"}</td>
                     </tr>
                   </React.Fragment>
@@ -520,9 +520,9 @@ function DailyCashPosition({
                 <td style={{...td,fontWeight:900,color:C.navy}} colSpan={4}>GRAND TOTAL — ALL ACCOUNTS</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{fmt2(tot.beg)}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:C.blue}}>{fmt2(tot.coll)}</td>
+                <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{tot.bizlink>0?fmt2(tot.bizlink):"—"}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#047857"}}>{fmt2(tot.end)}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{fmt2(tot.book)}</td>
-                <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{tot.bizlink>0?fmt2(tot.bizlink):"—"}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{tot.float>0?fmt2(tot.float):"—"}</td>
               </tr>
             </tbody>
