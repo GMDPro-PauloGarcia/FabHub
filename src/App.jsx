@@ -9827,9 +9827,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       onMouseEnter={e=>e.currentTarget.style.background=isChild?childBgHover:"#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background=isChild?childBg:""}>
                       <td style={{width:4,padding:0,background:isChild?"#f59e0b":sc}}></td>
-                      <td style={{padding:cp,verticalAlign:"middle",paddingLeft:isChild?28:14}}>
-                        {isChild&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".52rem",fontWeight:700,color:"#f59e0b",marginBottom:1,letterSpacing:".5px"}}>↳ ADDENDUM</div>}
-                        <div style={{fontWeight:isChild?600:700,fontSize:nameFs,color:isChild?"#374151":"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
+                      <td style={{padding:cp,verticalAlign:"middle",paddingLeft:isChild?16:14}}>
+                        <div style={{fontWeight:isChild?600:700,fontSize:nameFs,color:isChild?"#374151":"#0d1117",lineHeight:1.3,overflowWrap:"break-word"}}>
+                          {isChild&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".52rem",fontWeight:700,color:"#f59e0b",letterSpacing:".5px",marginRight:5,whiteSpace:"nowrap"}}>↳ ADDENDUM</span>}
+                          {d.contact||d.client}
+                        </div>
                         {d.client!==d.contact&&!isChild&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
                         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:isChild?2:4}}>
                           {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
