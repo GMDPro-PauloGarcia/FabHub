@@ -6148,9 +6148,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const navMap={
     Manager:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"reports",l:"Reports"}]},
+      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"dailylog",l:"Daily Site Log"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6159,7 +6159,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
-      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"reports",l:"Reports"}]},
+      {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"Projects",     items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Billing",      items:[{id:"billing",l:"Billing"}]},
       {group:"Deliverables", items:[{id:"drf",l:"Design Requests"}]},
@@ -6168,7 +6168,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6224,7 +6224,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -6347,7 +6347,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   billing:"🧾",
-      reports:"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
+      reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
@@ -8516,7 +8516,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── REPORTS CENTER (Manager / Sales / Finance) ───────────────────────────
-  if(page==="reports"){
+  if(page==="reports"||page==="sales-reports"||page==="finance-reports"){
     const CY=repYear;
     const CM=repMonth;
     const REPORT_YEARS=Array.from({length:5},(_,i)=>new Date().getFullYear()-i);
@@ -8579,9 +8579,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const expCatRows=Object.entries(expCatMap).sort((a,b)=>b[1]-a[1]);
     const totalExpCat=expCatRows.reduce((s,[,v])=>s+v,0);
     const agingMs=billings.filter(b=>b.status!=="Paid"&&b.status!=="Cancelled"&&Number(b.amount||0)>0).map(b=>{const deal=deals.find(d=>d.id===b.dealId);const daysOver=b.dueDate?Math.max(0,Math.floor((new Date()-new Date(b.dueDate))/(864e5))):null;return{...b,clientName:deal?.client||"Unknown",daysOver};}).sort((a,b)=>(b.daysOver||0)-(a.daysOver||0)).slice(0,15);
-    // Sales role gets a sales-only Reports experience: only the Sales Report tab
-    // is shown, and exports/prints omit the finance & receivables sections.
-    const salesOnly=role==="Sales";
+    // Reports are split into a Sales Reports page (Sales section) and a Finance
+    // Reports page (Finance section). The Sales role, and anyone landing on the
+    // "sales-reports" page, get a sales-only experience: only the Sales Report tab
+    // is shown, and exports/prints omit the finance & receivables sections. The
+    // "finance-reports" page shows the finance/receivables tabs only. The legacy
+    // "reports" id keeps the combined view for any role not yet split.
+    const salesOnly=role==="Sales"||page==="sales-reports";
+    const finView=page==="finance-reports";
+    const repTabs=salesOnly?[["sales","📊 Sales Report"]]
+      :finView?[["finance","💰 Finance Report"],["ar-aging","📋 AR Aging"],["ap-aging","📑 AP Aging"]]
+      :[["sales","📊 Sales Report"],["finance","💰 Finance Report"],["ar-aging","📋 AR Aging"],["ap-aging","📑 AP Aging"]];
+    const curTab=repTabs.some(([t])=>t===repTab)?repTab:repTabs[0][0];
     const exportReports=()=>{
       if(!window.XLSX){toastEmit("Excel library not loaded — please refresh","error");return;}
       const wb=window.XLSX.utils.book_new();
@@ -8762,7 +8771,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const monthLabel=`${MONTHS[CM]} ${CY}`;
     return(
       <Wrap>
-        <SecHead title="📊 Reports Center" sub={repPeriod==="monthly"?`Sales Month-End Report — ${monthLabel}`:`Sales & Finance — ${CY}`}/>
+        <SecHead title={salesOnly?"📊 Sales Reports":finView?"💰 Finance Reports":"📊 Reports Center"} sub={salesOnly?(repPeriod==="monthly"?`Sales Month-End Report — ${monthLabel}`:`Sales — ${CY}`):finView?(repPeriod==="monthly"?`Finance Report — ${monthLabel}`:`Finance — ${CY}`):(repPeriod==="monthly"?`Sales Month-End Report — ${monthLabel}`:`Sales & Finance — ${CY}`)}/>
         <div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:20}}>
           <select value={repPeriod} onChange={e=>setRepPeriod(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#374151",background:"#fff",cursor:"pointer"}}>
             <option value="monthly">Monthly</option>
@@ -8782,12 +8791,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <button onClick={printReports} style={{background:"#64748b",border:"none",borderRadius:8,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,cursor:"pointer"}}>🖨 Print</button>
         </div>
         <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:24,flexWrap:"wrap"}}>
-          {(role==="Sales"?[["sales","📊 Sales Report"]]:[["sales","📊 Sales Report"],["finance","💰 Finance Report"],["ar-aging","📋 AR Aging"],["ap-aging","📑 AP Aging"]]).map(([t,l])=>(
-            <button key={t} onClick={()=>setRepTab(t)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:repTab===t?700:500,color:repTab===t?"#3b82f6":"#64748b",borderBottom:repTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
+          {repTabs.map(([t,l])=>(
+            <button key={t} onClick={()=>setRepTab(t)} style={{padding:"10px 22px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:curTab===t?700:500,color:curTab===t?"#3b82f6":"#64748b",borderBottom:curTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",transition:"all .15s"}}>{l}</button>
           ))}
         </div>
 
-        {repTab==="sales"&&(
+        {curTab==="sales"&&(
           repPeriod==="monthly"?(
             <div>
               <div style={{background:"#1e293b",borderRadius:12,padding:"20px 24px",marginBottom:20,color:"#fff"}}>
@@ -8960,7 +8969,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           )
         )}
 
-        {repTab==="finance"&&(
+        {curTab==="finance"&&(
           <div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12,marginBottom:24}}>
               <KPI label="Revenue"     value={fmtK(finTot.revenue)}     color="#3b82f6"/>
@@ -9006,7 +9015,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         )}
 
-        {repTab==="ar-aging"&&(()=>{
+        {curTab==="ar-aging"&&(()=>{
           const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
           const msWithBalance=billings.filter(b=>!['Fully Paid','Cancelled'].includes(b.status)&&Number(b.amount||0)>0).map(b=>{
             const deal=deals.find(d=>d.id===b.dealId);
@@ -9062,7 +9071,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })()}
 
-        {repTab==="ap-aging"&&(()=>{
+        {curTab==="ap-aging"&&(()=>{
           const fmtM=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
           const unpaid=payables.filter(p=>p.status!=="Paid"&&Number(p.amount||0)>0).map(p=>{
             const deal=deals.find(d=>d.id===p.projectId);
@@ -9800,42 +9809,50 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const stageLabel=d.stage?.replace(/^\d+ · /,"")||"—";
                   const dLeftP=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-new Date())/86400000):null;
                   const isOverP=dLeftP!==null&&dLeftP<0;
+                  // Addendum (child) rows render in a compact style so the parent deal
+                  // reads as the primary row and its addenda sit visually beneath it.
+                  const cp=isChild?"4px 14px":"10px 14px";       // cell padding
+                  const cpA=isChild?"4px 10px":"10px 10px";      // action-cell padding
+                  const nameFs=isChild?".72rem":".82rem";        // project/client name
+                  const moneyFs=isChild?".7rem":".78rem";        // contract
+                  const moneyFs2=isChild?".68rem":".75rem";      // collected / outstanding
+                  const metaFs=isChild?".7rem":".78rem";         // AE / PM
                   return(
                     <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
                       onClick={()=>{setJumpDeal(d.id);setPage("projects");}}
                       onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
                       onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":""}>
                       <td style={{width:4,padding:0,background:isChild?"#f59e0b":sc}}></td>
-                      <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
-                        {isChild&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".52rem",fontWeight:700,color:"#f59e0b",marginBottom:2,letterSpacing:".5px"}}>↳ ADDENDUM</div>}
-                        <div style={{fontWeight:700,fontSize:".82rem",color:"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
-                        {d.client!==d.contact&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
-                        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:4}}>
+                      <td style={{padding:cp,verticalAlign:"middle",paddingLeft:isChild?28:14}}>
+                        {isChild&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".52rem",fontWeight:700,color:"#f59e0b",marginBottom:1,letterSpacing:".5px"}}>↳ ADDENDUM</div>}
+                        <div style={{fontWeight:isChild?600:700,fontSize:nameFs,color:isChild?"#374151":"#0d1117",lineHeight:1.25}}>{d.contact||d.client}</div>
+                        {d.client!==d.contact&&!isChild&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:isChild?2:4}}>
                           {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
                           {jo?.joNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{jo.joNo}</span>}
                         </div>
                       </td>
-                      <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                      <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}}>
                         <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{stageLabel}</span>
                       </td>
-                      <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
-                      <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
-                      <td style={{padding:"10px 14px",verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
-                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".78rem",fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
+                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
+                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
                       </td>
-                      <td style={{padding:"10px 14px",verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
-                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".75rem",fontWeight:700,color:pctPaid===100?"#059669":"#0d1117"}}>₱{paid.toLocaleString("en-PH")}</div>
+                      <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
+                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs2,fontWeight:700,color:pctPaid===100?"#059669":"#0d1117"}}>₱{paid.toLocaleString("en-PH")}</div>
                         {inv>0&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:700,padding:"1px 5px",borderRadius:3,marginTop:2,display:"inline-block",
                           color:pctPaid===100?"#065f46":pctPaid>50?"#1d4ed8":"#92400e",
                           background:pctPaid===100?"#ecfdf5":pctPaid>50?"#eff6ff":"#fffbeb",
                           border:`1px solid ${pctPaid===100?"#a7f3d0":pctPaid>50?"#bfdbfe":"#fde68a"}`}}>{pctPaid}%</span>}
                       </td>
-                      <td style={{padding:"10px 14px",verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
-                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".75rem",fontWeight:700,color:outstanding>0?"#ef4444":"#94a3b8"}}>
+                      <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
+                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs2,fontWeight:700,color:outstanding>0?"#ef4444":"#94a3b8"}}>
                           {outstanding>0?`₱${outstanding.toLocaleString("en-PH")}`:"—"}
                         </div>
                       </td>
-                      <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                      <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}}>
                         {pc?.targetEndDate?(
                           <>
                             <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".68rem",fontWeight:700,color:isOverP?"#dc2626":dLeftP!==null&&dLeftP<=7?"#d97706":"#059669"}}>{pc.targetEndDate}</div>
@@ -9848,7 +9865,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           </>
                         ):<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>}
                       </td>
-                      <td style={{padding:"10px 10px",verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
+                      <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
