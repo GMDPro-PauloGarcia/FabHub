@@ -9811,17 +9811,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const isOverP=dLeftP!==null&&dLeftP<0;
                   // Addendum (child) rows render in a compact style so the parent deal
                   // reads as the primary row and its addenda sit visually beneath it.
-                  const cp=isChild?"4px 14px":"10px 14px";       // cell padding
-                  const cpA=isChild?"4px 10px":"10px 10px";      // action-cell padding
-                  const nameFs=isChild?".72rem":".82rem";        // project/client name
-                  const moneyFs=isChild?".7rem":".78rem";        // contract
-                  const moneyFs2=isChild?".68rem":".75rem";      // collected / outstanding
-                  const metaFs=isChild?".7rem":".78rem";         // AE / PM
+                  const cp=isChild?"2px 14px":"10px 14px";       // cell padding
+                  const cpA=isChild?"2px 10px":"10px 10px";      // action-cell padding
+                  const nameFs=isChild?".66rem":".82rem";        // project/client name
+                  const moneyFs=isChild?".64rem":".78rem";       // contract
+                  const moneyFs2=isChild?".62rem":".75rem";      // collected / outstanding
+                  const metaFs=isChild?".64rem":".78rem";        // AE / PM
+                  // Addendum rows carry a persistent amber tint (not just on hover) so
+                  // they're immediately recognizable as addendums of the row above.
+                  const childBg="#fef3c7";                       // amber-100
+                  const childBgHover="#fde68a";                  // amber-200
                   return(
-                    <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer"}}
+                    <tr style={{borderBottom:"1px solid #e2e8f0",cursor:"pointer",background:isChild?childBg:""}}
                       onClick={()=>{setJumpDeal(d.id);setPage("projects");}}
-                      onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
-                      onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":""}>
+                      onMouseEnter={e=>e.currentTarget.style.background=isChild?childBgHover:"#f8fafc"}
+                      onMouseLeave={e=>e.currentTarget.style.background=isChild?childBg:""}>
                       <td style={{width:4,padding:0,background:isChild?"#f59e0b":sc}}></td>
                       <td style={{padding:cp,verticalAlign:"middle",paddingLeft:isChild?28:14}}>
                         {isChild&&<div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".52rem",fontWeight:700,color:"#f59e0b",marginBottom:1,letterSpacing:".5px"}}>↳ ADDENDUM</div>}
