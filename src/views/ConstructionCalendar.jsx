@@ -5,20 +5,58 @@ const OPS_EVENT_TYPES=["Turnover","PO Delivery","Billing Due","DRF Deadline","Re
 const OPS_EVENT_COLORS={Turnover:"#3b82f6","PO Delivery":"#f97316","Billing Due":"#10b981","DRF Deadline":"#ec4899",Repair:"#ef4444",Backjob:"#dc2626",Maintenance:"#f59e0b","Site Visit":"#0ea5e9",Inspection:"#8b5cf6","Site Meeting":"#059669"};
 const OPS_EVENT_ICONS={Turnover:"🏗","PO Delivery":"📦","Billing Due":"💵","DRF Deadline":"📝",Repair:"🔧",Backjob:"🔄",Maintenance:"⚙️","Site Visit":"🏗","Inspection":"🔍","Site Meeting":"👥"};
 
+// ── Field Board — Type of Work classifier (mirrors the Ops Director's deck) ──
+// Every field job the coordinators run is tagged with one top-level code:
+//   I · Installation   R · Repair   P · Punchlist   C · Construction
+const WORK_CATEGORIES=[
+  {code:"I",label:"Installation",color:"#17998a"},
+  {code:"R",label:"Repair",       color:"#c98217"},
+  {code:"P",label:"Punchlist",    color:"#3d6ea8"},
+  {code:"C",label:"Construction", color:"#c0392b"},
+];
+const CAT_COLOR=Object.fromEntries(WORK_CATEGORIES.map(c=>[c.code,c.color]));
+// Fall back to a sensible code when an older ops event has no explicit category.
+const catFromType=t=>({Turnover:"I","Site Visit":"P",Inspection:"P","Site Meeting":"P",Repair:"R",Backjob:"R",Maintenance:"R"}[t]||"R");
+const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const isoDate=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
 function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,billings,drfs,ceReqs,payables=[],setPage,setJumpDeal,today,Wrap,checklists=[],addOpsEvent,updateOpsEvent,deleteOpsEvent,session,updateProjectTurnover}){
   const[viewDate,setViewDate]=React.useState(new Date());
   const[selectedDay,setSelectedDay]=React.useState(null);
-  const[calTab,setCalTab]=React.useState("calendar");
+  const[calTab,setCalTab]=React.useState("board");
   const[eventModal,setEventModal]=React.useState(null); // {event}
   const[schedModal,setSchedModal]=React.useState(false);
-  const[schedForm,setSchedForm]=React.useState({date:today,type:"Repair",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});
+  const[schedForm,setSchedForm]=React.useState({date:today,type:"Repair",category:"R",location:"",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});
   const[editSchedId,setEditSchedId]=React.useState(null);
+  const[boardMonday,setBoardMonday]=React.useState(()=>{const d=new Date(today+"T00:00:00");const dow=d.getDay();d.setDate(d.getDate()-((dow+6)%7));d.setHours(0,0,0,0);return d;}); // Monday of the current week
 
   const opsEvents=React.useMemo(()=>checklists.filter(c=>OPS_EVENT_TYPES.includes(c.type)&&c.dept==="Operations"&&c.dueDate&&c.status!=="Done"),[checklists]);
 
+  // ── Field Board: the six weekdays (Mon–Sat) of the selected week ──────────
+  const boardDays=React.useMemo(()=>{
+    return Array.from({length:6},(_,i)=>{const d=new Date(boardMonday);d.setDate(d.getDate()+i);return{date:isoDate(d),dow:DOW[d.getDay()],dd:`${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`};});
+  },[boardMonday]);
+  // All ops-created field jobs (any status) that fall inside the visible week,
+  // grouped by day. Unlike opsEvents this keeps Done items so the week reads true.
+  const boardJobs=React.useMemo(()=>{
+    const start=boardDays[0]?.date, end=boardDays[5]?.date;
+    if(!start||!end) return {};
+    const inWeek=checklists.filter(c=>c.dept==="Operations"&&OPS_EVENT_TYPES.includes(c.type)&&c.dueDate&&c.dueDate>=start&&c.dueDate<=end);
+    const map={};boardDays.forEach(d=>map[d.date]=[]);
+    inWeek.forEach(c=>{const cat=c.category||catFromType(c.type);const proj=wonDeals.find(d=>d.id===c.projectId);(map[c.dueDate]=map[c.dueDate]||[]).push({...c,cat,project:proj?.client||""});});
+    Object.values(map).forEach(a=>a.sort((x,y)=>(x.cat||"").localeCompare(y.cat||"")));
+    return map;
+  },[checklists,boardDays,wonDeals]);
+  const boardCoordLoad=React.useMemo(()=>{
+    const m={};Object.values(boardJobs).flat().forEach(j=>{const who=(j.assignedTo||"").trim();if(!who)return;m[who]=(m[who]||0)+1;});
+    return Object.entries(m).map(([name,count])=>({name,count})).sort((a,b)=>b.count-a.count);
+  },[boardJobs]);
+  const boardTotal=React.useMemo(()=>Object.values(boardJobs).reduce((s,a)=>s+a.length,0),[boardJobs]);
+  const boardMaxLoad=boardCoordLoad.length?boardCoordLoad[0].count:0;
+
   const openSched=(date=today,ev=null)=>{
-    if(ev){setSchedForm({date:ev.dueDate||today,type:ev.type||"Repair",projectId:ev.projectId||"",title:ev.title||"",assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setEditSchedId(ev.id);}
-    else{setSchedForm({date,type:"Repair",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});setEditSchedId(null);}
+    if(ev){setSchedForm({date:ev.dueDate||today,type:ev.type||"Repair",category:ev.category||catFromType(ev.type),location:ev.location||"",projectId:ev.projectId||"",title:ev.title||"",assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setEditSchedId(ev.id);}
+    else{setSchedForm({date,type:"Repair",category:"R",location:"",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});setEditSchedId(null);}
     setSchedModal(true);
   };
   const saveSched=()=>{
@@ -30,7 +68,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
       return;
     }
     if(!schedForm.title) return;
-    const data={type:schedForm.type,title:schedForm.title,dueDate:schedForm.date,projectId:schedForm.projectId||null,dealId:schedForm.projectId||null,assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
+    const data={type:schedForm.type,category:schedForm.category||catFromType(schedForm.type),location:schedForm.location||"",title:schedForm.title,dueDate:schedForm.date,projectId:schedForm.projectId||null,dealId:schedForm.projectId||null,assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
     else addOpsEvent?.(data);
     setSchedModal(false);setEditSchedId(null);
@@ -172,7 +210,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   const gapBannerVisible=calendarGaps.length>0&&gapSignature!==dismissedGapSig;
   const dismissGaps=()=>{try{localStorage.setItem("fabhub:dismissedGapSig",gapSignature);}catch{}setDismissedGapSig(gapSignature);};
 
-  const TABS=[{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"schedule",l:`📋 Items${opsEvents.length>0?" ("+opsEvents.length+")":""}`},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"},{id:"gaps",l:`🔍 Data Gaps${calendarGaps.length>0?" ("+calendarGaps.length+")":""}`}];
+  const TABS=[{id:"board",l:"🗂 Field Board"},{id:"calendar",l:"📅 Monthly"},{id:"thisweek",l:"⚡ This Week"},{id:"schedule",l:`📋 Items${opsEvents.length>0?" ("+opsEvents.length+")":""}`},{id:"conflicts",l:"⚠️ Conflicts"},{id:"cashflow",l:"💵 Cash Flow"},{id:"capacity",l:"👷 Team Load"},{id:"gaps",l:`🔍 Data Gaps${calendarGaps.length>0?" ("+calendarGaps.length+")":""}`}];
   const BTN=(p)=><button onClick={p.onClick} style={{...{background:p.active?"#1e293b":"#f8fafc",color:p.active?"#fff":"#64748b",border:`1.5px solid ${p.active?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"},...(p.style||{})}}>{p.children}</button>;
 
   return(
@@ -227,6 +265,87 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
       <div style={{display:"flex",gap:4,marginBottom:16,flexWrap:"wrap"}}>
         {TABS.map(t=><BTN key={t.id} active={calTab===t.id} onClick={()=>setCalTab(t.id)}>{t.l}</BTN>)}
       </div>
+
+      {calTab==="board"&&(()=>{
+        const wkNo=(()=>{const d=new Date(boardMonday);const oneJan=new Date(d.getFullYear(),0,1);return Math.ceil((((d-oneJan)/86400000)+oneJan.getDay()+1)/7);})();
+        const rangeLbl=`${boardMonday.toLocaleDateString("en-PH",{month:"short",day:"numeric"})} – ${new Date(boardMonday.getTime()+5*86400000).toLocaleDateString("en-PH",{day:"numeric"})}`;
+        const shiftWeek=n=>setBoardMonday(m=>{const d=new Date(m);d.setDate(d.getDate()+n*7);return d;});
+        const thisMonday=()=>{const d=new Date(today+"T00:00:00");d.setDate(d.getDate()-((d.getDay()+6)%7));d.setHours(0,0,0,0);return d;};
+        return(
+        <div>
+          {/* ── Board header ── */}
+          <div style={{background:"#14243f",borderRadius:"10px 10px 0 0",padding:"14px 20px",display:"flex",flexWrap:"wrap",gap:12,alignItems:"flex-end",justifyContent:"space-between",borderBottom:"4px solid #f07f2c"}}>
+            <div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,letterSpacing:".14em",fontSize:".72rem",color:"#f07f2c",textTransform:"uppercase"}}>GMD Productions · Operations</div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:"1.6rem",lineHeight:1,textTransform:"uppercase",color:"#fff"}}>Weekly Field Board</div>
+            </div>
+            <div style={{textAlign:"right",lineHeight:1.2}}>
+              <div style={{display:"flex",gap:6,justifyContent:"flex-end",marginBottom:4}}>
+                <BTN onClick={()=>shiftWeek(-1)} style={{padding:"3px 10px",fontSize:".72rem"}}>‹</BTN>
+                <BTN onClick={()=>setBoardMonday(thisMonday())} style={{padding:"3px 10px",fontSize:".72rem"}}>This week</BTN>
+                <BTN onClick={()=>shiftWeek(1)} style={{padding:"3px 10px",fontSize:".72rem"}}>›</BTN>
+              </div>
+              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:600,fontSize:"1.2rem",color:"#fff"}}>WK {wkNo} · {rangeLbl}</div>
+              <div style={{fontSize:".7rem",color:"#aebbcd"}}>{boardTotal} job{boardTotal!==1?"s":""} · {boardCoordLoad.length} coordinator{boardCoordLoad.length!==1?"s":""}</div>
+            </div>
+          </div>
+          {/* ── Legend + coordinator load ── */}
+          <div style={{background:"#1f3557",color:"#fff",padding:"10px 20px",display:"flex",flexWrap:"wrap",gap:16,justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+              {WORK_CATEGORIES.map(c=>(
+                <span key={c.code} style={{display:"flex",alignItems:"center",gap:5,fontSize:".74rem",color:"#d7dee8",fontWeight:500}}>
+                  <span style={{width:10,height:10,borderRadius:3,background:c.color}}/>{c.label}
+                </span>
+              ))}
+            </div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,alignItems:"center"}}>
+              <span style={{fontSize:".62rem",letterSpacing:".12em",textTransform:"uppercase",color:"#8fa0b8",fontWeight:700}}>Load</span>
+              {boardCoordLoad.length===0&&<span style={{fontSize:".72rem",color:"#8fa0b8"}}>— no coordinators assigned yet</span>}
+              {boardCoordLoad.map(c=>{const hot=c.count>=Math.max(3,boardMaxLoad);return(
+                <span key={c.name} style={{display:"flex",alignItems:"center",gap:5,background:hot?"rgba(240,127,44,.18)":"rgba(255,255,255,.08)",border:`1px solid ${hot?"#f07f2c":"rgba(255,255,255,.14)"}`,padding:"2px 8px",borderRadius:20,fontSize:".72rem",fontWeight:500,color:hot?"#ffd9b8":"#fff"}}>
+                  {c.name} <b style={{color:hot?"#f07f2c":"#fff"}}>{c.count}</b>
+                </span>
+              );})}
+            </div>
+          </div>
+          {/* ── Week grid ── */}
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:1,background:"#c9d2dd",border:"1px solid #c9d2dd",borderRadius:"0 0 10px 10px",overflow:"hidden"}}>
+            {boardDays.map(day=>{
+              const jobs=boardJobs[day.date]||[];const slack=jobs.length<=1;const isToday=day.date===today;
+              return(
+                <div key={day.date} style={{background:"#eef1f4",display:"flex",flexDirection:"column",minHeight:170}}>
+                  <div style={{padding:"8px 11px",background:slack?"#f3e6d3":"#dde3ea",borderBottom:"1px solid #c9d2dd",display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                    <div>
+                      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,textTransform:"uppercase",letterSpacing:".06em",fontSize:".92rem",color:isToday?"#f07f2c":"#14243f"}}>{day.dow}</div>
+                      <div style={{fontSize:".66rem",color:"#5a6a80",fontFamily:"monospace"}}>{day.dd}</div>
+                    </div>
+                    <span style={{fontFamily:"monospace",fontSize:".66rem",color:"#fff",background:slack?"#f07f2c":"#14243f",borderRadius:10,padding:"1px 7px"}}>{jobs.length}</span>
+                  </div>
+                  <div style={{padding:7,display:"flex",flexDirection:"column",gap:7,flex:1}}>
+                    {jobs.length===0&&<div style={{fontSize:".68rem",color:"#94a3b8",textAlign:"center",padding:"14px 0"}}>—</div>}
+                    {jobs.map(j=>{const clr=CAT_COLOR[j.cat]||"#64748b";const done=j.status==="Done";return(
+                      <div key={j.id} onClick={()=>openSched(j.dueDate,j)} title="Click to edit"
+                        style={{background:"#fff",border:"1px solid #c9d2dd",borderLeft:`4px solid ${clr}`,borderRadius:6,padding:"7px 8px",position:"relative",cursor:"pointer",opacity:done?.6:1}}>
+                        <span style={{position:"absolute",top:7,right:7,width:18,height:18,borderRadius:5,fontFamily:"monospace",fontWeight:700,fontSize:".68rem",color:"#fff",background:clr,display:"flex",alignItems:"center",justifyContent:"center"}}>{j.cat}</span>
+                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:".95rem",lineHeight:1.05,color:"#14243f",paddingRight:22,textDecoration:done?"line-through":"none"}}>{j.title||j.project||"Untitled"}</div>
+                        {j.location&&<div style={{fontSize:".7rem",color:"#5a6a80",marginTop:2,fontWeight:500}}>{j.location}</div>}
+                        {j.notes&&<div style={{fontSize:".66rem",color:"#7a869a",marginTop:3,lineHeight:1.25}}>{j.notes}</div>}
+                        {j.assignedTo&&<div style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:5,fontSize:".68rem",fontWeight:600,color:"#14243f"}}><span style={{width:5,height:5,borderRadius:"50%",background:"#5a6a80"}}/>{j.assignedTo}</div>}
+                      </div>
+                    );})}
+                    {addOpsEvent&&<button onClick={()=>openSched(day.date)} style={{marginTop:"auto",background:"transparent",border:"1px dashed #b6c1cf",borderRadius:6,padding:"5px",fontSize:".68rem",color:"#5a6a80",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>+ Add job</button>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:8,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
+            <span>Jobs added here appear on the Monthly calendar and This Week too. Sunday is a rest day and is hidden.</span>
+            <span style={{fontFamily:"monospace"}}>I · Installation&nbsp; R · Repair&nbsp; P · Punchlist&nbsp; C · Construction</span>
+          </div>
+        </div>
+        );
+      })()}
 
       {calTab==="calendar"&&(<>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
@@ -323,6 +442,18 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
               <select value={schedForm.type||"Repair"} onChange={e=>setSchedForm(p=>({...p,type:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
                 {OPS_EVENT_TYPES.map(t=><option key={t}>{t}</option>)}
               </select>
+            </div>
+            <div style={{display:"flex",gap:10,marginBottom:10}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Type of Work</div>
+                <select value={schedForm.category||"R"} onChange={e=>setSchedForm(p=>({...p,category:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",background:"#fff"}}>
+                  {WORK_CATEGORIES.map(c=><option key={c.code} value={c.code}>{c.code} · {c.label}</option>)}
+                </select>
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Location / Mall</div>
+                <input value={schedForm.location||""} onChange={e=>setSchedForm(p=>({...p,location:e.target.value}))} placeholder="e.g. BGC, Shangri-La" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+              </div>
             </div>
             {schedForm.type==="Turnover"&&schedForm.projectId&&(
               <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",marginBottom:10,fontSize:".78rem",color:"#3b82f6",fontWeight:600}}>
