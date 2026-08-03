@@ -43,6 +43,7 @@ function DailyCashPosition({
   const[saved,setSaved]    =useState(false);
   const[dirty,setDirty]    =useState(false);   // unsaved local edits on the current day
   const[histOpen,setHistOpen]=useState(false);
+  const[hideAcct,setHideAcct]=useState(false);   // mask account numbers for screen-share/presentations
   const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
   const markDirty =()=>{dirtyRef.current=true; setDirty(true);};
   const clearDirty=()=>{dirtyRef.current=false;setDirty(false);};
@@ -332,8 +333,8 @@ function DailyCashPosition({
 
   // ── style tokens (Excel look) ──
   const C={navy:"#1f3864",gold:"#ffd966",green:"#c6e0b4",blue:"#0070c0",grid:"#d0d7e2",zebra:"#f4f6fb"};
-  const sectionHdr=(label,accent=C.navy)=>(
-    <div style={{background:accent,color:"#fff",fontWeight:800,fontSize:".72rem",letterSpacing:".6px",padding:"6px 12px",textTransform:"uppercase"}}>{label}</div>
+  const sectionHdr=(label,accent=C.navy,action=null)=>(
+    <div style={{background:accent,color:"#fff",fontWeight:800,fontSize:".72rem",letterSpacing:".6px",padding:"6px 12px",textTransform:"uppercase",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}><span>{label}</span>{action}</div>
   );
   const numCell={textAlign:"right",padding:"6px 12px",fontSize:".82rem",fontVariantNumeric:"tabular-nums"};
   const th={background:C.gold,color:C.navy,fontWeight:800,fontSize:".72rem",padding:"8px 10px",border:`1px solid ${C.grid}`,textAlign:"center",whiteSpace:"nowrap"};
@@ -462,12 +463,14 @@ function DailyCashPosition({
         </div>
 
         {/* BANK ACCOUNT DETAIL */}
-        {sectionHdr("Bank Account Detail")}
+        {sectionHdr("Bank Account Detail",C.navy,
+          <button onClick={()=>setHideAcct(v=>!v)} title={hideAcct?"Show account no., branch & type":"Hide account no., branch & type"} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.35)",borderRadius:6,padding:"3px 9px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".62rem",letterSpacing:".4px",cursor:"pointer",textTransform:"uppercase"}}>{hideAcct?"👁 Show account details":"🙈 Hide account details"}</button>
+        )}
         <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",padding:"10px 12px 4px"}}>
           <table style={{borderCollapse:"collapse",minWidth:mob?860:"100%",width:"100%"}}>
             <thead>
-              <tr>{["Bank","Account No.","Branch","Type","Beginning Balance","Collections","Bizlink Transaction","Ending Bank Balance","Book Balance","Float Check"].map((h,i)=>(
-                <th key={h} style={{...th,textAlign:i<4?"left":"center"}}>{h}</th>))}
+              <tr>{["Bank",...(hideAcct?[]:["Account No.","Branch","Type"]),"Beginning Balance","Collections","Bizlink Transaction","Ending Bank Balance","Book Balance","Float Check"].map((h,i)=>(
+                <th key={h} style={{...th,textAlign:i<(hideAcct?1:4)?"left":"center"}}>{h}</th>))}
               </tr>
             </thead>
             <tbody>
@@ -483,18 +486,20 @@ function DailyCashPosition({
                 return(
                   <React.Fragment key={grp.label}>
                     <tr style={{background:grp.bg}}>
-                      <td colSpan={10} style={{...td,fontWeight:800,color:grp.clr,fontSize:".68rem",letterSpacing:".6px",textTransform:"uppercase",padding:"5px 12px"}}>{grp.label} Accounts</td>
+                      <td colSpan={hideAcct?7:10} style={{...td,fontWeight:800,color:grp.clr,fontSize:".68rem",letterSpacing:".6px",textTransform:"uppercase",padding:"5px 12px"}}>{grp.label} Accounts</td>
                     </tr>
                     {grp.banks.map((b,ri)=>{
                       const coll=collByBank[b.id]||0;
                       return(
                         <tr key={b.id} style={{background:ri%2?C.zebra:"#fff"}}>
                           <td style={{...td,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{b.name.toUpperCase()}</td>
+                          {!hideAcct&&<>
                           <td style={{...td,color:"#475569"}}>{b.acctNo}</td>
                           <td style={{...td,color:"#475569",whiteSpace:"nowrap"}}>{b.branch}</td>
                           <td style={{...td}}>
                             <span style={{fontSize:".68rem",fontWeight:700,padding:"1px 7px",borderRadius:20,color:b.type==="Operating"?"#1d4ed8":"#7c3aed",background:b.type==="Operating"?"#eff6ff":"#f5f3ff",border:`1px solid ${b.type==="Operating"?"#bfdbfe":"#e9d5ff"}`}}>{b.type}</span>
                           </td>
+                          </>}
                           {editCell(b.id,"beg")}
                           <td style={{...td,...numCell,color:coll>0?C.blue:"#cbd5e1",fontWeight:coll>0?700:400}}>{coll>0?fmt2(coll):"—"}</td>
                           {flowCell(b.id,"bizlink",bizAutoByBank[b.id],"#b45309")}
@@ -505,7 +510,7 @@ function DailyCashPosition({
                       );
                     })}
                     <tr style={{background:"#eef2f7"}}>
-                      <td style={{...td,fontWeight:800,color:grp.clr}} colSpan={4}>{grp.label} Subtotal</td>
+                      <td style={{...td,fontWeight:800,color:grp.clr}} colSpan={hideAcct?1:4}>{grp.label} Subtotal</td>
                       <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{fmt2(g.beg)}</td>
                       <td style={{...td,...numCell,fontWeight:800,color:C.blue}}>{g.coll>0?fmt2(g.coll):"—"}</td>
                       <td style={{...td,...numCell,fontWeight:800,color:"#0f172a"}}>{g.bizlink>0?fmt2(g.bizlink):"—"}</td>
@@ -517,7 +522,7 @@ function DailyCashPosition({
                 );
               })}
               <tr style={{background:"#e8edf5",fontWeight:800}}>
-                <td style={{...td,fontWeight:900,color:C.navy}} colSpan={4}>GRAND TOTAL — ALL ACCOUNTS</td>
+                <td style={{...td,fontWeight:900,color:C.navy}} colSpan={hideAcct?1:4}>GRAND TOTAL — ALL ACCOUNTS</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{fmt2(tot.beg)}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:C.blue}}>{fmt2(tot.coll)}</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#0f172a"}}>{tot.bizlink>0?fmt2(tot.bizlink):"—"}</td>
