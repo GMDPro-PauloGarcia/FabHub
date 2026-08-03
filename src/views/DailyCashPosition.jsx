@@ -43,6 +43,7 @@ function DailyCashPosition({
   const[saved,setSaved]    =useState(false);
   const[dirty,setDirty]    =useState(false);   // unsaved local edits on the current day
   const[histOpen,setHistOpen]=useState(false);
+  const[hideAcct,setHideAcct]=useState(false);   // mask account numbers for screen-share/presentations
   const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
   const markDirty =()=>{dirtyRef.current=true; setDirty(true);};
   const clearDirty=()=>{dirtyRef.current=false;setDirty(false);};
@@ -332,9 +333,11 @@ function DailyCashPosition({
 
   // ── style tokens (Excel look) ──
   const C={navy:"#1f3864",gold:"#ffd966",green:"#c6e0b4",blue:"#0070c0",grid:"#d0d7e2",zebra:"#f4f6fb"};
-  const sectionHdr=(label,accent=C.navy)=>(
-    <div style={{background:accent,color:"#fff",fontWeight:800,fontSize:".72rem",letterSpacing:".6px",padding:"6px 12px",textTransform:"uppercase"}}>{label}</div>
+  const sectionHdr=(label,accent=C.navy,action=null)=>(
+    <div style={{background:accent,color:"#fff",fontWeight:800,fontSize:".72rem",letterSpacing:".6px",padding:"6px 12px",textTransform:"uppercase",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10}}><span>{label}</span>{action}</div>
   );
+  // Mask an account number for presentations/screen-shares — keep only the last 4 chars.
+  const maskAcct=v=>{const s=String(v||"").trim();if(!s||s==="—")return s||"—";const digits=s.replace(/\s/g,"");if(digits.length<=4)return "••••";return "•••• "+digits.slice(-4);};
   const numCell={textAlign:"right",padding:"6px 12px",fontSize:".82rem",fontVariantNumeric:"tabular-nums"};
   const th={background:C.gold,color:C.navy,fontWeight:800,fontSize:".72rem",padding:"8px 10px",border:`1px solid ${C.grid}`,textAlign:"center",whiteSpace:"nowrap"};
   const td={padding:"6px 10px",fontSize:".8rem",border:`1px solid ${C.grid}`,fontVariantNumeric:"tabular-nums"};
@@ -462,7 +465,9 @@ function DailyCashPosition({
         </div>
 
         {/* BANK ACCOUNT DETAIL */}
-        {sectionHdr("Bank Account Detail")}
+        {sectionHdr("Bank Account Detail",C.navy,
+          <button onClick={()=>setHideAcct(v=>!v)} title={hideAcct?"Show account numbers":"Hide account numbers"} style={{background:"rgba(255,255,255,.15)",border:"1px solid rgba(255,255,255,.35)",borderRadius:6,padding:"3px 9px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".62rem",letterSpacing:".4px",cursor:"pointer",textTransform:"uppercase"}}>{hideAcct?"👁 Show account nos.":"🙈 Hide account nos."}</button>
+        )}
         <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",padding:"10px 12px 4px"}}>
           <table style={{borderCollapse:"collapse",minWidth:mob?860:"100%",width:"100%"}}>
             <thead>
@@ -490,7 +495,7 @@ function DailyCashPosition({
                       return(
                         <tr key={b.id} style={{background:ri%2?C.zebra:"#fff"}}>
                           <td style={{...td,fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{b.name.toUpperCase()}</td>
-                          <td style={{...td,color:"#475569"}}>{b.acctNo}</td>
+                          <td style={{...td,color:"#475569",fontVariantNumeric:hideAcct?"normal":"tabular-nums",letterSpacing:hideAcct?"1px":"normal"}}>{hideAcct?maskAcct(b.acctNo):b.acctNo}</td>
                           <td style={{...td,color:"#475569",whiteSpace:"nowrap"}}>{b.branch}</td>
                           <td style={{...td}}>
                             <span style={{fontSize:".68rem",fontWeight:700,padding:"1px 7px",borderRadius:20,color:b.type==="Operating"?"#1d4ed8":"#7c3aed",background:b.type==="Operating"?"#eff6ff":"#f5f3ff",border:`1px solid ${b.type==="Operating"?"#bfdbfe":"#e9d5ff"}`}}>{b.type}</span>
