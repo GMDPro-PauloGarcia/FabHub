@@ -12669,13 +12669,77 @@ First few:
           {key:"Paid",     label:"Paid",         dot:"#059669", clr:"#059669", items:list.filter(e=>e.acctStatus==="Paid"&&e.paymentMethod!=="Check")},
         ];
         const toggleDp=key=>setDpCollapsed(s=>{const n=new Set(s);n.has(key)?n.delete(key):n.add(key);return n;});
+        // Logged but not yet routed — these are saved and counted in the Account Report
+        // but don't appear as payables until routed. Surface them here so a freshly logged
+        // expense is traceable (and Finance doesn't re-enter it thinking the save failed).
+        const logged=[...exps].filter(e=>(!e.acctStatus||e.acctStatus==="Logged"))
+          .filter(e=>!acctMonth||e.expDate?.startsWith(acctMonth))
+          .filter(e=>!acctSearch||(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()))
+          .filter(e=>acctCat==="All"||e.category===acctCat)
+          .filter(e=>acctProj==="all"||(acctProj==="company"?!e.projectId:e.projectId===acctProj))
+          .sort((a,b)=>(b.expDate||"").localeCompare(a.expDate||""));
+        const loggedTotal=logged.reduce((s,e)=>s+Number(e.amount||0),0);
+        const loggedOpen=!dpCollapsed.has("Logged");
         return(
           <>
+            {logged.length>0&&(
+              <div style={{marginBottom:10,border:"1.5px solid #fde68a",borderRadius:12,overflow:"hidden",background:"#fff"}}>
+                <div onClick={()=>toggleDp("Logged")} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",cursor:"pointer",borderBottom:loggedOpen?"1px solid #fef3c7":"none",background:"#fffbeb"}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:"#eab308",flexShrink:0}}/>
+                  <div style={{fontWeight:700,fontSize:".82rem",color:"#b45309"}}>📝 Logged — awaiting routing</div>
+                  <div style={{background:"#fef3c7",borderRadius:20,padding:"1px 8px",fontSize:".72rem",fontWeight:700,color:"#b45309"}}>{logged.length}</div>
+                  <div style={{marginLeft:"auto",fontWeight:700,fontSize:".8rem",color:"#0f172a"}}>{fmt(loggedTotal)}</div>
+                  <div style={{color:"#eab308",fontSize:".75rem",marginLeft:6}}>{loggedOpen?"▲":"▼"}</div>
+                </div>
+                {loggedOpen&&(
+                  <>
+                    <div style={{padding:"7px 16px",fontSize:".72rem",color:"#92400e",background:"#fffdf5",borderBottom:"1px solid #fef3c7"}}>Saved and included in the Account Report, but not yet a payable. Route each one to move it into the payment queue below.</div>
+                    <div style={{overflowX:"auto"}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem"}}>
+                        <thead>
+                          <tr style={{background:"#f8fafc"}}>
+                            {["Date","Project","Description","Category","Amount",""].map(h=>(
+                              <th key={h} style={{padding:"7px 14px",textAlign:h==="Amount"?"right":"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logged.map((e,idx)=>{
+                            const proj=wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId);
+                            const inPipeline=e.payableId||e.cvId;
+                            return(
+                              <tr key={e.id} style={{borderBottom:idx<logged.length-1?"1px solid #f8fafc":"none"}}
+                                onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                                <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".75rem",color:"#64748b",whiteSpace:"nowrap"}}>{e.expDate||`${typeof e.month==="number"?["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][e.month]:""} ${e.year||""}`}</td>
+                                <td style={{padding:"9px 14px",fontSize:".78rem",color:"#8b5cf6",fontWeight:600,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?projDisplayName(proj):<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                                <td style={{padding:"9px 14px",fontSize:".8rem",color:"#0f172a",fontWeight:500,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</td>
+                                <td style={{padding:"9px 14px"}}><span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></td>
+                                <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#b45309",fontSize:".83rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</td>
+                                <td style={{padding:"9px 14px"}}>
+                                  <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap",alignItems:"center"}}>
+                                    {inPipeline?<span style={{fontSize:".63rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#fff7ed",color:"#c2410c",whiteSpace:"nowrap"}}>📤 In payables</span>:(<>
+                                      {(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>💳 Route</button>}
+                                      {role==="Accounting"&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Route to</button>}
+                                    </>)}
+                                    <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                    <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"6px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <span style={{fontSize:".75rem",color:"#64748b"}}>{list.length} expense{list.length!==1?"s":""}</span>
               <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{list.reduce((s,e)=>s+Number(e.amount||0),0).toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
             </div>
-            {list.length===0?<EmptyState icon="📋" msg="No expenses match your filter."/>:DGROUPS.map(g=>{
+            {list.length===0?(logged.length===0&&<EmptyState icon="📋" msg="No expenses match your filter."/>):DGROUPS.map(g=>{
               const isOpen=!dpCollapsed.has(g.key);
               const total=g.items.reduce((s,e)=>s+Number(e.amount||0),0);
               return(
@@ -12742,6 +12806,7 @@ First few:
       })()}
       <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
+      {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
     </Wrap>
   );
 
