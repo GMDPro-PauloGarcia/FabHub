@@ -1256,7 +1256,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 }
 
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
-function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[],suppliers=[]}){
+function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[],suppliers=[],exps=[]}){
   const todayStr=new Date().toISOString().slice(0,10);
   const emptyRow=()=>({expDate:todayStr,supplier:"",payee:"",projectId:null,note:"",qty:"1",pricePerQty:"",tin:"",category:"Materials",accountCode:"",remarks:"",bankAccount:"",receipt:"",month:new Date().getMonth(),year:new Date().getFullYear(),_exp:false});
   const expenseAccounts=(chartOfAccounts||[]).filter(a=>a.type==="COGS"||a.type==="Expense").sort((x,y)=>String(x.code).localeCompare(String(y.code)));
@@ -1285,6 +1285,29 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
       if(!(Number(String(r.pricePerQty||0).replace(/,/g,""))||0)) errs[`${i}_price`]=true;
     });
     if(Object.keys(errs).length){setErrors(errs);return;}
+    // Duplicate guard — a freshly logged expense doesn't surface in Daily Payables
+    // until it's routed, so users sometimes re-enter it thinking the first save failed.
+    // Warn before persisting a row that matches an existing expense (same date, amount,
+    // and particulars/supplier). Skipped in edit mode (editing an expense IS itself).
+    if(!editId){
+      const norm=s=>String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+      const dupes=rows.map((r,i)=>{
+        const q=Number(String(r.qty||1).replace(/,/g,""))||1;
+        const p=Number(String(r.pricePerQty||0).replace(/,/g,""))||0;
+        const amt=Math.round((q*p)*100)/100;
+        if(!amt) return null;
+        const match=exps.find(e=>Math.round((Number(e.amount||0))*100)/100===amt
+          && (e.expDate||"")===(r.expDate||"")
+          && norm(e.note)===norm(r.note)
+          && norm(e.supplier||e.payee)===norm(r.supplier||r.payee));
+        return match?{i,row:r,amt,match}:null;
+      }).filter(Boolean);
+      if(dupes.length){
+        const lines=dupes.map(d=>`  • #${d.i+1}  ${d.row.expDate||"—"}  ${d.row.supplier||d.row.payee||d.row.note||"—"}  ₱${fmt(d.amt)}`).join("\n");
+        const msg=`⚠️ Possible duplicate${dupes.length>1?"s":""} — the following already exist in your expenses:\n\n${lines}\n\nA logged expense won't show in Daily Payables until it's routed for payment, so it may already be saved. Save ${dupes.length>1?"these anyway":"it anyway"}?`;
+        if(!window.confirm(msg)) return;
+      }
+    }
     if(editId){
       const r=rows[0];const q=Number(String(r.qty||1).replace(/,/g,""))||1;const p=Number(String(r.pricePerQty||0).replace(/,/g,""))||0;
       _setExpForm(()=>({...r,amount:q*p,qty:q,pricePerQty:p}));onSave({...r,amount:q*p,qty:q,pricePerQty:p});
@@ -6605,7 +6628,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
           <>
@@ -12718,7 +12741,7 @@ First few:
         );
       })()}
       <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
     </Wrap>
   );
 
@@ -13315,7 +13338,7 @@ First few:
         );
       })()}
       {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
     </Wrap>
   );
 
