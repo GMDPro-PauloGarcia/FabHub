@@ -13240,12 +13240,15 @@ First few:
                               <td style={{padding:"9px 12px",color:"#64748b",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?(proj.contact||proj.client||"Project"):"Company-wide"}</td>
                               <td style={{padding:"9px 12px",fontWeight:700,color:"#0f172a",textAlign:"right",whiteSpace:"nowrap"}}>{fmt(e.amount)}</td>
                               <td style={{padding:"6px 12px",whiteSpace:"nowrap"}}><ExpProgress status={st}/></td>
-                              <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
+                              <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
+                                <div style={{display:"flex",gap:6,justifyContent:"flex-end",alignItems:"center",flexWrap:"wrap"}}>
                                 {isLogged&&(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route</button>}
                                 {isLogged&&role==="Accounting"&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Route to</button>}
                                 {inPipeline&&<span style={{fontSize:".68rem",color:"#c2410c",fontWeight:700}}>📤 In payables</span>}
                                 {st==="For Payment"&&<span style={{fontSize:".68rem",color:"#3b82f6",fontWeight:700}}>⏳ Pending</span>}
                                 {st==="Paid"&&<span style={{fontSize:".68rem",color:"#10b981",fontWeight:700}}>✓ Paid</span>}
+                                {(role==="Finance"||role==="Manager"||role==="Accounting")&&<button onClick={()=>delExp(e.id)} title="Delete expense" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🗑 Delete</button>}
+                                </div>
                               </td>
                             </tr>
                           );
