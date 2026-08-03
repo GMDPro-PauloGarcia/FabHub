@@ -3276,6 +3276,7 @@ export default function App(){
     notes:r.notes||"", supplier:r.supplier||"",
     created_by:r.createdBy||"", what_could_go_wrong:r.whatCouldGoWrong||"",
     qty:Number(r.qty)||0, unit:r.unit||"pcs",
+    category:r.category||null, location:r.location||null,
   });
   const toSbUser = u=>({
     id:u.id, name:u.name||"", username:u.username||"", role:u.role||"Sales",
