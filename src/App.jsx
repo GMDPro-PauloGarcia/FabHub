@@ -1259,7 +1259,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
 }
 
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
-function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[],suppliers=[]}){
+function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[],suppliers=[],exps=[]}){
   const todayStr=new Date().toISOString().slice(0,10);
   const emptyRow=()=>({expDate:todayStr,supplier:"",payee:"",projectId:null,note:"",qty:"1",pricePerQty:"",tin:"",category:"Materials",accountCode:"",remarks:"",bankAccount:"",receipt:"",month:new Date().getMonth(),year:new Date().getFullYear(),_exp:false});
   const expenseAccounts=(chartOfAccounts||[]).filter(a=>a.type==="COGS"||a.type==="Expense").sort((x,y)=>String(x.code).localeCompare(String(y.code)));
@@ -1288,6 +1288,29 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
       if(!(Number(String(r.pricePerQty||0).replace(/,/g,""))||0)) errs[`${i}_price`]=true;
     });
     if(Object.keys(errs).length){setErrors(errs);return;}
+    // Duplicate guard — a freshly logged expense doesn't surface in Daily Payables
+    // until it's routed, so users sometimes re-enter it thinking the first save failed.
+    // Warn before persisting a row that matches an existing expense (same date, amount,
+    // and particulars/supplier). Skipped in edit mode (editing an expense IS itself).
+    if(!editId){
+      const norm=s=>String(s||"").trim().toLowerCase().replace(/\s+/g," ");
+      const dupes=rows.map((r,i)=>{
+        const q=Number(String(r.qty||1).replace(/,/g,""))||1;
+        const p=Number(String(r.pricePerQty||0).replace(/,/g,""))||0;
+        const amt=Math.round((q*p)*100)/100;
+        if(!amt) return null;
+        const match=exps.find(e=>Math.round((Number(e.amount||0))*100)/100===amt
+          && (e.expDate||"")===(r.expDate||"")
+          && norm(e.note)===norm(r.note)
+          && norm(e.supplier||e.payee)===norm(r.supplier||r.payee));
+        return match?{i,row:r,amt,match}:null;
+      }).filter(Boolean);
+      if(dupes.length){
+        const lines=dupes.map(d=>`  • #${d.i+1}  ${d.row.expDate||"—"}  ${d.row.supplier||d.row.payee||d.row.note||"—"}  ₱${fmt(d.amt)}`).join("\n");
+        const msg=`⚠️ Possible duplicate${dupes.length>1?"s":""} — the following already exist in your expenses:\n\n${lines}\n\nA logged expense won't show in Daily Payables until it's routed for payment, so it may already be saved. Save ${dupes.length>1?"these anyway":"it anyway"}?`;
+        if(!window.confirm(msg)) return;
+      }
+    }
     if(editId){
       const r=rows[0];const q=Number(String(r.qty||1).replace(/,/g,""))||1;const p=Number(String(r.pricePerQty||0).replace(/,/g,""))||0;
       _setExpForm(()=>({...r,amount:q*p,qty:q,pricePerQty:p}));onSave({...r,amount:q*p,qty:q,pricePerQty:p});
@@ -1363,7 +1386,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
             <div style={{display:"grid",gridTemplateColumns:"130px 1fr 1fr",gap:7,marginBottom:7}}>
               <div>{lbl("Date")}<input type="date" value={r.expDate||""} onChange={e=>upRow(i,"expDate",e.target.value)} style={inp}/></div>
               <div>{lbl("Supplier / Payee")}<input list="expSupplierOptions" value={r.supplier||r.payee||""} onChange={e=>{upRow(i,"supplier",e.target.value);upRow(i,"payee",e.target.value);}} placeholder="e.g. Wilcon Home Depot — new names are added to Suppliers" style={inp}/></div>
-              <div>{lbl("Project")}<select value={r.projectId||""} onChange={e=>upRow(i,"projectId",e.target.value||null)} style={{...inp,background:"#fff"}}><option value="">— Company-wide —</option>{projList.map(d=><option key={d.id} value={d.id}>{(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:"")}</option>)}</select></div>
+              <div>{lbl("Project")}<SearchSelect value={r.projectId||null} onChange={v=>upRow(i,"projectId",v)} options={projList.map(d=>({value:d.id,label:(d.contact||d.client||"")+(d.ceNo?` · ${d.ceNo}`:"")}))} placeholder="Type to search projects…" noneLabel="— Company-wide —" noneValue={null}/></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 72px 120px 110px",gap:7,marginBottom:7}}>
               <div>{lbl("Particulars *")}<input value={r.note||""} onChange={e=>{upRow(i,"note",e.target.value);setErrors(p=>({...p,[`${i}_note`]:false}));}} placeholder="Description of expense" style={errors[`${i}_note`]?errInp:inp}/></div>
@@ -6613,7 +6636,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       )}
       {/* Global Modals */}
       <DealModal open={dealModal} onClose={()=>setDealModal(false)} form={dealForm} setForm={setDealForm} onSave={saveDeal} editId={editDeal} deals={deals} addenda={addenda} role={role}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={projList} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps} poRefOptions={[...new Set([...prs.map(p=>p.poNumber),...swos.map(w=>w.woNumber)].filter(Boolean))]}/>
       <Modal open={confirmDel!==null} onClose={()=>setConfirmDel(null)} title="Delete this deal?">
         {(()=>{const d=deals.find(x=>x.id===confirmDel);return(
           <>
@@ -12556,7 +12579,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <button onClick={()=>{
             let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
             if(acctMonth) list=list.filter(e=>e.expDate===acctMonth);
-            if(acctSearch) list=list.filter(e=>(e.note||"").toLowerCase().includes(acctSearch.toLowerCase())||(e.category||"").toLowerCase().includes(acctSearch.toLowerCase()));
+            if(acctSearch){const qs=acctSearch.toLowerCase();list=list.filter(e=>(e.note||"").toLowerCase().includes(qs)||(e.category||"").toLowerCase().includes(qs)||(e.supplier||"").toLowerCase().includes(qs)||(e.payee||"").toLowerCase().includes(qs));}
             if(acctCat!=="All") list=list.filter(e=>e.category===acctCat);
             if(acctProj==="company") list=list.filter(e=>!e.projectId);
             else if(acctProj!=="all") list=list.filter(e=>e.projectId===acctProj);
@@ -12629,7 +12652,7 @@ First few:
         <button onClick={()=>setAcctMonth("")} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".78rem",background:acctMonth?"#fff":"#1e293b",color:acctMonth?"#64748b":"#fff",cursor:"pointer",fontWeight:700}}>All dates</button>
         <div style={{position:"relative",flex:1,minWidth:140}}>
           <span style={{position:"absolute",left:9,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".8rem"}}>🔍</span>
-          <input value={acctSearch} onChange={e=>setAcctSearch(e.target.value)} placeholder="Search…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px 6px 28px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
+          <input value={acctSearch} onChange={e=>setAcctSearch(e.target.value)} placeholder="Search description, payee, category…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px 6px 28px",fontFamily:"inherit",fontSize:".82rem",boxSizing:"border-box"}}/>
         </div>
         <select value={acctCat} onChange={e=>setAcctCat(e.target.value)} style={{border:"1.5px solid #e2e8f0",borderRadius:8,padding:"6px 10px",fontFamily:"inherit",fontSize:".82rem",background:"#fff",cursor:"pointer"}}>
           <option value="All">All Categories</option>
@@ -12655,13 +12678,77 @@ First few:
           {key:"Paid",     label:"Paid",         dot:"#059669", clr:"#059669", items:list.filter(e=>e.acctStatus==="Paid"&&e.paymentMethod!=="Check")},
         ];
         const toggleDp=key=>setDpCollapsed(s=>{const n=new Set(s);n.has(key)?n.delete(key):n.add(key);return n;});
+        // Logged but not yet routed — these are saved and counted in the Account Report
+        // but don't appear as payables until routed. Surface them here so a freshly logged
+        // expense is traceable (and Finance doesn't re-enter it thinking the save failed).
+        const logged=[...exps].filter(e=>(!e.acctStatus||e.acctStatus==="Logged"))
+          .filter(e=>!acctMonth||e.expDate?.startsWith(acctMonth))
+          .filter(e=>{if(!acctSearch)return true;const qs=acctSearch.toLowerCase();return(e.note||"").toLowerCase().includes(qs)||(e.category||"").toLowerCase().includes(qs)||(e.supplier||"").toLowerCase().includes(qs)||(e.payee||"").toLowerCase().includes(qs);})
+          .filter(e=>acctCat==="All"||e.category===acctCat)
+          .filter(e=>acctProj==="all"||(acctProj==="company"?!e.projectId:e.projectId===acctProj))
+          .sort((a,b)=>(b.expDate||"").localeCompare(a.expDate||""));
+        const loggedTotal=logged.reduce((s,e)=>s+Number(e.amount||0),0);
+        const loggedOpen=!dpCollapsed.has("Logged");
         return(
           <>
+            {logged.length>0&&(
+              <div style={{marginBottom:10,border:"1.5px solid #fde68a",borderRadius:12,overflow:"hidden",background:"#fff"}}>
+                <div onClick={()=>toggleDp("Logged")} style={{display:"flex",alignItems:"center",gap:10,padding:"11px 16px",cursor:"pointer",borderBottom:loggedOpen?"1px solid #fef3c7":"none",background:"#fffbeb"}}>
+                  <div style={{width:10,height:10,borderRadius:"50%",background:"#eab308",flexShrink:0}}/>
+                  <div style={{fontWeight:700,fontSize:".82rem",color:"#b45309"}}>📝 Logged — awaiting routing</div>
+                  <div style={{background:"#fef3c7",borderRadius:20,padding:"1px 8px",fontSize:".72rem",fontWeight:700,color:"#b45309"}}>{logged.length}</div>
+                  <div style={{marginLeft:"auto",fontWeight:700,fontSize:".8rem",color:"#0f172a"}}>{fmt(loggedTotal)}</div>
+                  <div style={{color:"#eab308",fontSize:".75rem",marginLeft:6}}>{loggedOpen?"▲":"▼"}</div>
+                </div>
+                {loggedOpen&&(
+                  <>
+                    <div style={{padding:"7px 16px",fontSize:".72rem",color:"#92400e",background:"#fffdf5",borderBottom:"1px solid #fef3c7"}}>Saved and included in the Account Report, but not yet a payable. Route each one to move it into the payment queue below.</div>
+                    <div style={{overflowX:"auto"}}>
+                      <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem"}}>
+                        <thead>
+                          <tr style={{background:"#f8fafc"}}>
+                            {["Date","Project","Description","Category","Amount",""].map(h=>(
+                              <th key={h} style={{padding:"7px 14px",textAlign:h==="Amount"?"right":"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {logged.map((e,idx)=>{
+                            const proj=wonDeals.find(d=>d.id===e.projectId)||completedDeals.find(d=>d.id===e.projectId);
+                            const inPipeline=e.payableId||e.cvId;
+                            return(
+                              <tr key={e.id} style={{borderBottom:idx<logged.length-1?"1px solid #f8fafc":"none"}}
+                                onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                                <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".75rem",color:"#64748b",whiteSpace:"nowrap"}}>{e.expDate||`${typeof e.month==="number"?["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][e.month]:""} ${e.year||""}`}</td>
+                                <td style={{padding:"9px 14px",fontSize:".78rem",color:"#8b5cf6",fontWeight:600,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?projDisplayName(proj):<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                                <td style={{padding:"9px 14px",fontSize:".8rem",color:"#0f172a",fontWeight:500,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={e.note}>{e.note||"—"}</td>
+                                <td style={{padding:"9px 14px"}}><span style={{fontSize:".68rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#f1f5f9",color:"#475569"}}>{e.category}</span></td>
+                                <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#b45309",fontSize:".83rem",fontFamily:"monospace"}}>₱{Number(e.amount).toLocaleString("en-PH",{minimumFractionDigits:0})}</td>
+                                <td style={{padding:"9px 14px"}}>
+                                  <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap",alignItems:"center"}}>
+                                    {inPipeline?<span style={{fontSize:".63rem",fontWeight:700,padding:"2px 7px",borderRadius:20,background:"#fff7ed",color:"#c2410c",whiteSpace:"nowrap"}}>📤 In payables</span>:(<>
+                                      {(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>💳 Route</button>}
+                                      {role==="Accounting"&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Route to</button>}
+                                    </>)}
+                                    <button onClick={()=>openEditExp(e)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                    <button onClick={()=>delExp(e.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,padding:"6px 12px",background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0"}}>
               <span style={{fontSize:".75rem",color:"#64748b"}}>{list.length} expense{list.length!==1?"s":""}</span>
               <span style={{fontSize:".82rem",fontWeight:800,color:"#ef4444"}}>₱{list.reduce((s,e)=>s+Number(e.amount||0),0).toLocaleString("en-PH",{maximumFractionDigits:0})}</span>
             </div>
-            {list.length===0?<EmptyState icon="📋" msg="No expenses match your filter."/>:DGROUPS.map(g=>{
+            {list.length===0?(logged.length===0&&<EmptyState icon="📋" msg="No expenses match your filter."/>):DGROUPS.map(g=>{
               const isOpen=!dpCollapsed.has(g.key);
               const total=g.items.reduce((s,e)=>s+Number(e.amount||0),0);
               return(
@@ -12727,7 +12814,8 @@ First few:
         );
       })()}
       <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
+      {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
     </Wrap>
   );
 
@@ -13161,12 +13249,15 @@ First few:
                               <td style={{padding:"9px 12px",color:"#64748b",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?(proj.contact||proj.client||"Project"):"Company-wide"}</td>
                               <td style={{padding:"9px 12px",fontWeight:700,color:"#0f172a",textAlign:"right",whiteSpace:"nowrap"}}>{fmt(e.amount)}</td>
                               <td style={{padding:"6px 12px",whiteSpace:"nowrap"}}><ExpProgress status={st}/></td>
-                              <td style={{padding:"9px 12px",textAlign:"right",whiteSpace:"nowrap"}}>
+                              <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
+                                <div style={{display:"flex",gap:6,justifyContent:"flex-end",alignItems:"center",flexWrap:"wrap"}}>
                                 {isLogged&&(role==="Finance"||role==="Manager")&&<button onClick={()=>{setRouteModal(e.id);setRouteMethod("BizLink");setRouteBank(e.bankAccount||"");}} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>💳 Route</button>}
                                 {isLogged&&role==="Accounting"&&<button onClick={()=>markDpStatus(e.id,"For Payment")} style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:6,padding:"4px 10px",fontSize:".68rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>→ Route to</button>}
                                 {inPipeline&&<span style={{fontSize:".68rem",color:"#c2410c",fontWeight:700}}>📤 In payables</span>}
                                 {st==="For Payment"&&<span style={{fontSize:".68rem",color:"#3b82f6",fontWeight:700}}>⏳ Pending</span>}
                                 {st==="Paid"&&<span style={{fontSize:".68rem",color:"#10b981",fontWeight:700}}>✓ Paid</span>}
+                                {(role==="Finance"||role==="Manager"||role==="Accounting")&&<button onClick={()=>delExp(e.id)} title="Delete expense" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:6,padding:"4px 9px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🗑 Delete</button>}
+                                </div>
                               </td>
                             </tr>
                           );
@@ -13324,7 +13415,7 @@ First few:
         );
       })()}
       {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
-      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers}/>
+      <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
     </Wrap>
   );
 
