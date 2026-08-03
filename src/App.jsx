@@ -2799,11 +2799,11 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
-            const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
+            const _vouchers=data.checkVouchers?.length?data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",apRef:v.ap_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false})):null;
             if(_vouchers){setVouchers(prev=>mergeLocalOnly(_vouchers,prev));idbE.push([KEYS.vouchers,_vouchers]);}
             const _dl=data.dailyLogs?.length?data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at})):null;
             if(_dl){setDailyLogs(prev=>mergeLocalOnly(_dl,prev));idbE.push([KEYS.dailylogs,_dl]);}
@@ -3074,7 +3074,7 @@ export default function App(){
     if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -5193,7 +5193,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
   const[payables,  setPayables] =useState([]);
   const[payModal,  setPayModal] =useState(false);
-  const[payForm,   setPayForm]  =useState({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
+  const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
+  const[payForm,   setPayForm]  =useState(emptyPayForm());
+  const[payFilter, setPayFilter]=useState("All");
+  const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
+  const[payPayAmt, setPayPayAmt]=useState("");
   const[editPayId, setEditPayId]=useState(null);
   const[loans,     setLoans]    =useState([]);
   const[loanModal, setLoanModal]=useState(false);
@@ -5951,8 +5955,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     upVouchers(vs=>vs.map(v=>v.id===id?{...v,status:"Released",releasedBy,releasedDate:today}:v));
     if(isSupabaseReady()) sbUpsert("check_vouchers",{id,status:"Released",released_by:releasedBy,released_date:today},"id").catch(()=>{});
     if(cv?.payableId){
-      upPayables(ps=>ps.map(p=>p.id===cv.payableId?{...p,status:"Paid",paidDate:today}:p));
-      if(isSupabaseReady()) sbUpsert("payables",{id:cv.payableId,status:"Paid",paid_date:today},"id").catch(()=>{});
+      const linked=payables.find(p=>p.id===cv.payableId);
+      const fullPaid=Number(linked?.amount)||Number(cv?.amount)||0;
+      upPayables(ps=>ps.map(p=>p.id===cv.payableId?{...p,status:"Paid",paidAmount:fullPaid,paidDate:today}:p));
+      if(isSupabaseReady()) sbUpsert("payables",{id:cv.payableId,status:"Paid",paid_amount:fullPaid,paid_date:today},"id").catch(()=>{});
     }
     // Reflect payment on the originating expense so the log shows "Paid" rather than "Logged".
     const paidExpId=cv?.sourceExpenseId||(payables.find(p=>p.id===cv?.payableId)||{}).expenseId;
@@ -5980,6 +5986,83 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
 
   const upPayables=fn=>{const next=fn(payables);setPayables(next);persist(KEYS.payables,next);};
+  // Human AP reference in the finance team's format: AP-YYYY-000N. Assigned
+  // locally (year-scoped, next after the current max) so PO-derived payables get a
+  // number the moment they're created without an extra async round-trip. Two
+  // offline devices could in theory pick the same suffix; the number is a display
+  // reference, not a key, so a rare collision is cosmetic and self-heals on edit.
+  const nextApNumber=(list=payables)=>{
+    const yr=new Date().getFullYear();
+    const re=new RegExp(`^AP-${yr}-(\\d+)$`);
+    const max=(list||[]).reduce((m,p)=>{const mt=re.exec(String(p.apNumber||""));return mt?Math.max(m,Number(mt[1])):m;},0);
+    return `AP-${yr}-${String(max+1).padStart(4,"0")}`;
+  };
+  // Days-based aging for the AP log. Negative days = overdue; positive = remaining.
+  // Mirrors the finance team's "30d left" / overdue read-out.
+  const payableAging=(p)=>{
+    if(!p.dueDate) return {label:"—",clr:"#94a3b8",overdue:false,days:null};
+    const d=Math.round((new Date(p.dueDate)-new Date(today))/86400000);
+    if(d<0)  return {label:`${Math.abs(d)}d overdue`,clr:"#ef4444",overdue:true,days:d};
+    if(d===0)return {label:"Due today",clr:"#f97316",overdue:false,days:0};
+    return {label:`${d}d left`,clr:d<=7?"#f59e0b":"#64748b",overdue:false,days:d};
+  };
+  // Printable Check Voucher document — the finance team's CV format, showing both
+  // the PO Reference and AP Reference so a signed voucher ties back to procurement.
+  const printCheckVoucher=(v)=>{
+    if(!v) return;
+    const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    const pesos=n=>"PHP "+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const bankName=(()=>{const b=(BANKS||[]).find(x=>x.id===v.bank||x.short===v.bank||x.name===v.bank);return b?b.name:(v.bank||"—");})();
+    const linkedPay=payables.find(p=>p.id===v.payableId);
+    const apRef=v.apRef||linkedPay?.apNumber||"—";
+    const row=(l,val)=>`<tr><td class="lbl">${esc(l)}</td><td class="val">${esc(val)||"—"}</td></tr>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(v.cvNo||"Check Voucher")}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f172a;padding:40px;background:#fff}
+  .doc{max-width:660px;margin:0 auto;border:1px solid #cbd5e1;border-radius:8px;padding:32px 34px;position:relative}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #d4a017;padding-bottom:14px;margin-bottom:18px}
+  .co{font-size:1.2rem;font-weight:800}
+  .co small{display:block;font-size:.7rem;font-weight:400;color:#64748b;margin-top:3px}
+  .cvlbl{font-size:.6rem;letter-spacing:.12em;color:#94a3b8;text-transform:uppercase;text-align:right}
+  .cvno{font-size:1.15rem;font-weight:800;color:#b45309;text-align:right;font-family:monospace}
+  table{width:100%;border-collapse:collapse}
+  td{padding:6px 0;font-size:.86rem;vertical-align:top}
+  td.lbl{color:#64748b;width:150px}
+  td.val{font-weight:600}
+  .amt{margin:20px 0;border:1px solid #e2e8f0;border-radius:8px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;background:#f8fafc}
+  .amt .k{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8}
+  .amt .v{font-size:1.5rem;font-weight:800}
+  .sig{display:flex;gap:30px;margin-top:44px}
+  .sig .b{flex:1;text-align:center;border-top:1px solid #94a3b8;padding-top:6px;font-size:.72rem;color:#64748b}
+  .wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:800;color:rgba(212,160,23,.06);transform:rotate(-18deg);pointer-events:none}
+  @media print{body{padding:0}.doc{border:none}}
+</style></head><body>
+<div class="doc">
+  <div class="wm">GMD PRODUCTION INC.</div>
+  <div class="top">
+    <div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div>
+    <div><div class="cvlbl">Check Voucher No.</div><div class="cvno">${esc(v.cvNo||"—")}</div></div>
+  </div>
+  <table>
+    ${row("Date",v.date)}
+    ${row("Payee",v.payee)}
+    ${row("Particulars",v.description)}
+    ${row("PO Reference",v.poRef)}
+    ${row("AP Reference",apRef)}
+    ${row("Bank",bankName)}
+    ${row("Check Number",v.checkNo)}
+  </table>
+  <div class="amt"><span class="k">Amount</span><span class="v">${pesos(v.amount)}</span></div>
+  <div class="sig">
+    <div class="b">Prepared by — Finance</div>
+    <div class="b">Approved by — Management</div>
+  </div>
+</div>
+</body></html>`;
+    const w=window.open("","_blank","width=760,height=800");
+    if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
+  };
   // One payable per issued PO (keyed by poId = PO number). Created when a PO is
   // issued and kept in sync when it's edited; the delivery/receive flow reconciles
   // the SAME payable (stamps a due date, links the receipt expense) rather than
@@ -6011,8 +6094,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
       return upd;
     }
-    const rec={id:uid(),vendor:supplier,amount,dueDate:"",category:"Supplier",
-      invoiceRef:poNo,notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
+    const rec={id:uid(),apNumber:nextApNumber(),vendor:supplier,amount,paidAmount:0,dueDate:"",category:"Supplier",
+      invoiceRef:poNo,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
       poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
@@ -6020,7 +6103,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const savePayable=(data)=>{
     if(!data.vendor||!data.amount) return;
-    const rec={...data,amount:Number(data.amount),id:editPayId||uid(),status:editPayId?(data.status||"Unpaid"):"Unpaid",createdAt:editPayId?data.createdAt:today,createdBy:session?.name||""};
+    const amount=Number(data.amount);
+    const paidAmount=Number(data.paidAmount)||0;
+    // Derive status from what's actually been paid so a manually entered payable
+    // with a partial prior payment shows correctly, just like the finance ERP.
+    const derived=paidAmount<=0?"Unpaid":paidAmount>=amount?"Paid":"Partial";
+    const rec={...data,amount,paidAmount,
+      apNumber:data.apNumber||(editPayId?"":nextApNumber()),
+      id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
+      paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
+      createdAt:editPayId?data.createdAt:today,createdBy:editPayId?(data.createdBy||session?.name||""):session?.name||""};
     upPayables(ps=>editPayId?ps.map(p=>p.id===editPayId?rec:p):[rec,...ps]);
     if(isSupabaseReady()){
       sbUpsert("payables",payableToSb(rec),"id").catch(e=>{
@@ -6030,7 +6122,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     } else {
       toastEmit("⚠️ Payable saved locally only — no server connection. Do not close this tab!","warning",9000);
     }
-    setPayModal(false);setEditPayId(null);setPayForm({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
+    setPayModal(false);setEditPayId(null);setPayForm(emptyPayForm());
+  };
+  // Record a payment against a payable (full or partial). Advances paidAmount and
+  // flips Unpaid → Partial → Paid as the running balance closes — the "Pay" action
+  // in the finance team's AP log.
+  const recordPayablePayment=(id,payAmt)=>{
+    const p=payables.find(x=>x.id===id);
+    if(!p) return;
+    const amount=Number(p.amount)||0;
+    const already=Number(p.paidAmount)||0;
+    const add=Number(payAmt)||0;
+    if(!(add>0)) return;
+    const paidAmount=Math.min(amount,Math.round((already+add)*100)/100);
+    const status=paidAmount>=amount?"Paid":"Partial";
+    const paidDate=status==="Paid"?today:(p.paidDate||"");
+    upPayables(ps=>ps.map(x=>x.id===id?{...x,paidAmount,status,paidDate}:x));
+    if(isSupabaseReady()) sbUpsert("payables",{id,paid_amount:paidAmount,status,...(status==="Paid"?{paid_date:today}:{})},"id").catch(()=>{});
+    if(status==="Paid"&&p.expenseId) markExpensePaid(p.expenseId);
+    const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
+    toastEmit(status==="Paid"?`✅ Payable fully settled — ${peso(amount)}`:`✅ Partial payment ${peso(add)} recorded · ${peso(amount-paidAmount)} balance`,"success");
   };
   // Mark a logged expense as Paid (so the expense log reflects payment instead of staying "Logged").
   const markExpensePaid=(expId)=>{
@@ -6039,9 +6150,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const markPayablePaid=(id)=>{
     const p=payables.find(x=>x.id===id);
-    upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidDate:today}:p));
-    if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_date:today},"id").catch(()=>{});
+    const amount=Number(p?.amount)||0;
+    upPayables(ps=>ps.map(p=>p.id===id?{...p,status:"Paid",paidAmount:amount,paidDate:today}:p));
+    if(isSupabaseReady()) sbUpsert("payables",{id,status:"Paid",paid_amount:amount,paid_date:today},"id").catch(()=>{});
     if(p?.expenseId) markExpensePaid(p.expenseId);
+  };
+  // Open the Record-Payment modal for a payable, pre-filled with its open balance.
+  const openPayModal=(p)=>{
+    if(!p) return;
+    const balance=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
+    setPayPayId(p.id);
+    setPayPayAmt(String(balance||""));
   };
   // Route a floated payable into Check Payables: create a linked Draft check voucher.
   // The CV carries the vendor/amount/PO; on Release it marks this payable Paid (see releaseCv).
@@ -6051,7 +6170,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(p.cvId||p.status==="Check Issued"){toastEmit("This payable already has a check voucher.","info");setPage("checkvouchers");return;}
     const cvId=uid();
     const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
-    const cvRec={id:cvId,date:today,cvNo:nextNo,payee:p.vendor||"",amount:Number(p.amount||0),description:p.notes||p.invoiceRef||p.poNumber||"",projectId:p.projectId||null,bank:"",notes:p.notes||"",status:"Draft",poRef:p.poNumber||"",payableId:p.id,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:p.expenseId||null,createdBy:session?.name||"",createdAt:today};
+    const particulars=`Payment for Invoice ${p.invoiceNumber||p.invoiceRef||"—"}${p.poNumber?` (PO ${p.poNumber})`:""}`;
+    const cvRec={id:cvId,date:today,cvNo:nextNo,payee:p.vendor||"",amount:Number(p.amount||0),description:particulars,projectId:p.projectId||null,bank:"",notes:p.notes||"",status:"Draft",poRef:p.poNumber||"",apRef:p.apNumber||"",payableId:p.id,checkNo:"",clearedDate:"",isCleared:false,sourceExpenseId:p.expenseId||null,createdBy:session?.name||"",createdAt:today};
     upVouchers(vs=>[cvRec,...vs]);
     if(isSupabaseReady()) sbUpsert("check_vouchers",cvToSb(cvRec),"id").catch(()=>{});
     upPayables(ps=>ps.map(x=>x.id===id?{...x,status:"Check Issued",cvId}:x));
@@ -10728,11 +10848,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           })).filter(g=>g.total>0).sort((a,b)=>b.total-a.total);
           const totalPOPayables=poPayables.reduce((s,g)=>s+g.total,0);
 
-          const unpaid=payables.filter(p=>p.status==="Unpaid");
-          const paid=payables.filter(p=>p.status==="Paid");
-          const totalUnpaid=unpaid.reduce((s,p)=>s+Number(p.amount||0),0);
-          const grandTotal=totalPOPayables+totalUnpaid;
-          const overdueCount=poPayables.filter(g=>g.deliveryDate&&g.deliveryDate<today).length+unpaid.filter(p=>p.dueDate&&p.dueDate<today).length;
+          // Balance-aware buckets so a payable can be Partial (part-paid, part-owed),
+          // matching the finance team's AP log. balance = amount − paidAmount.
+          const bal=p=>Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
+          const isSettled=p=>p.status==="Paid";
+          const openPay=payables.filter(p=>!isSettled(p));
+          const paid=payables.filter(isSettled);
+          const unpaid=openPay; // legacy alias used by summary/count below
+          const totalOutstanding=openPay.reduce((s,p)=>s+bal(p),0);
+          const grandTotal=totalPOPayables+totalOutstanding;
+          const overdueCount=poPayables.filter(g=>g.earliestDelivery&&g.earliestDelivery<today).length+openPay.filter(p=>p.dueDate&&p.dueDate<today).length;
+          const paidThisMonth=paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0);
+          // AP-log filter (All / Unpaid / Partial / Paid) — mirrors Aerwin's chips.
+          const apRows=[...payables].sort((a,b)=>String(a.apNumber||"~").localeCompare(String(b.apNumber||"~"))||String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")));
+          const apFilter=payFilter||"All";
+          const apVisible=apRows.filter(p=>apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"));
+          const projName=id=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?(d.contact||d.client):"";};
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
           return(
             <div>
@@ -10741,12 +10872,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>📤 Accounts Payable</div>
                   <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Track what GMD owes to suppliers, subcontractors, and vendors.</div>
                 </div>
-                <button onClick={()=>{setPayForm({vendor:"",amount:"",dueDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});setEditPayId(null);setPayModal(true);}}
+                <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
                   style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>+ Add Payable</button>
               </div>
               {/* Summary */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
-                {[{l:"Total Unpaid",v:fmtM(grandTotal),c:"#ef4444"},{l:"Overdue",v:overdueCount+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0)),c:"#059669"}].map(({l,v,c})=>(
+                {[{l:"Outstanding Payables",v:fmtM(grandTotal),c:"#ef4444"},{l:"Overdue",v:overdueCount+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paidThisMonth),c:"#059669"}].map(({l,v,c})=>(
                   <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
                     <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
@@ -10789,69 +10920,79 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                 </div>
               )}
-              {/* Manual unpaid list */}
-              {unpaid.length>0&&(
-                <div style={{marginBottom:8}}>
-                  <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>📋 Other Payables</div>
-                </div>
-              )}
-              {unpaid.length===0&&poPayables.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No outstanding payables — all clear! ✓</div>}
-              {unpaid.sort((a,b)=>(a.dueDate||"9999").localeCompare(b.dueDate||"9999")).map(p=>{
-                const isOverdue=p.dueDate&&p.dueDate<today;
-                const proj=wonDeals.find(d=>d.id===p.projectId)||completedDeals.find(d=>d.id===p.projectId);
-                return(
-                  <div key={p.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${isOverdue?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${isOverdue?"#ef4444":"#f59e0b"}`,padding:"12px 16px",marginBottom:8}}>
-                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                          <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{p.vendor}</span>
-                          <span style={{fontSize:".65rem",background:"#f1f5f9",color:"#64748b",borderRadius:20,padding:"1px 8px",fontWeight:600}}>{p.category}</span>
-                          {isOverdue&&<span style={{fontSize:".65rem",background:"#fef2f2",color:"#ef4444",borderRadius:20,padding:"1px 8px",fontWeight:700}}>OVERDUE</span>}
-                        </div>
-                        {p.invoiceRef&&<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Invoice: {p.invoiceRef}</div>}
-                        {proj&&<div style={{fontSize:".72rem",color:"#8b5cf6",marginTop:1}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</div>}
-                        {p.notes&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:3}}>{p.notes}</div>}
-                        <div style={{fontSize:".7rem",color:isOverdue?"#ef4444":"#94a3b8",marginTop:3}}>{p.dueDate?`Due: ${p.dueDate}`:"No due date"} · Added {p.createdAt}</div>
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
-                        <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:isOverdue?"#ef4444":"#0f172a"}}>{fmtM(p.amount)}</div>
-                        <div style={{display:"flex",gap:6}}>
-                          {(p.cvId||p.status==="Check Issued")
-                            ?<span style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#c2410c",fontWeight:700,fontFamily:"inherit"}}>🖊 Check Issued</span>
-                            :<button onClick={()=>payableToCheck(p.id)} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 By Check</button>}
-                          <button onClick={()=>markPayablePaid(p.id)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#059669",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>✓ Paid</button>
-                          <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                          <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {/* Paid history */}
-              {paid.length>0&&(
-                <div style={{marginTop:16}}>
-                  <div style={{fontSize:".75rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".8px",marginBottom:8}}>✅ Paid ({paid.length})</div>
-                  {paid.slice(0,10).map(p=>(
-                    <div key={p.id} style={{background:"#f8fafc",borderRadius:8,border:"1px solid #e2e8f0",padding:"9px 14px",marginBottom:6,display:"flex",justifyContent:"space-between",alignItems:"center",opacity:.75}}>
-                      <div>
-                        <span style={{fontWeight:600,color:"#64748b",fontSize:".83rem"}}>{p.vendor}</span>
-                        <span style={{fontSize:".7rem",color:"#94a3b8",marginLeft:8}}>{p.paidDate} · {p.category}</span>
-                      </div>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <span style={{fontWeight:700,color:"#059669",fontSize:".82rem"}}>{fmtM(p.amount)}</span>
-                        <button onClick={()=>delPayable(p.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".72rem",fontFamily:"inherit"}}>✕</button>
-                      </div>
-                    </div>
+              {/* ── Accounts Payable Log — vendor invoices with aging & balances ── */}
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+                <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px"}}>📋 Accounts Payable Log</div>
+                <span style={{fontSize:".65rem",color:"#94a3b8"}}>Vendor invoices logged from POs, with aging & balances.</span>
+                <div style={{marginLeft:"auto",display:"flex",gap:5}}>
+                  {["All","Unpaid","Partial","Paid"].map(f=>(
+                    <button key={f} onClick={()=>setPayFilter(f)} style={{background:apFilter===f?"#1e293b":"#fff",color:apFilter===f?"#fff":"#64748b",border:`1.5px solid ${apFilter===f?"#1e293b":"#e2e8f0"}`,borderRadius:7,padding:"4px 11px",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
                   ))}
+                </div>
+              </div>
+              {apRows.length===0&&poPayables.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No payables logged yet — issue a PO or add one manually. ✓</div>}
+              {apRows.length>0&&(
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                  <div style={{overflowX:"auto"}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:960}}>
+                      <thead>
+                        <tr style={{background:"#f8fafc"}}>
+                          {["AP No.","PO No.","Vendor","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status",""].map((h,i)=>(
+                            <th key={h+i} style={{padding:"8px 12px",textAlign:i>=7&&i<=9?"right":"left",fontWeight:700,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {apVisible.length===0&&<tr><td colSpan={12} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter.toLowerCase()} payables.</td></tr>}
+                        {apVisible.map((p,idx)=>{
+                          const ag=payableAging(p);
+                          const settled=isSettled(p);
+                          const balance=bal(p);
+                          const paidAmt=Number(p.paidAmount)||0;
+                          const stClr=settled?{bg:"#dcfce7",c:"#15803d",t:"Paid"}:p.status==="Partial"?{bg:"#fef3c7",c:"#b45309",t:"Partial"}:p.status==="Check Issued"?{bg:"#fff7ed",c:"#c2410c",t:"Check Issued"}:{bg:"#fee2e2",c:"#b91c1c",t:"Unpaid"};
+                          const pn=projName(p.projectId);
+                          return(
+                            <tr key={p.id} style={{borderBottom:idx<apVisible.length-1?"1px solid #f1f5f9":"none"}}
+                              onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                              <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".73rem",fontWeight:700,color:"#6366f1",whiteSpace:"nowrap"}}>{p.apNumber||"—"}</td>
+                              <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".73rem",color:"#64748b",whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
+                              <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:".65rem",color:"#8b5cf6",fontWeight:500}}>📁 {pn}</div>}</td>
+                              <td style={{padding:"9px 12px",fontSize:".76rem",color:"#475569",whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}</td>
+                              <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",fontFamily:"monospace",whiteSpace:"nowrap"}}>{p.invoiceDate||"—"}</td>
+                              <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",fontFamily:"monospace",whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
+                              <td style={{padding:"9px 12px",fontSize:".72rem",fontWeight:700,color:settled?"#94a3b8":ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
+                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
+                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",color:"#059669",whiteSpace:"nowrap"}}>{paidAmt>0?fmtM(paidAmt):"—"}</td>
+                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:balance>0?"#b91c1c":"#94a3b8",whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
+                              <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}><span style={{fontSize:".65rem",fontWeight:700,padding:"2px 9px",borderRadius:20,background:stClr.bg,color:stClr.c}}>{stClr.t}</span></td>
+                              <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
+                                <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                                  {!settled&&balance>0&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {!settled&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
+                                  <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
               {/* Add/Edit Payable Modal */}
               <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?"Edit Payable":"Add Payable"}>
-                {[{k:"vendor",l:"Vendor / Payee",ph:"e.g. ABC Steel Supply"},{k:"invoiceRef",l:"Invoice / Ref #",ph:"Optional"}].map(({k,l,ph})=>(
-                  <Fld key={k} label={l}><Inp value={payForm[k]||""} onChange={e=>setPayForm(p=>({...p,[k]:e.target.value}))} placeholder={ph}/></Fld>
-                ))}
-                <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
+                {editPayId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
+                <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Fld label="Invoice No."><Inp value={payForm.invoiceNumber||""} onChange={e=>setPayForm(p=>({...p,invoiceNumber:e.target.value}))} placeholder="Vendor invoice #"/></Fld>
+                  <Fld label="Invoice Date"><Inp type="date" value={payForm.invoiceDate||""} onChange={e=>setPayForm(p=>({...p,invoiceDate:e.target.value}))}/></Fld>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                  <Fld label="Amount (₱)" required><Inp type="number" value={payForm.amount} onChange={e=>setPayForm(p=>({...p,amount:e.target.value}))} placeholder="0"/></Fld>
+                  <Fld label="Already Paid (₱)"><Inp type="number" value={payForm.paidAmount} onChange={e=>setPayForm(p=>({...p,paidAmount:e.target.value}))} placeholder="0"/></Fld>
+                </div>
                 <Fld label="Due Date">
                   <Inp type="date" value={payForm.dueDate||""} onChange={e=>setPayForm(p=>({...p,dueDate:e.target.value}))}/>
                   {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
@@ -10864,6 +11005,39 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <Btn variant="ghost" onClick={()=>{setPayModal(false);setEditPayId(null);}}>Cancel</Btn>
                 </div>
               </Modal>
+              {/* Record-Payment (full or partial) modal */}
+              {(()=>{
+                const p=payables.find(x=>x.id===payPayId);
+                if(!p) return null;
+                const balance=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
+                const amt=Number(payPayAmt)||0;
+                const invalid=!(amt>0)||amt>balance+0.005;
+                return(
+                  <Modal open={!!payPayId} onClose={()=>{setPayPayId(null);setPayPayAmt("");}} title="Record Payment">
+                    <div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:14,fontSize:".82rem"}}>
+                      <div style={{fontWeight:700,color:"#0f172a"}}>{p.vendor||"Payable"}</div>
+                      <div style={{color:"#64748b",marginTop:3}}>{p.apNumber||""}{p.poNumber?` · PO ${p.poNumber}`:""}</div>
+                      <div style={{marginTop:6,display:"flex",gap:16}}>
+                        <span style={{color:"#64748b"}}>Amount <strong style={{color:"#0f172a"}}>{fmtM(p.amount)}</strong></span>
+                        <span style={{color:"#64748b"}}>Paid <strong style={{color:"#059669"}}>{fmtM(Number(p.paidAmount)||0)}</strong></span>
+                        <span style={{color:"#64748b"}}>Balance <strong style={{color:"#b91c1c"}}>{fmtM(balance)}</strong></span>
+                      </div>
+                    </div>
+                    <Fld label="Payment amount (₱)" required>
+                      <Inp type="number" value={payPayAmt} onChange={e=>setPayPayAmt(e.target.value)} placeholder="0"/>
+                      {amt>balance+0.005&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Exceeds the outstanding balance of {fmtM(balance)}.</div>}
+                    </Fld>
+                    <div style={{display:"flex",gap:6,marginBottom:6}}>
+                      <button onClick={()=>setPayPayAmt(String(balance))} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Full balance</button>
+                      <button onClick={()=>setPayPayAmt(String(Math.round(balance/2*100)/100))} style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Half</button>
+                    </div>
+                    <div style={{display:"flex",gap:10,marginTop:14}}>
+                      <Btn full variant="green" disabled={invalid} onClick={()=>{if(invalid)return;recordPayablePayment(p.id,amt);setPayPayId(null);setPayPayAmt("");}}>Record Payment</Btn>
+                      <Btn variant="ghost" onClick={()=>{setPayPayId(null);setPayPayAmt("");}}>Cancel</Btn>
+                    </div>
+                  </Modal>
+                );
+              })()}
             </div>
           );
         })()}
@@ -12963,6 +13137,7 @@ First few:
                             <td style={{padding:"9px 14px",fontSize:".72rem",color:"#0369a1",whiteSpace:"nowrap"}}>{v.bank||"—"}</td>
                             <td style={{padding:"9px 14px"}}>
                               <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                                <button onClick={()=>printCheckVoucher(v)} title="Print Check Voucher" style={{background:"#eef2ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#4338ca",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🖨 Print</button>
                                 {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
                                 {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
                                 {canRelease&&<button onClick={()=>{if(window.confirm(`Release CV ${v.cvNo||""} to ${v.payee||"payee"} for ${fmt(v.amount)}?\n\nThis marks the linked payable as Paid.`))releaseCv(v.id);}} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Release</button>}
