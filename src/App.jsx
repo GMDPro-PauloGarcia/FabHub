@@ -226,6 +226,9 @@ const DEFAULT_USERS = [
   { id:"u16", name:"Aerwin Del Rosario", username:"aerwin",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Finance",      status:"active", createdAt:today },
   { id:"u25", name:"Accounting",         username:"accounting",passwordHash:legacyHashPwSync("GMD2026!"),  role:"Accounting",   status:"active", createdAt:today },
   { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
+  { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
+  // ── Sales & Ops Admin ─────────────────────────────────────────────────────
+  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
   // ── QS / Cost Estimator ───────────────────────────────────────────────────
   { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"QS",           status:"active", createdAt:today },
   // ── Warehouse ─────────────────────────────────────────────────────────────
@@ -4918,7 +4921,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const sess={userId:u.id,username:u.username,name:u.name,role:u.role,title:u.title||u.role};
     setSession(sess); setRole(u.role);
     logActivity(null,"Login",u.role,sess.name);
-    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home",SalesOpsAdmin:"home"};
+    const defaultPages={Manager:"home",Sales:"pipeline",Finance:"home",Procurement:"home",QS:"home",Operations:"home",Design:"home",ProjectMover:"home",SalesOpsAdmin:"home",FinanceAssistant:"home"};
     setPage(defaultPages[u.role]||"home");
     localStorage.setItem(KEYS.session,JSON.stringify(sess));
     localStorage.setItem(KEYS.role,u.role);
@@ -6220,6 +6223,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
+    FinanceAssistant:[
+      {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Accounting", items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
+    ],
   };
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
@@ -6901,11 +6909,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── FINANCE HOME ──────────────────────────────────────────────────────────
-  if(role==="Finance") return(
+  // Finance Assistant (accounting + finance modals) shares the Finance dashboard.
+  if(role==="Finance"||role==="FinanceAssistant") return(
     <Wrap>
       <DeptHeader
         name={session?.name?.split(" ")[0]}
-        subtitle={`Finance · ${todayL}`}
+        subtitle={`${roleLabel(role)} · ${todayL}`}
         buttons={[
           {label:"Log Payment",   icon:"💵", bg:"#8b5cf6", action:()=>{setFromHome(true);setPage("billing");}},
           {label:"Log Expense",   icon:"💸", bg:"#3b82f6", action:()=>openAddExp()},
@@ -10174,7 +10183,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </>
     );
 
-    if(page==="finance"&&(role==="Finance"||role==="Manager")) return(
+    if(page==="finance"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant")) return(
       <Wrap>
         {/* Finance tab bar */}
         <div style={{position:"relative",marginBottom:24}}>
@@ -11025,7 +11034,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         />
       </Wrap>
     );
-    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin'];
+    const ROLES=['Manager', 'Sales', 'Finance', 'Procurement', 'QS', 'Operations', 'Design', 'ProjectMover', 'Warehouse', 'SalesOpsAdmin', 'FinanceAssistant'];
     if(page==="accounts"&&(role==="Manager"||role==="Finance")) return(
       <Wrap>
         <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
@@ -12535,7 +12544,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── DAILY PAYABLES (Accounting-logged Expenses) ───────────────────────────
-  if(page==="accounting"&&(role==="Accounting"||role==="Finance"||role==="Manager")) return(
+  if(page==="accounting"&&(role==="Accounting"||role==="Finance"||role==="Manager"||role==="FinanceAssistant")) return(
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
@@ -12723,7 +12732,7 @@ First few:
   );
 
   // ── CHECK PAYABLES ────────────────────────────────────────────────────────────
-  if(page==="checkvouchers"&&(role==="Accounting"||role==="Finance"||role==="Manager")) return(
+  if(page==="checkvouchers"&&(role==="Accounting"||role==="Finance"||role==="Manager"||role==="FinanceAssistant")) return(
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
@@ -12984,7 +12993,7 @@ First few:
   if(page==="dailylog") return(
     <DailySiteLogView dailyLogs={dailyLogs} wonDeals={wonDeals} addDailyLog={addDailyLog} delDailyLog={delDailyLog} session={session} role={role} Wrap={Wrap} isMobile={isMobile} setPage={setPage}/>
   );
-  if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
+  if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
     <Wrap>
       {(()=>{
         const bpiPos=Object.values(cashPositions).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
@@ -13320,7 +13329,7 @@ First few:
   );
 
   // ── LIQUIDATION REPORTS ───────────────────────────────────────────────────────
-  if(page==="evouchers"&&(role==="Accounting"||role==="Finance"||role==="Manager")) return(
+  if(page==="evouchers"&&(role==="Accounting"||role==="Finance"||role==="Manager"||role==="FinanceAssistant")) return(
     <Wrap>
       <LiquidationView evouchers={evouchers} addEV={addEV} updateEV={updateEV} deleteEV={deleteEV}
         addEVItem={addEVItem} updateEVItem={updateEVItem} deleteEVItem={deleteEVItem}
