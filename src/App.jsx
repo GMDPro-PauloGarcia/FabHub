@@ -1255,6 +1255,48 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
   );
 }
 
+// ─── SEARCHABLE PROJECT PICKER ────────────────────────────────────────────────
+// The project list grows long, so a plain <select> is hard to scan. This is a
+// filterable combobox: type to narrow by client/contact/CE number, click to pick.
+function SearchableProjectSelect({projList=[],value,onChange,inp}){
+  const label=id=>{const d=projList.find(p=>p.id===id);return d?((d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:"")):"";};
+  const[open,setOpen]=useState(false);
+  const[q,setQ]=useState("");
+  const wrapRef=React.useRef(null);
+  useEffect(()=>{
+    if(!open) return;
+    const onDoc=e=>{if(wrapRef.current&&!wrapRef.current.contains(e.target)) setOpen(false);};
+    document.addEventListener("mousedown",onDoc);
+    return()=>document.removeEventListener("mousedown",onDoc);
+  },[open]);
+  const ql=q.trim().toLowerCase();
+  const matches=ql?projList.filter(d=>((d.contact||"")+" "+(d.client||"")+" "+(d.ceNo||"")).toLowerCase().includes(ql)):projList;
+  const pick=id=>{onChange(id);setOpen(false);setQ("");};
+  return(
+    <div ref={wrapRef} style={{position:"relative"}}>
+      <div onClick={()=>{setOpen(o=>!o);setQ("");}} style={{...inp,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,minHeight:30}}>
+        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:value?"#0f172a":"#94a3b8"}}>{value?label(value):"— Company-wide —"}</span>
+        <span style={{color:"#94a3b8",fontSize:".65rem",flexShrink:0}}>▼</span>
+      </div>
+      {open&&(
+        <div style={{position:"absolute",top:"calc(100% + 2px)",left:0,right:0,zIndex:50,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.12)",maxHeight:260,overflowY:"auto"}}>
+          <div style={{padding:6,position:"sticky",top:0,background:"#fff",borderBottom:"1px solid #f1f5f9"}}>
+            <input autoFocus value={q} onChange={e=>setQ(e.target.value)} placeholder="🔍 Search project…" style={{...inp,fontSize:".78rem"}}/>
+          </div>
+          <div onClick={()=>pick(null)} style={{padding:"7px 11px",cursor:"pointer",fontSize:".8rem",color:!value?"#1d4ed8":"#475569",fontWeight:!value?700:500,background:!value?"#eff6ff":"transparent"}}>— Company-wide —</div>
+          {matches.map(d=>(
+            <div key={d.id} onClick={()=>pick(d.id)} style={{padding:"7px 11px",cursor:"pointer",fontSize:".8rem",color:value===d.id?"#1d4ed8":"#0f172a",fontWeight:value===d.id?700:500,background:value===d.id?"#eff6ff":"transparent"}}
+              onMouseEnter={ev=>{if(value!==d.id)ev.currentTarget.style.background="#f8fafc";}} onMouseLeave={ev=>{if(value!==d.id)ev.currentTarget.style.background="transparent";}}>
+              {(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:"")}
+            </div>
+          ))}
+          {matches.length===0&&<div style={{padding:"10px 11px",fontSize:".78rem",color:"#94a3b8",textAlign:"center"}}>No project matches “{q}”.</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── EXPENSE FORM MODAL (with confirmation step) ──────────────────────────────
 function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSave,onSaveAll,editId,projList,clientName,chartOfAccounts=[],suppliers=[],exps=[]}){
   const todayStr=new Date().toISOString().slice(0,10);
@@ -1383,7 +1425,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
             <div style={{display:"grid",gridTemplateColumns:"130px 1fr 1fr",gap:7,marginBottom:7}}>
               <div>{lbl("Date")}<input type="date" value={r.expDate||""} onChange={e=>upRow(i,"expDate",e.target.value)} style={inp}/></div>
               <div>{lbl("Supplier / Payee")}<input list="expSupplierOptions" value={r.supplier||r.payee||""} onChange={e=>{upRow(i,"supplier",e.target.value);upRow(i,"payee",e.target.value);}} placeholder="e.g. Wilcon Home Depot — new names are added to Suppliers" style={inp}/></div>
-              <div>{lbl("Project")}<select value={r.projectId||""} onChange={e=>upRow(i,"projectId",e.target.value||null)} style={{...inp,background:"#fff"}}><option value="">— Company-wide —</option>{projList.map(d=><option key={d.id} value={d.id}>{(d.contact||d.client||"")+(d.ceNo?" · "+d.ceNo:"")}</option>)}</select></div>
+              <div>{lbl("Project")}<SearchableProjectSelect projList={projList} value={r.projectId||null} onChange={v=>upRow(i,"projectId",v)} inp={inp}/></div>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 72px 120px 110px",gap:7,marginBottom:7}}>
               <div>{lbl("Particulars *")}<input value={r.note||""} onChange={e=>{upRow(i,"note",e.target.value);setErrors(p=>({...p,[`${i}_note`]:false}));}} placeholder="Description of expense" style={errors[`${i}_note`]?errInp:inp}/></div>
