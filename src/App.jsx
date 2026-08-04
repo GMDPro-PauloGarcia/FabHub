@@ -8325,6 +8325,41 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
         </div>
 
+      {/* ── ACTION CENTER (what needs attention, promoted to the top) ── */}
+      {(()=>{
+        const items=[];
+        if(escalations.length){const j=escalations.length===1?(()=>{setJumpDeal(escalations[0].dealId);setPage("projects");}):(()=>setPage("projects"));const hi=escalations.filter(e=>e.severity==="high").length;items.push({icon:"⚠️",n:escalations.length,l:"Escalations",sub:hi?`${hi} high severity`:"needs review",tone:"crit",action:j});}
+        if(overdueInvCnt){const ov=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");const j=ov.length===1?(()=>{setJumpDeal(ov[0].dealId);setPage("projects");}):(()=>setPage("billing"));items.push({icon:"🚨",n:overdueInvCnt,l:"Overdue Invoices",sub:"past due date",tone:"crit",action:j});}
+        if(overdueTATCnt)items.push({icon:"⏰",n:overdueTATCnt,l:"Past Deadline",sub:"projects overdue",tone:"warn",action:()=>{setJumpFilter("overdue");setPage("projects");}});
+        if(awardReqCnt){const ar=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));const j=ar.length===1?(()=>{setJumpDeal(ar[0].id);setPage("projects");}):(()=>setPage("pipeline"));items.push({icon:"🏆",n:awardReqCnt,l:"Award Approvals",sub:"awaiting sign-off",tone:"warn",action:j});}
+        if(mrPendingCnt)items.push({icon:"📋",n:mrPendingCnt,l:"Material Requests",sub:"pending",tone:"info",action:()=>setPage("requests")});
+        if(addendaAlertCnt){const sc=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");const j=sc.length===1?(()=>{setJumpDeal(sc[0].dealId);setPage("projects");}):(()=>setPage("addenda"));items.push({icon:"📝",n:addendaAlertCnt,l:"Scope Changes",sub:"need Sales action",tone:"info",action:j});}
+        const TONE={crit:{bg:"#fef2f2",bd:"#fecaca",fg:"#dc2626"},warn:{bg:"#fff7ed",bd:"#fed7aa",fg:"#c2410c"},info:{bg:"#eff6ff",bd:"#bfdbfe",fg:"#1d4ed8"}};
+        if(!items.length)return(
+          <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:12,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+            <span style={{fontSize:"1.1rem"}}>✅</span><span style={{fontWeight:700,color:"#15803d",fontSize:".85rem"}}>All clear — nothing needs your attention right now.</span>
+          </div>
+        );
+        return(
+          <div style={{marginBottom:14}}>
+            <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",fontWeight:700,marginBottom:8}}>⚡ Needs Attention</div>
+            <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fit,minmax(${window.innerWidth<768?"140px":"168px"},1fr))`,gap:10}}>
+              {items.map((a,i)=>{const t=TONE[a.tone];return(
+                <div key={i} onClick={a.action} style={{background:t.bg,border:`1.5px solid ${t.bd}`,borderRadius:12,padding:"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:2}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <span style={{fontSize:"1.05rem"}}>{a.icon}</span>
+                    <span style={{fontSize:".7rem",color:t.fg,fontWeight:700}}>→</span>
+                  </div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:t.fg,lineHeight:1.05}}>{a.n}</div>
+                  <div style={{fontSize:".74rem",fontWeight:700,color:"#0f172a"}}>{a.l}</div>
+                  <div style={{fontSize:".64rem",color:"#94a3b8"}}>{a.sub}</div>
+                </div>
+              );})}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── CHARTS 2×2 ──────────────────────────────────────────────── */}
       {(()=>{
         const now=new Date();
@@ -8359,25 +8394,36 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </svg>
           );
         };
+        // Pace-adjusted comparison: this month-to-date vs the SAME number of days
+        // into last month (not vs. all of last month — that made the 4th of a month
+        // always read as a ~95% "crash").
+        const D=now.getDate();
+        const cyr=now.getFullYear(),cmo=now.getMonth();
+        const pm=new Date(cyr,cmo-1,1),pyr=pm.getFullYear(),pmo=pm.getMonth();
+        const salesRec=deals.filter(d=>WON_STAGES.includes(d.stage)).map(d=>({dt:awardedMonth(d),v:Number(d.value||0)}));
+        const expRec=exps.map(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);return{dt:ds?new Date(ds):null,v:Number(e.amount||0)};});
+        const collRec=[];billings.forEach(b=>(b.payments||[]).forEach(p=>{if(p.date)collRec.push({dt:new Date(p.date),v:Number(p.amount||0)});}));
+        const pace=(rec,yr,mo,maxDay,count)=>rec.filter(x=>x.dt&&x.dt.getFullYear()===yr&&x.dt.getMonth()===mo&&x.dt.getDate()<=maxDay).reduce((s,x)=>s+(count?1:x.v),0);
         const charts=[
-          {title:"Sales Value",     data:salesData,  color:"#6366f1", fmt:fmtM,                   icon:"📊", action:()=>setPage("pipeline")},
-          {title:"Expenses",        data:expData,    color:"#ef4444", fmt:fmtM,                   icon:"💸", action:()=>setPage("finance")},
-          {title:"Collections",     data:collData,   color:"#10b981", fmt:fmtM,                   icon:"💰", action:()=>setPage("billing")},
-          {title:"Projects Awarded",data:awardData,  color:"#f59e0b", fmt:v=>v+(v===1?" project":" projects"), icon:"🏆", action:()=>setPage("projects")},
+          {title:"Sales Value",     data:salesData,  color:"#6366f1", fmt:fmtM, icon:"📊", action:()=>setPage("pipeline"), cur:pace(salesRec,cyr,cmo,D),      prev:pace(salesRec,pyr,pmo,D)},
+          {title:"Expenses",        data:expData,    color:"#ef4444", fmt:fmtM, icon:"💸", action:()=>setPage("finance"),  cur:pace(expRec,cyr,cmo,D),        prev:pace(expRec,pyr,pmo,D), invert:true},
+          {title:"Collections",     data:collData,   color:"#10b981", fmt:fmtM, icon:"💰", action:()=>setPage("billing"),  cur:pace(collRec,cyr,cmo,D),       prev:pace(collRec,pyr,pmo,D)},
+          {title:"Projects Awarded",data:awardData,  color:"#f59e0b", fmt:v=>v+(v===1?" project":" projects"), icon:"🏆", action:()=>setPage("projects"), cur:pace(salesRec,cyr,cmo,D,true), prev:pace(salesRec,pyr,pmo,D,true)},
         ];
         return(
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-            {charts.map(({title,data,color,fmt,icon,action})=>{
-              const curr=data[data.length-1];
-              const prev=data[data.length-2]||0;
-              const chg=prev>0?Math.round((curr-prev)/prev*100):null;
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,marginBottom:14}}>
+            {charts.map(({title,data,color,fmt,icon,action,cur,prev,invert})=>{
+              const chg=prev>0?Math.round((cur-prev)/prev*100):null;
+              const good=chg!=null&&(invert?chg<=0:chg>=0);
+              const prevFull=data[data.length-2]||0;
               return(
                 <div key={title} onClick={action} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 14px",cursor:"pointer"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
                     <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>{icon} {title}</div>
-                    {chg!==null&&<span style={{fontSize:".6rem",fontWeight:700,color:chg>=0?"#059669":"#ef4444",background:chg>=0?"#f0fdf4":"#fef2f2",borderRadius:5,padding:"1px 5px"}}>{chg>=0?"↑":"↓"}{Math.abs(chg)}%</span>}
+                    {chg!==null?<span title={`vs. first ${D} days of last month`} style={{fontSize:".58rem",fontWeight:700,color:good?"#059669":"#ef4444",background:good?"#f0fdf4":"#fef2f2",borderRadius:5,padding:"1px 5px"}}>{chg>=0?"↑":"↓"}{Math.abs(chg)}% MTD</span>:<span style={{fontSize:".55rem",color:"#cbd5e1",fontWeight:600}}>—</span>}
                   </div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:color,marginBottom:8}}>{fmt(curr)}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:color}}>{fmt(cur)}</div>
+                  <div style={{fontSize:".57rem",color:"#94a3b8",marginBottom:6}}>month-to-date · {fmt(prevFull)} last mo total</div>
                   <BarChart data={data} color={color} labels={months.map(m=>m.label)}/>
                 </div>
               );
@@ -8386,40 +8432,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         );
       })()}
 
-      {/* ── ALERT BANNERS ───────────────────────────────────────────── */}
+      {/* ── FINANCIAL SNAPSHOT ──────────────────────────────────────── */}
       {(()=>{
-        const alerts=[];
-        // Single-item alerts jump straight to the exact record via setJumpDeal instead
-        // of dumping the user onto a generic list page they then have to search again.
-        if(escalations.length){
-          const jumpToEscalation=escalations.length===1?(()=>{setJumpDeal(escalations[0].dealId);setPage("projects");}):(()=>setPage("projects"));
-          alerts.push({icon:"⚠️",msg:`${escalations.length} escalation${escalations.length>1?"s":""}${escalations.filter(e=>e.severity==="high").length>0?" · "+escalations.filter(e=>e.severity==="high").length+" high severity":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:jumpToEscalation});
-        }
-        if(overdueInvCnt){
-          const overdueInv=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
-          const jumpToInv=overdueInv.length===1?(()=>{setJumpDeal(overdueInv[0].dealId);setPage("projects");}):(()=>setPage("billing"));
-          alerts.push({icon:"🚨",msg:`${overdueInvCnt} overdue invoice${overdueInvCnt>1?"s":""}`,color:"#dc2626",bg:"#fef2f2",border:"#fecaca",action:jumpToInv});
-        }
-        if(overdueTATCnt)      alerts.push({icon:"⏰",msg:`${overdueTATCnt} project${overdueTATCnt>1?"s":""} past deadline`,color:"#c2410c",bg:"#fff7ed",border:"#fed7aa",action:()=>{setJumpFilter("overdue");setPage("projects");}});
-        if(awardReqCnt){
-          const awardReqDeals=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
-          const jumpToAwardReq=awardReqDeals.length===1?(()=>{setJumpDeal(awardReqDeals[0].id);setPage("projects");}):(()=>setPage("pipeline"));
-          alerts.push({icon:"🏆",msg:`${awardReqCnt} deal${awardReqCnt>1?"s":""} pending award approval`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:jumpToAwardReq});
-        }
-        if(mrPendingCnt)       alerts.push({icon:"📋",msg:`${mrPendingCnt} material request${mrPendingCnt>1?"s":""} pending`,color:"#1d4ed8",bg:"#eff6ff",border:"#93c5fd",action:()=>setPage("requests")});
-        if(addendaAlertCnt){
-          const scopeChangeDeals=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");
-          const jumpToScope=scopeChangeDeals.length===1?(()=>{setJumpDeal(scopeChangeDeals[0].dealId);setPage("projects");}):(()=>setPage("addenda"));
-          alerts.push({icon:"⚠️",msg:`${addendaAlertCnt} scope change${addendaAlertCnt>1?"s":""} need Sales action`,color:"#92400e",bg:"#fffbeb",border:"#fde68a",action:jumpToScope});
-        }
-        if(!alerts.length) return null;
+        const totColl=billings.reduce((s,b)=>s+(b.payments||[]).reduce((a,p)=>a+Number(p.amount||0),0),0);
+        const totOut=Math.max(0,totRev-totColl);
+        const fmtM=v=>v>=1000000?"₱"+Math.round(v/100000)/10+"M":v>=1000?"₱"+Math.round(v/1000)+"K":"₱"+Math.round(v||0);
+        const cells=[
+          {l:"Revenue (won)", v:fmtM(totRev), c:"#6366f1", action:()=>setPage("pipeline")},
+          {l:"Collected",     v:fmtM(totColl),c:"#10b981", action:()=>setPage("billing")},
+          {l:"Outstanding AR",v:fmtM(totOut), c:totOut>0?"#ef4444":"#94a3b8", action:()=>setPage("billing")},
+          {l:"Expenses",      v:fmtM(totExp), c:"#f59e0b", action:()=>setPage("finance")},
+          {l:"Gross Margin",  v:grossMar+"%", c:grossMar>=0?"#059669":"#ef4444", action:()=>setPage("finance")},
+        ];
         return(
-          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:14}}>
-            {alerts.map((a,i)=>(
-              <div key={i} onClick={a.action} style={{background:a.bg,border:`1px solid ${a.border}`,borderRadius:8,padding:"8px 14px",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontSize:".9rem"}}>{a.icon}</span>
-                <span style={{fontSize:".79rem",fontWeight:700,color:a.color,flex:1}}>{a.msg}</span>
-                <span style={{fontSize:".75rem",color:a.color}}>→</span>
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"6px 4px",marginBottom:14,display:"grid",gridTemplateColumns:window.innerWidth<768?"repeat(2,1fr)":"repeat(5,1fr)",gap:0}}>
+            {cells.map((c,i)=>(
+              <div key={c.l} onClick={c.action} style={{padding:"10px 14px",cursor:"pointer",borderRight:window.innerWidth>=768&&i<cells.length-1?"1px solid #f1f5f9":"",textAlign:"center"}}>
+                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:c.c}}>{c.v}</div>
+                <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700,marginTop:2}}>{c.l}</div>
               </div>
             ))}
           </div>
@@ -8435,55 +8465,47 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <RecentActivityFeed projs={projs} wonDeals={wonDeals} limit={12}/>
       </div>
 
-      {/* ── MINI CALENDAR ───────────────────────────────────────── */}
+      {/* ── UPCOMING AGENDA (replaces the empty month grid) ─────────── */}
       {(()=>{
         const now=new Date();
-        const yr=now.getFullYear(),mo=now.getMonth();
-        const first=new Date(yr,mo,1).getDay();
-        const days=new Date(yr,mo+1,0).getDate();
-        const todayD=now.getDate();
-        const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
-        const evts={};
-        checklist.forEach(c=>{
-          if(!c.dueDate)return;
-          const d=new Date(c.dueDate);
-          if(d.getFullYear()===yr&&d.getMonth()===mo){const k=d.getDate();if(!evts[k])evts[k]=[];evts[k].push("#f97316");}
-        });
-        billings.forEach(b=>{
-          if(!b.dueDate||b.status==="Paid"||b.status==="Cancelled")return;
-          const d=new Date(b.dueDate);
-          if(d.getFullYear()===yr&&d.getMonth()===mo){const k=d.getDate();if(!evts[k])evts[k]=[];evts[k].push("#3b82f6");}
-        });
-        const cells=[];
-        for(let i=0;i<first;i++)cells.push(null);
-        for(let d=1;d<=days;d++)cells.push(d);
+        const start=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+        const horizon=new Date(start);horizon.setDate(horizon.getDate()+21);
+        const evts=[];
+        checklist.forEach(c=>{if(!c.dueDate)return;const d=new Date(c.dueDate);if(d>=start&&d<=horizon)evts.push({d,type:c.type||"Operations",title:c.title||"Operations item",color:"#f97316",kind:"ops"});});
+        billings.forEach(b=>{if(!b.dueDate||b.status==="Paid"||b.status==="Fully Paid"||b.status==="Cancelled")return;const d=new Date(b.dueDate);if(d>=start&&d<=horizon){const dl=wonDeals.find(x=>x.id===b.dealId);evts.push({d,type:"Billing Due",title:dl?.client||b.client||"Invoice",color:"#3b82f6",kind:"bill",amt:Number(b.amount||0)});}});
+        evts.sort((a,b)=>a.d-b.d);
+        const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+        const dayLbl=d=>{const diff=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-start)/86400000);return diff===0?"Today":diff===1?"Tomorrow":`${DOW[d.getDay()]} ${MON[d.getMonth()]} ${d.getDate()}`;};
+        const fmtM=v=>v>=1000000?"₱"+Math.round(v/100000)/10+"M":v>=1000?"₱"+Math.round(v/1000)+"K":"₱"+Math.round(v||0);
+        const shown=evts.slice(0,10);
         return(
-          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 16px",marginTop:14}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>📅 {MONTH_NAMES[mo]} {yr}</span>
-              <button onClick={()=>setPage("calendar")} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 10px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Full Calendar →</button>
+          <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginTop:14}}>
+            <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontWeight:700,color:"#fff",fontSize:".86rem"}}>📅 Upcoming — next 21 days</span>
+              <button onClick={()=>setPage("calendar")} style={{background:"rgba(255,255,255,.12)",border:"none",borderRadius:6,padding:"3px 10px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>Full Calendar →</button>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,textAlign:"center"}}>
-              {["Su","Mo","Tu","We","Th","Fr","Sa"].map(d=>(
-                <div key={d} style={{fontSize:".62rem",color:"#94a3b8",fontWeight:700,paddingBottom:4}}>{d}</div>
-              ))}
-              {cells.map((d,i)=>(
-                <div key={i} onClick={d?()=>setPage("calendar"):undefined}
-                  style={{aspectRatio:"1",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",borderRadius:6,background:d===todayD?"#0f172a":"transparent",cursor:d?"pointer":"default"}}>
-                  <span style={{fontSize:".75rem",fontWeight:d===todayD?800:400,color:d===todayD?"#fff":d?"#0f172a":"transparent"}}>{d||""}</span>
-                  {d&&evts[d]&&(
-                    <div style={{display:"flex",gap:1,marginTop:1}}>
-                      {[...new Set(evts[d])].slice(0,2).map((c,j)=>(
-                        <span key={j} style={{width:4,height:4,borderRadius:"50%",background:c,display:"inline-block"}}/>
-                      ))}
+            {evts.length===0?(
+              <div style={{padding:"22px 16px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>Nothing scheduled in the next 21 days.</div>
+            ):(
+              <div>
+                {shown.map((e,i)=>(
+                  <div key={i} onClick={()=>setPage("calendar")} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 16px",borderBottom:i<shown.length-1?"1px solid #f1f5f9":"",cursor:"pointer"}}>
+                    <span style={{width:8,height:8,borderRadius:"50%",background:e.color,flexShrink:0}}/>
+                    <div style={{width:100,flexShrink:0,fontSize:".72rem",fontWeight:700,color:dayLbl(e.d)==="Today"?"#0f172a":"#64748b"}}>{dayLbl(e.d)}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".8rem",fontWeight:600,color:"#0f172a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{e.title}</div>
+                      <div style={{fontSize:".66rem",color:"#94a3b8"}}>{e.type}</div>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div style={{display:"flex",gap:12,marginTop:8,paddingTop:8,borderTop:"1px solid #f1f5f9"}}>
-              <span style={{fontSize:".65rem",color:"#64748b",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#f97316",display:"inline-block"}}/>Operations</span>
-              <span style={{fontSize:".65rem",color:"#64748b",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>Billing Due</span>
+                    {e.kind==="bill"&&e.amt>0&&<div style={{fontSize:".76rem",fontWeight:700,color:"#3b82f6",flexShrink:0}}>{fmtM(e.amt)}</div>}
+                  </div>
+                ))}
+                {evts.length>shown.length&&<div onClick={()=>setPage("calendar")} style={{padding:"9px 16px",textAlign:"center",fontSize:".72rem",color:"#6366f1",fontWeight:600,cursor:"pointer"}}>+{evts.length-shown.length} more →</div>}
+              </div>
+            )}
+            <div style={{display:"flex",gap:14,padding:"9px 16px",borderTop:"1px solid #f1f5f9"}}>
+              <span style={{fontSize:".64rem",color:"#64748b",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#f97316",display:"inline-block"}}/>Operations</span>
+              <span style={{fontSize:".64rem",color:"#64748b",display:"flex",alignItems:"center",gap:4}}><span style={{width:6,height:6,borderRadius:"50%",background:"#3b82f6",display:"inline-block"}}/>Billing Due</span>
             </div>
           </div>
         );
