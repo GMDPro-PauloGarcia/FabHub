@@ -7430,8 +7430,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         });
         const myOpenTasks=checklist.filter(c2=>c2.status!=="Done"&&display.some(d=>d.id===c2.projectId));
 
+        const openBlockers=(blockers||[]).filter(b=>b.status==="Open"&&display.some(d=>d.id===b.dealId)).length;
         return(
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+            {/* ── AT A GLANCE (summary promoted to the top) ─────────────── */}
+            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"repeat(2,1fr)":"repeat(5,1fr)",gap:10}}>
+              {[
+                {l:"My Projects",   v:display.length,     icon:"🏗", c:"#6366f1", pg:"projects"},
+                {l:"Needs Update",  v:needsUpdate.length, icon:"🚨", c:needsUpdate.length>0?"#dc2626":"#94a3b8", pg:"projects"},
+                {l:"At Risk",       v:atRisk.length,      icon:"⏰", c:atRisk.length>0?"#d97706":"#94a3b8", pg:"projects"},
+                {l:"Open Tasks",    v:myOpenTasks.length, icon:"✅", c:"#3b82f6", pg:"checklist"},
+                {l:"Open Blockers", v:openBlockers,       icon:"⛔", c:openBlockers>0?"#ef4444":"#94a3b8", pg:"projects"},
+              ].map(({l,v,icon,c,pg})=>(
+                <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:`1.5px solid ${c}22`,textAlign:"center",cursor:"pointer"}}>
+                  <div style={{fontSize:"1.15rem"}}>{icon}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.35rem",color:c,marginTop:3}}>{v}</div>
+                  <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
+                </div>
+              ))}
+            </div>
 
             {/* 🚨 Needs Update Now */}
             {needsUpdate.length>0&&(
@@ -7530,21 +7548,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               })}
             </div>
 
-            {/* Quick action tiles */}
-            <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:10}}>
-              {[
-                {l:"Pending MRs",     v:mreqs.filter(m=>m.status==="Submitted").length,                                      icon:"🔧", page:"requests", c:"#f97316"},
-                {l:"Budget Requests", v:breqs.filter(b=>b.status==="Pending").length,                                        icon:"💳", page:"requests",   c:"#8b5cf6"},
-                {l:"Open Tasks",      v:myOpenTasks.length,                                                                   icon:"✅", page:"checklist",   c:"#3b82f6"},
-                {l:"Open Blockers",   v:(blockers||[]).filter(b=>b.status==="Open"&&display.some(d=>d.id===b.dealId)).length, icon:"⛔", page:"projects",   c:(blockers||[]).filter(b=>b.status==="Open"&&display.some(d=>d.id===b.dealId)).length>0?"#ef4444":"#94a3b8"},
-              ].map(({l,v,icon,page:pg,c})=>(
-                <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:10,padding:"14px",border:`1.5px solid ${c}22`,textAlign:"center",cursor:"pointer"}}>
-                  <div style={{fontSize:"1.2rem"}}>{icon}</div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c,marginTop:4}}>{v}</div>
-                  <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
+            {/* Pending requests — kept as a slim reachable strip (MRs/BRs) */}
+            {(mreqs.filter(m=>m.status==="Submitted").length>0||breqs.filter(b=>b.status==="Pending").length>0)&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div onClick={()=>setPage("requests")} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #f9731622",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1.2rem"}}>🔧</span>
+                  <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#f97316"}}>{mreqs.filter(m=>m.status==="Submitted").length}</div><div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8"}}>Pending Material Requests</div></div>
                 </div>
-              ))}
-            </div>
+                <div onClick={()=>setPage("requests")} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #8b5cf622",cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontSize:"1.2rem"}}>💳</span>
+                  <div><div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:"#8b5cf6"}}>{breqs.filter(b=>b.status==="Pending").length}</div><div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8"}}>Pending Budget Requests</div></div>
+                </div>
+              </div>
+            )}
 
             {/* My open checklist tasks */}
             {myOpenTasks.length>0&&(
@@ -11404,17 +11420,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const overdueDeliveries=prs.filter(p=>p.deliveryDate&&p.deliveryDate<today&&!["Delivered","Cancelled"].includes(p.status));
           const thisWeek=prs.filter(p=>p.deliveryDate&&new Date(p.deliveryDate)>=now&&new Date(p.deliveryDate)<=weekEnd&&!["Delivered","Cancelled"].includes(p.status));
           const recentlyReceived=prs.filter(p=>p.status==="Delivered"&&p.deliveryDate&&Math.abs(Math.ceil((now-new Date(p.deliveryDate))/(1000*60*60*24)))<=3);
+          const lowStockItems=inventory.filter(i=>i.status!=="Inactive"&&Number(i.reorderPoint)>0&&Number(i.qtyOnHand)<=Number(i.reorderPoint));
           return(
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
-              {/* KPI strip */}
-              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12}}>
+              {/* KPI strip — delivery health + inventory health, all click-through */}
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"repeat(2,1fr)":"repeat(5,1fr)",gap:12}}>
                 {[
-                  {l:"Arriving Today",    v:arrivedToday.length,        c:"#dc2626", icon:"🚨"},
-                  {l:"Overdue",           v:overdueDeliveries.length,   c:"#f97316", icon:"⏰"},
-                  {l:"This Week",         v:thisWeek.length,            c:"#3b82f6", icon:"🚚"},
-                  {l:"Received (3d)",     v:recentlyReceived.length,    c:"#059669", icon:"✅"},
-                ].map(({l,v,c,icon})=>(
-                  <div key={l} style={{background:"#fff",borderRadius:12,padding:"14px",border:`1.5px solid ${c}33`,textAlign:"center"}}>
+                  {l:"Arriving Today",    v:arrivedToday.length,        c:"#dc2626", icon:"🚨", pg:"deliveries"},
+                  {l:"Overdue",           v:overdueDeliveries.length,   c:"#f97316", icon:"⏰", pg:"deliveries"},
+                  {l:"This Week",         v:thisWeek.length,            c:"#3b82f6", icon:"🚚", pg:"deliveries"},
+                  {l:"Received (3d)",     v:recentlyReceived.length,    c:"#059669", icon:"✅", pg:"stockmove"},
+                  {l:"Low Stock",        v:lowStockItems.length,       c:lowStockItems.length>0?"#f59e0b":"#94a3b8", icon:"📉", pg:"inventory"},
+                ].map(({l,v,c,icon,pg})=>(
+                  <div key={l} onClick={()=>setPage(pg)} style={{background:"#fff",borderRadius:12,padding:"14px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:"pointer"}}>
                     <div style={{fontSize:"1.2rem",marginBottom:4}}>{icon}</div>
                     <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
                     <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
@@ -11423,7 +11441,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               </div>
 
               {/* Low stock banner */}
-              {(()=>{const lowStock=inventory.filter(i=>Number(i.qtyOnHand)<=Number(i.reorderPoint)&&Number(i.reorderPoint)>0);return lowStock.length>0?(
+              {(()=>{const lowStock=lowStockItems;return lowStock.length>0?(
                 <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"10px 16px",display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontSize:"1rem"}}>⚠️</span>
                   <div style={{flex:1}}>
