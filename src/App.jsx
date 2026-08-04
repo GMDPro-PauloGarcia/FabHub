@@ -13284,6 +13284,17 @@ First few:
           ...vouchers.filter(v=>["For Release","Released"].includes(v.status)).map(v=>({type:"cv",label:v.cvNo+" · "+(v.payee||""),sub:v.date,status:v.status,amt:Number(v.amount||0),date:v.date||""})),
           ...evouchers.filter(e=>["For Payment","Draft"].includes(e.status)).map(e=>({type:"ev",label:e.evNo+" · "+(e.payee||e.department||"Liquidation"),sub:(e.items||[]).length+" line items · "+e.date,status:e.status,amt:(e.items||[]).reduce((s,i)=>s+Number(i.amount||0),0),date:e.date||""})),
         ].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+        // ── Purchase-to-Payment KPIs (Procurement → Finance) — driven by POs + the AP ledger ──
+        const _pN=v=>Number(v)||0;
+        const _payBal=p=>Math.max(0,_pN(p.amount)-_pN(p.paidAmount));
+        const openPOset=new Set(prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status)&&p.poNumber).map(p=>p.poNumber));
+        const outstandingPayables=payables.filter(p=>p.status!=="Paid").reduce((s,p)=>s+_payBal(p),0);
+        const overduePayList=payables.filter(p=>p.status!=="Paid"&&p.dueDate&&p.dueDate<today&&_payBal(p)>0);
+        const overduePayAmt=overduePayList.reduce((s,p)=>s+_payBal(p),0);
+        const paidPayMonth=payables.filter(p=>p.status==="Paid"&&(p.paidDate||"").slice(0,7)===today.slice(0,7));
+        const paidByCheck=paidPayMonth.filter(p=>p.cvId||p.status==="Check Issued").reduce((s,p)=>s+_pN(p.amount),0);
+        const paidByOnline=paidPayMonth.reduce((s,p)=>s+_pN(p.amount),0)-paidByCheck;
+        const paidPayTotal=paidByCheck+paidByOnline;
         const statusClr={Logged:"#64748b","For Payment":"#d97706",Paid:"#059669",Draft:"#64748b","For Release":"#d97706",Released:"#ea580c",Cleared:"#059669",Cancelled:"#dc2626"};
         const statusBg={Logged:"#f8fafc","For Payment":"#fffbeb",Paid:"#f0fdf4",Draft:"#f8fafc","For Release":"#fffbeb",Released:"#fff7ed",Cleared:"#f0fdf4",Cancelled:"#fef2f2"};
         return(<>
@@ -13310,6 +13321,30 @@ First few:
               {icon:"📄",label:"Daily Payables Pending",val:fmt(pendingPay.reduce((s,e)=>s+Number(e.amount||0),0)),sub:pendingPay.length+" items",badge:overduePay.length>0?overduePay.length+" overdue":paidThisMonth.length+" paid this month",bc:overduePay.length>0?"#dc2626":"#059669",bg:overduePay.length>0?"#fef2f2":"#f0fdf4",bt:"#f59e0b"},
               {icon:"✅",label:"Check Payables Out",val:fmt(cvRelAmt),sub:cvReleased.length+" released · uncleared",badge:cvForRel.length+" for release",bc:"#d97706",bg:"#fffbeb",bt:"#10b981"},
               {icon:"🧾",label:"Liquidation Pending",val:fmt(pendingEvsAmt),sub:pendingEvs.length+" reports",badge:evItems+" line items",bc:"#7c3aed",bg:"#f5f3ff",bt:"#8b5cf6"},
+            ].map(({icon,label,val,sub,badge,bc,bg,bt})=>(
+              <div key={label} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",borderTop:`3px solid ${bt}`,padding:"16px 18px"}}>
+                <div style={{fontSize:"1.25rem",marginBottom:6}}>{icon}</div>
+                <div style={{fontSize:".63rem",color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{label}</div>
+                <div style={{fontWeight:900,fontSize:"1.35rem",color:"#0f172a",margin:"4px 0"}}>{val}</div>
+                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{sub}</div>
+                <div style={{display:"inline-block",padding:"2px 8px",borderRadius:20,fontSize:".65rem",fontWeight:700,background:bg,color:bc,marginTop:5}}>{badge}</div>
+              </div>
+            ))}
+          </div>
+          {/* Purchase-to-Payment — Procurement → Accounts Payable KPIs */}
+          <div style={{display:"flex",alignItems:"center",gap:8,margin:"4px 2px 10px"}}>
+            <span style={{fontSize:".7rem",fontWeight:800,color:"#64748b",textTransform:"uppercase",letterSpacing:".9px"}}>🔗 Purchase-to-Payment</span>
+            <span style={{fontSize:".68rem",color:"#94a3b8"}}>from Procurement's POs & the AP ledger</span>
+            {(role==="Finance"||role==="Manager"||role==="FinanceAssistant")
+              ?<button onClick={()=>{setFinTab("payables");setPage("finance");}} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Open AP Ledger →</button>
+              :<button onClick={()=>setPage("checkvouchers")} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Check Payables →</button>}
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:20}}>
+            {[
+              {icon:"🛒",label:"Open Purchase Orders",val:String(openPOset.size),sub:openPOset.size===1?"PO awaiting invoice":"POs awaiting invoice",badge:"Procurement",bc:"#1d4ed8",bg:"#eff6ff",bt:"#3b82f6"},
+              {icon:"📤",label:"Outstanding Payables",val:fmt(outstandingPayables),sub:payables.filter(p=>p.status!=="Paid").length+" open · balance owed",badge:payables.filter(p=>p.status==="Partial").length+" partial",bc:"#b45309",bg:"#fffbeb",bt:"#f59e0b"},
+              {icon:"⏰",label:"Overdue Payables",val:fmt(overduePayAmt),sub:overduePayList.length+" past due date",badge:overduePayList.length>0?"needs attention":"none overdue",bc:overduePayList.length>0?"#dc2626":"#059669",bg:overduePayList.length>0?"#fef2f2":"#f0fdf4",bt:"#ef4444"},
+              {icon:"✅",label:"Paid This Month",val:fmt(paidPayTotal),sub:"Check "+fmt(paidByCheck)+" · Online "+fmt(paidByOnline),badge:paidPayMonth.length+" settled",bc:"#059669",bg:"#f0fdf4",bt:"#10b981"},
             ].map(({icon,label,val,sub,badge,bc,bg,bt})=>(
               <div key={label} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",borderTop:`3px solid ${bt}`,padding:"16px 18px"}}>
                 <div style={{fontSize:"1.25rem",marginBottom:6}}>{icon}</div>
