@@ -1055,44 +1055,6 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
         )}
       </div>
 
-      {/* ── SECTION 2: CONTEXT & FOLLOW-UP ─────────────────────────────── */}
-      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
-        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📋 Context & Follow-up</div>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
-          <Fld label="BizDev Source" hint="How did we get this client?">
-            <Sel value={form.bizDevSource||""} onChange={e=>f("bizDevSource",e.target.value)}>
-              <option value="">— Select source —</option>
-              <option>Old Client</option>
-              <option>GMD Referred</option>
-              <option>AE Referred</option>
-            </Sel>
-          </Fld>
-          <Fld label="Follow-up Date"><Inp type="date" value={form.followUp} onChange={e=>f("followUp",e.target.value)} min={today}/></Fld>
-          <Fld label="Priority"><Sel value={form.priority} onChange={e=>f("priority",e.target.value)}>{PRIORITIES.map(p=><option key={p}>{p}</option>)}</Sel></Fld>
-          {role==="Manager"
-            ?<Fld label="Discount %" hint="Manager only"><Inp type="number" min={0} max={100} value={form.discount||0} onChange={e=>f("discount",e.target.value)}/></Fld>
-            :<Fld label="Discount %"><div style={{padding:"8px 12px",borderRadius:8,background:"#f1f5f9",fontSize:".85rem",color:"#94a3b8"}}>{form.discount||0}% (set by Manager)</div></Fld>
-          }
-          <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any relevant notes…"/></Fld></div>
-        </div>
-      </div>
-
-      {/* ── SECTION 3: FILES & COMMS ────────────────────────────────────── */}
-      <div style={{background:"#f8fafc",borderRadius:12,padding:"14px 16px",marginTop:10,border:"1.5px solid #e2e8f0"}}>
-        <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:12}}>📁 Files & Comms</div>
-        <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:12}}>
-          <div style={{gridColumn:"1/-1"}}><Fld label="Sales Repository Link" hint="Main Google Drive folder for this deal"><Inp type="url" value={form.salesRepoLink||""} onChange={e=>f("salesRepoLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld></div>
-          <Fld label="Comms Group">
-            <Sel value={form.commsGroup||""} onChange={e=>f("commsGroup",e.target.value)}>
-              <option value="">— Not yet created —</option>
-              <option>WhatsApp</option><option>Viber</option><option>Telegram</option><option>WhatsApp + Viber</option><option>WhatsApp + Telegram</option><option>All Three</option>
-            </Sel>
-          </Fld>
-          <Fld label="Repository Notes"><Inp value={form.salesRepoNote||""} onChange={e=>f("salesRepoNote",e.target.value)} placeholder="e.g. SM Megamall — all plans uploaded"/></Fld>
-        </div>
-        {editId&&<FileAttachments folder={`deals/${editId}`} label="Deal Attachments"/>}
-      </div>
-
       {/* Design Request Form (DRF) — tickbox like the CE/QS request below: the
           requester flags that design work is needed, the Design lead picks who
           on the team handles it (see DRFView "Assign" action) instead of the
