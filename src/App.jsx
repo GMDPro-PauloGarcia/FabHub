@@ -2994,7 +2994,13 @@ export default function App(){
         if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
-        if(data?.checklist?.length) setChecklist(prev=>mergeLocalOnly(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id})),prev));
+        // Map the same camelCase fields the initial load does. Omitting dueDate
+        // (leaving only the raw due_date) made the Field Board — which filters on
+        // c.dueDate — drop every event on each focus/visibility refresh, so a
+        // calendar item showed on first load then vanished the moment the app
+        // regained focus (constant on mobile). Keep this in sync with the full
+        // checklist mapping in the initial load / loadAllFromSupabase.
+        if(data?.checklist?.length) setChecklist(prev=>mergeLocalOnly(data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order})),prev));
       }catch(e){console.warn("Focus refresh:",e.message);}
     };
     const onVisibility=()=>{ if(document.visibilityState==="visible") refresh(); };
