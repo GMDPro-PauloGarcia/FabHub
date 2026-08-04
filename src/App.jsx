@@ -4581,6 +4581,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const deal=deals.find(d=>d.id===(pr?.projectId||pr?.dealId));
     if(changes.status==="PO Issued"&&changes.approvedBy){
       sendTelegramNotification("procurement",`✅ <b>PO Approved</b>\n${pr?.itemName||"?"}\nProject: ${deal?.client||"GMD Stock"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nApproved by: ${changes.approvedBy} · ${today}`);
+      // PO issued → notify Warehouse so they can check the incoming delivery
+      sendTelegramNotification("warehouse",`📥 <b>PO for Checking</b>\nPO# ${changes.poNumber||pr?.poNumber||"—"}\n${pr?.itemName||"?"}\nProject: ${deal?.client||"GMD Stock"}\nQty: ${pr?.qty||"?"} ${pr?.unit||""}\nSupplier: ${pr?.supplier||"—"}\nIssued by: ${changes.approvedBy} · ${today}`);
       // P7: log PO issued to project activity
       if(pr?.projectId||pr?.dealId) logActivity(pr.projectId||pr.dealId,"PO Issued",`PO issued for ${pr.itemName||"?"} × ${pr.qty||"?"} ${pr.unit||""} from ${pr.supplier||"(no supplier)"} — PO# ${changes.poNumber||pr?.poNumber||"—"}`,changes.approvedBy||session?.name);
     }
@@ -17799,7 +17801,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const[poNumber,setPoNumber]=useState("");
   const[poNumberAuto,setPoNumberAuto]=useState(false); // true = auto-filled preview, claim real no. at save
   const[poDate,setPoDate]=useState(new Date().toISOString().split("T")[0]);
-  const[poStatus,setPoStatus]=useState("Draft");
+  const[poStatus,setPoStatus]=useState("PO Issued"); // pre-approved by default so a new PO is ready to send to Warehouse for checking
   const[poExpectedDelivery,setPoExpectedDelivery]=useState("");
   const[poItems,setPoItems]=useState([emptyPoItem()]);
   const[poLevelDiscType,setPoLevelDiscType]=useState("none");
@@ -17989,6 +17991,8 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       const poMsg=`🛒 <b>New Purchase Order ${poNo}</b>\nSupplier: ${poSupplier}\nProject: ${projects}\n\n${itemLines}\n\nBy: ${session?.name||"?"}`;
       sendTelegramNotification("procurement",poMsg);
       sendTelegramNotification("management",poMsg);
+      // Pre-approved on create → send straight to Warehouse for checking
+      if(poStatus==="PO Issued")sendTelegramNotification("warehouse",`📥 <b>PO for Checking</b>\nPO# ${poNo}\nSupplier: ${poSupplier}\nProject: ${projects}\n\n${itemLines}\n\nIssued by: ${session?.name||"?"} · ${poDate||today}`);
       toastEmit&&toastEmit(`PO ${poNo} saved — ${poItems.length} item${poItems.length>1?"s":""}`,"success");
     }
     // Create-or-update the single payable for this PO (only once it's issued).
@@ -18492,6 +18496,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
                   <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
+                    {(role==="Manager"||role==="Procurement")&&(status==="Draft"||status==="Pending Approval")&&<button title="Issue PO — send to Warehouse for checking" onClick={e=>{e.stopPropagation();if(!window.confirm(`Issue PO ${poNo} and send to Warehouse for checking?`))return;const extra={approvedBy:session?.name||"",approvedAt:today};const nextItems=items.map(x=>x.status!=="PO Issued"&&x.status!=="Delivered"&&x.status!=="Partially Delivered"?{...x,status:"PO Issued",...extra}:x);items.forEach(x=>{if(x.status!=="PO Issued"&&x.status!=="Delivered"&&x.status!=="Partially Delivered")updatePR(x.id,{status:"PO Issued",...extra});});syncPoPayable&&syncPoPayable(poNo,nextItems);toastEmit&&toastEmit(`PO ${poNo} issued — sent to Warehouse for checking`,"success");}} style={{background:"#ecfdf5",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#047857",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🏆</button>}
                     <button onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
                     {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
                     {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
