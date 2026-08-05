@@ -6269,8 +6269,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"payables",l:"Accounts Payable"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
+      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"dailylog",l:"Daily Site Log"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -6287,8 +6287,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"payables",l:"Accounts Payable"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
+      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"requests",l:"Requests"},{id:"swatchboard",l:"Swatchboard"},{id:"masters",l:"Master Lists"}]},
@@ -6298,7 +6298,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
-      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
+      {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Procurement", items:[{id:"subconwo",l:"SWO For Accounting"}]},
     ],
     Procurement:[
@@ -6341,13 +6341,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"payables",l:"Accounts Payable"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
-      {group:"Accounting", items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"},{id:"acctreport",l:"Account Report"}]},
+      {group:"Finance",    items:[{id:"cashposition",l:"Cash Position"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Accounting", items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
     ],
   };
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
-      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   payables:"📤",   billing:"🧾",
+      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
@@ -6363,11 +6363,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // "payables" is a virtual nav entry: it opens the Finance page pinned to the
       // Accounts Payable tab, so the AP Ledger reads as its own top-level item.
       const active=id==="payables"?(page==="finance"&&finTab==="payables")
-        :id==="finance"?(page==="finance"&&finTab!=="payables")
+        :id==="cashposition"?(page==="finance"&&finTab==="cash")
+        :id==="finance"?(page==="finance"&&finTab!=="payables"&&finTab!=="cash")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       return(
-        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else{setPage(id);if(id==="finance")setFinTab("overview");}setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);}}
+        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else{setPage(id);if(id==="finance")setFinTab("overview");}setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -6474,7 +6475,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
-      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   payables:"📤",   billing:"🧾",
+      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
