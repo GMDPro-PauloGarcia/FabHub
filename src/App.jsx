@@ -6144,6 +6144,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(p?.expenseId) markExpensePaid(p.expenseId);
   };
   // Open the Record-Payment modal for a payable, pre-filled with its open balance.
+  // Navigation + badge counts for the Aerwin-styled Finance module tab bar.
+  const financeErpCounts=()=>({
+    po:new Set(prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status)&&p.poNumber).map(p=>p.poNumber)).size,
+    ap:payables.filter(p=>p.status!=="Paid").length,
+    cv:vouchers.filter(v=>["Draft","For Release"].includes(v.status)).length,
+  });
+  const financeErpGo=(k)=>{
+    if(k==="dashboard") setPage("acctdash");
+    else if(k==="po") setPage("procurement");
+    else if(k==="ap"){setPage("finance");setFinTab("payables");}
+    else if(k==="payments") setPage("accounting");
+    else if(k==="cv") setPage("checkvouchers");
+  };
   const openPayModal=(p)=>{
     if(!p) return;
     const balance=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
@@ -10898,6 +10911,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
           return(
             <div>
+              <FinanceErpBar active="ap" go={financeErpGo} counts={financeErpCounts()}/>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
                 <div>
                   <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>📤 Accounts Payable</div>
@@ -13038,6 +13052,7 @@ First few:
   // ── CHECK PAYABLES ────────────────────────────────────────────────────────────
   if(page==="checkvouchers"&&(role==="Accounting"||role==="Finance"||role==="Manager"||role==="FinanceAssistant")) return(
     <Wrap>
+      <FinanceErpBar active="cv" go={financeErpGo} counts={financeErpCounts()}/>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
           <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem"}}>✅ Check Payables</div>
@@ -13300,6 +13315,7 @@ First few:
   );
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
     <Wrap>
+      <FinanceErpBar active="dashboard" go={financeErpGo} counts={financeErpCounts()}/>
       {(()=>{
         const bpiPos=Object.values(cashPositions).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
         const bpiBal=bpiPos?Number(bpiPos.banks?.bpi?.book||bpiPos.banks?.bpi?.end||bpiPos.banks?.bpi?.beg||0):0;
@@ -23146,6 +23162,43 @@ const DEFAULT_COA=[
   {code:"6700",name:"Depreciation Expense",type:"Expense"},
   {code:"6800",name:"Miscellaneous Expense",type:"Expense"},
 ];
+
+// Aerwin-styled Finance module header + tab bar. Gives the finance/accounting
+// screens the look of the finance team's standalone ERP (navy banner, gold
+// wordmark, a Purchase-to-Payment tab strip with count badges) while staying
+// inside FabHub. `active` is one of dashboard|po|ap|payments|cv; `go(key)` does
+// the navigation; `counts` supplies the badge numbers.
+function FinanceErpBar({active,go,counts={}}){
+  const tabs=[
+    {k:"dashboard",l:"Dashboard"},
+    {k:"po",l:"Purchase Orders",n:counts.po},
+    {k:"ap",l:"Accounts Payable",n:counts.ap},
+    {k:"payments",l:"Payments",n:counts.payments},
+    {k:"cv",l:"Check Vouchers",n:counts.cv},
+  ];
+  return(
+    <div style={{marginBottom:16}}>
+      <div style={{background:"linear-gradient(135deg,#132339,#1e293b)",borderRadius:"14px 14px 0 0",padding:"16px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+        <div>
+          <div style={{fontSize:"1.15rem",fontWeight:800,color:"#fff",letterSpacing:"-.01em"}}>GMD <span style={{color:"#e0a52a"}}>Production Inc.</span></div>
+          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2,letterSpacing:".02em"}}>Purchase-to-Payment · Accounts Payable · Check Voucher System</div>
+        </div>
+        <span style={{border:"1px solid #e0a52a",color:"#e0a52a",borderRadius:999,padding:"4px 14px",fontSize:".64rem",fontWeight:800,letterSpacing:".14em",textTransform:"uppercase"}}>Finance Module</span>
+      </div>
+      <div style={{background:"#fff",border:"1px solid #e2e8f0",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"8px",display:"flex",gap:6,flexWrap:"wrap"}}>
+        {tabs.map(t=>{
+          const on=t.k===active;
+          return(
+            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",gap:7,background:on?"#1e293b":"transparent",color:on?"#fff":"#475569",border:"none",borderRadius:9,padding:"9px 16px",fontFamily:"inherit",fontSize:".82rem",fontWeight:on?800:600,cursor:on?"default":"pointer"}}>
+              {t.l}
+              {t.n>0&&<span style={{background:on?"#e0a52a":"#fde68a",color:on?"#1e293b":"#92400e",borderRadius:999,minWidth:18,height:18,padding:"0 5px",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:".64rem",fontWeight:800}}>{t.n}</span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function ChartOfAccountsView({chartOfAccounts=[],saveChartOfAccounts,session,role}){
   const canEdit=["Manager","Finance","Accounting"].includes(role);
