@@ -6756,8 +6756,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {[
                 {l:"Pipeline Deals",   v:myPipe.length,     c:"#6366f1", icon:"📊", action:()=>setPage("pipeline")},
                 {l:"Awarded Value",    v:fmtK(myRev),        c:"#10b981", icon:"🏆", action:()=>setPage("pipeline")},
-                {l:"Collected",        v:fmtK(myColl),       c:"#059669", icon:"💰", action:()=>setPage("pipeline")},
-                {l:"Outstanding",      v:fmtK(myOut),        c:myOut>0?"#ef4444":"#94a3b8", icon:"⏳", action:()=>setPage("pipeline")},
+                {l:"Collected",        v:fmtK(myColl),       c:"#059669", icon:"💰", action:()=>setPage("billing")},
+                {l:"Outstanding",      v:fmtK(myOut),        c:myOut>0?"#ef4444":"#94a3b8", icon:"⏳", action:()=>setPage("billing")},
               ].map(({l,v,c,icon,action})=>(
                 <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${c}22`,cursor:"pointer",transition:"all .15s"}}>
                   <div style={{fontSize:"1.1rem"}}>{icon}</div>
@@ -6921,12 +6921,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         return(
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:24}}>
             {[
-              {l:"Total Billed YTD",   v:"₱"+Math.round(totalBilled/1000)+"K",              c:"#3b82f6", icon:"🧾"},
-              {l:"Collected",          v:"₱"+Math.round(totalPaid/1000)+"K",                c:"#059669", icon:"✅"},
-              {l:"Outstanding",        v:"₱"+Math.round(totalOutstanding/1000)+"K",         c:"#ef4444", icon:"⏰"},
-              {l:"Overdue Invoices",   v:overdue30.length+" invoices",                      c:"#f59e0b", icon:"🚨"},
-            ].map(({l,v,c,icon})=>(
-              <div key={l} style={{background:"#fff",borderRadius:12,padding:"16px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
+              {l:"Total Billed",       v:"₱"+Math.round(totalBilled/1000)+"K",              c:"#3b82f6", icon:"🧾", action:()=>setPage("billing")},
+              {l:"Collected",          v:"₱"+Math.round(totalPaid/1000)+"K",                c:"#059669", icon:"✅", action:()=>setPage("billing")},
+              {l:"Outstanding",        v:"₱"+Math.round(totalOutstanding/1000)+"K",         c:"#ef4444", icon:"⏰", action:()=>setPage("billing")},
+              {l:"Overdue Invoices",   v:overdue30.length+" invoices",                      c:"#f59e0b", icon:"🚨", action:()=>setPage("billing")},
+            ].map(({l,v,c,icon,action})=>(
+              <div key={l} onClick={action} style={{background:"#fff",borderRadius:12,padding:"16px",border:"1.5px solid #e2e8f0",textAlign:"center",cursor:"pointer"}}>
                 <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
                 <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:c}}>{v}</div>
                 <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:3}}>{l}</div>
@@ -7237,7 +7237,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {l:"Awaiting Mgr Approval",     v:needsApproval.length,  c:needsApproval.length>0?"#ef4444":"#94a3b8", icon:"⏳", click:()=>setPage("procurement")},
               {l:"Material Requests",         v:pendingMRs.length,     c:"#f97316", icon:"🔧", click:()=>setPage("requests")},
               {l:"Budget Requests",           v:pendingBRs.length,     c:"#8b5cf6", icon:"💳", click:()=>setPage("requests")},
-              {l:"Arriving Today",            v:deliveredToday.length, c:"#059669", icon:"🚚"},
+              {l:"Arriving Today",            v:deliveredToday.length, c:"#059669", icon:"🚚", click:()=>setPage("procurement")},
             ].map(({l,v,c,icon,click})=>(
               <div key={l} onClick={click} style={{background:"#fff",borderRadius:12,padding:"16px",border:`1.5px solid ${c}33`,textAlign:"center",cursor:click?"pointer":"default"}}>
                 <div style={{fontSize:"1.4rem",marginBottom:4}}>{icon}</div>
