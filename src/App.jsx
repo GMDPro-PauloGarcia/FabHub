@@ -6269,7 +6269,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"billing",l:"Billing"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"dailylog",l:"Daily Site Log"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6287,7 +6287,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"billing",l:"Billing"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6341,13 +6341,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"cashposition",l:"Cash Position"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",    items:[{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"billing",l:"Billing"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting", items:[{id:"acctdash",l:"Accounting"},{id:"accounting",l:"Daily Payables"},{id:"checkvouchers",l:"Check Payables"},{id:"evouchers",l:"Liquidation"},{id:"coa",l:"Chart of Accounts"}]},
     ],
   };
   const Nav=useStableComponent(()=>{
     const NAV_ICONS={
-      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   payables:"📤",   billing:"🧾",
+      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
@@ -6475,7 +6475,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
     const NAV_ICONS={
-      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   payables:"📤",   billing:"🧾",
+      home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒",   accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
@@ -13265,7 +13265,7 @@ First few:
   if(page==="wip"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
     <WIPView wonDeals={wonDeals} projs={projs} billings={billings} exps={exps} prs={prs} overallProg={overallProg} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
-  if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
+  if(page==="cashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
     <CashFlowView billings={billings} payables={payables} vouchers={vouchers} loans={loans} cashPositions={cashPositions} setPage={setPage} Wrap={Wrap} isMobile={isMobile}/>
   );
   if(page==="weeklycashflow"&&(role==="Finance"||role==="Manager"||role==="Accounting")) return(
@@ -23073,42 +23073,54 @@ function MasterListsView({suppliers,addSupplier,updateSupplier,deleteSupplier,su
 const COA_TYPES=["Asset","Liability","Equity","Income","COGS","Expense"];
 const COA_TYPE_CLR={Asset:"#0ea5e9",Liability:"#f97316",Equity:"#8b5cf6",Income:"#10b981",COGS:"#f59e0b",Expense:"#ef4444"};
 // Default chart tailored to a PH fabrication / construction company (GMD Productions)
+// Standard chart of accounts, adopted from the finance team's (Aerwin's) ERP so
+// FabHub and the ERP classify costs identically. Aerwin's taxonomy uses
+// Revenue/Expense; we map Revenue→Income and Expense codes 5000-5999→COGS (Cost
+// of Sales) so FabHub's existing type-based report/filter logic keeps working —
+// the codes, names and structure are Aerwin's verbatim.
 const DEFAULT_COA=[
-  {code:"1010",name:"Cash on Hand",type:"Asset"},
-  {code:"1020",name:"Cash in Bank",type:"Asset"},
-  {code:"1100",name:"Accounts Receivable",type:"Asset"},
-  {code:"1200",name:"Inventory / Materials on Hand",type:"Asset"},
-  {code:"1300",name:"Prepaid Expenses & Advances",type:"Asset"},
+  {code:"1000",name:"Cash on Hand",type:"Asset"},
+  {code:"1010",name:"Cash in Bank - BDO",type:"Asset"},
+  {code:"1011",name:"Cash in Bank - BPI",type:"Asset"},
+  {code:"1012",name:"Cash in Bank - Metrobank",type:"Asset"},
+  {code:"1013",name:"Cash in Bank - Chinabank",type:"Asset"},
+  {code:"1014",name:"Cash in Bank - Security Bank",type:"Asset"},
+  {code:"1015",name:"Cash in Bank - UnionBank",type:"Asset"},
+  {code:"1100",name:"Accounts Receivable - Trade",type:"Asset"},
+  {code:"1200",name:"Input VAT",type:"Asset"},
+  {code:"1300",name:"Inventory - Raw Materials",type:"Asset"},
+  {code:"1310",name:"Inventory - Finished Goods",type:"Asset"},
+  {code:"1400",name:"Prepaid Expenses",type:"Asset"},
   {code:"1500",name:"Property, Plant & Equipment",type:"Asset"},
-  {code:"1600",name:"Accumulated Depreciation",type:"Asset"},
-  {code:"2010",name:"Accounts Payable",type:"Liability"},
-  {code:"2100",name:"Accrued Expenses",type:"Liability"},
-  {code:"2200",name:"Loans Payable",type:"Liability"},
-  {code:"2300",name:"Taxes Payable (VAT / Withholding)",type:"Liability"},
-  {code:"2400",name:"SSS / PhilHealth / Pag-IBIG Payable",type:"Liability"},
-  {code:"3010",name:"Owner's Capital",type:"Equity"},
-  {code:"3020",name:"Owner's Drawings",type:"Equity"},
-  {code:"3030",name:"Retained Earnings",type:"Equity"},
-  {code:"4010",name:"Project / Contract Revenue",type:"Income"},
-  {code:"4020",name:"Fabrication Revenue",type:"Income"},
-  {code:"4030",name:"Service / Installation Income",type:"Income"},
-  {code:"4090",name:"Other Income",type:"Income"},
-  {code:"5010",name:"Materials",type:"COGS"},
-  {code:"5020",name:"Direct Labor",type:"COGS"},
-  {code:"5030",name:"Subcontractor Costs",type:"COGS"},
-  {code:"5040",name:"Equipment / Tool Rental",type:"COGS"},
-  {code:"5050",name:"Site / Project Overhead",type:"COGS"},
-  {code:"6010",name:"Salaries & Wages",type:"Expense"},
-  {code:"6020",name:"Rent",type:"Expense"},
-  {code:"6030",name:"Utilities",type:"Expense"},
-  {code:"6040",name:"Office Supplies",type:"Expense"},
-  {code:"6050",name:"Transportation & Fuel",type:"Expense"},
-  {code:"6060",name:"Repairs & Maintenance",type:"Expense"},
-  {code:"6070",name:"Professional Fees",type:"Expense"},
-  {code:"6080",name:"Taxes & Licenses",type:"Expense"},
-  {code:"6090",name:"Depreciation Expense",type:"Expense"},
-  {code:"6100",name:"Bank Charges",type:"Expense"},
-  {code:"6900",name:"Miscellaneous Expense",type:"Expense"},
+  {code:"1510",name:"Accumulated Depreciation",type:"Asset"},
+  {code:"2000",name:"Accounts Payable - Trade",type:"Liability"},
+  {code:"2010",name:"Accrued Expenses",type:"Liability"},
+  {code:"2100",name:"Output VAT Payable",type:"Liability"},
+  {code:"2200",name:"Withholding Tax Payable",type:"Liability"},
+  {code:"2300",name:"SSS / PhilHealth / Pag-IBIG Payable",type:"Liability"},
+  {code:"2400",name:"Loans Payable - Bank",type:"Liability"},
+  {code:"2500",name:"Loans Payable - Related Party",type:"Liability"},
+  {code:"3000",name:"Owner's Capital",type:"Equity"},
+  {code:"3100",name:"Retained Earnings",type:"Equity"},
+  {code:"4000",name:"Sales - Construction & Fit-out",type:"Income"},
+  {code:"4010",name:"Sales - Signage",type:"Income"},
+  {code:"4020",name:"Sales - POP Displays",type:"Income"},
+  {code:"5000",name:"Cost of Materials - Construction",type:"COGS"},
+  {code:"5010",name:"Cost of Materials - Signage",type:"COGS"},
+  {code:"5020",name:"Cost of Materials - POP Displays",type:"COGS"},
+  {code:"5100",name:"Direct Labor - Production",type:"COGS"},
+  {code:"5200",name:"Subcontractor Costs",type:"COGS"},
+  {code:"5300",name:"Freight & Handling",type:"COGS"},
+  {code:"6000",name:"Salaries & Wages - Office",type:"Expense"},
+  {code:"6010",name:"Salaries & Wages - Production",type:"Expense"},
+  {code:"6100",name:"Rent Expense",type:"Expense"},
+  {code:"6200",name:"Utilities Expense",type:"Expense"},
+  {code:"6300",name:"Office Supplies",type:"Expense"},
+  {code:"6400",name:"Repairs & Maintenance",type:"Expense"},
+  {code:"6500",name:"Fuel & Transportation",type:"Expense"},
+  {code:"6600",name:"Professional Fees",type:"Expense"},
+  {code:"6700",name:"Depreciation Expense",type:"Expense"},
+  {code:"6800",name:"Miscellaneous Expense",type:"Expense"},
 ];
 
 function ChartOfAccountsView({chartOfAccounts=[],saveChartOfAccounts,session,role}){
@@ -23144,7 +23156,7 @@ function ChartOfAccountsView({chartOfAccounts=[],saveChartOfAccounts,session,rol
           <h2 style={{margin:"0 0 4px",fontWeight:900,fontSize:"1.4rem",color:"#0f172a",fontFamily:"'Barlow Condensed',sans-serif"}}>📒 Chart of Accounts</h2>
           <p style={{margin:0,fontSize:".8rem",color:"#64748b"}}>The accounts used to classify every transaction. {chartOfAccounts.length} account{chartOfAccounts.length!==1?"s":""}.</p>
         </div>
-        {canEdit&&<button onClick={seedDefaults} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 16px",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",whiteSpace:"nowrap"}}>Load GMD default chart</button>}
+        {canEdit&&<button onClick={seedDefaults} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 16px",color:"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",whiteSpace:"nowrap"}}>Load standard chart of accounts</button>}
       </div>
       {canEdit&&(
         <div style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"12px 14px",margin:"14px 0",display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
