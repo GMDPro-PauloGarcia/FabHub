@@ -3046,6 +3046,21 @@ export default function App(){
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
+    // These tables were previously set only by the boot-time load, never here.
+    // Because this function is the LOGIN / Retry-Sync / focus-refresh path, a
+    // freshly-provisioned account (e.g. a designer who just got a user_profiles
+    // row) that logs in and never hard-reloads would see empty Design Requests,
+    // Project Cards, inventory, suppliers, etc. until a full page reload — the
+    // "designers see no DRFs" bug. Mirror the boot handler so login populates them.
+    if(data.drfs?.length){const _drfs=data.drfs.map(drfFromSb);setDrfs(prev=>mergeLocalOnly(_drfs,prev));idbE.push([KEYS.drfs,_drfs]);}
+    if(data.projs&&Object.keys(data.projs).length){setProjs(prev=>mergeLocalOnlyObj(data.projs,prev));idbE.push([KEYS.projects,data.projs]);}
+    if(data.inventory?.length){const _inv=data.inventory.map(invFromSb);setInventory(prev=>{const sbIds=new Set(_inv.map(i=>i.id));const localOnly=prev.filter(i=>!sbIds.has(i.id));return localOnly.length?[..._inv,...localOnly]:_inv;});idbE.push([KEYS.inventory,_inv]);}
+    if(data.stocklog?.length){const _stock=data.stocklog.map(moveFromSb);setStocklog(_stock);idbE.push([KEYS.stocklog,_stock]);}
+    if(data.suppliers?.length){const _sup=data.suppliers.map(s=>({...s,companyName:s.company_name,contactNos:s.contact_nos,contactPerson:s.contact_person,paymentTerms:s.payment_terms,tinNo:s.tin_no,createdBy:s.created_by}));setSuppliers(prev=>mergeLocalOnly(_sup,prev));idbE.push([KEYS.suppliers,_sup]);}
+    if(data.subcontractors?.length){const _sc=data.subcontractors.map(s=>({...s,companyName:s.company_name,strengthsWeaknesses:s.strengths_weaknesses,contactNo:s.contact_no,paymentTerms:s.payment_terms,rateStructure:s.rate_structure,paymentStructure:s.payment_structure,locationNote:s.location_note,createdBy:s.created_by}));setSubcons(prev=>mergeLocalOnly(_sc,prev));idbE.push([KEYS.subcons,_sc]);}
+    if(data.boqLibrary?.length){const _bl=data.boqLibrary.map(it=>({id:it.id,name:it.name,description:it.description||"",section:it.category||"",unit:it.unit||"lot",unitCost:Number(it.unit_cost)||0,tags:it.tags||[],createdBy:it.created_by||"",createdAt:it.created_at||"",updatedAt:it.updated_at||""}));setBoqLibrary(prev=>mergeLocalOnly(_bl,prev));idbE.push([KEYS.boqLibrary,_bl]);}
+    if(data.checkVouchers?.length){const _cv=data.checkVouchers.map(v=>({...v,cvNo:v.cv_no,projectId:v.project_id,releasedBy:v.released_by||"",releasedDate:v.released_date||null,createdBy:v.created_by||"",createdAt:v.created_at||null,poRef:v.po_ref||"",payableId:v.payable_id||null,checkNo:v.check_no||"",clearedDate:v.cleared_date||null,isCleared:v.is_cleared||false}));setVouchers(prev=>mergeLocalOnly(_cv,prev));idbE.push([KEYS.vouchers,_cv]);}
+    if(data.blockers?.length){const bl=data.blockers.map(b=>({id:b.id,dealId:b.deal_id,title:b.title,dept:b.dept||"Operations",detail:b.detail||"",flaggedBy:b.flagged_by||"",status:b.status||"Open",createdAt:b.created_at||"",resolvedBy:b.resolved_by||null,resolvedAt:b.resolved_at||null}));setBlockers(prev=>mergeLocalOnly(bl,prev));idbE.push([KEYS.blockers,bl]);}
     if(idbE.length) idbSetMany(idbE).catch(()=>{});
   };
 
