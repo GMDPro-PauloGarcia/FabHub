@@ -2761,7 +2761,7 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||""})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
@@ -3042,7 +3042,7 @@ export default function App(){
     if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -5165,7 +5165,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
   const[payables,  setPayables] =useState([]);
   const[payModal,  setPayModal] =useState(false);
-  const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",notes:"",invoiceRef:""});
+  const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",accountCode:"",notes:"",invoiceRef:""});
   const[payForm,   setPayForm]  =useState(emptyPayForm());
   const[payFilter, setPayFilter]=useState("All");
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
@@ -6067,6 +6067,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       return upd;
     }
     const rec={id:uid(),apNumber:nextApNumber(),vendor:supplier,amount,paidAmount:0,dueDate:"",category:"Supplier",
+      accountCode:active[0]?.accountCode||"",
       invoiceRef:poNo,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
       poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
@@ -10952,13 +10953,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:960}}>
                       <thead>
                         <tr style={{background:"#f8fafc"}}>
-                          {["AP No.","PO No.","Vendor","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status",""].map((h,i)=>(
-                            <th key={h+i} style={{padding:"8px 12px",textAlign:i>=7&&i<=9?"right":"left",fontWeight:700,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
+                          {["AP No.","PO No.","Vendor","Account","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status",""].map((h,i)=>(
+                            <th key={h+i} style={{padding:"8px 12px",textAlign:i>=8&&i<=10?"right":"left",fontWeight:700,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {apVisible.length===0&&<tr><td colSpan={12} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter.toLowerCase()} payables.</td></tr>}
+                        {apVisible.length===0&&<tr><td colSpan={13} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter.toLowerCase()} payables.</td></tr>}
                         {apVisible.map((p,idx)=>{
                           const ag=payableAging(p);
                           const settled=isSettled(p);
@@ -10966,12 +10967,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           const paidAmt=Number(p.paidAmount)||0;
                           const stClr=settled?{bg:"#dcfce7",c:"#15803d",t:"Paid"}:p.status==="Partial"?{bg:"#fef3c7",c:"#b45309",t:"Partial"}:p.status==="Check Issued"?{bg:"#fff7ed",c:"#c2410c",t:"Check Issued"}:{bg:"#fee2e2",c:"#b91c1c",t:"Unpaid"};
                           const pn=projName(p.projectId);
+                          const acct=chartOfAccounts.find(a=>String(a.code)===String(p.accountCode));
                           return(
                             <tr key={p.id} style={{borderBottom:idx<apVisible.length-1?"1px solid #f1f5f9":"none"}}
                               onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
                               <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".73rem",fontWeight:700,color:"#6366f1",whiteSpace:"nowrap"}}>{p.apNumber||"—"}</td>
                               <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".73rem",color:"#64748b",whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
                               <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:".65rem",color:"#8b5cf6",fontWeight:500}}>📁 {pn}</div>}</td>
+                              <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".72rem",color:p.accountCode?"#0f766e":"#cbd5e1",whiteSpace:"nowrap"}} title={acct?`${acct.code} · ${acct.name}`:""}>{p.accountCode||"—"}</td>
                               <td style={{padding:"9px 12px",fontSize:".76rem",color:"#475569",whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}</td>
                               <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",fontFamily:"monospace",whiteSpace:"nowrap"}}>{p.invoiceDate||"—"}</td>
                               <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",fontFamily:"monospace",whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
@@ -11013,6 +11016,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
                 </Fld>
                 <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
+                <Fld label="Account (Chart of Accounts)">
+                  <Sel value={payForm.accountCode||""} onChange={e=>setPayForm(p=>({...p,accountCode:e.target.value}))}>
+                    <option value="">— Select account —</option>
+                    {[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
+                  </Sel>
+                </Fld>
                 <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
                 <Fld label="Notes"><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder="Optional details"/></Fld>
                 <div style={{display:"flex",gap:10,marginTop:18}}>
