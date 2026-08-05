@@ -3499,17 +3499,21 @@ export default function App(){
     const rec={...wo,id:uid(),createdDate:today};
     upSwos(ws=>[rec,...ws]);
     if(isSupabaseReady()) sbSyncOne("subcon_work_orders",rec,swoToSb);
+    syncWoPayable(rec); // WO issued → subcontractor payable in the AP ledger
     const msg=`🛠 <b>${rec.status==="Pending Approval"?"Work Order Awaiting Approval":"Subcon Work Order Issued"} ${rec.woNumber||""}</b>\n${rec.subcontractor||"?"}${rec.specialty?` · ${rec.specialty}`:""}\nProject: ${rec.projectName||"?"}\nAmount: ₱${(Number(rec.contractAmount)||0).toLocaleString("en-PH")}\nBy: ${rec.requestedBy||session?.name||"?"}`;
     sendTelegramNotification("procurement",msg);
     sendTelegramNotification("management",msg);
   };
   const updateSWO=(id,changes)=>{
+    let updated=null;
     upSwos(ws=>ws.map(w=>{
       if(w.id!==id) return w;
       const nw={...w,...changes};
+      updated=nw;
       if(isSupabaseReady()) sbSyncOne("subcon_work_orders",nw,swoToSb);
       return nw;
     }));
+    if(updated) syncWoPayable(updated); // keep the WO's AP payable in sync (created once it's Issued)
   };
   const deleteSWO=(id)=>{
     const wo=swos.find(w=>w.id===id);
@@ -6085,6 +6089,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       accountCode:active[0]?.accountCode||"",
       invoiceRef:poNo,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
       poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+    upPayables(ps=>[rec,...ps]);
+    if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
+    return rec;
+  };
+  // Work Order → Accounts Payable. Mirrors syncPoPayable for subcontractor Work
+  // Orders so both procurement doors (PO to suppliers, WO to subcontractors) land
+  // in the one AP ledger. Keyed by woNumber; account code defaults to 5200
+  // (Subcontractor Costs). The full contract is the liability — retention only
+  // affects when/how much is paid, handled at payment time.
+  const syncWoPayable=(wo)=>{
+    if(!wo||!wo.woNumber) return null;
+    const amount=Math.round((Number(wo.contractAmount)||0)*100)/100;
+    const committed=["Issued","Partially Delivered","Delivered","Completed","For Accounting"].includes(wo.status);
+    const existing=payables.find(p=>p.poId===wo.woNumber);
+    if(!committed||!(amount>0)) return existing||null;
+    const linkedProjectId=(wo.projectId&&isUUID(wo.projectId))?wo.projectId:(wo.dealId&&isUUID(wo.dealId)?wo.dealId:null);
+    const vendor=wo.subcontractor||"Subcontractor";
+    if(existing){
+      if(existing.status==="Paid") return existing;
+      const upd={...existing,amount,vendor,projectId:linkedProjectId||existing.projectId};
+      upPayables(ps=>ps.map(p=>p.id===existing.id?upd:p));
+      if(isSupabaseReady()&&isUUID(existing.id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+      return upd;
+    }
+    const rec={id:uid(),apNumber:nextApNumber(),vendor,amount,paidAmount:0,dueDate:"",category:"Subcontractor",
+      accountCode:wo.accountCode||"5200",
+      invoiceRef:wo.woNumber,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from Work Order ${wo.woNumber}`,projectId:linkedProjectId,
+      poNumber:wo.woNumber,poId:wo.woNumber,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
     return rec;
