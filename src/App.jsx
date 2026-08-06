@@ -5837,11 +5837,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const projDeal=selProj?deals.find(d=>d.id===selProj):null;
 
   const openAddExp=(projId=null,date=null)=>{
-    // Guard against being wired directly as an event handler (onClick={openAddExp}),
-    // which would pass a React event object in as projId/date and corrupt the form.
+    // Standalone "Log Expense" is retired (Aerwin-model restructure): every new
+    // cost now enters as an Other Payable in the AP ledger — a PO/WO covers
+    // procurement, this covers non-PO bills (utilities, permits, petty cash).
+    // The signature is kept so existing "+ Log Expense" call sites just open the
+    // Other Payable form instead. Editing legacy expenses (openEditExp) is
+    // unaffected. Guard against being wired directly as an event handler.
     const pid=(projId&&typeof projId==="object")?null:projId;
-    const dt=(typeof date==="string")?date:null;
-    setExpForm({expDate:dt||today,month:new Date().getMonth(),year:new Date().getFullYear(),category:"Materials",amount:"",note:"",payee:"",supplier:"",qty:"1",pricePerQty:"",tin:"",remarks:"",projectId:pid,bankAccount:"",receipt:""});setEditExpId(null);setExpModal(true);};
+    setPayForm({...emptyPayForm(),projectId:(pid&&isUUID(pid))?pid:null});
+    setEditPayId(null);
+    setFinTab("payables");
+    setPage("finance");
+    setPayModal(true);
+  };
   const openEditExp=e=>{setExpForm({...e});setEditExpId(e.id);setExpModal(true);};
   const saveExp=(overrideData)=>{
     const data=overrideData||expForm;
@@ -7099,7 +7107,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         subtitle={`${roleLabel(role)} · ${todayL}`}
         buttons={[
           {label:"Log Payment",   icon:"💵", bg:"#8b5cf6", action:()=>{setFromHome(true);setPage("billing");}},
-          {label:"Log Expense",   icon:"💸", bg:"#3b82f6", action:()=>openAddExp()},
+          {label:"Other Payable",   icon:"💸", bg:"#3b82f6", action:()=>openAddExp()},
           {label:"Open Billing",  icon:"📋", bg:"#1e293b", action:()=>setPage("billing")},
           {label:"Cash Position", icon:"💰", bg:"#059669", action:()=>setPage("finance")},
         ]}
@@ -10403,12 +10411,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </>
     );
 
-    if(page==="finance"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant")) return(
+    if(page==="finance"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
       <Wrap>
-        {/* Finance tab bar */}
+        {/* Finance tab bar — Accounting is scoped to the Payables (Other Payables) ledger only; the P&L/cash tabs stay owner-side. */}
         <div style={{position:"relative",marginBottom:24}}>
           <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"}}>
-            {[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"],["loans","💳 Loans"]].map(([t,l])=>(
+            {(role==="Accounting"?[["payables","📤 Payables"]]:[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"],["loans","💳 Loans"]]).map(([t,l])=>(
               <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:isMobile?".78rem":".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",flexShrink:0}}>
                 {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
               </button>
@@ -10418,7 +10426,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         </div>
 
         {/* ── OVERVIEW TAB ── */}
-        {finTab==="overview"&&(()=>{
+        {finTab==="overview"&&role!=="Accounting"&&(()=>{
           const now=new Date();
           const cy=now.getFullYear();
           const totalBilled=billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>s+Number(b.amount||0),0);
@@ -10802,7 +10810,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
 
         {/* ── CASH POSITION TAB ── */}
-        {finTab==="cash"&&(
+        {finTab==="cash"&&role!=="Accounting"&&(
           <>
             {/* Cash Position sub-tabs: Daily / Weekly / Monthly */}
             <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
@@ -10823,7 +10831,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         )}
 
         {/* ── P&L TAB ── */}
-        {finTab==="pl"&&(
+        {finTab==="pl"&&role!=="Accounting"&&(
           <>
             <SecHead title="P&L / Income Statement" sub="Revenue, collections, expenses and gross profit"/>
             <PLStatement billings={billings} exps={exps} wonDeals={wonDeals}/>
@@ -10831,7 +10839,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         )}
 
         {/* ── PROJECTS P&L TAB ── */}
-        {finTab==="projects"&&(()=>{
+        {finTab==="projects"&&role!=="Accounting"&&(()=>{
           const allProj=wonDeals;
           const rows=allProj.map(d=>{
             const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
@@ -10950,7 +10958,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Track what GMD owes to suppliers, subcontractors, and vendors.</div>
                 </div>
                 <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
-                  style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>+ Add Payable</button>
+                  style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>+ Other Payable</button>
               </div>
               {/* Summary */}
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
@@ -11061,7 +11069,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               )}
               {/* Add/Edit Payable Modal */}
-              <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?"Edit Payable":"Add Payable"}>
+              <Modal open={payModal} onClose={()=>{setPayModal(false);setEditPayId(null);}} title={editPayId?"Edit Other Payable":"New Other Payable"}>
                 {editPayId&&payForm.apNumber&&<div style={{fontSize:".72rem",color:"#6366f1",fontWeight:700,fontFamily:"monospace",marginBottom:8}}>{payForm.apNumber}{payForm.poNumber?` · PO ${payForm.poNumber}`:""}</div>}
                 <Fld label="Vendor / Payee"><Inp value={payForm.vendor||""} onChange={e=>setPayForm(p=>({...p,vendor:e.target.value}))} placeholder="e.g. ABC Steel Supply"/></Fld>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -11126,7 +11134,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
           );
         })()}
-        {finTab==="loans"&&(()=>{
+        {finTab==="loans"&&role!=="Accounting"&&(()=>{
           const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
           const totalPrincipal=loans.reduce((s,l)=>s+l.principal,0);
           const totalPaid=loans.reduce((s,l)=>s+(l.payments||[]).reduce((a,p)=>a+p.amount,0),0);
@@ -11617,7 +11625,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="masters") return(<Wrap><MasterListsView suppliers={suppliers} addSupplier={addSupplier} updateSupplier={updateSupplier} deleteSupplier={deleteSupplier} subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role} isMobile={isMobile}/></Wrap>);
     if(page==="expenses") return(
       <Wrap>
-        <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>} sub="All logged costs — company-wide and per project"/>
+        <SecHead title="Expenses" action={<Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>} sub="All logged costs — company-wide and per project"/>
         {["all",...projList.map(d=>d.id)].map(filter=>{
           const label=filter==="all"?"All Expenses":clientName(filter);
           const filtered=filter==="all"?exps:exps.filter(e=>e.projectId===filter);
@@ -12837,7 +12845,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Accounting logs · Finance triggers payment</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <Btn onClick={()=>openAddExp()}>+ Log Expense</Btn>
+          <Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>
           <button onClick={()=>{
             let list=[...exps].sort((a,b)=>(b.expDate||`${b.year||2024}-${String((b.month||0)+1).padStart(2,"0")}-01`).localeCompare(a.expDate||`${a.year||2024}-${String((a.month||0)+1).padStart(2,"0")}-01`));
             if(acctMonth) list=list.filter(e=>e.expDate===acctMonth);
@@ -13077,7 +13085,7 @@ First few:
       })()}
       <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
-      {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
+      {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{routeExpToBizLink(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
     </Wrap>
   );
 
@@ -13393,7 +13401,7 @@ First few:
               <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>{session?.name||role} · {todayL}</div>
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              <button onClick={()=>openAddExp()} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 18px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".82rem",cursor:"pointer",letterSpacing:".3px"}}>+ LOG EXPENSE</button>
+              <button onClick={()=>openAddExp()} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 18px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".82rem",cursor:"pointer",letterSpacing:".3px"}}>+ OTHER PAYABLE</button>
               <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📄 Daily Payables</button>
               <button onClick={()=>setPage("checkvouchers")} style={{background:"#059669",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>✅ Check Payables</button>
               <button onClick={()=>setPage("evouchers")} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🧾 Liquidation</button>
@@ -13520,7 +13528,7 @@ First few:
               <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
                 <div style={{background:"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                   <span style={{fontWeight:700,color:"#facc15",fontSize:".84rem"}}>📝 Expense Log — {loggedExps.length} pending · {allExps.length} total</span>
-                  <button onClick={()=>openAddExp()} style={{background:"#facc15",border:"none",borderRadius:6,padding:"4px 12px",color:"#0f172a",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",fontWeight:800}}>+ Log Expense</button>
+                  <button onClick={()=>openAddExp()} style={{background:"#facc15",border:"none",borderRadius:6,padding:"4px 12px",color:"#0f172a",fontSize:".72rem",cursor:"pointer",fontFamily:"inherit",fontWeight:800}}>+ Other Payable</button>
                 </div>
                 {allExps.length===0?(
                   <div style={{padding:"24px",color:"#94a3b8",fontSize:".82rem",textAlign:"center"}}>No logged expenses yet. Click <strong>+ Log Expense</strong> to add one.</div>
@@ -13714,7 +13722,7 @@ First few:
           </div>
         );
       })()}
-      {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"],["Check","🖊","Issue check voucher","#7c3aed","#faf5ff","#e9d5ff"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{if(routeMethod==="BizLink")routeExpToBizLink(routeModal,routeBank);else routeExpToCheck(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
+      {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{routeExpToBizLink(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
     </Wrap>
   );
