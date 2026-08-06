@@ -5224,6 +5224,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[cvForm,    setCvForm]   =useState({date:today,cvNo:"",payee:"",amount:"",description:"",projectId:null,bank:"",notes:"",status:"Draft",poRef:"",payableId:null,checkNo:"",clearedDate:"",isCleared:false});
   const[cvSearch,  setCvSearch] =useState("");
   const[cvStatus,  setCvStatus] =useState("All");
+  const[cvView,    setCvView]   =useState(null); // voucher id shown in the Aerwin-style document view
   const[dpCollapsed,setDpCollapsed]=useState(new Set());
   const[cvCollapsed,setCvCollapsed]=useState(new Set());
   const[isOnline,   setIsOnline]   =useState(()=>navigator.onLine);
@@ -13356,6 +13357,7 @@ First few:
                             <td style={{padding:"9px 14px",fontSize:".72rem",color:"#0369a1",whiteSpace:"nowrap"}}>{v.bank||"—"}</td>
                             <td style={{padding:"9px 14px"}}>
                               <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                                <button onClick={()=>setCvView(v.id)} title="View Check Voucher" style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#a16207",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>👁 View</button>
                                 <button onClick={()=>printCheckVoucher(v)} title="Print Check Voucher" style={{background:"#eef2ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#4338ca",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🖨 Print</button>
                                 {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
                                 {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
@@ -13457,6 +13459,57 @@ First few:
           </div>
         </div>
       )}
+      {/* ── On-screen Check Voucher document (Aerwin's format) ── */}
+      {cvView&&(()=>{
+        const v=vouchers.find(x=>x.id===cvView);
+        if(!v) return null;
+        const bankName=(()=>{const b=(BANKS||[]).find(x=>x.id===v.bank||x.short===v.bank||x.name===v.bank);return b?b.name:(v.bank||"—");})();
+        const apRef=v.apRef||(payables.find(p=>p.id===v.payableId)||{}).apNumber||"—";
+        const pesos=n=>"PHP "+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+        const DocRow=({label,value})=>(
+          <div style={{display:"flex",padding:"7px 0",borderBottom:"1px solid #f1f5f9"}}>
+            <div style={{width:150,color:"#64748b",fontSize:".82rem",flexShrink:0}}>{label}</div>
+            <div style={{fontWeight:600,color:"#0f172a",fontSize:".86rem"}}>{value||"—"}</div>
+          </div>
+        );
+        return(
+          <div onClick={()=>setCvView(null)} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:640,boxShadow:"0 20px 60px rgba(0,0,0,.3)",overflow:"hidden"}}>
+              <div style={{padding:"26px 30px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"2px solid #d4a017",paddingBottom:14,marginBottom:16}}>
+                  <div>
+                    <div style={{fontSize:"1.2rem",fontWeight:800,color:"#0f172a"}}>GMD PRODUCTION INC.</div>
+                    <div style={{fontSize:".68rem",color:"#64748b",marginTop:3}}>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</div>
+                  </div>
+                  <div style={{textAlign:"right"}}>
+                    <div style={{fontSize:".6rem",letterSpacing:".12em",color:"#94a3b8",textTransform:"uppercase"}}>Check Voucher No.</div>
+                    <div style={{fontSize:"1.1rem",fontWeight:800,color:"#b45309",fontFamily:"monospace"}}>{v.cvNo||"—"}</div>
+                  </div>
+                </div>
+                <DocRow label="Date" value={v.date}/>
+                <DocRow label="Payee" value={v.payee}/>
+                <DocRow label="Particulars" value={v.description}/>
+                <DocRow label="PO Reference" value={v.poRef}/>
+                <DocRow label="AP Reference" value={apRef}/>
+                <DocRow label="Bank" value={bankName}/>
+                <DocRow label="Check Number" value={v.checkNo}/>
+                <div style={{margin:"18px 0",border:"1px solid #e2e8f0",borderRadius:10,padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#f8fafc"}}>
+                  <span style={{fontSize:".68rem",letterSpacing:".1em",textTransform:"uppercase",color:"#94a3b8",fontWeight:700}}>Amount</span>
+                  <span style={{fontSize:"1.5rem",fontWeight:800,color:"#0f172a"}}>{pesos(v.amount)}</span>
+                </div>
+                <div style={{display:"flex",gap:28,marginTop:36}}>
+                  <div style={{flex:1,textAlign:"center",borderTop:"1px solid #94a3b8",paddingTop:6,fontSize:".72rem",color:"#64748b"}}>Prepared by — Finance</div>
+                  <div style={{flex:1,textAlign:"center",borderTop:"1px solid #94a3b8",paddingTop:6,fontSize:".72rem",color:"#64748b"}}>Approved by — Management</div>
+                </div>
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end",gap:8,padding:"12px 20px",borderTop:"1px solid #f1f5f9",background:"#fafafa"}}>
+                <button onClick={()=>printCheckVoucher(v)} style={{background:"#eef2ff",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}}>🖨 Print</button>
+                <button onClick={()=>setCvView(null)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Close</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </Wrap>
   );
 
