@@ -5189,6 +5189,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payFilter, setPayFilter]=useState("All");
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
   const[payPayAmt, setPayPayAmt]=useState("");
+  const[payPayMode,setPayPayMode]=useState("amount"); // "amount" | "pct" (progress billing)
+  const[payPayPct, setPayPayPct]=useState("");
   const[editPayId, setEditPayId]=useState(null);
   const[loans,     setLoans]    =useState([]);
   const[loanModal, setLoanModal]=useState(false);
@@ -6201,6 +6203,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(!p) return;
     const balance=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
     setPayPayId(p.id);
+    setPayPayMode("amount");setPayPayPct("");
     setPayPayAmt(String(balance||""));
   };
   // Route a floated payable into Check Payables: create a linked Draft check voucher.
@@ -11049,7 +11052,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",fontFamily:"monospace",whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
                               <td style={{padding:"9px 12px",fontSize:".72rem",fontWeight:700,color:settled?"#94a3b8":ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
                               <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
-                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",color:"#059669",whiteSpace:"nowrap"}}>{paidAmt>0?fmtM(paidAmt):"—"}</td>
+                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",color:"#059669",whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:".62rem",color:"#94a3b8"}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
                               <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:balance>0?"#b91c1c":"#94a3b8",whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
                               <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}><span style={{fontSize:".65rem",fontWeight:700,padding:"2px 9px",borderRadius:20,background:stClr.bg,color:stClr.c}}>{stClr.t}</span></td>
                               <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
@@ -11102,31 +11105,57 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {(()=>{
                 const p=payables.find(x=>x.id===payPayId);
                 if(!p) return null;
-                const balance=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
+                const contract=Number(p.amount)||0;
+                const balance=Math.max(0,contract-(Number(p.paidAmount)||0));
                 const amt=Number(payPayAmt)||0;
                 const invalid=!(amt>0)||amt>balance+0.005;
+                const pctPaidSoFar=contract>0?Math.round((Number(p.paidAmount)||0)/contract*100):0;
+                const close=()=>{setPayPayId(null);setPayPayAmt("");setPayPayMode("amount");setPayPayPct("");};
+                // % mode is progress billing: percent is of the FULL contract, so
+                // retention (e.g. hold the last 10%) works by simply not billing to 100%.
+                const setFromPct=(v)=>{setPayPayPct(v);const pct=Number(v)||0;setPayPayAmt(pct>0?String(Math.round(contract*pct/100*100)/100):"");};
                 return(
-                  <Modal open={!!payPayId} onClose={()=>{setPayPayId(null);setPayPayAmt("");}} title="Record Payment">
+                  <Modal open={!!payPayId} onClose={close} title="Record Payment">
                     <div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:14,fontSize:".82rem"}}>
                       <div style={{fontWeight:700,color:"#0f172a"}}>{p.vendor||"Payable"}</div>
-                      <div style={{color:"#64748b",marginTop:3}}>{p.apNumber||""}{p.poNumber?` · PO ${p.poNumber}`:""}</div>
-                      <div style={{marginTop:6,display:"flex",gap:16}}>
-                        <span style={{color:"#64748b"}}>Amount <strong style={{color:"#0f172a"}}>{fmtM(p.amount)}</strong></span>
-                        <span style={{color:"#64748b"}}>Paid <strong style={{color:"#059669"}}>{fmtM(Number(p.paidAmount)||0)}</strong></span>
+                      <div style={{color:"#64748b",marginTop:3}}>{p.apNumber||""}{p.poNumber?` · ${p.poNumber}`:""}</div>
+                      <div style={{marginTop:6,display:"flex",gap:16,flexWrap:"wrap"}}>
+                        <span style={{color:"#64748b"}}>Contract <strong style={{color:"#0f172a"}}>{fmtM(contract)}</strong></span>
+                        <span style={{color:"#64748b"}}>Paid <strong style={{color:"#059669"}}>{fmtM(Number(p.paidAmount)||0)} ({pctPaidSoFar}%)</strong></span>
                         <span style={{color:"#64748b"}}>Balance <strong style={{color:"#b91c1c"}}>{fmtM(balance)}</strong></span>
                       </div>
                     </div>
-                    <Fld label="Payment amount (₱)" required>
-                      <Inp type="number" value={payPayAmt} onChange={e=>setPayPayAmt(e.target.value)} placeholder="0"/>
-                      {amt>balance+0.005&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Exceeds the outstanding balance of {fmtM(balance)}.</div>}
-                    </Fld>
-                    <div style={{display:"flex",gap:6,marginBottom:6}}>
-                      <button onClick={()=>setPayPayAmt(String(balance))} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Full balance</button>
-                      <button onClick={()=>setPayPayAmt(String(Math.round(balance/2*100)/100))} style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Half</button>
+                    {/* Amount vs % (progress billing) toggle */}
+                    <div style={{display:"flex",gap:6,marginBottom:12}}>
+                      {[["amount","₱ Amount"],["pct","% of contract"]].map(([m,l])=>(
+                        <button key={m} onClick={()=>{setPayPayMode(m);setPayPayPct("");if(m==="amount")setPayPayAmt(String(balance));else setPayPayAmt("");}} style={{flex:1,background:payPayMode===m?"#1e293b":"#fff",color:payPayMode===m?"#fff":"#475569",border:`1.5px solid ${payPayMode===m?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>{l}</button>
+                      ))}
                     </div>
+                    {payPayMode==="amount"?(
+                      <>
+                        <Fld label="Payment amount (₱)" required>
+                          <Inp type="number" value={payPayAmt} onChange={e=>setPayPayAmt(e.target.value)} placeholder="0"/>
+                        </Fld>
+                        <div style={{display:"flex",gap:6,marginBottom:6}}>
+                          <button onClick={()=>setPayPayAmt(String(balance))} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Full balance</button>
+                          <button onClick={()=>setPayPayAmt(String(Math.round(balance/2*100)/100))} style={{background:"#f1f5f9",border:"1px solid #e2e8f0",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>Half</button>
+                        </div>
+                      </>
+                    ):(
+                      <>
+                        <Fld label="Progress this billing (% of contract)" required>
+                          <Inp type="number" value={payPayPct} onChange={e=>setFromPct(e.target.value)} placeholder="e.g. 30"/>
+                          {amt>0&&<div style={{fontSize:".78rem",color:"#0f172a",marginTop:4,fontWeight:600}}>= {fmtM(amt)} <span style={{color:"#94a3b8",fontWeight:400}}>of {fmtM(contract)} contract</span></div>}
+                        </Fld>
+                        <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
+                          {[10,25,30,50].map(q=><button key={q} onClick={()=>setFromPct(String(q))} style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 10px",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>{q}%</button>)}
+                        </div>
+                      </>
+                    )}
+                    {amt>balance+0.005&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ {fmtM(amt)} exceeds the outstanding balance of {fmtM(balance)}.</div>}
                     <div style={{display:"flex",gap:10,marginTop:14}}>
-                      <Btn full variant="green" disabled={invalid} onClick={()=>{if(invalid)return;recordPayablePayment(p.id,amt);setPayPayId(null);setPayPayAmt("");}}>Record Payment</Btn>
-                      <Btn variant="ghost" onClick={()=>{setPayPayId(null);setPayPayAmt("");}}>Cancel</Btn>
+                      <Btn full variant="green" disabled={invalid} onClick={()=>{if(invalid)return;recordPayablePayment(p.id,amt);close();}}>Record Payment</Btn>
+                      <Btn variant="ghost" onClick={close}>Cancel</Btn>
                     </div>
                   </Modal>
                 );
