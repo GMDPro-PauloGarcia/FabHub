@@ -9272,6 +9272,56 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </table>
               </div>
             </Card>
+            {/* Aerwin-style statements — account-code driven (Income Statement + Cash Flow) */}
+            {(()=>{
+              const N=v=>Number(v)||0;
+              const yr=String(CY);
+              const inYear=d=>String(d||"").slice(0,4)===yr;
+              const revenue=billings.filter(b=>b.status!=="Cancelled"&&inYear(b.invoiceDate||b.dueDate)).reduce((s,b)=>s+N(b.amount),0);
+              // Costs by CoA code: payables are the source of truth; add legacy expenses not already in a payable/CV to avoid double-count.
+              const costRecs=[
+                ...payables.map(p=>({code:String(p.accountCode||""),amt:N(p.amount),date:p.invoiceDate||p.createdAt})),
+                ...exps.filter(e=>!e.payableId&&!e.cvId).map(e=>({code:String(e.accountCode||""),amt:N(e.amount),date:e.expDate})),
+              ].filter(r=>r.amt>0&&inYear(r.date));
+              const cos=costRecs.filter(r=>/^5/.test(r.code)).reduce((s,r)=>s+r.amt,0);
+              const opex=costRecs.filter(r=>/^6/.test(r.code)).reduce((s,r)=>s+r.amt,0);
+              const uncoded=costRecs.filter(r=>!/^[56]/.test(r.code)).reduce((s,r)=>s+r.amt,0);
+              const grossProfit=revenue-cos;
+              const gpMargin=revenue>0?Math.round(grossProfit/revenue*100):0;
+              const netIncome=grossProfit-opex-uncoded;
+              const cashIn=billings.reduce((s,b)=>s+(b.payments||[]).filter(p=>inYear(p.date)).reduce((ss,p)=>ss+N(p.amount),0),0);
+              const cashOut=payables.filter(p=>inYear(p.paidDate)).reduce((s,p)=>s+N(p.paidAmount),0);
+              const netCash=cashIn-cashOut;
+              const SLine=({label,value,color,bold,indent,top})=>(
+                <div style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderTop:top?"2px solid #e2e8f0":"1px solid #f1f5f9"}}>
+                  <span style={{fontSize:".84rem",color:bold?"#0f172a":"#475569",fontWeight:bold?800:500,paddingLeft:indent?14:0}}>{label}</span>
+                  <span style={{fontSize:".86rem",fontWeight:bold?800:600,fontFamily:"monospace",color:color||"#0f172a"}}>{value}</span>
+                </div>
+              );
+              return(
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginTop:16}}>
+                  <Card>
+                    <div style={{fontWeight:700,color:"#0f172a",marginBottom:8,fontSize:".95rem"}}>📈 Income Statement — {CY}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginBottom:6}}>By Chart-of-Accounts code · 5000s = Cost of Sales · 6000s = Operating Expenses</div>
+                    <SLine label="Revenue" value={fmt(revenue)} color="#3b82f6" bold/>
+                    <SLine label="Less: Cost of Sales (5000s)" value={"("+fmt(cos)+")"} color="#ef4444" indent/>
+                    <SLine label="Gross Profit" value={`${fmt(grossProfit)}  ·  ${gpMargin}%`} color={grossProfit>=0?"#059669":"#ef4444"} bold top/>
+                    <SLine label="Less: Operating Expenses (6000s)" value={"("+fmt(opex)+")"} color="#ef4444" indent/>
+                    {uncoded>0&&<SLine label="Less: Uncoded costs" value={"("+fmt(uncoded)+")"} color="#f59e0b" indent/>}
+                    <SLine label="Net Income" value={fmt(netIncome)} color={netIncome>=0?"#059669":"#ef4444"} bold top/>
+                    {uncoded>0&&<div style={{fontSize:".68rem",color:"#b45309",marginTop:8}}>⚠ {fmt(uncoded)} of costs have no account code — tag them on the PO/WO/Other Payable to classify correctly.</div>}
+                  </Card>
+                  <Card>
+                    <div style={{fontWeight:700,color:"#0f172a",marginBottom:8,fontSize:".95rem"}}>💵 Cash Flow — {CY}</div>
+                    <div style={{fontSize:".7rem",color:"#94a3b8",marginBottom:6}}>Operating cash · collections in, supplier/subcontractor payments out</div>
+                    <SLine label="Cash In — Collections" value={fmt(cashIn)} color="#10b981" bold/>
+                    <SLine label="Cash Out — AP Payments" value={"("+fmt(cashOut)+")"} color="#ef4444" bold/>
+                    <SLine label="Net Cash from Operations" value={fmt(netCash)} color={netCash>=0?"#059669":"#ef4444"} bold top/>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:8}}>Collections = client payments logged in Billing. AP Payments = amounts paid against payables (POs, Work Orders &amp; Other Payables).</div>
+                  </Card>
+                </div>
+              );
+            })()}
             <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:16,marginTop:16}}>
               <Card>
                 <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".9rem"}}>Expenses by Category — {CY}</div>
