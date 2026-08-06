@@ -10416,7 +10416,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {/* Finance tab bar — Accounting is scoped to the Payables (Other Payables) ledger only; the P&L/cash tabs stay owner-side. */}
         <div style={{position:"relative",marginBottom:24}}>
           <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"}}>
-            {(role==="Accounting"?[["payables","📤 Payables"]]:[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["projects","🏗 Projects P&L"],["payables","📤 Payables"],["loans","💳 Loans"]]).map(([t,l])=>(
+            {(role==="Accounting"?[["payables","📤 Payables"]]:[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["payables","📤 Payables"],["loans","💳 Loans"]]).map(([t,l])=>(
               <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:isMobile?".78rem":".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",flexShrink:0}}>
                 {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
               </button>
@@ -12702,18 +12702,83 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── COST ANALYSIS (Budget + Costing Study combined) ─────────────────────────
   if(page==="costanalysis") return(
     <Wrap>
-      <div style={{display:"flex",gap:10,marginBottom:20,borderBottom:"2px solid #e2e8f0",paddingBottom:12}}>
-        {[["budget","💰 Budget"],["costing","📊 Costing Study"]].map(([tab,label])=>(
+      <div style={{display:"flex",gap:10,marginBottom:20,borderBottom:"2px solid #e2e8f0",paddingBottom:12,flexWrap:"wrap"}}>
+        {[["budget","💰 Budget"],["costing","📊 Costing Study"],["profitability","🏗 Profitability"]].map(([tab,label])=>(
           <button key={tab} onClick={()=>setCostTab(tab)}
             style={{padding:"8px 20px",borderRadius:20,border:`2px solid ${costTab===tab?"#1e293b":"#e2e8f0"}`,background:costTab===tab?"#1e293b":"#fff",color:costTab===tab?"#fff":"#64748b",fontFamily:"inherit",fontWeight:costTab===tab?700:400,fontSize:".84rem",cursor:"pointer"}}>
             {label}
           </button>
         ))}
       </div>
-      {costTab==="budget"
-        ?<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>
-        :<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/>
-      }
+      {costTab==="budget"&&<BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/>}
+      {costTab==="costing"&&<CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/>}
+      {costTab==="profitability"&&(()=>{
+        // Project Profitability — Revenue (billings) − Cost (Accounts Payable) per
+        // project, Aerwin's formula. Cost is AP by project (where costs now live)
+        // plus any legacy expense not already routed into a payable, so nothing is
+        // double-counted or lost.
+        const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+        const rows=wonDeals.map(d=>{
+          const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
+          const billed=ms.reduce((s,b)=>s+Number(b.amount||0),0);
+          const collected=ms.reduce((s,b)=>s+(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),0),0);
+          const apCost=payables.filter(p=>p.projectId===d.id).reduce((s,p)=>s+Number(p.amount||0),0);
+          const expCost=exps.filter(e=>(e.projectId||e.dealId)===d.id&&!e.payableId&&!e.cvId).reduce((s,e)=>s+Number(e.amount||0),0);
+          const cost=apCost+expCost;
+          const grossProfit=billed-cost;
+          const margin=billed>0?Math.round(grossProfit/billed*100):null;
+          const contractVal=Number(d.value||0);
+          return{d,contractVal,billed,collected,cost,grossProfit,margin};
+        }).sort((a,b)=>b.contractVal-a.contractVal);
+        const totContract=rows.reduce((s,r)=>s+r.contractVal,0);
+        const totBilled=rows.reduce((s,r)=>s+r.billed,0);
+        const totCollected=rows.reduce((s,r)=>s+r.collected,0);
+        const totCost=rows.reduce((s,r)=>s+r.cost,0);
+        const totGP=totBilled-totCost;
+        const totMargin=totBilled>0?Math.round(totGP/totBilled*100):0;
+        return(
+          <div>
+            <div style={{fontSize:".8rem",color:"#64748b",marginBottom:14}}>Revenue is billed value; cost is Accounts Payable (POs, Work Orders &amp; Other Payables) tagged to each project.</div>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(5,1fr)",gap:10,marginBottom:20}}>
+              {[{l:"Contract Value",v:fmtM(totContract),c:"#3b82f6"},{l:"Total Billed",v:fmtM(totBilled),c:"#8b5cf6"},{l:"Collected",v:fmtM(totCollected),c:"#10b981"},{l:"AP Cost",v:fmtM(totCost),c:"#ef4444"},{l:"Gross Profit",v:fmtM(totGP),sub:totMargin+"%",c:totGP>=0?"#059669":"#ef4444"}].map(({l,v,sub,c})=>(
+                <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
+                  <div style={{fontSize:".6rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
+                  {sub&&<div style={{fontSize:".7rem",color:c,fontWeight:700}}>{sub} margin</div>}
+                </div>
+              ))}
+            </div>
+            <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}>
+                <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",background:"#1e293b",padding:"10px 16px",gap:8,minWidth:580}}>
+                  {["Project","Contract","Billed","Collected","AP Cost","Margin"].map(h=>(
+                    <div key={h} style={{fontSize:".65rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".6px"}}>{h}</div>
+                  ))}
+                </div>
+                {rows.length===0&&<div style={{padding:"24px",textAlign:"center",color:"#94a3b8"}}>No projects yet.</div>}
+                {rows.map(({d,contractVal,billed,collected,cost,margin},i)=>(
+                  <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:8,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",alignItems:"center",minWidth:580}}>
+                    <div>
+                      <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
+                      {d.contact&&<div style={{fontSize:".67rem",color:"#8b5cf6",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>📁 {d.client}</div>}
+                      <div style={{fontSize:".65rem",color:"#94a3b8"}}>{d.ceNo||"—"} · {d.stage==="14 · Completed"?<span style={{color:"#059669",fontWeight:700}}>✅ Completed</span>:<span style={{color:"#3b82f6"}}>{d.stage?.replace(/^\d+ · /,"")}</span>}</div>
+                    </div>
+                    <div style={{fontSize:".82rem",fontWeight:600,color:"#0f172a"}}>{contractVal?fmtM(contractVal):"—"}</div>
+                    <div style={{fontSize:".82rem",color:"#8b5cf6"}}>{billed?fmtM(billed):"—"}</div>
+                    <div style={{fontSize:".82rem",color:"#10b981",fontWeight:600}}>{collected?fmtM(collected):"—"}</div>
+                    <div style={{fontSize:".82rem",color:"#ef4444"}}>{cost?fmtM(cost):"—"}</div>
+                    <div style={{textAlign:"center"}}>
+                      {margin!==null?(
+                        <span style={{fontSize:".75rem",fontWeight:800,color:margin>=25?"#059669":margin>=10?"#f59e0b":"#ef4444",background:margin>=25?"#f0fdf4":margin>=10?"#fffbeb":"#fef2f2",borderRadius:20,padding:"3px 8px"}}>{margin}%</span>
+                      ):<span style={{color:"#94a3b8",fontSize:".75rem"}}>—</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </Wrap>
   );
 
