@@ -9,6 +9,13 @@
 -- app_sub(), then replace only the deals_del policy. Child records cascade at
 -- the DB level (deals FKs are ON DELETE CASCADE / SET NULL), so no child-table
 -- grants are needed. This must stay in sync with DEAL_DELETE_USERS in src/App.jsx.
+--
+-- DEPENDS ON migration 024 (defines is_mgr()/has_role() and the per-role
+-- deals_del policy). Apply 024 first. NOTE: as of this writing the production
+-- project still runs the legacy permissive `fabhub_app_access` (USING true)
+-- policy — 024 was not applied there — so the effective gate for who may delete
+-- a deal is the CLIENT allow-list in src/App.jsx. This migration only becomes
+-- meaningful once the strict RLS model (024) is in place.
 
 create or replace function public.app_username() returns text language sql stable as
   $fn$ select coalesce(nullif(current_setting('request.jwt.claims', true),'')::jsonb ->> 'username','') $fn$;
