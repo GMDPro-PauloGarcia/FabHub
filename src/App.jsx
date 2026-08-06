@@ -14843,6 +14843,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
   const[editId,setEditId]=useState(null);
   const[form,setForm]=useState(emptyDRF());
   const[filterSt,setFilterSt]=useState("All");
+  const mob=window.innerWidth<768;
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
 
   const openNew=()=>{setForm({...emptyDRF(),createdBy:session?.name||""});setEditId(null);setShowForm(true);};
@@ -14944,13 +14945,15 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
       {shown.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:"#94a3b8",fontSize:".84rem"}}>No design requests yet.</div>}
       {shown.length>0&&(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-          <div style={{overflowX:"auto"}}>
-          {/* Table header */}
+          <div style={{overflowX:mob?"visible":"auto"}}>
+          {/* Table header — hidden on mobile (cards carry their own labels) */}
+          {!mob&&(
           <div style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:640}}>
             {["DRF #","Status","Project","Client","Designer","Due",""].map((h,i)=>(
               <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8}}>{h}</div>
             ))}
           </div>
+          )}
           {/* Rows */}
           {shown.map((drf,idx)=>{
             const isExpanded=expandedId===drf.id;
@@ -14958,7 +14961,27 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
             const statusClr=DRF_CLR[drf.status]||"#94a3b8";
             return(
               <div key={drf.id} style={{borderBottom:idx<shown.length-1?"1px solid #f1f5f9":"none"}}>
-                {/* Summary row — click to expand */}
+                {/* Summary row — click to expand. Mobile uses a wrapping card
+                    layout; desktop keeps the fixed-width scrolling grid. */}
+                {mob?(
+                <div onClick={()=>setExpandedId(isExpanded?null:drf.id)}
+                  style={{display:"flex",flexDirection:"column",gap:6,padding:"12px 16px",cursor:"pointer",background:isNew?"#fff5f5":isExpanded?"#fdf4ff":"#fff",transition:"background .12s"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,color:"#ec4899",fontSize:".74rem"}}>{drf.drfNo}</span>
+                    <span style={{fontSize:".65rem",fontWeight:700,color:statusClr,background:statusClr+"18",border:`1px solid ${statusClr}33`,borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{drf.status}</span>
+                    <span style={{marginLeft:"auto",color:"#94a3b8",fontSize:".7rem"}}>{isExpanded?"▲":"▼"}</span>
+                  </div>
+                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".9rem",lineHeight:1.3,wordBreak:"break-word"}}>
+                    {drf.projectTitle}
+                    {drf.type&&<span style={{marginLeft:6,fontSize:".68rem",color:"#94a3b8",fontWeight:400}}>{drf.type}</span>}
+                  </div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:"2px 14px",fontSize:".76rem",color:"#475569"}}>
+                    <span><span style={{color:"#94a3b8"}}>Client: </span>{drf.client||"—"}</span>
+                    <span><span style={{color:"#94a3b8"}}>Designer: </span>{drf.designer||<span style={{color:"#cbd5e1"}}>Unassigned</span>}</span>
+                    <span style={{color:drf.designDeadline&&new Date(drf.designDeadline)<new Date()?"#ef4444":"#475569",fontWeight:drf.designDeadline&&new Date(drf.designDeadline)<new Date()?700:400}}><span style={{color:"#94a3b8",fontWeight:400}}>Due: </span>{drf.designDeadline||"—"}</span>
+                  </div>
+                </div>
+                ):(
                 <div onClick={()=>setExpandedId(isExpanded?null:drf.id)}
                   style={{display:"grid",gridTemplateColumns:"72px 110px 1fr 140px 130px 96px 36px",gap:0,padding:"10px 16px",alignItems:"center",cursor:"pointer",background:isNew?"#fff5f5":isExpanded?"#fdf4ff":"#fff",transition:"background .12s",minWidth:640}}
                   onMouseEnter={e=>{if(!isNew&&!isExpanded)e.currentTarget.style.background="#f8fafc";}}
@@ -14976,6 +14999,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                   <div style={{fontSize:".75rem",color:drf.designDeadline&&new Date(drf.designDeadline)<new Date()?"#ef4444":"#64748b",fontWeight:drf.designDeadline&&new Date(drf.designDeadline)<new Date()?700:400}}>{drf.designDeadline||"—"}</div>
                   <div style={{textAlign:"center",color:"#94a3b8",fontSize:".7rem"}}>{isExpanded?"▲":"▼"}</div>
                 </div>
+                )}
 
                 {/* Expanded detail panel */}
                 {isExpanded&&(
