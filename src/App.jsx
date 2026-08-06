@@ -5189,7 +5189,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payFilter, setPayFilter]=useState("All");
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
   const[payPayAmt, setPayPayAmt]=useState("");
-  const[payPayMode,setPayPayMode]=useState("amount"); // "amount" | "pct" (progress billing)
+  const[payPayMode,setPayPayMode]=useState("amount"); // "amount" | "pct" (progress payment to a subcontractor/supplier)
   const[payPayPct, setPayPayPct]=useState("");
   const[editPayId, setEditPayId]=useState(null);
   const[loans,     setLoans]    =useState([]);
@@ -11111,8 +11111,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const invalid=!(amt>0)||amt>balance+0.005;
                 const pctPaidSoFar=contract>0?Math.round((Number(p.paidAmount)||0)/contract*100):0;
                 const close=()=>{setPayPayId(null);setPayPayAmt("");setPayPayMode("amount");setPayPayPct("");};
-                // % mode is progress billing: percent is of the FULL contract, so
-                // retention (e.g. hold the last 10%) works by simply not billing to 100%.
+                // % mode is a progress PAYMENT to the subcontractor/supplier (money
+                // out, AP side — not client billing): percent is of the FULL contract,
+                // so retention (e.g. hold the last 10%) works by simply not paying to 100%.
                 const setFromPct=(v)=>{setPayPayPct(v);const pct=Number(v)||0;setPayPayAmt(pct>0?String(Math.round(contract*pct/100*100)/100):"");};
                 return(
                   <Modal open={!!payPayId} onClose={close} title="Record Payment">
@@ -11125,7 +11126,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <span style={{color:"#64748b"}}>Balance <strong style={{color:"#b91c1c"}}>{fmtM(balance)}</strong></span>
                       </div>
                     </div>
-                    {/* Amount vs % (progress billing) toggle */}
+                    {/* Amount vs % (progress payment) toggle */}
                     <div style={{display:"flex",gap:6,marginBottom:12}}>
                       {[["amount","₱ Amount"],["pct","% of contract"]].map(([m,l])=>(
                         <button key={m} onClick={()=>{setPayPayMode(m);setPayPayPct("");if(m==="amount")setPayPayAmt(String(balance));else setPayPayAmt("");}} style={{flex:1,background:payPayMode===m?"#1e293b":"#fff",color:payPayMode===m?"#fff":"#475569",border:`1.5px solid ${payPayMode===m?"#1e293b":"#e2e8f0"}`,borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,cursor:"pointer"}}>{l}</button>
@@ -11143,7 +11144,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </>
                     ):(
                       <>
-                        <Fld label="Progress this billing (% of contract)" required>
+                        <Fld label="Progress payment (% of contract)" required>
                           <Inp type="number" value={payPayPct} onChange={e=>setFromPct(e.target.value)} placeholder="e.g. 30"/>
                           {amt>0&&<div style={{fontSize:".78rem",color:"#0f172a",marginTop:4,fontWeight:600}}>= {fmtM(amt)} <span style={{color:"#94a3b8",fontWeight:400}}>of {fmtM(contract)} contract</span></div>}
                         </Fld>
