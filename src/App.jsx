@@ -9245,6 +9245,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <KPI label="Expenses"    value={fmtK(finTot.expenses)}    color="#ef4444"/>
               <KPI label="Net Profit"  value={fmtK(finTot.net)}         color={finTot.net>=0?"#059669":"#ef4444"}/>
             </div>
+            {/* BIR tax this month — input VAT (creditable) + EWT to remit (moved here from the ERP dashboard) */}
+            {(()=>{
+              const monthExps=exps.filter(e=>(e.expDate||"").slice(0,7)===today.slice(0,7));
+              const inputVatMonth=monthExps.reduce((s,e)=>s+(Number(e.inputVat)||0),0);
+              const ewtPayableMonth=monthExps.reduce((s,e)=>s+(Number(e.ewtAmount)||0),0);
+              if(!(inputVatMonth>0||ewtPayableMonth>0)) return null;
+              return(
+                <div style={{display:"flex",flexWrap:"wrap",gap:12,marginBottom:20,padding:"12px 16px",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:12}}>
+                  <span style={{fontWeight:800,color:"#1e3a8a",fontSize:".82rem"}}>🧾 BIR Tax · {new Date().toLocaleDateString("en-PH",{month:"long",year:"numeric"})}</span>
+                  <span style={{fontSize:".82rem",color:"#1e40af"}}>Input VAT (creditable): <strong>{fmt(inputVatMonth)}</strong></span>
+                  <span style={{fontSize:".82rem",color:"#1e40af"}}>EWT withheld (to remit): <strong>{fmt(ewtPayableMonth)}</strong></span>
+                  <span style={{fontSize:".72rem",color:"#64748b"}}>from supplier costs tagged this month</span>
+                </div>
+              );
+            })()}
             <Card>
               <div style={{fontWeight:700,color:"#0f172a",marginBottom:12,fontSize:".95rem"}}>Income Statement — {CY}</div>
               <div style={{overflowX:"auto"}}>
@@ -13486,11 +13501,7 @@ First few:
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               <button onClick={()=>openAddExp()} style={{background:"#0f172a",border:"none",borderRadius:9,padding:"8px 18px",color:"#facc15",fontFamily:"inherit",fontWeight:800,fontSize:".82rem",cursor:"pointer",letterSpacing:".3px"}}>+ OTHER PAYABLE</button>
-              <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📄 Daily Payables</button>
-              <button onClick={()=>setPage("checkvouchers")} style={{background:"#059669",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>✅ Check Payables</button>
-              <button onClick={()=>setPage("evouchers")} style={{background:"#7c3aed",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🧾 Liquidation</button>
               <button onClick={()=>setPage("wip")} style={{background:"#0e7490",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📐 WIP Report</button>
-              <button onClick={()=>setPage("cashflow")} style={{background:"#0d9488",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>💵 Cash Flow</button>
               <button onClick={()=>setPage("weeklycashflow")} style={{background:"#1f3864",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>📅 Weekly Summary</button>
               <button onClick={()=>setPage("audittrail")} style={{background:"#475569",border:"none",borderRadius:9,padding:"8px 16px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>🕵️ Audit Trail</button>
             </div>
@@ -13519,15 +13530,6 @@ First few:
               </div>
             ))}
           </div>
-          {/* BIR tax this month — input VAT (creditable) + EWT to remit */}
-          {(inputVatMonth>0||ewtPayableMonth>0)&&(
-            <div style={{display:"flex",flexWrap:"wrap",gap:12,marginBottom:16,padding:"12px 16px",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:12}}>
-              <span style={{fontWeight:800,color:"#1e3a8a",fontSize:".82rem"}}>🧾 BIR Tax · {new Date().toLocaleDateString("en-PH",{month:"long",year:"numeric"})}</span>
-              <span style={{fontSize:".82rem",color:"#1e40af"}}>Input VAT (creditable): <strong>{fmt(inputVatMonth)}</strong></span>
-              <span style={{fontSize:".82rem",color:"#1e40af"}}>EWT withheld (to remit): <strong>{fmt(ewtPayableMonth)}</strong></span>
-              <span style={{fontSize:".72rem",color:"#64748b"}}>from supplier costs tagged this month</span>
-            </div>
-          )}
           {/* POs Pending Payment */}
           {(()=>{
             const pendingPOs=prs.filter(p=>p.paymentStatus==="Pending Payment");
