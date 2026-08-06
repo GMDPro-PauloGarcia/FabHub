@@ -13479,6 +13479,7 @@ First few:
   if(page==="acctdash"&&(role==="Finance"||role==="Manager"||role==="Accounting"||role==="FinanceAssistant")) return(
     <Wrap>
       <FinanceErpBar active="dashboard" go={financeErpGo} counts={financeErpCounts()}/>
+      <FinanceDigestPanel billings={billings} exps={exps} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} payables={payables} cashPositions={cashPositions} today={today} isMobile={isMobile} sendTelegramNotification={sendTelegramNotification} toastEmit={toastEmit}/>
       {(()=>{
         const bpiPos=Object.values(cashPositions).sort((a,b)=>(b.date||"").localeCompare(a.date||""))[0];
         const bpiBal=bpiPos?Number(bpiPos.banks?.bpi?.book||bpiPos.banks?.bpi?.end||bpiPos.banks?.bpi?.beg||0):0;
@@ -23364,6 +23365,161 @@ const DEFAULT_COA=[
   {code:"6700",name:"Depreciation Expense",type:"Expense"},
   {code:"6800",name:"Miscellaneous Expense",type:"Expense"},
 ];
+
+// Finance Daily Digest — self-contained snapshot (Collections/AR · Cash Position
+// · Billing/Payables · Profitability) with a Send-to-Telegram action. Computes
+// everything from the raw app data so it can be dropped on any finance screen.
+// Mirrors the panel originally embedded in Finance → Overview.
+function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],deals=[],payables=[],cashPositions={},today,isMobile,sendTelegramNotification,toastEmit}){
+  const now=new Date();
+  const cy=now.getFullYear();
+  const totalBilled=billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>s+Number(b.amount||0),0);
+  const totalCollected=billings.reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
+  const totalExpenses=exps.reduce((s,e)=>s+Number(e.amount||0),0);
+  const grossProfit=totalCollected-totalExpenses;
+  const grossMargin=totalCollected>0?Math.round(grossProfit/totalCollected*100):0;
+  const collectionRate=totalBilled>0?Math.round(totalCollected/totalBilled*100):0;
+  const outstanding=Math.max(0,totalBilled-totalCollected);
+  const dso=totalCollected>0?Math.round(outstanding/(totalCollected/365)):0;
+  const backlog=wonDeals.reduce((s,d)=>{const billed=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").reduce((bs,b)=>bs+Number(b.amount||0),0);return s+Math.max(0,Number(d.value||0)-billed);},0);
+  const y12ago=new Date();y12ago.setFullYear(y12ago.getFullYear()-1);
+  const recentDeals=deals.filter(d=>{const dt=new Date(d.createdAt||"2020-01-01");return dt>=y12ago;});
+  const winRate=recentDeals.length>0?Math.round(recentDeals.filter(d=>WON_STAGES.includes(d.stage)||d.stage==="14 · Completed").length/recentDeals.length*100):0;
+  const avgDeal=wonDeals.length>0?Math.round(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)/wonDeals.length):0;
+  const months6=Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);return{y:d.getFullYear(),m:d.getMonth()};});
+  const monthlyRev=months6.map(({y,m})=>billings.filter(b=>b.status!=="Cancelled").reduce((s,b)=>{const ds=b.invoiceDate||b.dueDate;if(!ds)return s;const d=new Date(ds);return(!isNaN(d)&&d.getFullYear()===y&&d.getMonth()===m)?s+Number(b.amount||0):s;},0));
+  const clientMap={};billings.forEach(b=>{const d=wonDeals.find(x=>x.id===b.dealId)||completedDeals.find(x=>x.id===b.dealId);if(!d)return;const k=d.client;if(!clientMap[k])clientMap[k]=0;clientMap[k]+=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);});
+  const topClients=Object.entries(clientMap).sort(([,a],[,b])=>b-a).slice(0,5);
+  const totalPayables=payables.filter(p=>p.status==="Unpaid").reduce((s,p)=>s+Number(p.amount||0),0);
+  const overduePayables=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).length;
+  const overdueBillings=billings.filter(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
+  const unbilledProjects=wonDeals.filter(d=>billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled").length===0);
+  const fmtM=v=>"₱"+Number(v).toLocaleString("en-PH",{maximumFractionDigits:0});
+  const todayPos=cashPositions[today]||null;
+  const BANK_LABELS={bpi:"BPI",metro:"Metrobank",china:"Chinabank",bdo:"BDO",security:"Security Bank",union:"UnionBank"};
+  const cpBanks=todayPos?Object.entries(todayPos.banks||{}).map(([id,r])=>({id,label:BANK_LABELS[id]||id,beg:Number(r.beg||0),book:Number(r.book||0),end:Number(r.end||0)})).filter(b=>b.beg>0||b.book>0||b.end>0):[];
+  const cpTotalBeg=cpBanks.reduce((s,b)=>s+b.beg,0);
+  const cpTotalEnd=cpBanks.reduce((s,b)=>s+(b.end||b.book||b.beg),0);
+  const cpCollections=(todayPos?.collections?.manualCollections||[]).reduce((s,c)=>s+Number(c.amount||0),0);
+  const cpNetMove=cpTotalEnd-cpTotalBeg;
+  const arOverdueAmt=overdueBillings.reduce((s,m)=>{const p=(m.payments||[]).reduce((ps,x)=>ps+Number(x.amount||0),0);return s+Math.max(0,Number(m.amount||0)-p);},0);
+  const arAge30 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d<=30;}).length;
+  const arAge60 =overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>30&&d<=60;}).length;
+  const arAge90p=overdueBillings.filter(m=>{const d=Math.floor((now-new Date(m.dueDate))/(864e5));return d>60;}).length;
+  const arStatus=overdueBillings.length===0?"ok":arAge90p>0?"danger":"warning";
+  const cpStatus=!todayPos?"warning":cpTotalEnd<500000?"danger":cpNetMove<0?"warning":"ok";
+  const overduePayablesAmt=payables.filter(p=>p.status==="Unpaid"&&p.dueDate&&p.dueDate<today).reduce((s,p)=>s+Number(p.amount||0),0);
+  const billStatus=overduePayables>0?"danger":unbilledProjects.length>0?"warning":"ok";
+  const profStatus=grossMargin<20?"danger":grossMargin<30?"warning":"ok";
+  const prevMonthRev=monthlyRev[monthlyRev.length-2]||0;
+  const thisMonthRev=monthlyRev[monthlyRev.length-1]||0;
+  const revTrend=prevMonthRev>0?Math.round((thisMonthRev-prevMonthRev)/prevMonthRev*100):0;
+  const digestAlerts=[];
+  if(overdueBillings.length>0) digestAlerts.push({icon:"🚨",text:`${overdueBillings.length} overdue invoice${overdueBillings.length!==1?"s":""} — ${fmtM(arOverdueAmt)} uncollected`});
+  if(grossMargin<25) digestAlerts.push({icon:"📉",text:`Gross margin at ${grossMargin}% — below 25% target`});
+  if(dso>90) digestAlerts.push({icon:"⏳",text:`DSO is ${dso} days — clients are paying very slowly`});
+  if(unbilledProjects.length>0) digestAlerts.push({icon:"📋",text:`${unbilledProjects.length} awarded project${unbilledProjects.length!==1?"s":""} with no milestones billed yet`});
+  if(overduePayables>0) digestAlerts.push({icon:"📤",text:`${overduePayables} overdue payable${overduePayables!==1?"s":""} — ${fmtM(overduePayablesAmt)}`});
+  if(!todayPos) digestAlerts.push({icon:"⚠️",text:"No cash position entry for today — please update Daily Cash Position"});
+  if(digestAlerts.length===0) digestAlerts.push({icon:"✅",text:"All financial indicators are on track — no alerts today."});
+  const statusColor={ok:"#059669",warning:"#d97706",danger:"#dc2626"};
+  const statusBg={ok:"#f0fdf4",warning:"#fffbeb",danger:"#fef2f2"};
+  const statusBorder={ok:"#bbf7d0",warning:"#fde68a",danger:"#fecaca"};
+  const statusLabel={ok:"✅ Good",warning:"⚠️ Watch",danger:"🔴 Action Needed"};
+  const sendDigest=async()=>{
+    const dateStr=now.toLocaleDateString("en-PH",{weekday:"long",year:"numeric",month:"long",day:"numeric"});
+    const lines=[
+      `💼 <b>GMD Finance Daily Digest</b>`,`📅 ${dateStr}`,``,
+      `🧾 <b>COLLECTIONS / AR</b>  ${arStatus==="ok"?"✅":arStatus==="danger"?"🔴":"⚠️"}`,
+      `• Total Billed: ${fmtM(totalBilled)}`,
+      `• Collected: ${fmtM(totalCollected)} (${collectionRate}% rate)`,
+      `• Outstanding AR: ${fmtM(outstanding)}`,
+      `• DSO: ${dso} days`,
+      ...(overdueBillings.length>0?[`• Overdue Invoices: ${overdueBillings.length} — ${fmtM(arOverdueAmt)}`]:[`• No overdue invoices ✅`]),
+      ``,
+      `💵 <b>DAILY CASH POSITION</b>  ${cpStatus==="ok"?"✅":cpStatus==="danger"?"🔴":"⚠️"}`,
+      ...(todayPos?[`• Opening: ${fmtM(cpTotalBeg)}`,`• Closing: ${fmtM(cpTotalEnd)}`,`• Collections Today: ${fmtM(cpCollections)}`,`• Net Movement: ${cpNetMove>=0?"▲":"▼"} ${fmtM(Math.abs(cpNetMove))}`]:[`• ⚠️ No cash position logged for today`]),
+      ``,
+      `📤 <b>BILLING / PAYABLES</b>  ${billStatus==="ok"?"✅":billStatus==="danger"?"🔴":"⚠️"}`,
+      `• Unpaid Payables: ${fmtM(totalPayables)}`,
+      ...(overduePayables>0?[`• Overdue Payables: ${overduePayables} items — ${fmtM(overduePayablesAmt)}`]:[`• No overdue payables ✅`]),
+      ...(unbilledProjects.length>0?[`• Unbilled Projects: ${unbilledProjects.length}`]:[]),
+      `• Contract Backlog: ${fmtM(backlog)}`,
+      ``,
+      `📈 <b>PROFITABILITY</b>  ${profStatus==="ok"?"✅":profStatus==="danger"?"🔴":"⚠️"}`,
+      `• Gross Margin: ${grossMargin}%`,
+      `• Gross Profit: ${fmtM(grossProfit)}`,
+      `• Total Expenses: ${fmtM(totalExpenses)}`,
+      `• This Month Revenue: ${fmtM(thisMonthRev)}${revTrend!==0?` (${revTrend>0?"+":""}${revTrend}% vs last month)`:""}`,
+      `• Win Rate: ${winRate}% | Avg Deal: ${fmtM(avgDeal)}`,
+      ``,
+      `🚦 <b>ALERTS</b>`,...digestAlerts.map(a=>`${a.icon} ${a.text}`),
+      ``,`<i>Sent from FabHub Finance · ${dateStr}</i>`,
+    ];
+    try{ await sendTelegramNotification&&sendTelegramNotification("financialcontrol",lines.join("\n")); toastEmit&&toastEmit("Daily digest sent to Financial Control ✅","success"); }
+    catch(e){ toastEmit&&toastEmit("Could not send digest — check Telegram settings.","error"); }
+  };
+  const ReviewSection=({icon,title,status,children})=>(
+    <div style={{background:statusBg[status],border:`1.5px solid ${statusBorder[status]}`,borderRadius:10,padding:"12px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <span style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>{icon} {title}</span>
+        <span style={{fontSize:".68rem",fontWeight:700,color:statusColor[status],background:"#fff",border:`1px solid ${statusBorder[status]}`,borderRadius:20,padding:"2px 8px"}}>{statusLabel[status]}</span>
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:3}}>{children}</div>
+    </div>
+  );
+  const Row=({label,value,color})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+      <span style={{fontSize:".75rem",color:"#64748b"}}>{label}</span>
+      <span style={{fontSize:".78rem",fontWeight:600,color:color||"#0f172a"}}>{value}</span>
+    </div>
+  );
+  return(
+    <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:"1rem"}}>📡</span>
+          <span style={{fontWeight:700,color:"#0f172a",fontSize:".85rem"}}>Finance Daily Digest</span>
+          <span style={{fontSize:".68rem",color:"#94a3b8"}}>— {now.toLocaleDateString("en-PH",{weekday:"short",month:"short",day:"numeric"})}</span>
+        </div>
+        <button onClick={sendDigest} style={{background:"#0f172a",border:"none",borderRadius:8,padding:"7px 16px",fontFamily:"inherit",fontSize:".75rem",fontWeight:700,color:"#fff",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+          <span>📲</span> Send to Telegram
+        </button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+        <ReviewSection icon="🧾" title="Collections / AR" status={arStatus}>
+          <Row label="Outstanding AR" value={fmtM(outstanding)} color={outstanding>0?"#ef4444":"#059669"}/>
+          <Row label="Collection Rate" value={collectionRate+"%"} color={collectionRate>=50?"#059669":"#d97706"}/>
+          <Row label="DSO" value={dso+" days"} color={dso>90?"#dc2626":dso>60?"#d97706":"#059669"}/>
+          {overdueBillings.length>0&&<Row label="Overdue Invoices" value={`${overdueBillings.length} — ${fmtM(arOverdueAmt)}`} color="#dc2626"/>}
+          {overdueBillings.length===0&&<Row label="Overdue" value="None ✅" color="#059669"/>}
+        </ReviewSection>
+        <ReviewSection icon="💵" title="Daily Cash Position" status={cpStatus}>
+          {todayPos?<>
+            <Row label="Opening Balance" value={fmtM(cpTotalBeg)}/>
+            <Row label="Closing Balance" value={fmtM(cpTotalEnd)} color={cpTotalEnd<500000?"#dc2626":"#059669"}/>
+            <Row label="Collections Today" value={fmtM(cpCollections)} color="#059669"/>
+            <Row label="Net Movement" value={(cpNetMove>=0?"+":"")+fmtM(cpNetMove)} color={cpNetMove>=0?"#059669":"#dc2626"}/>
+          </> : <Row label="Status" value="⚠️ Not logged today" color="#d97706"/>}
+        </ReviewSection>
+        <ReviewSection icon="📤" title="Billing / Payables" status={billStatus}>
+          <Row label="Unpaid Payables" value={fmtM(totalPayables)} color={totalPayables>0?"#ef4444":"#059669"}/>
+          <Row label="Overdue Payables" value={overduePayables>0?`${overduePayables} — ${fmtM(overduePayablesAmt)}`:"None ✅"} color={overduePayables>0?"#dc2626":"#059669"}/>
+          <Row label="Unbilled Projects" value={unbilledProjects.length>0?`${unbilledProjects.length} projects`:"None ✅"} color={unbilledProjects.length>0?"#d97706":"#059669"}/>
+          <Row label="Contract Backlog" value={fmtM(backlog)} color="#8b5cf6"/>
+        </ReviewSection>
+        <ReviewSection icon="📈" title="Profitability" status={profStatus}>
+          <Row label="Gross Margin" value={grossMargin+"%"} color={grossMargin>=30?"#059669":grossMargin>=20?"#d97706":"#dc2626"}/>
+          <Row label="Gross Profit" value={fmtM(grossProfit)} color={grossProfit>=0?"#059669":"#dc2626"}/>
+          <Row label="Total Expenses" value={fmtM(totalExpenses)} color="#ef4444"/>
+          <Row label="This Month Rev." value={fmtM(thisMonthRev)} color="#3b82f6"/>
+          {revTrend!==0&&<Row label="vs Last Month" value={(revTrend>0?"+":"")+revTrend+"%"} color={revTrend>0?"#059669":"#dc2626"}/>}
+          <Row label="Win Rate" value={winRate+"%"} color={winRate>=40?"#059669":"#d97706"}/>
+        </ReviewSection>
+      </div>
+    </div>
+  );
+}
 
 // Aerwin-styled Finance module header + tab bar. Gives the finance/accounting
 // screens the look of the finance team's standalone ERP (navy banner, gold
