@@ -4793,8 +4793,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     return !!result;
   };
   const updateDRF=(id,data)=>{
-    upDrfs(ds=>ds.map(d=>d.id===id?{...d,...data}:d));
-    if(isSupabaseReady()) sbUpdate('design_requests',id,drfToSb(data)).catch(()=>{});
+    // Merge the partial `data` onto the existing record BEFORE mapping to
+    // Supabase. drfToSb fills every unset column with empty defaults, so
+    // passing the raw partial (e.g. just {designer,status} from the assign
+    // dropdown) wiped drf_no/client/project_title/design_deadline in the DB —
+    // the DRF "got lost" on the next sync. Map the full merged row instead.
+    upDrfs(ds=>{
+      const next=ds.map(d=>d.id===id?{...d,...data}:d);
+      if(isSupabaseReady()){
+        const merged=next.find(d=>d.id===id);
+        if(merged) sbUpdate('design_requests',id,drfToSb(merged)).catch(()=>{});
+      }
+      return next;
+    });
   };
   const deleteDRF=(id)=>{
     upDrfs(ds=>ds.filter(d=>d.id!==id));
