@@ -91,6 +91,10 @@ CREATE TABLE IF NOT EXISTS billing_payments (
   ref_no        TEXT,
   note          TEXT,
   recorded_by   TEXT,
+  value_date    DATE,
+  bank          TEXT DEFAULT '',
+  payment_method TEXT DEFAULT '',
+  bounced       BOOLEAN DEFAULT FALSE,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 

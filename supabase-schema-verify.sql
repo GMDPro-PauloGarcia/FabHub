@@ -144,8 +144,12 @@ CREATE TABLE IF NOT EXISTS public.billing_payments (
   recorded_by   text DEFAULT '',
   created_at    timestamptz DEFAULT now()
 );
-ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS ref_no      text DEFAULT '';
-ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS recorded_by text DEFAULT '';
+ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS ref_no         text DEFAULT '';
+ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS recorded_by    text DEFAULT '';
+ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS value_date     date;
+ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS bank           text DEFAULT '';
+ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS payment_method text DEFAULT '';
+ALTER TABLE public.billing_payments ADD COLUMN IF NOT EXISTS bounced        boolean DEFAULT false;
 
 -- ── 8. EXPENSES ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.expenses (
