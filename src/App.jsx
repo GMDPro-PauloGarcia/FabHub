@@ -6598,7 +6598,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const BadgeDot=({count})=>count>0?(
       <span style={{position:"absolute",top:6,right:"50%",transform:"translateX(18px)",background:"#ef4444",color:"#fff",borderRadius:10,padding:"1px 5px",fontSize:".6rem",fontWeight:800,lineHeight:1.2,minWidth:14,textAlign:"center"}}>{count>9?"9+":count}</span>
     ):null;
-    const navigate=(id)=>{setPage(id);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);if(id==="home")setFromHome(false);};
+    const navigate=(id)=>{
+      // Virtual nav items open the Finance page pinned to a tab (same as the
+      // desktop sidebar) — they are not standalone pages, so route them here or
+      // they hit the "No view" fallback on mobile.
+      let pg=id;
+      if(id==="cashposition"){setFinTab("cash");pg="finance";}
+      else if(id==="payables"){setFinTab("payables");pg="finance";}
+      else if(id==="finance"){setFinTab("overview");}
+      setPage(pg);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);if(id==="home")setFromHome(false);
+    };
     // For Manager show fixed key tabs + More; others show first 4 + Me
     const primaryIds=role==="Manager"
       ? ["home","pipeline","projects","finance"]
@@ -10432,6 +10441,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
     if(page==="finance"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
       <Wrap>
+        {/* Aerwin's Purchase-to-Payment ERP header — module launcher across the finance area */}
+        <FinanceErpBar active={finTab==="payables"?"ap":null} go={financeErpGo} counts={financeErpCounts()}/>
         {/* Finance tab bar — Accounting is scoped to the Payables (Other Payables) ledger only; the P&L/cash tabs stay owner-side. */}
         <div style={{position:"relative",marginBottom:24}}>
           <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"}}>
