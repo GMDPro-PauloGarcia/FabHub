@@ -6358,7 +6358,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"billing",l:"Billing"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"payables",l:"Accounts Payable"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"dailylog",l:"Daily Site Log"},{id:"addenda",l:"Scope Changes"},{id:"materialreq",l:"Material Requests"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6376,7 +6376,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"billing",l:"Billing"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"payables",l:"Accounts Payable"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6430,7 +6430,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"billing",l:"Billing"},{id:"payables",l:"Accounts Payable"},{id:"finance",l:"Finance"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"payables",l:"Accounts Payable"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting", items:[{id:"coa",l:"Chart of Accounts"}]},
     ],
   };
