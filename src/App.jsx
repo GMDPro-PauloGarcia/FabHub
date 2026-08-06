@@ -2608,7 +2608,7 @@ export default function App(){
   // Sales users explicitly granted deal-delete rights (for clearing duplicate /
   // double-entered deals). Kept to named individuals rather than the whole Sales
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
-  const DEAL_DELETE_USERS=["jena","wyn"];
+  const DEAL_DELETE_USERS=["jena","wyn","paolo"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
