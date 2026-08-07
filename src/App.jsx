@@ -3299,8 +3299,48 @@ export default function App(){
   // Returns the sbUpsert outcome (true/false) so a caller that's about to write
   // a DEPENDENT row (one referencing this record by foreign key) can await
   // confirmation first — see createProjectCard for why this matters.
+  // Client-side mirror of the server INSERT policies (supabase_migration_037_
+  // rls_rollout_v2.sql). Its ONLY job is to keep the bulk/auto re-push paths
+  // (migrateToCloud + the load-time auto-sync) from re-uploading records the
+  // current role can't write. Those pushes replay the whole local cache — most
+  // of which was synced DOWN from the server — so for a role not in a table's
+  // insert list, RLS rejects every row with "new row violates row-level
+  // security policy". The drop handler then paints that as "N changes NOT saved
+  // — please redo them", which is both alarming and wrong: the rows already
+  // exist on the server and nothing was lost (observed live: 53 job_orders =
+  // the entire table). Skipping the doomed writes removes the false alarm
+  // without weakening RLS — the server stays the source of truth, and any
+  // genuine single-record write still goes through its own guarded path.
+  // Aliases match the mint-session ROLE_MAP so raw profile roles map to the
+  // canonical RLS roles before the check. Tables absent from the map are left
+  // unrestricted so no legitimate push path changes behavior.
+  const INSERT_ROLES={
+    deals:["Manager","Sales","SalesOpsAdmin"],
+    job_orders:["Manager","ProjectMover"],
+    purchase_requests:["Manager","Finance","FinanceAssistant","Procurement"],
+    material_requests:["Manager","Sales","Procurement","SalesOpsAdmin"],
+    budget_requests:["Manager","Sales","Procurement","SalesOpsAdmin"],
+    subcon_work_orders:["Manager","Finance","FinanceAssistant","Procurement"],
+    addenda:["Manager","ProjectMover","Procurement","Design"],
+    swatches:["Manager","Procurement","Design"],
+    checklists:["Manager","ProjectMover"],
+    expenses:["Manager","Finance","Accounting","FinanceAssistant"],
+    billing_milestones:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
+    billing_payments:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],
+    project_budgets:["Manager","QS"],
+    // activity_log is INSERT=AUTH server-side — any logged-in user may write it.
+  };
+  const ROLE_ALIASES={Operations:"ProjectMover",Ops:"ProjectMover","Cost Control":"Finance",Admin:"Manager"};
+  const roleCanInsert=(table)=>{
+    const allowed=INSERT_ROLES[table];
+    if(!allowed) return true; // unmapped table → don't change push behavior
+    const canon=ROLE_ALIASES[role]||role;
+    return allowed.includes(canon);
+  };
   const sbSyncOne=(table,record,mapper)=>{
     if(!isSupabaseReady()||!record) return Promise.resolve(false);
+    // Don't re-push what RLS will reject — see roleCanInsert / INSERT_ROLES above.
+    if(!roleCanInsert(table)) return Promise.resolve(false);
     const payload=mapper?mapper(record):record;
     if(!hasValidUUIDs(payload)) return Promise.resolve(false);
     return sbUpsert(table,payload,'id')
@@ -3415,7 +3455,10 @@ export default function App(){
   const migrateToCloud=useCallback(async()=>{
     if(!isSupabaseReady()){toastEmit("Supabase is not connected — check environment variables","error",5000);return;}
     toastEmit("Pushing all data to cloud…","info",2500);
-    const syncAll=(table,arr,mapper)=>arr?.length?Promise.all(arr.map(r=>{const p=mapper?mapper(r):r;return hasValidUUIDs(p)?sbUpsert(table,p,'id'):Promise.resolve();})).catch(e=>console.error("migrate "+table+":",e.message)):Promise.resolve();
+    // Skip tables the current role can't INSERT (see roleCanInsert): re-pushing
+    // them only produces false "NOT saved — please redo" toasts for rows RLS
+    // rejects, which already exist on the server.
+    const syncAll=(table,arr,mapper)=>(arr?.length&&roleCanInsert(table))?Promise.all(arr.map(r=>{const p=mapper?mapper(r):r;return hasValidUUIDs(p)?sbUpsert(table,p,'id'):Promise.resolve();})).catch(e=>console.error("migrate "+table+":",e.message)):Promise.resolve();
     await syncAll("deals",deals,toSbDeal);
     await syncAll("job_orders",jos,toSbJO);
     await syncAll("expenses",exps,toSbExpense);
@@ -3430,7 +3473,7 @@ export default function App(){
     if(billings?.length){
       await Promise.all(billings.map(m=>{if(!isUUID(m.id))return Promise.resolve();sbSyncOne("billing_milestones",m,toSbBilling);return Promise.all((m.payments||[]).map(p=>isUUID(p.id)?sbSyncOne("billing_payments",{...p,milestoneId:m.id},toSbPayment):Promise.resolve()));})).catch(()=>{});
     }
-    if(budgets){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
+    if(budgets&&roleCanInsert("project_budgets")){Object.entries(budgets).forEach(([dealId,b])=>{if(isUUID(dealId)) sbUpsert("project_budgets",toSbBudget(dealId,b),"deal_id").catch(()=>{});});}
         manual_collections: JSON.stringify(pos.collections?.manualCollections||[]),
     setTimeout(()=>toastEmit("Done! All data pushed to Supabase. Refresh Safari to see it.","success",6000),1200);
   },[hasValidUUIDs,deals,jos,exps,prs,mreqs,breqs,addenda,swatches,checklist,actLog,billings,budgets,cashPositions,infs]);
