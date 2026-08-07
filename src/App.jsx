@@ -17340,7 +17340,8 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
 
   // Column aliases → canonical WO field. Header comparison is case/punctuation-insensitive.
   const BATCH_COLS=[
-    {key:"subcontractor",   aliases:["subcontractor","subcon","subconname","vendor","supplier","company"]},
+    {key:"woNumber",        aliases:["wonumber","wono","won","wonum","workorderno","workordernumber","wonumberno"]},
+    {key:"subcontractor",   aliases:["subcontractor","subcontractorname","subcon","subconname","subconnesname","vendor","supplier","company"]},
     {key:"project",         aliases:["project","projectname","client","deal","ceno","cenumber","ce"]},
     {key:"specialty",       aliases:["specialty","worktype","trade","scopecategory","category"]},
     {key:"scopeOfWork",     aliases:["scopeofwork","scope","workdescription","description","works"]},
@@ -17348,13 +17349,15 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
     {key:"retentionPct",    aliases:["retentionpct","retention","retentionpercent","retention%"]},
     {key:"paymentStructure",aliases:["paymentstructure","payment","paymentmilestones","milestones"]},
     {key:"paymentTerms",    aliases:["paymentterms","terms","credit","creditterms"]},
-    {key:"startDate",       aliases:["startdate","start","commencement","begindate"]},
+    {key:"startDate",       aliases:["startdate","start","commencement","begindate","schedule"]},
     {key:"targetEndDate",   aliases:["targetenddate","enddate","end","completion","targetdate","deadline"]},
     {key:"woDate",          aliases:["wodate","date","dateissued","issuedate","orderdate"]},
     {key:"notes",           aliases:["notes","remarks","comment","comments"]},
   ];
   const normHdr=h=>String(h||"").toLowerCase().replace(/[^a-z0-9%]/g,"");
-  // Excel serial dates → ISO; passes through strings that already look like dates.
+  // "NONE"/"N/A"/"10%"/"1,000" → number; blanks and non-numeric text → 0.
+  const numCell=v=>{const m=String(v==null?"":v).replace(/,/g,"").match(/-?\d+(\.\d+)?/);return m?Number(m[0]):0;};
+  // Excel serial dates → ISO; also handles m/d/yy, m/d/yyyy and yyyy-mm-dd text.
   const toISODate=v=>{
     if(v===""||v==null) return "";
     if(typeof v==="number"&&v>0&&v<80000){ // Excel serial
@@ -17364,8 +17367,9 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
     const s=String(v).trim();
     const m=s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
     if(m) return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
-    const m2=s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/); // m/d/yyyy or d/m/yyyy → assume m/d/yyyy
-    if(m2) return `${m2[3]}-${String(m2[1]).padStart(2,"0")}-${String(m2[2]).padStart(2,"0")}`;
+    // m/d/yyyy or m/d/yy (2-digit year → 20xx). Day/month order assumes US m/d.
+    const m2=s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}(?:\d{2})?)/);
+    if(m2){const yr=m2[3].length===2?`20${m2[3]}`:m2[3];return `${yr}-${String(m2[1]).padStart(2,"0")}-${String(m2[2]).padStart(2,"0")}`;}
     return s;
   };
   // Match a free-text project cell to a won deal (by contact/client name or CE No).
@@ -17412,14 +17416,15 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
       const projCell=g("project");
       const deal=matchProject(projCell);
       const rec={
+        woNumber:String(g("woNumber")||"").trim(),
         subcontractor:String(g("subcontractor")||"").trim(),
         projectCell:String(projCell||"").trim(),
         projectId:deal?deal.id:"",
         projectName:deal?projDisplayName(deal):"",
         specialty:String(g("specialty")||"").trim(),
         scopeOfWork:String(g("scopeOfWork")||"").trim(),
-        contractAmount:n(g("contractAmount")),
-        retentionPct:n(g("retentionPct")),
+        contractAmount:numCell(g("contractAmount")),
+        retentionPct:numCell(g("retentionPct")),
         paymentStructure:String(g("paymentStructure")||"").trim(),
         paymentTerms:String(g("paymentTerms")||"").trim(),
         startDate:toISODate(g("startDate")),
@@ -17473,7 +17478,7 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
       requestedBy:session?.name||"",
       approvedBy:woDirect?session?.name||"":"",
       acctStatus:woDirect?"For Accounting":"",
-      woNumber:"",
+      woNumber:r.woNumber||"", // preserve the file's WO number; addSWOBatch reallocates on collision
     }));
     const count=addSWOBatch(recs);
     const skipped=(batchRows||[]).length-valid.length;
@@ -17693,7 +17698,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
             <div style={{maxHeight:"52vh",overflow:"auto",border:"1px solid #e2e8f0",borderRadius:10}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:".76rem"}}>
                 <thead><tr style={{background:"#f8fafc",textAlign:"left",position:"sticky",top:0}}>
-                  {["#","Subcontractor","Project","Scope","Amount","Ret%","Status"].map(h=><th key={h} style={{padding:"7px 9px",fontWeight:800,color:"#64748b",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>)}
+                  {["#","WO No","Subcontractor","Project","Scope","Amount","Ret%","Status"].map(h=><th key={h} style={{padding:"7px 9px",fontWeight:800,color:"#64748b",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>)}
                 </tr></thead>
                 <tbody>
                   {batchRows.map((r,i)=>{
@@ -17701,6 +17706,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                     return(
                       <tr key={i} style={{background:ok?"#fff":"#fef2f2",borderBottom:"1px solid #f1f5f9"}}>
                         <td style={{padding:"6px 9px",color:"#94a3b8"}}>{r._row}</td>
+                        <td style={{padding:"6px 9px",color:"#64748b",whiteSpace:"nowrap"}}>{r.woNumber||"auto"}</td>
                         <td style={{padding:"6px 9px",fontWeight:600,color:"#1e293b"}}>{r.subcontractor||"—"}</td>
                         <td style={{padding:"6px 9px",color:"#475569"}}>{r.projectName||<span style={{color:"#dc2626"}}>{r.projectCell||"—"}</span>}</td>
                         <td style={{padding:"6px 9px",color:"#64748b",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.scopeOfWork}>{r.scopeOfWork||"—"}</td>
