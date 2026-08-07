@@ -10984,45 +10984,45 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {poPayables.length>0&&(
                 <div style={{marginBottom:20}}>
                   <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                    <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px"}}>🛒 Supplier Payables — Open POs</div>
-                    <span style={{fontSize:".65rem",background:"#fef3c7",color:"#92400e",borderRadius:20,padding:"1px 8px",fontWeight:700}}>{poPayables.length} supplier{poPayables.length!==1?"s":""} · {fmtM(totalPOPayables)}</span>
+                    <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>🛒 Supplier Payables — Open POs</div>
+                    <ErpBadge kind="invoiced">{poPayables.length} supplier{poPayables.length!==1?"s":""} · {fmtM(totalPOPayables)}</ErpBadge>
                   </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"6px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8}}>
+                  <div style={{background:ERP.paper,borderRadius:12,border:`1px solid ${ERP.line}`,overflow:"hidden"}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",background:ERP.navyLight,borderBottom:`2px solid ${ERP.line}`,gap:8}}>
                       {["Supplier","POs","Items","Total Owed"].map((h,i)=>(
-                        <div key={i} style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px",textAlign:i===3?"right":"left"}}>{h}</div>
+                        <div key={i} style={{fontSize:11,fontWeight:700,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":i===0?"left":"center"}}>{h}</div>
                       ))}
                     </div>
                     {poPayables.map((g,idx)=>{
                       const isOverdue=g.earliestDelivery&&g.earliestDelivery<today;
                       return(
-                        <div key={g.supplier} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"8px 14px",gap:8,alignItems:"center",borderBottom:idx<poPayables.length-1?"1px solid #f1f5f9":"none",background:"#fff"}}
-                          onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+                        <div key={g.supplier} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",borderBottom:idx<poPayables.length-1?`1px solid ${ERP.line}`:"none",background:"#fff"}}
+                          onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
                           <div>
-                            <div style={{fontSize:".82rem",color:"#0f172a",fontWeight:700}}>{g.supplier}</div>
-                            {g.earliestDelivery&&<div style={{fontSize:".65rem",color:isOverdue?"#ef4444":"#94a3b8",marginTop:1}}>{isOverdue?"⚠ Overdue: ":"Expected: "}{g.earliestDelivery}</div>}
+                            <div style={{fontSize:13,color:ERP.ink,fontWeight:700}}>{g.supplier}</div>
+                            {g.earliestDelivery&&<div style={{fontSize:11,color:isOverdue?ERP.danger:ERP.muted,marginTop:1}}>{isOverdue?"⚠ Overdue: ":"Expected: "}{g.earliestDelivery}</div>}
                           </div>
-                          <div style={{fontSize:".78rem",color:"#64748b",textAlign:"center"}}>{g.poCount||g.itemCount}</div>
-                          <div style={{fontSize:".78rem",color:"#64748b",textAlign:"center"}}>{g.itemCount}</div>
-                          <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".87rem",fontFamily:"monospace"}}>{fmtM(g.total)}</div>
+                          <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.poCount||g.itemCount}</div>
+                          <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.itemCount}</div>
+                          <div style={{textAlign:"right",fontWeight:700,color:ERP.danger,fontSize:13,fontVariantNumeric:"tabular-nums"}}>{fmtM(g.total)}</div>
                         </div>
                       );
                     })}
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"8px 14px",gap:8,alignItems:"center",background:"#f8fafc",borderTop:"2px solid #e2e8f0"}}>
-                      <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a"}}>Total</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",background:ERP.navyLight,borderTop:`2px solid ${ERP.line}`}}>
+                      <div style={{fontSize:12,fontWeight:700,color:ERP.navy}}>Total</div>
                       <div/><div/>
-                      <div style={{textAlign:"right",fontWeight:800,color:"#ef4444",fontSize:".9rem",fontFamily:"monospace"}}>{fmtM(totalPOPayables)}</div>
+                      <div style={{textAlign:"right",fontWeight:800,color:ERP.danger,fontSize:14,fontVariantNumeric:"tabular-nums"}}>{fmtM(totalPOPayables)}</div>
                     </div>
                   </div>
                 </div>
               )}
               {/* ── Accounts Payable Log — vendor invoices with aging & balances ── */}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
-                <div style={{fontSize:".75rem",fontWeight:700,color:"#0f172a",textTransform:"uppercase",letterSpacing:".8px"}}>📋 Accounts Payable Log</div>
-                <span style={{fontSize:".65rem",color:"#94a3b8"}}>Vendor invoices logged from POs, with aging & balances.</span>
+                <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>📋 Accounts Payable Log</div>
+                <span style={{fontSize:11.5,color:ERP.muted}}>Vendor invoices logged from POs, with aging & balances.</span>
                 <div style={{marginLeft:"auto",display:"flex",gap:5}}>
                   {["All","Unpaid","Partial","Paid"].map(f=>(
-                    <button key={f} onClick={()=>setPayFilter(f)} style={{background:apFilter===f?"#1e293b":"#fff",color:apFilter===f?"#fff":"#64748b",border:`1.5px solid ${apFilter===f?"#1e293b":"#e2e8f0"}`,borderRadius:7,padding:"4px 11px",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
+                    <button key={f} onClick={()=>setPayFilter(f)} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
                   ))}
                 </div>
               </div>
@@ -12944,8 +12944,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     <Wrap>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,flexWrap:"wrap",gap:10}}>
         <div>
-          <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.1rem"}}>📄 Daily Payables</div>
-          <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Accounting logs · Finance triggers payment</div>
+          <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Payments</div>
+          <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Accounting logs · Finance triggers payment</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <Btn onClick={()=>openAddExp()}>+ Other Payable</Btn>
