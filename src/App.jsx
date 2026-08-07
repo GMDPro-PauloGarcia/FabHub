@@ -10591,17 +10591,22 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <Wrap>
         {/* Aerwin's Purchase-to-Payment ERP header — module launcher across the finance area */}
         <FinanceErpBar active={finTab==="payables"?"ap":finTab==="payments"?"payments":null} go={financeErpGo} counts={financeErpCounts()}/>
-        {/* Finance tab bar — Accounting is scoped to the Payables (Other Payables) ledger only; the P&L/cash tabs stay owner-side. */}
-        <div style={{position:"relative",marginBottom:24}}>
-          <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"}}>
-            {(role==="Accounting"?[["payables","📤 Payables"],["payments","💸 Payments"]]:[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["payables","📤 Payables"],["payments","💸 Payments"],["loans","💳 Loans"]]).map(([t,l])=>(
-              <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:isMobile?".78rem":".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",flexShrink:0}}>
-                {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
-              </button>
-            ))}
+        {/* The old Finance sub-tab bar (Overview/Cash/Payables/Payments) was removed —
+            those views are reached from the left nav (Finance, Cash Position,
+            Accounts Payable) and the ERP bar (Accounts Payable, Payments). Only
+            P&L and Loans have no other home, so they stay as two compact pills. */}
+        {role!=="Accounting"&&["overview","pl","loans"].includes(finTab)&&(
+          <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+            {[["pl","📈 P&L"],["loans","💳 Loans"]].map(([t,l])=>{
+              const on=finTab===t;
+              return(
+                <button key={t} onClick={()=>setFinTab(on?"overview":t)} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${on?ERP.navy:ERP.line}`,background:on?ERP.navy:"#fff",color:on?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>
+                  {l}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:on?"rgba(255,255,255,.85)":"#7c3aed",color:on?ERP.navy:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
+                </button>
+              );
+            })}
           </div>
-          {isMobile&&<div style={{position:"absolute",right:0,top:0,bottom:2,width:48,background:"linear-gradient(to right, transparent, #fff)",pointerEvents:"none"}}/>}
-        </div>
+        )}
 
         {/* ── OVERVIEW TAB ── */}
         {finTab==="overview"&&role!=="Accounting"&&(()=>{
