@@ -6,9 +6,9 @@ export const drfToSb  =(r)=>({id:r.id,deal_id:r.dealId||null,drf_no:r.drfNo||'',
 
 export const drfFromSb=(r)=>({...r,dealId:r.deal_id,drfNo:r.drf_no,designDeadline:r.design_deadline,projectTitle:r.project_title,refLinks:r.ref_links||[],approvedLink:r.approved_link,createdBy:r.created_by,createdAt:r.created_at});
 
-export const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.category||'',sub_category:r.subCategory||'',brand:r.brand||'',supplier:r.supplier||'',unit:r.unit||'',unit_size:r.unitSize||'',location:r.location||'Main Warehouse',qty_on_hand:Number(r.qtyOnHand)||0,reorder_point:Number(r.reorderPoint)||0,last_purchase_price:Number(r.lastPurchasePrice)||0,avg_cost:Number(r.avgCost)||0,last_updated:r.lastUpdated||null,notes:r.notes||'',status:r.status||'Active',created_by:r.createdBy||''});
+export const invToSb  =(r)=>({id:r.id,code:r.code||'',name:r.name||'',category:r.category||'',sub_category:r.subCategory||'',brand:r.brand||'',supplier:r.supplier||'',unit:r.unit||'',unit_size:r.unitSize||'',location:r.location||'Main Warehouse',qty_on_hand:Number(r.qtyOnHand)||0,reorder_point:Number(r.reorderPoint)||0,last_purchase_price:Number(r.lastPurchasePrice)||0,avg_cost:Number(r.avgCost)||0,last_updated:r.lastUpdated||null,notes:r.notes||'',status:r.status||'Active',ownership:r.ownership||'Project Stock',created_by:r.createdBy||''});
 
-export const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,lastUpdated:r.last_updated,createdBy:r.created_by});
+export const invFromSb=(r)=>({...r,subCategory:r.sub_category,unitSize:r.unit_size,qtyOnHand:Number(r.qty_on_hand)||0,reorderPoint:Number(r.reorder_point)||0,lastPurchasePrice:Number(r.last_purchase_price)||0,avgCost:Number(r.avg_cost)||0,ownership:r.ownership||'Project Stock',lastUpdated:r.last_updated,createdBy:r.created_by});
 
 export const moveToSb =(r)=>({id:r.id,item_id:r.itemId||null,move_type:r.moveType||'',qty:Number(r.qty)||0,unit_cost:Number(r.unitCost)||0,deal_id:r.dealId||null,notes:r.notes||'',date:r.date||null,recorded_by:r.recordedBy||''});
 
