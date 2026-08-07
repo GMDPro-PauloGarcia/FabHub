@@ -6038,24 +6038,29 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(v.cvNo||"Check Voucher")}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f172a;padding:40px;background:#fff}
-  .doc{max-width:660px;margin:0 auto;border:1px solid #cbd5e1;border-radius:8px;padding:32px 34px;position:relative}
-  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #d4a017;padding-bottom:14px;margin-bottom:18px}
-  .co{font-size:1.2rem;font-weight:800}
-  .co small{display:block;font-size:.7rem;font-weight:400;color:#64748b;margin-top:3px}
-  .cvlbl{font-size:.6rem;letter-spacing:.12em;color:#94a3b8;text-transform:uppercase;text-align:right}
-  .cvno{font-size:1.15rem;font-weight:800;color:#b45309;text-align:right;font-family:monospace}
-  table{width:100%;border-collapse:collapse}
+  body{font-family:'Inter',-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1B2430;padding:40px;background:#fff}
+  .doc{max-width:660px;margin:0 auto;border:1.5px solid #0B2545;border-radius:8px;padding:32px 34px;position:relative;overflow:hidden}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #C9A24B;padding-bottom:14px;margin-bottom:18px;position:relative}
+  .co{font-size:1.2rem;font-weight:800;color:#0B2545}
+  .co small{display:block;font-size:.7rem;font-weight:400;color:#5B6472;margin-top:3px}
+  .cvlbl{font-size:.62rem;letter-spacing:.05em;color:#5B6472;text-transform:uppercase;text-align:right}
+  .cvno{font-size:1.15rem;font-weight:800;color:#A8822F;text-align:right}
+  table{width:100%;border-collapse:collapse;position:relative}
   td{padding:6px 0;font-size:.86rem;vertical-align:top}
-  td.lbl{color:#64748b;width:150px}
-  td.val{font-weight:600}
-  .amt{margin:20px 0;border:1px solid #e2e8f0;border-radius:8px;padding:16px 18px;display:flex;justify-content:space-between;align-items:center;background:#f8fafc}
-  .amt .k{font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8}
-  .amt .v{font-size:1.5rem;font-weight:800}
-  .sig{display:flex;gap:30px;margin-top:44px}
-  .sig .b{flex:1;text-align:center;border-top:1px solid #94a3b8;padding-top:6px;font-size:.72rem;color:#64748b}
-  .wm{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;font-weight:800;color:rgba(212,160,23,.06);transform:rotate(-18deg);pointer-events:none}
-  @media print{body{padding:0}.doc{border:none}}
+  td.lbl{color:#5B6472;width:150px;font-weight:600}
+  td.val{font-weight:600;color:#1B2430}
+  .amt{margin:16px 0;border:1px solid #DCE2EC;border-radius:8px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#EEF2F8;position:relative}
+  .amt .k{font-size:.78rem;color:#5B6472;font-weight:600}
+  .amt .v{font-size:1.4rem;font-weight:800;color:#0B2545}
+  .je{background:#fff;border:1px solid #DCE2EC;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;position:relative}
+  .je .t{font-weight:700;color:#0B2545;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+  .je .l{display:flex;justify-content:space-between;padding:2px 0}
+  .je .l.cr span:first-child{padding-left:18px;color:#5B6472}
+  .je .l.cr span:last-child{color:#5B6472}
+  .sig{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:26px;position:relative}
+  .sig .b{text-align:center;border-top:1px solid #1B2430;padding-top:5px;font-size:.7rem;color:#5B6472}
+  .wm{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:38px;font-weight:800;color:rgba(11,37,69,0.05);white-space:nowrap;pointer-events:none}
+  @media print{body{padding:0}}
 </style></head><body>
 <div class="doc">
   <div class="wm">GMD PRODUCTION INC.</div>
@@ -6073,6 +6078,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ${row("Check Number",v.checkNo)}
   </table>
   <div class="amt"><span class="k">Amount</span><span class="v">${pesos(v.amount)}</span></div>
+  <div class="je">
+    <div class="t">Accounting Entry</div>
+    <div class="l"><span>Dr &nbsp;2000 — Accounts Payable - Trade</span><span>${pesos(v.amount)}</span></div>
+    <div class="l cr"><span>Cr &nbsp;${esc(bankName)}</span><span>${pesos(v.amount)}</span></div>
+  </div>
   <div class="sig">
     <div class="b">Prepared by — Finance</div>
     <div class="b">Approved by — Management</div>
@@ -13439,44 +13449,55 @@ First few:
         const apRef=v.apRef||(payables.find(p=>p.id===v.payableId)||{}).apNumber||"—";
         const pesos=n=>"PHP "+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
         const DocRow=({label,value})=>(
-          <div style={{display:"flex",padding:"7px 0",borderBottom:"1px solid #f1f5f9"}}>
-            <div style={{width:150,color:"#64748b",fontSize:".82rem",flexShrink:0}}>{label}</div>
-            <div style={{fontWeight:600,color:"#0f172a",fontSize:".86rem"}}>{value||"—"}</div>
+          <div style={{display:"flex",gap:14,marginBottom:9,fontSize:13}}>
+            <div style={{width:140,color:"#5B6472",fontWeight:600,flexShrink:0}}>{label}</div>
+            <div style={{fontWeight:600,color:"#1B2430"}}>{value||"—"}</div>
           </div>
         );
         return(
-          <div onClick={()=>setCvView(null)} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16,overflowY:"auto"}}>
-            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,width:"100%",maxWidth:640,boxShadow:"0 20px 60px rgba(0,0,0,.3)",overflow:"hidden"}}>
-              <div style={{padding:"26px 30px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"2px solid #d4a017",paddingBottom:14,marginBottom:16}}>
-                  <div>
-                    <div style={{fontSize:"1.2rem",fontWeight:800,color:"#0f172a"}}>GMD PRODUCTION INC.</div>
-                    <div style={{fontSize:".68rem",color:"#64748b",marginTop:3}}>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</div>
+          <div onClick={()=>setCvView(null)} style={{position:"fixed",inset:0,background:"rgba(11,20,37,.55)",zIndex:9999,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"40px 16px",overflowY:"auto"}}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,width:"100%",maxWidth:620,boxShadow:"0 20px 50px rgba(0,0,0,.3)",overflow:"hidden"}}>
+              <div style={{padding:"18px 20px"}}>
+                {/* cv-doc: navy border + diagonal watermark, matching Aerwin's ERP */}
+                <div style={{border:"1.5px solid #0B2545",borderRadius:8,padding:"22px 26px",background:"#fff",position:"relative",overflow:"hidden"}}>
+                  <div style={{position:"absolute",top:"44%",left:"50%",transform:"translate(-50%,-50%) rotate(-18deg)",fontSize:38,fontWeight:800,color:"rgba(11,37,69,0.05)",whiteSpace:"nowrap",pointerEvents:"none"}}>GMD PRODUCTION INC.</div>
+                  <div style={{position:"relative"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",borderBottom:"2px solid #C9A24B",paddingBottom:10,marginBottom:14}}>
+                      <div>
+                        <div style={{fontSize:15,fontWeight:800,color:"#0B2545"}}>GMD PRODUCTION INC.</div>
+                        <div style={{fontSize:11,color:"#5B6472",marginTop:2}}>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div style={{fontSize:10,letterSpacing:".05em",color:"#5B6472",textTransform:"uppercase"}}>Check Voucher No.</div>
+                        <div style={{fontSize:16,fontWeight:800,color:"#A8822F"}}>{v.cvNo||"—"}</div>
+                      </div>
+                    </div>
+                    <DocRow label="Date" value={v.date}/>
+                    <DocRow label="Payee" value={v.payee}/>
+                    <DocRow label="Particulars" value={v.description}/>
+                    <DocRow label="PO Reference" value={v.poRef}/>
+                    <DocRow label="AP Reference" value={apRef}/>
+                    <DocRow label="Bank" value={bankName}/>
+                    <DocRow label="Check Number" value={v.checkNo}/>
+                    <div style={{margin:"14px 0",border:"1px solid #DCE2EC",borderRadius:8,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#EEF2F8"}}>
+                      <span style={{fontSize:12,color:"#5B6472",fontWeight:600}}>Amount</span>
+                      <span style={{fontSize:20,fontWeight:800,color:"#0B2545"}}>{pesos(v.amount)}</span>
+                    </div>
+                    <div style={{background:"#fff",border:"1px solid #DCE2EC",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12.5}}>
+                      <div style={{fontWeight:700,color:"#0B2545",fontSize:11,textTransform:"uppercase",letterSpacing:".04em",marginBottom:5}}>Accounting Entry</div>
+                      <div style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}><span style={{color:"#1B2430"}}>Dr &nbsp;2000 — Accounts Payable - Trade</span><span>{pesos(v.amount)}</span></div>
+                      <div style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}><span style={{paddingLeft:18,color:"#5B6472"}}>Cr &nbsp;{bankName}</span><span style={{color:"#5B6472"}}>{pesos(v.amount)}</span></div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20,marginTop:26}}>
+                      <div style={{borderTop:"1px solid #1B2430",paddingTop:5,fontSize:11,color:"#5B6472",textAlign:"center"}}>Prepared by — Finance</div>
+                      <div style={{borderTop:"1px solid #1B2430",paddingTop:5,fontSize:11,color:"#5B6472",textAlign:"center"}}>Approved by — Management</div>
+                    </div>
                   </div>
-                  <div style={{textAlign:"right"}}>
-                    <div style={{fontSize:".6rem",letterSpacing:".12em",color:"#94a3b8",textTransform:"uppercase"}}>Check Voucher No.</div>
-                    <div style={{fontSize:"1.1rem",fontWeight:800,color:"#b45309",fontFamily:"monospace"}}>{v.cvNo||"—"}</div>
-                  </div>
-                </div>
-                <DocRow label="Date" value={v.date}/>
-                <DocRow label="Payee" value={v.payee}/>
-                <DocRow label="Particulars" value={v.description}/>
-                <DocRow label="PO Reference" value={v.poRef}/>
-                <DocRow label="AP Reference" value={apRef}/>
-                <DocRow label="Bank" value={bankName}/>
-                <DocRow label="Check Number" value={v.checkNo}/>
-                <div style={{margin:"18px 0",border:"1px solid #e2e8f0",borderRadius:10,padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",background:"#f8fafc"}}>
-                  <span style={{fontSize:".68rem",letterSpacing:".1em",textTransform:"uppercase",color:"#94a3b8",fontWeight:700}}>Amount</span>
-                  <span style={{fontSize:"1.5rem",fontWeight:800,color:"#0f172a"}}>{pesos(v.amount)}</span>
-                </div>
-                <div style={{display:"flex",gap:28,marginTop:36}}>
-                  <div style={{flex:1,textAlign:"center",borderTop:"1px solid #94a3b8",paddingTop:6,fontSize:".72rem",color:"#64748b"}}>Prepared by — Finance</div>
-                  <div style={{flex:1,textAlign:"center",borderTop:"1px solid #94a3b8",paddingTop:6,fontSize:".72rem",color:"#64748b"}}>Approved by — Management</div>
                 </div>
               </div>
-              <div style={{display:"flex",justifyContent:"flex-end",gap:8,padding:"12px 20px",borderTop:"1px solid #f1f5f9",background:"#fafafa"}}>
-                <button onClick={()=>printCheckVoucher(v)} style={{background:"#eef2ff",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}}>🖨 Print</button>
-                <button onClick={()=>setCvView(null)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".8rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>Close</button>
+              <div style={{display:"flex",justifyContent:"flex-end",gap:8,padding:"14px 20px",borderTop:"1px solid #DCE2EC"}}>
+                <button onClick={()=>printCheckVoucher(v)} style={{background:"transparent",border:"1px solid #DCE2EC",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,fontWeight:600,color:"#0B2545",cursor:"pointer"}}>🖨 Print</button>
+                <button onClick={()=>setCvView(null)} style={{background:"#0B2545",border:"none",borderRadius:7,padding:"9px 18px",fontFamily:"inherit",fontSize:13,fontWeight:600,color:"#fff",cursor:"pointer"}}>Close</button>
               </div>
             </div>
           </div>
@@ -23407,21 +23428,21 @@ function FinanceErpBar({active,go,counts={}}){
     {k:"cv",l:"Check Vouchers",n:counts.cv},
   ];
   return(
-    <div style={{marginBottom:16}}>
-      <div style={{background:"linear-gradient(135deg,#132339,#1e293b)",borderRadius:"14px 14px 0 0",padding:"16px 22px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
+    <div style={{marginBottom:18}}>
+      <div style={{background:"linear-gradient(135deg,#0B2545 0%,#132F5C 100%)",borderRadius:12,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,boxShadow:"0 4px 14px rgba(11,37,69,0.18)"}}>
         <div>
-          <div style={{fontSize:"1.15rem",fontWeight:800,color:"#fff",letterSpacing:"-.01em"}}>GMD <span style={{color:"#e0a52a"}}>Production Inc.</span></div>
-          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:2,letterSpacing:".02em"}}>Purchase-to-Payment · Accounts Payable · Check Voucher System</div>
+          <div style={{fontSize:18,fontWeight:700,color:"#fff",letterSpacing:".3px"}}>GMD <span style={{color:"#C9A24B"}}>Production Inc.</span></div>
+          <div style={{fontSize:12,color:"#C7D4E8",marginTop:2,fontWeight:500}}>Purchase-to-Payment · Accounts Payable · Check Voucher · Chart of Accounts</div>
         </div>
-        <span style={{border:"1px solid #e0a52a",color:"#e0a52a",borderRadius:999,padding:"4px 14px",fontSize:".64rem",fontWeight:800,letterSpacing:".14em",textTransform:"uppercase"}}>Finance Module</span>
+        <span style={{background:"rgba(201,162,75,0.18)",border:"1px solid #C9A24B",color:"#C9A24B",borderRadius:20,padding:"5px 10px",fontSize:11,fontWeight:600,letterSpacing:"1.2px",textTransform:"uppercase"}}>Finance Module</span>
       </div>
-      <div style={{background:"#fff",border:"1px solid #e2e8f0",borderTop:"none",borderRadius:"0 0 14px 14px",padding:"8px",display:"flex",gap:6,flexWrap:"wrap"}}>
+      <div style={{background:"#fff",border:"1px solid #DCE2EC",borderRadius:10,padding:6,marginTop:18,display:"flex",gap:6,flexWrap:"wrap"}}>
         {tabs.map(t=>{
           const on=t.k===active;
           return(
-            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",gap:7,background:on?"#1e293b":"transparent",color:on?"#fff":"#475569",border:"none",borderRadius:9,padding:"9px 16px",fontFamily:"inherit",fontSize:".82rem",fontWeight:on?800:600,cursor:on?"default":"pointer"}}>
+            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:1,minWidth:108,background:on?"#0B2545":"transparent",color:on?"#fff":"#5B6472",border:"none",borderRadius:8,padding:"10px 10px",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:on?"default":"pointer",transition:"all .15s ease"}}>
               {t.l}
-              {t.n>0&&<span style={{background:on?"#e0a52a":"#fde68a",color:on?"#1e293b":"#92400e",borderRadius:999,minWidth:18,height:18,padding:"0 5px",display:"inline-flex",alignItems:"center",justifyContent:"center",fontSize:".64rem",fontWeight:800}}>{t.n}</span>}
+              {t.n>0&&<span style={{background:on?"rgba(255,255,255,0.85)":"#C9A24B",color:"#0B2545",borderRadius:10,padding:"1px 7px",fontSize:11,fontWeight:700}}>{t.n}</span>}
             </button>
           );
         })}
