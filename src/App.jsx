@@ -2031,7 +2031,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
 }
 
 // ─── ACCOUNTING HOME ─────────────────────────────────────────────────────────
-function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,wonDeals}){
+function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,setFinTab,wonDeals}){
   const[tab,setTab]=useState("cash");
   const cashItems=exps.filter(e=>e.acctStatus==="For Payment"&&e.paymentMethod!=="Check");
   const checkItems=vouchers.filter(v=>v.status==="For Release"||v.status==="Draft");
@@ -2046,7 +2046,7 @@ function AcctHome({exps,vouchers,fmt,today,greeting,todayL,session,setPage,wonDe
           <div style={{color:"#64748b",fontSize:".85rem",marginTop:2}}>Accounting Dashboard · {todayL}</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <button onClick={()=>setPage("accounting")} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📒 All Expenses</button>
+          <button onClick={()=>{setFinTab&&setFinTab("payables");setPage("finance");}} style={{background:"#6366f1",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📤 Accounts Payable</button>
           <button onClick={()=>setPage("checkvouchers")} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:"pointer"}}>📄 Check Vouchers</button>
         </div>
       </div>
@@ -7262,7 +7262,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── ACCOUNTING HOME ───────────────────────────────────────────────────────
   if(role==="Accounting") return(
-    <AcctHome exps={exps} vouchers={vouchers} fmt={fmt} today={today} greeting={greeting} todayL={todayL} session={session} setPage={setPage} wonDeals={wonDeals}/>
+    <AcctHome exps={exps} vouchers={vouchers} fmt={fmt} today={today} greeting={greeting} todayL={todayL} session={session} setPage={setPage} setFinTab={setFinTab} wonDeals={wonDeals}/>
   );
 
   // ── QS HOME ──────────────────────────────────────────────────────────────
@@ -13708,8 +13708,10 @@ First few:
         const autoSuggest=amt>=10000&&pr.poNumber?"check":"daily";
         const handleConfirm=async()=>{
           if(poPayType==="daily"){
-            setExpForm({expDate:today,category:"Materials",note:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""} — ${pr.supplier||""}`,amount:amt||"",bankAccount:"",projectId:pr.projectId||null,receipt:pr.deliveryNote||"",acctStatus:"For Payment"});
-            setEditExpId(null);setExpModal(true);
+            // "Other Payable" — an AP-ledger entry (was the retired Daily Payables expense).
+            setPayForm({...emptyPayForm(),vendor:pr.supplier||"",amount:amt||"",dueDate:today,category:"Supplier",projectId:pr.projectId||null,notes:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,poNumber:pr.poNumber||"",invoiceNumber:pr.deliveryNote||""});
+            setEditPayId(null);setPayModal(true);
+            setPage("finance");setFinTab("payables");
           } else {
             const nextNo=await claimDocNumber("CV",vouchers.map(v=>v.cvNo),4,true);
             setCvForm({date:today,cvNo:nextNo,payee:pr.supplier||"",description:`${pr.itemName}${pr.poNumber?" — "+pr.poNumber:""}`,amount:amt||"",bank:"",notes:"",status:"Draft",poRef:pr.poNumber||"",payableId:null,checkNo:"",clearedDate:"",isCleared:false,projectId:pr.projectId||null});
@@ -13735,16 +13737,16 @@ First few:
                 <>
                   <div style={{padding:"16px 20px 10px"}}>
                     <div style={{fontWeight:700,color:"#0f172a",fontSize:".85rem",marginBottom:6}}>How will this be paid?</div>
-                    <div style={{fontSize:".75rem",color:"#64748b",lineHeight:1.55}}>Use <strong>Check Payable</strong> for formal supplier invoices (typically ₱10,000+). Use <strong>Daily Payable</strong> for small cash purchases or petty cash reimbursements.</div>
+                    <div style={{fontSize:".75rem",color:"#64748b",lineHeight:1.55}}>Use <strong>Check Payable</strong> for formal supplier invoices to be paid by check (typically ₱10,000+). Use <strong>Other Payable</strong> to log it in the AP ledger for payment by online transfer or cash.</div>
                     <div style={{marginTop:10,padding:"7px 11px",borderRadius:8,background:autoSuggest==="check"?"#f0fdf4":"#eff6ff",fontSize:".72rem",fontWeight:600,color:autoSuggest==="check"?"#059669":"#6366f1"}}>
-                      💡 Suggested: {autoSuggest==="check"?"Check Payable — formal invoice, ≥ ₱10,000":"Daily Payable — small amount or no PO number"}
+                      💡 Suggested: {autoSuggest==="check"?"Check Payable — formal invoice, ≥ ₱10,000":"Other Payable — small amount or no PO number"}
                     </div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,padding:"10px 20px 20px"}}>
                     <button onClick={()=>{setPoPayType("daily");setPoPayStep(2);}} style={{background:autoSuggest==="daily"?"#6366f1":"#f8fafc",border:autoSuggest==="daily"?"2px solid #6366f1":"2px solid #e2e8f0",borderRadius:12,padding:"18px 12px",cursor:"pointer",fontFamily:"inherit",textAlign:"center",color:autoSuggest==="daily"?"#fff":"#1e293b",transition:"all .15s"}}>
                       <div style={{fontSize:"1.5rem",marginBottom:7}}>📄</div>
-                      <div style={{fontWeight:700,fontSize:".83rem"}}>Daily Payable</div>
-                      <div style={{fontSize:".68rem",color:autoSuggest==="daily"?"rgba(255,255,255,.8)":"#94a3b8",marginTop:4,lineHeight:1.4}}>Cash / petty cash<br/>Small amounts</div>
+                      <div style={{fontWeight:700,fontSize:".83rem"}}>Other Payable</div>
+                      <div style={{fontSize:".68rem",color:autoSuggest==="daily"?"rgba(255,255,255,.8)":"#94a3b8",marginTop:4,lineHeight:1.4}}>AP ledger entry<br/>Online / cash</div>
                     </button>
                     <button onClick={()=>{setPoPayType("check");setPoPayStep(2);}} style={{background:autoSuggest==="check"?"#059669":"#f8fafc",border:autoSuggest==="check"?"2px solid #059669":"2px solid #e2e8f0",borderRadius:12,padding:"18px 12px",cursor:"pointer",fontFamily:"inherit",textAlign:"center",color:autoSuggest==="check"?"#fff":"#1e293b",transition:"all .15s"}}>
                       <div style={{fontSize:"1.5rem",marginBottom:7}}>✅</div>
@@ -13757,11 +13759,11 @@ First few:
                 <>
                   <div style={{padding:"16px 20px"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-                      <span style={{background:poPayType==="check"?"#f0fdf4":"#eff6ff",color:poPayType==="check"?"#059669":"#6366f1",padding:"4px 12px",borderRadius:20,fontWeight:700,fontSize:".78rem"}}>{poPayType==="check"?"✅ Check Payable":"📄 Daily Payable"}</span>
+                      <span style={{background:poPayType==="check"?"#f0fdf4":"#eff6ff",color:poPayType==="check"?"#059669":"#6366f1",padding:"4px 12px",borderRadius:20,fontWeight:700,fontSize:".78rem"}}>{poPayType==="check"?"✅ Check Payable":"📄 Other Payable"}</span>
                       <button onClick={()=>setPoPayStep(1)} style={{background:"none",border:"none",color:"#6366f1",cursor:"pointer",fontSize:".74rem",fontWeight:600,textDecoration:"underline",fontFamily:"inherit",padding:0}}>Change</button>
                     </div>
                     <div style={{fontSize:".8rem",color:"#475569",lineHeight:1.55}}>
-                      {poPayType==="check"?"A Check Voucher will be pre-filled with this PO's details. You can review and finalize amounts before saving.":"A Daily Payable entry will be pre-filled with this PO's details. You can review and adjust before saving."}
+                      {poPayType==="check"?"A Check Voucher will be pre-filled with this PO's details. You can review and finalize amounts before saving.":"An Other Payable entry will be pre-filled with this PO's details in the Finance AP ledger. You can review and adjust before saving."}
                     </div>
                     <div style={{marginTop:12,background:"#f8fafc",borderRadius:10,padding:"12px 14px",fontSize:".78rem",color:"#334155",lineHeight:1.7}}>
                       <div><strong>Supplier:</strong> {pr.supplier||"—"}</div>
@@ -13771,7 +13773,7 @@ First few:
                   </div>
                   <div style={{display:"flex",gap:10,padding:"0 20px 20px"}}>
                     <button onClick={()=>setPoPayStep(1)} style={{flex:1,background:"#f1f5f9",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",color:"#475569"}}>← Back</button>
-                    <button onClick={handleConfirm} style={{flex:2,background:poPayType==="check"?"#059669":"#6366f1",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",color:"#fff"}}>Open {poPayType==="check"?"Check Payable":"Daily Payable"} Form →</button>
+                    <button onClick={handleConfirm} style={{flex:2,background:poPayType==="check"?"#059669":"#6366f1",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",color:"#fff"}}>Open {poPayType==="check"?"Check Payable":"Other Payable"} Form →</button>
                   </div>
                 </>
               )}
