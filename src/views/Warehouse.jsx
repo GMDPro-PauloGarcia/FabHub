@@ -14,6 +14,10 @@ const INV_CATEGORIES = [
 ];
 const INV_UNITS = ["pcs","sheets","meters","sqm","kg","sets","rolls","liters","bags","lots","pairs","boxes"];
 const INV_LOCATIONS = ["Main Warehouse","Site","Consignment","On Order"];
+// Ownership / asset class — differentiates GMD-owned stock (a company asset) from
+// materials bought for a specific client project. Drives the asset-value KPI and filter.
+const INV_OWNERSHIP = ["Project Stock","GMD Asset — Inventory","GMD Asset — Fixed Asset"];
+const isGmdAsset = o => String(o||"").startsWith("GMD Asset");
 const STOCK_MOVE_TYPES = ["IN — Delivery","OUT — Issued to Site","OUT — Released for Fabrication","OUT — Used in Project","ADJUST — Stock Count","RETURN — Returned to Supplier"];
 
 const emptyItem = ()=>({
@@ -21,6 +25,7 @@ const emptyItem = ()=>({
   brand:"", supplier:"", unit:"sheets", unitSize:"", location:"Main Warehouse",
   qtyOnHand:0, reorderPoint:0,
   lastPurchasePrice:0, avgCost:0,
+  ownership:"Project Stock",
   lastUpdated:today, notes:"", status:"Active",
   createdAt:today, createdBy:"",
 });
@@ -110,6 +115,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const[tab,setTab]=useState("dashboard");
   const[search,setSearch]=useState("");
   const[filterStatus,setFilterStatus]=useState("");
+  const[filterOwn,setFilterOwn]=useState("");
   const[sortK,setSortK]=useState("name");
   const[sortD,setSortD]=useState(1);
   const[showForm,setShowForm]=useState(false);
@@ -229,6 +235,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
 
   // ── KPIs ──────────────────────────────────────────────────────────────
   const totalVal=rows.reduce((s,i)=>s+i._rem*i._price,0);
+  const gmdAssetVal=rows.filter(i=>isGmdAsset(i.ownership)).reduce((s,i)=>s+i._rem*i._price,0);
   const recvVal =rows.reduce((s,i)=>s+i._recv*i._price,0);
   const outVal  =rows.reduce((s,i)=>s+i._out*i._price,0);
   const begVal  =rows.reduce((s,i)=>s+i._beg*i._price,0);
@@ -245,6 +252,8 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
     else if(filterStatus==="low")list=list.filter(i=>i._isLow);
     else if(filterStatus==="zero")list=list.filter(i=>i._isOut);
     else if(filterStatus==="neg")list=list.filter(i=>i._rem<0);
+    if(filterOwn==="gmd")list=list.filter(i=>isGmdAsset(i.ownership));
+    else if(filterOwn==="project")list=list.filter(i=>!isGmdAsset(i.ownership));
     list.sort((a,b)=>{
       let av=a[sortK],bv=b[sortK];
       if(sortK==="name"){av=a.name;bv=b.name;}
@@ -257,7 +266,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
       return sortD*(av<bv?-1:av>bv?1:0);
     });
     return list;
-  },[rows,search,filterStatus,sortK,sortD]);
+  },[rows,search,filterStatus,filterOwn,sortK,sortD]);
 
   function sortBy(k){if(sortK===k)setSortD(d=>d*-1);else{setSortK(k);setSortD(1);}}
 
@@ -722,6 +731,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
           {(role==="Finance"||role==="Manager")&&(
             <div style={{background:"#eff6ff",border:"1px solid #93c5fd",borderRadius:8,padding:"9px 14px",fontSize:".78rem",color:"#1d4ed8"}}>
               💰 <strong>Inventory = Cash Asset:</strong> ₱{Math.round(totalVal).toLocaleString("en-PH")} in stock. Reconcile with total POs paid. Discrepancy = investigate.
+              {gmdAssetVal>0&&<> · <strong>GMD-owned assets:</strong> ₱{Math.round(gmdAssetVal).toLocaleString("en-PH")}</>}
             </div>
           )}
           {/* Search / filter bar */}
@@ -739,6 +749,12 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
               <option value="zero">Depleted</option>
               <option value="neg">Negative</option>
             </select>
+            <select value={filterOwn} onChange={e=>setFilterOwn(e.target.value)}
+              style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:12,color:C.text,cursor:"pointer"}}>
+              <option value="">All ownership</option>
+              <option value="project">Project stock</option>
+              <option value="gmd">GMD-owned assets</option>
+            </select>
           </div>
 
           {/* Edit form (existing items only) */}
@@ -754,6 +770,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <Fld label="Unit Price (₱)"><Inp type="number" value={form.lastPurchasePrice} onChange={e=>{f("lastPurchasePrice",e.target.value);f("avgCost",e.target.value);}}/></Fld>
                 <Fld label="Reorder Point"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
                 <Fld label="Supplier"><Inp value={form.supplier} onChange={e=>f("supplier",e.target.value)} placeholder="Supplier name"/></Fld>
+                <Fld label="Ownership"><Sel value={form.ownership||"Project Stock"} onChange={e=>f("ownership",e.target.value)}>{INV_OWNERSHIP.map(o=><option key={o}>{o}</option>)}</Sel></Fld>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
               </div>
               <div style={{display:"flex",gap:8,marginTop:12}}>
@@ -870,6 +887,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                     <Fld label="Unit Price (₱)"><Inp type="number" value={form.lastPurchasePrice} onChange={e=>{f("lastPurchasePrice",e.target.value);f("avgCost",e.target.value);}}/></Fld>
                     <Fld label="Reorder Point"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
                     <Fld label="Supplier"><SupplierPicker value={form.supplier} onChange={v=>f("supplier",v)} suppliers={suppliers} addSupplier={addSupplier}/></Fld>
+                    <Fld label="Ownership"><Sel value={form.ownership||"Project Stock"} onChange={e=>f("ownership",e.target.value)}>{INV_OWNERSHIP.map(o=><option key={o}>{o}</option>)}</Sel></Fld>
                     <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
                   </div>
                   <div style={{display:"flex",gap:8,marginTop:14}}>
