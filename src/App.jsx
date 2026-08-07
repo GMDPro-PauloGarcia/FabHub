@@ -10968,20 +10968,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <FinanceErpBar active="ap" go={financeErpGo} counts={financeErpCounts()}/>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
                 <div>
-                  <div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem"}}>📤 Accounts Payable</div>
-                  <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Track what GMD owes to suppliers, subcontractors, and vendors.</div>
+                  <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Accounts Payable</div>
+                  <div style={{fontSize:12.5,color:ERP.muted,marginTop:2}}>Track what GMD owes to suppliers, subcontractors, and vendors.</div>
                 </div>
                 <button onClick={()=>{setPayForm(emptyPayForm());setEditPayId(null);setPayModal(true);}}
-                  style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#f59e0b",cursor:"pointer",fontWeight:700}}>+ Other Payable</button>
+                  style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
               </div>
               {/* Summary */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:20}}>
-                {[{l:"Outstanding Payables",v:fmtM(grandTotal),c:"#ef4444"},{l:"Overdue",v:overdueCount+" items",c:"#f97316"},{l:"Paid This Month",v:fmtM(paidThisMonth),c:"#059669"}].map(({l,v,c})=>(
-                  <div key={l} style={{background:"#fff",borderRadius:10,border:`1.5px solid ${c}33`,padding:"12px 14px",borderTop:`3px solid ${c}`}}>
-                    <div style={{fontSize:".62rem",color:"#94a3b8",textTransform:"uppercase",letterSpacing:".6px"}}>{l}</div>
-                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.2rem",color:c,marginTop:2}}>{v}</div>
-                  </div>
-                ))}
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
+                <ErpStat tone="warn" label="Outstanding Payables" value={fmtM(grandTotal)} foot={openPay.length+" open entr"+(openPay.length===1?"y":"ies")}/>
+                <ErpStat tone={overdueCount>0?"danger":"ok"} label="Overdue" value={overdueCount+" items"} foot="past due date"/>
+                <ErpStat tone="ok" label="Paid This Month" value={fmtM(paidThisMonth)} foot="settled this month"/>
               </div>
               {/* PO-derived payables — by supplier */}
               {poPayables.length>0&&(
@@ -11033,11 +11030,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {apRows.length>0&&(
                 <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
                   <div style={{overflowX:"auto"}}>
-                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem",minWidth:960}}>
+                    <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:960}}>
                       <thead>
-                        <tr style={{background:"#f8fafc"}}>
+                        <tr>
                           {["AP No.","PO No.","Vendor","Account","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status",""].map((h,i)=>(
-                            <th key={h+i} style={{padding:"8px 12px",textAlign:i>=8&&i<=10?"right":"left",fontWeight:700,color:"#94a3b8",fontSize:".64rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
+                            <th key={h+i} style={i>=8&&i<=10?erpThNum:erpTh}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -11048,25 +11045,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           const settled=isSettled(p);
                           const balance=bal(p);
                           const paidAmt=Number(p.paidAmount)||0;
-                          const stClr=settled?{bg:"#dcfce7",c:"#15803d",t:"Paid"}:p.status==="Partial"?{bg:"#fef3c7",c:"#b45309",t:"Partial"}:p.status==="Check Issued"?{bg:"#fff7ed",c:"#c2410c",t:"Check Issued"}:{bg:"#fee2e2",c:"#b91c1c",t:"Unpaid"};
+                          const stTxt=settled?"Paid":p.status==="Partial"?"Partial":p.status==="Check Issued"?"Check Issued":"Unpaid";
                           const pn=projName(p.projectId);
                           const acct=chartOfAccounts.find(a=>String(a.code)===String(p.accountCode));
                           return(
-                            <tr key={p.id} style={{borderBottom:idx<apVisible.length-1?"1px solid #f1f5f9":"none"}}
-                              onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
-                              <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".73rem",fontWeight:700,color:"#6366f1",whiteSpace:"nowrap"}}>{p.apNumber||"—"}</td>
-                              <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".73rem",color:"#64748b",whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
-                              <td style={{padding:"9px 12px",fontWeight:600,color:"#0f172a",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:".65rem",color:"#8b5cf6",fontWeight:500}}>📁 {pn}</div>}</td>
-                              <td style={{padding:"9px 12px",fontFamily:"monospace",fontSize:".72rem",color:p.accountCode?"#0f766e":"#cbd5e1",whiteSpace:"nowrap"}} title={acct?`${acct.code} · ${acct.name}`:""}>{p.accountCode||"—"}</td>
-                              <td style={{padding:"9px 12px",fontSize:".76rem",color:"#475569",whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}</td>
-                              <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",fontFamily:"monospace",whiteSpace:"nowrap"}}>{p.invoiceDate||"—"}</td>
-                              <td style={{padding:"9px 12px",fontSize:".74rem",color:"#64748b",fontFamily:"monospace",whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
-                              <td style={{padding:"9px 12px",fontSize:".72rem",fontWeight:700,color:settled?"#94a3b8":ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
-                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:"#0f172a",whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
-                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",color:"#059669",whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:".62rem",color:"#94a3b8"}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
-                              <td style={{padding:"9px 12px",textAlign:"right",fontFamily:"monospace",fontWeight:700,color:balance>0?"#b91c1c":"#94a3b8",whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
-                              <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}><span style={{fontSize:".65rem",fontWeight:700,padding:"2px 9px",borderRadius:20,background:stClr.bg,color:stClr.c}}>{stClr.t}</span></td>
-                              <td style={{padding:"9px 12px",whiteSpace:"nowrap"}}>
+                            <tr key={p.id}
+                              onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{p.apNumber||"—"}</td>
+                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
+                              <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}{pn&&<div style={{fontSize:11,color:ERP.purple,fontWeight:500}}>📁 {pn}</div>}</td>
+                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:p.accountCode?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}} title={acct?`${acct.code} · ${acct.name}`:""}>{p.accountCode||"—"}</td>
+                              <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceNumber||p.invoiceRef||"—"}</td>
+                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceDate||"—"}</td>
+                              <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.dueDate||"—"}</td>
+                              <td style={{...erpTd,fontWeight:700,color:settled?ERP.muted:ag.clr,whiteSpace:"nowrap"}}>{settled?"—":ag.label}</td>
+                              <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmtM(p.amount)}</td>
+                              <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
+                              <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge></td>
+                              <td style={{...erpTd,whiteSpace:"nowrap"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
                                   {!settled&&balance>0&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
                                   {!settled&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
@@ -13266,19 +13263,11 @@ First few:
         const totalPending=pending.reduce((s,v)=>s+Number(v.amount||0),0);
         const totalReleased=released.reduce((s,v)=>s+Number(v.amount||0),0);
         return(
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
-            {[
-              {l:"Total Vouchers",v:vouchers.length+" CVs",c:"#6366f1",icon:"📄"},
-              {l:"For Release",   v:pending.length+" vouchers",c:"#f59e0b",icon:"⏳"},
-              {l:"Amount Pending",v:fmt(totalPending),c:"#ef4444",icon:"💸"},
-              {l:"Released (Float)",v:fmt(totalReleased),c:"#059669",icon:"✅"},
-            ].map(({l,v,c,icon})=>(
-              <div key={l} style={{background:"#fff",borderRadius:10,padding:"12px 14px",border:"1.5px solid #e2e8f0",textAlign:"center"}}>
-                <div style={{fontSize:"1.2rem",marginBottom:3}}>{icon}</div>
-                <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:c}}>{v}</div>
-                <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:2}}>{l}</div>
-              </div>
-            ))}
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:16}}>
+            <ErpStat label="Total Vouchers" value={vouchers.length+" CVs"} foot="all check vouchers"/>
+            <ErpStat tone="warn" label="For Release" value={pending.length+" vouchers"} foot="awaiting release"/>
+            <ErpStat tone="danger" label="Amount Pending" value={fmt(totalPending)} foot="for release"/>
+            <ErpStat tone="ok" label="Released (Float)" value={fmt(totalReleased)} foot="not yet cleared"/>
           </div>
         );
       })()}
@@ -13309,11 +13298,11 @@ First few:
               </div>
               {isOpen&&g.items.length>0&&(
                 <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:".8rem"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:13}}>
                     <thead>
-                      <tr style={{background:"#f8fafc"}}>
+                      <tr>
                         {["CV No","Date","Payee","Description","Amount","Bank",""].map((h,i)=>(
-                          <th key={i} style={{padding:"7px 14px",textAlign:i===4?"right":"left",fontWeight:600,color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".5px",whiteSpace:"nowrap"}}>{h}</th>
+                          <th key={i} style={i===4?erpThNum:erpTh}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -13325,19 +13314,19 @@ First few:
                         const canClear=v.status==="Released"&&!v.isCleared&&(role==="Finance"||role==="Manager"||role==="Accounting");
                         const canVoid=(role==="Manager"||role==="Accounting")&&v.status!=="Released"&&v.status!=="Void"&&!v.isCleared;
                         return(
-                          <tr key={v.id} style={{borderBottom:idx<g.items.length-1?"1px solid #f8fafc":"none"}}
-                            onMouseEnter={ev=>ev.currentTarget.style.background="#f8fafc"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
-                            <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".75rem",fontWeight:700,color:"#6366f1",whiteSpace:"nowrap"}}>{v.cvNo||"—"}</td>
-                            <td style={{padding:"9px 14px",fontFamily:"monospace",fontSize:".73rem",color:"#64748b",whiteSpace:"nowrap"}}>{v.date||"—"}</td>
-                            <td style={{padding:"9px 14px",fontSize:".8rem",fontWeight:600,color:"#0f172a",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                              <div style={{fontWeight:600,color:"#0f172a",fontSize:".8rem"}}>{v.payee||"—"}</div>
-                              {v.sourceExpenseId&&<div style={{fontSize:".62rem",fontWeight:700,color:"#059669",marginTop:1}}>✓ From Accounting</div>}
-                              {v.status==="Released"&&!v.isCleared&&v.releasedDate&&<div style={{fontSize:".62rem",fontWeight:700,color:"#ea580c",marginTop:1}}>🏦 Expect clearance by {addDaysISO(v.releasedDate,3)}</div>}
+                          <tr key={v.id}
+                            onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                            <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{v.cvNo||"—"}</td>
+                            <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{v.date||"—"}</td>
+                            <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                              <div style={{fontWeight:600,color:ERP.ink}}>{v.payee||"—"}</div>
+                              {v.sourceExpenseId&&<div style={{fontSize:11,fontWeight:700,color:ERP.ok,marginTop:1}}>✓ From Accounting</div>}
+                              {v.status==="Released"&&!v.isCleared&&v.releasedDate&&<div style={{fontSize:11,fontWeight:700,color:"#ea580c",marginTop:1}}>🏦 Expect clearance by {addDaysISO(v.releasedDate,3)}</div>}
                             </td>
-                            <td style={{padding:"9px 14px",fontSize:".78rem",color:"#475569",maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.description||"—"}</td>
-                            <td style={{padding:"9px 14px",textAlign:"right",fontWeight:800,color:"#0f172a",fontFamily:"monospace",whiteSpace:"nowrap"}}>{fmt(v.amount)}</td>
-                            <td style={{padding:"9px 14px",fontSize:".72rem",color:"#0369a1",whiteSpace:"nowrap"}}>{v.bank||"—"}</td>
-                            <td style={{padding:"9px 14px"}}>
+                            <td style={{...erpTd,color:ERP.muted,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v.description||"—"}</td>
+                            <td style={{...erpTdNum,fontWeight:800,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(v.amount)}</td>
+                            <td style={{...erpTd,color:ERP.navy,whiteSpace:"nowrap"}}>{v.bank||"—"}</td>
+                            <td style={{...erpTd}}>
                               <div style={{display:"flex",gap:4,justifyContent:"flex-end",flexWrap:"wrap"}}>
                                 <button onClick={()=>setCvView(v.id)} title="View Check Voucher" style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#a16207",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>👁 View</button>
                                 <button onClick={()=>printCheckVoucher(v)} title="Print Check Voucher" style={{background:"#eef2ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#4338ca",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🖨 Print</button>
@@ -13585,21 +13574,11 @@ First few:
               ?<button onClick={()=>{setFinTab("payables");setPage("finance");}} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Open AP Ledger →</button>
               :<button onClick={()=>setPage("checkvouchers")} style={{marginLeft:"auto",background:"transparent",border:"1px solid #e2e8f0",borderRadius:6,padding:"3px 10px",color:"#475569",fontSize:".7rem",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>Check Payables →</button>}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:20}}>
-            {[
-              {icon:"🛒",label:"Open Purchase Orders",val:String(openPOset.size),sub:openPOset.size===1?"PO awaiting invoice":"POs awaiting invoice",badge:"Procurement",bc:"#1d4ed8",bg:"#eff6ff",bt:"#3b82f6"},
-              {icon:"📤",label:"Outstanding Payables",val:fmt(outstandingPayables),sub:payables.filter(p=>p.status!=="Paid").length+" open · balance owed",badge:payables.filter(p=>p.status==="Partial").length+" partial",bc:"#b45309",bg:"#fffbeb",bt:"#f59e0b"},
-              {icon:"⏰",label:"Overdue Payables",val:fmt(overduePayAmt),sub:overduePayList.length+" past due date",badge:overduePayList.length>0?"needs attention":"none overdue",bc:overduePayList.length>0?"#dc2626":"#059669",bg:overduePayList.length>0?"#fef2f2":"#f0fdf4",bt:"#ef4444"},
-              {icon:"✅",label:"Paid This Month",val:fmt(paidPayTotal),sub:"Check "+fmt(paidByCheck)+" · Online "+fmt(paidByOnline),badge:paidPayMonth.length+" settled",bc:"#059669",bg:"#f0fdf4",bt:"#10b981"},
-            ].map(({icon,label,val,sub,badge,bc,bg,bt})=>(
-              <div key={label} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",borderTop:`3px solid ${bt}`,padding:"16px 18px"}}>
-                <div style={{fontSize:"1.25rem",marginBottom:6}}>{icon}</div>
-                <div style={{fontSize:".63rem",color:"#64748b",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>{label}</div>
-                <div style={{fontWeight:900,fontSize:"1.35rem",color:"#0f172a",margin:"4px 0"}}>{val}</div>
-                <div style={{fontSize:".68rem",color:"#94a3b8"}}>{sub}</div>
-                <div style={{display:"inline-block",padding:"2px 8px",borderRadius:20,fontSize:".65rem",fontWeight:700,background:bg,color:bc,marginTop:5}}>{badge}</div>
-              </div>
-            ))}
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
+            <ErpStat label="Open Purchase Orders" value={String(openPOset.size)} foot={openPOset.size===1?"PO awaiting invoice":"POs awaiting invoice"}/>
+            <ErpStat tone="warn" label="Outstanding Payables" value={fmt(outstandingPayables)} foot={payables.filter(p=>p.status!=="Paid").length+" open · "+payables.filter(p=>p.status==="Partial").length+" partial"}/>
+            <ErpStat tone={overduePayList.length>0?"danger":"ok"} label="Overdue Payables" value={fmt(overduePayAmt)} foot={overduePayList.length+" invoice(s) past due date"}/>
+            <ErpStat tone="ok" label="Paid This Month" value={fmt(paidPayTotal)} foot={"Check "+fmt(paidByCheck)+" · Online "+fmt(paidByOnline)}/>
           </div>
           {/* POs Pending Payment */}
           {(()=>{
@@ -23419,6 +23398,63 @@ function FinanceDigestPanel({billings=[],exps=[],wonDeals=[],completedDeals=[],d
 // wordmark, a Purchase-to-Payment tab strip with count badges) while staying
 // inside FabHub. `active` is one of dashboard|po|ap|payments|cv; `go(key)` does
 // the navigation; `counts` supplies the badge numbers.
+// ── Aerwin ERP design tokens + shared finance primitives ────────────────────
+// Exact palette lifted from the finance team's standalone Purchase-to-Payment
+// ERP so FabHub's finance screens read as the same product.
+const ERP={navy:"#0B2545",navy2:"#132F5C",navyLight:"#EEF2F8",gold:"#C9A24B",goldDark:"#A8822F",ink:"#1B2430",muted:"#5B6472",line:"#DCE2EC",paper:"#FFFFFF",bg:"#F5F7FA",danger:"#B3413A",ok:"#2E7D4F",warn:"#B8862C",purple:"#6A3FA0"};
+const ERP_TONE={default:ERP.gold,warn:ERP.warn,danger:ERP.danger,ok:ERP.ok,purple:ERP.purple};
+
+// .stat — value card with a colored left accent bar (tone: default|warn|danger|ok|purple)
+function ErpStat({label,value,foot,tone="default"}){
+  return(
+    <div style={{background:ERP.paper,border:`1px solid ${ERP.line}`,borderRadius:12,padding:"16px 18px",position:"relative",overflow:"hidden"}}>
+      <div style={{position:"absolute",left:0,top:0,bottom:0,width:4,background:ERP_TONE[tone]||ERP.gold}}/>
+      <div style={{fontSize:11.5,color:ERP.muted,textTransform:"uppercase",letterSpacing:".6px",fontWeight:600}}>{label}</div>
+      <div style={{fontSize:24,fontWeight:700,color:ERP.navy,marginTop:4}}>{value}</div>
+      {foot!=null&&<div style={{fontSize:11.5,color:ERP.muted,marginTop:4}}>{foot}</div>}
+    </div>
+  );
+}
+// .card — titled white panel
+function ErpCard({title,desc,right,children,style}){
+  return(
+    <div style={{background:ERP.paper,border:`1px solid ${ERP.line}`,borderRadius:12,padding:"18px 20px",marginBottom:16,...style}}>
+      {(title||right)&&(
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,marginBottom:desc?4:14}}>
+          {title&&<h2 style={{margin:0,fontSize:16,color:ERP.navy,fontWeight:700}}>{title}</h2>}
+          {right}
+        </div>
+      )}
+      {desc&&<p style={{margin:"0 0 14px",color:ERP.muted,fontSize:12.5}}>{desc}</p>}
+      {children}
+    </div>
+  );
+}
+// Status badge, keyed to Aerwin's badge palette
+const ERP_BADGE={open:{bg:"#E7EEFB",c:ERP.navy},invoiced:{bg:"#FDF1DC",c:ERP.warn},closed:{bg:"#E5F3EA",c:ERP.ok},unpaid:{bg:"#FBEAE8",c:ERP.danger},partial:{bg:"#FDF1DC",c:ERP.warn},paid:{bg:"#E5F3EA",c:ERP.ok},check:{bg:"#EEF2F8",c:ERP.navy},online:{bg:"#F0EAFB",c:ERP.purple},draft:{bg:"#EEF1F5",c:ERP.muted},approved:{bg:"#E7EEFB",c:ERP.navy},inactive:{bg:"#EEF1F5",c:ERP.muted}};
+function ErpBadge({kind="open",children}){
+  const s=ERP_BADGE[String(kind).toLowerCase()]||ERP_BADGE.open;
+  return <span style={{display:"inline-block",padding:"3px 9px",borderRadius:20,fontSize:11,fontWeight:700,letterSpacing:".3px",background:s.bg,color:s.c}}>{children}</span>;
+}
+// Map a free-text status to a badge kind
+function erpStatusKind(status){
+  const s=String(status||"").toLowerCase();
+  if(s.includes("paid")&&!s.includes("unpaid"))return"paid";
+  if(s.includes("partial"))return"partial";
+  if(s.includes("unpaid")||s.includes("overdue"))return"unpaid";
+  if(s.includes("released")||s.includes("cleared"))return"closed";
+  if(s.includes("for release")||s.includes("for payment")||s.includes("invoiced"))return"invoiced";
+  if(s.includes("draft")||s.includes("logged"))return"draft";
+  if(s.includes("cancel"))return"unpaid";
+  if(s.includes("issued")||s.includes("open")||s.includes("approved"))return"open";
+  return"open";
+}
+// Shared table styles (navy-light uppercase headers, hairline rows)
+const erpTh={textAlign:"left",background:ERP.navyLight,color:ERP.navy,fontSize:11,textTransform:"uppercase",letterSpacing:".5px",padding:"9px 10px",borderBottom:`2px solid ${ERP.line}`,whiteSpace:"nowrap",fontWeight:700};
+const erpTd={padding:"9px 10px",borderBottom:`1px solid ${ERP.line}`,verticalAlign:"top",fontSize:13,color:ERP.ink};
+const erpThNum={...erpTh,textAlign:"right"};
+const erpTdNum={...erpTd,textAlign:"right",fontVariantNumeric:"tabular-nums"};
+
 function FinanceErpBar({active,go,counts={}}){
   const tabs=[
     {k:"dashboard",l:"Dashboard"},
