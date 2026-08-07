@@ -5267,6 +5267,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[selProj,   setSelProj]  =useState(null);
   const[jumpDeal,  setJumpDeal] =useState(null);
   const[jumpFilter,setJumpFilter]=useState(null);
+  const[widgetDrill,setWidgetDrill]=useState(null); // which home widget's detail panel is open
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("overview");
   const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
@@ -8736,19 +8737,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const collRec=[];billings.forEach(b=>(b.payments||[]).forEach(p=>{if(p.date)collRec.push({dt:new Date(p.date),v:Number(p.amount||0)});}));
         const pace=(rec,yr,mo,maxDay,count)=>rec.filter(x=>x.dt&&x.dt.getFullYear()===yr&&x.dt.getMonth()===mo&&x.dt.getDate()<=maxDay).reduce((s,x)=>s+(count?1:x.v),0);
         const charts=[
-          {title:"Sales Value",     data:salesData,  color:"#6366f1", fmt:fmtM, icon:"📊", action:()=>setPage("pipeline"), cur:pace(salesRec,cyr,cmo,D),      prev:pace(salesRec,pyr,pmo,D)},
-          {title:"Expenses",        data:expData,    color:"#ef4444", fmt:fmtM, icon:"💸", action:()=>setPage("finance"),  cur:pace(expRec,cyr,cmo,D),        prev:pace(expRec,pyr,pmo,D), invert:true},
-          {title:"Collections",     data:collData,   color:"#10b981", fmt:fmtM, icon:"💰", action:()=>setPage("billing"),  cur:pace(collRec,cyr,cmo,D),       prev:pace(collRec,pyr,pmo,D)},
-          {title:"Projects Awarded",data:awardData,  color:"#f59e0b", fmt:v=>v+(v===1?" project":" projects"), icon:"🏆", action:()=>setPage("projects"), cur:pace(salesRec,cyr,cmo,D,true), prev:pace(salesRec,pyr,pmo,D,true)},
+          {key:"sales",      title:"Sales Value",     data:salesData,  color:"#6366f1", fmt:fmtM, icon:"📊", action:()=>setPage("pipeline"), cur:pace(salesRec,cyr,cmo,D),      prev:pace(salesRec,pyr,pmo,D)},
+          {key:"expenses",   title:"Expenses",        data:expData,    color:"#ef4444", fmt:fmtM, icon:"💸", action:()=>setPage("finance"),  cur:pace(expRec,cyr,cmo,D),        prev:pace(expRec,pyr,pmo,D), invert:true},
+          {key:"collections",title:"Collections",     data:collData,   color:"#10b981", fmt:fmtM, icon:"💰", action:()=>setPage("billing"),  cur:pace(collRec,cyr,cmo,D),       prev:pace(collRec,pyr,pmo,D)},
+          {key:"awarded",    title:"Projects Awarded",data:awardData,  color:"#f59e0b", fmt:v=>v+(v===1?" project":" projects"), icon:"🏆", action:()=>setPage("projects"), cur:pace(salesRec,cyr,cmo,D,true), prev:pace(salesRec,pyr,pmo,D,true)},
         ];
         return(
           <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,marginBottom:14}}>
-            {charts.map(({title,data,color,fmt,icon,action,cur,prev,invert})=>{
+            {charts.map(({key,title,data,color,fmt,icon,action,cur,prev,invert})=>{
               const chg=prev>0?Math.round((cur-prev)/prev*100):null;
               const good=chg!=null&&(invert?chg<=0:chg>=0);
               const prevFull=data[data.length-2]||0;
               return(
-                <div key={title} onClick={action} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 14px",cursor:"pointer"}}>
+                <div key={title} onClick={()=>setWidgetDrill({key,title,color,icon,fmt,action,cur,cyr,cmo})} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 14px",cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
                     <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>{icon} {title}</div>
                     {chg!==null?<span title={`vs. first ${D} days of last month`} style={{fontSize:".58rem",fontWeight:700,color:good?"#059669":"#ef4444",background:good?"#f0fdf4":"#fef2f2",borderRadius:5,padding:"1px 5px"}}>{chg>=0?"↑":"↓"}{Math.abs(chg)}% MTD</span>:<span style={{fontSize:".55rem",color:"#cbd5e1",fontWeight:600}}>—</span>}
@@ -8759,6 +8760,72 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               );
             })}
+          </div>
+        );
+      })()}
+
+      {/* ── WIDGET DRILL-DOWN DETAIL ────────────────────────────────── */}
+      {widgetDrill&&(()=>{
+        const{key,title,color,icon,fmt,action,cur,cyr,cmo}=widgetDrill;
+        const mob=window.innerWidth<768;
+        const money=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
+        const MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const monLabel=`${MON[cmo]} ${cyr}`;
+        const inThisMonth=dt=>dt&&dt.getFullYear()===cyr&&dt.getMonth()===cmo;
+        const awardedMonth=d=>{const aw=pcards[d.id]?.awardDate||d.dateAcquired;return aw?new Date(aw):null;};
+        // Build the row list for the clicked widget
+        let rows=[];
+        if(key==="sales"||key==="awarded"){
+          rows=deals.filter(d=>WON_STAGES.includes(d.stage)&&inThisMonth(awardedMonth(d)))
+            .map(d=>({name:d.contact||d.client||"Untitled deal",sub:d.ceNo||"No CE",amt:Number(d.value||0),dt:awardedMonth(d),id:d.id}))
+            .sort((a,b)=>b.dt-a.dt);
+        }else if(key==="expenses"){
+          rows=exps.map(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);return{...e,_dt:ds?new Date(ds):null};})
+            .filter(e=>inThisMonth(e._dt))
+            .map(e=>{const pj=e.projectId&&wonDeals.find(x=>x.id===e.projectId);return{name:e.note||e.category||"Expense",sub:(e.payee||e.supplier||e.category||"—")+(pj?` · ${pj.contact||pj.client}`:""),amt:Number(e.amount||0),dt:e._dt};})
+            .sort((a,b)=>b.dt-a.dt);
+        }else if(key==="collections"){
+          billings.forEach(b=>{const dl=wonDeals.find(x=>x.id===b.dealId);(b.payments||[]).forEach(p=>{if(!p.date)return;const dt=new Date(p.date);if(inThisMonth(dt))rows.push({name:dl?.contact||dl?.client||b.client||"Payment",sub:(dl?.ceNo||b.invoiceNumber||"Client payment"),amt:Number(p.amount||0),dt});});});
+          rows.sort((a,b)=>b.dt-a.dt);
+        }
+        const total=rows.reduce((s,r)=>s+(r.amt||0),0);
+        const isCount=key==="awarded";
+        return(
+          <div onClick={()=>setWidgetDrill(null)} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:900,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20}}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,width:"100%",maxWidth:mob?undefined:520,boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              {/* header */}
+              <div style={{padding:"18px 20px 14px",borderBottom:"1px solid #f1f5f9"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>{icon} {title} · {monLabel}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.7rem",color,lineHeight:1.1,marginTop:2}}>{fmt(cur)}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{rows.length} {isCount?(rows.length===1?"project":"projects"):"item"+(rows.length===1?"":"s")} this month</div>
+                  </div>
+                  <button onClick={()=>setWidgetDrill(null)} style={{background:"#f1f5f9",border:"none",borderRadius:9,width:30,height:30,fontSize:"1rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",lineHeight:1}}>✕</button>
+                </div>
+              </div>
+              {/* list */}
+              <div style={{overflowY:"auto",flex:1}}>
+                {rows.length===0?(
+                  <div style={{padding:"34px 20px",textAlign:"center",color:"#94a3b8",fontSize:".84rem"}}>Nothing recorded for {monLabel} yet.</div>
+                ):rows.map((r,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 20px",borderBottom:i<rows.length-1?"1px solid #f8fafc":""}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".84rem",fontWeight:600,color:"#0f172a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
+                      <div style={{fontSize:".68rem",color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.sub}{r.dt?` · ${MON[r.dt.getMonth()]} ${r.dt.getDate()}`:""}</div>
+                    </div>
+                    {!isCount&&<div style={{fontSize:".84rem",fontWeight:700,color,flexShrink:0}}>{money(r.amt)}</div>}
+                  </div>
+                ))}
+              </div>
+              {/* footer */}
+              <div style={{borderTop:"1px solid #f1f5f9",padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+                {!isCount?(
+                  <div style={{fontSize:".72rem",color:"#64748b"}}>Total <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem",marginLeft:4}}>{money(total)}</span></div>
+                ):<div/>}
+                <button onClick={()=>{setWidgetDrill(null);action&&action();}} style={{background:color,border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",whiteSpace:"nowrap"}}>Open full page →</button>
+              </div>
+            </div>
           </div>
         );
       })()}
