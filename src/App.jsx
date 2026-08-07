@@ -3510,6 +3510,34 @@ export default function App(){
     sendTelegramNotification("procurement",msg);
     sendTelegramNotification("management",msg);
   };
+  // Bulk-create Work Orders from a batch upload. Records arrive fully shaped by
+  // the view (status/requestedBy/approvedBy already decided by role), so here we
+  // only allocate collision-free WO numbers, persist in ONE state update, mirror
+  // each to Supabase + the AP ledger, and fire a single summary notification.
+  const addSWOBatch=(list)=>{
+    const items=(list||[]).filter(Boolean);
+    if(!items.length) return 0;
+    const taken=new Set(swos.map(w=>w.woNumber).filter(Boolean));
+    let nn=Number(WO_NO_RE.exec(computeNextWoNo(swos))[1]);
+    const recs=items.map(wo=>{
+      let woNo=(wo.woNumber||"").trim();
+      if(!woNo||taken.has(woNo)){
+        while(taken.has(`WO-${String(nn).padStart(4,"0")}`)) nn++;
+        woNo=`WO-${String(nn).padStart(4,"0")}`; nn++;
+      }
+      taken.add(woNo);
+      return {...wo,woNumber:woNo,id:uid(),createdDate:today};
+    });
+    upSwos(ws=>[...recs,...ws]);
+    if(isSupabaseReady()) recs.forEach(rec=>sbSyncOne("subcon_work_orders",rec,swoToSb));
+    recs.forEach(rec=>syncWoPayable(rec));
+    const total=recs.reduce((s,r)=>s+(Number(r.contractAmount)||0),0);
+    const anyPending=recs.some(r=>r.status==="Pending Approval");
+    const msg=`🛠 <b>${recs.length} Subcon Work Order${recs.length>1?"s":""} uploaded${anyPending?" — some awaiting approval":""}</b>\nRange: ${recs[recs.length-1].woNumber} → ${recs[0].woNumber}\nTotal: ₱${total.toLocaleString("en-PH")}\nBy: ${session?.name||"?"}`;
+    sendTelegramNotification("procurement",msg);
+    sendTelegramNotification("management",msg);
+    return recs.length;
+  };
   const updateSWO=(id,changes)=>{
     let updated=null;
     upSwos(ws=>ws.map(w=>{
@@ -11323,7 +11351,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       </Wrap>
     );
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="costing") return(<Wrap><CostingStudy wonDeals={wonDeals} budgets={budgets} prs={prs} exps={exps} projs={projs} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
@@ -11648,7 +11676,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     );
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="swatchboard") return(<Wrap><ProcurementView swatches={swatches} projList={projList} clientName={clientName} openAddSwatch={openAddSwatch} openEditSwatch={openEditSwatch} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} swQ={swQ} Wrap={Wrap} addMR={addMR} wonDeals={wonDeals} session={session}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -12135,7 +12163,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(role==="Operations"){
     if(page==="home") return <OpsView projs={projs} projList={projList} deals={deals} selProj={selProj} setSelProj={setSelProj} opsTab={opsTab} setOpsTab={setOpsTab} proj={proj} projDeal={projDeal} upProj={upProj} overallProg={overallProg} costOf={costOf} marginOf={marginOf} openDesignEdit={openDesignEdit} swatches={swatches} swQ={swQ} openAddSwatch={(pid,by)=>{setSwForm({projectId:pid,name:"",category:"Fabric",qty:"",unit:"pcs",supplier:"",estCost:"",swatchLink:"",addedBy:by||"Ops",status:"To Buy",notes:""});setEditSw(null);setSwModal(true);}} openEditSwatch={sw=>{setSwForm({...sw});setEditSw(sw.id);setSwModal(true);}} delSwatch={id=>upSwatches(ss=>ss.filter(s=>s.id!==id))} exps={exps} openAddExp={openAddExp} openEditExp={openEditExp} delExp={delExp} clientName={clientName} matModal={matModal} setMatModal={setMatModal} matForm={matForm} setMatForm={setMatForm} editMat={editMat} setEditMat={setEditMat} saveMat={()=>{if(!matForm.name||!matForm.qty||!matForm.cost)return;const rec={...matForm,qty:Number(matForm.qty),cost:Number(matForm.cost),id:editMat||uid()};upProj(selProj,p=>({...p,materials:editMat?p.materials.map(m=>m.id===editMat?rec:m):[...p.materials,rec]}));setMatModal(false);setEditMat(null);setMatForm({name:"",qty:"",unit:"pcs",cost:"",received:false});}} addPmUpdate={addPmUpdate} addAddendum={addAddendum} updateAddendumStatus={updateAddendumStatus} session={session} Wrap={Wrap} addenda={addenda} addAddendum2={addAddendum2} updateAddendum={updateAddendum} deleteAddendum={deleteAddendum} pcards={pcards} logActivity={logActivity} drfs={drfs} jos={jos} budgets={budgets} role={role} openPmModal={d=>setPmUpdateModal(d)} onCloseProject={(dealId,stage)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,stage}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{stage}).catch(()=>{});logActivity(dealId,"Stage Change",`Pipeline stage → ${stage}`,session?.name);["sales","ops","management"].forEach(ch=>sendTelegramNotification(ch,`📌 <b>Project Stage Updated</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nNew Stage: ${stage}\nBy: ${session?.name||"Ops"}`));}}/>;
     if(page==="procurement") return(<Wrap><ProcurementView2 prs={prs} addPR={addPR} updatePR={updatePR} deletePR={deletePR} upPrs={upPrs} wonDeals={wonDeals} deals={deals} budgets={budgets} exps={exps} swos={swos} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} addSupplier={addSupplier} poApprovers={botSettings?.poApprovers||""} upPayables={upPayables} payables={payables} sendTelegramNotification={sendTelegramNotification} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} payableToSb={payableToSb} syncPoPayable={syncPoPayable} chartOfAccounts={chartOfAccounts}/></Wrap>);
-    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
+    if(page==="subconwo") return(<Wrap><SubconWOView swos={swos} addSWO={addSWO} addSWOBatch={addSWOBatch} updateSWO={updateSWO} deleteSWO={deleteSWO} wonDeals={wonDeals} subcons={subcons} session={session} role={role} toastEmit={toastEmit} poApprovers={botSettings?.poApprovers||""} sendTelegramNotification={sendTelegramNotification} chartOfAccounts={chartOfAccounts}/></Wrap>);
     if(page==="budget") return(<Wrap><BudgetView wonDeals={wonDeals} budgets={budgets} saveBudget={saveBudget} prs={prs} exps={exps} role={role}/></Wrap>);
     if(page==="materialreq") return(<Wrap><MaterialRequestView mreqs={mreqs} addMR={addMR} updateMR={updateMR} deleteMR={delMR} prs={prs} addPR={addPR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} suppliers={suppliers} poApprovers={botSettings?.poApprovers||""}/></Wrap>);
     if(page==="budgetreq") return(<Wrap><BudgetRequestView breqs={breqs} addBR={addBR} updateBR={updateBR} deleteBR={delBR} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit}/></Wrap>);
@@ -17246,7 +17274,7 @@ function CEQSView({ceReqs,addCEReq,updateCEReq,session,role,toastEmit,deals}){
 // ─── BOQ MODAL (opened from pipeline 📋 button) ──────────────────────────────
 
 // ─── SUBCON WORK ORDERS VIEW ───────────────────────────────────────────────────
-function SubconWOView({swos,addSWO,updateSWO,deleteSWO,wonDeals,subcons,session,role,toastEmit,poApprovers,sendTelegramNotification,chartOfAccounts=[]}){
+function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subcons,session,role,toastEmit,poApprovers,sendTelegramNotification,chartOfAccounts=[]}){
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -17303,6 +17331,205 @@ function SubconWOView({swos,addSWO,updateSWO,deleteSWO,wonDeals,subcons,session,
       paymentStructure:m.payment_structure||m.paymentStructure||p.paymentStructure||"",
       paymentTerms:m.payment_terms||m.paymentTerms||p.paymentTerms||""};
   });
+
+  // ── Batch upload ────────────────────────────────────────────────────────────
+  const batchInputRef=useRef(null);
+  const[batchRows,setBatchRows]=useState(null); // null=closed; [] or [{...mapped, _errors}]=review
+  const[batchBusy,setBatchBusy]=useState(false);
+  const[batchFileName,setBatchFileName]=useState("");
+
+  // Column aliases → canonical WO field. Header comparison is case/punctuation-insensitive.
+  const BATCH_COLS=[
+    {key:"woNumber",        aliases:["wonumber","wono","won","wonum","workorderno","workordernumber","wonumberno"]},
+    {key:"subcontractor",   aliases:["subcontractor","subcontractorname","subcon","subconname","subconnesname","vendor","supplier","company"]},
+    {key:"project",         aliases:["project","projectname","client","deal","ceno","cenumber","ce"]},
+    {key:"specialty",       aliases:["specialty","worktype","trade","scopecategory","category"]},
+    {key:"scopeOfWork",     aliases:["scopeofwork","scope","workdescription","description","works"]},
+    {key:"contractAmount",  aliases:["contractamount","amount","contractvalue","value","total","cost"]},
+    {key:"retentionPct",    aliases:["retentionpct","retention","retentionpercent","retention%"]},
+    {key:"paymentStructure",aliases:["paymentstructure","payment","paymentmilestones","milestones"]},
+    {key:"paymentTerms",    aliases:["paymentterms","terms","credit","creditterms"]},
+    {key:"startDate",       aliases:["startdate","start","commencement","begindate","schedule"]},
+    {key:"targetEndDate",   aliases:["targetenddate","enddate","end","completion","targetdate","deadline"]},
+    {key:"woDate",          aliases:["wodate","date","dateissued","issuedate","orderdate"]},
+    {key:"notes",           aliases:["notes","remarks","comment","comments"]},
+  ];
+  const normHdr=h=>String(h||"").toLowerCase().replace(/[^a-z0-9%]/g,"");
+  // "NONE"/"N/A"/"10%"/"1,000" → number; blanks and non-numeric text → 0.
+  const numCell=v=>{const m=String(v==null?"":v).replace(/,/g,"").match(/-?\d+(\.\d+)?/);return m?Number(m[0]):0;};
+  // Excel serial dates → ISO; also handles m/d/yy, m/d/yyyy and yyyy-mm-dd text.
+  const toISODate=v=>{
+    if(v===""||v==null) return "";
+    if(typeof v==="number"&&v>0&&v<80000){ // Excel serial
+      const d=new Date(Date.UTC(1899,11,30+Math.round(v)));
+      return isNaN(d)?"":d.toISOString().split("T")[0];
+    }
+    const s=String(v).trim();
+    const m=s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+    if(m) return `${m[1]}-${String(m[2]).padStart(2,"0")}-${String(m[3]).padStart(2,"0")}`;
+    // m/d/yyyy or m/d/yy (2-digit year → 20xx). Day/month order assumes US m/d.
+    const m2=s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2}(?:\d{2})?)/);
+    if(m2){const yr=m2[3].length===2?`20${m2[3]}`:m2[3];return `${yr}-${String(m2[1]).padStart(2,"0")}-${String(m2[2]).padStart(2,"0")}`;}
+    return s;
+  };
+  // Best-guess match of a free-text project cell to a won deal. Only a
+  // suggestion — the review screen lets the user confirm/override every row,
+  // because short spreadsheet names ("MIZUNO", "I'M IN SHANG") are inherently
+  // ambiguous against the real CE list. Punctuation-insensitive, token-aware,
+  // and biased toward base projects over addenda/change orders.
+  const normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
+  const matchProject=cell=>{
+    const q=normName(cell);
+    if(!q) return null;
+    const qt=q.split(" ").filter(t=>t.length>2);
+    let best=null,bestScore=0;
+    (wonDeals||[]).forEach(d=>{
+      const name=normName(projDisplayName(d));
+      const client=normName(d.contact||d.client||"");
+      const ce=normName(d.ceNo||"");
+      let score=0;
+      if(name===q||client===q||ce===q) score=100;
+      else if(name.startsWith(q)||q.startsWith(name)||client.startsWith(q)) score=80;
+      else if(name.includes(q)||q.includes(name)) score=60;
+      else{
+        const nt=new Set(name.split(" "));
+        const hit=qt.filter(t=>nt.has(t)).length;
+        if(hit) score=25+hit*8;
+      }
+      if(score>0){
+        if(/addendum|change order|added works|movement|relocation|pull out|demolition|board up|reuse/.test(name)) score-=18; // prefer the base project
+        score-=Math.min(name.length/60,4); // prefer the tighter (plainer) name
+        if(score>bestScore){bestScore=score;best=d;}
+      }
+    });
+    return bestScore>=30?best:null;
+  };
+  // User picks/overrides a row's project in the review table; re-validate the row.
+  const setBatchProject=(idx,dealId)=>setBatchRows(rows=>(rows||[]).map((r,i)=>{
+    if(i!==idx) return r;
+    const deal=(wonDeals||[]).find(d=>d.id===dealId);
+    const nr={...r,projectId:dealId||"",projectName:deal?projDisplayName(deal):""};
+    const errors=[];
+    if(!nr.subcontractor) errors.push("Missing subcontractor");
+    if(!nr.projectId) errors.push(nr.projectCell?`No match for "${nr.projectCell}" — pick a project`:"Missing project");
+    if(!nr.scopeOfWork) errors.push("Missing scope of work");
+    if(nr.contractAmount<=0) errors.push("Contract amount must be > 0");
+    return {...nr,_errors:errors};
+  }));
+
+  const parseBatchFile=async file=>{
+    const ext=file.name.split(".").pop().toLowerCase();
+    let rows=[];
+    if(ext==="csv"){
+      const text=await file.text();
+      const lines=text.split(/\r?\n/).filter(l=>l.trim());
+      const parseLine=l=>{const out=[];let c="",q=false;for(const ch of l){if(ch==='"')q=!q;else if(ch===","&&!q){out.push(c);c="";}else c+=ch;}out.push(c);return out.map(x=>x.trim().replace(/^"|"$/g,""));};
+      const headers=parseLine(lines[0]);
+      rows=lines.slice(1).map(l=>{const v=parseLine(l);return Object.fromEntries(headers.map((h,i)=>[h,v[i]??""]));});
+    } else if(["xlsx","xls"].includes(ext)){
+      const XLSX=window.XLSX;
+      if(!XLSX||!XLSX.read) throw new Error("Excel library still loading — please try again in a moment.");
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:"array"});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+    } else {
+      throw new Error("Unsupported file type. Upload a .csv, .xlsx or .xls file.");
+    }
+    // Build header→field map from the first row's keys
+    const keys=rows.length?Object.keys(rows[0]):[];
+    const colMap={};
+    keys.forEach(k=>{
+      const nk=normHdr(k);
+      const hit=BATCH_COLS.find(c=>c.aliases.includes(nk));
+      if(hit&&!colMap[hit.key]) colMap[hit.key]=k;
+    });
+    const mapped=rows.map((r,i)=>{
+      const g=field=>colMap[field]!==undefined?r[colMap[field]]:"";
+      const projCell=g("project");
+      const deal=matchProject(projCell);
+      const rec={
+        woNumber:String(g("woNumber")||"").trim(),
+        subcontractor:String(g("subcontractor")||"").trim(),
+        projectCell:String(projCell||"").trim(),
+        projectId:deal?deal.id:"",
+        projectName:deal?projDisplayName(deal):"",
+        specialty:String(g("specialty")||"").trim(),
+        scopeOfWork:String(g("scopeOfWork")||"").trim(),
+        contractAmount:numCell(g("contractAmount")),
+        retentionPct:numCell(g("retentionPct")),
+        paymentStructure:String(g("paymentStructure")||"").trim(),
+        paymentTerms:String(g("paymentTerms")||"").trim(),
+        startDate:toISODate(g("startDate")),
+        targetEndDate:toISODate(g("targetEndDate")),
+        woDate:toISODate(g("woDate"))||today,
+        notes:String(g("notes")||"").trim(),
+      };
+      const errors=[];
+      if(!rec.subcontractor) errors.push("Missing subcontractor");
+      if(!rec.projectCell) errors.push("Missing project");
+      else if(!rec.projectId) errors.push(`No matching won project for "${rec.projectCell}"`);
+      if(!rec.scopeOfWork) errors.push("Missing scope of work");
+      if(rec.contractAmount<=0) errors.push("Contract amount must be > 0");
+      // auto-fill subcon terms from the master list when the row leaves them blank
+      const m=(subcons||[]).find(s=>(s.company_name||s.companyName||"").trim().toLowerCase()===rec.subcontractor.toLowerCase());
+      if(m){
+        if(!rec.specialty) rec.specialty=m.specialty||"";
+        if(!rec.paymentStructure) rec.paymentStructure=m.payment_structure||m.paymentStructure||"";
+        if(!rec.paymentTerms) rec.paymentTerms=m.payment_terms||m.paymentTerms||"";
+      }
+      return {...rec,_row:i+2,_errors:errors};
+    });
+    return mapped;
+  };
+
+  const onBatchFile=async e=>{
+    const file=e.target.files[0]; if(!file) return;
+    e.target.value="";
+    setBatchBusy(true); setBatchFileName(file.name);
+    try{
+      const mapped=await parseBatchFile(file);
+      if(!mapped.length) toastEmit&&toastEmit("No data rows found in the file.","error");
+      setBatchRows(mapped);
+    }catch(err){
+      toastEmit&&toastEmit(err.message||"Could not read the file.","error");
+      setBatchRows(null); setBatchFileName("");
+    }
+    setBatchBusy(false);
+  };
+
+  const confirmBatch=()=>{
+    const valid=(batchRows||[]).filter(r=>!r._errors.length);
+    if(!valid.length){toastEmit&&toastEmit("No valid rows to import — fix the flagged rows first.","error");return;}
+    const recs=valid.map(r=>({
+      subcontractor:r.subcontractor,projectId:r.projectId,projectName:r.projectName,
+      specialty:r.specialty,scopeOfWork:r.scopeOfWork,contractAmount:r.contractAmount,
+      retentionPct:r.retentionPct,paymentStructure:r.paymentStructure,paymentTerms:r.paymentTerms,
+      startDate:r.startDate,targetEndDate:r.targetEndDate,woDate:r.woDate,notes:r.notes,
+      delivery:null,
+      status:woDirect?"Issued":"Pending Approval",
+      requestedBy:session?.name||"",
+      approvedBy:woDirect?session?.name||"":"",
+      acctStatus:woDirect?"For Accounting":"",
+      woNumber:r.woNumber||"", // preserve the file's WO number; addSWOBatch reallocates on collision
+    }));
+    const count=addSWOBatch(recs);
+    const skipped=(batchRows||[]).length-valid.length;
+    toastEmit&&toastEmit(`${count} work order${count>1?"s":""} imported${woDirect?" and issued":" for approval"}${skipped?` · ${skipped} row${skipped>1?"s":""} skipped`:""}`,"success");
+    setBatchRows(null); setBatchFileName("");
+  };
+
+  const downloadBatchTemplate=()=>{
+    const headers=["Subcontractor","Project","Specialty","Scope of Work","Contract Amount","Retention %","Payment Structure","Payment Terms","Start Date","Target End Date","WO Date","Notes"];
+    const sample=wonDeals[0]?projDisplayName(wonDeals[0]):"Client Name or CE No";
+    const example=["ABC Steel Works",sample,"Structural Steel","Fabricate and install steel trusses per approved drawings","250000","10","50% down, 50% on completion","30 days","2026-08-15","2026-09-30","2026-08-07","Include shop drawings"];
+    const esc=v=>{const s=String(v);return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;};
+    const csv=[headers.map(esc).join(","),example.map(esc).join(",")].join("\n");
+    const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="FabHub_WorkOrder_Batch_Template.csv";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  };
 
   const submit=async()=>{
     if(submitting) return;
@@ -17484,8 +17711,61 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
           <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🛠️ Subcon Work Orders</h2>
           <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>Scope-of-work engagements with subcontractors — separate from Purchase Orders, counted in the Subcon budget line</div>
         </div>
-        {canManage&&<button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>}
+        {canManage&&(
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            <input ref={batchInputRef} type="file" accept=".csv,.xlsx,.xls" style={{display:"none"}} onChange={onBatchFile}/>
+            <button onClick={downloadBatchTemplate} title="Download a CSV template with the expected columns" style={{background:"none",border:"none",color:"#3b82f6",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer",alignSelf:"center",padding:0}}>⬇ Template</button>
+            <button onClick={()=>{if(!window.XLSX){toastEmit&&toastEmit("Excel library still loading — try again in a second.","warning");return;}batchInputRef.current&&batchInputRef.current.click();}} disabled={batchBusy} style={{background:"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:10,padding:"9px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#475569",cursor:batchBusy?"wait":"pointer"}}>{batchBusy?"Reading…":"⬆️ Batch Upload"}</button>
+            <button onClick={openNew} style={{background:"#1e293b",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ New Work Order</button>
+          </div>
+        )}
       </div>
+
+      {batchRows&&(()=>{
+        const valid=batchRows.filter(r=>!r._errors.length);
+        const projOpts=[...(wonDeals||[]).map(d=>({id:d.id,label:projDisplayName(d)}))].sort((a,b)=>a.label.localeCompare(b.label));
+        return(
+          <Modal open onClose={()=>{setBatchRows(null);setBatchFileName("");}} maxWidth={920} title={`Batch Upload — Review (${batchFileName})`}>
+            <div style={{fontSize:".82rem",color:"#475569",marginBottom:12}}>
+              <b style={{color:"#059669"}}>{valid.length} ready</b>{batchRows.length-valid.length>0&&<> · <b style={{color:"#dc2626"}}>{batchRows.length-valid.length} need attention</b></>} · {woDirect?"will be Issued":"will be submitted for Approval"}. Confirm each row's <b>Project</b> against the app's list below — best guesses are pre-selected; ⚠ rows had no confident match.
+            </div>
+            <div style={{maxHeight:"52vh",overflow:"auto",border:"1px solid #e2e8f0",borderRadius:10}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:".76rem"}}>
+                <thead><tr style={{background:"#f8fafc",textAlign:"left",position:"sticky",top:0}}>
+                  {["#","WO No","Subcontractor","Project","Scope","Amount","Ret%","Status"].map(h=><th key={h} style={{padding:"7px 9px",fontWeight:800,color:"#64748b",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap"}}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {batchRows.map((r,i)=>{
+                    const ok=!r._errors.length;
+                    return(
+                      <tr key={i} style={{background:ok?"#fff":"#fef2f2",borderBottom:"1px solid #f1f5f9"}}>
+                        <td style={{padding:"6px 9px",color:"#94a3b8"}}>{r._row}</td>
+                        <td style={{padding:"6px 9px",color:"#64748b",whiteSpace:"nowrap"}}>{r.woNumber||"auto"}</td>
+                        <td style={{padding:"6px 9px",fontWeight:600,color:"#1e293b"}}>{r.subcontractor||"—"}</td>
+                        <td style={{padding:"6px 9px",minWidth:200}}>
+                          <select value={r.projectId||""} onChange={e=>setBatchProject(i,e.target.value)} title={r.projectCell?`File said: ${r.projectCell}`:""}
+                            style={{width:"100%",maxWidth:230,border:`1.5px solid ${r.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:7,padding:"5px 7px",fontFamily:"inherit",fontSize:".74rem",color:r.projectId?"#1e293b":"#dc2626",background:"#fff"}}>
+                            <option value="">{r.projectCell?`⚠ "${r.projectCell}" — pick…`:"— pick project —"}</option>
+                            {projOpts.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+                          </select>
+                        </td>
+                        <td style={{padding:"6px 9px",color:"#64748b",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.scopeOfWork}>{r.scopeOfWork||"—"}</td>
+                        <td style={{padding:"6px 9px",fontWeight:700,color:"#1e293b",whiteSpace:"nowrap"}}>{fmt(r.contractAmount)}</td>
+                        <td style={{padding:"6px 9px",color:"#64748b"}}>{r.retentionPct||0}%</td>
+                        <td style={{padding:"6px 9px",whiteSpace:"nowrap"}}>{ok?<span style={{color:"#059669",fontWeight:700}}>✓ Ready</span>:<span style={{color:"#dc2626",fontWeight:600}} title={r._errors.join("; ")}>⚠ {r._errors[0]}</span>}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:16}}>
+              <button onClick={()=>{setBatchRows(null);setBatchFileName("");}} style={{background:"#f1f5f9",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#475569",cursor:"pointer"}}>Cancel</button>
+              <button onClick={confirmBatch} disabled={!valid.length} style={{background:valid.length?"#1e293b":"#cbd5e1",border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:valid.length?"pointer":"not-allowed"}}>Import {valid.length} Work Order{valid.length!==1?"s":""}</button>
+            </div>
+          </Modal>
+        );
+      })()}
 
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
         {[
