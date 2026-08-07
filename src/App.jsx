@@ -17372,17 +17372,50 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
     if(m2){const yr=m2[3].length===2?`20${m2[3]}`:m2[3];return `${yr}-${String(m2[1]).padStart(2,"0")}-${String(m2[2]).padStart(2,"0")}`;}
     return s;
   };
-  // Match a free-text project cell to a won deal (by contact/client name or CE No).
+  // Best-guess match of a free-text project cell to a won deal. Only a
+  // suggestion — the review screen lets the user confirm/override every row,
+  // because short spreadsheet names ("MIZUNO", "I'M IN SHANG") are inherently
+  // ambiguous against the real CE list. Punctuation-insensitive, token-aware,
+  // and biased toward base projects over addenda/change orders.
+  const normName=s=>String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
   const matchProject=cell=>{
-    const q=String(cell||"").trim().toLowerCase();
+    const q=normName(cell);
     if(!q) return null;
-    return (wonDeals||[]).find(d=>{
-      const name=projDisplayName(d).toLowerCase();
-      const ce=String(d.ceNo||"").toLowerCase();
-      const client=String(d.contact||d.client||"").toLowerCase();
-      return name===q||ce===q||client===q||(name&&name.includes(q))||(q&&client&&q.includes(client)&&client.length>2);
-    })||null;
+    const qt=q.split(" ").filter(t=>t.length>2);
+    let best=null,bestScore=0;
+    (wonDeals||[]).forEach(d=>{
+      const name=normName(projDisplayName(d));
+      const client=normName(d.contact||d.client||"");
+      const ce=normName(d.ceNo||"");
+      let score=0;
+      if(name===q||client===q||ce===q) score=100;
+      else if(name.startsWith(q)||q.startsWith(name)||client.startsWith(q)) score=80;
+      else if(name.includes(q)||q.includes(name)) score=60;
+      else{
+        const nt=new Set(name.split(" "));
+        const hit=qt.filter(t=>nt.has(t)).length;
+        if(hit) score=25+hit*8;
+      }
+      if(score>0){
+        if(/addendum|change order|added works|movement|relocation|pull out|demolition|board up|reuse/.test(name)) score-=18; // prefer the base project
+        score-=Math.min(name.length/60,4); // prefer the tighter (plainer) name
+        if(score>bestScore){bestScore=score;best=d;}
+      }
+    });
+    return bestScore>=30?best:null;
   };
+  // User picks/overrides a row's project in the review table; re-validate the row.
+  const setBatchProject=(idx,dealId)=>setBatchRows(rows=>(rows||[]).map((r,i)=>{
+    if(i!==idx) return r;
+    const deal=(wonDeals||[]).find(d=>d.id===dealId);
+    const nr={...r,projectId:dealId||"",projectName:deal?projDisplayName(deal):""};
+    const errors=[];
+    if(!nr.subcontractor) errors.push("Missing subcontractor");
+    if(!nr.projectId) errors.push(nr.projectCell?`No match for "${nr.projectCell}" — pick a project`:"Missing project");
+    if(!nr.scopeOfWork) errors.push("Missing scope of work");
+    if(nr.contractAmount<=0) errors.push("Contract amount must be > 0");
+    return {...nr,_errors:errors};
+  }));
 
   const parseBatchFile=async file=>{
     const ext=file.name.split(".").pop().toLowerCase();
@@ -17690,10 +17723,11 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
 
       {batchRows&&(()=>{
         const valid=batchRows.filter(r=>!r._errors.length);
+        const projOpts=[...(wonDeals||[]).map(d=>({id:d.id,label:projDisplayName(d)}))].sort((a,b)=>a.label.localeCompare(b.label));
         return(
           <Modal open onClose={()=>{setBatchRows(null);setBatchFileName("");}} maxWidth={920} title={`Batch Upload — Review (${batchFileName})`}>
             <div style={{fontSize:".82rem",color:"#475569",marginBottom:12}}>
-              <b style={{color:"#059669"}}>{valid.length} ready</b>{batchRows.length-valid.length>0&&<> · <b style={{color:"#dc2626"}}>{batchRows.length-valid.length} with issues</b> (skipped)</>} · {woDirect?"will be Issued":"will be submitted for Approval"}.
+              <b style={{color:"#059669"}}>{valid.length} ready</b>{batchRows.length-valid.length>0&&<> · <b style={{color:"#dc2626"}}>{batchRows.length-valid.length} need attention</b></>} · {woDirect?"will be Issued":"will be submitted for Approval"}. Confirm each row's <b>Project</b> against the app's list below — best guesses are pre-selected; ⚠ rows had no confident match.
             </div>
             <div style={{maxHeight:"52vh",overflow:"auto",border:"1px solid #e2e8f0",borderRadius:10}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:".76rem"}}>
@@ -17708,7 +17742,13 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                         <td style={{padding:"6px 9px",color:"#94a3b8"}}>{r._row}</td>
                         <td style={{padding:"6px 9px",color:"#64748b",whiteSpace:"nowrap"}}>{r.woNumber||"auto"}</td>
                         <td style={{padding:"6px 9px",fontWeight:600,color:"#1e293b"}}>{r.subcontractor||"—"}</td>
-                        <td style={{padding:"6px 9px",color:"#475569"}}>{r.projectName||<span style={{color:"#dc2626"}}>{r.projectCell||"—"}</span>}</td>
+                        <td style={{padding:"6px 9px",minWidth:200}}>
+                          <select value={r.projectId||""} onChange={e=>setBatchProject(i,e.target.value)} title={r.projectCell?`File said: ${r.projectCell}`:""}
+                            style={{width:"100%",maxWidth:230,border:`1.5px solid ${r.projectId?"#e2e8f0":"#fca5a5"}`,borderRadius:7,padding:"5px 7px",fontFamily:"inherit",fontSize:".74rem",color:r.projectId?"#1e293b":"#dc2626",background:"#fff"}}>
+                            <option value="">{r.projectCell?`⚠ "${r.projectCell}" — pick…`:"— pick project —"}</option>
+                            {projOpts.map(o=><option key={o.id} value={o.id}>{o.label}</option>)}
+                          </select>
+                        </td>
                         <td style={{padding:"6px 9px",color:"#64748b",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.scopeOfWork}>{r.scopeOfWork||"—"}</td>
                         <td style={{padding:"6px 9px",fontWeight:700,color:"#1e293b",whiteSpace:"nowrap"}}>{fmt(r.contractAmount)}</td>
                         <td style={{padding:"6px 9px",color:"#64748b"}}>{r.retentionPct||0}%</td>
