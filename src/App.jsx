@@ -6224,7 +6224,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(k==="dashboard") setPage("acctdash");
     else if(k==="po") setPage("procurement");
     else if(k==="ap"){setPage("finance");setFinTab("payables");}
-    else if(k==="payments") setPage("accounting");
+    else if(k==="payments"){setPage("finance");setFinTab("payments");}
     else if(k==="cv") setPage("checkvouchers");
   };
   const openPayModal=(p)=>{
@@ -10519,11 +10519,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(page==="finance"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
       <Wrap>
         {/* Aerwin's Purchase-to-Payment ERP header — module launcher across the finance area */}
-        <FinanceErpBar active={finTab==="payables"?"ap":null} go={financeErpGo} counts={financeErpCounts()}/>
+        <FinanceErpBar active={finTab==="payables"?"ap":finTab==="payments"?"payments":null} go={financeErpGo} counts={financeErpCounts()}/>
         {/* Finance tab bar — Accounting is scoped to the Payables (Other Payables) ledger only; the P&L/cash tabs stay owner-side. */}
         <div style={{position:"relative",marginBottom:24}}>
           <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",overflowX:"auto",WebkitOverflowScrolling:"touch",scrollbarWidth:"none",msOverflowStyle:"none"}}>
-            {(role==="Accounting"?[["payables","📤 Payables"]]:[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["payables","📤 Payables"],["loans","💳 Loans"]]).map(([t,l])=>(
+            {(role==="Accounting"?[["payables","📤 Payables"],["payments","💸 Payments"]]:[["overview","📊 Overview"],["cash","💵 Cash Position"],["pl","📈 P&L"],["payables","📤 Payables"],["payments","💸 Payments"],["loans","💳 Loans"]]).map(([t,l])=>(
               <button key={t} onClick={()=>setFinTab(t)} style={{whiteSpace:"nowrap",padding:"10px 18px",border:"none",background:"none",cursor:"pointer",fontSize:isMobile?".78rem":".85rem",fontWeight:finTab===t?700:500,color:finTab===t?"#3b82f6":"#64748b",borderBottom:finTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit",flexShrink:0}}>
                 {l}{t==="payables"&&payables.filter(p=>p.status==="Unpaid").length>0&&<span style={{marginLeft:5,background:"#ef4444",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{payables.filter(p=>p.status==="Unpaid").length}</span>}{t==="loans"&&loans.length>0&&<span style={{marginLeft:5,background:"#7c3aed",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".62rem",fontWeight:700}}>{loans.length}</span>}
               </button>
@@ -11169,6 +11169,67 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </Modal>
                 );
               })()}
+            </div>
+          );
+        })()}
+        {finTab==="payments"&&(()=>{
+          // Payment History — every payment that coursed through Finance, unified
+          // from released/cleared check vouchers (Check channel) and direct
+          // payable settlements with no linked voucher (Online/Cash channel).
+          const N=v=>Number(v)||0;
+          const bankName=b=>{const x=(BANKS||[]).find(y=>y.id===b||y.short===b||y.name===b);return x?x.name:(b||"—");};
+          const apOf=v=>v.apRef||(payables.find(p=>p.id===v.payableId)||{}).apNumber||"—";
+          const cvPays=vouchers.filter(v=>v.status==="Released"||v.isCleared).map(v=>({
+            id:"cv-"+v.id,date:v.releasedDate||v.date||"",apNo:apOf(v),vendor:v.payee||"—",
+            channel:"Check",bank:bankName(v.bank),ref:v.checkNo?("Check #"+v.checkNo):"—",
+            amount:N(v.amount),cvId:v.id,cleared:v.isCleared,
+          }));
+          const directPays=payables.filter(p=>!p.cvId&&p.status!=="Check Issued"&&N(p.paidAmount)>0).map(p=>({
+            id:"ap-"+p.id,date:p.paidDate||"",apNo:p.apNumber||"—",vendor:p.vendor||"—",
+            channel:"Online",bank:"—",ref:p.invoiceNumber||p.invoiceRef||"—",
+            amount:N(p.paidAmount),cvId:null,cleared:p.status==="Paid",
+          }));
+          const rows=[...cvPays,...directPays].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+          const now=new Date();
+          const thisMonth=rows.filter(r=>(r.date||"").slice(0,7)===today.slice(0,7));
+          const totalMonth=thisMonth.reduce((s,r)=>s+r.amount,0);
+          const checkMonth=thisMonth.filter(r=>r.channel==="Check").reduce((s,r)=>s+r.amount,0);
+          const onlineMonth=totalMonth-checkMonth;
+          const floatAmt=vouchers.filter(v=>v.status==="Released"&&!v.isCleared).reduce((s,v)=>s+N(v.amount),0);
+          return(
+            <div>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
+                <ErpStat label="Paid This Month" value={fmt(totalMonth)} foot={thisMonth.length+" payment(s)"}/>
+                <ErpStat tone="purple" label="By Check" value={fmt(checkMonth)} foot="this month"/>
+                <ErpStat tone="ok" label="By Online / Cash" value={fmt(onlineMonth)} foot="this month"/>
+                <ErpStat tone="warn" label="Released — Float" value={fmt(floatAmt)} foot="checks not yet cleared"/>
+              </div>
+              <ErpCard title="Payment History" desc="All payments made against Accounts Payable, by Check or Online Transaction. Checks are released here; expenses originate in Procurement.">
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:820}}>
+                    <thead><tr>
+                      {["Date","AP No.","Vendor","Channel","Bank","Reference","Amount",""].map((h,i)=>(
+                        <th key={h+i} style={i===6?erpThNum:erpTh}>{h}</th>
+                      ))}
+                    </tr></thead>
+                    <tbody>
+                      {rows.length===0&&<tr><td colSpan={8} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>No payments recorded yet. Release a check voucher or settle a payable to see it here.</td></tr>}
+                      {rows.map(r=>(
+                        <tr key={r.id} onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                          <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{r.date||"—"}</td>
+                          <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{r.apNo}</td>
+                          <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.vendor}>{r.vendor}</td>
+                          <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={r.channel==="Check"?"check":"online"}>{r.channel}</ErpBadge></td>
+                          <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{r.bank}</td>
+                          <td style={{...erpTd,color:ERP.muted,whiteSpace:"nowrap"}}>{r.ref}</td>
+                          <td style={{...erpTdNum,fontWeight:800,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(r.amount)}</td>
+                          <td style={{...erpTd,whiteSpace:"nowrap"}}>{r.cvId&&<button onClick={()=>{setPage("checkvouchers");setCvView(r.cvId);}} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>View CV</button>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </ErpCard>
             </div>
           );
         })()}
