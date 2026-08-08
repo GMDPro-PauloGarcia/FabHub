@@ -2766,7 +2766,7 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||""})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
@@ -3047,7 +3047,7 @@ export default function App(){
     if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -6088,6 +6088,81 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const max=(list||[]).reduce((m,p)=>{const mt=re.exec(String(p.apNumber||""));return mt?Math.max(m,Number(mt[1])):m;},0);
     return `AP-${yr}-${String(max+1).padStart(4,"0")}`;
   };
+  // The Accounts Payable Voucher (APV) is the approval/support document raised
+  // when a payable is logged — BEFORE payment (vs. the Check Voucher, raised AT
+  // payment). FabHub derives its number 1:1 from the payable's AP number, so the
+  // payable itself is the APV — no separate record or numbering series needed.
+  const apvNoFor=p=>{const n=String(p?.apNumber||"");return n?n.replace(/^AP-/,"APV-"):("APV-"+String(p?.id||"").slice(0,6));};
+  const printAPV=(p)=>{
+    if(!p) return;
+    const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    const pesos=n=>"PHP "+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    const acct=chartOfAccounts.find(a=>String(a.code)===String(p.accountCode));
+    const acctLabel=acct?`${acct.code} — ${acct.name}`:(p.accountCode||"—");
+    const proj=(wonDeals.find(d=>d.id===p.projectId)||completedDeals.find(d=>d.id===p.projectId));
+    const bal=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
+    const payStatus=p.status==="Paid"?"Paid":`${p.status||"Unpaid"}${bal>0?" (Balance "+pesos(bal)+")":""}`;
+    const row=(l,val)=>`<tr><td class="lbl">${esc(l)}</td><td class="val">${esc(val)||"—"}</td></tr>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(apvNoFor(p))}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1B2430;padding:40px;background:#fff}
+  .doc{max-width:660px;margin:0 auto;border:1.5px solid #0B2545;border-radius:8px;padding:32px 34px;position:relative;overflow:hidden}
+  .top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #C9A24B;padding-bottom:14px;margin-bottom:18px;position:relative}
+  .co{font-size:1.2rem;font-weight:800;color:#0B2545}
+  .co small{display:block;font-size:.7rem;font-weight:400;color:#5B6472;margin-top:3px}
+  .cvlbl{font-size:.62rem;letter-spacing:.05em;color:#5B6472;text-transform:uppercase;text-align:right}
+  .cvno{font-size:1.15rem;font-weight:800;color:#A8822F;text-align:right}
+  table{width:100%;border-collapse:collapse;position:relative}
+  td{padding:6px 0;font-size:.86rem;vertical-align:top}
+  td.lbl{color:#5B6472;width:170px;font-weight:600}
+  td.val{font-weight:600;color:#1B2430}
+  .amt{margin:16px 0;border:1px solid #DCE2EC;border-radius:8px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#EEF2F8;position:relative}
+  .amt .k{font-size:.78rem;color:#5B6472;font-weight:600}
+  .amt .v{font-size:1.4rem;font-weight:800;color:#0B2545}
+  .je{background:#fff;border:1px solid #DCE2EC;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;position:relative}
+  .je .t{font-weight:700;color:#0B2545;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+  .je .l{display:flex;justify-content:space-between;padding:2px 0}
+  .je .l.cr span:first-child{padding-left:18px;color:#5B6472}
+  .je .l.cr span:last-child{color:#5B6472}
+  .sig{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-top:26px;position:relative}
+  .sig .b{text-align:center;border-top:1px solid #1B2430;padding-top:5px;font-size:.68rem;color:#5B6472}
+  .wm{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:38px;font-weight:800;color:rgba(11,37,69,0.05);white-space:nowrap;pointer-events:none}
+  @media print{body{padding:0}}
+</style></head><body>
+<div class="doc">
+  <div class="wm">GMD PRODUCTION INC.</div>
+  <div class="top">
+    <div class="co">GMD PRODUCTION INC.<small>Marikina City, Metro Manila, Philippines · TIN 010-063-229-00000</small></div>
+    <div><div class="cvlbl">Accounts Payable Voucher No.</div><div class="cvno">${esc(apvNoFor(p))}</div></div>
+  </div>
+  <table>
+    ${row("Date",p.invoiceDate||p.createdAt)}
+    ${row("Payee / Vendor",p.vendor)}
+    ${row("Particulars",p.notes||p.invoiceNumber||p.invoiceRef)}
+    ${p.poNumber?row("PO Reference",p.poNumber):""}
+    ${row("AP Reference",p.apNumber)}
+    ${proj?row("Project",projDisplayName(proj)):""}
+    ${row("Account to be Charged",acctLabel)}
+    ${row("Due Date",p.dueDate)}
+    ${row("Payment Status",payStatus)}
+  </table>
+  <div class="amt"><span class="k">Amount</span><span class="v">${pesos(p.amount)}</span></div>
+  <div class="je">
+    <div class="t">Accounting Entry</div>
+    <div class="l"><span>Dr &nbsp;${esc(acctLabel)}</span><span>${pesos(p.amount)}</span></div>
+    <div class="l cr"><span>Cr &nbsp;2000 — Accounts Payable - Trade</span><span>${pesos(p.amount)}</span></div>
+  </div>
+  <div class="sig">
+    <div class="b">Prepared by — Finance</div>
+    <div class="b">Checked by — Accounting</div>
+    <div class="b">Approved by — Management</div>
+  </div>
+</div>
+</body></html>`;
+    const w=window.open("","_blank","width=760,height=800");
+    if(w){w.document.write(html);w.document.close();setTimeout(()=>w.print(),500);}
+  };
   // Days-based aging for the AP log. Negative days = overdue; positive = remaining.
   // Mirrors the finance team's "30d left" / overdue read-out.
   const payableAging=(p)=>{
@@ -6198,7 +6273,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const rec={id:uid(),apNumber:nextApNumber(),vendor:supplier,amount,paidAmount:0,dueDate:"",category:"Supplier",
       accountCode:active[0]?.accountCode||"",
       invoiceRef:poNo,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
-      poNumber:poNo,poId:poNo,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+      poNumber:poNo,poId:poNo,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
     return rec;
@@ -6226,7 +6301,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const rec={id:uid(),apNumber:nextApNumber(),vendor,amount,paidAmount:0,dueDate:"",category:"Subcontractor",
       accountCode:wo.accountCode||"5200",
       invoiceRef:wo.woNumber,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from Work Order ${wo.woNumber}`,projectId:linkedProjectId,
-      poNumber:wo.woNumber,poId:wo.woNumber,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+      poNumber:wo.woNumber,poId:wo.woNumber,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
     if(isSupabaseReady()) sbUpsert("payables",payableToSb(rec),"id").catch(()=>{});
     return rec;
@@ -6253,6 +6328,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       toastEmit("⚠️ Payable saved locally only — no server connection. Do not close this tab!","warning",9000);
     }
     setPayModal(false);setEditPayId(null);setPayForm(emptyPayForm());
+  };
+  // Verification gate: a PO/WO-sourced payable is locked from payment until the
+  // receiving side signs off — Warehouse for Materials, Operations (% complete)
+  // for Subcontractor. Manual Other Payables are verified by default.
+  const payIsSubcon=p=>p&&(p.category==="Subcontractor"||String(p.accountCode||"").startsWith("52"));
+  const payNeedsVerify=p=>p&&!!(p.poId||p.poNumber); // only PO/WO-sourced payables are gated
+  const verifyPayable=(id)=>{
+    const p=payables.find(x=>x.id===id); if(!p) return;
+    let pct=100;
+    if(payIsSubcon(p)){
+      const inp=window.prompt("% of project completion verified by Operations (0–100):",String(p.verificationPct||0));
+      if(inp==null) return;
+      pct=Math.max(0,Math.min(100,Number(inp)||0));
+      if(pct<=0){toastEmit("Enter a % greater than 0 to unlock payment.","warning");return;}
+    } else {
+      if(!window.confirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`)) return;
+    }
+    const upd={...p,verified:true,verificationPct:pct,verifiedBy:session?.name||"",verifiedAt:today};
+    upPayables(ps=>ps.map(x=>x.id===id?upd:x));
+    if(isSupabaseReady()&&isUUID(id)) sbUpsert("payables",payableToSb(upd),"id").catch(()=>{});
+    toastEmit(payIsSubcon(p)?`Verified ${pct}% (Operations) — now payable.`:"Warehouse receipt verified — now payable.","success");
   };
   // Record a payment against a payable (full or partial). Advances paidAmount and
   // flips Unpaid → Partial → Paid as the running balance closes — the "Pay" action
@@ -11176,13 +11272,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:960}}>
                       <thead>
                         <tr>
-                          {["AP No.","PO No.","Vendor","Account","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status",""].map((h,i)=>(
+                          {["AP No.","PO No.","Vendor","Account","Invoice No.","Invoice Date","Due Date","Aging","Amount","Paid","Balance","Status","Verification",""].map((h,i)=>(
                             <th key={h+i} style={i>=8&&i<=10?erpThNum:erpTh}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {apVisible.length===0&&<tr><td colSpan={13} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter.toLowerCase()} payables.</td></tr>}
+                        {apVisible.length===0&&<tr><td colSpan={14} style={{padding:"20px",textAlign:"center",color:"#94a3b8",fontSize:".8rem"}}>No {apFilter.toLowerCase()} payables.</td></tr>}
                         {apVisible.map((p,idx)=>{
                           const ag=payableAging(p);
                           const settled=isSettled(p);
@@ -11206,10 +11302,23 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <td style={{...erpTdNum,color:ERP.ok,whiteSpace:"nowrap"}}>{paidAmt>0?<>{fmtM(paidAmt)}{Number(p.amount)>0&&<div style={{fontSize:11,color:ERP.muted}}>{Math.round(paidAmt/Number(p.amount)*100)}%</div>}</>:"—"}</td>
                               <td style={{...erpTdNum,fontWeight:700,color:balance>0?ERP.danger:ERP.muted,whiteSpace:"nowrap"}}>{fmtM(balance)}</td>
                               <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(stTxt)}>{stTxt}</ErpBadge></td>
+                              {(()=>{
+                                const needV=payNeedsVerify(p),isSub=payIsSubcon(p);
+                                return(
+                                  <td style={{...erpTd,whiteSpace:"nowrap"}}>
+                                    {!needV
+                                      ? <span style={{fontSize:11,color:ERP.muted}}>—</span>
+                                      : p.verified
+                                        ? <ErpBadge kind="paid">{isSub?`${Number(p.verificationPct||0)}% Verified`:"Verified"}</ErpBadge>
+                                        : <ErpBadge kind="unpaid">{isSub?"Pending (Operations)":"Pending (Warehouse)"}</ErpBadge>}
+                                  </td>
+                                );
+                              })()}
                               <td style={{...erpTd,whiteSpace:"nowrap"}}>
                                 <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
-                                  {!settled&&balance>0&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
-                                  {!settled&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
+                                  {!settled&&payNeedsVerify(p)&&!p.verified&&<button onClick={()=>verifyPayable(p.id)} title={payIsSubcon(p)?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"4px 10px",fontSize:".7rem",color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
+                                  {!settled&&balance>0&&(!payNeedsVerify(p)||p.verified)&&<button onClick={()=>openPayModal(p)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"4px 12px",fontSize:".7rem",color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                                  {!settled&&(!payNeedsVerify(p)||p.verified)&&!(p.cvId||p.status==="Check Issued")&&<button onClick={()=>payableToCheck(p.id)} title="Route to Check Voucher" style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#2563eb",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>🖊 CV</button>}
                                   <button onClick={()=>{setPayForm({...p});setEditPayId(p.id);setPayModal(true);}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                                   <button onClick={()=>delPayable(p.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
                                 </div>
@@ -13420,6 +13529,44 @@ First few:
           }} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontSize:".78rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>
         </div>
       </div>
+
+      {/* Accounts Payable Voucher (APV) Log — the approval/support document raised
+          when a payable is logged, before payment. Mirrors Aerwin's Vouchers tab. */}
+      {(()=>{
+        const apvRows=[...payables].sort((a,b)=>String(b.apNumber||"").localeCompare(String(a.apNumber||"")));
+        return(
+          <ErpCard title="Accounts Payable Voucher (APV) Log" desc="Automatically raised whenever a vendor invoice or other payable is logged to Accounts Payable — the approval/support document, before payment is made. Click View / Print for the voucher.">
+            <div style={{overflowX:"auto"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:820}}>
+                <thead><tr>
+                  {["APV No.","Date","Vendor","Project","Account","PO No.","AP No.","Amount",""].map((h,i)=>(
+                    <th key={h+i} style={i===7?erpThNum:erpTh}>{h}</th>
+                  ))}
+                </tr></thead>
+                <tbody>
+                  {apvRows.length===0&&<tr><td colSpan={9} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>No APVs yet — they're created automatically when a payable is logged to Accounts Payable.</td></tr>}
+                  {apvRows.map(p=>{
+                    const proj=(wonDeals.find(d=>d.id===p.projectId)||completedDeals.find(d=>d.id===p.projectId));
+                    return(
+                      <tr key={p.id} onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{apvNoFor(p)}</td>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.invoiceDate||p.createdAt||"—"}</td>
+                        <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:170,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={p.vendor}>{p.vendor||"—"}</td>
+                        <td style={{...erpTd,color:ERP.muted,maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{proj?projDisplayName(proj):"—"}</td>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:p.accountCode?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}}>{p.accountCode||"—"}</td>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.poNumber||"—"}</td>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{p.apNumber||"—"}</td>
+                        <td style={{...erpTdNum,fontWeight:800,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(p.amount)}</td>
+                        <td style={{...erpTd,whiteSpace:"nowrap"}}><button onClick={()=>printAPV(p)} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>View / Print</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </ErpCard>
+        );
+      })()}
 
       {/* Workflow status bar */}
       {(()=>{
