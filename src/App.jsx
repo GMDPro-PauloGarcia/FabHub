@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -1905,7 +1905,14 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
   const[title,setTitle]=React.useState("");
   const[desc,setDesc]=React.useState("");
   const[value,setValue]=React.useState("");
+  const[kind,setKind]=React.useState("Additive");
+  const[scopeItems,setScopeItems]=React.useState([]); // optional BOQ line items
   const[addSearch,setAddSearch]=React.useState("");
+  const isDeduct=kind==="Deductive";
+  const scopeTotal=scopeItems.reduce((s,it)=>s+(Number(it.qty)||0)*(Number(it.rate)||0),0);
+  const addScopeRow=()=>setScopeItems(r=>[...r,{description:"",qty:1,unit:"lot",rate:""}]);
+  const setScopeRow=(i,ch)=>setScopeItems(r=>r.map((it,j)=>j===i?{...it,...ch}:it));
+  const delScopeRow=(i)=>setScopeItems(r=>r.filter((_,j)=>j!==i));
 
   const visibleAddenda=canCreate
     ?(role==="Manager"?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
@@ -1915,12 +1922,13 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
     :visibleAddenda;
 
   const statusClr={Discovered:"#f59e0b","Sales Notified":"#3b82f6","Client Coordinating":"#8b5cf6",Approved:"#059669",Billed:"#06b6d4",Collected:"#10b981",Rejected:"#ef4444"};
-  const totalValue=filteredAddenda.reduce((s,a)=>s+Number(a.value||0),0);
+  const totalValue=filteredAddenda.reduce((s,a)=>s+coSignedValue(a),0);
+  const fmtSigned=(v)=>`${v<0?"−":"+"}₱${Number(Math.abs(v)).toLocaleString("en-PH")}`;
 
   const AddendaList=()=>(
     <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
       <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontWeight:700,color:"#f59e0b",fontSize:".9rem"}}>📋 Scope Change Log ({filteredAddenda.length}){totalValue>0&&<span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:8,fontWeight:400}}>₱{Number(totalValue).toLocaleString("en-PH")} total additional value</span>}</span>
+        <span style={{fontWeight:700,color:"#f59e0b",fontSize:".9rem"}}>📋 Change Order Log ({filteredAddenda.length}){totalValue!==0&&<span style={{fontSize:".72rem",color:"#94a3b8",marginLeft:8,fontWeight:400}}>{fmtSigned(totalValue)} net value adjustment</span>}</span>
       </div>
       <div style={{padding:"10px 14px",borderBottom:"1px solid #f1f5f9"}}>
         <input value={addSearch} onChange={e=>setAddSearch(e.target.value)} placeholder="Search by project, client, status…"
@@ -1938,24 +1946,27 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
             });
             return groups.map(g=>{
               const d=wonDeals.find(x=>x.id===g.dealId);
-              const grpTotal=g.items.reduce((s,a)=>s+Number(a.value||0),0);
+              const grpTotal=g.items.reduce((s,a)=>s+coSignedValue(a),0);
               return(
                 <div key={g.dealId||"unassigned"}>
                   <div style={{padding:"8px 16px",background:"#f8fafc",borderBottom:"1px solid #eef2f7",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
                     <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem",minWidth:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d?.client||"Unassigned"}{d?.ceNo?` · ${d.ceNo}`:""} <span style={{color:"#94a3b8",fontWeight:500}}>({g.items.length})</span></span>
-                    {grpTotal>0&&<span style={{fontSize:".72rem",color:"#059669",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>+₱{Number(grpTotal).toLocaleString("en-PH")}</span>}
+                    {grpTotal!==0&&<span style={{fontSize:".72rem",color:grpTotal<0?"#dc2626":"#059669",fontWeight:700,whiteSpace:"nowrap",flexShrink:0}}>{fmtSigned(grpTotal)}</span>}
                   </div>
                   {g.items.map((a,i)=>(
                     <div key={a.id} style={{padding:"11px 16px 11px 24px",borderBottom:i<g.items.length-1?"1px solid #f8fafc":"1px solid #eef2f7"}}>
                       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
                         <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{a.title}</div>
+                          <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>
+                            <span style={{fontSize:".58rem",fontWeight:800,letterSpacing:".4px",color:a.kind==="Deductive"?"#dc2626":"#059669",background:(a.kind==="Deductive"?"#dc2626":"#059669")+"18",borderRadius:5,padding:"1px 6px",marginRight:6,verticalAlign:"middle"}}>{a.kind==="Deductive"?"− DEDUCT":"+ ADD"}</span>
+                            {a.title}
+                          </div>
                           <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>By {a.discoveredBy||"—"}</div>
                           {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
                         </div>
                         <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{a.status}</span>
                       </div>
-                      {a.value>0&&<div style={{fontSize:".75rem",color:"#059669",marginTop:3,fontWeight:600}}>+₱{Number(a.value).toLocaleString("en-PH")} additional</div>}
+                      {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
                     </div>
                   ))}
                 </div>
@@ -1971,8 +1982,8 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
   return(
     <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:20}}>
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-        <div style={{background:"#dc2626",padding:"12px 16px"}}>
-          <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>⚠️ Flag New Scope Change</span>
+        <div style={{background:isDeduct?"#b91c1c":"#dc2626",padding:"12px 16px"}}>
+          <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>⚠️ Flag New Change Order</span>
         </div>
         <div style={{padding:"16px",display:"flex",flexDirection:"column",gap:12}}>
           <div>
@@ -1983,7 +1994,17 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
             </select>
           </div>
           <div>
-            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Scope Change Title <span style={{color:"#ef4444"}}>*</span></label>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Change Type <span style={{color:"#ef4444"}}>*</span></label>
+            <div style={{display:"flex",gap:8}}>
+              {CO_KINDS.map(k=>{const on=kind===k;const ded=k==="Deductive";return(
+                <button key={k} type="button" onClick={()=>setKind(k)}
+                  style={{flex:1,border:`1.5px solid ${on?(ded?"#dc2626":"#059669"):"#e2e8f0"}`,background:on?(ded?"#fef2f2":"#ecfdf5"):"#fff",color:on?(ded?"#b91c1c":"#047857"):"#64748b",borderRadius:8,padding:"9px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>
+                  {ded?"− Deductive (credit / descope)":"+ Additive (added scope)"}
+                </button>);})}
+            </div>
+          </div>
+          <div>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Change Order Title <span style={{color:"#ef4444"}}>*</span></label>
             <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="e.g. Additional wall cladding — Unit B"
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
           </div>
@@ -1993,21 +2014,44 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",resize:"vertical"}}/>
           </div>
           <div>
-            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Estimated Additional Value (₱)</label>
-            <input type="number" value={value} onChange={e=>setValue(e.target.value)} placeholder="0 if unknown"
-              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}/>
+            <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>{isDeduct?"Estimated Deducted Value (₱)":"Estimated Additional Value (₱)"}</label>
+            <input type="number" value={scopeItems.length?scopeTotal:value} onChange={e=>setValue(e.target.value)} disabled={scopeItems.length>0}
+              placeholder="0 if unknown" title={scopeItems.length?"Auto-summed from scope line items below":""}
+              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem",background:scopeItems.length?"#f8fafc":"#fff",color:scopeItems.length?"#64748b":"inherit"}}/>
+          </div>
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b"}}>Scope Line Items <span style={{fontWeight:400,color:"#94a3b8"}}>(optional — {isDeduct?"removed from":"added to"} BOQ on approval)</span></label>
+              <button type="button" onClick={addScopeRow} style={{background:"#eef2ff",border:"none",borderRadius:6,padding:"3px 10px",fontSize:".72rem",color:"#4f46e5",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}}>+ Add line</button>
+            </div>
+            {scopeItems.map((it,i)=>(
+              <div key={i} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                <input value={it.description} onChange={e=>setScopeRow(i,{description:e.target.value})} placeholder="Description"
+                  style={{flex:3,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 8px",fontFamily:"inherit",fontSize:".78rem",minWidth:0}}/>
+                <input type="number" value={it.qty} onChange={e=>setScopeRow(i,{qty:e.target.value})} placeholder="Qty"
+                  style={{width:52,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 6px",fontFamily:"inherit",fontSize:".78rem"}}/>
+                <input value={it.unit} onChange={e=>setScopeRow(i,{unit:e.target.value})} placeholder="unit"
+                  style={{width:52,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 6px",fontFamily:"inherit",fontSize:".78rem"}}/>
+                <input type="number" value={it.rate} onChange={e=>setScopeRow(i,{rate:e.target.value})} placeholder="Rate"
+                  style={{width:74,border:"1.5px solid #e2e8f0",borderRadius:7,padding:"6px 6px",fontFamily:"inherit",fontSize:".78rem"}}/>
+                <button type="button" onClick={()=>delScopeRow(i)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".95rem",padding:"0 2px"}}>✕</button>
+              </div>
+            ))}
+            {scopeItems.length>0&&<div style={{fontSize:".74rem",color:isDeduct?"#dc2626":"#059669",fontWeight:700,textAlign:"right"}}>Line total: {isDeduct?"−":"+"}₱{Number(scopeTotal).toLocaleString("en-PH")}</div>}
           </div>
           <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"10px 12px",fontSize:".8rem",color:"#92400e"}}>
-            📣 Submitting this will notify: <strong>{wonDeals.find(d=>d.id===selDealId)?.salesOwner||"AE"}</strong> (AE) and <strong>Paolo Gomez</strong> for coordination.
+            📣 Submitting this will notify: <strong>{wonDeals.find(d=>d.id===selDealId)?.salesOwner||"AE"}</strong> (AE) and <strong>Paolo Gomez</strong> for coordination. Once <strong>Approved</strong> it {isDeduct?"deducts from":"adds to"} the contract value{scopeItems.length?" and BOQ":""}; once <strong>Billed</strong> a milestone is generated automatically.
           </div>
           <button
             onClick={()=>{
               if(!title.trim()||!desc.trim()||!selDealId){toastEmit("Please fill in all required fields.","warning");return;}
               const deal=wonDeals.find(d=>d.id===selDealId);
+              const cleanItems=scopeItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.rate)||0}));
+              const magnitude=cleanItems.length?cleanItems.reduce((s,it)=>s+it.qty*it.rate,0):Math.abs(Number(value)||0);
               const newAdd={
                 id:"add"+Date.now(),dealId:selDealId,
                 title:title.trim(),description:desc.trim(),
-                value:Number(value)||0,
+                kind, value:magnitude, scopeItems:cleanItems,
                 ceNo:deal?.ceNo||"",
                 receiptType:deal?.receiptType||"OR",
                 withholding:deal?.withholding||false,
@@ -2016,12 +2060,12 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
               };
               upAddenda(as=>[...as,newAdd]);
               const ae=deal?.salesOwner||"AE";
-              logActivity(selDealId,"Scope Change Flagged",`${session?.name} flagged addendum on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`);
-              setTitle(""); setDesc(""); setValue("");
-              toastEmit("Scope change logged! Notified Sales.","success");
+              logActivity(selDealId,"Change Order Flagged",`${session?.name} flagged a ${kind.toLowerCase()} change order on ${deal?.client||"?"} (${deal?.ceNo||"?"}): "${title}" — Notifying ${ae} and Paolo Gomez.`);
+              setTitle(""); setDesc(""); setValue(""); setKind("Additive"); setScopeItems([]);
+              toastEmit("Change order logged! Notified Sales.","success");
             }}
-            style={{background:"#dc2626",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
-            ⚠️ Submit Scope Change
+            style={{background:isDeduct?"#b91c1c":"#dc2626",border:"none",borderRadius:8,padding:"10px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>
+            ⚠️ Submit Change Order
           </button>
         </div>
       </div>
@@ -2755,7 +2799,7 @@ export default function App(){
             if(_mreqs){setMreqs(prev=>mergeLocalOnly(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
             const _breqs=data.breqs?.length?data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})):null;
             if(_breqs){setBreqs(prev=>mergeLocalOnly(_breqs,prev));idbE.push([KEYS.breqs,_breqs]);}
-            const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by})):null;
+            const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[]})):null;
             if(_addenda){setAddenda(prev=>mergeLocalOnly(_addenda,prev));idbE.push([KEYS.addenda,_addenda]);}
             const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})):null;
             if(_checklist){setChecklist(prev=>mergeLocalOnly(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
@@ -3040,7 +3084,7 @@ export default function App(){
     if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mergeLocalOnly(ms,prev));idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mergeLocalOnly(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
-    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
+    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[]}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mergeLocalOnly(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mergeLocalOnly(ss,prev));idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
@@ -3242,6 +3286,7 @@ export default function App(){
   const toSbAddendum = r=>({
     id:r.id, deal_id:r.dealId||r.projectId, title:r.title||"", description:r.description||r.desc||"",
     value:Number(r.value)||0, ce_no:r.ceNo||"",
+    kind:r.kind||"Additive", scope_items:Array.isArray(r.scopeItems)?r.scopeItems:[],
     receipt_type:r.receiptType||"OR", withholding:r.withholding||false,
     cost_impact:Number(r.costImpact||r.value)||0,
     status:r.status||"Discovered", sales_notified:r.salesNotified||false,
@@ -4040,7 +4085,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(payload.eventType==='INSERT'||payload.eventType==='UPDATE'){
         const rec=payload.new;
         const mapped={...rec,dealId:rec.deal_id,receiptType:rec.receipt_type,
-          salesNotified:rec.sales_notified,discoveredBy:rec.discovered_by};
+          salesNotified:rec.sales_notified,discoveredBy:rec.discovered_by,
+          kind:rec.kind||"Additive",scopeItems:Array.isArray(rec.scope_items)?rec.scope_items:[]};
         setAddenda(as=>{const ex=as.find(a=>a.id===rec.id);
           return ex?as.map(a=>a.id===rec.id?{...a,...mapped}:a):[...as,mapped];});
       }
@@ -4556,16 +4602,62 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }));
     logActivity(dealId,"Contract Value Updated",`${delta>0?"+":"−"}₱${Number(Math.abs(delta)).toLocaleString("en-PH",{maximumFractionDigits:2})} from change order "${addendum?.title||""}" → revised contract value`);
   };
+  // Once a change order is billed/collected it should carry its own billing
+  // milestone so Finance can invoice the delta directly instead of hand-rolling
+  // it. Deductive change orders create a negative (credit) milestone.
+  const CO_BILLED=s=>["Billed","Collected"].includes(s);
+  const syncCoBilling=(co,shouldExist)=>{
+    const dealId=co.dealId||co.projectId;
+    const existing=billings.find(b=>b.coId===co.id);
+    if(shouldExist&&!existing&&dealId){
+      const invMax=billings.reduce((m,b)=>{const x=parseInt(String(b.invoiceNo||"").replace(/\D/g,""))||0;return Math.max(m,x);},0);
+      addMilestone({name:`Change Order — ${co.title||"Scope Change"}`,description:co.description||co.desc||"",amount:coSignedValue(co),dealId,coId:co.id,invoiceNo:`INV-${String(invMax+1).padStart(4,"0")}`,invoiceDate:today,dueDate:"",status:"Draft",receiptType:co.receiptType||null,withholding:co.withholding??null,createdBy:session?.name||role,deductions:[]});
+    }else if(!shouldExist&&existing){
+      upBillings(bs=>bs.filter(b=>b.coId!==co.id));
+      if(isSupabaseReady()) sbDelete('billing_milestones',existing.id).catch(()=>{});
+    }
+  };
+  // Once a change order is client-approved, its scope line items (if any) flow
+  // into the project BOQ as a tagged Change Order block — additive items add,
+  // deductive items subtract — and are stripped back out if it's reversed.
+  const syncCoBoq=(co,shouldExist)=>{
+    const items=Array.isArray(co.scopeItems)?co.scopeItems:[];
+    const dealId=co.dealId||co.projectId;
+    if(!dealId||(!items.length&&shouldExist)) return;
+    const sign=co.kind==="Deductive"?-1:1;
+    upDeals(ds=>ds.map(d=>{
+      if(d.id!==dealId) return d;
+      const bd=d.boqData?{...d.boqData}:{items:[],sections:[]};
+      const base=(bd.items||[]).filter(it=>it.coId!==co.id);
+      if((bd.items||[]).length===base.length&&!shouldExist) return d; // nothing to strip
+      let next=base;
+      if(shouldExist&&items.length){
+        const coItems=items.map(it=>{
+          const qty=Number(it.qty)||0, rate=Number(it.rate!=null?it.rate:it.unitCost)||0;
+          const total=Math.round(sign*Math.abs(qty*rate)*100)/100;
+          return {_id:uid(),coId:co.id,section:it.section||"CO",subsection:`CO: ${co.title||""}`,description:it.description||it.desc||"",unit:it.unit||"lot",qty,baseCost:rate,unitCost:rate,total,remarks:it.remarks||(co.kind==="Deductive"?"Deductive change order":"Additive change order"),markup:0};
+        });
+        next=[...base,...coItems];
+      }
+      const nbd={...bd,items:next};
+      if(isSupabaseReady()) sbUpdate('deals',dealId,{boq_data:nbd}).catch(()=>{});
+      return {...d,boqData:nbd};
+    }));
+  };
   const updateAddendum=(id,ch)=>{
     upAddenda(as=>as.map(a=>{
       if(a.id!==id) return a;
       const n={...a,...ch};
       // Roll the change-order value in/out of the parent contract based on the
-      // status transition (and any value edit). Uses persisted status only.
-      const oldVal=Number(a.value)||0, newVal=Number(n.value)||0;
+      // status transition (and any value/kind edit). Uses persisted status only.
+      // Values are signed by kind so a deductive CO subtracts from the contract.
+      const oldVal=coSignedValue(a), newVal=coSignedValue(n);
       const wasIn=ADDENDUM_ROLLED(a.status), nowIn=ADDENDUM_ROLLED(n.status);
       const delta=(nowIn?newVal:0)-(wasIn?oldVal:0);
       if(delta) rollDealContract(n.dealId||n.projectId,delta,n);
+      // Scope items flow into the BOQ on approval, billing milestone on billing.
+      if(wasIn!==nowIn||(nowIn&&oldVal!==newVal)) syncCoBoq(n,nowIn);
+      syncCoBilling(n,CO_BILLED(n.status));
       if(isSupabaseReady()) sbSyncOne("addenda",n,toSbAddendum);
       if(ch.status==="Approved"||ch.clientApproved){
         const deal=deals.find(d=>d.id===(a.dealId||a.projectId));
@@ -4579,8 +4671,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const deleteAddendum=(id)=>{
     const adm=addenda.find(a=>a.id===id);
     if(adm&&role!=="Manager"&&adm.discoveredBy!==session?.name) return toastEmit("Only Managers or the creator can delete scope changes.","error");
-    // If this change order was already rolled into the contract, take it back out.
-    if(adm&&ADDENDUM_ROLLED(adm.status)&&Number(adm.value)) rollDealContract(adm.dealId||adm.projectId,-(Number(adm.value)||0),adm);
+    // If this change order was already rolled into the contract, take it back
+    // out (signed by kind), and strip any BOQ items / billing milestone it added.
+    if(adm&&ADDENDUM_ROLLED(adm.status)&&coSignedValue(adm)) rollDealContract(adm.dealId||adm.projectId,-coSignedValue(adm),adm);
+    if(adm){syncCoBoq(adm,false);syncCoBilling(adm,false);}
     upAddenda(as=>as.filter(a=>a.id!==id));
     if(isSupabaseReady()) sbDelete('addenda',id).catch(()=>{});
   };
