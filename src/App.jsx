@@ -22392,6 +22392,15 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   const projSwos=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
                   const pms=[pc?.pm1||joC?.pm1,pc?.pm2||joC?.pm2,pc?.pm3||joC?.pm3].filter(Boolean).join(", ")||"—";
                   const aeC=pc?.aeAssigned||joC?.aeAssigned||d.salesOwner||"—";
+                  const designerC=pc?.designer||joC?.designer||"—";
+                  const projTypeC=pc?.tatCategory||d.projType||joC?.projType||"";
+                  const pctC=projPct(pc,d);
+                  const gradeC=calcCardGrade(d,pc);
+                  const deptStateC=DEPT_ORDER.map(dep=>({dep,done:!!pc?.departments?.[dep]?.done}));
+                  const doneCountC=deptStateC.filter(x=>x.done).length;
+                  const lastNoteC=(pc?.pmUpdates||[])[0];
+                  const lastNoteTxtC=lastNoteC?(lastNoteC.note||lastNoteC.text||""):"";
+                  const[,hLabelC]=HC[h];
                   return(
                     <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
                       style={{background:"#fff",border:"1px solid #e2e8f0",borderLeft:`4px solid ${hc}`,borderRadius:"2px 10px 10px 2px",overflow:"hidden",
@@ -22404,19 +22413,43 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           <div style={{fontWeight:800,fontSize:".9rem",color:"#0f172a",letterSpacing:"-.02em",lineHeight:1.25,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
                           <div style={{fontSize:".68rem",color:"#7c3aed",marginTop:2}}>{d.client!==d.contact?`📁 ${d.client}`:""}</div>
                           <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:5}}>
+                            {projTypeC&&<span style={{fontSize:".56rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",padding:"2px 6px",borderRadius:3,background:"#faf5ff",color:"#7c3aed",border:"1px solid #e9d5ff"}}>{projTypeC}</span>}
                             {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
                             {joC&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{joC.joNo}</span>}
                             {pc?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH Only</span>}
                           </div>
                         </div>
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <span title={`Card health: ${hLabelC}`} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".92rem",lineHeight:1,minWidth:26,height:26,display:"inline-flex",alignItems:"center",justifyContent:"center",borderRadius:6,background:gradeC.gcolor,color:gradeC.color,border:`1px solid ${gradeC.color}55`,padding:"0 5px"}}>{gradeC.grade}</span>
+                            {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+                          </div>
                           <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
-                          {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+                        </div>
+                      </div>
+                      {/* Progress + department strip */}
+                      <div style={{padding:"10px 15px",borderBottom:"1px solid #e2e8f0",background:"#fbfcfe"}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress · {doneCountC}/6 depts</span>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC}%</span>
+                        </div>
+                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginBottom:8}}>
+                          <div style={{height:"100%",width:`${pctC}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
+                        </div>
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                          {deptStateC.map(({dep,done})=>(
+                            <span key={dep} title={`${dep}: ${done?"done":"pending"}`}
+                              style={{fontSize:".55rem",fontWeight:700,padding:"2px 7px",borderRadius:20,whiteSpace:"nowrap",
+                                background:done?(DEPT_CLR[dep]||"#10b981"):"#fff",color:done?"#fff":"#94a3b8",
+                                border:`1px solid ${done?(DEPT_CLR[dep]||"#10b981"):"#e2e8f0"}`}}>
+                              {done?"✓ ":""}{dep.slice(0,4)}
+                            </span>
+                          ))}
                         </div>
                       </div>
                       {/* Spec table */}
                       <table style={{width:"100%",borderCollapse:"collapse"}}>
-                        {[["📍 Location",d.location||joC?.location||"—"],["🤝 AE",aeC],["👷 PM",pms],["📋 Coordinator",pc?.coordinator||joC?.coordinator||"—"]].map(([lbl,val])=>(
+                        {[["📍 Location",d.location||joC?.location||"—"],["🤝 AE",aeC],["👷 PM",pms],["📋 Coordinator",pc?.coordinator||joC?.coordinator||"—"],["🎨 Designer",designerC]].map(([lbl,val])=>(
                           <tr key={lbl} style={{borderBottom:"1px solid #e2e8f0"}}>
                             <td style={{width:110,fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",padding:"7px 14px",background:"#f8fafc",borderRight:"1px solid #e2e8f0",whiteSpace:"nowrap",verticalAlign:"middle"}}>{lbl}</td>
                             <td style={{padding:"7px 14px",fontSize:".78rem",fontWeight:500,color:val==="—"?"#cbd5e1":"#0f172a",fontStyle:val==="—"?"italic":"normal"}}>{val}</td>
@@ -22449,6 +22482,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           </td>
                         </tr>
                       </table>
+                      {/* Latest update note */}
+                      {lastNoteTxtC&&(
+                        <div style={{padding:"9px 15px",borderTop:"1px solid #e2e8f0",background:"#fffdf7",display:"flex",gap:7,alignItems:"flex-start"}}>
+                          <span style={{fontSize:".7rem",lineHeight:1.3,flexShrink:0}}>📝</span>
+                          <div style={{minWidth:0}}>
+                            <div style={{fontSize:".72rem",color:"#475569",lineHeight:1.35,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{lastNoteTxtC}</div>
+                            <div style={{fontSize:".58rem",color:"#94a3b8",marginTop:2}}>{lastNoteC.by||"Team"}{lastNoteC.date?` · ${lastNoteC.date}`:""}</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
