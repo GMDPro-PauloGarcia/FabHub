@@ -10073,15 +10073,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
-            {l:"Total Pipeline",    v:fmt(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
-            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
-            {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b"},
-            {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
-          ].map(({l,v,c,sub})=>(
-            <div key={l} style={{background:"#fff",borderRadius:12,padding:"15px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-              <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c,lineHeight:1}}>{v}</div>
-              {sub&&<div style={{fontSize:".68rem",color:c,opacity:.7,marginTop:2}}>{sub}</div>}
-              <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:6}}>{l}</div>
+            {l:"Total Pipeline",    v:fmt(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6", icon:"📊"},
+            {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669", icon:"💰"},
+            {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b", icon:"🔥"},
+            {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6", icon:"🏆"},
+          ].map(({l,v,c,sub,icon})=>(
+            <div key={l} style={{position:"relative",background:"#fff",borderRadius:12,padding:"15px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)",overflow:"hidden"}}>
+              <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:c}}/>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{minWidth:0}}>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c,lineHeight:1}}>{v}</div>
+                  {sub&&<div style={{fontSize:".68rem",color:c,opacity:.7,marginTop:2}}>{sub}</div>}
+                  <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:6}}>{l}</div>
+                </div>
+                <div style={{flexShrink:0,width:32,height:32,borderRadius:9,background:c+"14",display:"flex",alignItems:"center",justifyContent:"center",fontSize:".95rem"}}>{icon}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -10255,7 +10261,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
-                    <span style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".9rem"}}>{pipeAmt(d)}</span>
+                    <span style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".9rem"}}>{pipeAmt(d)}</span>
                     <div style={{display:"flex",gap:4}}>
                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>✏</button>}
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
@@ -10289,7 +10295,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </span>
                 </div>
               </div>
-              <div style={{fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{pipeAmt(d)}</div>
+              <div style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{pipeAmt(d)}</div>
               <div style={{display:"flex",gap:isMobile?4:3,flexShrink:0}}>
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Edit">✏</button>}
                 {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Set Client Price">₱</button>}
@@ -10322,9 +10328,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
                     🔥 Hot Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({hotDeals.length} · ≤15 days)</span>
+                    <span style={{background:"#fef2f2",color:"#dc2626",border:"1px solid #fecaca",borderRadius:20,padding:"1px 9px",fontWeight:700,fontSize:".68rem"}}>{hotDeals.length} · ≤15 days</span>
                   </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+                    <div style={{height:3,background:"#ef4444"}}/>
                     <PipeTableHeader/>
                     <div style={{maxHeight:300,overflowY:"auto"}}>
                       {hotDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"No new deals this period."}</div>}
@@ -10339,9 +10346,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:7,display:"flex",alignItems:"center",gap:6}}>
                     🧊 Cold Pipeline
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({coldDeals.length} · &gt;15 days)</span>
+                    <span style={{background:"#eff6ff",color:"#2563eb",border:"1px solid #bfdbfe",borderRadius:20,padding:"1px 9px",fontWeight:700,fontSize:".68rem"}}>{coldDeals.length} · &gt;15 days</span>
                   </div>
-                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",opacity:coldDeals.length?1:0.6}}>
+                  <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)",opacity:coldDeals.length?1:0.6}}>
+                    <div style={{height:3,background:"#3b82f6"}}/>
                     <PipeTableHeader/>
                     <div style={{maxHeight:300,overflowY:"auto"}}>
                       {coldDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"All deals active — great work!"}</div>}
