@@ -240,6 +240,8 @@ CREATE TABLE IF NOT EXISTS addenda (
   title           TEXT,
   description     TEXT,
   value           NUMERIC DEFAULT 0,
+  kind            TEXT DEFAULT 'Additive',      -- Additive | Deductive
+  scope_items     JSONB DEFAULT '[]'::jsonb,    -- optional BOQ line items
   ce_no           TEXT,
   receipt_type    TEXT DEFAULT 'OR',
   withholding     BOOLEAN DEFAULT FALSE,

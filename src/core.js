@@ -265,6 +265,12 @@ export const isPaymentCleared=(p,asOfISO)=>{
 
 export const ADDENDUM_STATUSES = ["Discovered","Sales Notified","Client Coordinating","Approved","Billed","Collected","Rejected"];
 
+// A change order either ADDS scope/value to a project or DEDUCTS it (a credit /
+// descope). Value is always stored as a positive magnitude; the kind carries the
+// sign so nothing downstream has to guess from a bare number.
+export const CO_KINDS = ["Additive","Deductive"];
+export const coSignedValue = (x) => ((x && x.kind === "Deductive" ? -1 : 1) * Math.abs(Number(x && x.value) || 0));
+
 export const ADDENDUM_STATUS_CLR = {
   "Discovered":"#94a3b8",
   "Sales Notified":"#f59e0b",
