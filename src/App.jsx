@@ -5370,6 +5370,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const emptyPayForm=()=>({vendor:"",amount:"",paidAmount:"",dueDate:"",invoiceNumber:"",invoiceDate:"",projectId:null,category:"Supplier",accountCode:"",notes:"",invoiceRef:""});
   const[payForm,   setPayForm]  =useState(emptyPayForm());
   const[payFilter, setPayFilter]=useState("All");
+  const[poViewFilter,setPoViewFilter]=useState("all"); // unified PO view: all | po | wo
+  const[poViewSearch,setPoViewSearch]=useState("");
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
   const[payPayAmt, setPayPayAmt]=useState("");
   const[payPayMode,setPayPayMode]=useState("amount"); // "amount" | "pct" (progress payment to a subcontractor/supplier)
@@ -14263,6 +14265,9 @@ First few:
         const rows=[...poRows,...woRows].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
         const totalValue=rows.reduce((s,r)=>s+r.amount,0);
         const openCount=rows.filter(r=>!["Delivered","Cancelled","Completed"].includes(r.status)).length;
+        const q=poViewSearch.trim().toLowerCase();
+        const visibleRows=rows.filter(r=>(poViewFilter==="all"||(poViewFilter==="po"&&r.kind==="po")||(poViewFilter==="wo"&&r.kind==="wo"))
+          &&(!q||String(r.no).toLowerCase().includes(q)||String(r.vendor).toLowerCase().includes(q)||String(projName(r.projectId,r.projectName)).toLowerCase().includes(q)));
         return(
           <div>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
@@ -14282,6 +14287,17 @@ First few:
               <ErpStat tone="purple" label="Work Orders" value={fmt(woRows.reduce((s,r)=>s+r.amount,0))} foot="subcontractor contracts"/>
             </div>
             <ErpCard title="All Orders" desc="Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module.">
+              <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+                {[["all","All",rows.length],["po","Purchase Orders",poRows.length],["wo","Work Orders",woRows.length]].map(([k,l,n])=>{
+                  const on=poViewFilter===k;
+                  return(
+                    <button key={k} onClick={()=>setPoViewFilter(k)} style={{display:"flex",alignItems:"center",gap:6,background:on?ERP.navy:"#fff",color:on?"#fff":ERP.muted,border:`1px solid ${on?ERP.navy:ERP.line}`,borderRadius:20,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                      {l}<span style={{background:on?"rgba(255,255,255,.85)":ERP.navyLight,color:ERP.navy,borderRadius:10,padding:"0 7px",fontSize:11,fontWeight:700}}>{n}</span>
+                    </button>
+                  );
+                })}
+                <input value={poViewSearch} onChange={e=>setPoViewSearch(e.target.value)} placeholder="Search no., vendor, or project…" style={{marginLeft:"auto",minWidth:180,flex:"0 1 260px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"7px 12px",fontFamily:"inherit",fontSize:12.5,outline:"none",color:ERP.ink}}/>
+              </div>
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:860}}>
                   <thead><tr>
@@ -14290,8 +14306,8 @@ First few:
                     ))}
                   </tr></thead>
                   <tbody>
-                    {rows.length===0&&<tr><td colSpan={9} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>No purchase orders or work orders yet.</td></tr>}
-                    {rows.map((r,idx)=>(
+                    {visibleRows.length===0&&<tr><td colSpan={9} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>{rows.length===0?"No purchase orders or work orders yet.":"No orders match this filter."}</td></tr>}
+                    {visibleRows.map((r,idx)=>(
                       <tr key={r.kind+r.no+idx} onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
                         <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{r.no}</td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={r.type==="Subcontractor"?"approved":"open"}>{r.type}</ErpBadge></td>
