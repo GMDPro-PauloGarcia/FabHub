@@ -6294,7 +6294,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   });
   const financeErpGo=(k)=>{
     if(k==="dashboard") setPage("acctdash");
-    else if(k==="po") setPage("procurement");
+    else if(k==="po") setPage(["Finance","Manager","FinanceAssistant","Accounting"].includes(role)?"purchaseorders":"procurement");
     else if(k==="ap"){setPage("finance");setFinTab("payables");}
     else if(k==="payments"){setPage("finance");setFinTab("payments");}
     else if(k==="cv") setPage("checkvouchers");
@@ -13986,6 +13986,90 @@ First few:
   );
 
   // ── PROCUREMENT PAGE (Cost Control) ───────────────────────────────────────
+  // ── Unified Purchase Orders view (Aerwin-style) — Materials POs + Subcontractor
+  // WOs in one clean list. Read/launch only: creation stays in the Procurement
+  // and Work Order modules so each keeps its own form + features. ──────────────
+  if(page==="purchaseorders"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
+    <Wrap>
+      <FinanceErpBar active="po" go={financeErpGo} counts={financeErpCounts()}/>
+      {(()=>{
+        const N=v=>Number(v)||0;
+        const projName=(id,fallback)=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?projDisplayName(d):(fallback||"—");};
+        // Materials POs — group purchase_requests line items by PO number.
+        const poGroups={};
+        prs.forEach(p=>{
+          if(!p.poNumber) return;
+          const k=p.poNumber;
+          if(!poGroups[k]) poGroups[k]={kind:"po",type:"Materials",no:k,vendor:p.supplier||"—",projectId:p.projectId,date:p.poDate||p.createdDate||"",account:p.accountCode||"",statuses:[],amount:0};
+          const g=poGroups[k];
+          g.amount+=(N(p.actUnitCost)||N(p.estUnitCost)||N(p.actualCost)||N(p.estimatedCost))*N(p.qty);
+          g.statuses.push(p.status);
+          if(!g.account&&p.accountCode) g.account=p.accountCode;
+          if(p.poDate&&(!g.date||p.poDate<g.date)) g.date=p.poDate;
+        });
+        const poRows=Object.values(poGroups).filter(g=>!(g.statuses.length&&g.statuses.every(s=>s==="Cancelled"))).map(g=>{
+          let status=g.statuses[0]||"Draft";
+          if(g.statuses.some(s=>s==="Partially Delivered")) status="Partially Delivered";
+          else if(g.statuses.length&&g.statuses.every(s=>s==="Delivered")) status="Delivered";
+          else if(g.statuses.some(s=>s==="PO Issued")) status="PO Issued";
+          return {...g,status};
+        });
+        // Subcontractor WOs — one row each.
+        const woRows=swos.map(w=>({kind:"wo",type:"Subcontractor",no:w.woNumber||"—",vendor:w.subcontractor||"—",projectId:w.dealId||w.projectId,projectName:w.projectName,date:w.woDate||w.createdDate||"",account:w.accountCode||"",amount:N(w.contractAmount),status:w.status||"Issued"}));
+        const rows=[...poRows,...woRows].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+        const totalValue=rows.reduce((s,r)=>s+r.amount,0);
+        const openCount=rows.filter(r=>!["Delivered","Cancelled","Completed"].includes(r.status)).length;
+        return(
+          <div>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16,flexWrap:"wrap",gap:10}}>
+              <div>
+                <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Purchase Orders</div>
+                <div style={{fontSize:12.5,color:ERP.muted,marginTop:2,maxWidth:620}}><strong>Materials POs</strong> are verified by Warehouse and billed in full. <strong>Subcontractor Work Orders</strong> are verified by Operations based on % of project completion — only the verified % reaches Accounts Payable.</div>
+              </div>
+              <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button onClick={()=>setPage("procurement")} style={{background:ERP.navy,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:"#fff",cursor:"pointer",fontWeight:600}}>+ Material PO</button>
+                <button onClick={()=>setPage("subconwo")} style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Work Order</button>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
+              <ErpStat label="Total Orders" value={String(rows.length)} foot={poRows.length+" POs · "+woRows.length+" WOs"}/>
+              <ErpStat tone="warn" label="Open Orders" value={String(openCount)} foot="awaiting delivery / completion"/>
+              <ErpStat label="Purchase Orders" value={fmt(poRows.reduce((s,r)=>s+r.amount,0))} foot="materials value"/>
+              <ErpStat tone="purple" label="Work Orders" value={fmt(woRows.reduce((s,r)=>s+r.amount,0))} foot="subcontractor contracts"/>
+            </div>
+            <ErpCard title="All Orders" desc="Materials Purchase Orders and Subcontractor Work Orders in one list. Click Open to view or edit in its module.">
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:860}}>
+                  <thead><tr>
+                    {["No.","Type","Date","Vendor / Subcontractor","Project","Account","Amount","Status",""].map((h,i)=>(
+                      <th key={h+i} style={i===6?erpThNum:erpTh}>{h}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {rows.length===0&&<tr><td colSpan={9} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>No purchase orders or work orders yet.</td></tr>}
+                    {rows.map((r,idx)=>(
+                      <tr key={r.kind+r.no+idx} onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{r.no}</td>
+                        <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={r.type==="Subcontractor"?"approved":"open"}>{r.type}</ErpBadge></td>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",color:ERP.muted,whiteSpace:"nowrap"}}>{r.date||"—"}</td>
+                        <td style={{...erpTd,fontWeight:600,color:ERP.ink,maxWidth:180,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.vendor}>{r.vendor}</td>
+                        <td style={{...erpTd,color:ERP.muted,maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{projName(r.projectId,r.projectName)}</td>
+                        <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:r.account?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}}>{r.account||"—"}</td>
+                        <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(r.amount)}</td>
+                        <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(r.status)}>{r.status}</ErpBadge></td>
+                        <td style={{...erpTd,whiteSpace:"nowrap"}}><button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </ErpCard>
+          </div>
+        );
+      })()}
+    </Wrap>
+  );
+
   if((["Cost Control","Finance","Manager","Operations"].includes(role))&&page==="procurement") return(
     <Wrap>
       <ProcurementView2
