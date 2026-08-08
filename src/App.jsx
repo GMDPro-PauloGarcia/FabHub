@@ -22211,6 +22211,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   // fall back to the grid so the detail view never renders against a missing deal.
   useEffect(()=>{if(selDeal&&!wonDeals.some(d=>d.id===selDeal)&&!completedDeals.some(d=>d.id===selDeal))setSelDeal(null);},[selDeal,wonDeals,completedDeals]);
   const[viewMode,setViewMode]=useState("card");
+  const[showTeamLoad,setShowTeamLoad]=useState(false);
+  const[teamLoadTab,setTeamLoadTab]=useState("pm");
+  const[pcOwner,setPcOwner]=useState(null); // {tab:"pm"|"coor"|"subcon",name}
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
@@ -22343,6 +22346,39 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const needsAttn=wonDeals.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";}).length;
   const openBCount=(blockers||[]).filter(b=>b.status==="Open").length;
 
+  // ── Team-load rollups (by PM / Coordinator / Subcon) ──────────────────────
+  const dealStatus=(d)=>{
+    const pc=pcards[d.id];
+    if(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")return "done";
+    if(pc&&DEPT_ORDER.every(dep=>pc.departments?.[dep]?.done))return "done";
+    return getHealth(d,pc); // green | yellow | red | none
+  };
+  // Shared owner-key resolver — used by both the rollup and the grid filter
+  const ownerKeys=(d,tab)=>{
+    const pc=pcards[d.id],jo=jos.find(j=>j.dealId===d.id);
+    if(tab==="pm")return[pc?.pm1||jo?.pm1||"Unassigned"];
+    if(tab==="coor")return[pc?.coordinator||jo?.coordinator||"Unassigned"];
+    const ws=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
+    return ws.length?[...new Set(ws.map(w=>w.subcontractor).filter(Boolean))]:["Unassigned"];
+  };
+  const buildRollup=(tab)=>{
+    const map={};
+    wonDeals.forEach(d=>{
+      const st=dealStatus(d);
+      ownerKeys(d,tab).forEach(k=>{
+        if(!k)return;
+        if(!map[k])map[k]={name:k,total:0,red:0,yellow:0,green:0,done:0,none:0,active:0,value:0};
+        const row=map[k];row.total++;row[st]=(row[st]||0)+1;row.value+=Number(d.value||0);
+        if(st!=="done")row.active++;
+      });
+    });
+    return Object.values(map).sort((a,b)=>b.active-a.active||b.total-a.total);
+  };
+  const teamRollups={pm:buildRollup("pm"),coor:buildRollup("coor"),subcon:buildRollup("subcon")};
+  const fmtPeso=(n)=>{n=Number(n||0);if(n>=1e6)return"₱"+(n/1e6).toFixed(n>=1e7?0:1)+"M";if(n>=1e3)return"₱"+Math.round(n/1e3)+"K";return n>0?"₱"+n:"—";};
+  const teamTabMeta={pm:["👷","Project Manager"],coor:["📋","Coordinator"],subcon:["🔧","Subcontractor"]};
+  const SC_CLR={red:["#ef4444","Urgent"],yellow:["#f59e0b","At Risk"],green:["#10b981","On Track"],done:["#059669","Done"],none:["#94a3b8","No Date"]};
+
   return(
     <>
     <div>
@@ -22388,6 +22424,79 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
         </div>
       )}
 
+      {/* Team Load — rollups by PM / Coordinator / Subcon */}
+      {!selDeal&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1px solid #e2e8f0",marginBottom:16,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
+          <div onClick={()=>setShowTeamLoad(v=>!v)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",cursor:"pointer",background:showTeamLoad?"#f8fafc":"#fff",borderBottom:showTeamLoad?"1px solid #e2e8f0":"none"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:".95rem"}}>👥</span>
+              <span style={{fontWeight:800,fontSize:".9rem",color:"#0f172a"}}>Team Load</span>
+              <span style={{fontSize:".68rem",color:"#94a3b8"}}>workload &amp; risk by owner</span>
+            </div>
+            <span style={{fontSize:".7rem",color:"#64748b",fontWeight:600}}>{showTeamLoad?"▲ Hide":"▼ Show"}</span>
+          </div>
+          {showTeamLoad&&(
+            <div style={{padding:"12px 16px 16px"}}>
+              {/* status legend */}
+              <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+                {["red","yellow","green","done","none"].map(k=>(
+                  <span key={k} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:".62rem",fontWeight:600,color:"#64748b"}}>
+                    <span style={{width:9,height:9,borderRadius:2,background:SC_CLR[k][0]}}/>{SC_CLR[k][1]}
+                  </span>
+                ))}
+              </div>
+              {/* tabs */}
+              <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+                {Object.entries(teamTabMeta).map(([k,[ic,lbl]])=>(
+                  <button key={k} onClick={()=>setTeamLoadTab(k)}
+                    style={{padding:"5px 12px",borderRadius:8,border:`1.5px solid ${teamLoadTab===k?"#0f172a":"#e2e8f0"}`,background:teamLoadTab===k?"#0f172a":"#fff",color:teamLoadTab===k?"#fff":"#64748b",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>
+                    {ic} By {lbl}
+                  </button>
+                ))}
+              </div>
+              {/* rollup table */}
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+                  <thead>
+                    <tr style={{borderBottom:"2px solid #e2e8f0"}}>
+                      {[teamTabMeta[teamLoadTab][1],"Total","Active","Urgent","At Risk","On Track","Done","No Date","Value"].map((h,i)=>(
+                        <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",padding:"8px 10px",textAlign:i===0?"left":i===8?"right":"center",whiteSpace:"nowrap"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamRollups[teamLoadTab].length===0&&(
+                      <tr><td colSpan={9} style={{textAlign:"center",padding:"20px",color:"#94a3b8",fontSize:".8rem"}}>No projects yet.</td></tr>
+                    )}
+                    {teamRollups[teamLoadTab].map(r=>{
+                      const cells=[["red",r.red],["yellow",r.yellow],["green",r.green],["done",r.done],["none",r.none]];
+                      const isSel=pcOwner&&pcOwner.tab===teamLoadTab&&pcOwner.name===r.name;
+                      return(
+                        <tr key={r.name} title={`Filter projects → ${r.name}`}
+                          onClick={()=>setPcOwner(isSel?null:{tab:teamLoadTab,name:r.name})}
+                          style={{borderBottom:"1px solid #f1f5f9",cursor:"pointer",background:isSel?"#eef2ff":"transparent",transition:"background .1s"}}
+                          onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background="#f8fafc";}}
+                          onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background="transparent";}}>
+                          <td style={{padding:"9px 10px",fontSize:".8rem",fontWeight:700,color:r.name==="Unassigned"?"#cbd5e1":isSel?"#4338ca":"#0f172a",fontStyle:r.name==="Unassigned"?"italic":"normal",whiteSpace:"nowrap"}}>{isSel?"▸ ":""}{r.name}</td>
+                          <td style={{padding:"9px 10px",textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>{r.total}</td>
+                          <td style={{padding:"9px 10px",textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:r.active>0?"#0f172a":"#cbd5e1"}}>{r.active}</td>
+                          {cells.map(([k,v])=>(
+                            <td key={k} style={{padding:"9px 10px",textAlign:"center"}}>
+                              {v>0?<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:22,height:22,borderRadius:6,fontSize:".72rem",fontWeight:700,background:SC_CLR[k][0]+"1a",color:SC_CLR[k][0],border:`1px solid ${SC_CLR[k][0]}40`,padding:"0 5px"}}>{v}</span>:<span style={{color:"#e2e8f0",fontSize:".8rem"}}>·</span>}
+                            </td>
+                          ))}
+                          <td style={{padding:"9px 10px",textAlign:"right",fontFamily:"'IBM Plex Mono',monospace",fontSize:".72rem",fontWeight:700,color:r.value>0?"#0f172a":"#cbd5e1",whiteSpace:"nowrap"}}>{fmtPeso(r.value)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {!selDeal?(
         // ── PROJECT GRID ────────────────────────────────────────────────────
         <div>
@@ -22409,7 +22518,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {l}
               </button>
             ))}
-            {(pcFilter||pcDeptFilter!=="All"||pcSearch)&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");setPcSearch("");}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
+            {pcOwner&&<button onClick={()=>setPcOwner(null)} style={{padding:"3px 10px",borderRadius:20,border:`1.5px solid ${teamTabMeta[pcOwner.tab]?SC_CLR.green[0]:"#c7d2fe"}`,background:"#eef2ff",color:"#4338ca",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>{teamTabMeta[pcOwner.tab][0]} {pcOwner.name} ✕</button>}
+            {(pcFilter||pcDeptFilter!=="All"||pcSearch||pcOwner)&&<button onClick={()=>{setPcFilter(null);setPcDeptFilter("All");setPcSearch("");setPcOwner(null);}} style={{padding:"3px 10px",borderRadius:20,border:"1.5px solid #fecaca",background:"#fef2f2",color:"#dc2626",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>✕ Clear</button>}
           </div>
           {(()=>{
             // shared filter logic
@@ -22425,6 +22535,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             if(pcFilter==="blockers") list=list.filter(d=>(blockers||[]).some(b=>b.dealId===d.id&&b.status==="Open"));
             if(pcFilter==="overdue") list=list.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done));
             if(pcDeptFilter!=="All") list=list.filter(d=>pcards[d.id]&&!pcards[d.id]?.departments?.[pcDeptFilter]?.done);
+            if(pcOwner) list=list.filter(d=>ownerKeys(d,pcOwner.tab).includes(pcOwner.name));
             list=[...list].sort((a,b)=>{
               if(pcSort==="client")return a.client.localeCompare(b.client);
               if(pcSort==="project")return (a.contact||a.client).localeCompare(b.contact||b.client);
@@ -22486,6 +22597,15 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   const projSwos=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);
                   const pms=[pc?.pm1||joC?.pm1,pc?.pm2||joC?.pm2,pc?.pm3||joC?.pm3].filter(Boolean).join(", ")||"—";
                   const aeC=pc?.aeAssigned||joC?.aeAssigned||d.salesOwner||"—";
+                  const designerC=pc?.designer||joC?.designer||"—";
+                  const projTypeC=pc?.tatCategory||d.projType||joC?.projType||"";
+                  const pctC=projPct(pc,d);
+                  const gradeC=calcCardGrade(d,pc);
+                  const deptStateC=DEPT_ORDER.map(dep=>({dep,done:!!pc?.departments?.[dep]?.done}));
+                  const doneCountC=deptStateC.filter(x=>x.done).length;
+                  const lastNoteC=(pc?.pmUpdates||[])[0];
+                  const lastNoteTxtC=lastNoteC?(lastNoteC.note||lastNoteC.text||""):"";
+                  const[,hLabelC]=HC[h];
                   return(
                     <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
                       style={{background:"#fff",border:"1px solid #e2e8f0",borderLeft:`4px solid ${hc}`,borderRadius:"2px 10px 10px 2px",overflow:"hidden",
@@ -22498,19 +22618,43 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           <div style={{fontWeight:800,fontSize:".9rem",color:"#0f172a",letterSpacing:"-.02em",lineHeight:1.25,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.contact||d.client}</div>
                           <div style={{fontSize:".68rem",color:"#7c3aed",marginTop:2}}>{d.client!==d.contact?`📁 ${d.client}`:""}</div>
                           <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:5}}>
+                            {projTypeC&&<span style={{fontSize:".56rem",fontWeight:700,letterSpacing:".04em",textTransform:"uppercase",padding:"2px 6px",borderRadius:3,background:"#faf5ff",color:"#7c3aed",border:"1px solid #e9d5ff"}}>{projTypeC}</span>}
                             {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
                             {joC&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{joC.joNo}</span>}
                             {pc?.warehouseOnly&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"2px 6px",borderRadius:3,background:"#fffbeb",color:"#92400e",border:"1px solid #fde68a"}}>📦 WH Only</span>}
                           </div>
                         </div>
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:5,flexShrink:0}}>
+                          <div style={{display:"flex",alignItems:"center",gap:6}}>
+                            <span title={`Card health: ${hLabelC}`} style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".92rem",lineHeight:1,minWidth:26,height:26,display:"inline-flex",alignItems:"center",justifyContent:"center",borderRadius:6,background:gradeC.gcolor,color:gradeC.color,border:`1px solid ${gradeC.color}55`,padding:"0 5px"}}>{gradeC.grade}</span>
+                            {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+                          </div>
                           <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:hc+"18",color:hc,border:`1px solid ${hc}44`,whiteSpace:"nowrap"}}>{d.stage?.replace(/^\d+ · /,"")||"—"}</span>
-                          {role==="Manager"&&setConfirmDel&&<button onClick={e=>{e.stopPropagation();setConfirmDel(d.id);}} title="Delete project" style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"3px 6px",fontSize:".72rem",lineHeight:1,color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+                        </div>
+                      </div>
+                      {/* Progress + department strip */}
+                      <div style={{padding:"10px 15px",borderBottom:"1px solid #e2e8f0",background:"#fbfcfe"}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+                          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8"}}>Progress · {doneCountC}/6 depts</span>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:pctC>=100?"#059669":pctC>=50?"#0f172a":"#64748b"}}>{pctC}%</span>
+                        </div>
+                        <div style={{height:6,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginBottom:8}}>
+                          <div style={{height:"100%",width:`${pctC}%`,borderRadius:20,background:pctC>=100?"#10b981":isOverC?"#ef4444":"#3b82f6",transition:"width .3s"}}/>
+                        </div>
+                        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                          {deptStateC.map(({dep,done})=>(
+                            <span key={dep} title={`${dep}: ${done?"done":"pending"}`}
+                              style={{fontSize:".55rem",fontWeight:700,padding:"2px 7px",borderRadius:20,whiteSpace:"nowrap",
+                                background:done?(DEPT_CLR[dep]||"#10b981"):"#fff",color:done?"#fff":"#94a3b8",
+                                border:`1px solid ${done?(DEPT_CLR[dep]||"#10b981"):"#e2e8f0"}`}}>
+                              {done?"✓ ":""}{dep.slice(0,4)}
+                            </span>
+                          ))}
                         </div>
                       </div>
                       {/* Spec table */}
                       <table style={{width:"100%",borderCollapse:"collapse"}}>
-                        {[["📍 Location",d.location||joC?.location||"—"],["🤝 AE",aeC],["👷 PM",pms],["📋 Coordinator",pc?.coordinator||joC?.coordinator||"—"]].map(([lbl,val])=>(
+                        {[["📍 Location",d.location||joC?.location||"—"],["🤝 AE",aeC],["👷 PM",pms],["📋 Coordinator",pc?.coordinator||joC?.coordinator||"—"],["🎨 Designer",designerC]].map(([lbl,val])=>(
                           <tr key={lbl} style={{borderBottom:"1px solid #e2e8f0"}}>
                             <td style={{width:110,fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",padding:"7px 14px",background:"#f8fafc",borderRight:"1px solid #e2e8f0",whiteSpace:"nowrap",verticalAlign:"middle"}}>{lbl}</td>
                             <td style={{padding:"7px 14px",fontSize:".78rem",fontWeight:500,color:val==="—"?"#cbd5e1":"#0f172a",fontStyle:val==="—"?"italic":"normal"}}>{val}</td>
@@ -22543,6 +22687,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           </td>
                         </tr>
                       </table>
+                      {/* Latest update note */}
+                      {lastNoteTxtC&&(
+                        <div style={{padding:"9px 15px",borderTop:"1px solid #e2e8f0",background:"#fffdf7",display:"flex",gap:7,alignItems:"flex-start"}}>
+                          <span style={{fontSize:".7rem",lineHeight:1.3,flexShrink:0}}>📝</span>
+                          <div style={{minWidth:0}}>
+                            <div style={{fontSize:".72rem",color:"#475569",lineHeight:1.35,display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{lastNoteTxtC}</div>
+                            <div style={{fontSize:".58rem",color:"#94a3b8",marginTop:2}}>{lastNoteC.by||"Team"}{lastNoteC.date?` · ${lastNoteC.date}`:""}</div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
