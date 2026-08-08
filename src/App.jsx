@@ -5354,6 +5354,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[openGroups,   setOpenGroups]   = useState({});     // per-ceType accordion in awarded projects
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
+  const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
   const[priceModal,   setPriceModal]   = useState(null);   // {deal} — QS set price modal
   const[quickAddClientOpen,setQuickAddClientOpen]=useState(false);
   const[quickAddClientForm,setQuickAddClientForm]=useState({name:"",contactPerson:"",email:"",phone:"",mobile:"",website:"",billingAddress:"",city:"",province:"",zipCode:"",country:"Philippines",tin:"",paymentTerms:"Due on receipt",notes:""});
@@ -10229,6 +10230,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const hotDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)<=15);
           const coldDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)>15);
           const childPipeDeals=allActive.filter(d=>d.parentDealId);
+          const parentActive=allActive.filter(d=>!d.parentDealId);
+          const overdueFollowUps=parentActive.filter(d=>d.followUp&&d.followUp<today).sort((a,b)=>new Date(a.followUp)-new Date(b.followUp));
+          const funnel=ACTIVE_STAGES.map(s=>{const list=parentActive.filter(d=>d.stage===s);return{stage:s,label:s.replace(/^\d+ · /,""),count:list.length,value:list.reduce((a,x)=>a+Number(x.value||0),0),clr:STAGE_CLR[s]||"#94a3b8"};});
+          const funnelMax=Math.max(1,...funnel.map(f=>f.count));
 
           // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
           const BUDGET_ONLY=["Design","Operations","ProjectMover"];
@@ -10244,6 +10249,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap",marginBottom:3}}>
                       <span style={{fontWeight:700,color:"#0f172a",fontSize:".88rem"}}>{d.contact||d.client}</span>
+                      {d.stage&&<span style={{fontSize:".58rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",padding:"1px 6px",borderRadius:4,color:STAGE_CLR[d.stage]||"#94a3b8",background:(STAGE_CLR[d.stage]||"#94a3b8")+"1a",border:`1px solid ${(STAGE_CLR[d.stage]||"#94a3b8")}44`}}>{d.stage.replace(/^\d+ · /,"")}</span>}
                       {vvipClients?.has(d.client)&&<span style={{fontSize:".6rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⭐</span>}
                       {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".6rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700}}>₱3M+</span>}
                       {d.awardRequestData&&<span style={{fontSize:".6rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>🏆 Pending</span>}
@@ -10267,7 +10273,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
                       {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
                       {(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>}
-                      {canDeleteDeal&&<button onClick={()=>setConfirmDel(d.id)} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Delete">✕</button>}
+                      {(canDeleteDeal||role==="Manager"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setRowMenu(rowMenu&&rowMenu.deal.id===d.id?null:{deal:d,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",minHeight:36,fontWeight:700}} title="More actions">⋯</button>}
                     </div>
                   </div>
                 </div>
@@ -10280,6 +10286,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{flex:1,minWidth:0}}>
                 <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
                   <span style={{fontWeight:700,color:"#0f172a",fontSize:".8rem"}}>{d.contact||d.client}</span>
+                  {d.stage&&<span style={{fontSize:".56rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",padding:"1px 6px",borderRadius:4,flexShrink:0,color:STAGE_CLR[d.stage]||"#94a3b8",background:(STAGE_CLR[d.stage]||"#94a3b8")+"1a",border:`1px solid ${(STAGE_CLR[d.stage]||"#94a3b8")}44`}}>{d.stage.replace(/^\d+ · /,"")}</span>}
                   {vvipClients?.has(d.client)&&<span style={{fontSize:".58rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⭐</span>}
                   {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".58rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>₱3M+</span>}
                   {d.awardRequestData&&<span style={{fontSize:".58rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>🏆 Pending</span>}
@@ -10296,17 +10303,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </div>
               </div>
               <div style={{fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:BUDGET_ONLY.includes(role)?"#8b5cf6":"#10b981",fontSize:".8rem",flexShrink:0,minWidth:44,textAlign:"right"}}>{pipeAmt(d)}</div>
-              <div style={{display:"flex",gap:isMobile?4:3,flexShrink:0}}>
-                {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Edit">✏</button>}
-                {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Set Client Price">₱</button>}
-                {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Update Client Price">₱✏</button>}
-                {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined,whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">{isMobile?"🧮":"🧮 BOQ"}</button>}
+              <div style={{display:"flex",gap:3,flexShrink:0}}>
+                {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>}
+                {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Set Client Price">₱</button>}
+                {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Update Client Price">₱✏</button>}
+                {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">🧮 BOQ</button>}
                 {(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")
-                  ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Award Project">🏆</button>
-                  :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Request Award">🏆</button>
+                  ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award Project">🏆</button>
+                  :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
                 }
-                {canDeleteDeal&&<button onClick={()=>setConfirmDel(d.id)} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:isMobile?"8px 10px":"4px 6px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Delete">✕</button>}
-                {(role==="Manager"||role==="Sales")&&<button onClick={()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:isMobile?"8px 9px":"4px 5px",fontSize:".68rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit",minHeight:isMobile?36:undefined}} title="Did Not Win">✗</button>}
+                {(canDeleteDeal||role==="Manager"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setRowMenu(rowMenu&&rowMenu.deal.id===d.id?null:{deal:d,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}} style={{background:rowMenu&&rowMenu.deal.id===d.id?"#e2e8f0":"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="More actions">⋯</button>}
               </div>
             </div>
             );
@@ -10322,6 +10328,46 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
           return(
             <div>
+              {/* ⚠ Overdue follow-ups */}
+              {overdueFollowUps.length>0&&(
+                <div style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:12,padding:"11px 16px",marginBottom:14}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                    <span style={{fontWeight:700,color:"#b91c1c",fontSize:".85rem"}}>⚠️ {overdueFollowUps.length} follow-up{overdueFollowUps.length>1?"s":""} overdue</span>
+                    <span style={{fontSize:".72rem",color:"#dc2626",opacity:.8}}>— reach out before these deals go cold</span>
+                  </div>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>
+                    {overdueFollowUps.slice(0,6).map(d=>(
+                      <button key={d.id} onClick={()=>openEditDeal(d)} title={`Follow-up due ${d.followUp}`} style={{display:"flex",alignItems:"center",gap:6,background:"#fff",border:"1px solid #fecaca",borderRadius:20,padding:"3px 10px",cursor:"pointer",fontFamily:"inherit"}}>
+                        <span style={{fontSize:".75rem",fontWeight:700,color:"#0f172a"}}>{d.contact||d.client}</span>
+                        <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,color:"#dc2626"}}>{d.followUp}</span>
+                      </button>
+                    ))}
+                    {overdueFollowUps.length>6&&<span style={{fontSize:".72rem",color:"#dc2626",alignSelf:"center",fontWeight:600}}>+{overdueFollowUps.length-6} more</span>}
+                  </div>
+                </div>
+              )}
+
+              {/* Pipeline stage funnel */}
+              {parentActive.length>0&&(
+                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)",padding:"12px 14px",marginBottom:20}}>
+                  <div style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>Pipeline by Stage</div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":`repeat(${funnel.length},1fr)`,gap:isMobile?10:8}}>
+                    {funnel.map(f=>(
+                      <div key={f.stage} style={{display:"flex",flexDirection:"column",gap:5}}>
+                        <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:f.count?f.clr:"#cbd5e1",lineHeight:1}}>{f.count}</span>
+                          {f.value>0&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".6rem",fontWeight:700,color:"#94a3b8"}}>{fmtK(f.value)}</span>}
+                        </div>
+                        <div style={{height:4,borderRadius:3,background:"#f1f5f9",overflow:"hidden"}}>
+                          <div style={{height:"100%",width:`${Math.round(f.count/funnelMax*100)}%`,background:f.clr,borderRadius:3,transition:"width .2s"}}/>
+                        </div>
+                        <span style={{fontSize:".64rem",fontWeight:600,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* 🔥 Hot + 🧊 Cold — side by side on desktop, stacked on mobile */}
               <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:14,marginBottom:20}}>
                 {/* Hot */}
@@ -10601,6 +10647,26 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           );
         })()}
       </Wrap>
+      {rowMenu&&(()=>{
+        const d=rowMenu.deal;
+        const items=[];
+        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");setRowMenu(null);}});
+        if(canDeleteDeal) items.push({icon:"🗑",label:"Delete Deal",color:"#dc2626",onClick:()=>{setConfirmDel(d.id);setRowMenu(null);}});
+        return(
+          <>
+            <div onClick={()=>setRowMenu(null)} style={{position:"fixed",inset:0,zIndex:1300}}/>
+            <div style={{position:"fixed",top:rowMenu.top,right:rowMenu.right,zIndex:1301,background:"#fff",borderRadius:10,border:"1.5px solid #e2e8f0",boxShadow:"0 12px 32px rgba(15,23,42,.18)",overflow:"hidden",minWidth:180}}>
+              <div style={{padding:"8px 12px",borderBottom:"1px solid #f1f5f9",fontSize:".7rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".4px",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:220}}>{d.contact||d.client}</div>
+              {items.map((it,ix)=>(
+                <button key={ix} onClick={it.onClick} style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"10px 12px",background:"#fff",border:"none",borderTop:ix>0?"1px solid #f8fafc":"none",cursor:"pointer",fontFamily:"inherit",fontSize:".82rem",fontWeight:600,color:it.color,textAlign:"left"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                  <span style={{fontSize:".9rem"}}>{it.icon}</span>{it.label}
+                </button>
+              ))}
+            </div>
+          </>
+        );
+      })()}
       {awardReqModal&&<AwardReqModal deal={awardReqModal} session={session} today={today} onClose={()=>setAwardReqModal(null)} onSubmit={formData=>{
           const d=awardReqModal;
           upDeals(ds=>ds.map(x=>x.id===d.id?{...x,
