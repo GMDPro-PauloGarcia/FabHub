@@ -18065,6 +18065,133 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
     setMode("list");
   };
 
+  // Standard Subcontractor Service Agreement Contract — auto-filled from the
+  // awarded Work Order. Mirrors GMD's EYESPORTS-NUVALI template plus the added
+  // liability clauses (indemnification, independent-contractor, insurance,
+  // safety, property damage, termination, taxes, lien waiver, PCAB, force majeure).
+  const printSubconContract=w=>{
+    if(!w) return;
+    const esc=s=>String(s==null?"":s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+    const N=v=>Number(v)||0;
+    const amount=N(w.contractAmount);
+    const peso=n=>"₱"+N(n).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+    // number → words (integer pesos)
+    const ones=["","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+    const tens=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+    const below1000=n=>{let s="";if(n>=100){s+=ones[Math.floor(n/100)]+" Hundred";n%=100;if(n)s+=" ";}if(n>=20){s+=tens[Math.floor(n/10)];n%=10;if(n)s+="-"+ones[n];}else if(n>0){s+=ones[n];}return s;};
+    const toWords=num=>{num=Math.floor(N(num));if(num<=0)return "Zero";const g=["","Thousand","Million","Billion"];let gi=0,parts=[];while(num>0){const chunk=num%1000;if(chunk)parts.unshift(below1000(chunk)+(g[gi]?" "+g[gi]:""));num=Math.floor(num/1000);gi++;}return parts.join(" ");};
+    const cents=Math.round((amount-Math.floor(amount))*100);
+    const amountWords=`${toWords(amount)} Pesos${cents?` and ${cents}/100`:""} Only`;
+    // milestone split: Downpayment 30 · 1st 25 · 2nd 25 · Final (rest) · Retention = WO retention%
+    const ret=N(w.retentionPct)||10;
+    const dp=30,p1=25,p2=25,fin=Math.max(0,100-dp-p1-p2-ret);
+    const mrow=(stage,pct,desc)=>`<tr><td><b>${stage}</b></td><td class="c">${pct}%</td><td>${desc}</td><td class="r">${peso(amount*pct/100)}</td></tr>`;
+    const proj=(wonDeals.find(d=>d.id===w.dealId)||wonDeals.find(d=>d.id===w.projectId));
+    const projName=w.projectName||(proj?(proj.contact||proj.client):"")||"—";
+    const scopeItems=String(w.scopeOfWork||"").split(/\r?\n|;|•/).map(s=>s.trim()).filter(Boolean);
+    const dur=(w.startDate&&w.targetEndDate)?(()=>{const d=Math.round((new Date(w.targetEndDate)-new Date(w.startDate))/864e5);return d>0?`${d}`:"thirty (30) to forty-five (45)";})():"thirty (30) to forty-five (45)";
+    const dateStr=(w.woDate||today);
+    const CL=(no,title,body)=>`<div class="cl"><div class="cl-h">${no}. ${esc(title)}</div><div class="cl-b">${body}</div></div>`;
+    const html=`<!doctype html><html><head><meta charset="utf-8"><title>Subcontractor Contract — ${esc(w.woNumber||"")}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',-apple-system,Segoe UI,Arial,sans-serif;color:#1B2430;padding:44px 54px;font-size:12px;line-height:1.6}
+  .lh{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #C9A24B;padding-bottom:12px;margin-bottom:8px}
+  .co{font-size:19px;font-weight:800;color:#0B2545}
+  .co small{display:block;font-size:10.5px;color:#5B6472;font-weight:400;margin-top:2px}
+  .doct{text-align:right}
+  .doct .t{font-size:13px;font-weight:800;color:#A8822F;text-transform:uppercase;letter-spacing:.6px}
+  .doct .p{font-size:10.5px;color:#5B6472;margin-top:2px}
+  h1{font-size:15px;color:#0B2545;text-align:center;margin:18px 0 4px;letter-spacing:.5px}
+  .intro{font-size:11.5px;color:#334155;margin:10px 0 6px;text-align:justify}
+  .cl{margin:9px 0}
+  .cl-h{font-weight:800;color:#0B2545;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px}
+  .cl-b{text-align:justify;color:#243040}
+  .cl-b ul{margin:3px 0 3px 18px}
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:11px}
+  th{background:#EEF2F8;color:#0B2545;text-align:left;padding:6px 8px;border:1px solid #DCE2EC;text-transform:uppercase;font-size:10px;letter-spacing:.4px}
+  td{padding:6px 8px;border:1px solid #DCE2EC;vertical-align:top}
+  td.c{text-align:center}td.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  tfoot td{font-weight:800;background:#F5F7FA}
+  .amtbox{background:#EEF2F8;border:1px solid #DCE2EC;border-radius:6px;padding:10px 14px;margin:8px 0}
+  .sig{display:grid;grid-template-columns:1fr 1fr;gap:26px 40px;margin-top:34px}
+  .sig .b{border-top:1px solid #1B2430;padding-top:4px;font-size:11px}
+  .sig .b .nm{font-weight:800;color:#0B2545}
+  .sig .b .ps{color:#5B6472;font-size:10.5px}
+  .ack{margin-top:26px;border-top:1px dashed #94A3B8;padding-top:12px;font-size:11px;color:#334155}
+  .fields div{margin:3px 0}
+  @media print{body{padding:24px 32px}}
+</style></head><body>
+  <div class="lh">
+    <div class="co">GMD PRODUCTION INC.<small>32 Santan, Brgy. Fortune, Marikina City, Philippines · TIN 010-063-229-00000</small></div>
+    <div class="doct"><div class="t">Subcontractor Agreement</div><div class="p">${esc(w.woNumber||"")}${w.woNumber?" · ":""}${esc(dateStr)}</div></div>
+  </div>
+  <h1>SERVICE AGREEMENT CONTRACT</h1>
+  <div class="intro">This Service Agreement Contract is entered into this <b>${esc(dateStr)}</b> at 32 Santan, Brgy. Fortune, Marikina City, Philippines, by and between <b>GMD PRODUCTION INC.</b>, a corporation duly organized and existing under Philippine laws, herein represented by its authorized representative <b>Ar. Arrius Jerome A. Catubay</b> (the <b>General Contractor</b>); and <b>${esc(w.subcontractor||"____________________")}</b>${w.specialty?` (${esc(w.specialty)})`:""}, of legal age, herein referred to as the <b>Subcontractor</b>. Collectively, the <b>Parties</b>.${projName?` This Agreement covers the project: <b>${esc(projName)}</b>.`:""}</div>
+  ${CL(1,"Documents","The following documents form integral parts of this Agreement: (1.1) Scope of Works / Bill of Quantities; (1.2) Approved Plans, Drawings, and Specifications; (1.3) Project Schedule and Work Program; (1.4) Approved Quotation / Proposal; (1.5) Purchase Orders and Variation Orders; (1.6) Any written correspondence mutually agreed upon. In case of discrepancies, the order of precedence shall follow the sequence above.")}
+  ${CL(2,"Scope of Works",`The Subcontractor shall perform the following works in accordance with approved plans, specifications, and instructions of the General Contractor${projName?` for <b>${esc(projName)}</b>`:""}:${scopeItems.length?`<ul>${scopeItems.map(s=>`<li>${esc(s)}</li>`).join("")}</ul>`:" as detailed in the attached Bill of Quantities (BOQ)."} All works shall be executed with workmanship of the highest standard, using quality materials and in accordance with project timelines and specifications.`)}
+  ${CL(3,"Inspection of Work / Reporting","The General Contractor reserves the right to inspect the works at any time. The Subcontractor shall provide daily or weekly progress updates as required. Any defects or deviations noted during inspection shall be corrected immediately at the Subcontractor's expense. Failure to submit reports may be considered a breach of this Agreement.")}
+  ${CL(4,"Procurement","All materials and tools shall be supplied by the Subcontractor unless otherwise specified. If the General Contractor provides materials, proper acknowledgment receipts and inventory tracking shall be maintained. Any material wastage, loss, or damage due to negligence shall be charged to the Subcontractor.")}
+  ${CL(5,"Contract Price",`The agreed contract price for the full and satisfactory completion of the works is <b>${esc(amountWords)}</b> (<b>${peso(amount)}</b>), inclusive of all labor, supervision, tools, mobilization, and applicable taxes unless otherwise stated. <i>The contract price indicated herein is a non-VAT amount and is exclusive of any Value Added Tax (VAT).</i>`)}
+  ${CL(6,"Changes and Additions","Any change, addition, or omission to the scope of work shall be covered by a written Variation Order approved by the General Contractor. No verbal instruction shall be binding unless confirmed in writing. Approved additional works shall be compensated based on mutually agreed unit rates or lump-sum amounts.")}
+  ${CL(7,"Terms of Payment",`Payment shall be made upon completion of agreed milestones, as follows:
+    <table><thead><tr><th>Stage</th><th class="c">%</th><th>Description</th><th class="r">Amount</th></tr></thead><tbody>
+    ${mrow("Downpayment",dp,"Upon signing of the contract and issuance of Notice to Proceed")}
+    ${mrow("1st Progress Billing",p1,"Upon completion of at least 30%–50% of the agreed scope, subject to inspection and approval")}
+    ${mrow("2nd Progress Billing",p2,"Upon completion of at least 75%–80% of the agreed scope, subject to inspection and approval")}
+    ${fin>0?mrow("Final Payment",fin,"Upon full completion of all works and acceptance by the General Contractor"):""}
+    ${mrow("Retention",ret,`To be released sixty (60) days after project completion and acceptance, provided no defects or pending corrections exist`)}
+    </tbody><tfoot><tr><td colspan="3">TOTAL</td><td class="r">${peso(amount)}</td></tr></tfoot></table>
+    All billings must be supported by a progress report, photos, and inspection approval. Retention of ${ret}% shall be deducted from every billing and released only after the liability period of sixty (60) days.`)}
+  ${CL(8,"Penalty","For delay in completion, a penalty of one-tenth of one percent (0.1%) of the contract price per calendar day of delay shall be imposed, unless such delay is excused due to force majeure or written extension approval by the General Contractor.")}
+  ${CL(9,"Contract Time / Completion / Time Extension",`The total contract duration shall be <b>${esc(String(dur))}${/\d/.test(String(dur))&&!/thirty/.test(String(dur))?" calendar days":""}</b>${w.startDate?`, commencing on <b>${esc(w.startDate)}</b>`:", commencing on the first day of mobilization"}${w.targetEndDate?` and targeted for completion on <b>${esc(w.targetEndDate)}</b>`:""}. Time extension may be granted only upon written request and approval due to justifiable causes (e.g., weather, design changes, force majeure).`)}
+  ${CL(10,"Default by General Contractor","If the General Contractor fails to make due payment as stipulated or causes unreasonable delay in site access, the Subcontractor may suspend work after written notice and resume only upon resolution of the issue, without prejudice to any claim for damages or extension of time.")}
+  ${CL(11,"Warranties and Responsibilities","The Subcontractor warrants that all work performed shall be free from defects in materials and workmanship for a period of SIX (6) MONTHS from project acceptance. Any defects within the warranty period shall be repaired or replaced at no cost to the General Contractor. The Subcontractor shall also ensure compliance with all safety, labor, and environmental regulations.")}
+  ${CL(12,"Title of Work","All materials and works completed under this Agreement shall become the property of the General Contractor upon delivery or installation, regardless of whether full payment has been made.")}
+  ${CL(13,"Assignment","The Subcontractor shall not assign, transfer, or subcontract the whole or any part of this Agreement without the prior written consent of the General Contractor.")}
+  ${CL(14,"Indemnification / Hold Harmless","The Subcontractor shall indemnify, defend, and hold free and harmless the General Contractor, its officers, employees, and clients from and against any and all claims, suits, losses, damages, liabilities, and expenses (including attorney's fees) arising out of or in connection with the Subcontractor's performance of the works, or any act, omission, or negligence of the Subcontractor, its workers, or agents.")}
+  ${CL(15,"Independent Contractor / No Employer-Employee Relationship","The Subcontractor is an independent contractor. Nothing in this Agreement shall be construed to create an employer-employee relationship between the General Contractor and the Subcontractor or any of its workers. The Subcontractor shall be solely responsible for the wages, statutory benefits, SSS, PhilHealth, Pag-IBIG contributions, taxes, and all obligations to its personnel, and shall hold the General Contractor free from any liability arising therefrom.")}
+  ${CL(16,"Insurance","The Subcontractor shall, at its own expense, secure and maintain adequate insurance covering its works and personnel, including Comprehensive General Liability (CGL) and Workmen's Compensation / Contractor's All Risk Insurance (CARI) where applicable, and shall furnish proof of such coverage upon request. The Subcontractor assumes all risk not covered by such insurance.")}
+  ${CL(17,"Safety and Liability for Accidents","The Subcontractor shall observe and comply with DOLE Department Order No. 13 (Construction Safety and Health) and all applicable safety regulations, provide the necessary safety officer, personal protective equipment, and safety measures, and shall be solely liable for any accident, injury, illness, or death of its workers or third parties occurring in connection with its works.")}
+  ${CL(18,"Liability for Damage to Property and Works","The Subcontractor shall be liable for and shall repair or replace, at its own cost, any damage to existing works, the General Contractor's or client's property, adjacent property, or materials caused by the Subcontractor's works, acts, or negligence.")}
+  ${CL(19,"Termination for Default","The General Contractor may terminate this Agreement, in whole or in part, upon written notice if the Subcontractor abandons the works, fails to prosecute the works diligently, incurs unreasonable delay, or breaches any provision of this Agreement. Upon such termination, the General Contractor may take over and complete the works and charge any additional cost to the Subcontractor, without prejudice to other remedies.")}
+  ${CL(20,"Taxes and Withholding","The Subcontractor shall be responsible for its own taxes arising from this Agreement. The General Contractor shall have the right to withhold and remit the applicable Expanded Withholding Tax (EWT) and other taxes required by law from any payment due to the Subcontractor.")}
+  ${CL(21,"Waiver of Lien / Claims","Acceptance of final payment by the Subcontractor shall constitute a waiver and release of any and all liens, claims, or demands against the General Contractor in connection with this Agreement, except for retention money and any claim expressly reserved in writing.")}
+  ${CL(22,"License and Permits","The Subcontractor warrants that it holds a valid PCAB license (where applicable) and shall secure and maintain all permits, clearances, and licenses required for the performance of its works, and shall comply with all applicable laws, ordinances, and regulations.")}
+  ${CL(23,"Force Majeure","Neither Party shall be liable for delay or failure to perform its obligations due to causes beyond its reasonable control, including acts of God, natural calamities, fire, war, civil disturbance, epidemic, or government action (force majeure). The affected Party shall promptly notify the other and resume performance as soon as reasonably practicable.")}
+  ${CL(24,"Arbitration","Any dispute arising out of or in connection with this Agreement shall first be settled amicably. If unresolved within thirty (30) days, it shall be referred to arbitration under the Construction Industry Arbitration Commission (CIAC), in accordance with the laws of the Republic of the Philippines.")}
+  ${CL(25,"Miscellaneous","This Agreement constitutes the entire understanding between both Parties. Any amendment shall be in writing and signed by both Parties. Both Parties shall comply with all applicable laws, taxes, and permits related to the execution of the work. The Parties hereby affirm that they have read, understood, and voluntarily agreed to all terms and conditions herein.")}
+  <div class="sig">
+    <div>
+      <div style="font-weight:800;color:#0B2545;margin-bottom:14px;">GMD PRODUCTION INC.<div style="font-weight:400;color:#5B6472;font-size:10.5px;">General Contractor</div></div>
+      <div class="b" style="margin-bottom:22px;"><div class="nm">Ar. Arrius Jerome A. Catubay</div><div class="ps">Authorized Representative</div></div>
+      <div class="b" style="margin-bottom:22px;"><div class="nm">Maria Nell Pril</div><div class="ps">Operations Manager</div></div>
+      <div class="b"><div class="nm">&nbsp;</div><div class="ps">Procurement Manager</div></div>
+    </div>
+    <div>
+      <div style="font-weight:800;color:#0B2545;margin-bottom:14px;">SUBCONTRACTOR<div style="font-weight:400;color:#5B6472;font-size:10.5px;">${esc(w.subcontractor||"")}</div></div>
+      <div class="fields" style="margin-top:6px;">
+        <div>Name: ____________________________</div>
+        <div>Position: _________________________</div>
+        <div>CTC No.: _________________________</div>
+        <div>Issued on: ________________________</div>
+        <div>Issued at: ________________________</div>
+      </div>
+      <div class="b" style="margin-top:26px;"><div class="nm">&nbsp;</div><div class="ps">Signature over Printed Name</div></div>
+    </div>
+  </div>
+  <div class="ack">
+    <b>SIGNED IN THE PRESENCE OF:</b>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:20px;">
+      <div class="b" style="border-top:1px solid #1B2430;padding-top:4px;">Witness — Signature over Printed Name</div>
+      <div class="b" style="border-top:1px solid #1B2430;padding-top:4px;">Witness — Signature over Printed Name</div>
+    </div>
+    <div style="margin-top:18px;"><b>ACKNOWLEDGMENT</b><br/>REPUBLIC OF THE PHILIPPINES ) S.S.<br/><br/>BEFORE ME, a Notary Public for and in the __________, Philippines, personally appeared the above-named persons, known to me through competent identification, who acknowledged that the foregoing instrument is their free and voluntary act and deed.<br/><br/>WITNESS MY HAND AND SEAL this ______ day of ____________, at __________, Philippines.<br/><br/>Doc. No. ____; Page No. ____; Book No. ____; Series of ______.</div>
+  </div>
+</body></html>`;
+    const win=window.open("","_blank","width=820,height=900");
+    if(win){win.document.write(html);win.document.close();setTimeout(()=>win.print(),600);}
+  };
   const printWO=w=>{
     const fmt2=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2});
     const retAmt=woRetentionAmt(w);
@@ -18460,6 +18587,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
                           )}
                           <button onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                          <button onClick={()=>printSubconContract(w)} title="Generate the Standard Subcontractor Contract" style={{background:"#0B2545",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📄 Contract</button>
                           <button onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
                           {canManage&&<button onClick={()=>{if(window.confirm("Delete "+(w.woNumber||"this work order")+"?"))deleteSWO(w.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                         </div>
