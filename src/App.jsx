@@ -14375,13 +14375,18 @@ First few:
               <div style={{overflowX:"auto"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:13,minWidth:860}}>
                   <thead><tr>
-                    {["No.","Type","Date","Vendor / Subcontractor","Project","Account","Amount","Status",""].map((h,i)=>(
+                    {["No.","Type","Date","Vendor / Subcontractor","Project","Account","Amount","Status","Verification",""].map((h,i)=>(
                       <th key={h+i} style={i===6?erpThNum:erpTh}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>
-                    {visibleRows.length===0&&<tr><td colSpan={9} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>{rows.length===0?"No purchase orders or work orders yet.":"No orders match this filter."}</td></tr>}
-                    {visibleRows.map((r,idx)=>(
+                    {visibleRows.length===0&&<tr><td colSpan={10} style={{...erpTd,textAlign:"center",color:ERP.muted,fontStyle:"italic",padding:26}}>{rows.length===0?"No purchase orders or work orders yet.":"No orders match this filter."}</td></tr>}
+                    {visibleRows.map((r,idx)=>{
+                      const pay=payables.find(x=>x.poId===r.no||x.poNumber===r.no);
+                      const payBal=pay?Math.max(0,(Number(pay.amount)||0)-(Number(pay.paidAmount)||0)):0;
+                      const settled=pay&&pay.status==="Paid";
+                      const isSub=r.type==="Subcontractor";
+                      return(
                       <tr key={r.kind+r.no+idx} onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background=""}>
                         <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{r.no}</td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={r.type==="Subcontractor"?"approved":"open"}>{r.type}</ErpBadge></td>
@@ -14391,8 +14396,23 @@ First few:
                         <td style={{...erpTd,fontVariantNumeric:"tabular-nums",fontSize:11.5,color:r.account?ERP.ink:"#cbd5e1",whiteSpace:"nowrap"}}>{r.account||"—"}</td>
                         <td style={{...erpTdNum,fontWeight:700,color:ERP.navy,whiteSpace:"nowrap"}}>{fmt(r.amount)}</td>
                         <td style={{...erpTd,whiteSpace:"nowrap"}}><ErpBadge kind={erpStatusKind(r.status)}>{r.status}</ErpBadge></td>
-                        <td style={{...erpTd,whiteSpace:"nowrap"}}><button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button></td>
+                        <td style={{...erpTd,whiteSpace:"nowrap"}}>
+                          {!pay
+                            ? <span style={{fontSize:11,color:ERP.muted}} title="No payable in the AP ledger yet — issue/deliver the order first">Not in AP</span>
+                            : pay.verified
+                              ? <ErpBadge kind="paid">{isSub?`${Number(pay.verificationPct||0)}% Verified`:"Verified"}</ErpBadge>
+                              : <ErpBadge kind="unpaid">{isSub?"Pending (Ops)":"Pending (WH)"}</ErpBadge>}
+                        </td>
+                        <td style={{...erpTd,whiteSpace:"nowrap"}}>
+                          <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                            {pay&&!settled&&!pay.verified&&<button onClick={()=>verifyPayable(pay.id)} title={isSub?"Operations: verify % complete":"Warehouse: verify receipt"} style={{background:ERP.gold,border:"none",borderRadius:6,padding:"5px 10px",fontSize:12,color:ERP.navy,cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>✓ Verify</button>}
+                            {pay&&!settled&&pay.verified&&payBal>0&&<button onClick={()=>{setFinTab("payables");setPage("finance");openPayModal(pay);}} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"5px 12px",fontSize:12,color:"#fff",cursor:"pointer",fontWeight:800,fontFamily:"inherit"}}>Pay</button>}
+                            {pay&&settled&&<span style={{fontSize:11,color:ERP.ok,fontWeight:700}}>Paid</span>}
+                            <button onClick={()=>setPage(r.kind==="wo"?"subconwo":"procurement")} style={{background:"transparent",border:`1px solid ${ERP.line}`,borderRadius:6,padding:"5px 10px",fontSize:12,fontWeight:600,color:ERP.navy,cursor:"pointer",fontFamily:"inherit"}}>Open</button>
+                          </div>
+                        </td>
                       </tr>
+                      );})}
                     ))}
                   </tbody>
                 </table>
