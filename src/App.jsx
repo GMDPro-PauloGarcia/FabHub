@@ -10026,26 +10026,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <PipeTabBar/>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
             <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length} active deals · {todayL}</div>
-            {/* Search bar */}
-            <div style={{position:"relative",marginTop:8}}>
-              <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
-              <input
-                type="text"
-                value={pipeSearch}
-                onChange={e=>setPipeSearch(e.target.value)}
-                placeholder="Search by client, CE number, project name, AE..."
-                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"8px 12px 8px 32px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",background:"#fff"}}
-                onFocus={e=>e.target.style.borderColor="#3b82f6"}
-                onBlur={e=>e.target.style.borderColor="#e2e8f0"}
-              />
-              {pipeSearch&&<button onClick={()=>setPipeSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>✕</button>}
-            </div>
           </div>
           <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-            <button onClick={()=>setShowActChat(v=>!v)} style={{background:showActChat?"#1e293b":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:showActChat?"#4ade80":"#64748b",cursor:"pointer",position:"relative"}}>
-              💬 Activity
-              {actLog.length>0&&!showActChat&&<span style={{position:"absolute",top:-5,right:-5,background:"#ef4444",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:".6rem",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}}>{Math.min(actLog.length,9)}</span>}
-            </button>
             <input ref={smartImportInputRef} type="file" accept=".xlsx,.xls,.csv,.pdf" style={{display:"none"}} onChange={async e=>{
                 const file=e.target.files[0]; if(!file) return;
                 e.target.value="";
@@ -10146,6 +10128,37 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </button>
           </div>
         </div>
+        {/* Unified toolbar — search · AE filter · activity */}
+        {(()=>{
+          const aeList=[...new Set(deals.filter(d=>d.salesOwner).map(d=>d.salesOwner))].sort();
+          const activeCount=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length;
+          return(
+            <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:16,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"8px 10px",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
+              <div style={{position:"relative",flex:"1 1 240px",minWidth:isMobile?"100%":180}}>
+                <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
+                <input type="text" value={pipeSearch} onChange={e=>setPipeSearch(e.target.value)} placeholder="Search client, CE, project, AE..."
+                  style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"8px 28px 8px 32px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",background:"#f8fafc"}}
+                  onFocus={e=>{e.target.style.borderColor="#3b82f6";e.target.style.background="#fff";}}
+                  onBlur={e=>{e.target.style.borderColor="#e2e8f0";e.target.style.background="#f8fafc";}}/>
+                {pipeSearch&&<button onClick={()=>setPipeSearch("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".85rem"}}>✕</button>}
+              </div>
+              {aeList.length>0&&(
+                <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                  <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px"}}>AE</span>
+                  <select value={pipeAE} onChange={e=>setPipeAE(e.target.value)}
+                    style={{border:`1.5px solid ${pipeAE!=="all"?"#6366f1":"#e2e8f0"}`,borderRadius:9,padding:"8px 10px",fontFamily:"inherit",fontSize:".82rem",fontWeight:pipeAE!=="all"?700:500,color:pipeAE!=="all"?"#6366f1":"#475569",background:pipeAE!=="all"?"#eef2ff":"#fff",cursor:"pointer",outline:"none",maxWidth:180}}>
+                    <option value="all">{`All AEs (${activeCount})`}</option>
+                    {aeList.map(ae=><option key={ae} value={ae}>{ae}</option>)}
+                  </select>
+                </div>
+              )}
+              <button onClick={()=>setShowActChat(v=>!v)} style={{background:showActChat?"#1e293b":"#f8fafc",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"8px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",color:showActChat?"#4ade80":"#64748b",cursor:"pointer",position:"relative",flexShrink:0}}>
+                💬 Activity
+                {actLog.length>0&&!showActChat&&<span style={{position:"absolute",top:-5,right:-5,background:"#ef4444",color:"#fff",borderRadius:"50%",width:16,height:16,fontSize:".6rem",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}}>{Math.min(actLog.length,9)}</span>}
+              </button>
+            </div>
+          );
+        })()}
         {/* Addenda requiring Sales action */}
         {(()=>{
           const myAddenda=addenda.filter(a=>{
@@ -10224,24 +10237,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         )}
 
-        {/* AE / Salesperson filter */}
-        {(()=>{
-          const aeList=[...new Set(deals.filter(d=>d.salesOwner).map(d=>d.salesOwner))].sort();
-          if(aeList.length===0) return null;
-          return(
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12,alignItems:"center"}}>
-              <span style={{fontSize:".7rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginRight:2}}>AE:</span>
-              {["all",...aeList].map(ae=>(
-                <button key={ae} onClick={()=>setPipeAE(ae)}
-                  style={{padding:"4px 11px",borderRadius:20,border:`1.5px solid ${pipeAE===ae?"#6366f1":"#e2e8f0"}`,background:pipeAE===ae?"#6366f1":"#fff",color:pipeAE===ae?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pipeAE===ae?700:400,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
-                  {ae==="all"?`All (${deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length})`:ae}
-                </button>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* Stage filter expanded view */}
         {/* Search results notice */}
         {pipeSearch&&(
           <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"8px 16px",marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -10325,13 +10320,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))&&
             (pipeAE==="all"||d.salesOwner===pipeAE)
           ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
-          const hotDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)<=15);
-          const coldDeals=allActive.filter(d=>!d.parentDealId&&daysSince(d.dateAcquired)>15);
           const childPipeDeals=allActive.filter(d=>d.parentDealId);
           const parentActive=allActive.filter(d=>!d.parentDealId);
           const overdueFollowUps=parentActive.filter(d=>d.followUp&&d.followUp<today).sort((a,b)=>new Date(a.followUp)-new Date(b.followUp));
           const funnel=ACTIVE_STAGES.map(s=>{const list=parentActive.filter(d=>d.stage===s);return{stage:s,label:s.replace(/^\d+ · /,""),count:list.length,value:list.reduce((a,x)=>a+Number(x.value||0),0),clr:STAGE_CLR[s]||"#94a3b8"};});
           const funnelMax=Math.max(1,...funnel.map(f=>f.count));
+          // Funnel click filters ONLY the Hot/Cold tables — the funnel itself always shows all stages.
+          const activeStageFilter=stageFilter&&ACTIVE_STAGES.includes(stageFilter)?stageFilter:null;
+          const parentView=activeStageFilter?parentActive.filter(d=>d.stage===activeStageFilter):parentActive;
+          const hotDeals=parentView.filter(d=>daysSince(d.dateAcquired)<=15);
+          const coldDeals=parentView.filter(d=>daysSince(d.dateAcquired)>15);
 
           // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
           const BUDGET_ONLY=["Design","Operations","ProjectMover"];
@@ -10448,10 +10446,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* Pipeline stage funnel */}
               {parentActive.length>0&&(
                 <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)",padding:"12px 14px",marginBottom:20}}>
-                  <div style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>Pipeline by Stage</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                    <span style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px"}}>Pipeline by Stage</span>
+                    {activeStageFilter?(
+                      <span style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:".66rem",fontWeight:700,color:STAGE_CLR[activeStageFilter]||"#6366f1",background:(STAGE_CLR[activeStageFilter]||"#6366f1")+"14",border:`1px solid ${(STAGE_CLR[activeStageFilter]||"#6366f1")}44`,borderRadius:20,padding:"2px 8px"}}>
+                        Filtered: {activeStageFilter.replace(/^\d+ · /,"")}
+                        <button onClick={()=>setStageFilter(false)} style={{background:"none",border:"none",color:"inherit",cursor:"pointer",fontWeight:800,padding:0,lineHeight:1}} title="Clear stage filter">✕</button>
+                      </span>
+                    ):<span style={{fontSize:".62rem",color:"#cbd5e1"}}>click a stage to filter</span>}
+                  </div>
                   <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":`repeat(${funnel.length},1fr)`,gap:isMobile?10:8}}>
-                    {funnel.map(f=>(
-                      <div key={f.stage} style={{display:"flex",flexDirection:"column",gap:5}}>
+                    {funnel.map(f=>{
+                      const sel=activeStageFilter===f.stage;
+                      const clickable=f.count>0;
+                      return(
+                      <button key={f.stage} disabled={!clickable} onClick={()=>setStageFilter(sel?false:f.stage)}
+                        style={{display:"flex",flexDirection:"column",gap:5,textAlign:"left",fontFamily:"inherit",background:sel?f.clr+"12":"transparent",border:sel?`1.5px solid ${f.clr}`:"1.5px solid transparent",borderRadius:9,padding:"6px 8px",cursor:clickable?"pointer":"default",transition:"background .12s,border-color .12s"}}
+                        onMouseEnter={e=>{if(clickable&&!sel)e.currentTarget.style.background="#f8fafc";}}
+                        onMouseLeave={e=>{if(!sel)e.currentTarget.style.background="transparent";}}>
                         <div style={{display:"flex",alignItems:"baseline",gap:6}}>
                           <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:f.count?f.clr:"#cbd5e1",lineHeight:1}}>{f.count}</span>
                           {f.value>0&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".6rem",fontWeight:700,color:"#94a3b8"}}>{fmtK(f.value)}</span>}
@@ -10459,9 +10471,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <div style={{height:4,borderRadius:3,background:"#f1f5f9",overflow:"hidden"}}>
                           <div style={{height:"100%",width:`${Math.round(f.count/funnelMax*100)}%`,background:f.clr,borderRadius:3,transition:"width .2s"}}/>
                         </div>
-                        <span style={{fontSize:".64rem",fontWeight:600,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.label}</span>
-                      </div>
-                    ))}
+                        <span style={{fontSize:".64rem",fontWeight:sel?800:600,color:sel?f.clr:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.label}</span>
+                      </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -10478,7 +10491,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{height:3,background:"#ef4444"}}/>
                     <PipeTableHeader/>
                     <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {hotDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"No new deals this period."}</div>}
+                      {hotDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch||activeStageFilter?"No match.":"No new deals this period."}</div>}
                       {hotDeals.map((d,i)=>{
                         const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
                         return(<React.Fragment key={d.id}><PipeRow d={d} list={hotDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
@@ -10496,7 +10509,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{height:3,background:"#3b82f6"}}/>
                     <PipeTableHeader/>
                     <div style={{maxHeight:300,overflowY:"auto"}}>
-                      {coldDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch?"No match.":"All deals active — great work!"}</div>}
+                      {coldDeals.length===0&&<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem"}}>{pipeSearch||activeStageFilter?"No match.":"All deals active — great work!"}</div>}
                       {coldDeals.map((d,i)=>{
                         const children=childPipeDeals.filter(c=>c.parentDealId===d.id);
                         return(<React.Fragment key={d.id}><PipeRow d={d} list={coldDeals} i={i}/>{children.map(c=><div key={c.id} style={{paddingLeft:24,borderLeft:"3px solid #f59e0b",marginLeft:12,background:"#fffbeb"}}><PipeRow d={c} list={children} i={0}/></div>)}</React.Fragment>);
