@@ -11108,7 +11108,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
           return(
             <div>
-              <FinanceErpBar active="ap" go={financeErpGo} counts={financeErpCounts()}/>
+              {/* ERP bar is already rendered once at the top of the finance page — no duplicate here. */}
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:10}}>
                 <div>
                   <div style={{fontWeight:700,color:ERP.navy,fontSize:16}}>Accounts Payable</div>
