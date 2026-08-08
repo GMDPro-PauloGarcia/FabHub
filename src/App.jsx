@@ -22117,6 +22117,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   // fall back to the grid so the detail view never renders against a missing deal.
   useEffect(()=>{if(selDeal&&!wonDeals.some(d=>d.id===selDeal)&&!completedDeals.some(d=>d.id===selDeal))setSelDeal(null);},[selDeal,wonDeals,completedDeals]);
   const[viewMode,setViewMode]=useState("card");
+  const[showTeamLoad,setShowTeamLoad]=useState(false);
+  const[teamLoadTab,setTeamLoadTab]=useState("pm");
   const[pcFilter,setPcFilter]=useState(null);
   const[pcDeptFilter,setPcDeptFilter]=useState("All");
   const[pcSort,setPcSort]=useState("tat");
@@ -22249,6 +22251,34 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const needsAttn=wonDeals.filter(d=>{const h=getHealth(d,pcards[d.id]);return h==="yellow"||h==="red";}).length;
   const openBCount=(blockers||[]).filter(b=>b.status==="Open").length;
 
+  // ── Team-load rollups (by PM / Coordinator / Subcon) ──────────────────────
+  const dealStatus=(d)=>{
+    const pc=pcards[d.id];
+    if(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")return "done";
+    if(pc&&DEPT_ORDER.every(dep=>pc.departments?.[dep]?.done))return "done";
+    return getHealth(d,pc); // green | yellow | red | none
+  };
+  const buildRollup=(keyFn)=>{
+    const map={};
+    wonDeals.forEach(d=>{
+      const st=dealStatus(d);
+      const keys=keyFn(d);
+      keys.forEach(k=>{
+        if(!k)return;
+        if(!map[k])map[k]={name:k,total:0,red:0,yellow:0,green:0,done:0,none:0,active:0};
+        const row=map[k];row.total++;row[st]=(row[st]||0)+1;
+        if(st!=="done")row.active++;
+      });
+    });
+    return Object.values(map).sort((a,b)=>b.active-a.active||b.total-a.total);
+  };
+  const rollupPM=buildRollup(d=>{const pc=pcards[d.id],jo=jos.find(j=>j.dealId===d.id);return[pc?.pm1||jo?.pm1||"Unassigned"];});
+  const rollupCoor=buildRollup(d=>{const pc=pcards[d.id],jo=jos.find(j=>j.dealId===d.id);return[pc?.coordinator||jo?.coordinator||"Unassigned"];});
+  const rollupSubcon=buildRollup(d=>{const ws=(swos||[]).filter(w=>w.projectId===d.id||w.dealId===d.id);return ws.length?[...new Set(ws.map(w=>w.subcontractor).filter(Boolean))]:["Unassigned"];});
+  const teamRollups={pm:rollupPM,coor:rollupCoor,subcon:rollupSubcon};
+  const teamTabMeta={pm:["👷","Project Manager"],coor:["📋","Coordinator"],subcon:["🔧","Subcontractor"]};
+  const SC_CLR={red:["#ef4444","Urgent"],yellow:["#f59e0b","At Risk"],green:["#10b981","On Track"],done:["#059669","Done"],none:["#94a3b8","No Date"]};
+
   return(
     <>
     <div>
@@ -22291,6 +22321,73 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:pcFilter===f?"rgba(255,255,255,.6)":"#94a3b8",marginTop:5}}>{l}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Team Load — rollups by PM / Coordinator / Subcon */}
+      {!selDeal&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1px solid #e2e8f0",marginBottom:16,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.05)"}}>
+          <div onClick={()=>setShowTeamLoad(v=>!v)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",cursor:"pointer",background:showTeamLoad?"#f8fafc":"#fff",borderBottom:showTeamLoad?"1px solid #e2e8f0":"none"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:".95rem"}}>👥</span>
+              <span style={{fontWeight:800,fontSize:".9rem",color:"#0f172a"}}>Team Load</span>
+              <span style={{fontSize:".68rem",color:"#94a3b8"}}>workload &amp; risk by owner</span>
+            </div>
+            <span style={{fontSize:".7rem",color:"#64748b",fontWeight:600}}>{showTeamLoad?"▲ Hide":"▼ Show"}</span>
+          </div>
+          {showTeamLoad&&(
+            <div style={{padding:"12px 16px 16px"}}>
+              {/* status legend */}
+              <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:12}}>
+                {["red","yellow","green","done","none"].map(k=>(
+                  <span key={k} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:".62rem",fontWeight:600,color:"#64748b"}}>
+                    <span style={{width:9,height:9,borderRadius:2,background:SC_CLR[k][0]}}/>{SC_CLR[k][1]}
+                  </span>
+                ))}
+              </div>
+              {/* tabs */}
+              <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+                {Object.entries(teamTabMeta).map(([k,[ic,lbl]])=>(
+                  <button key={k} onClick={()=>setTeamLoadTab(k)}
+                    style={{padding:"5px 12px",borderRadius:8,border:`1.5px solid ${teamLoadTab===k?"#0f172a":"#e2e8f0"}`,background:teamLoadTab===k?"#0f172a":"#fff",color:teamLoadTab===k?"#fff":"#64748b",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>
+                    {ic} By {lbl}
+                  </button>
+                ))}
+              </div>
+              {/* rollup table */}
+              <div style={{overflowX:"auto"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",minWidth:520}}>
+                  <thead>
+                    <tr style={{borderBottom:"2px solid #e2e8f0"}}>
+                      {[teamTabMeta[teamLoadTab][1],"Total","Active","Urgent","At Risk","On Track","Done","No Date"].map((h,i)=>(
+                        <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".08em",color:"#94a3b8",padding:"8px 10px",textAlign:i===0?"left":"center",whiteSpace:"nowrap"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamRollups[teamLoadTab].length===0&&(
+                      <tr><td colSpan={8} style={{textAlign:"center",padding:"20px",color:"#94a3b8",fontSize:".8rem"}}>No projects yet.</td></tr>
+                    )}
+                    {teamRollups[teamLoadTab].map(r=>{
+                      const cells=[["red",r.red],["yellow",r.yellow],["green",r.green],["done",r.done],["none",r.none]];
+                      return(
+                        <tr key={r.name} style={{borderBottom:"1px solid #f1f5f9"}}>
+                          <td style={{padding:"9px 10px",fontSize:".8rem",fontWeight:700,color:r.name==="Unassigned"?"#cbd5e1":"#0f172a",fontStyle:r.name==="Unassigned"?"italic":"normal",whiteSpace:"nowrap"}}>{r.name}</td>
+                          <td style={{padding:"9px 10px",textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>{r.total}</td>
+                          <td style={{padding:"9px 10px",textAlign:"center",fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1rem",color:r.active>0?"#0f172a":"#cbd5e1"}}>{r.active}</td>
+                          {cells.map(([k,v])=>(
+                            <td key={k} style={{padding:"9px 10px",textAlign:"center"}}>
+                              {v>0?<span style={{display:"inline-flex",alignItems:"center",justifyContent:"center",minWidth:22,height:22,borderRadius:6,fontSize:".72rem",fontWeight:700,background:SC_CLR[k][0]+"1a",color:SC_CLR[k][0],border:`1px solid ${SC_CLR[k][0]}40`,padding:"0 5px"}}>{v}</span>:<span style={{color:"#e2e8f0",fontSize:".8rem"}}>·</span>}
+                            </td>
+                          ))}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
