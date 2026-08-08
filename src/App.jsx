@@ -6441,7 +6441,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"payables",l:"Accounts Payable"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6459,7 +6459,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     Finance:[
       {group:"Overview",    items:[{id:"home",l:"Cash Position"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"}]},
-      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"payables",l:"Accounts Payable"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",     items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting",  items:[{id:"coa",l:"Chart of Accounts"}]},
       {group:"Operations",  items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
@@ -6512,7 +6512,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     ],
     FinanceAssistant:[
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
-      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"payables",l:"Accounts Payable"},{id:"finance-reports",l:"Reports"}]},
+      {group:"Finance",    items:[{id:"finance",l:"Finance"},{id:"billing",l:"Billing"},{id:"cashposition",l:"Cash Position"},{id:"cashflow",l:"Cash Flow"},{id:"finance-reports",l:"Reports"}]},
       {group:"Accounting", items:[{id:"coa",l:"Chart of Accounts"}]},
     ],
   };
@@ -10655,8 +10655,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
     if(page==="finance"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
       <Wrap>
-        {/* Aerwin's Purchase-to-Payment ERP header — module launcher across the finance area */}
-        <FinanceErpBar active={finTab==="payables"?"ap":finTab==="payments"?"payments":null} go={financeErpGo} counts={financeErpCounts()}/>
+        {/* Aerwin's Purchase-to-Payment ERP header — module launcher across the finance area.
+            Hidden on Cash Position (its own owner-review report, not an ERP ops tab). */}
+        {finTab!=="cash"&&<FinanceErpBar active={finTab==="payables"?"ap":finTab==="payments"?"payments":null} go={financeErpGo} counts={financeErpCounts()}/>}
         {/* The old Finance sub-tab bar (Overview/Cash/Payables/Payments) was removed —
             those views are reached from the left nav (Finance, Cash Position,
             Accounts Payable) and the ERP bar (Accounts Payable, Payments). Only
@@ -18028,18 +18029,11 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
         );
       })()}
 
-      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
-        {[
-          {l:"Total WOs",   v:filtered.length,                                          c:"#0f172a"},
-          {l:"In Progress", v:filtered.filter(w=>w.status==="In Progress").length,      c:"#f59e0b"},
-          {l:"Completed",   v:filtered.filter(w=>w.status==="Completed").length,        c:"#10b981"},
-          {l:"Total Value", v:"Php "+totalValue.toLocaleString("en-PH",{maximumFractionDigits:0}), c:"#3b82f6"},
-        ].map(({l,v,c},i)=>(
-          <div key={l} style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
-            <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
-            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}</div>
-          </div>
-        ))}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:18}}>
+        <ErpStat label="Total WOs" value={String(filtered.length)} foot="work orders"/>
+        <ErpStat tone="warn" label="In Progress" value={String(filtered.filter(w=>w.status==="In Progress").length)} foot="ongoing"/>
+        <ErpStat tone="ok" label="Completed" value={String(filtered.filter(w=>w.status==="Completed").length)} foot="finished"/>
+        <ErpStat tone="purple" label="Total Value" value={"Php "+totalValue.toLocaleString("en-PH",{maximumFractionDigits:0})} foot="subcontractor contracts"/>
       </div>
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
@@ -18110,9 +18104,9 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
       ):(
         <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
           <div style={{overflowX:"auto"}}>
-            <div style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",padding:"8px 16px",alignItems:"center",minWidth:660}}>
+            <div style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,background:ERP.navyLight,borderBottom:`2px solid ${ERP.line}`,padding:"9px 16px",alignItems:"center",minWidth:660}}>
               {["WO #","Subcontractor","Project","Date","Status","Amount",""].map((h,i)=>(
-                <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",paddingRight:8,textAlign:i===5?"right":"left"}}>{h}</div>
+                <div key={i} style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",color:ERP.navy,paddingRight:8,textAlign:i===5?"right":"left"}}>{h}</div>
               ))}
             </div>
             {filtered.map((w,wi)=>{
@@ -19061,18 +19055,11 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
         </div>
       </div>
 
-      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"14px 20px",marginBottom:18,display:"flex",gap:0,flexWrap:"wrap"}}>
-        {[
-          {l:"Total POs",       v:[...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length, c:"#0f172a"},
-          {l:"Pending Approval",v:prs.filter(p=>p.status==="Pending Approval").length,                                            c:"#f59e0b"},
-          {l:"PO Issued",       v:[...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length,           c:"#3b82f6"},
-          {l:"Total Value",     v:"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0}),   c:"#10b981"},
-        ].map(({l,v,c},i)=>(
-          <div key={l} style={{flex:1,minWidth:110,paddingLeft:i>0?20:0,borderLeft:i>0?"1px solid #f1f5f9":"none",paddingRight:16}}>
-            <div style={{fontWeight:800,fontSize:"1.25rem",color:c,lineHeight:1,marginBottom:3}}>{v}</div>
-            <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8"}}>{l}</div>
-          </div>
-        ))}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:18}}>
+        <ErpStat label="Total POs" value={String([...new Set(prs.map(p=>p.poNumber).filter(Boolean))].length+prs.filter(p=>!p.poNumber).length)} foot="purchase orders"/>
+        <ErpStat tone="warn" label="Pending Approval" value={String(prs.filter(p=>p.status==="Pending Approval").length)} foot="awaiting approval"/>
+        <ErpStat label="PO Issued" value={String([...new Set(prs.filter(p=>p.status==="PO Issued").map(p=>p.poNumber||p.id))].length)} foot="issued to suppliers"/>
+        <ErpStat tone="ok" label="Total Value" value={"Php "+totalValue.toLocaleString("en-PH",{minimumFractionDigits:0,maximumFractionDigits:0})} foot="materials value"/>
       </div>
 
       <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
@@ -19102,9 +19089,9 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
       )}
       <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
         {/* Table header */}
-        {grouped.length>0&&<div style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"7px 14px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",gap:8,alignItems:"center"}}>
+        {grouped.length>0&&<div style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",background:ERP.navyLight,borderBottom:`2px solid ${ERP.line}`,gap:8,alignItems:"center"}}>
           {["PO #","Supplier","Project","Amount","Status",""].map((h,i)=>(
-            <div key={i} style={{fontSize:".6rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".7px",color:"#94a3b8",textAlign:i===3?"right":"left"}}>{h}</div>
+            <div key={i} style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",color:ERP.navy,textAlign:i===3?"right":"left"}}>{h}</div>
           ))}
         </div>}
           {poListTab==="summary"&&(()=>{
