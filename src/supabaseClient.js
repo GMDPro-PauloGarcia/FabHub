@@ -489,12 +489,12 @@ export const sbLoadAll = async () => {
     })
     tasks.forEach(t => {
       const card = Object.values(pcardsObj).find(c => c.id === t.card_id)
-      if (card?.departments[t.department])
+      if (card?.departments?.[t.department])
         card.departments[t.department].tasks.push({ id: t.id, text: t.task_text, done: t.done, doneAt: t.done_at, doneBy: t.done_by })
     })
     deptStatus.forEach(ds => {
       const card = Object.values(pcardsObj).find(c => c.id === ds.card_id)
-      if (card?.departments[ds.department])
+      if (card?.departments?.[ds.department])
         Object.assign(card.departments[ds.department], { done: ds.done, doneAt: ds.done_at, doneBy: ds.done_by, statusId: ds.id })
     })
 
