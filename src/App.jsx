@@ -5449,7 +5449,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[aeFeedFilter, setAeFeedFilter] = useState("all");
   const[aeShowClosed, setAeShowClosed] = useState(false);
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
-  const[openGroups,   setOpenGroups]   = useState({});     // per-ceType accordion in awarded projects
+  const[pipeType,     setPipeType]     = useState("all");  // awarded-project type filter
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
   const[rowMenu,      setRowMenu]      = useState(null);   // {deal,x,y} — pipeline row overflow menu
@@ -10503,7 +10503,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // Project cards are the parent deals (no parentDealId); bucket them by their own stage.
                 // Respect the AE chip filter (pipeAE) like the Hot/Cold pipeline does — addenda
                 // still nest under their parent below, so they follow the parent's AE automatically.
-                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE));
+                const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType));
                 const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
                 const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
                 // Addenda always nest under their parent's card, following the PARENT's bucket
@@ -10601,67 +10601,74 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     </tr>
                   );
                 };
-                const AwardGroups=({deals:list})=>{
+                // Flat awarded-projects table (no per-type grouping). Parents render as
+                // primary rows with their addenda nested directly beneath. Filtering by
+                // project type is handled by the chip row above via `pipeType`.
+                const AwardTable=({deals:list})=>{
                   const allChildren=list.filter(d=>d.parentDealId);
-                  const parentList=list.filter(d=>!d.parentDealId);
-                  const groups=[...new Set(parentList.map(d=>d.ceType||"Other"))].sort();
-                  return(<>
-                    {groups.map(grp=>{
-                      const gd=parentList.filter(d=>(d.ceType||"Other")===grp);
-                      const gdChildren=allChildren.filter(c=>gd.some(p=>p.id===c.parentDealId));
-                      const total=[...gd,...gdChildren].reduce((s,d)=>s+Number(d.value||0),0);
-                      const paid=[...gd,...gdChildren].reduce((s,d)=>s+dealCollected(d),0);
-                      const isOpen=openGroups[grp]!==false;
-                      return(
-                        <div key={grp} style={{marginBottom:10}}>
-                          <button onClick={()=>setOpenGroups(g=>({...g,[grp]:!isOpen}))}
-                            style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:isOpen?"#1e293b":"#f8fafc",border:`1.5px solid ${isOpen?"#334155":"#e2e8f0"}`,borderRadius:isOpen?"10px 10px 0 0":"10px",padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
-                            <span style={{fontWeight:800,color:isOpen?"#f59e0b":"#0f172a",fontSize:".85rem"}}>{grp}</span>
-                            <span style={{background:isOpen?"rgba(255,255,255,.12)":"#e2e8f0",color:isOpen?"#fff":"#64748b",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700}}>{gd.length}{gdChildren.length>0&&`+${gdChildren.length}`}</span>
-                            <span style={{marginLeft:"auto",fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:isOpen?"#4ade80":"#10b981",fontSize:".82rem"}}>₱{total.toLocaleString("en-PH")}</span>
-                            {paid>0&&!isMobile&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".65rem",color:isOpen?"rgba(255,255,255,.5)":"#94a3b8",fontWeight:600}}>{Math.round(paid/total*100)}% collected</span>}
-                            <span style={{fontSize:".65rem",color:isOpen?"rgba(255,255,255,.4)":"#94a3b8",marginLeft:4}}>{isOpen?"▲":"▼"}</span>
-                          </button>
-                          {isOpen&&(
-                            <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #e2e8f0",borderTop:"none",overflow:"hidden"}}>
-                              <div style={{overflowX:"auto"}}>
-                                <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
-                                  <thead>
-                                    <tr style={{background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>
-                                      <th style={{width:4,padding:0}}></th>
-                                      {["Project / Client","Stage","AE","PM","Contract","Collected","Outstanding","Turnover",""].map(h=>(
-                                        <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".09em",color:"#94a3b8",padding:"9px 14px",textAlign:["Contract","Collected","Outstanding"].includes(h)?"right":"left",whiteSpace:"nowrap"}}>{h}</th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {gd.map(d=>{
-                                      const children=allChildren.filter(c=>c.parentDealId===d.id);
-                                      return(
-                                        <React.Fragment key={d.id}>
-                                          <AwardRow d={d}/>
-                                          {children.map(c=><AwardRow key={c.id} d={c} isChild={true}/>)}
-                                        </React.Fragment>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </>);
+                  const parentList=list.filter(d=>!d.parentDealId)
+                    .sort((a,b)=>(a.ceType||"Other").localeCompare(b.ceType||"Other")||Number(b.value||0)-Number(a.value||0));
+                  return(
+                    <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
+                      <div style={{overflowX:"auto"}}>
+                        <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
+                          <thead>
+                            <tr style={{background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>
+                              <th style={{width:4,padding:0}}></th>
+                              {["Project / Client","Stage","AE","PM","Contract","Collected","Outstanding","Turnover",""].map(h=>(
+                                <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".09em",color:"#94a3b8",padding:"9px 14px",textAlign:["Contract","Collected","Outstanding"].includes(h)?"right":"left",whiteSpace:"nowrap"}}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {parentList.map(d=>{
+                              const children=allChildren.filter(c=>c.parentDealId===d.id);
+                              return(
+                                <React.Fragment key={d.id}>
+                                  <AwardRow d={d}/>
+                                  {children.map(c=><AwardRow key={c.id} d={c} isChild={true}/>)}
+                                </React.Fragment>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
                 };
+                // Type filter chips — counts come from the type-UNFILTERED won set (still
+                // respecting the AE chip + search) so selecting one type never hides the
+                // others. Each count reflects awarded parent projects of that type.
+                const typeCounts={};
+                wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&matchSearch(d))
+                  .forEach(d=>{const t=d.ceType||"Other";typeCounts[t]=(typeCounts[t]||0)+1;});
+                const typeList=Object.keys(typeCounts).sort();
+                const grandTotal=activeWon.reduce((s,d)=>s+Number(d.value||0),0);
                 return(<>
-                  {/* Active Awarded — one collapsible card per project type */}
-                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+                  {/* Active Awarded — flat table with a project-type filter */}
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                     🏆 Awarded Projects
-                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({activeWon.length} active)</span>
+                    <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({activeWon.filter(d=>!d.parentDealId).length} active)</span>
+                    {grandTotal>0&&<span style={{marginLeft:"auto",fontFamily:"'IBM Plex Mono',monospace",fontWeight:700,color:"#10b981",fontSize:".82rem"}}>₱{grandTotal.toLocaleString("en-PH")}</span>}
                   </div>
-                  {activeWon.length===0&&<div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem",marginBottom:16}}>No active projects right now.</div>}
-                  {activeWon.length>0&&<div style={{marginBottom:16}}><AwardGroups deals={activeWon}/></div>}
+                  {typeList.length>1&&(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12,alignItems:"center"}}>
+                      <span style={{fontSize:".7rem",color:"#94a3b8",fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginRight:2}}>Type:</span>
+                      {["all",...typeList].map(t=>{
+                        const on=pipeType===t;
+                        const tc=t==="all"?"#0f172a":(TYPE_CLR_PIPE[t]||"#64748b");
+                        const cnt=t==="all"?Object.values(typeCounts).reduce((s,n)=>s+n,0):typeCounts[t];
+                        return(
+                          <button key={t} onClick={()=>setPipeType(t)}
+                            style={{padding:"4px 11px",borderRadius:20,border:`1.5px solid ${on?tc:"#e2e8f0"}`,background:on?tc:"#fff",color:on?"#fff":"#64748b",fontFamily:"inherit",fontWeight:on?700:400,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
+                            {t==="all"?"All":t} <span style={{opacity:.7,fontWeight:600}}>({cnt})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {activeWon.length===0&&<div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".78rem",marginBottom:16}}>{pipeType==="all"?"No active projects right now.":`No active ${pipeType} projects.`}</div>}
+                  {activeWon.length>0&&<div style={{marginBottom:16}}><AwardTable deals={activeWon}/></div>}
 
                   {/* Closed Out / Done (12–13) */}
                   {doneWon.length>0&&(
@@ -10672,8 +10679,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <span style={{marginLeft:"auto",fontSize:".65rem",color:doneExpanded?"rgba(255,255,255,.6)":"#94a3b8"}}>{doneExpanded?"▲ Hide":"▼ Show"}</span>
                       </button>
                       {doneExpanded&&(
-                        <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #d1fae5",borderTop:"none",overflow:"hidden"}}>
-                          <AwardGroups deals={doneWon}/>
+                        <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #d1fae5",borderTop:"none",overflow:"hidden",padding:10}}>
+                          <AwardTable deals={doneWon}/>
                         </div>
                       )}
                     </div>
