@@ -130,6 +130,50 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const[qtyMap,setQtyMap]=useState({});
   const[dispatchModal,setDispatchModal]=useState(null);
   const[dispatchForm,setDispatchForm]=useState({itemId:"",qty:"",projectId:"",notes:""});
+  // ── PO receipt → inventory (Ian-style one-click receive) ──────────────────
+  // Receiving a PO here writes the inbound stock movement (and auto-creates the
+  // SKU if the item isn't tracked yet), so stock updates in the same click — no
+  // separate "Add / Restock" step. Financial side-effects (expense/payable) are
+  // handled by the Deliveries dashboard's own receive flow, not here.
+  const[receiveModal,setReceiveModal]=useState(null); // pr being received
+  const[receiveForm,setReceiveForm]=useState({qty:"",unitCost:"",drNo:"",notes:"",date:today});
+  const openReceive=(pr)=>{
+    setReceiveForm({
+      qty:String(pr.qty||""),
+      unitCost:String(pr.actUnitCost||pr.estUnitCost||pr.estimatedCost||""),
+      drNo:"",notes:"",date:today,
+    });
+    setReceiveModal(pr);
+  };
+  const commitReceive=()=>{
+    const pr=receiveModal; if(!pr) return;
+    const rq=Number(receiveForm.qty)||0;
+    if(rq<=0){toastEmit&&toastEmit("Enter a received quantity.","error");return;}
+    const total=Number(pr.qty||0);
+    const isPartial=total>0&&rq<total;
+    const uc=Number(receiveForm.unitCost||pr.actUnitCost||pr.estUnitCost||pr.estimatedCost||0);
+    const itemName=(pr.itemName||pr.item||"Unnamed item").trim();
+    const poNote=`${receiveForm.drNo?`DR ${receiveForm.drNo} · `:""}PO ${pr.poNumber||String(pr.id).slice(-6)}${pr.supplier?` · ${pr.supplier}`:""}${receiveForm.notes?` · ${receiveForm.notes}`:""}`;
+    // GMD-stock POs aren't tied to a real project — don't tag the movement to one.
+    const rawProj=pr.dealId||pr.projectId||"";
+    const sProjId=(rawProj==="__gmd_stocks__"||pr.projectName==="GMD Stocks")?null:(rawProj||null);
+    // Match an existing SKU by exact name (or a strong prefix match); otherwise create it.
+    const key=itemName.toLowerCase();
+    const match=inventory.find(i=>i.name?.toLowerCase()===key||(key.length>=8&&i.name?.toLowerCase().includes(key.slice(0,8))));
+    let targetId;
+    if(match){
+      targetId=match.id;
+    } else {
+      targetId=uid();
+      addInventoryItem({...emptyItem(),id:targetId,name:itemName,unit:pr.unit||"pcs",supplier:pr.supplier||"",avgCost:uc,lastPurchasePrice:uc,notes:`Auto-created from ${pr.poNumber||"PO"}`});
+    }
+    const ok=logStockMove({itemId:targetId,moveType:"IN — Delivery",qty:rq,unitCost:uc,projectId:sProjId,notes:poNote,date:receiveForm.date||today,recordedBy:session?.name||role});
+    if(ok===false) return;
+    if(match&&Number(receiveForm.unitCost)>0)updateInventoryItem(match.id,{lastPurchasePrice:uc,avgCost:uc,...(pr.supplier?{supplier:pr.supplier}:{})});
+    updatePR&&updatePR(pr.id,{status:isPartial?"Partially Delivered":"Delivered",qtyDelivered:rq,deliveryDate:today,deliveryNote:poNote});
+    toastEmit&&toastEmit(`✓ Received ${rq} ${pr.unit||""}${isPartial?" (partial)":""} · stock updated`,"success");
+    setReceiveModal(null);
+  };
   const[delivFilterSupplier,setDelivFilterSupplier]=useState("");
   const[delivFilterProject,setDelivFilterProject]=useState("");
   const[delivFilterDateFrom,setDelivFilterDateFrom]=useState("");
@@ -702,8 +746,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                           {pr.deliveryDate&&!isOv&&!isTd&&<div style={{fontSize:9,color:C.muted}}>{pr.deliveryDate}</div>}
                         </div>
                         <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                          {updatePR&&pr.status!=="Delivered"&&<button onClick={()=>updatePR(pr.id,{status:"Delivered",deliveryDate:today,qtyDelivered:pr.qty})} style={{fontSize:9,padding:"3px 7px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Rcvd</button>}
-                          {updatePR&&!["Partially Delivered","Delivered"].includes(pr.status)&&<button onClick={()=>updatePR(pr.id,{status:"Partially Delivered"})} style={{fontSize:9,padding:"3px 7px",border:`1px solid ${C.teal}`,borderRadius:5,background:"#fff",color:C.teal,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>Partial</button>}
+                          {updatePR&&pr.status!=="Delivered"&&<button onClick={()=>openReceive(pr)} style={{fontSize:9,padding:"3px 7px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Receive</button>}
                           {logStockMove&&isRcvd&&<button onClick={()=>{setDispatchModal(pr);setDispatchForm({itemId:invMatch?.id||"",qty:pr.qty||"",projectId:pr.dealId||pr.projectId||"",notes:""});}} style={{fontSize:9,padding:"3px 7px",border:`1px solid ${C.accent}`,borderRadius:5,background:"#fff",color:C.accent,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>📤 Dispatch</button>}
                         </div>
                       </div>
@@ -1262,6 +1305,58 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
           </div>
         </div>
       )}
+      {/* ── RECEIVE PO → INVENTORY MODAL (Ian-style one-click receipt) ── */}
+      {receiveModal&&(()=>{
+        const total=Number(receiveModal.qty||0);
+        const rq=Number(receiveForm.qty)||0;
+        const isPartial=total>0&&rq>0&&rq<total;
+        const key=(receiveModal.itemName||receiveModal.item||"").trim().toLowerCase();
+        const willCreate=!inventory.find(i=>i.name?.toLowerCase()===key||(key.length>=8&&i.name?.toLowerCase().includes(key.slice(0,8))));
+        return(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setReceiveModal(null)}>
+          <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,.3)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a",marginBottom:4}}>📦 Receive Delivery</div>
+            <div style={{fontSize:".8rem",color:"#64748b",marginBottom:14,fontStyle:"italic"}}>{receiveModal.itemName||receiveModal.item}{receiveModal.poNumber?` · PO ${receiveModal.poNumber}`:""}{receiveModal.supplier?` · ${receiveModal.supplier}`:""}</div>
+            {willCreate&&(
+              <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:".76rem",color:"#1d4ed8"}}>
+                ℹ New item — a matching inventory record will be created automatically on receipt.
+              </div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Qty Received *</div>
+                <input type="number" min={1} max={total||undefined} value={receiveForm.qty} onChange={e=>setReceiveForm(p=>({...p,qty:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+                {total>0&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3}}>Ordered: {total} {receiveModal.unit||""}</div>}
+              </div>
+              <div>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Unit Cost</div>
+                <input type="number" min={0} step="0.01" value={receiveForm.unitCost} onChange={e=>setReceiveForm(p=>({...p,unitCost:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>DR / Delivery Note #</div>
+              <input value={receiveForm.drNo} onChange={e=>setReceiveForm(p=>({...p,drNo:e.target.value}))} placeholder="e.g. DR-2024-001" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:isPartial?12:18}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Notes</div>
+              <input value={receiveForm.notes} onChange={e=>setReceiveForm(p=>({...p,notes:e.target.value}))} placeholder="Optional — condition, remarks…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            {isPartial&&(
+              <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",marginBottom:16,fontSize:".78rem",color:"#92400e"}}>
+                ⚠️ Partial receipt — balance of <strong>{total-rq} {receiveModal.unit||""}</strong> remains outstanding.
+              </div>
+            )}
+            <div style={{display:"flex",gap:8}}>
+              <button disabled={rq<=0} onClick={commitReceive}
+                style={{flex:1,padding:"9px",background:rq>0?"#22c55e":"#cbd5e1",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:rq>0?"pointer":"not-allowed"}}>
+                ✓ Confirm Receipt
+              </button>
+              <button onClick={()=>setReceiveModal(null)} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
     </div>
   );
 }
