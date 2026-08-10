@@ -80,7 +80,7 @@ function SupplierPicker({value,onChange,suppliers=[],addSupplier,placeholder="Su
 // re-render of InventoryView created a new component type for it — React
 // unmounts/remounts the <input>, losing focus and cursor position mid-edit.
 // Same bug class as the earlier MyAccountPage fix.
-function InlineCell({value,onSave,isNum,color,mono,canEdit,C,tdS}){
+function InlineCell({value,onSave,isNum,color,mono,canEdit,C,tdS,badge}){
   const[on,setOn]=useState(false);
   const[draft,setDraft]=useState("");
   const ref=useRef();
@@ -103,6 +103,7 @@ function InlineCell({value,onSave,isNum,color,mono,canEdit,C,tdS}){
       onMouseEnter={canEdit?e=>{e.currentTarget.style.background="#fffbf5";}:undefined}
       onMouseLeave={canEdit?e=>{e.currentTarget.style.background="";}:undefined}>
       <span style={{display:"block",padding:"0",fontSize:12,color:color||C.text,fontFamily:mono?"monospace":"inherit",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:220,cursor:canEdit?"text":"default"}}>{value}</span>
+      {badge}
     </td>
   );
 }
@@ -130,6 +131,53 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const[qtyMap,setQtyMap]=useState({});
   const[dispatchModal,setDispatchModal]=useState(null);
   const[dispatchForm,setDispatchForm]=useState({itemId:"",qty:"",projectId:"",notes:""});
+  // ── PO receipt → inventory (Ian-style one-click receive) ──────────────────
+  // Receiving a PO here writes the inbound stock movement (and auto-creates the
+  // SKU if the item isn't tracked yet), so stock updates in the same click — no
+  // separate "Add / Restock" step. Financial side-effects (expense/payable) are
+  // handled by the Deliveries dashboard's own receive flow, not here.
+  const[receiveModal,setReceiveModal]=useState(null); // pr being received
+  const[receiveForm,setReceiveForm]=useState({qty:"",unitCost:"",drNo:"",notes:"",date:today});
+  const openReceive=(pr)=>{
+    setReceiveForm({
+      qty:String(pr.qty||""),
+      unitCost:String(pr.actUnitCost||pr.estUnitCost||pr.estimatedCost||""),
+      drNo:"",notes:"",date:today,
+    });
+    setReceiveModal(pr);
+  };
+  const commitReceive=()=>{
+    const pr=receiveModal; if(!pr) return;
+    const rq=Number(receiveForm.qty)||0;
+    if(rq<=0){toastEmit&&toastEmit("Enter a received quantity.","error");return;}
+    const total=Number(pr.qty||0);
+    const isPartial=total>0&&rq<total;
+    const uc=Number(receiveForm.unitCost||pr.actUnitCost||pr.estUnitCost||pr.estimatedCost||0);
+    const itemName=(pr.itemName||pr.item||"Unnamed item").trim();
+    const poNote=`${receiveForm.drNo?`DR ${receiveForm.drNo} · `:""}PO ${pr.poNumber||String(pr.id).slice(-6)}${pr.supplier?` · ${pr.supplier}`:""}${receiveForm.notes?` · ${receiveForm.notes}`:""}`;
+    // GMD-stock POs aren't tied to a real project — don't tag the movement to one,
+    // and classify the SKU as a GMD-owned asset so it's expensed only on release
+    // (not on receipt). Project-direct POs stay "Project Stock".
+    const rawProj=pr.dealId||pr.projectId||"";
+    const isStock=rawProj==="__gmd_stocks__"||pr.projectName==="GMD Stocks";
+    const sProjId=isStock?null:(rawProj||null);
+    // Match an existing SKU by exact name (or a strong prefix match); otherwise create it.
+    const key=itemName.toLowerCase();
+    const match=inventory.find(i=>i.name?.toLowerCase()===key||(key.length>=8&&i.name?.toLowerCase().includes(key.slice(0,8))));
+    let targetId;
+    if(match){
+      targetId=match.id;
+    } else {
+      targetId=uid();
+      addInventoryItem({...emptyItem(),id:targetId,name:itemName,unit:pr.unit||"pcs",supplier:pr.supplier||"",avgCost:uc,lastPurchasePrice:uc,ownership:isStock?"GMD Asset — Inventory":"Project Stock",notes:`Auto-created from ${pr.poNumber||"PO"}`});
+    }
+    const ok=logStockMove({itemId:targetId,moveType:"IN — Delivery",qty:rq,unitCost:uc,projectId:sProjId,notes:poNote,date:receiveForm.date||today,recordedBy:session?.name||role});
+    if(ok===false) return;
+    if(match&&Number(receiveForm.unitCost)>0)updateInventoryItem(match.id,{lastPurchasePrice:uc,avgCost:uc,...(pr.supplier?{supplier:pr.supplier}:{})});
+    updatePR&&updatePR(pr.id,{status:isPartial?"Partially Delivered":"Delivered",qtyDelivered:rq,deliveryDate:today,deliveryNote:poNote});
+    toastEmit&&toastEmit(`✓ Received ${rq} ${pr.unit||""}${isPartial?" (partial)":""} · ${isStock?"added to GMD Stock (asset — expensed on release)":"stock updated"}`,"success");
+    setReceiveModal(null);
+  };
   const[delivFilterSupplier,setDelivFilterSupplier]=useState("");
   const[delivFilterProject,setDelivFilterProject]=useState("");
   const[delivFilterDateFrom,setDelivFilterDateFrom]=useState("");
@@ -232,6 +280,19 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
     const isOut=rem===0;
     return{...i,_beg:beg,_recv:recv,_out:out,_rem:rem,_price:price,_isLow:isLow,_isOut:isOut};
   }),[inventory,mvMap]);
+
+  // Where each SKU has been used — distinct project names from OUT movements.
+  // Drives the "used in" badge so GMD stock consumption is traceable for costing.
+  const usageByItem=useMemo(()=>{
+    const m={};
+    (stocklog||[]).forEach(s=>{
+      if(!s.itemId||!String(s.moveType||"").startsWith("OUT")||!s.projectId) return;
+      const nm=wonDeals.find(d=>d.id===s.projectId)?.client;
+      if(!nm) return;
+      (m[s.itemId]||(m[s.itemId]=new Set())).add(nm);
+    });
+    return m;
+  },[stocklog,wonDeals]);
 
   // ── KPIs ──────────────────────────────────────────────────────────────
   const totalVal=rows.reduce((s,i)=>s+i._rem*i._price,0);
@@ -693,7 +754,14 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                           {lastDispatch&&<div style={{fontSize:9,color:C.teal,marginTop:2}}>📤 Last out: {wonDeals.find(d=>d.id===lastDispatch.projectId)?.client||lastDispatch.notes||"Warehouse"} · {lastDispatch.date}</div>}
                         </div>
                         <div style={{fontSize:11,color:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{pr.supplier||"—"}</div>
-                        <div style={{fontSize:11,color:deal?C.blue:C.muted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{deal?.client||"GMD Stock"}</div>
+                        <div style={{overflow:"hidden"}}>
+                          {(()=>{const isStk=!deal&&((pr.dealId||pr.projectId)==="__gmd_stocks__"||pr.projectName==="GMD Stocks"||(!pr.dealId&&!pr.projectId));return(
+                            <span title={isStk?"GMD-owned stock — expensed when released to a project":"Bought for this project"} style={{display:"inline-flex",alignItems:"center",gap:4,maxWidth:"100%",padding:"2px 8px",borderRadius:10,fontSize:9,fontWeight:700,background:isStk?"#f0fdfa":"#eff6ff",color:isStk?C.teal:C.blue,border:`1px solid ${isStk?"#99f6e4":"#bfdbfe"}`,overflow:"hidden"}}>
+                              <span style={{flexShrink:0}}>{isStk?"🏭":"📁"}</span>
+                              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isStk?"GMD Stock":(deal?.client||pr.projectName||"Project")}</span>
+                            </span>
+                          );})()}
+                        </div>
                         <div style={{fontSize:12,fontWeight:700,color:C.text,textAlign:"right"}}>{qty}</div>
                         <div style={{fontSize:11,fontFamily:"monospace",color:uc>0?C.text:C.muted,textAlign:"right"}}>{uc>0?fmtM(uc):"—"}</div>
                         <div style={{fontSize:12,fontFamily:"monospace",fontWeight:700,color:rowVal>0?C.teal:C.muted,textAlign:"right"}}>{rowVal>0?fmtM(rowVal):"—"}</div>
@@ -702,8 +770,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                           {pr.deliveryDate&&!isOv&&!isTd&&<div style={{fontSize:9,color:C.muted}}>{pr.deliveryDate}</div>}
                         </div>
                         <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                          {updatePR&&pr.status!=="Delivered"&&<button onClick={()=>updatePR(pr.id,{status:"Delivered",deliveryDate:today,qtyDelivered:pr.qty})} style={{fontSize:9,padding:"3px 7px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Rcvd</button>}
-                          {updatePR&&!["Partially Delivered","Delivered"].includes(pr.status)&&<button onClick={()=>updatePR(pr.id,{status:"Partially Delivered"})} style={{fontSize:9,padding:"3px 7px",border:`1px solid ${C.teal}`,borderRadius:5,background:"#fff",color:C.teal,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>Partial</button>}
+                          {updatePR&&pr.status!=="Delivered"&&<button onClick={()=>openReceive(pr)} style={{fontSize:9,padding:"3px 7px",border:"none",borderRadius:5,background:C.green,color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>✓ Receive</button>}
                           {logStockMove&&isRcvd&&<button onClick={()=>{setDispatchModal(pr);setDispatchForm({itemId:invMatch?.id||"",qty:pr.qty||"",projectId:pr.dealId||pr.projectId||"",notes:""});}} style={{fontSize:9,padding:"3px 7px",border:`1px solid ${C.accent}`,borderRadius:5,background:"#fff",color:C.accent,cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}}>📤 Dispatch</button>}
                         </div>
                       </div>
@@ -939,7 +1006,13 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                   const qv=qtyMap[item.id]||1;
                   return(
                     <tr key={item.id} style={{background:"#fff"}}>
-                      <InlineCell value={item.name} onSave={v=>updateInventoryItem(item.id,{...item,name:v,lastUpdated:today})} color={C.text} canEdit={canEdit} C={C} tdS={tdS}/>
+                      <InlineCell value={item.name} onSave={v=>updateInventoryItem(item.id,{...item,name:v,lastUpdated:today})} color={C.text} canEdit={canEdit} C={C} tdS={tdS}
+                        badge={(()=>{const gmd=isGmdAsset(item.ownership);const used=[...(usageByItem[item.id]||[])];return(
+                          <div style={{display:"flex",gap:4,marginTop:3,flexWrap:"wrap",alignItems:"center"}}>
+                            <span title={gmd?"GMD-owned asset — expensed when released to a project":"Bought for a specific project"} style={{display:"inline-flex",alignItems:"center",gap:3,padding:"1px 6px",borderRadius:9,fontSize:8.5,fontWeight:700,background:gmd?"#f0fdfa":"#eff6ff",color:gmd?C.teal:C.blue,border:`1px solid ${gmd?"#99f6e4":"#bfdbfe"}`}}>{gmd?"🏭 GMD":"📁 Project"}</span>
+                            {used.length>0&&<span title={"Used in: "+used.join(", ")} style={{display:"inline-flex",alignItems:"center",padding:"1px 6px",borderRadius:9,fontSize:8.5,fontWeight:700,background:"#fef9c3",color:"#a16207",border:"1px solid #fde68a",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>→ {used.length===1?used[0]:used.length+" projects"}</span>}
+                          </div>
+                        );})()}/>
                       <InlineCell value={item.unit} onSave={v=>updateInventoryItem(item.id,{...item,unit:v.toLowerCase(),lastUpdated:today})} color={C.muted} mono canEdit={canEdit} C={C} tdS={tdS}/>
                       <InlineCell value={price} onSave={v=>updateInventoryItem(item.id,{...item,lastPurchasePrice:v,avgCost:v,lastUpdated:today})} isNum="f" color={C.muted} mono canEdit={canEdit} C={C} tdS={tdS}/>
                       {/* BEG */}
@@ -1262,6 +1335,70 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
           </div>
         </div>
       )}
+      {/* ── RECEIVE PO → INVENTORY MODAL (Ian-style one-click receipt) ── */}
+      {receiveModal&&(()=>{
+        const total=Number(receiveModal.qty||0);
+        const rq=Number(receiveForm.qty)||0;
+        const isPartial=total>0&&rq>0&&rq<total;
+        const key=(receiveModal.itemName||receiveModal.item||"").trim().toLowerCase();
+        const willCreate=!inventory.find(i=>i.name?.toLowerCase()===key||(key.length>=8&&i.name?.toLowerCase().includes(key.slice(0,8))));
+        const rawProj=receiveModal.dealId||receiveModal.projectId||"";
+        const destStock=rawProj==="__gmd_stocks__"||receiveModal.projectName==="GMD Stocks";
+        const destDeal=destStock?null:wonDeals.find(d=>d.id===rawProj);
+        const destName=destStock?"GMD Stock":(destDeal?.client||receiveModal.projectName||"Unassigned");
+        return(
+        <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={()=>setReceiveModal(null)}>
+          <div style={{background:"#fff",borderRadius:16,padding:24,width:"100%",maxWidth:420,boxShadow:"0 20px 60px rgba(0,0,0,.3)"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontWeight:800,fontSize:"1.05rem",color:"#0f172a",marginBottom:4}}>📦 Receive Delivery</div>
+            <div style={{fontSize:".8rem",color:"#64748b",marginBottom:10,fontStyle:"italic"}}>{receiveModal.itemName||receiveModal.item}{receiveModal.poNumber?` · PO ${receiveModal.poNumber}`:""}{receiveModal.supplier?` · ${receiveModal.supplier}`:""}</div>
+            {/* Destination + accounting-treatment badge */}
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12,padding:"9px 12px",borderRadius:9,background:destStock?"#f0fdfa":"#eff6ff",border:`1px solid ${destStock?"#99f6e4":"#bfdbfe"}`}}>
+              <span style={{fontSize:"1rem",flexShrink:0}}>{destStock?"🏭":"📁"}</span>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:".8rem",fontWeight:800,color:destStock?"#0f766e":"#1d4ed8"}}>{destStock?"GMD Stock (company asset)":`Project: ${destName}`}</div>
+                <div style={{fontSize:".68rem",color:destStock?"#0d9488":"#3b82f6",marginTop:1}}>{destStock?"Not expensed on receipt — cost is booked when released to a project.":"Held as inventory; project cost is booked when issued/dispatched."}</div>
+              </div>
+            </div>
+            {willCreate&&(
+              <div style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:8,padding:"8px 12px",marginBottom:12,fontSize:".76rem",color:"#1d4ed8"}}>
+                ℹ New item — a matching inventory record will be created automatically on receipt.
+              </div>
+            )}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <div>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Qty Received *</div>
+                <input type="number" min={1} max={total||undefined} value={receiveForm.qty} onChange={e=>setReceiveForm(p=>({...p,qty:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+                {total>0&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:3}}>Ordered: {total} {receiveModal.unit||""}</div>}
+              </div>
+              <div>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Unit Cost</div>
+                <input type="number" min={0} step="0.01" value={receiveForm.unitCost} onChange={e=>setReceiveForm(p=>({...p,unitCost:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+              </div>
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>DR / Delivery Note #</div>
+              <input value={receiveForm.drNo} onChange={e=>setReceiveForm(p=>({...p,drNo:e.target.value}))} placeholder="e.g. DR-2024-001" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            <div style={{marginBottom:isPartial?12:18}}>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Notes</div>
+              <input value={receiveForm.notes} onChange={e=>setReceiveForm(p=>({...p,notes:e.target.value}))} placeholder="Optional — condition, remarks…" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+            </div>
+            {isPartial&&(
+              <div style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:8,padding:"8px 12px",marginBottom:16,fontSize:".78rem",color:"#92400e"}}>
+                ⚠️ Partial receipt — balance of <strong>{total-rq} {receiveModal.unit||""}</strong> remains outstanding.
+              </div>
+            )}
+            <div style={{display:"flex",gap:8}}>
+              <button disabled={rq<=0} onClick={commitReceive}
+                style={{flex:1,padding:"9px",background:rq>0?"#22c55e":"#cbd5e1",color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:rq>0?"pointer":"not-allowed"}}>
+                ✓ Confirm Receipt
+              </button>
+              <button onClick={()=>setReceiveModal(null)} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
     </div>
   );
 }
