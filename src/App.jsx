@@ -10563,8 +10563,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}}>
                         <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{stageLabel}</span>
                       </td>
-                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
-                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.aeAssigned||jo?.aeAssigned||d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.pm1||jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
                       <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
                         <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
                       </td>
