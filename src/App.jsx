@@ -3900,7 +3900,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const cardSynced=await sbUpsert('project_cards',{id:card.id,deal_id:dealId,client:dealData?.client||"",ce_no:dealData?.ceNo||"",value:Number(dealData?.value)||0,award_date:dealData?.awardDate||today,created_at:card.createdAt,ae_assigned:card.aeAssigned||"",pm1:card.pm1||"",pm2:card.pm2||"",pm3:card.pm3||"",designer:card.designer||"",coordinator:card.coordinator||""},'deal_id');
       if(cardSynced){
         DEPT_ORDER.forEach(dept=>{
-          (card.departments[dept]?.tasks||[]).forEach((t,i)=>{
+          (card.departments?.[dept]?.tasks||[]).forEach((t,i)=>{
             sbUpsert('project_card_dept_tasks',{id:t.id,card_id:card.id,department:dept,task_text:t.text,done:false,sort_order:i},'id').catch(()=>{});
           });
         });
@@ -3920,15 +3920,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     let deptJustCompleted=false;
     upPcards(ps=>{
       const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
-      const deptData={...card.departments[dept]};
-      deptData.tasks=deptData.tasks.map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?new Date().toISOString():null,doneBy:nowDone?session?.name:null}:t);
-      deptData.done=deptData.tasks.every(t=>t.done);
+      const depts=card.departments||{};
+      const deptData={...(depts[dept]||{tasks:[]})};
+      deptData.tasks=(deptData.tasks||[]).map(t=>t.id===taskId?{...t,done:nowDone,doneAt:nowDone?new Date().toISOString():null,doneBy:nowDone?session?.name:null}:t);
+      deptData.done=deptData.tasks.length>0&&deptData.tasks.every(t=>t.done);
       if(deptData.done&&!wasAlreadyDeptDone){
         deptData.doneAt=new Date().toISOString();
         deptData.doneBy=session?.name;
         deptJustCompleted=true;
       }
-      card.departments={...card.departments,[dept]:deptData};
+      card.departments={...depts,[dept]:deptData};
       if(isSupabaseReady()&&isUUID(taskId)){
         sbUpdate('project_card_dept_tasks',taskId,{done:nowDone,done_at:nowDone?new Date().toISOString():null,done_by:nowDone?session?.name:null}).catch(()=>{});
         if(deptData.done&&card.id&&isUUID(card.id)){
@@ -3968,8 +3969,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const markDeptDone=(dealId,dept,done)=>{
     upPcards(ps=>{
       const card={...(ps[dealId]||emptyProjectCard(dealId,{}))};
-      const deptData={...card.departments[dept],done,doneAt:done?new Date().toISOString():null,doneBy:done?session?.name:null};
-      card.departments={...card.departments,[dept]:deptData};
+      const depts=card.departments||{};
+      const deptData={...(depts[dept]||{tasks:[]}),done,doneAt:done?new Date().toISOString():null,doneBy:done?session?.name:null};
+      card.departments={...depts,[dept]:deptData};
       if(done) logActivity(dealId,"Department Done",`${dept} marked complete for ${card.client}`,session?.name);
       if(isSupabaseReady()&&card.id&&isUUID(card.id)){
         sbUpsert('project_card_dept_status',{card_id:card.id,department:dept,done,done_at:deptData.doneAt,done_by:deptData.doneBy},'card_id,department').catch(()=>{});
@@ -22268,7 +22270,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
     return t>0?fmt(t)+" 📊":"Budget Pending";
   };
   const editableDepts={Manager:DEPT_ORDER,Sales:["Sales"],Design:["Design"],QS:["QS"],Procurement:["Procurement"],Operations:["Operations"],Finance:["Finance"],SalesOpsAdmin:DEPT_ORDER}[role]||[];
-  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments).filter(d=>d.done).length/6*100)):0;};
+  const projPct=(pc,deal=null)=>{if(deal?.stage==="12 · Close-Out"||deal?.stage==="14 · Completed")return 100;return pc?(pc.manualProgress!=null?pc.manualProgress:Math.round(Object.values(pc.departments||{}).filter(d=>d.done).length/6*100)):0;};
   const getHealth=(d,pc)=>{
     if(!pc||!d)return "none";
     const end=pc.targetEndDate?new Date(pc.targetEndDate):null;
