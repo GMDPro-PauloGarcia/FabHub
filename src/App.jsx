@@ -10513,6 +10513,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const activeWon=[...activeWonBase,...addenda.filter(d=>activeIds.has(d.parentDealId))];
                 const doneWon  =[...doneWonBase, ...addenda.filter(d=>doneIds.has(d.parentDealId))];
                 const STAGE_CLR_PIPE={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
+                // Type chip colors — mirrors the CE_TYPES so each awarded deal carries its
+                // project type inline (not just via its group header).
+                const TYPE_CLR_PIPE={"Fabrication / General":"#0891b2","Construction":"#b45309","Retail Fit-Out":"#7c3aed","Kiosk":"#0d9488","Signage":"#db2777","Event / Activation":"#e11d48","Repair / Refurbishment":"#4f46e5","Other":"#64748b"};
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const pc=pcards[d.id];
@@ -10550,6 +10553,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                         {d.client!==d.contact&&!isChild&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
                         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:isChild?2:4}}>
+                          {!isChild&&(()=>{const t=d.ceType||"Other";const tc=TYPE_CLR_PIPE[t]||"#64748b";return(<span style={{fontSize:".56rem",fontWeight:700,letterSpacing:".02em",padding:"1px 6px",borderRadius:3,background:tc+"18",color:tc,border:`1px solid ${tc}55`}}>{t}</span>);})()}
                           {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
                           {jo?.joNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{jo.joNo}</span>}
                         </div>
