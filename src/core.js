@@ -315,7 +315,7 @@ export const emptyProjectCard=(dealId,dealData)=>({
   ceNo:dealData?.ceNo||"",
   value:dealData?.value||0,
   createdAt:new Date().toISOString(),
-  awardDate:dealData?.awardDate||today,
+  awardDate:dealData?.awardDate||dealData?.dateAcquired||today,
   targetDays:null,           // Set by QS or Operations Director
   targetEndDate:null,        // Calculated: awardDate + targetDays
   tatCategory:"",            // Project type used for reference
