@@ -346,6 +346,9 @@ ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS secbank_end   numeric
 ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS unionbank_end numeric DEFAULT 0;
 ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS notes         text    DEFAULT '';
 ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS updated_at    timestamptz DEFAULT now();
+ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS manual_collections   jsonb DEFAULT '[]';
+ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS manual_disbursements jsonb DEFAULT '[]';
+ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS floating_checks      jsonb DEFAULT '[]';
 
 -- ── 15. PROJECT BUDGETS ───────────────────────────────────
 -- PK is deal_id (one budget per project).
