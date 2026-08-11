@@ -10688,39 +10688,67 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 </>);
               })()}
 
-              {/* Did Not Win */}
+              {/* Did Not Win — styled to match the awarded flat table */}
               {(()=>{
                 const dnw=deals.filter(d=>d.stage==="Did Not Win");
                 if(!dnw.length) return null;
+                const TYPE_CLR_DNW={"Fabrication / General":"#0891b2","Construction":"#b45309","Retail Fit-Out":"#7c3aed","Kiosk":"#0d9488","Signage":"#db2777","Event / Activation":"#e11d48","Repair / Refurbishment":"#4f46e5","Other":"#64748b"};
+                // The "did not win" reason is appended to notes as "[DID NOT WIN <date>]: <reason>".
+                // Pull the most recent one for the Reason column (blank if only the marker exists).
+                const lostReason=d=>{const m=[...String(d.notes||"").matchAll(/\[DID NOT WIN[^\]]*\]:?\s*(.*)/gi)];if(!m.length)return"";return(m[m.length-1][1]||"").trim();};
                 return(
                   <div style={{marginTop:8}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".88rem",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
                       <span style={{width:10,height:10,borderRadius:"50%",background:"#94a3b8",display:"inline-block"}}/>
-                      Did Not Win ({dnw.length})
+                      Did Not Win <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({dnw.length})</span>
                     </div>
-                    <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                    <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
                       <div style={{overflowX:"auto"}}>
-                      <div style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"10px 18px",background:"#f8fafc",borderBottom:"1.5px solid #e2e8f0",fontSize:".68rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",minWidth:520}}>
-                        <span>Client / Project</span><span>CE Info</span><span>AE</span><span>Value</span><span/>
-                      </div>
-                      {dnw.map((d,i)=>(
-                        <div key={d.id} style={{display:"grid",gridTemplateColumns:"2fr 1.5fr 1fr 0.8fr 80px",gap:12,padding:"11px 18px",borderBottom:i<dnw.length-1?"1px solid #f1f5f9":"none",alignItems:"center",opacity:.75,minWidth:520}}>
-                          <div>
-                            <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
-                            {d.contact&&<div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.contact}</div>}
-                          </div>
-                          <div>
-                            {d.ceNo&&<div style={{fontSize:".78rem",color:"#64748b",fontWeight:600}}>{d.ceNo}</div>}
-                            <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceType||"—"}</div>
-                          </div>
-                          <div style={{fontSize:".78rem",color:"#64748b"}}>👤 {d.salesOwner||"—"}</div>
-                          <div style={{fontWeight:600,color:"#94a3b8",fontSize:".85rem"}}>{d.value?fmtK(Number(d.value)):"—"}</div>
-                          <div style={{display:"flex",gap:5}}>
-                            {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
-                            {(role==="Manager"||role==="Sales")&&<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"01 · BizDev"}:x));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:6,padding:"4px 8px",fontSize:".7rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>}
-                          </div>
-                        </div>
-                      ))}
+                        <table style={{width:"100%",borderCollapse:"collapse",minWidth:760}}>
+                          <thead>
+                            <tr style={{background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>
+                              <th style={{width:4,padding:0}}></th>
+                              {["Client / Project","Type","CE #","AE","Value","Reason",""].map(h=>(
+                                <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".09em",color:"#94a3b8",padding:"9px 14px",textAlign:h==="Value"?"right":"left",whiteSpace:"nowrap"}}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {dnw.map(d=>{
+                              const t=d.ceType||"Other";const tc=TYPE_CLR_DNW[t]||"#64748b";const reason=lostReason(d);
+                              return(
+                                <tr key={d.id} style={{borderBottom:"1px solid #e2e8f0",opacity:.85}}
+                                  onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"}
+                                  onMouseLeave={e=>e.currentTarget.style.background=""}>
+                                  <td style={{width:4,padding:0,background:"#cbd5e1"}}></td>
+                                  <td style={{padding:"10px 14px",verticalAlign:"middle"}}>
+                                    <div style={{fontWeight:700,fontSize:".82rem",color:"#475569",lineHeight:1.3}}>{d.contact||d.client}</div>
+                                    {d.client!==d.contact&&d.contact&&<div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{d.client}</div>}
+                                  </td>
+                                  <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                                    <span style={{fontSize:".56rem",fontWeight:700,letterSpacing:".02em",padding:"1px 6px",borderRadius:3,background:tc+"18",color:tc,border:`1px solid ${tc}55`}}>{t}</span>
+                                  </td>
+                                  <td style={{padding:"10px 14px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                                    {d.ceNo?<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>:<span style={{color:"#cbd5e1"}}>—</span>}
+                                  </td>
+                                  <td style={{padding:"10px 14px",fontSize:".78rem",fontWeight:500,color:"#64748b",verticalAlign:"middle",whiteSpace:"nowrap"}}>{d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                                  <td style={{padding:"10px 14px",verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
+                                    <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".78rem",fontWeight:700,color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
+                                  </td>
+                                  <td style={{padding:"10px 14px",verticalAlign:"middle",fontSize:".74rem",color:"#64748b",maxWidth:220}}>
+                                    {reason?<span title={reason} style={{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{reason}</span>:<span style={{color:"#cbd5e1"}}>—</span>}
+                                  </td>
+                                  <td style={{padding:"6px 10px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
+                                    <div style={{display:"flex",gap:5}}>
+                                      {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} title="Edit deal" style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
+                                      {(role==="Manager"||role==="Sales")&&<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"01 · BizDev"}:x));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
