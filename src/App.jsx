@@ -5797,6 +5797,40 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
   };
 
+  // Convert a linked "child" deal (parentDealId set) into a real Change Order on
+  // its parent, then retire the child so its value isn't double-counted. Child
+  // deals have no additive/deductive concept, so we default to Additive; the CO
+  // enters as "Discovered" (the normal entry point) for Ops to approve on the
+  // Scope Changes page, at which point it rolls into the parent contract.
+  const convertChildToCO=(child)=>{
+    if(!child?.parentDealId){toastEmit("This deal has no parent to attach a change order to.","error");return;}
+    if(!canDeleteDeal){toastEmit("You don't have permission to convert this deal.","error");return;}
+    const parent=deals.find(d=>d.id===child.parentDealId);
+    if(!parent){toastEmit("Parent project not found.","error");return;}
+    const title=(child.contact||child.product||child.client||"Scope Change").trim();
+    // Carry any BOQ line items over as the change order's scope items so approval
+    // flows them into the parent BOQ; otherwise fall back to a single lump value.
+    const boqItems=Array.isArray(child.boqData?.items)?child.boqData.items:[];
+    const scopeItems=boqItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.unitCost!=null?it.unitCost:it.rate)||0}));
+    const rec={
+      id:"add"+Date.now(),dealId:parent.id,
+      title,description:(child.notes||`Converted from linked deal "${title}".`).trim(),
+      kind:"Additive",value:Math.abs(Number(child.value)||0),scopeItems,
+      ceNo:parent.ceNo||child.ceNo||"",
+      receiptType:parent.receiptType||"OR",
+      withholding:parent.withholding||false,
+      status:"Discovered",salesNotified:true,
+      discoveredBy:session?.name||role,
+      convertedFromDealId:child.id,
+    };
+    upAddenda(as=>[...as,rec]);
+    if(isSupabaseReady()) sbSyncOne("addenda",rec,toSbAddendum);
+    logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order — pending approval.`);
+    // Retire the now-redundant child deal (cascade handled by delDeal).
+    delDeal(child.id);
+    toastEmit("Converted to Change Order — review & approve on Scope Changes.","success");
+  };
+
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
 
   const stageQ=(id,st)=>{
@@ -10597,6 +10631,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
+                        {isChild&&canDeleteDeal&&<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
                       </td>
                     </tr>
                   );
