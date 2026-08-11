@@ -241,19 +241,25 @@ export const dueDateFromTerms=(terms,fromISO)=>{const t=String(terms||"").toLowe
 // receipt date, preserving existing behaviour.
 export const PAYMENT_METHODS=["Cash","Bank Transfer","Cheque","Online","Other"];
 export const CHEQUE_CLEAR_DAYS=3; // banking days a cheque takes to clear
+// Normalize any date value to a bare YYYY-MM-DD. Supabase `timestamp` columns
+// come back as "2026-08-11T00:00:00+00:00"; the daily report compares against a
+// bare selected date, so a trailing time component made those payments silently
+// fail the match and never register on any day. Slice the date part off first.
+export const ymd=(v)=>{if(!v)return"";const s=String(v);return s.length>=10?s.slice(0,10):s;};
 // Add N banking days (skip Sat/Sun) to an ISO date string.
 export const addBankingDaysISO=(fromISO,n)=>{
   if(!fromISO) return fromISO;
-  let d=new Date(fromISO+"T00:00:00");let added=0;
+  let d=new Date(ymd(fromISO)+"T00:00:00");let added=0;
   while(added<Number(n||0)){d=new Date(d.getTime()+86400000);const wd=d.getDay();if(wd!==0&&wd!==6)added++;}
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 };
 // The date a payment's funds are (or will be) available in the bank.
+// Always returns a bare YYYY-MM-DD so date-equality comparisons stay reliable.
 export const paymentClearDate=(p)=>{
   if(!p) return "";
-  if(p.valueDate) return p.valueDate;                 // explicit / manually cleared
+  if(p.valueDate) return ymd(p.valueDate);            // explicit / manually cleared
   if(p.method==="Cheque") return addBankingDaysISO(p.date,CHEQUE_CLEAR_DAYS);
-  return p.date||"";                                  // cash/transfer/online/legacy → same day
+  return ymd(p.date)||"";                             // cash/transfer/online/legacy → same day
 };
 // Has this payment cleared as of `asOfISO` (default: any date)? Bounced never clears.
 export const isPaymentCleared=(p,asOfISO)=>{

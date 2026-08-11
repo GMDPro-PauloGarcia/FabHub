@@ -1,6 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {today,uid,BANKS,emptyBankRow,emptyDayPosition} from "../shared";
-import {paymentClearDate,isPaymentCleared} from "../core";
+import {paymentClearDate,isPaymentCleared,ymd} from "../core";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -37,13 +37,13 @@ const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
 // that clear on the selected date; Bizlink & Float Check are manual entry.
 function DailyCashPosition({
   cashPositions={},saveDayPos=()=>{},wonDeals=[],billings=[],
-  exps=[],payables=[],vouchers=[],loans=[],inventory=[]
+  exps=[],payables=[],vouchers=[],loans=[],inventory=[],onOpenBilling=null
 }){
   const[selDate,setSelDate]=useState(today);
   const[saved,setSaved]    =useState(false);
   const[dirty,setDirty]    =useState(false);   // unsaved local edits on the current day
   const[histOpen,setHistOpen]=useState(false);
-  const[hideAcct,setHideAcct]=useState(false);   // mask account numbers for screen-share/presentations
+  const[hideAcct,setHideAcct]=useState(true);   // mask account numbers by default for screen-share/presentations
   const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
   const markDirty =()=>{dirtyRef.current=true; setDirty(true);};
   const clearDirty=()=>{dirtyRef.current=false;setDirty(false);};
@@ -120,7 +120,8 @@ function DailyCashPosition({
     const normBank=BILLING_BANK_MAP[p.bank]||p.bank||"";
     const deal=wonDeals.find(d=>d.id===b.dealId)||{};
     return{id:p.id,bank:normBank,amount:Number(p.amount||0),
-      particulars:(deal.client||deal.contact||b.name||"Collection"),milestone:b.name||"",method:p.method||"",source:"billing"};
+      particulars:(deal.client||deal.contact||b.name||"Collection"),milestone:b.name||"",method:p.method||"",source:"billing",
+      dealId:b.dealId||deal.id||null,milestoneId:b.id||null};
   };
   const autoCollLive=useMemo(()=>{
     const out=[];
@@ -155,7 +156,7 @@ function DailyCashPosition({
     const[selY,selM,selD]=selDate.split("-").map(Number);
     return (exps||[])
       .filter(e=>e.acctStatus==="Paid"&&e.paymentMethod!=="Check"&&e.bankAccount&&(
-        e.expDate===selDate || (!e.expDate&&e.month===selM-1&&(e.year==null||e.year===selY)&&selD===1)))
+        ymd(e.expDate)===selDate || (!e.expDate&&e.month===selM-1&&(e.year==null||e.year===selY)&&selD===1)))
       .map(e=>({id:e.id,bank:e.bankAccount,payee:e.payee||e.supplier||"Expense",particulars:e.note||e.category||"",method:"BizLink",amount:Number(e.amount||0),ref:e.refNo||e.receipt||"",source:"expense"}));
   },[exps,selDate]);
   // A cheque is "floating" on selDate if released on/before it and not yet cleared by then
@@ -565,10 +566,22 @@ function DailyCashPosition({
                 <tr><td colSpan={4} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No collections recorded for {fmtDate(selDate)}. Add manual entries below, or record payments in Billing.</td></tr>
               )}
               {/* Auto rows from billing (read-only) */}
-              {autoColl.map((r,i)=>{const bk=BANKS.find(x=>x.id===r.bank);return(
+              {autoColl.map((r,i)=>{const bk=BANKS.find(x=>x.id===r.bank);
+                const canOpen=!!(onOpenBilling&&r.dealId);
+                const openBilling=()=>canOpen&&onOpenBilling(r.dealId,r.milestoneId);
+                return(
                 <tr key={"auto"+(r.id||i)} style={{background:"#f0f7ff"}}>
                   <td style={{...td}}>{bk?bk.name.toUpperCase():<span style={{color:"#dc2626",fontWeight:700}}>⚠ Untagged</span>}</td>
-                  <td style={{...td}}>{r.particulars}{r.milestone?` · ${r.milestone}`:""}<span style={{marginLeft:6,fontSize:".62rem",fontWeight:700,color:C.blue,background:"#e0efff",border:"1px solid #bfdbfe",borderRadius:5,padding:"0 5px"}}>auto · billing</span></td>
+                  <td style={{...td}}>
+                    {canOpen?(
+                      <button onClick={openBilling} title="Open this milestone in Billing — review, delete, or change the payment date"
+                        style={{background:"none",border:"none",padding:0,margin:0,font:"inherit",color:C.blue,fontWeight:700,cursor:"pointer",textAlign:"left",textDecoration:"underline",textDecorationStyle:"dotted",textUnderlineOffset:2}}>
+                        {r.particulars}{r.milestone?` · ${r.milestone}`:""}
+                      </button>
+                    ):(<>{r.particulars}{r.milestone?` · ${r.milestone}`:""}</>)}
+                    <span style={{marginLeft:6,fontSize:".62rem",fontWeight:700,color:C.blue,background:"#e0efff",border:"1px solid #bfdbfe",borderRadius:5,padding:"0 5px"}}>auto · billing</span>
+                    {canOpen&&<span onClick={openBilling} title="Open in Billing" style={{marginLeft:5,color:C.blue,cursor:"pointer",fontSize:".72rem"}}>↗</span>}
+                  </td>
                   <td style={{...td,...numCell,color:C.blue,fontWeight:700}}>{fmt2(r.amount)}</td>
                   <td style={{...td,border:"none",background:"#fff"}}></td>
                 </tr>
