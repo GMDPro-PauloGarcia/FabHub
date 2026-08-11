@@ -2810,7 +2810,7 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||""})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
@@ -3091,7 +3091,7 @@ export default function App(){
     if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -5378,6 +5378,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payPayAmt, setPayPayAmt]=useState("");
   const[payPayMode,setPayPayMode]=useState("amount"); // "amount" | "pct" (progress payment to a subcontractor/supplier)
   const[payPayPct, setPayPayPct]=useState("");
+  const[payPayBank,  setPayPayBank]  =useState("");            // which bank/account the payable is paid from
+  const[payPayMethod,setPayPayMethod]=useState("Online Transfer"); // Online Transfer | Cash | Check
+  const[payPayRef,   setPayPayRef]   =useState("");
   const[editPayId, setEditPayId]=useState(null);
   const[loans,     setLoans]    =useState([]);
   const[loanModal, setLoanModal]=useState(false);
@@ -6486,7 +6489,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Record a payment against a payable (full or partial). Advances paidAmount and
   // flips Unpaid → Partial → Paid as the running balance closes — the "Pay" action
   // in the finance team's AP log.
-  const recordPayablePayment=(id,payAmt)=>{
+  const recordPayablePayment=(id,payAmt,opts={})=>{
     const p=payables.find(x=>x.id===id);
     if(!p) return;
     const amount=Number(p.amount)||0;
@@ -6496,11 +6499,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const paidAmount=Math.min(amount,Math.round((already+add)*100)/100);
     const status=paidAmount>=amount?"Paid":"Partial";
     const paidDate=status==="Paid"?today:(p.paidDate||"");
-    upPayables(ps=>ps.map(x=>x.id===id?{...x,paidAmount,status,paidDate}:x));
-    if(isSupabaseReady()) sbUpsert("payables",{id,paid_amount:paidAmount,status,...(status==="Paid"?{paid_date:today}:{})},"id").catch(()=>{});
+    const payBank=opts.bank!=null?opts.bank:(p.payBank||"");
+    const payMethod=opts.method!=null?opts.method:(p.payMethod||"");
+    const payRef=opts.ref!=null?opts.ref:(p.payRef||"");
+    upPayables(ps=>ps.map(x=>x.id===id?{...x,paidAmount,status,paidDate,payBank,payMethod,payRef}:x));
+    if(isSupabaseReady()) sbUpsert("payables",{id,paid_amount:paidAmount,status,pay_bank:payBank,pay_method:payMethod,pay_ref:payRef,...(status==="Paid"?{paid_date:today}:{})},"id").catch(()=>{});
     if(status==="Paid"&&p.expenseId) markExpensePaid(p.expenseId);
     const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{maximumFractionDigits:0});
-    toastEmit(status==="Paid"?`✅ Payable fully settled — ${peso(amount)}`:`✅ Partial payment ${peso(add)} recorded · ${peso(amount-paidAmount)} balance`,"success");
+    const bankLbl=(BANKS||[]).find(b=>b.id===payBank||b.short===payBank||b.name===payBank);
+    toastEmit(status==="Paid"?`✅ Payable fully settled — ${peso(amount)}${bankLbl?` · ${bankLbl.short||bankLbl.name}`:""}`:`✅ Partial payment ${peso(add)} recorded · ${peso(amount-paidAmount)} balance`,"success");
   };
   // Mark a logged expense as Paid (so the expense log reflects payment instead of staying "Logged").
   const markExpensePaid=(expId)=>{
@@ -6534,6 +6541,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     setPayPayId(p.id);
     setPayPayMode("amount");setPayPayPct("");
     setPayPayAmt(String(balance||""));
+    setPayPayBank(p.payBank||"");setPayPayMethod(p.payMethod||"Online Transfer");setPayPayRef(p.payRef||"");
   };
   // Route a floated payable into Check Payables: create a linked Draft check voucher.
   // The CV carries the vendor/amount/PO; on Release it marks this payable Paid (see releaseCv).
@@ -11606,9 +11614,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const contract=Number(p.amount)||0;
                 const balance=Math.max(0,contract-(Number(p.paidAmount)||0));
                 const amt=Number(payPayAmt)||0;
-                const invalid=!(amt>0)||amt>balance+0.005;
+                const invalid=!(amt>0)||amt>balance+0.005||!payPayBank;
                 const pctPaidSoFar=contract>0?Math.round((Number(p.paidAmount)||0)/contract*100):0;
-                const close=()=>{setPayPayId(null);setPayPayAmt("");setPayPayMode("amount");setPayPayPct("");};
+                const close=()=>{setPayPayId(null);setPayPayAmt("");setPayPayMode("amount");setPayPayPct("");setPayPayBank("");setPayPayMethod("Online Transfer");setPayPayRef("");};
                 // % mode is a progress PAYMENT to the subcontractor/supplier (money
                 // out, AP side — not client billing): percent is of the FULL contract,
                 // so retention (e.g. hold the last 10%) works by simply not paying to 100%.
@@ -11652,8 +11660,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </>
                     )}
                     {amt>balance+0.005&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ {fmtM(amt)} exceeds the outstanding balance of {fmtM(balance)}.</div>}
+                    {/* Where it's paid from — Aerwin: payment must record the bank/method */}
+                    <div style={{borderTop:`1px solid ${ERP.line}`,marginTop:12,paddingTop:12}}>
+                      <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>Payment Details</div>
+                      <Fld label="Paid from (Bank / Account)" required>
+                        <Sel value={payPayBank} onChange={e=>setPayPayBank(e.target.value)}>
+                          <option value="">— Select bank / account —</option>
+                          {(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+                        </Sel>
+                      </Fld>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                        <Fld label="Payment Method">
+                          <Sel value={payPayMethod} onChange={e=>setPayPayMethod(e.target.value)}>
+                            {["Online Transfer","Cash","Check"].map(m=><option key={m}>{m}</option>)}
+                          </Sel>
+                        </Fld>
+                        <Fld label="Reference No."><Inp value={payPayRef} onChange={e=>setPayPayRef(e.target.value)} placeholder={payPayMethod==="Check"?"Check no.":"Transfer / OR no."}/></Fld>
+                      </div>
+                      {!payPayBank&&<div style={{fontSize:".72rem",color:"#b45309",fontWeight:600}}>Select the bank/account this will be paid from to enable payment.</div>}
+                    </div>
                     <div style={{display:"flex",gap:10,marginTop:14}}>
-                      <Btn full variant="green" disabled={invalid} onClick={()=>{if(invalid)return;recordPayablePayment(p.id,amt);close();}}>Record Payment</Btn>
+                      <Btn full variant="green" disabled={invalid} onClick={()=>{if(invalid)return;recordPayablePayment(p.id,amt,{bank:payPayBank,method:payPayMethod,ref:payPayRef});close();}}>Record Payment</Btn>
                       <Btn variant="ghost" onClick={close}>Cancel</Btn>
                     </div>
                   </Modal>
@@ -11676,7 +11703,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           }));
           const directPays=payables.filter(p=>!p.cvId&&p.status!=="Check Issued"&&N(p.paidAmount)>0).map(p=>({
             id:"ap-"+p.id,date:p.paidDate||"",apNo:p.apNumber||"—",vendor:p.vendor||"—",
-            channel:"Online",bank:"—",ref:p.invoiceNumber||p.invoiceRef||"—",
+            channel:p.payMethod==="Check"?"Check":p.payMethod==="Cash"?"Cash":"Online",bank:bankName(p.payBank)||"—",ref:p.payRef||p.invoiceNumber||p.invoiceRef||"—",
             amount:N(p.paidAmount),cvId:null,cleared:p.status==="Paid",
           }));
           const rows=[...cvPays,...directPays].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
