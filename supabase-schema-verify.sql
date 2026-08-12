@@ -349,6 +349,7 @@ ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS updated_at    timesta
 ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS manual_collections   jsonb DEFAULT '[]';
 ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS manual_disbursements jsonb DEFAULT '[]';
 ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS floating_checks      jsonb DEFAULT '[]';
+ALTER TABLE public.cash_positions ADD COLUMN IF NOT EXISTS audit                jsonb DEFAULT '[]';
 
 -- ── 15. PROJECT BUDGETS ───────────────────────────────────
 -- PK is deal_id (one budget per project).
