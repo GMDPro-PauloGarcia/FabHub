@@ -97,6 +97,11 @@ export const OPS_TEAM          = ["Arrius Catubay (Ops Director)","Ryon Santiago
 
 export const DESIGN_MEMBERS    = ["Gab Florita","Miaa Villoria","Miel Vidallo","Adrian Adriano","Tisha Leyva","Freelancer / Outsourced"];
 
+// The Head Designer leads the design team — keeps Sales Pipeline visibility that
+// the rest of the designers don't get, and owns final approvals.
+export const HEAD_DESIGNER     = "Gab Florita";
+export const isHeadDesigner    = (name)=>!!name && name===HEAD_DESIGNER;
+
 export const ALL_MEMBERS       = [...new Set([...SALES_TEAM,...COST_CONTROL_TEAM,...OPS_TEAM,...DESIGN_MEMBERS])];
 
 export const PROD_MEMBERS      = ALL_MEMBERS; // backward compat
@@ -146,9 +151,9 @@ export const SW_CLR    = { "To Buy":"#ef4444",Ordered:"#f59e0b",Received:"#10b98
 
 export const DRF_TYPES = ["Module / Display Fixture","Signage","Retail Fit-Out","Counter / Reception","Kiosk","Wall Panel / Decor","Custom Furniture","Other"];
 
-export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Done"];
+export const DRF_STATUSES = ["New","Acknowledged","In Progress","For Review","Revision","Approved","Production","Done"];
 
-export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f97316","For Review":"#8b5cf6",Revision:"#ef4444",Approved:"#10b981",Done:"#059669"};
+export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f97316","For Review":"#8b5cf6",Revision:"#ef4444",Approved:"#10b981",Production:"#0ea5e9",Done:"#059669"};
 
 export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],size:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
