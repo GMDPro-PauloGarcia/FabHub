@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -6761,8 +6761,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Requests",  items:[{id:"costanalysis",l:"Cost Analysis"}]},
     ],
     Design:[
-      {group:"Overview",    items:[{id:"home",l:"Projects"}]},
-      {group:"Sales",       items:[{id:"pipeline",l:"Sales Pipeline"}]},
+      {group:"Overview",    items:[{id:"home",l:"Projects"},{id:"myfolder",l:"My Folder"}]},
+      // Sales Pipeline is limited to the Head Designer — the rest of the design
+      // team only sees their design work, not the sales funnel.
+      ...(isHeadDesigner(session?.name)?[{group:"Sales", items:[{id:"pipeline",l:"Sales Pipeline"}]}]:[]),
       {group:"Design Work", items:[{id:"drf",l:"Design Requests"},{id:"projects",l:"Project Cards"}]},
     ],
     ProjectMover:[
@@ -6795,7 +6797,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
-      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️",
+      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
@@ -6924,7 +6926,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
-      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️",
+      checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
     };
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",
@@ -10094,6 +10096,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </Wrap>
   );
 
+  // Sales Pipeline is restricted for the design team — only the Head Designer
+  // keeps access. Other designers who somehow land here are bounced to their home.
+  if(page==="pipeline"&&role==="Design"&&!isHeadDesigner(session?.name)) return(
+    <Wrap>
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"40px 24px",textAlign:"center",maxWidth:520,margin:"40px auto"}}>
+        <div style={{fontSize:"2rem",marginBottom:10}}>🔒</div>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:"1.05rem",marginBottom:6}}>Sales Pipeline is restricted</div>
+        <div style={{fontSize:".82rem",color:"#64748b",lineHeight:1.5}}>Pipeline access is limited to the Head Designer. Head to your design queue and folder to see your assigned projects.</div>
+        <button onClick={()=>setPage("home")} style={{marginTop:16,background:"#ec4899",border:"none",borderRadius:10,padding:"9px 20px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Go to My Projects →</button>
+      </div>
+    </Wrap>
+  );
+
   if(page==="pipeline") return(
     <>
       <Wrap>
@@ -12799,6 +12814,75 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ─── DESIGN ───────────────────────────────────────────────────────────────
   if(role==="Design"){
+    // ── MY FOLDER — each designer's own folder of assigned projects ─────────
+    // After the design lead distributes projects per designer, every designer
+    // gets a dedicated folder listing the projects + DRFs assigned to them.
+    // The Head Designer sees every designer's folder; others see only their own.
+    if(page==="myfolder") return(
+      <Wrap>
+        {(()=>{
+          const me=session?.name||"";
+          const head=isHeadDesigner(me);
+          // Build a folder per designer: assigned project cards + assigned DRFs.
+          const folderFor=(member)=>{
+            const projItems=projList.filter(d=>(projs[d.id]?.design?.designer||"")===member).map(d=>({kind:"project",id:d.id,client:d.client,title:projs[d.id]?.design?.projectTitle||d.product||d.client,status:projs[d.id]?.design?.status||"Briefing",deal:d}));
+            const drfItems=(drfs||[]).filter(x=>(x.designer||"")===member).map(x=>({kind:"drf",id:x.id,client:x.client,title:x.projectTitle,status:x.status,due:x.designDeadline}));
+            return {member,projItems,drfItems,total:projItems.length+drfItems.length};
+          };
+          // Head Designer sees all designers (own folder first); others just theirs.
+          const members=head?[me,...DESIGN_MEMBERS.filter(m=>m!==me)]:[me];
+          const folders=members.map(folderFor);
+          return(
+            <div>
+              <div style={{marginBottom:18}}>
+                <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>📁 My Folder</h2>
+                <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{head?"Every designer's folder of assigned projects — yours first.":"Your assigned projects and design requests."}</div>
+              </div>
+              {folders.map(({member,projItems,drfItems,total})=>{
+                const mine=member===me;
+                return(
+                  <div key={member} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${mine?"#ec489966":"#e2e8f0"}`,overflow:"hidden",marginBottom:14}}>
+                    <div style={{background:mine?"#be185d":"#1e293b",padding:"11px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{fontWeight:700,color:"#fff",fontSize:".9rem"}}>📁 {member}{mine?" (You)":""}</span>
+                      <span style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",fontWeight:600}}>{total} item{total!==1?"s":""}</span>
+                    </div>
+                    {total===0
+                      ? <div style={{padding:"18px 16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No projects assigned yet.</div>
+                      : <div>
+                          {projItems.map((it,i)=>{
+                            const c=DS_CLR[it.status]||"#94a3b8";
+                            return(
+                              <div key={"p"+it.id} onClick={()=>{setSelProj(it.id);setOpsTab("design");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.client}</div>
+                                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.title}</div>
+                                </div>
+                                <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
+                              </div>
+                            );
+                          })}
+                          {drfItems.map((it)=>{
+                            const c=DRF_CLR[it.status]||"#94a3b8";
+                            return(
+                              <div key={"d"+it.id} onClick={()=>setPage("drf")} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
+                                <div style={{flex:1,minWidth:0}}>
+                                  <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>🖌️ {it.title||it.client}</div>
+                                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.client}{it.due?` · due ${it.due}`:""}</div>
+                                </div>
+                                <span style={{marginLeft:12,fontSize:".68rem",fontWeight:700,color:c,background:c+"18",border:`1px solid ${c}44`,borderRadius:20,padding:"2px 9px",whiteSpace:"nowrap"}}>{it.status}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </Wrap>
+    );
     if(page==="home") return(
       <Wrap>
         <DeptHeader
@@ -15652,7 +15736,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
               <div style={{gridColumn:"1/-1"}}><Fld label="✅ Approved Files Link" hint="Google Drive / Dropbox link to final approved drawings"><Inp type="url" value={form.approvedLink} onChange={e=>f("approvedLink",e.target.value)} placeholder="https://drive.google.com/…"/></Fld></div>
             )}
             {editId&&canAcknowledge&&(
-              <Fld label="Status"><Sel value={form.status} onChange={e=>f("status",e.target.value)}>{DRF_STATUSES.filter(s=>s!=="Approved"||role==="Manager").map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+              <Fld label="Status"><Sel value={form.status} onChange={e=>f("status",e.target.value)}>{DRF_STATUSES.filter(s=>s!=="Approved"||role==="Manager"||isHeadDesigner(session?.name)).map(s=><option key={s}>{s}</option>)}</Sel></Fld>
             )}
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp rows={2} value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Any additional notes, brand guidelines, restrictions…"/></Fld></div>
           </div>
