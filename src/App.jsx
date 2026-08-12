@@ -5452,6 +5452,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[aeFeedFilter, setAeFeedFilter] = useState("all");
   const[aeShowClosed, setAeShowClosed] = useState(false);
   const[doneExpanded, setDoneExpanded] = useState(false);  // closed-out projects accordion
+  const[dnwExpanded,  setDnwExpanded]  = useState(false);  // did-not-win accordion (under closed-out)
   const[pipeType,     setPipeType]     = useState("all");  // awarded-project type filter
   const[pipeAE,       setPipeAE]       = useState("all");  // AE/salesperson filter
   const[showActChat,  setShowActChat]  = useState(false); // pipeline activity pop-up
@@ -10585,8 +10586,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   const isOverP=dLeftP!==null&&dLeftP<0;
                   // Addendum (child) rows render in a compact style so the parent deal
                   // reads as the primary row and its addenda sit visually beneath it.
-                  const cp=isChild?"2px 14px":"10px 14px";       // cell padding
-                  const cpA=isChild?"2px 10px":"10px 10px";      // action-cell padding
+                  const cp=isChild?"2px 14px":"5px 14px";        // cell padding (compact)
+                  const cpA=isChild?"2px 10px":"5px 10px";       // action-cell padding (compact)
                   const nameFs=isChild?".66rem":".82rem";        // project/client name
                   const moneyFs=isChild?".64rem":".78rem";       // contract
                   const moneyFs2=isChild?".62rem":".75rem";      // collected / outstanding
@@ -10606,7 +10607,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           {isChild&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".52rem",fontWeight:700,color:"#f59e0b",letterSpacing:".5px",marginRight:5,whiteSpace:"nowrap"}}>↳ ADDENDUM</span>}
                           {d.contact||d.client}
                         </div>
-                        {d.client!==d.contact&&!isChild&&<div style={{fontSize:".68rem",color:"#7c3aed",marginTop:1}}>{d.client}</div>}
                         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:isChild?2:4}}>
                           {!isChild&&(()=>{const t=d.ceType||"Other";const tc=TYPE_CLR_PIPE[t]||"#64748b";return(<span style={{fontSize:".56rem",fontWeight:700,letterSpacing:".02em",padding:"1px 6px",borderRadius:3,background:tc+"18",color:tc,border:`1px solid ${tc}55`}}>{t}</span>);})()}
                           {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
@@ -10673,8 +10673,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // project type is handled by the chip row above via `pipeType`.
                 const AwardTable=({deals:list})=>{
                   const allChildren=list.filter(d=>d.parentDealId);
+                  // Grouped by client (A→Z) so a client's projects sit together, then
+                  // by value within each client. Type filtering still handled by the chips.
                   const parentList=list.filter(d=>!d.parentDealId)
-                    .sort((a,b)=>(a.ceType||"Other").localeCompare(b.ceType||"Other")||Number(b.value||0)-Number(a.value||0));
+                    .sort((a,b)=>(a.client||"").localeCompare(b.client||"")||Number(b.value||0)-Number(a.value||0));
                   return(
                     <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                       <div style={{overflowX:"auto"}}>
@@ -10688,10 +10690,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                             </tr>
                           </thead>
                           <tbody>
-                            {parentList.map(d=>{
+                            {parentList.map((d,i)=>{
                               const children=allChildren.filter(c=>c.parentDealId===d.id);
+                              const newClient=i===0||(d.client||"")!==(parentList[i-1].client||"");
                               return(
                                 <React.Fragment key={d.id}>
+                                  {newClient&&(
+                                    <tr>
+                                      <td colSpan={11} style={{padding:"5px 14px",background:"#f1f5f9",borderTop:i===0?"none":"2px solid #e2e8f0",borderBottom:"1px solid #e2e8f0",fontFamily:"'IBM Plex Mono',monospace",fontSize:".6rem",fontWeight:700,letterSpacing:".06em",textTransform:"uppercase",color:"#475569"}}>{d.client||"—"}</td>
+                                    </tr>
+                                  )}
                                   <AwardRow d={d}/>
                                   {children.map(c=><AwardRow key={c.id} d={c} isChild={true}/>)}
                                 </React.Fragment>
@@ -10764,12 +10772,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // Pull the most recent one for the Reason column (blank if only the marker exists).
                 const lostReason=d=>{const m=[...String(d.notes||"").matchAll(/\[DID NOT WIN[^\]]*\]:?\s*(.*)/gi)];if(!m.length)return"";return(m[m.length-1][1]||"").trim();};
                 return(
-                  <div style={{marginTop:8}}>
-                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{width:10,height:10,borderRadius:"50%",background:"#94a3b8",display:"inline-block"}}/>
-                      Did Not Win <span style={{fontWeight:400,color:"#94a3b8",fontSize:".72rem"}}>({dnw.length})</span>
-                    </div>
-                    <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden",marginBottom:16}}>
+                  <div style={{marginTop:8,marginBottom:16}}>
+                    {/* Collapsible, sits directly under Closed Out / Done */}
+                    <button onClick={()=>setDnwExpanded(p=>!p)} style={{width:"100%",display:"flex",alignItems:"center",gap:8,background:dnwExpanded?"#64748b":"#f8fafc",border:`1.5px solid ${dnwExpanded?"#64748b":"#cbd5e1"}`,borderRadius:dnwExpanded?"10px 10px 0 0":"10px",padding:"10px 14px",cursor:"pointer",fontFamily:"inherit",textAlign:"left",transition:"all .15s"}}>
+                      <span style={{fontWeight:800,color:dnwExpanded?"#fff":"#475569",fontSize:".85rem"}}>✗ Did Not Win</span>
+                      <span style={{background:dnwExpanded?"rgba(255,255,255,.2)":"#e2e8f0",color:dnwExpanded?"#fff":"#475569",borderRadius:20,padding:"1px 8px",fontSize:".68rem",fontWeight:700}}>{dnw.length}</span>
+                      <span style={{marginLeft:"auto",fontSize:".65rem",color:dnwExpanded?"rgba(255,255,255,.6)":"#94a3b8"}}>{dnwExpanded?"▲ Hide":"▼ Show"}</span>
+                    </button>
+                    {dnwExpanded&&(
+                    <div style={{background:"#fff",borderRadius:"0 0 10px 10px",border:"1.5px solid #cbd5e1",borderTop:"none",overflow:"hidden"}}>
                       <div style={{overflowX:"auto"}}>
                         <table style={{width:"100%",borderCollapse:"collapse",minWidth:760}}>
                           <thead>
@@ -10818,6 +10829,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </table>
                       </div>
                     </div>
+                    )}
                   </div>
                 );
               })()}
