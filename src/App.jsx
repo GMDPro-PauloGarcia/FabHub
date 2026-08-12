@@ -10720,10 +10720,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // project type is handled by the chip row above via `pipeType`.
                 const AwardTable=({deals:list})=>{
                   const allChildren=list.filter(d=>d.parentDealId);
+                  // Normalized client key so near-identical names group as one client:
+                  // e.g. "COLLECTICONS INC" and "COLLECTICONS INC." (trailing period),
+                  // stray casing, or double spaces would otherwise render two headers.
+                  const clientKey=s=>String(s||"").toLowerCase().replace(/[.,]+/g," ").replace(/\s+/g," ").trim();
                   // Grouped by client (A→Z) so a client's projects sit together, then
                   // by value within each client. Type filtering still handled by the chips.
                   const parentList=list.filter(d=>!d.parentDealId)
-                    .sort((a,b)=>(a.client||"").localeCompare(b.client||"")||Number(b.value||0)-Number(a.value||0));
+                    .sort((a,b)=>clientKey(a.client).localeCompare(clientKey(b.client))||Number(b.value||0)-Number(a.value||0));
                   return(
                     <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                       <div style={{overflowX:"auto"}}>
@@ -10739,7 +10743,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           <tbody>
                             {parentList.map((d,i)=>{
                               const children=allChildren.filter(c=>c.parentDealId===d.id);
-                              const newClient=i===0||(d.client||"")!==(parentList[i-1].client||"");
+                              const newClient=i===0||clientKey(d.client)!==clientKey(parentList[i-1].client);
                               return(
                                 <React.Fragment key={d.id}>
                                   {newClient&&(
