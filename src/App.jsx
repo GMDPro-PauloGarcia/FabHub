@@ -10563,6 +10563,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const AwardRow=({d,isChild=false})=>{
                   const jo=jos.find(j=>j.dealId===d.id);
                   const pc=pcards[d.id];
+                  // Award date is editable inline (Manager/Sales) so a mis-dated award
+                  // can be corrected without a DB touch — it drives the month each deal
+                  // lands in on the Awarded / Sales Value report (awardedMonth above).
+                  const canEditAward=(role==="Manager"||role==="Sales")&&!isChild;
+                  const setCardAwardDate=(date)=>{
+                    if(!date) return;
+                    upPcards(ps=>({...ps,[d.id]:{...(ps[d.id]||emptyProjectCard(d.id,d)),awardDate:date}}));
+                    if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:d.id,award_date:date},'deal_id').catch(()=>{});
+                    logActivity(d.id,"Award date set",`${d.contact||d.client} — award date set to ${date} by ${session?.name}`,session?.name);
+                    toastEmit("Award date updated.");
+                  };
                   const paid=dealCollected(d);
                   const inv=Number(d.invoiced)||0;
                   const contractVal=Number(d.value)||0;
@@ -10622,6 +10633,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           {outstanding>0?`₱${outstanding.toLocaleString("en-PH")}`:"—"}
                         </div>
                       </td>
+                      <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
+                        {canEditAward?(
+                          <input type="date" value={pc?.awardDate||""} max={today}
+                            onClick={e=>e.stopPropagation()}
+                            onChange={e=>setCardAwardDate(e.target.value)}
+                            title="Award date — sets the month this deal counts toward on the Sales Value report"
+                            style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".66rem",fontWeight:700,color:pc?.awardDate?"#6366f1":"#94a3b8",border:"1px solid #e2e8f0",borderRadius:5,padding:"2px 5px",background:"#fff",cursor:"pointer",fontVariantNumeric:"tabular-nums"}}/>
+                        ):(
+                          pc?.awardDate
+                            ?<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".68rem",fontWeight:700,color:"#6366f1"}}>{pc.awardDate}</span>
+                            :<span style={{color:"#cbd5e1",fontSize:".72rem"}}>—</span>
+                        )}
+                      </td>
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}}>
                         {pc?.targetEndDate?(
                           <>
@@ -10654,11 +10678,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   return(
                     <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                       <div style={{overflowX:"auto"}}>
-                        <table style={{width:"100%",borderCollapse:"collapse",minWidth:820}}>
+                        <table style={{width:"100%",borderCollapse:"collapse",minWidth:920}}>
                           <thead>
                             <tr style={{background:"#f8fafc",borderBottom:"2px solid #e2e8f0"}}>
                               <th style={{width:4,padding:0}}></th>
-                              {["Project / Client","Stage","AE","PM","Contract","Collected","Outstanding","Turnover",""].map(h=>(
+                              {["Project / Client","Stage","AE","PM","Contract","Collected","Outstanding","Awarded","Turnover",""].map(h=>(
                                 <th key={h} style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".55rem",fontWeight:600,textTransform:"uppercase",letterSpacing:".09em",color:"#94a3b8",padding:"9px 14px",textAlign:["Contract","Collected","Outstanding"].includes(h)?"right":"left",whiteSpace:"nowrap"}}>{h}</th>
                               ))}
                             </tr>
