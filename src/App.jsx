@@ -7368,7 +7368,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{a.title||"Untitled Scope Change"}</div>
                         <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.status}</div>
                       </div>
-                      <button onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>Review →</button>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <button onClick={()=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Open this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 10px",color:"#1d4ed8",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>
+                        <button onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>Review →</button>
+                      </div>
                     </div>
                   );
                 })}
@@ -7790,7 +7793,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{a.title}</div>
                         <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy||"?"}</div>
                       </div>
-                      <span style={{fontSize:".7rem",background:"#fef9c3",color:"#92400e",border:"1px solid #fde047",borderRadius:20,padding:"2px 8px",fontWeight:600}}>Needs price</span>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <button onClick={e=>{e.stopPropagation();setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 Build BOQ</button>
+                        <span style={{fontSize:".7rem",background:"#fef9c3",color:"#92400e",border:"1px solid #fde047",borderRadius:20,padding:"2px 8px",fontWeight:600}}>Needs price</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -8737,9 +8743,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
                 :newScope.slice(0,5).map((a,i)=>{
                   const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",cursor:"pointer"}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy} · ₱{Number(a.value||0).toLocaleString()}</div>
+                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                      <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy} · ₱{Number(a.value||0).toLocaleString()}</div>
+                    </div>
+                    <button onClick={e=>{e.stopPropagation();setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>
                   </div>);
                 })
               }
@@ -8861,10 +8870,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
                 :newScope.slice(0,5).map((a,i)=>{
                   const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<newScope.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · AE: {d?.salesOwner||"—"} · {a.status}</div>
-                    {a.value>0&&<div style={{fontSize:".72rem",color:"#059669",marginTop:1}}>Est. ₱{Number(a.value).toLocaleString()} additional</div>}
+                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<newScope.length-1?"1px solid #f8fafc":"",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                      <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · AE: {d?.salesOwner||"—"} · {a.status}</div>
+                      {a.value>0&&<div style={{fontSize:".72rem",color:"#059669",marginTop:1}}>Est. ₱{Number(a.value).toLocaleString()} additional</div>}
+                    </div>
+                    <button onClick={e=>{e.stopPropagation();setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Open this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>
                   </div>);
                 })
               }
