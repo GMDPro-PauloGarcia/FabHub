@@ -707,3 +707,10 @@ ALTER TABLE billing_milestones ADD COLUMN IF NOT EXISTS withholding  BOOLEAN DEF
 
 -- 2026-06: expense → PO/WO payment tagging (migration 012)
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS po_ref TEXT DEFAULT '';
+
+-- 2026-08: manual disbursements + floating checks in cash_positions
+-- Cash Position report is now fully manual-entry. The Disbursement column is
+-- driven by manual_disbursements; floating_checks carry day-to-day until cleared.
+ALTER TABLE cash_positions
+  ADD COLUMN IF NOT EXISTS manual_disbursements JSONB DEFAULT '[]',
+  ADD COLUMN IF NOT EXISTS floating_checks      JSONB DEFAULT '[]';

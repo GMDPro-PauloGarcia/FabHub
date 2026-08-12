@@ -3133,6 +3133,10 @@ export default function App(){
           approvedPayments: typeof c.approved_payments==="string"?(()=>{try{return JSON.parse(c.approved_payments||"[]");}catch(e){return[];}})():(c.approved_payments||[]),
           manualCollections: typeof c.manual_collections==="string"?(()=>{try{return JSON.parse(c.manual_collections||"[]");}catch(e){return[];}})():(c.manual_collections||[]),
         },
+        disbursements:{
+          manual: typeof c.manual_disbursements==="string"?(()=>{try{return JSON.parse(c.manual_disbursements||"[]");}catch(e){return[];}})():(c.manual_disbursements||[]),
+        },
+        floatingChecks: typeof c.floating_checks==="string"?(()=>{try{return JSON.parse(c.floating_checks||"[]");}catch(e){return[];}})():(c.floating_checks||[]),
         transactions:typeof c.transactions==='string'?(()=>{try{return JSON.parse(c.transactions||'[]');}catch(e){return[];}})():(c.transactions||[]),
         ytd:{
           supplierPayable:c.ytd_supplier_payable>0?String(c.ytd_supplier_payable):"",
@@ -4833,6 +4837,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         unionbank_beg:nb("union","beg"),     unionbank_book:nb("union","book"),    unionbank_end:nb("union","end"),
         manual_collections:  JSON.stringify(pos.collections?.manualCollections||[]),
         approved_payments:   JSON.stringify(pos.collections?.approvedPayments||[]),
+        manual_disbursements:JSON.stringify(pos.disbursements?.manual||[]),
+        floating_checks:     JSON.stringify(pos.floatingChecks||[]),
         ytd_supplier_payable:Number(pos.ytd?.supplierPayable)||0,
         ytd_loans_payable:   Number(pos.ytd?.loansPayable)  ||0,
         notes:pos.notes||"",
