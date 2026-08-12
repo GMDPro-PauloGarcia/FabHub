@@ -4453,23 +4453,47 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       sendTelegramNotification("sales",msg);
       sendTelegramNotification("management",msg);
     }
+    // A change that touches the payments array (inline edit, bounce, clear,
+    // un-bounce) must ripple exactly like logBillingPayment/deleteBillingPayment:
+    // recompute the milestone status, persist the payment rows to billing_payments
+    // (the milestone row alone never carried them), and re-derive deal.amountPaid
+    // from non-bounced payments. Previously these paths only rewrote the milestone
+    // row, so edits/bounces silently reverted on reload and left deal collections
+    // and status stale.
+    const touchesPayments=Object.prototype.hasOwnProperty.call(ch,"payments");
+    let savedMs=null;
     upBillings(bs=>bs.map(b=>{
       if(b.id!==id) return b;
       const n={...b,...ch};
       // auto-set invoiceDate and sentDate when status changes to "Sent to Client"
       if(ch.status==='Sent to Client'){if(!n.invoiceDate)n.invoiceDate=today;if(!n.sentDate)n.sentDate=today;}
+      // Recompute status from the non-bounced paid total unless the caller set it explicitly.
+      if(touchesPayments&&ch.status===undefined){
+        const od=deals.find(d=>d.id===n.dealId);
+        const net=calcTax(Number(n.amount)||0,n.receiptType??od?.receiptType??"OR",n.withholding??od?.withholding??false).netReceivable;
+        const paid=(n.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+        n.status=(paid>=net&&net>0)?'Fully Paid':paid>0?'Partially Paid':b.status;
+      }
+      savedMs=n;
       if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
       return n;
     }));
-    // Fix 4: sync deal.invoiced = sum of all non-cancelled milestones
+    // Persist the (possibly edited/bounced) payment rows to their own table.
+    if(touchesPayments&&isSupabaseReady()&&savedMs){
+      (savedMs.payments||[]).forEach(p=>{if(isUUID(p.id)) sbSyncOne("billing_payments",{...p,milestoneId:id},toSbPayment);});
+    }
+    // Fix 4: sync deal.invoiced = sum of all non-cancelled milestones (+ amountPaid when payments changed)
     const ms=billings.find(b=>b.id===id);
     const dealId=ms?.dealId;
     if(dealId){
-      const updatedBillings=billings.map(b=>b.id===id?{...b,...ch}:b);
-      const total=updatedBillings.filter(b=>b.dealId===dealId&&b.status!=='Cancelled').reduce((s,b)=>s+Number(b.amount||0),0);
+      const updatedBillings=billings.map(b=>b.id===id?(savedMs||{...b,...ch}):b);
+      const dealMs=updatedBillings.filter(b=>b.dealId===dealId&&b.status!=='Cancelled');
+      const invoiced=dealMs.reduce((s,b)=>s+Number(b.amount||0),0);
+      const paid=touchesPayments?dealMs.reduce((s,b)=>s+(b.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+Number(p.amount||0),0),0):null;
       upDeals(ds=>ds.map(d=>{
         if(d.id!==dealId) return d;
-        const nd={...d,invoiced:total};
+        const nd={...d,invoiced};
+        if(touchesPayments){const refVal=Number(invoiced||d.value||0);nd.amountPaid=paid;nd.paymentStatus=paid>=refVal&&refVal>0?'Paid':paid>0?'Deposited':'Unpaid';}
         if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
         return nd;
       }));
@@ -4558,7 +4582,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       });
       const newPaid=updatedBillings
         .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
-        .reduce((s,b)=>(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
+        .reduce((s,b)=>(b.payments||[]).filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
       const d0=deals.find(d=>d.id===dealId);
       const refVal=Number(d0?.invoiced||d0?.value||0);
       const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
@@ -21059,14 +21083,21 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
   const[autoGenDone,setAutoGenDone]=useState({});
+  // Deals whose schedule this session already kicked off. addMilestone updates the
+  // billings store asynchronously, so between the calls and the re-render the effect
+  // could fire again (its deps include billings.length) with existingMs still empty
+  // and generate a SECOND full schedule. This ref is the synchronous latch that
+  // stops the duplicate before the store catches up.
+  const autoGenStartedRef=React.useRef(new Set());
   React.useEffect(()=>{
-    const canEdit=["Manager","Finance","ProjectMover"].includes(role);
+    const canEdit=["Manager","Finance","SalesOpsAdmin"].includes(role);
     if(!canEdit) return;
     wonDeals.forEach(d=>{
       const terms=d.paymentTerms;
       const val=Number(d.value||0);
       const existingMs=billings.filter(b=>b.dealId===d.id);
-      if(terms&&existingMs.length===0&&val>0){
+      if(terms&&existingMs.length===0&&val>0&&!autoGenStartedRef.current.has(d.id)){
+        autoGenStartedRef.current.add(d.id);
         const milestones=[
           terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
           terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:Math.round(val*terms.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
@@ -21219,8 +21250,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     if(!payForm.amount||!showPay) return;
     const ms=billings.find(b=>b.id===showPay);
     if(ms){
-      const alreadyPaid=(ms.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);
-      const tx=calcTax(ms.amount, ms.receiptType||"OR", ms.withholding||false);
+      const alreadyPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+      const tx=calcTax(ms.amount, ms.receiptType??deal?.receiptType??"OR", ms.withholding??deal?.withholding??false);
       const msBalance=Math.max(0, tx.netReceivable - alreadyPaid);
       if(Number(payForm.amount)>msBalance+0.01){
         toastEmit(`Payment ₱${Number(payForm.amount).toLocaleString("en-PH")} exceeds balance of ₱${msBalance.toLocaleString("en-PH")}. Please check the amount.`,"warning");
@@ -21245,8 +21276,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   };
   const printInvoice=(ms)=>{
     const d=deals.find(x=>x.id===ms.dealId);
-    const tx=calcTax(ms.amount,d?.receiptType||"OR",d?.withholding||false);
-    const totalPaid=(ms.payments||[]).reduce((s,p)=>s+n(p.amount),0);
+    const tx=calcTax(ms.amount,ms.receiptType??d?.receiptType??"OR",ms.withholding??d?.withholding??false);
+    const totalPaid=(ms.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+n(p.amount),0);
     const balance=Math.max(0,tx.netReceivable-totalPaid);
     const cp=(clientProfiles||{})[d?.client||""]||{};
     const win=window.open("","_blank");
@@ -21586,7 +21617,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const projectSummaries=[..._baseDeals,..._addendumDeals].map(d=>{
     const ms=billings.filter(b=>b.dealId===d.id);
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
-    const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+    const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
     const balance  =Math.max(0,billed-collected);
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=billed>0&&balance===0;
@@ -21855,7 +21886,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             const rt=deal?.receiptType||"OR", wh=deal?.withholding||false;
             // Net receivable per milestone — use milestone's own tax settings, fall back to deal
             const billedNet=ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
-            const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+            const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
             const tx=calcTax(deal?.value||0,rt,wh);
             return(
               <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
@@ -21881,8 +21912,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           {(()=>{
             const ms=billings.filter(b=>b.dealId===selDeal);
             const rt=deal?.receiptType||"OR", wh=deal?.withholding||false;
-            const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,rt,wh).netReceivable,0);
-            const collected=ms.reduce((s,m)=>s+(m.payments||[]).reduce((ps,p)=>ps+n(p.amount),0),0);
+            const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+calcTax(m.amount,m.receiptType??rt,m.withholding??wh).netReceivable,0);
+            const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
             const outstanding=Math.max(0,billed-collected);
             if(cocDeals&&cocDeals.includes(selDeal)&&outstanding>0){
               return(
