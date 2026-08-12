@@ -34,6 +34,7 @@ export const emptyDayPosition = (date) => ({
   },
   disbursements: { manual: [] },   // manual cash outflows for the day (drives the Disbursement column)
   floatingChecks: [],              // released cheques; carry over each day until cleared
+  audit: [],                       // dedicated save log for this day: {at, by, action, changes}
   ytd: {
     supplierPayable: "",
     loansPayable: "",

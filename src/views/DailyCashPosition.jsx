@@ -35,7 +35,7 @@ const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
 // are computed from three manual entry tables below the report. Floating checks
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
-  cashPositions={},saveDayPos=()=>{},billings=[],payables=[],loans=[]
+  cashPositions={},saveDayPos=()=>{},billings=[],payables=[],loans=[],userName=""
 }){
   const[selDate,setSelDate]=useState(today);
   const[saved,setSaved]    =useState(false);
@@ -191,13 +191,40 @@ function DailyCashPosition({
   // ── Cash-movement reconciliation ──
   const netClearedOutflow=tot.beg+collTotal-tot.end;   // what actually left the banks today (= disbursements)
 
+  // Snapshot the headline figures of any position object — used to diff one saved
+  // version against the next for the audit trail.
+  const posTotals=(p)=>{
+    if(!p||!p.banks) return null;
+    const bk=(id)=>p.banks[id]||{};
+    const beg =BANKS.reduce((s,b)=>s+n(bk(b.id).beg),0);
+    const end =BANKS.reduce((s,b)=>s+n(bk(b.id).end),0);
+    const book=BANKS.reduce((s,b)=>s+n(bk(b.id).book),0);
+    const coll=(p.collections?.manualCollections||[]).reduce((s,r)=>s+n(r.amount),0);
+    const disb=(p.disbursements?.manual||[]).reduce((s,r)=>s+n(r.amount),0);
+    const flt =(p.floatingChecks||[]).filter(c=>!c.cleared).reduce((s,r)=>s+n(r.amount),0);
+    return {beg,coll,disb,end,book,flt,notes:p.notes||""};
+  };
+  const AUDIT_FIELDS=[["beg","Beginning"],["coll","Collections"],["disb","Disbursements"],["end","Ending"],["book","Book"],["flt","Float Check"]];
+
   const handleSave=()=>{
     const at=new Date().toISOString();
     // Materialize the computed Ending & Book into the saved banks so the next day carries
     // the right beginning balance and CSV/history export the reconciled figures.
     const banksOut={};
     BANKS.forEach(b=>{banksOut[b.id]={...bankRow(b.id),end:String(endingByBank[b.id]),book:String(bookByBank[b.id])};});
-    saveDayPos(selDate,{...pos,banks:banksOut,collections:{...pos.collections,total:collTotal},savedAt:at});
+    // ── Audit trail ── diff the headline figures against the previously-saved version.
+    const prior=posTotals(cashPositions[selDate]);
+    const now={beg:tot.beg,coll:collTotal,disb:disbTotal,end:tot.end,book:tot.book,flt:floatingTotal,notes:pos.notes||""};
+    const changes=[];
+    if(prior){
+      AUDIT_FIELDS.forEach(([k,label])=>{if(Math.abs((prior[k]||0)-(now[k]||0))>0.005) changes.push({field:label,from:prior[k]||0,to:now[k]||0});});
+      if(prior.notes!==now.notes) changes.push({field:"Notes",note:true});
+    }
+    const entry={at,by:userName||"—",action:prior?"Edited":"Created",changes};
+    // Only log an edit if something actually changed; always log the first save.
+    const priorAudit=Array.isArray(pos.audit)?pos.audit:[];
+    const audit=(!prior||changes.length>0)?[...priorAudit,entry]:priorAudit;
+    saveDayPos(selDate,{...pos,banks:banksOut,collections:{...pos.collections,total:collTotal},audit,savedAt:at});
     setSaved(true);clearDirty();
   };
 
@@ -592,6 +619,42 @@ function DailyCashPosition({
         <div style={{borderTop:`1px solid ${C.grid}`,padding:"12px 14px"}}>
           <div style={{fontWeight:700,color:"#475569",fontSize:".72rem",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>Notes for {fmtDate(selDate)}</div>
           <textarea value={pos.notes||""} onChange={e=>f("notes",e.target.value)} placeholder="e.g. Loan proceeds from Stella G. deposited to BPI; pending cheque clearances…" rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".84rem",color:"#1e293b",resize:"vertical",outline:"none",boxSizing:"border-box"}}/>
+        </div>
+
+        {/* AUDIT TRAIL — dedicated save log for this day's cash position */}
+        {sectionHdr(`Audit Trail — ${fmtDate(selDate)}`,"#334155")}
+        <div style={{padding:"10px 14px 14px"}}>
+          {(!Array.isArray(pos.audit)||pos.audit.length===0)?(
+            <div style={{fontSize:".76rem",color:"#94a3b8",fontStyle:"italic"}}>No save history yet for {fmtDate(selDate)}. Every save is recorded here — who saved it, when, and which totals changed.</div>
+          ):(
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {pos.audit.slice().reverse().map((e,i)=>{
+                const created=e.action==="Created";
+                return(
+                  <div key={(e.at||"")+i} style={{display:"flex",gap:10,alignItems:"flex-start",background:"#f8fafc",border:`1px solid ${C.grid}`,borderRadius:8,padding:"8px 12px"}}>
+                    <span style={{fontSize:".62rem",fontWeight:800,padding:"2px 8px",borderRadius:20,whiteSpace:"nowrap",color:created?"#047857":"#1d4ed8",background:created?"#dcfce7":"#e0efff",border:`1px solid ${created?"#86efac":"#bfdbfe"}`}}>{created?"✓ Created":"✎ Edited"}</span>
+                    <div style={{minWidth:0,flex:1}}>
+                      <div style={{fontSize:".76rem",color:"#0f172a"}}>
+                        <b>{e.by||"—"}</b>
+                        <span style={{color:"#94a3b8"}}> · {e.at?new Date(e.at).toLocaleString("en-PH",{year:"numeric",month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}):"—"}</span>
+                      </div>
+                      {created
+                        ?<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Initial position saved.</div>
+                        :Array.isArray(e.changes)&&e.changes.length>0
+                          ?<div style={{display:"flex",flexWrap:"wrap",gap:"2px 12px",marginTop:3}}>
+                             {e.changes.map((c,j)=>(
+                               <span key={j} style={{fontSize:".72rem",color:"#475569",fontVariantNumeric:"tabular-nums"}}>
+                                 <b style={{color:"#0f172a"}}>{c.field}</b>{c.note?" updated":<>: {peso(c.from)} <span style={{color:"#94a3b8"}}>→</span> <b style={{color:"#0f172a"}}>{peso(c.to)}</b></>}
+                               </span>
+                             ))}
+                           </div>
+                          :<div style={{fontSize:".72rem",color:"#64748b",marginTop:2}}>Re-saved (no figure changes).</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       {pos.savedAt&&<div style={{textAlign:"right",fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Last saved: {new Date(pos.savedAt).toLocaleString("en-PH")}</div>}

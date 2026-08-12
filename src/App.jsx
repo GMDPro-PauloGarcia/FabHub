@@ -3137,6 +3137,7 @@ export default function App(){
           manual: typeof c.manual_disbursements==="string"?(()=>{try{return JSON.parse(c.manual_disbursements||"[]");}catch(e){return[];}})():(c.manual_disbursements||[]),
         },
         floatingChecks: typeof c.floating_checks==="string"?(()=>{try{return JSON.parse(c.floating_checks||"[]");}catch(e){return[];}})():(c.floating_checks||[]),
+        audit: typeof c.audit==="string"?(()=>{try{return JSON.parse(c.audit||"[]");}catch(e){return[];}})():(c.audit||[]),
         transactions:typeof c.transactions==='string'?(()=>{try{return JSON.parse(c.transactions||'[]');}catch(e){return[];}})():(c.transactions||[]),
         ytd:{
           supplierPayable:c.ytd_supplier_payable>0?String(c.ytd_supplier_payable):"",
@@ -4863,6 +4864,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         approved_payments:   JSON.stringify(pos.collections?.approvedPayments||[]),
         manual_disbursements:JSON.stringify(pos.disbursements?.manual||[]),
         floating_checks:     JSON.stringify(pos.floatingChecks||[]),
+        audit:               JSON.stringify(pos.audit||[]),
         ytd_supplier_payable:Number(pos.ytd?.supplierPayable)||0,
         ytd_loans_payable:   Number(pos.ytd?.loansPayable)  ||0,
         notes:pos.notes||"",
@@ -11384,7 +11386,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory}/>
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -12294,6 +12296,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           vouchers={vouchers}
           loans={loans}
           inventory={inventory}
+          userName={session?.name||""}
         />
       </Wrap>
     );

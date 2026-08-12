@@ -714,3 +714,9 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS po_ref TEXT DEFAULT '';
 ALTER TABLE cash_positions
   ADD COLUMN IF NOT EXISTS manual_disbursements JSONB DEFAULT '[]',
   ADD COLUMN IF NOT EXISTS floating_checks      JSONB DEFAULT '[]';
+
+-- 2026-08: dedicated audit trail for the Daily Cash Position
+-- Each save appends {at, by, action, changes} to `audit`. The saver's name is stored
+-- inside each audit entry's `by` field (the pre-existing `saved_by` uuid column is left as-is).
+ALTER TABLE cash_positions
+  ADD COLUMN IF NOT EXISTS audit JSONB DEFAULT '[]';
