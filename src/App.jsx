@@ -7722,7 +7722,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
                     <div>
                       <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>{d.client}</div>
-                      <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo} · PM: {jo?.pm1||"—"} · Budget: ₱{Math.round(total).toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
+                      <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo} · PM: {pcards[d.id]?.pm1||jo?.pm1||"—"} · Budget: ₱{Math.round(total).toLocaleString("en-PH",{maximumFractionDigits:0})}</div>
                     </div>
                     <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
                       <span style={{fontSize:".72rem",fontWeight:700,color:margin>=30?"#059669":"#f59e0b",background:margin>=30?"#f0fdf4":"#fffbeb",border:`1px solid ${margin>=30?"#6ee7b7":"#fde68a"}`,borderRadius:20,padding:"2px 8px"}}>{margin}% margin</span>
@@ -8109,7 +8109,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.client}</div>
                         <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>
-                          PM: {jo?.pm1||"—"} · {pct}% complete
+                          PM: {pc?.pm1||jo?.pm1||"—"} · {pct}% complete
                           {daysSince!==null&&<span style={{marginLeft:8,color:daysSince>=3?"#dc2626":"#94a3b8"}}>{daysSince===0?"Updated today":daysSince===1?"Updated yesterday":`Last update ${daysSince}d ago`}</span>}
                         </div>
                         <div style={{height:3,background:"#f1f5f9",borderRadius:2,marginTop:6,width:"100%",maxWidth:200}}>
@@ -8440,7 +8440,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                               <div style={{fontWeight:700,color:"#0f172a",fontSize:".9rem"}}>{d.client}</div>
                               <div style={{fontSize:".72rem",color:"#64748b",marginTop:1}}>{d.ceNo} · {d.contact||""}</div>
                               <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>
-                                PM: {[jo?.pm1,jo?.pm2,jo?.pm3].filter(Boolean).join(", ")||"—"} · Coord: {jo?.coordinator||"—"}
+                                PM: {[pc?.pm1||jo?.pm1,pc?.pm2||jo?.pm2,pc?.pm3||jo?.pm3].filter(Boolean).join(", ")||"—"} · Coord: {pc?.coordinator||jo?.coordinator||"—"}
                               </div>
                               {lastUpdate&&(
                                 <div style={{fontSize:".72rem",color:"#0ea5e9",marginTop:3,fontStyle:"italic"}}>
@@ -8487,7 +8487,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div key={d.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 16px",borderBottom:i<4?"1px solid #f8fafc":""}}>
                       <div>
                         <div style={{fontWeight:600,color:"#475569",fontSize:".85rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo} · PM: {jo?.pm1||"—"}</div>
+                        <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"}</div>
                       </div>
                       <span style={{fontSize:".8rem",fontWeight:700,color:"#94a3b8"}}>{pct}%</span>
                     </div>
@@ -8693,7 +8693,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                     <div>
                       <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{d.client}</div>
-                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>PM: {jo?.pm1||"—"} · {d.ceNo}</div>
+                      <div style={{fontSize:".68rem",color:"#94a3b8"}}>PM: {pc?.pm1||jo?.pm1||"—"} · {d.ceNo}</div>
                     </div>
                     <span style={{fontSize:".72rem",fontWeight:700,color:"#dc2626",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"2px 8px"}}>{daysOver}d over</span>
                   </div>);
@@ -10646,8 +10646,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}}>
                         <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,letterSpacing:".05em",textTransform:"uppercase",padding:"3px 8px",borderRadius:4,background:sc+"18",color:sc,border:`1px solid ${sc}44`}}>{stageLabel}</span>
                       </td>
-                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
-                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.aeAssigned||jo?.aeAssigned||d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
+                      <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.pm1||jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
                       <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
                         <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
                       </td>
@@ -13003,7 +13003,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{background:"#0ea5e9",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                       <div>
                         <div style={{fontWeight:700,color:"#fff",fontSize:".92rem"}}>{d.client}</div>
-                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {jo?.pm1||"—"} · {pct}% complete</div>
+                        <div style={{fontSize:".72rem",color:"rgba(255,255,255,.7)",marginTop:1}}>{d.ceNo} · PM: {pc?.pm1||jo?.pm1||"—"} · {pct}% complete</div>
                       </div>
                       <button onClick={()=>setPmUpdateModal({dealId:d.id,dealName:d.client,ceNo:d.ceNo,ae:jo?.aeAssigned||d.salesOwner})}
                         style={{background:"rgba(255,255,255,.2)",border:"1px solid rgba(255,255,255,.3)",borderRadius:8,padding:"7px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",cursor:"pointer"}}>
