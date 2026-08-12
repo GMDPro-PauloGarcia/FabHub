@@ -32,6 +32,8 @@ export const emptyDayPosition = (date) => ({
     approvedPayments: [],   // billing payment IDs Finance has approved for this day
     manualCollections: [],
   },
+  disbursements: { manual: [] },   // manual cash outflows for the day (drives the Disbursement column)
+  floatingChecks: [],              // released cheques; carry over each day until cleared
   ytd: {
     supplierPayable: "",
     loansPayable: "",
