@@ -55,6 +55,12 @@ export const normalizeStage=(s)=>{
   return "01 · BizDev";
 };
 
+// Normalized client identity key. Two client names that differ only by
+// casing, surrounding/duplicate whitespace, or trailing punctuation
+// (e.g. "COLLECTICONS INC" vs "COLLECTICONS INC.") collapse to the same
+// key so look-alike names are grouped, counted, and matched as one client.
+export const clientKey=(s)=>String(s||"").toLowerCase().replace(/[.,]+/g," ").replace(/\s+/g," ").trim();
+
 export const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabrication","09 · Site & Billing","10 · Installation","11 · Punchlist","12 · Close-Out","14 · Completed"];
 
 export const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];

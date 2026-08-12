@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -10720,11 +10720,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // project type is handled by the chip row above via `pipeType`.
                 const AwardTable=({deals:list})=>{
                   const allChildren=list.filter(d=>d.parentDealId);
-                  // Normalized client key so near-identical names group as one client:
-                  // e.g. "COLLECTICONS INC" and "COLLECTICONS INC." (trailing period),
-                  // stray casing, or double spaces would otherwise render two headers.
-                  const clientKey=s=>String(s||"").toLowerCase().replace(/[.,]+/g," ").replace(/\s+/g," ").trim();
-                  // Grouped by client (A→Z) so a client's projects sit together, then
+                  // Grouped by client (A→Z, normalized via shared clientKey so
+                  // "COLLECTICONS INC" and "COLLECTICONS INC." group as one) so a
+                  // client's projects sit together, then
                   // by value within each client. Type filtering still handled by the chips.
                   const parentList=list.filter(d=>!d.parentDealId)
                     .sort((a,b)=>clientKey(a.client).localeCompare(clientKey(b.client))||Number(b.value||0)-Number(a.value||0));
@@ -16951,9 +16949,9 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
   const allClients=useMemo(()=>{
     const map=new Map();
-    GMD_CLIENTS.forEach(c=>map.set(c.name.trim().toLowerCase(),{...c}));
+    GMD_CLIENTS.forEach(c=>map.set(clientKey(c.name),{...c}));
     (customClients||[]).forEach(c=>{
-      const key=c.name.trim().toLowerCase();
+      const key=clientKey(c.name);
       map.set(key,map.has(key)?{...map.get(key),...c}:{...c});
     });
     return [...map.values()];
@@ -16966,7 +16964,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       (c.email||"").toLowerCase().includes(search.toLowerCase())
     );
     if(filter==="with-balance") list = list.filter(c=>c.balance>0);
-    if(filter==="with-projects") list = list.filter(c=>deals.some(d=>d.client===c.name));
+    if(filter==="with-projects") list = list.filter(c=>deals.some(d=>clientKey(d.client)===clientKey(c.name)));
     if(filter==="vvip") list = list.filter(c=>vvipClients?.has(c.name));
     // VVIP always on top
     list=[...list].sort((a,b)=>{
@@ -16994,7 +16992,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[
           {l:"Total Clients",    v:allClients.length,                                      c:"#3b82f6"},
-          {l:"With Active Deals",v:allClients.filter(c=>deals.some(d=>d.client===c.name)).length, c:"#10b981"},
+          {l:"With Active Deals",v:allClients.filter(c=>deals.some(d=>clientKey(d.client)===clientKey(c.name))).length, c:"#10b981"},
           {l:"Open Balances",    v:allClients.filter(c=>c.balance>0).length,               c:"#ef4444"},
           {l:"Total Outstanding",v:"₱"+totalBalance.toLocaleString(),                       c:"#f59e0b"},
         ].map(({l,v,c})=>(
@@ -17032,7 +17030,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         {[
           {id:"all",           l:`All (${allClients.length})`},
           {id:"with-balance",  l:`Open Balance (${allClients.filter(c=>c.balance>0).length})`},
-          {id:"with-projects", l:`Has Deals (${allClients.filter(c=>deals.some(d=>d.client===c.name)).length})`},
+          {id:"with-projects", l:`Has Deals (${allClients.filter(c=>deals.some(d=>clientKey(d.client)===clientKey(c.name))).length})`},
           {id:"vvip",          l:`⭐ VVIP (${vvipClients?.size||0})`},
         ].map(({id,l})=>(
           <button key={id} onClick={()=>setFilter(id)}
@@ -17048,7 +17046,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
           {["Client Name","Awarded Deals","Contact","Status"].map(h=><div key={h}>{h}</div>)}
         </div>
         {filtered.map((c,i)=>{
-          const clientDeals = deals.filter(d=>d.client===c.name);
+          const clientDeals = deals.filter(d=>clientKey(d.client)===clientKey(c.name));
           const hasBalance  = c.balance>0;
           const hasDeals    = clientDeals.length>0;
           return(
@@ -17134,7 +17132,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       </div>
       {/* Client History Modal */}
       {selClient&&(()=>{
-        const clientDeals=deals.filter(d=>d.client===selClient);
+        const clientDeals=deals.filter(d=>clientKey(d.client)===clientKey(selClient));
         const totalValue=clientDeals.reduce((s,d)=>s+Number(d.value||0),0);
         const totalCollected=clientDeals.reduce((s,d)=>s+Number(d.amountPaid||0),0);
         const isVvip=vvipClients?.has(selClient);
@@ -21561,7 +21559,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const printSOA=(clientName)=>{
     const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>d.client===clientName);
+    const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>clientKey(d.client)===clientKey(clientName));
     const rows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
       const rt=d.receiptType||"OR",wh=d.withholding||false;
