@@ -10641,7 +10641,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
                         {canEditAward?(
-                          <input type="date" value={pc?.awardDate||""} max={today}
+                          <input type="date" value={pc?.awardDate||""} max={new Date().toISOString().slice(0,10)}
                             onClick={e=>e.stopPropagation()}
                             onChange={e=>setCardAwardDate(e.target.value)}
                             title="Award date — sets the month this deal counts toward on the Sales Value report"
