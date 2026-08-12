@@ -108,7 +108,7 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData,initialCoId,coRecord,saveCoBoq}){
   // Start blank — sections are added per BOQ, no fixed/preset sections
   const BLANK_ITEMS=()=>[];
   // Draft key used when no project is selected yet (work is migrated onto the deal once picked)
@@ -137,6 +137,13 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // Standalone mode: a BOQ that isn't tied to a pipeline deal (saved to the shared standalone store)
   const[standaloneId,setStandaloneId]=useState(initialStandaloneId||null);
   useEffect(()=>{if(initialStandaloneId){setStandaloneId(initialStandaloneId);setSelDeal("");}},[initialStandaloneId]);
+  // Change-order mode: a BOQ that belongs to a change order (addendum) rather than
+  // a pipeline deal. It edits the CO's own scope, then merges into the parent
+  // project's BOQ once the CO is approved (handled by the host's saveCoBoq).
+  const[coId,setCoId]=useState(initialCoId||null);
+  useEffect(()=>{if(initialCoId){setCoId(initialCoId);setSelDeal("");}},[initialCoId]);
+  // The parent deal a change order rolls into — used only for header context.
+  const coParentDeal=coId?deals.find(d=>d.id===(coRecord?.dealId||coRecord?.projectId)):null;
   const[boqTitle,setBoqTitle]=useState("");
   const[location,setLocation]=useState("");
   const[quotationNo,setQuotationNo]=useState("");
@@ -456,6 +463,21 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   };
 
   React.useEffect(()=>{
+    if(coId){
+      // Change-order BOQ — load the CO's stored scope (read once on open).
+      const bd=coRecord?.coBoqData;
+      if(bd&&((bd.items?.length)||(bd.sections?.length))){
+        applyBoqSrc(bd);
+      }else{
+        // First time building this CO's BOQ — seed the header from the CO/parent.
+        setItems(BLANK_ITEMS());setSections([]);setDiscount("");
+        setBoqTitle(coRecord?.title?`CO — ${coRecord.title}`:"Change Order");
+        setLocation(coParentDeal?.location||"");
+        if(coParentDeal?.ceNo) setQuotationNo(coParentDeal.ceNo);
+      }
+      setDraftSaved(true);
+      return;
+    }
     if(standaloneId){
       // Standalone BOQ — load from the shared store (read once on open)
       const rec=standaloneBoqs.find(b=>b.id===standaloneId);
@@ -511,9 +533,21 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         setReconcile({net:0,dealValue:dv,hasBoq:false});setReconcileCustom("");
       }
     }
-  },[selDeal,standaloneId]);
+  },[selDeal,standaloneId,coId]);
 
   React.useEffect(()=>{
+    if(coId){
+      // Change-order BOQ — autosave back onto the addendum via the host. The host
+      // derives the CO's scope line items + value from these, so it rolls into the
+      // parent project's BOQ and contract when the CO is approved.
+      setDraftSaved(false);
+      clearTimeout(draftTimerRef.current);
+      draftTimerRef.current=setTimeout(()=>{
+        saveCoBoq&&saveCoBoq(coId,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct});
+        setDraftSaved(true);
+      },1200);
+      return()=>clearTimeout(draftTimerRef.current);
+    }
     if(standaloneId){
       // Standalone BOQ — autosave to the shared store (synced via Supabase)
       setDraftSaved(false);
@@ -549,7 +583,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       setDraftSaved(true);
     },1200);
     return()=>clearTimeout(draftTimerRef.current);
-  },[standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct]);
+  },[coId,standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct]);
 
 
   const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
@@ -780,7 +814,12 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
         <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:"6px 24px",fontSize:".8rem",color:"#0f172a"}}>
           <div style={{display:"flex",gap:6,alignItems:"center"}}>
             <span style={{fontWeight:600,color:"#64748b",flexShrink:0,minWidth:70}}>Project:</span>
-            {standaloneId
+            {coId
+              ?<span style={{display:"inline-flex",alignItems:"center",gap:6,minWidth:0}}>
+                <span style={{fontSize:".62rem",fontWeight:800,letterSpacing:".4px",color:coRecord?.kind==="Deductive"?"#dc2626":"#c2410c",background:(coRecord?.kind==="Deductive"?"#dc2626":"#f97316")+"1a",borderRadius:5,padding:"2px 7px",flexShrink:0}}>⚠️ CHANGE ORDER{coRecord?.kind==="Deductive"?" · DEDUCT":""}</span>
+                <span style={{fontSize:".8rem",color:"#0f172a",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{coParentDeal?.client||"—"}{coParentDeal?.ceNo?` (${coParentDeal.ceNo})`:""}</span>
+              </span>
+              :standaloneId
               ?<select value="" onChange={e=>{const v=e.target.value;if(!v||!onLinkToDeal)return;const d2=deals.find(d=>d.id===v);if(window.confirm(`Link this BOQ to ${d2?.client||"this project"}${d2?.ceNo?" ("+d2.ceNo+")":""}?\n\nYour sections and items are kept — the BOQ just moves out of Standalone and attaches to the project.`)){onLinkToDeal(v,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}}} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer"}}>
                 <option value="">📄 Standalone BOQ — link to a project…</option>
                 {deals.filter(d=>d.stage!=="Did Not Win"&&d.stage!=="Cancelled").map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
