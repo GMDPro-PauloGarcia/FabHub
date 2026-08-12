@@ -10849,7 +10849,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                   <td style={{padding:"6px 10px",verticalAlign:"middle",whiteSpace:"nowrap"}}>
                                     <div style={{display:"flex",gap:5}}>
                                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} title="Edit deal" style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#94a3b8",cursor:"pointer",fontFamily:"inherit"}}>✏</button>}
-                                      {(role==="Manager"||role==="Sales")&&<button onClick={()=>{upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"01 · BizDev"}:x));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>}
+                                      {(role==="Manager"||role==="Sales")&&<button onClick={()=>{upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const nd={...x,stage:"01 · BizDev"};if(isSupabaseReady())sbSyncOne("deals",nd,toSbDeal);return nd;}));toastEmit("Moved back to pipeline.");}} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:700}} title="Move back to pipeline">↩</button>}
                                     </div>
                                   </td>
                                 </tr>
@@ -10887,7 +10887,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {rowMenu&&(()=>{
         const d=rowMenu.deal;
         const items=[];
-        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;upDeals(ds=>ds.map(x=>x.id===d.id?{...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+today+"]: "+reason:"\n[DID NOT WIN "+today+"]")}:x));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");setRowMenu(null);}});
+        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const nd={...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]")};if(isSupabaseReady())sbSyncOne("deals",nd,toSbDeal);return nd;}));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");setRowMenu(null);}});
         if(canDeleteDeal) items.push({icon:"🗑",label:"Delete Deal",color:"#dc2626",onClick:()=>{setConfirmDel(d.id);setRowMenu(null);}});
         return(
           <>
