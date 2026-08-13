@@ -15712,6 +15712,15 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                             {a.clientApproved?"Approved":"Mark Approved"}
                           </button>
                         </div>
+                        {["Approved","Billed","Collected"].includes(a.status)&&(
+                          <div>
+                            <label style={{fontSize:".62rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>Awarded date <span style={{fontWeight:400,color:"#94a3b8"}}>(counts as sales this month)</span></label>
+                            <input type="date" value={a.awardedDate||""} max={new Date().toISOString().slice(0,10)}
+                              onChange={e=>updateAddendum(a.id,{awardedDate:e.target.value||null})}
+                              title="The month this change order's value is credited to the AE on the Sales Value report. Defaults to the approval date; set it to the date this scope was actually awarded."
+                              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".74rem",color:"#0f172a",background:"#fff",boxSizing:"border-box"}}/>
+                          </div>
+                        )}
                         <button onClick={()=>{if(window.confirm("Delete this addendum?"))deleteAddendum(a.id);}}
                           style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
                           Delete
