@@ -1943,7 +1943,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
   const delScopeRow=(i)=>setScopeItems(r=>r.filter((_,j)=>j!==i));
 
   const visibleAddenda=canCreate
-    ?(role==="Manager"?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
+    ?(["Manager","QS"].includes(role)?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
     :addenda;
   const filteredAddenda=addSearch
     ?visibleAddenda.filter(a=>{const d=wonDeals.find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
@@ -1987,9 +1987,10 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem"}}>
                             <span style={{fontSize:".58rem",fontWeight:800,letterSpacing:".4px",color:a.kind==="Deductive"?"#dc2626":"#059669",background:(a.kind==="Deductive"?"#dc2626":"#059669")+"18",borderRadius:5,padding:"1px 6px",marginRight:6,verticalAlign:"middle"}}>{a.kind==="Deductive"?"− DEDUCT":"+ ADD"}</span>
+                            {a.subAccount&&<span style={{fontSize:".58rem",fontWeight:800,letterSpacing:".3px",color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:5,padding:"1px 6px",marginRight:6,verticalAlign:"middle"}}>↳ {a.subAccount}</span>}
                             {a.title}
                           </div>
-                          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>By {a.discoveredBy||"—"}</div>
+                          <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>By {a.discoveredBy||"—"}{a.salesOwner?` · AE: ${a.salesOwner}`:""}{a.awardedDate?` · awarded ${a.awardedDate}`:""}</div>
                           {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
                         </div>
                         <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:8,flexShrink:0}}>
@@ -2021,7 +2022,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
             <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-              {(role==="Manager"?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
+              {(["Manager","QS"].includes(role)?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
             </select>
           </div>
           <div>
@@ -2086,6 +2087,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
                 ceNo:deal?.ceNo||"",
                 receiptType:deal?.receiptType||"OR",
                 withholding:deal?.withholding||false,
+                salesOwner:deal?.salesOwner||"",
                 status:"Discovered",salesNotified:true,
                 discoveredBy:session?.name||role,
               };
@@ -2830,7 +2832,7 @@ export default function App(){
             if(_mreqs){setMreqs(prev=>mergeLocalOnly(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
             const _breqs=data.breqs?.length?data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})):null;
             if(_breqs){setBreqs(prev=>mergeLocalOnly(_breqs,prev));idbE.push([KEYS.breqs,_breqs]);}
-            const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null})):null;
+            const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null})):null;
             if(_addenda){setAddenda(prev=>mergeLocalOnly(_addenda,prev));idbE.push([KEYS.addenda,_addenda]);}
             const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})):null;
             if(_checklist){setChecklist(prev=>mergeLocalOnly(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
@@ -3115,7 +3117,7 @@ export default function App(){
     if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mergeLocalOnly(ms,prev));idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mergeLocalOnly(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
-    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
+    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null,salesOwner:a.sales_owner||"",awardedDate:a.awarded_date||null,subAccount:a.sub_account||null}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mergeLocalOnly(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mergeLocalOnly(ss,prev));idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
@@ -3328,6 +3330,7 @@ export default function App(){
     status:r.status||"Discovered", sales_notified:r.salesNotified||false,
     discovered_by:r.discoveredBy||"", client_approved:r.clientApproved||false,
     co_boq_data:r.coBoqData||null,
+    sales_owner:r.salesOwner||null, awarded_date:r.awardedDate||null, sub_account:r.subAccount||null,
   });
   const toSbSwatch = r=>({
     id:r.id, deal_id:r.dealId||r.projectId||null, name:r.name||"", category:r.category||"",
@@ -4126,7 +4129,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const rec=payload.new;
         const mapped={...rec,dealId:rec.deal_id,receiptType:rec.receipt_type,
           salesNotified:rec.sales_notified,discoveredBy:rec.discovered_by,
-          kind:rec.kind||"Additive",scopeItems:Array.isArray(rec.scope_items)?rec.scope_items:[],coBoqData:rec.co_boq_data||null};
+          kind:rec.kind||"Additive",scopeItems:Array.isArray(rec.scope_items)?rec.scope_items:[],coBoqData:rec.co_boq_data||null,salesOwner:rec.sales_owner||"",awardedDate:rec.awarded_date||null,subAccount:rec.sub_account||null};
         setAddenda(as=>{const ex=as.find(a=>a.id===rec.id);
           return ex?as.map(a=>a.id===rec.id?{...a,...mapped}:a):[...as,mapped];});
       }
@@ -4751,6 +4754,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Values are signed by kind so a deductive CO subtracts from the contract.
       const oldVal=coSignedValue(a), newVal=coSignedValue(n);
       const wasIn=ADDENDUM_ROLLED(a.status), nowIn=ADDENDUM_ROLLED(n.status);
+      // Stamp the awarded date the first time a CO becomes Approved — this is the
+      // month its value is credited to the AE on the Sales Value report. Cleared
+      // if it ever rolls back out (unapproved), so it re-stamps on re-approval.
+      if(nowIn&&!n.awardedDate) n.awardedDate=today;
+      else if(!nowIn&&n.awardedDate&&!ch.awardedDate) n.awardedDate=null;
       const delta=(nowIn?newVal:0)-(wasIn?oldVal:0);
       if(delta) rollDealContract(n.dealId||n.projectId,delta,n);
       // Scope items flow into the BOQ on approval, billing milestone on billing.
@@ -5908,23 +5916,32 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // deals have no additive/deductive concept, so we default to Additive; the CO
   // enters as "Discovered" (the normal entry point) for Ops to approve on the
   // Scope Changes page, at which point it rolls into the parent contract.
-  const convertChildToCO=(child)=>{
-    if(!child?.parentDealId){toastEmit("This deal has no parent to attach a change order to.","error");return;}
-    if(!canDeleteDeal){toastEmit("You don't have permission to convert this deal.","error");return;}
+  const convertChildToCO=(child,opts={})=>{
+    const {silent=false}=opts;
+    if(!child?.parentDealId){if(!silent)toastEmit("This deal has no parent to attach a change order to.","error");return false;}
+    if(!canDeleteDeal){if(!silent)toastEmit("You don't have permission to convert this deal.","error");return false;}
     const parent=deals.find(d=>d.id===child.parentDealId);
-    if(!parent){toastEmit("Parent project not found.","error");return;}
+    if(!parent){if(!silent)toastEmit("Parent project not found.","error");return false;}
     const title=(child.contact||child.product||child.client||"Scope Change").trim();
     // Carry any BOQ line items over as the change order's scope items so approval
     // flows them into the parent BOQ; otherwise fall back to a single lump value.
+    // The child's FULL BOQ (sections, markup, VAT…) is carried as coBoqData so the
+    // change order opens in the BOQ Builder exactly as it was built on the deal.
     const boqItems=Array.isArray(child.boqData?.items)?child.boqData.items:[];
     const scopeItems=boqItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.unitCost!=null?it.unitCost:it.rate)||0}));
     const rec={
-      id:"add"+Date.now(),dealId:parent.id,
+      id:"add"+Date.now()+Math.floor(Math.random()*1000),dealId:parent.id,
       title,description:(child.notes||`Converted from linked deal "${title}".`).trim(),
       kind:"Additive",value:Math.abs(Number(child.value)||0),scopeItems,
+      coBoqData:child.boqData||null,
       ceNo:parent.ceNo||child.ceNo||"",
       receiptType:parent.receiptType||"OR",
       withholding:parent.withholding||false,
+      // Sales attribution: credit the child's AE; the child's own brand becomes
+      // the sub-account when it differs from the parent's client. awardedDate is
+      // stamped when the CO is Approved (drives the Sales Value month).
+      salesOwner:child.salesOwner||parent.salesOwner||"",
+      subAccount:(child.client&&child.client!==parent.client)?child.client:"",
       status:"Discovered",salesNotified:true,
       discoveredBy:session?.name||role,
       convertedFromDealId:child.id,
@@ -5934,7 +5951,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order — pending approval.`);
     // Retire the now-redundant child deal (cascade handled by delDeal).
     delDeal(child.id);
-    toastEmit("Converted to Change Order — review & approve on Scope Changes.","success");
+    if(!silent)toastEmit("Converted to Change Order — review & approve on Scope Changes.","success");
+    return true;
+  };
+  // Bulk: convert every linked child deal of a parent into a change order in one
+  // action. Keeps the per-deal ⇄ CO button; this just fans it out across all
+  // children of the given parent and reports a single summary toast.
+  const convertAllChildrenToCO=(parent)=>{
+    if(!parent){toastEmit("Parent project not found.","error");return;}
+    if(!canDeleteDeal){toastEmit("You don't have permission to convert these deals.","error");return;}
+    const children=deals.filter(d=>d.parentDealId===parent.id);
+    if(!children.length){toastEmit("No linked deals to convert on this project.","info");return;}
+    let n=0;
+    children.forEach(c=>{if(convertChildToCO(c,{silent:true}))n++;});
+    toastEmit(`Converted ${n} linked deal${n===1?"":"s"} on ${parent.client||"this project"} into change orders — review & approve on Scope Changes.`,"success");
   };
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
@@ -6822,6 +6852,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -9302,15 +9333,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const getDealPeriod=(d)=>{const ds=acqDate(d);if(!ds)return -1;const dt=new Date(ds);if(dt.getFullYear()!==CY)return -1;return repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;};
     const getFinPeriod=(dateStr)=>{if(!dateStr)return -1;const d=new Date(dateStr);if(d.getFullYear()!==CY)return -1;return repPeriod==="monthly"?d.getMonth():repPeriod==="quarterly"?Math.floor(d.getMonth()/3):0;};
     const n=getPCount();
-    const dealTax=(d)=>calcTax(Number(d.value||0),d.receiptType||"OR",d.withholding||false);
+    // Count a won deal at its BASE contract value (before change orders). Approved
+    // change orders are counted separately below, in their own awarded month and
+    // under their own AE — so using the base here prevents double-counting a CO
+    // that rollDealContract already folded into the parent's `value`.
+    const dealBase=(d)=>d.originalValue!=null?Number(d.originalValue)||0:Number(d.value||0);
+    const dealTax=(d)=>calcTax(dealBase(d),d.receiptType||"OR",d.withholding||false);
+    // Approved change orders are sales in their own right. They land in the month
+    // they were Approved (awardedDate) and are credited to the CO's salesOwner.
+    // coTax is signed so a deductive CO reduces the month's sales value.
+    const CO_APPROVED=a=>["Approved","Billed","Collected"].includes(a.status);
+    const coTax=a=>{const t=calcTax(Math.abs(Number(a.value||0)),a.receiptType||"OR",a.withholding||false);const sign=a.kind==="Deductive"?-1:1;return {gross:sign*t.gross,base:sign*t.base,vat:sign*t.vat};};
+    const coInPeriod=(a,i)=>{const ds=a.awardedDate;if(!ds)return false;const dt=new Date(ds);if(dt.getFullYear()!==CY)return false;const p=repPeriod==="monthly"?dt.getMonth():repPeriod==="quarterly"?Math.floor(dt.getMonth()/3):0;return p===i;};
     const monthWon=deals.filter(d=>{if(!WON_STAGES.includes(d.stage))return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
+    // Change orders approved in the selected month (CM) — credited as sales value.
+    const monthCO=addenda.filter(a=>{if(!CO_APPROVED(a)||!a.awardedDate)return false;const dt=new Date(a.awardedDate);return dt.getFullYear()===CY&&dt.getMonth()===CM;});
     const openPipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled");
-    const totalWonGross=monthWon.reduce((s,d)=>s+dealTax(d).gross,0);
-    const totalWonBase=monthWon.reduce((s,d)=>s+dealTax(d).base,0);
-    const totalWonVat=monthWon.reduce((s,d)=>s+dealTax(d).vat,0);
+    const totalWonGross=monthWon.reduce((s,d)=>s+dealTax(d).gross,0)+monthCO.reduce((s,a)=>s+coTax(a).gross,0);
+    const totalWonBase=monthWon.reduce((s,d)=>s+dealTax(d).base,0)+monthCO.reduce((s,a)=>s+coTax(a).base,0);
+    const totalWonVat=monthWon.reduce((s,d)=>s+dealTax(d).vat,0)+monthCO.reduce((s,a)=>s+coTax(a).vat,0);
     const aeMap={};
-    monthWon.forEach(d=>{const ae=d.salesOwner||"Unassigned";if(!aeMap[ae])aeMap[ae]={name:ae,code:aeCode(ae),won:0,gross:0,clients:new Set()};aeMap[ae].won++;aeMap[ae].gross+=dealTax(d).gross;if(d.client)aeMap[ae].clients.add(d.client);});
+    monthWon.forEach(d=>{const ae=d.salesOwner||"Unassigned";if(!aeMap[ae])aeMap[ae]={name:ae,code:aeCode(ae),won:0,co:0,gross:0,clients:new Set()};aeMap[ae].won++;aeMap[ae].gross+=dealTax(d).gross;if(d.client)aeMap[ae].clients.add(d.client);});
+    // Value only: add the CO's value to its AE's gross and track a separate CO
+    // count (does NOT increment "won" deals). Sub-account brand counts as a client.
+    monthCO.forEach(a=>{const ae=a.salesOwner||"Unassigned";if(!aeMap[ae])aeMap[ae]={name:ae,code:aeCode(ae),won:0,co:0,gross:0,clients:new Set()};aeMap[ae].co++;aeMap[ae].gross+=coTax(a).gross;if(a.subAccount)aeMap[ae].clients.add(a.subAccount);});
     const aeRowsRaw=Object.values(aeMap).map(r=>({...r,clients:r.clients.size}));
     const aeRows=[...aeRowsRaw].sort((a,b)=>repAESort==="won"?b.won-a.won:repAESort==="clients"?b.clients-a.clients:b.gross-a.gross);
     const aeTotal=aeRows.reduce((s,r)=>s+r.gross,0);
@@ -9334,10 +9381,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(noVal.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals with no value",detail:`${noVal.length} deal(s) have ₱0 value — pipeline understated`,stake:"unknown"});
     const yearDeals=deals.filter(d=>{const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY;});
     const yearWon=yearDeals.filter(d=>WON_STAGES.includes(d.stage));
-    const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>WON_STAGES.includes(d.stage));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+Number(d.value||0),0)};});
-    const ownerMap={};yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=Number(d.value||0);}});
+    // Approved change orders awarded this year, for the yearly period / AE rollups.
+    // Counted at their raw signed value (deductive subtracts) to match the deal
+    // value sums, and attributed to the period of their awardedDate.
+    const yearCO=addenda.filter(a=>CO_APPROVED(a)&&a.awardedDate&&new Date(a.awardedDate).getFullYear()===CY);
+    const coRawSigned=a=>(a.kind==="Deductive"?-1:1)*Math.abs(Number(a.value||0));
+    const salesPeriods=Array.from({length:n},(_,i)=>{const pd=yearDeals.filter(d=>getDealPeriod(d)===i);const pw=pd.filter(d=>WON_STAGES.includes(d.stage));const pco=yearCO.filter(a=>coInPeriod(a,i));return{label:getPLabel(i),acquired:pd.length,won:pw.length,winRate:pd.length>0?Math.round(pw.length/pd.length*100):0,pipelineValue:pd.reduce((s,d)=>s+Number(d.value||0),0),wonValue:pw.reduce((s,d)=>s+dealBase(d),0)+pco.reduce((s,a)=>s+coRawSigned(a),0)};});
+    const ownerMap={};yearDeals.forEach(d=>{const o=d.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].acquired++;if(WON_STAGES.includes(d.stage)){ownerMap[o].won++;ownerMap[o].value+=dealBase(d);}});
+    yearCO.forEach(a=>{const o=a.salesOwner||"Unassigned";if(!ownerMap[o])ownerMap[o]={owner:o,acquired:0,won:0,value:0};ownerMap[o].value+=coRawSigned(a);});
     const ownerRows=Object.values(ownerMap).sort((a,b)=>b.value-a.value);
-    const ceMap={};yearDeals.forEach(d=>{const t=d.ceType||"Other";if(!ceMap[t])ceMap[t]={type:t,acquired:0,won:0,value:0};ceMap[t].acquired++;if(WON_STAGES.includes(d.stage)){ceMap[t].won++;ceMap[t].value+=Number(d.value||0);}});
+    const ceMap={};yearDeals.forEach(d=>{const t=d.ceType||"Other";if(!ceMap[t])ceMap[t]={type:t,acquired:0,won:0,value:0};ceMap[t].acquired++;if(WON_STAGES.includes(d.stage)){ceMap[t].won++;ceMap[t].value+=dealBase(d);}});
     const ceRows=Object.values(ceMap).sort((a,b)=>b.value-a.value);
     const revArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
     const collArr=Array(n).fill(0);billings.forEach(b=>{(b.payments||[]).forEach(pay=>{const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0);});});
@@ -10793,6 +10846,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                         {isChild&&canDeleteDeal&&<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
+                        {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
                       </td>
                     </tr>
                   );
@@ -15658,6 +15712,15 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                             {a.clientApproved?"Approved":"Mark Approved"}
                           </button>
                         </div>
+                        {["Approved","Billed","Collected"].includes(a.status)&&(
+                          <div>
+                            <label style={{fontSize:".62rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:2}}>Awarded date <span style={{fontWeight:400,color:"#94a3b8"}}>(counts as sales this month)</span></label>
+                            <input type="date" value={a.awardedDate||""} max={new Date().toISOString().slice(0,10)}
+                              onChange={e=>updateAddendum(a.id,{awardedDate:e.target.value||null})}
+                              title="The month this change order's value is credited to the AE on the Sales Value report. Defaults to the approval date; set it to the date this scope was actually awarded."
+                              style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".74rem",color:"#0f172a",background:"#fff",boxSizing:"border-box"}}/>
+                          </div>
+                        )}
                         <button onClick={()=>{if(window.confirm("Delete this addendum?"))deleteAddendum(a.id);}}
                           style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
                           Delete
