@@ -5431,6 +5431,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[payFilter, setPayFilter]=useState("All");
   const[poViewFilter,setPoViewFilter]=useState("all"); // unified PO view: all | po | wo
   const[poViewSearch,setPoViewSearch]=useState("");
+  const[apLogSearch,setApLogSearch]=useState("");   // Accounts Payable Log search
+  const[supPaySearch,setSupPaySearch]=useState(""); // Supplier Payables (Open POs) search
   const[payPayId,  setPayPayId] =useState(null); // payable id being settled in the Record-Payment modal
   const[payPayAmt, setPayPayAmt]=useState("");
   const[payPayMode,setPayPayMode]=useState("amount"); // "amount" | "pct" (progress payment to a subcontractor/supplier)
@@ -11566,8 +11568,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           // AP-log filter (All / Unpaid / Partial / Paid) — mirrors Aerwin's chips.
           const apRows=[...payables].sort((a,b)=>String(a.apNumber||"~").localeCompare(String(b.apNumber||"~"))||String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")));
           const apFilter=payFilter||"All";
-          const apVisible=apRows.filter(p=>apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"));
           const projName=id=>{const d=wonDeals.find(x=>x.id===id)||completedDeals.find(x=>x.id===id);return d?(d.contact||d.client):"";};
+          const apQ=apLogSearch.trim().toLowerCase();
+          const apVisible=apRows.filter(p=>(apFilter==="All"?true:apFilter==="Paid"?isSettled(p):apFilter==="Partial"?p.status==="Partial":(p.status==="Unpaid"||p.status==="Check Issued"))
+            &&(!apQ||[p.apNumber,p.poNumber,p.vendor,p.invoiceNumber,p.invoiceRef,p.accountCode,projName(p.projectId)].some(v=>String(v||"").toLowerCase().includes(apQ))));
           const PAY_CATS=["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"];
           return(
             <div>
@@ -11589,9 +11593,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {/* PO-derived payables — by supplier */}
               {poPayables.length>0&&(
                 <div style={{marginBottom:20}}>
-                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
                     <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>🛒 Supplier Payables — Open POs</div>
                     <ErpBadge kind="invoiced">{poPayables.length} supplier{poPayables.length!==1?"s":""} · {fmtM(totalPOPayables)}</ErpBadge>
+                    <input value={supPaySearch} onChange={e=>setSupPaySearch(e.target.value)} placeholder="Search supplier…" style={{marginLeft:"auto",minWidth:180,flex:"0 1 240px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
                   </div>
                   <div style={{background:ERP.paper,borderRadius:12,border:`1px solid ${ERP.line}`,overflow:"hidden"}}>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",background:ERP.navyLight,borderBottom:`2px solid ${ERP.line}`,gap:8}}>
@@ -11599,26 +11604,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <div key={i} style={{fontSize:11,fontWeight:700,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",textAlign:i===3?"right":i===0?"left":"center"}}>{h}</div>
                       ))}
                     </div>
-                    {poPayables.map((g,idx)=>{
-                      const isOverdue=g.earliestDelivery&&g.earliestDelivery<today;
-                      return(
-                        <div key={g.supplier} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",borderBottom:idx<poPayables.length-1?`1px solid ${ERP.line}`:"none",background:"#fff"}}
-                          onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
-                          <div>
-                            <div style={{fontSize:13,color:ERP.ink,fontWeight:700}}>{g.supplier}</div>
-                            {g.earliestDelivery&&<div style={{fontSize:11,color:isOverdue?ERP.danger:ERP.muted,marginTop:1}}>{isOverdue?"⚠ Overdue: ":"Expected: "}{g.earliestDelivery}</div>}
-                          </div>
-                          <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.poCount||g.itemCount}</div>
-                          <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.itemCount}</div>
-                          <div style={{textAlign:"right",fontWeight:700,color:ERP.danger,fontSize:13,fontVariantNumeric:"tabular-nums"}}>{fmtM(g.total)}</div>
+                    {(()=>{
+                      const sq=supPaySearch.trim().toLowerCase();
+                      const supVisible=sq?poPayables.filter(g=>String(g.supplier||"").toLowerCase().includes(sq)):poPayables;
+                      const supTotal=supVisible.reduce((s,g)=>s+g.total,0);
+                      if(supVisible.length===0) return <div style={{padding:"18px 10px",textAlign:"center",color:ERP.muted,fontSize:12.5,fontStyle:"italic"}}>No suppliers match “{supPaySearch}”.</div>;
+                      return(<>
+                        {supVisible.map((g,idx)=>{
+                          const isOverdue=g.earliestDelivery&&g.earliestDelivery<today;
+                          return(
+                            <div key={g.supplier} style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",borderBottom:idx<supVisible.length-1?`1px solid ${ERP.line}`:"none",background:"#fff"}}
+                              onMouseEnter={ev=>ev.currentTarget.style.background="#FAFBFD"} onMouseLeave={ev=>ev.currentTarget.style.background="#fff"}>
+                              <div>
+                                <div style={{fontSize:13,color:ERP.ink,fontWeight:700}}>{g.supplier}</div>
+                                {g.earliestDelivery&&<div style={{fontSize:11,color:isOverdue?ERP.danger:ERP.muted,marginTop:1}}>{isOverdue?"⚠ Overdue: ":"Expected: "}{g.earliestDelivery}</div>}
+                              </div>
+                              <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.poCount||g.itemCount}</div>
+                              <div style={{fontSize:13,color:ERP.muted,textAlign:"center",fontVariantNumeric:"tabular-nums"}}>{g.itemCount}</div>
+                              <div style={{textAlign:"right",fontWeight:700,color:ERP.danger,fontSize:13,fontVariantNumeric:"tabular-nums"}}>{fmtM(g.total)}</div>
+                            </div>
+                          );
+                        })}
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",background:ERP.navyLight,borderTop:`2px solid ${ERP.line}`}}>
+                          <div style={{fontSize:12,fontWeight:700,color:ERP.navy}}>{sq?"Total (filtered)":"Total"}</div>
+                          <div/><div/>
+                          <div style={{textAlign:"right",fontWeight:800,color:ERP.danger,fontSize:14,fontVariantNumeric:"tabular-nums"}}>{fmtM(supTotal)}</div>
                         </div>
-                      );
-                    })}
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 80px 80px 120px",padding:"9px 10px",gap:8,alignItems:"center",background:ERP.navyLight,borderTop:`2px solid ${ERP.line}`}}>
-                      <div style={{fontSize:12,fontWeight:700,color:ERP.navy}}>Total</div>
-                      <div/><div/>
-                      <div style={{textAlign:"right",fontWeight:800,color:ERP.danger,fontSize:14,fontVariantNumeric:"tabular-nums"}}>{fmtM(totalPOPayables)}</div>
-                    </div>
+                      </>);
+                    })()}
                   </div>
                 </div>
               )}
@@ -11626,10 +11639,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap"}}>
                 <div style={{fontSize:12.5,fontWeight:700,color:ERP.navy}}>📋 Accounts Payable Log</div>
                 <span style={{fontSize:11.5,color:ERP.muted}}>Vendor invoices logged from POs, with aging & balances.</span>
-                <div style={{marginLeft:"auto",display:"flex",gap:5}}>
-                  {["All","Unpaid","Partial","Paid"].map(f=>(
-                    <button key={f} onClick={()=>setPayFilter(f)} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
-                  ))}
+                <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+                  <input value={apLogSearch} onChange={e=>setApLogSearch(e.target.value)} placeholder="Search AP/PO no., vendor, invoice, account…" style={{minWidth:200,flex:"0 1 280px",border:`1px solid ${ERP.line}`,borderRadius:7,padding:"6px 11px",fontFamily:"inherit",fontSize:12,outline:"none",color:ERP.ink}}/>
+                  <div style={{display:"flex",gap:5}}>
+                    {["All","Unpaid","Partial","Paid"].map(f=>(
+                      <button key={f} onClick={()=>setPayFilter(f)} style={{background:apFilter===f?ERP.navy:"#fff",color:apFilter===f?"#fff":ERP.muted,border:`1px solid ${apFilter===f?ERP.navy:ERP.line}`,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>{f}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
               {apRows.length===0&&poPayables.length===0&&<div style={{textAlign:"center",padding:"32px",color:"#94a3b8",fontSize:".84rem"}}>No payables logged yet — issue a PO or add one manually. ✓</div>}
