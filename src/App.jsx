@@ -21226,7 +21226,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[payForm,  setPayForm]  =useState({amount:"",date:today,refNo:"",note:"",valueDate:"",bank:"",method:"Bank Transfer"});
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
-  const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | paid | overdue
+  const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | overdue | collected | uncollected | paid
   const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
@@ -21730,10 +21730,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=billed>0&&balance===0;
     return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
-  }).filter(({d,balance,hasOverdue,fullyPaid})=>{
+  }).filter(({d,billed,collected,balance,hasOverdue,fullyPaid})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
-    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue);
+    const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&billed>0&&collected===0);
     return matchSearch&&matchFilter;
   });
 
@@ -21882,7 +21882,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             style={{width:"100%",paddingLeft:32,paddingRight:10,paddingTop:8,paddingBottom:8,border:"1.5px solid #e2e8f0",borderRadius:8,fontFamily:"inherit",fontSize:".82rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
         </div>
         <div style={{display:"flex",gap:6}}>
-          {[["all","All"],["outstanding","Outstanding"],["overdue","Overdue"],["paid","Fully Paid"]].map(([v,l])=>(
+          {[["all","All"],["outstanding","Outstanding"],["overdue","Overdue"],["collected","Has Collections"],["uncollected","Uncollected"],["paid","Fully Paid"]].map(([v,l])=>(
             <button key={v} onClick={()=>setBillingFilter(v)}
               style={{padding:"7px 13px",borderRadius:20,border:`1.5px solid ${billingFilter===v?"#1e293b":"#e2e8f0"}`,background:billingFilter===v?"#1e293b":"#fff",color:billingFilter===v?"#fff":"#64748b",fontFamily:"inherit",fontSize:".75rem",fontWeight:billingFilter===v?700:400,cursor:"pointer",whiteSpace:"nowrap"}}>
               {l}
