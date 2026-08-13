@@ -14100,7 +14100,16 @@ First few:
           </>
         );
       })()}
-      <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
+      <PoDocumentationQueue prs={prs} swos={swos} updatePR={updatePR} updateSWO={updateSWO} wonDeals={wonDeals} session={session} role={role} toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}
+        settleDocPayable={(docNo,amt,bank,ref)=>{
+          // Keep the AP ledger in sync: when a PO/WO is marked Paid on the
+          // accounting board, settle its linked payable too (audit fix).
+          const p=payables.find(x=>x.poId===docNo||x.poNumber===docNo);
+          if(!p) return;
+          const bal=Math.max(0,(Number(p.amount)||0)-(Number(p.paidAmount)||0));
+          if(bal<=0) return;
+          recordPayablePayment(p.id,Math.min(bal,Number(amt)||bal),{bank:bank||p.payBank||"",method:"Online Transfer",ref:ref||""});
+        }}/>
       <ExpenseModal open={expModal} onClose={()=>setExpModal(false)} form={expForm} setForm={setExpForm} onSave={saveExp} onSaveAll={batchSaveExps} editId={editExpId} projList={wonDeals} clientName={clientName} chartOfAccounts={chartOfAccounts} suppliers={suppliers} exps={exps}/>
       {routeModal&&(()=>{const exp=exps.find(e=>e.id===routeModal);if(!exp)return null;return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.5)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:16}}><div style={{background:"#fff",borderRadius:16,padding:28,width:"100%",maxWidth:440,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}}><div style={{fontWeight:800,color:"#0f172a",fontSize:"1rem",marginBottom:4}}>💳 Route Payment — Finance</div><div style={{fontSize:".78rem",color:"#64748b",marginBottom:16}}>Select how this expense will be paid. This creates the record in the respective module.</div><div style={{background:"#f8fafc",borderRadius:10,padding:"12px 14px",marginBottom:16,fontSize:".82rem"}}><div style={{fontWeight:700,color:"#0f172a"}}>{exp.note||exp.category||"Expense"}</div><div style={{color:"#64748b",marginTop:3}}>{exp.supplier||exp.payee||""} · ₱{Number(exp.amount||0).toLocaleString("en-PH",{minimumFractionDigits:2})} · {exp.expDate||""}</div></div><div style={{marginBottom:14}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:8}}>Payment Method</div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>{[["BizLink","💳","Online bank transfer","#1d4ed8","#eff6ff","#bfdbfe"]].map(([m,icon,sub,clr,bg,border])=>(<div key={m} onClick={()=>setRouteMethod(m)} style={{padding:"12px 14px",borderRadius:10,border:`2px solid ${routeMethod===m?clr:border}`,background:routeMethod===m?bg:"#fff",cursor:"pointer",transition:"all .15s"}}><div style={{fontWeight:800,color:routeMethod===m?clr:"#475569",fontSize:".88rem"}}>{icon} {m}</div><div style={{fontSize:".7rem",color:"#94a3b8",marginTop:3}}>{sub}</div></div>))}</div></div><div style={{marginBottom:20}}><div style={{fontSize:".75rem",fontWeight:600,color:"#475569",marginBottom:4}}>Bank Account</div><select value={routeBank} onChange={e=>setRouteBank(e.target.value)} style={{width:"100%",padding:"9px 12px",border:"1.5px solid #e2e8f0",borderRadius:8,fontSize:".85rem",fontFamily:"inherit",background:"#fff",boxSizing:"border-box"}}><option value="">Select bank…</option>{(BANKS||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></div><div style={{display:"flex",gap:10,justifyContent:"flex-end"}}><button onClick={()=>setRouteModal(null)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer",color:"#475569"}}>Cancel</button><button onClick={()=>{routeExpToBizLink(routeModal,routeBank);setRouteModal(null);}} disabled={!routeBank} style={{background:routeBank?"#1e293b":"#e2e8f0",border:"none",borderRadius:9,padding:"9px 20px",color:routeBank?"#fff":"#94a3b8",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:routeBank?"pointer":"not-allowed"}}>Confirm Routing</button></div></div></div>);})()}
     </Wrap>
@@ -19164,7 +19173,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
 // creates the bank-tagged Payment Order. Lives on the Accounting page.
 
 // ─── PO DOCUMENTATION QUEUE ─────────────────────────────────────────────────────
-function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role,toastEmit,sendTelegramNotification}){
+function PoDocumentationQueue({prs,swos,updatePR,updateSWO,wonDeals,session,role,toastEmit,sendTelegramNotification,settleDocPayable}){
   const today=new Date().toISOString().split("T")[0];
   const n=v=>Number(String(v).replace(/,/g,""))||0;
   const fmt=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:0});
@@ -19378,6 +19387,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
                         <button onClick={()=>{
                           const confirmedAmt=pAmt?Number(pAmt):d.amount;
                           d.apply({acctStatus:"Paid",paidRef:pRef||a.paymentRef||"",paidDate:pDate||today,paidAmt:confirmedAmt,paidBy:session?.name||""});
+                          settleDocPayable&&settleDocPayable(d.number,confirmedAmt,a.paymentBank,pRef||a.paymentRef||"");
                           const bk=(BANKS.find(b=>b.id===a.paymentBank)||{}).short||a.paymentBank||"—";
                           sendTelegramNotification&&sendTelegramNotification("financialcontrol",`✅ <b>Payment Confirmed — ${d.kind} ${d.number}</b>\nPaid to: ${d.payee}\nAmount: ₱${confirmedAmt.toLocaleString("en-PH")}\nBank: ${bk}\nRef: ${pRef||a.paymentRef||"—"}\nDate: ${pDate||today}\nBy: ${session?.name||"?"}`);
                           toastEmit&&toastEmit(`${d.number} marked as Paid ✅`,"success");
