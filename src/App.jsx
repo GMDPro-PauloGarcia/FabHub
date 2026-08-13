@@ -3466,6 +3466,7 @@ export default function App(){
     loan_payments:  {label:"loan payment",     toSb:r=>({id:r.id,loan_id:r.loanId||r.loan_id||null,amount:Number(r.amount)||0,date:r.date||null})},
     inflows:        {label:"cash inflow",      toSb:inflowToSb},
     billing_payments:{label:"collection",     toSb:r=>toSbPayment(r)},
+    billing_milestones:{label:"billing milestone", toSb:toSbBilling},
   };
   // Write to audit_log via the raw client (not sbInsert) so a missing-table /
   // audit-only failure doesn't trip the app-wide "you're offline" warning.
@@ -4521,9 +4522,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   // Delete an entire project's billing schedule — every milestone and its
   // payments — in one shot, then zero out the deal's billed/collected totals.
-  const deleteProjectBilling=(dealId)=>{
+  // Prompts once for a required reason; each milestone and payment is archived
+  // to Finance ▸ Audit Trail (restorable) before removal.
+  const deleteProjectBilling=async(dealId)=>{
     const ms=billings.filter(b=>b.dealId===dealId);
     if(!ms.length) return;
+    const deal=deals.find(d=>d.id===dealId);
+    const reason=window.prompt(`Delete the ENTIRE billing schedule for ${deal?.client||"this project"} — all ${ms.length} milestone${ms.length!==1?"s":""} and their recorded payments?\n\nEverything will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,"");
+    if(reason===null) return;                                                    // cancelled
+    if(!reason.trim()){ toastEmit("A reason is required to delete billing.","error",5000); return; }
+    const why=reason.trim();
+    // Archive every milestone + its payments before removing them.
+    for(const m of ms){
+      await archiveFinancial("billing_milestones",toSbBilling(m),m.id,why);
+      for(const p of (m.payments||[])) await archiveFinancial("billing_payments",toSbPayment({...p,milestoneId:m.id}),p.id,why);
+    }
     upBillings(bs=>bs.filter(b=>b.dealId!==dealId));
     upDeals(ds=>ds.map(d=>{
       if(d.id!==dealId) return d;
@@ -4538,7 +4551,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         sbDelete('billing_milestones',m.id).catch(()=>{});
       });
     }
-    logActivity(dealId,"Billing Deleted",`All ${ms.length} milestone${ms.length!==1?"s":""} removed`,session?.name||role);
+    logActivity(dealId,"Billing Deleted",`All ${ms.length} milestone${ms.length!==1?"s":""} removed — ${why}`,session?.name||role);
+    toastEmit("🗑 Billing deleted and archived to Audit Trail.","success",5000);
   };
   const logBillingPayment=(msId,payment)=>{
     const payId=uid();
@@ -21989,8 +22003,8 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 📄 SOA
               </button>
               {canEdit&&milestoneCount>0&&(
-                <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete all ${milestoneCount} billing milestone${milestoneCount!==1?"s":""} for ${d.client}? This also removes their recorded payments and cannot be undone.`))deleteProjectBilling(d.id);}}
-                  title="Delete this project's billing"
+                <button onClick={e=>{e.stopPropagation();deleteProjectBilling(d.id);}}
+                  title="Delete this project's billing (archived to Audit Trail)"
                   style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:mob?"8px 12px":"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:700,flex:mob?0:undefined}}>
                   🗑
                 </button>
