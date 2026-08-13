@@ -4515,6 +4515,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     }
     if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});
   };
+  // Delete an entire project's billing schedule — every milestone and its
+  // payments — in one shot, then zero out the deal's billed/collected totals.
+  const deleteProjectBilling=(dealId)=>{
+    const ms=billings.filter(b=>b.dealId===dealId);
+    if(!ms.length) return;
+    upBillings(bs=>bs.filter(b=>b.dealId!==dealId));
+    upDeals(ds=>ds.map(d=>{
+      if(d.id!==dealId) return d;
+      const nd={...d,invoiced:0,amountPaid:0};
+      if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
+      return nd;
+    }));
+    if(isSupabaseReady()){
+      ms.forEach(m=>{
+        if(!isUUID(m.id)) return;
+        sbDeleteWhere('billing_payments','milestone_id',m.id);
+        sbDelete('billing_milestones',m.id).catch(()=>{});
+      });
+    }
+    logActivity(dealId,"Billing Deleted",`All ${ms.length} milestone${ms.length!==1?"s":""} removed`,session?.name||role);
+  };
   const logBillingPayment=(msId,payment)=>{
     const payId=uid();
     const milestone=billings.find(b=>b.id===msId);
@@ -13631,7 +13652,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <BillingView
         billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} addenda={addenda}
         addMilestone={addMilestone} updateMilestone={updateMilestone}
-        deleteMilestone={deleteMilestone} logBillingPayment={logBillingPayment}
+        deleteMilestone={deleteMilestone} deleteProjectBilling={deleteProjectBilling} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
         clientProfiles={clientProfiles}
@@ -21164,7 +21185,7 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
@@ -21874,7 +21895,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
         {/* Table header — desktop only; mobile uses self-labeling cards */}
         {!mob&&(
-        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",background:"#1e293b",padding:"10px 18px",gap:12}}>
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 190px",background:"#1e293b",padding:"10px 18px",gap:12}}>
           {["Project","Billed","Collected","Balance","Status","Actions"].map(h=>(
             <div key={h} style={{fontSize:".68rem",fontWeight:700,color:"rgba(255,255,255,.6)",textTransform:"uppercase",letterSpacing:".8px"}}>{h}</div>
           ))}
@@ -21900,6 +21921,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                 style={{background:"#f97316",border:"none",borderRadius:7,padding:mob?"8px 14px":"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#fff",cursor:"pointer",fontWeight:700,flex:mob?1:undefined}}>
                 📄 SOA
               </button>
+              {canEdit&&milestoneCount>0&&(
+                <button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete all ${milestoneCount} billing milestone${milestoneCount!==1?"s":""} for ${d.client}? This also removes their recorded payments and cannot be undone.`))deleteProjectBilling(d.id);}}
+                  title="Delete this project's billing"
+                  style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:mob?"8px 12px":"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:700,flex:mob?0:undefined}}>
+                  🗑
+                </button>
+              )}
             </>
           );
           const projectCell=(
@@ -21950,7 +21978,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           return(
             <div key={d.id}
               onClick={()=>setSelDeal(d.id)}
-              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 150px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+              style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 190px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
               onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
               onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
               {projectCell}
