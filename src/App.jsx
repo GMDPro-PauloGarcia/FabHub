@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -910,18 +910,38 @@ function CollectionsPanel({wonDeals,infs,onUpdatePayment,onLogPayment,readonly=f
 }
 
 // ─── DEAL FORM MODAL ──────────────────────────────────────────────────────────
-function ClientAutocomplete({value:initVal, onChange}){
+function ClientAutocomplete({value:initVal, onChange, existingNames=[]}){
   const[localVal,setLocalVal]= useState(initVal||"");
   const[show,    setShow]    = useState(false);
   // Sync if parent resets (e.g. new deal)
   useEffect(()=>{ setLocalVal(initVal||""); },[initVal]);
 
+  // Known client universe = seed directory + names already used on deals, so
+  // the box suggests (and dedupe-checks against) clients that really exist —
+  // not just the hardcoded GMD list. De-duplicated by normalized key.
+  const known = useMemo(()=>{
+    const map=new Map();
+    GMD_CLIENTS.forEach(c=>{const k=clientKey(c.name);if(!map.has(k))map.set(k,{name:c.name,city:c.city,phone:c.phone,balance:c.balance});});
+    (existingNames||[]).forEach(n=>{const k=clientKey(n);if(k&&!map.has(k))map.set(k,{name:n});});
+    return [...map.values()];
+  },[existingNames]);
+
   const suggestions = useMemo(()=>{
     if(!localVal||localVal.length<2) return [];
     const q = localVal.toLowerCase();
-    return GMD_CLIENTS.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
-  },[localVal]);
+    return known.filter(c=>c.name.toLowerCase().includes(q)).slice(0,8);
+  },[localVal,known]);
 
+  // Duplicate guard: typed name normalizes to an existing client but isn't an
+  // exact match (e.g. "collecticons inc" vs stored "Collecticons Inc.").
+  const dup = useMemo(()=>{
+    if(!localVal||localVal.trim().length<2) return null;
+    const k=clientKey(localVal);
+    const hit=known.find(c=>clientKey(c.name)===k);
+    return hit&&hit.name!==localVal ? hit : null;
+  },[localVal,known]);
+
+  const exactKnown = known.some(c=>c.name.toLowerCase()===localVal.toLowerCase());
   const pick = (name) => { setLocalVal(name); onChange(name); setShow(false); };
 
   return(
@@ -932,9 +952,17 @@ function ClientAutocomplete({value:initVal, onChange}){
         onFocus={()=>setShow(true)}
         onBlur={()=>setTimeout(()=>setShow(false),150)}
         placeholder="Start typing client name…"
-        style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}
+        style={{width:"100%",border:`1.5px solid ${dup?"#f59e0b":"#e2e8f0"}`,borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",outline:"none"}}
       />
-      {show && (localVal.length>=1) && (suggestions.length>0 || (localVal.length>=2 && !GMD_CLIENTS.find(c=>c.name.toLowerCase()===localVal.toLowerCase()))) && (
+      {/* Possible-duplicate nudge — visible even when the dropdown is closed */}
+      {dup&&(
+        <div style={{marginTop:5,background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:8,padding:"7px 10px",fontSize:".76rem",color:"#92400e",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+          <span>⚠ Looks like an existing client:</span>
+          <button type="button" onMouseDown={()=>pick(dup.name)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"3px 9px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",cursor:"pointer"}}>Use “{dup.name}”</button>
+          <span style={{color:"#b45309"}}>— avoids a duplicate client.</span>
+        </div>
+      )}
+      {show && (localVal.length>=1) && (suggestions.length>0 || (localVal.length>=2 && !exactKnown)) && (
         <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:200,maxHeight:280,overflowY:"auto",marginTop:4}}>
           {suggestions.map((c,i)=>(
             <div key={i} onMouseDown={()=>pick(c.name)}
@@ -949,10 +977,10 @@ function ClientAutocomplete({value:initVal, onChange}){
               </div>
             </div>
           ))}
-          {localVal&&!GMD_CLIENTS.find(c=>c.name.toLowerCase()===localVal.toLowerCase())&&(
+          {localVal&&!exactKnown&&(
             <div onMouseDown={()=>pick(localVal)}
-              style={{padding:"10px 14px",cursor:"pointer",background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:"#3b82f6",fontWeight:600}}>
-              + Add "{localVal}" as new client
+              style={{padding:"10px 14px",cursor:"pointer",background:"#fafafa",borderTop:"1px solid #e2e8f0",fontSize:".82rem",color:dup?"#b45309":"#3b82f6",fontWeight:600}}>
+              {dup?`+ Add "${localVal}" anyway as a new client`:`+ Add "${localVal}" as new client`}
             </div>
           )}
         </div>
@@ -1002,7 +1030,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
       <div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:14}}>
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="Client Name" required hint="Start typing to search from your GMD clients">
-            <ClientAutocomplete value={form.client} onChange={v=>f("client",v)}/>
+            <ClientAutocomplete value={form.client} onChange={v=>f("client",v)} existingNames={[...new Set((deals||[]).map(d=>d.client).filter(Boolean))]}/>
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
@@ -10774,10 +10802,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // project type is handled by the chip row above via `pipeType`.
                 const AwardTable=({deals:list})=>{
                   const allChildren=list.filter(d=>d.parentDealId);
-                  // Grouped by client (A→Z) so a client's projects sit together, then
+                  // Grouped by client (A→Z, normalized via shared clientKey so
+                  // "COLLECTICONS INC" and "COLLECTICONS INC." group as one) so a
+                  // client's projects sit together, then
                   // by value within each client. Type filtering still handled by the chips.
                   const parentList=list.filter(d=>!d.parentDealId)
-                    .sort((a,b)=>(a.client||"").localeCompare(b.client||"")||Number(b.value||0)-Number(a.value||0));
+                    .sort((a,b)=>clientKey(a.client).localeCompare(clientKey(b.client))||Number(b.value||0)-Number(a.value||0));
                   return(
                     <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                       <div style={{overflowX:"auto"}}>
@@ -10793,7 +10823,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           <tbody>
                             {parentList.map((d,i)=>{
                               const children=allChildren.filter(c=>c.parentDealId===d.id);
-                              const newClient=i===0||(d.client||"")!==(parentList[i-1].client||"");
+                              const newClient=i===0||clientKey(d.client)!==clientKey(parentList[i-1].client);
                               return(
                                 <React.Fragment key={d.id}>
                                   {newClient&&(
@@ -17049,9 +17079,9 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
 
   const allClients=useMemo(()=>{
     const map=new Map();
-    GMD_CLIENTS.forEach(c=>map.set(c.name.trim().toLowerCase(),{...c}));
+    GMD_CLIENTS.forEach(c=>map.set(clientKey(c.name),{...c}));
     (customClients||[]).forEach(c=>{
-      const key=c.name.trim().toLowerCase();
+      const key=clientKey(c.name);
       map.set(key,map.has(key)?{...map.get(key),...c}:{...c});
     });
     return [...map.values()];
@@ -17064,7 +17094,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       (c.email||"").toLowerCase().includes(search.toLowerCase())
     );
     if(filter==="with-balance") list = list.filter(c=>c.balance>0);
-    if(filter==="with-projects") list = list.filter(c=>deals.some(d=>d.client===c.name));
+    if(filter==="with-projects") list = list.filter(c=>deals.some(d=>clientKey(d.client)===clientKey(c.name)));
     if(filter==="vvip") list = list.filter(c=>vvipClients?.has(c.name));
     // VVIP always on top
     list=[...list].sort((a,b)=>{
@@ -17092,7 +17122,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:12,marginBottom:20}}>
         {[
           {l:"Total Clients",    v:allClients.length,                                      c:"#3b82f6"},
-          {l:"With Active Deals",v:allClients.filter(c=>deals.some(d=>d.client===c.name)).length, c:"#10b981"},
+          {l:"With Active Deals",v:allClients.filter(c=>deals.some(d=>clientKey(d.client)===clientKey(c.name))).length, c:"#10b981"},
           {l:"Open Balances",    v:allClients.filter(c=>c.balance>0).length,               c:"#ef4444"},
           {l:"Total Outstanding",v:"₱"+totalBalance.toLocaleString(),                       c:"#f59e0b"},
         ].map(({l,v,c})=>(
@@ -17130,7 +17160,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
         {[
           {id:"all",           l:`All (${allClients.length})`},
           {id:"with-balance",  l:`Open Balance (${allClients.filter(c=>c.balance>0).length})`},
-          {id:"with-projects", l:`Has Deals (${allClients.filter(c=>deals.some(d=>d.client===c.name)).length})`},
+          {id:"with-projects", l:`Has Deals (${allClients.filter(c=>deals.some(d=>clientKey(d.client)===clientKey(c.name))).length})`},
           {id:"vvip",          l:`⭐ VVIP (${vvipClients?.size||0})`},
         ].map(({id,l})=>(
           <button key={id} onClick={()=>setFilter(id)}
@@ -17146,7 +17176,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
           {["Client Name","Awarded Deals","Contact","Status"].map(h=><div key={h}>{h}</div>)}
         </div>
         {filtered.map((c,i)=>{
-          const clientDeals = deals.filter(d=>d.client===c.name);
+          const clientDeals = deals.filter(d=>clientKey(d.client)===clientKey(c.name));
           const hasBalance  = c.balance>0;
           const hasDeals    = clientDeals.length>0;
           return(
@@ -17232,7 +17262,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
       </div>
       {/* Client History Modal */}
       {selClient&&(()=>{
-        const clientDeals=deals.filter(d=>d.client===selClient);
+        const clientDeals=deals.filter(d=>clientKey(d.client)===clientKey(selClient));
         const totalValue=clientDeals.reduce((s,d)=>s+Number(d.value||0),0);
         const totalCollected=clientDeals.reduce((s,d)=>s+Number(d.amountPaid||0),0);
         const isVvip=vvipClients?.has(selClient);
@@ -21659,7 +21689,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const printSOA=(clientName)=>{
     const esc=(s)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     const f=(v)=>Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
-    const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>d.client===clientName);
+    const clientDeals=[...wonDeals,...(completedDeals||[]),...deals.filter(d=>d.parentDealId&&new Set([...wonDeals,...(completedDeals||[])].map(x=>x.id)).has(d.parentDealId))].filter((d,i,a)=>a.findIndex(x=>x.id===d.id)===i).filter(d=>clientKey(d.client)===clientKey(clientName));
     const rows=clientDeals.map(d=>{
       const ms=billings.filter(b=>b.dealId===d.id);
       const rt=d.receiptType||"OR",wh=d.withholding||false;
