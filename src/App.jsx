@@ -2843,7 +2843,7 @@ export default function App(){
             const _budgets=Object.keys(data.budgets||{}).length?Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}])):null;
             if(_budgets){setBudgets(prev=>mergeLocalOnlyObj(_budgets,prev));idbE.push([KEYS.budgets,_budgets]);}
             if(data.inflows!=null){setInfs(data.inflows);idbE.push([KEYS.inflows,data.inflows]);}
-            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||""})):null;
+            const _payables=data.payables!=null?data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""})):null;
             if(_payables!=null){setPayables(prev=>mergeLocalOnly(_payables,prev));idbE.push(["gmdv5:payables",_payables]);}
             const _loans=data.loans!=null?data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]})):null;
             if(_loans!=null){setLoans(prev=>mergeLocalOnly(_loans,prev));idbE.push(["gmdv5:loans",_loans]);}
@@ -3124,7 +3124,7 @@ export default function App(){
     if(Object.keys(data.cashPositions||{}).length) setCashPos(prev=>mergeLocalOnlyObj(convertSbCashPos(data.cashPositions),prev));
     if(Object.keys(data.budgets||{}).length){const bg=Object.fromEntries(Object.entries(data.budgets).map(([k,b])=>[k,{Materials:b.materials,Labor:b.labor,Overhead:b.overhead,Subcon:b.subcon,notes:b.notes}]));setBudgets(prev=>mergeLocalOnlyObj(bg,prev));idbE.push([KEYS.budgets,bg]);}
     if(data.users?.length){const us=data.users.map(u=>{const fallbackHash=DEFAULT_USERS.find(d=>d.username===(u.username||""))?.passwordHash||"";return{id:u.id,username:u.username||"",name:u.name||u.full_name||"",role:u.role||"Sales",title:u.title||u.role||"",status:u.status||"active",passwordHash:u.password_hash||fallbackHash,createdAt:u.created_at||""};});setUsers(prev=>mergeLocalOnly(us,prev));idbE.push([KEYS.users,us]);}
-    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
+    if(data.payables?.length){const ps=data.payables.map(p=>({...p,dueDate:p.due_date,projectId:p.project_id,invoiceRef:p.invoice_ref||"",paidDate:p.paid_date,createdAt:p.created_at,createdBy:p.created_by||"",poNumber:p.po_number||"",poId:p.po_id||null,apNumber:p.ap_number||"",invoiceNumber:p.invoice_number||"",invoiceDate:p.invoice_date||"",paidAmount:Number(p.paid_amount)||0,accountCode:p.account_code||"",verified:p.verified!==false,verifiedBy:p.verified_by||"",verifiedAt:p.verified_at||"",verificationPct:p.verification_pct!=null?Number(p.verification_pct):100,payBank:p.pay_bank||"",payMethod:p.pay_method||"",payRef:p.pay_ref||"",vatable:!!p.vatable,inputVat:Number(p.input_vat)||0,netAmount:Number(p.net_amount)||0,ewtRate:Number(p.ewt_rate)||0,ewtAmount:Number(p.ewt_amount)||0,tin:p.tin||""}));setPayables(prev=>mergeLocalOnly(ps,prev));idbE.push(["gmdv5:payables",ps]);}
     if(data.loans?.length){const ls=data.loans.map(l=>({...l,disbursedDate:l.disbursed_date,termMonths:l.term_months,interestRate:l.interest_rate,monthlyPayment:l.monthly_payment,createdAt:l.created_at,payments:l.payments||[]}));setLoans(prev=>mergeLocalOnly(ls,prev));idbE.push(["gmdv5:loans",ls]);}
     if(data.dailyLogs?.length){const dl=data.dailyLogs.map(l=>({...l,dealId:l.deal_id,date:l.log_date,workDone:l.work_done,progressNote:l.progress_note,loggedBy:l.logged_by,createdAt:l.created_at}));setDailyLogs(prev=>mergeLocalOnly(dl,prev));idbE.push([KEYS.dailylogs,dl]);}
     if(data.ceReqs?.length){const cr=data.ceReqs.map(ceReqFromSb);setCeReqs(prev=>mergeLocalOnly(cr,prev));idbE.push([KEYS.ceReqs,cr]);}
@@ -6583,7 +6583,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // Derive status from what's actually been paid so a manually entered payable
     // with a partial prior payment shows correctly, just like the finance ERP.
     const derived=paidAmount<=0?"Unpaid":paidAmount>=amount?"Paid":"Partial";
-    const rec={...data,amount,paidAmount,
+    // BIR: derive VAT (amount is VAT-inclusive when vatable) + EWT on the net.
+    const vatable=!!data.vatable;
+    const netAmount=vatable?Math.round(amount/1.12*100)/100:amount;
+    const inputVat=vatable?Math.round((amount-netAmount)*100)/100:0;
+    const ewtRate=Number(data.ewtRate)||0;
+    const ewtAmount=ewtRate>0?Math.round(netAmount*ewtRate/100*100)/100:0;
+    const rec={...data,amount,paidAmount,vatable,netAmount,inputVat,ewtRate,ewtAmount,tin:data.tin||"",
       apNumber:data.apNumber||(editPayId?"":nextApNumber()),
       id:editPayId||uid(),status:editPayId?derived:(paidAmount>0?derived:"Unpaid"),
       paidDate:derived==="Paid"?(data.paidDate||today):(data.paidDate||""),
@@ -9804,9 +9810,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             </div>
             {/* BIR tax this month — input VAT (creditable) + EWT to remit (moved here from the ERP dashboard) */}
             {(()=>{
-              const monthExps=exps.filter(e=>(e.expDate||"").slice(0,7)===today.slice(0,7));
-              const inputVatMonth=monthExps.reduce((s,e)=>s+(Number(e.inputVat)||0),0);
-              const ewtPayableMonth=monthExps.reduce((s,e)=>s+(Number(e.ewtAmount)||0),0);
+              const ym=today.slice(0,7);
+              const monthExps=exps.filter(e=>(e.expDate||"").slice(0,7)===ym);
+              // Payables now carry VAT/EWT too — include both sources, and avoid
+              // double-counting exps already routed to a payable.
+              const monthPays=payables.filter(p=>((p.invoiceDate||p.createdAt||"").slice(0,7)===ym));
+              const inputVatMonth=monthExps.filter(e=>!e.payableId&&!e.cvId).reduce((s,e)=>s+(Number(e.inputVat)||0),0)+monthPays.reduce((s,p)=>s+(Number(p.inputVat)||0),0);
+              const ewtPayableMonth=monthExps.filter(e=>!e.payableId&&!e.cvId).reduce((s,e)=>s+(Number(e.ewtAmount)||0),0)+monthPays.reduce((s,p)=>s+(Number(p.ewtAmount)||0),0);
               if(!(inputVatMonth>0||ewtPayableMonth>0)) return null;
               return(
                 <div style={{display:"flex",flexWrap:"wrap",gap:12,marginBottom:20,padding:"12px 16px",background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:12}}>
@@ -11846,6 +11856,34 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
                 </Fld>
                 <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
+                {/* BIR: VAT + EWT capture (restored from the legacy expense flow) */}
+                {(()=>{
+                  const amt=Number(payForm.amount)||0;
+                  const net=payForm.vatable?Math.round(amt/1.12*100)/100:amt;
+                  const iv=payForm.vatable?Math.round((amt-net)*100)/100:0;
+                  const er=Number(payForm.ewtRate)||0;
+                  const ewt=er>0?Math.round(net*er/100*100)/100:0;
+                  const peso=v=>"₱"+Number(v||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+                  return(
+                    <div style={{border:`1px solid ${ERP.line}`,borderRadius:8,padding:"10px 12px",marginBottom:12,background:"#FAFBFD"}}>
+                      <div style={{fontSize:".7rem",fontWeight:800,color:ERP.navy,textTransform:"uppercase",letterSpacing:".5px",marginBottom:8}}>BIR — VAT / Withholding</div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                        <label style={{display:"flex",alignItems:"center",gap:8,fontSize:".8rem",color:"#334155",fontWeight:600,cursor:"pointer"}}>
+                          <input type="checkbox" checked={!!payForm.vatable} onChange={e=>setPayForm(p=>({...p,vatable:e.target.checked}))} style={{width:16,height:16}}/>
+                          VAT-inclusive (12%)
+                        </label>
+                        <Fld label="EWT Rate"><Sel value={String(payForm.ewtRate||0)} onChange={e=>setPayForm(p=>({...p,ewtRate:Number(e.target.value)}))}>{[["0","None"],["1","1%"],["2","2% (services/goods)"],["5","5%"],["10","10% (rental/pro.)"],["15","15%"]].map(([v,l])=><option key={v} value={v}>{l}</option>)}</Sel></Fld>
+                      </div>
+                      <Fld label="Supplier TIN"><Inp value={payForm.tin||""} onChange={e=>setPayForm(p=>({...p,tin:e.target.value}))} placeholder="000-000-000-000"/></Fld>
+                      <div style={{display:"flex",gap:16,flexWrap:"wrap",fontSize:".74rem",color:ERP.muted,marginTop:4}}>
+                        <span>Net: <strong style={{color:ERP.ink}}>{peso(net)}</strong></span>
+                        {payForm.vatable&&<span>Input VAT: <strong style={{color:ERP.navy}}>{peso(iv)}</strong></span>}
+                        {er>0&&<span>EWT ({er}%): <strong style={{color:ERP.danger}}>−{peso(ewt)}</strong></span>}
+                        {er>0&&<span>Net of EWT: <strong style={{color:ERP.ink}}>{peso(amt-ewt)}</strong></span>}
+                      </div>
+                    </div>
+                  );
+                })()}
                 <Fld label="Notes"><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder="Optional details"/></Fld>
                 <div style={{display:"flex",gap:10,marginTop:18}}>
                   <Btn full variant="green" onClick={()=>savePayable(payForm)}>Save Payable</Btn>
