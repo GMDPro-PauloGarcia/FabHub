@@ -243,6 +243,9 @@ CREATE TABLE IF NOT EXISTS addenda (
   kind            TEXT DEFAULT 'Additive',      -- Additive | Deductive
   scope_items     JSONB DEFAULT '[]'::jsonb,    -- optional BOQ line items (derived from co_boq_data)
   co_boq_data     JSONB DEFAULT NULL,           -- full BOQ Builder payload for this change order
+  sales_owner     TEXT,                         -- AE credited with this change order's sales value
+  awarded_date    DATE,                         -- date Approved; drives the sales-value month
+  sub_account     TEXT,                         -- child brand/sub-account under the parent contract
   ce_no           TEXT,
   receipt_type    TEXT DEFAULT 'OR',
   withholding     BOOLEAN DEFAULT FALSE,
