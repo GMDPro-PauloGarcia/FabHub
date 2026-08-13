@@ -43,6 +43,7 @@ function DailyCashPosition({
   const[histOpen,setHistOpen]=useState(false);
   const[hideAcct,setHideAcct]=useState(true);    // account no./branch/type hidden by default (screen-share friendly)
   const dirtyRef=useRef(false);                 // mirror of `dirty` readable inside the load effect
+  const saveRef =useRef(()=>{});                // always points at the latest handleSave (for unmount auto-save)
   const markDirty =()=>{dirtyRef.current=true; setDirty(true);};
   const clearDirty=()=>{dirtyRef.current=false;setDirty(false);};
 
@@ -87,6 +88,12 @@ function DailyCashPosition({
     window.addEventListener("beforeunload",h);
     return ()=>window.removeEventListener("beforeunload",h);
   },[]);
+
+  // Safety net for IN-APP navigation: beforeunload only fires for full-page unloads,
+  // not when the user clicks another view (this component just unmounts and its
+  // in-memory day would be lost). So on unmount, if the current day still has unsaved
+  // edits, auto-save them — same save-by-default policy used when switching dates.
+  useEffect(()=>()=>{ if(dirtyRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
 
   const switchDate=(d)=>{
     if(d===selDate) return;
@@ -244,6 +251,9 @@ function DailyCashPosition({
     saveDayPos(selDate,{...pos,banks:banksOut,collections:{...pos.collections,total:collTotal},audit,savedAt:at});
     setSaved(true);clearDirty();
   };
+  // Keep the unmount auto-save pointed at the current render's handleSave (it closes
+  // over the latest pos/computed figures), so leaving the page never loses the day.
+  saveRef.current=handleSave;
 
   const histDates=Object.keys(cashPositions).sort().reverse().slice(0,30);
 
