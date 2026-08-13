@@ -1943,7 +1943,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
   const delScopeRow=(i)=>setScopeItems(r=>r.filter((_,j)=>j!==i));
 
   const visibleAddenda=canCreate
-    ?(role==="Manager"?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
+    ?(["Manager","QS"].includes(role)?addenda:addenda.filter(a=>myProjects.find(d=>d.id===a.dealId)))
     :addenda;
   const filteredAddenda=addSearch
     ?visibleAddenda.filter(a=>{const d=wonDeals.find(x=>x.id===a.dealId);return[a.title,a.status,d?.client,d?.ceNo].join(" ").toLowerCase().includes(addSearch.toLowerCase());})
@@ -2021,7 +2021,7 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
             <label style={{fontSize:".8rem",fontWeight:700,color:"#64748b",display:"block",marginBottom:4}}>Project <span style={{color:"#ef4444"}}>*</span></label>
             <select value={selDealId} onChange={e=>setSelDealId(e.target.value)}
               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".85rem"}}>
-              {(role==="Manager"?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
+              {(["Manager","QS"].includes(role)?wonDeals:myProjects).map(d=><option key={d.id} value={d.id}>{d.client} — {d.ceNo}</option>)}
             </select>
           </div>
           <div>
@@ -5908,20 +5908,24 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // deals have no additive/deductive concept, so we default to Additive; the CO
   // enters as "Discovered" (the normal entry point) for Ops to approve on the
   // Scope Changes page, at which point it rolls into the parent contract.
-  const convertChildToCO=(child)=>{
-    if(!child?.parentDealId){toastEmit("This deal has no parent to attach a change order to.","error");return;}
-    if(!canDeleteDeal){toastEmit("You don't have permission to convert this deal.","error");return;}
+  const convertChildToCO=(child,opts={})=>{
+    const {silent=false}=opts;
+    if(!child?.parentDealId){if(!silent)toastEmit("This deal has no parent to attach a change order to.","error");return false;}
+    if(!canDeleteDeal){if(!silent)toastEmit("You don't have permission to convert this deal.","error");return false;}
     const parent=deals.find(d=>d.id===child.parentDealId);
-    if(!parent){toastEmit("Parent project not found.","error");return;}
+    if(!parent){if(!silent)toastEmit("Parent project not found.","error");return false;}
     const title=(child.contact||child.product||child.client||"Scope Change").trim();
     // Carry any BOQ line items over as the change order's scope items so approval
     // flows them into the parent BOQ; otherwise fall back to a single lump value.
+    // The child's FULL BOQ (sections, markup, VAT…) is carried as coBoqData so the
+    // change order opens in the BOQ Builder exactly as it was built on the deal.
     const boqItems=Array.isArray(child.boqData?.items)?child.boqData.items:[];
     const scopeItems=boqItems.filter(it=>(it.description||"").trim()).map(it=>({description:(it.description||"").trim(),qty:Number(it.qty)||0,unit:it.unit||"lot",rate:Number(it.unitCost!=null?it.unitCost:it.rate)||0}));
     const rec={
-      id:"add"+Date.now(),dealId:parent.id,
+      id:"add"+Date.now()+Math.floor(Math.random()*1000),dealId:parent.id,
       title,description:(child.notes||`Converted from linked deal "${title}".`).trim(),
       kind:"Additive",value:Math.abs(Number(child.value)||0),scopeItems,
+      coBoqData:child.boqData||null,
       ceNo:parent.ceNo||child.ceNo||"",
       receiptType:parent.receiptType||"OR",
       withholding:parent.withholding||false,
@@ -5934,7 +5938,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     logActivity(parent.id,"Change Order Created",`${session?.name||role} converted linked deal "${title}" (₱${Number(rec.value).toLocaleString("en-PH")}) into an additive change order — pending approval.`);
     // Retire the now-redundant child deal (cascade handled by delDeal).
     delDeal(child.id);
-    toastEmit("Converted to Change Order — review & approve on Scope Changes.","success");
+    if(!silent)toastEmit("Converted to Change Order — review & approve on Scope Changes.","success");
+    return true;
+  };
+  // Bulk: convert every linked child deal of a parent into a change order in one
+  // action. Keeps the per-deal ⇄ CO button; this just fans it out across all
+  // children of the given parent and reports a single summary toast.
+  const convertAllChildrenToCO=(parent)=>{
+    if(!parent){toastEmit("Parent project not found.","error");return;}
+    if(!canDeleteDeal){toastEmit("You don't have permission to convert these deals.","error");return;}
+    const children=deals.filter(d=>d.parentDealId===parent.id);
+    if(!children.length){toastEmit("No linked deals to convert on this project.","info");return;}
+    let n=0;
+    children.forEach(c=>{if(convertChildToCO(c,{silent:true}))n++;});
+    toastEmit(`Converted ${n} linked deal${n===1?"":"s"} on ${parent.client||"this project"} into change orders — review & approve on Scope Changes.`,"success");
   };
 
   const updatePayment=(id,key,val)=>upDeals(ds=>ds.map(d=>d.id===id?{...d,[key]:val}:d));
@@ -6822,6 +6839,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview", items:[{id:"home",l:"Dashboard"}]},
       {group:"Sales",    items:[{id:"pipeline",l:"Sales Pipeline"}]},
       {group:"CE / QS",  items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
+      {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     Operations:[
       {group:"Overview",  items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
@@ -10793,6 +10811,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                         {isChild&&canDeleteDeal&&<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
+                        {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
                       </td>
                     </tr>
                   );
