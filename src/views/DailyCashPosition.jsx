@@ -89,7 +89,24 @@ function DailyCashPosition({
   },[]);
 
   const switchDate=(d)=>{
-    if(dirtyRef.current&&!window.confirm(`You have unsaved changes for ${fmtDate(selDate)}. Discard them and switch to ${fmtDate(d)}?`)) return;
+    if(d===selDate) return;
+    // Non-destructive switch: never silently drop unsaved finance data. If the
+    // current day has unsaved edits, SAVE them by default before leaving — the
+    // old behaviour discarded on switch, which is how a full day of collections,
+    // disbursements and floating-check changes could vanish just by clicking
+    // another date. The user can still explicitly discard.
+    if(dirtyRef.current){
+      const save=window.confirm(
+        `You have unsaved changes for ${fmtDate(selDate)}.\n\n`+
+        `• OK = Save them, then open ${fmtDate(d)}\n`+
+        `• Cancel = Discard the changes and open ${fmtDate(d)}`
+      );
+      if(save){
+        handleSave();           // persists selDate + appends an audit entry
+      }else if(!window.confirm(`Discard all unsaved changes for ${fmtDate(selDate)}? This cannot be undone.`)){
+        return;                 // second Cancel = stay put, keep editing
+      }
+    }
     setSelDate(d);
     loadDay(d);
   };
