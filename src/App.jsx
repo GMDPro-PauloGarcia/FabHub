@@ -11565,7 +11565,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {finTab==="pl"&&role!=="Accounting"&&(
           <>
             <SecHead title="P&L / Income Statement" sub="Revenue, collections, expenses and gross profit"/>
-            <PLStatement billings={billings} exps={exps} wonDeals={wonDeals}/>
+            <PLStatement billings={billings} exps={exps} payables={payables} wonDeals={wonDeals}/>
           </>
         )}
 
@@ -11576,7 +11576,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             const ms=billings.filter(b=>b.dealId===d.id&&b.status!=="Cancelled");
             const billed=ms.reduce((s,b)=>s+Number(b.amount||0),0);
             const collected=ms.reduce((s,b)=>s+(b.payments||[]).reduce((ss,p)=>ss+Number(p.amount||0),0),0);
-            const directExp=exps.filter(e=>(e.projectId||e.dealId)===d.id).reduce((s,e)=>s+Number(e.amount||0),0);
+            // Direct cost on the AP-ledger basis: payables for this project +
+            // legacy expenses not already routed to a payable (no double count).
+            const projPay=payables.filter(p=>p.projectId===d.id).reduce((s,p)=>s+Number(p.amount||0),0);
+            const projExp=exps.filter(e=>(e.projectId||e.dealId)===d.id&&!e.payableId&&!e.cvId).reduce((s,e)=>s+Number(e.amount||0),0);
+            const directExp=projPay+projExp;
             const grossProfit=collected-directExp;
             const margin=collected>0?Math.round(grossProfit/collected*100):null;
             const contractVal=Number(d.value||0);
@@ -14994,7 +14998,7 @@ First few:
 }
 
 // ─── P&L STATEMENT ────────────────────────────────────────────────────────────
-function PLStatement({billings,exps,wonDeals}){
+function PLStatement({billings,exps,payables=[],wonDeals}){
   const curYear=new Date().getFullYear();
   const[year,setYear]=useState(curYear);
   const[view,setView]=useState("monthly");
@@ -15030,12 +15034,20 @@ function PLStatement({billings,exps,wonDeals}){
 
   const expByMonth=useMemo(()=>{
     const arr=Array(12).fill(0);
+    // AP-ledger basis: legacy expenses not routed to a payable + all payables,
+    // so the P&L tab matches the account-code Income Statement.
     exps.forEach(e=>{
+      if(e.payableId||e.cvId) return;
       if((e.year||curYear)!==year) return;
       arr[Number(e.month||0)]+=Number(e.amount||0);
     });
+    (payables||[]).forEach(p=>{
+      const d=new Date(p.invoiceDate||p.createdAt||"");
+      if(isNaN(d)||d.getFullYear()!==year) return;
+      arr[d.getMonth()]+=Number(p.amount||0);
+    });
     return arr;
-  },[exps,year,curYear]);
+  },[exps,payables,year,curYear]);
 
   const gpByMonth=revByMonth.map((r,i)=>r-expByMonth[i]);
   const ytdRev=revByMonth.reduce((s,v)=>s+v,0);
