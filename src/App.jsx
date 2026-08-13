@@ -21338,6 +21338,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[editPayForm,setEditPayForm]=useState({});
   const[billingSearch,setBillingSearch]=useState("");
   const[billingFilter,setBillingFilter]=useState("all"); // all | outstanding | overdue | collected | uncollected | paid
+  const[showNotBilled,setShowNotBilled]=useState(false);  // hide 0-milestone "Not billed" projects by default
   const[forecastRange,setForecastRange]=useState("week"); // today | week | month — collection forecast horizon
 
   const n =v=>Number(String(v||0).replace(/,/g,""))||0;
@@ -21833,7 +21834,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const _baseDeals=wonDeals;
   const _baseIds=new Set(_baseDeals.map(d=>d.id));
   const _addendumDeals=deals.filter(d=>d.parentDealId&&_baseIds.has(d.parentDealId)&&!_baseIds.has(d.id));
-  const projectSummaries=[..._baseDeals,..._addendumDeals].map(d=>{
+  const _allSummaries=[..._baseDeals,..._addendumDeals].map(d=>{
     const ms=billings.filter(b=>b.dealId===d.id);
     const billed   =ms.filter(m=>m.status!=="Cancelled").reduce((s,m)=>s+n(m.amount),0);
     const collected=ms.reduce((s,m)=>s+(m.payments||[]).filter(p=>!p.bounced).reduce((ps,p)=>ps+n(p.amount),0),0);
@@ -21841,11 +21842,16 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     const hasOverdue=ms.some(m=>m.dueDate&&m.dueDate<today&&m.status!=="Fully Paid"&&m.status!=="Cancelled");
     const fullyPaid=billed>0&&balance===0;
     return{d,ms,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount:ms.length};
-  }).filter(({d,billed,collected,balance,hasOverdue,fullyPaid})=>{
+  });
+  // Count of awarded projects with no billing set up yet — hidden by default.
+  const notBilledCount=_allSummaries.filter(s=>s.milestoneCount===0).length;
+  const projectSummaries=_allSummaries.filter(({d,billed,collected,balance,hasOverdue,fullyPaid,milestoneCount})=>{
     const q=billingSearch.toLowerCase();
     const matchSearch=!q||(d.client||"").toLowerCase().includes(q)||(d.ceNo||"").toLowerCase().includes(q)||(d.contact||"").toLowerCase().includes(q);
     const matchFilter=billingFilter==="all"||(billingFilter==="outstanding"&&balance>0&&!fullyPaid)||(billingFilter==="paid"&&fullyPaid)||(billingFilter==="overdue"&&hasOverdue)||(billingFilter==="collected"&&collected>0)||(billingFilter==="uncollected"&&billed>0&&collected===0);
-    return matchSearch&&matchFilter;
+    // Hide "Not billed" (0-milestone) projects unless the toggle is on or the user is searching.
+    const matchNotBilled=milestoneCount>0||showNotBilled||!!q;
+    return matchSearch&&matchFilter&&matchNotBilled;
   });
 
   // CSV Export function
@@ -22000,6 +22006,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             </button>
           ))}
         </div>
+        {notBilledCount>0&&(
+          <button onClick={()=>setShowNotBilled(v=>!v)}
+            title={showNotBilled?"Hide projects with no billing set up":"Show projects with no billing set up"}
+            style={{padding:"7px 13px",borderRadius:20,border:`1.5px dashed ${showNotBilled?"#1e293b":"#cbd5e1"}`,background:showNotBilled?"#1e293b":"#fff",color:showNotBilled?"#fff":"#94a3b8",fontFamily:"inherit",fontSize:".75rem",fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>
+            {showNotBilled?"Hide":"Show"} not billed ({notBilledCount})
+          </button>
+        )}
       </div>
 
       {/* ── PROJECT LIST TABLE ──────────────────────────────────────────── */}
