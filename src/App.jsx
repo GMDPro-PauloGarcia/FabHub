@@ -1893,7 +1893,7 @@ function PmUpdateModal({pmUpdateModal,setPmUpdateModal,session,logActivity:logAc
 
 // ─── ADDENDA PAGE CONTENT ─────────────────────────────────────────────────────
 // Extracted from App IIFE to fix React hooks #310 — hooks must be at top level
-function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActivity}){
+function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActivity,onOpenCoBoq}){
   const canCreate=!["Sales","Finance"].includes(role);
   const myName=session?.name||"";
   const myProjects=wonDeals.filter(d=>{
@@ -1964,7 +1964,10 @@ function AddendaPageContent({role,wonDeals,jos,session,addenda,upAddenda,logActi
                           <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>By {a.discoveredBy||"—"}</div>
                           {a.description&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2,lineHeight:1.4}}>{a.description}</div>}
                         </div>
-                        <span style={{marginLeft:8,fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap",flexShrink:0}}>{a.status}</span>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:8,flexShrink:0}}>
+                          {canCreate&&onOpenCoBoq&&<button onClick={()=>onOpenCoBoq(a.id)} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".66rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>}
+                          <span style={{fontSize:".68rem",fontWeight:700,color:statusClr[a.status]||"#64748b",background:(statusClr[a.status]||"#64748b")+"18",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>{a.status}</span>
+                        </div>
                       </div>
                       {Number(a.value)>0&&<div style={{fontSize:".75rem",color:a.kind==="Deductive"?"#dc2626":"#059669",marginTop:3,fontWeight:600}}>{fmtSigned(coSignedValue(a))} {a.kind==="Deductive"?"deducted":"additional"}{Array.isArray(a.scopeItems)&&a.scopeItems.length?` · ${a.scopeItems.length} BOQ item${a.scopeItems.length>1?"s":""}`:""}</div>}
                     </div>
@@ -2799,7 +2802,7 @@ export default function App(){
             if(_mreqs){setMreqs(prev=>mergeLocalOnly(_mreqs,prev));idbE.push([KEYS.mreqs,_mreqs]);}
             const _breqs=data.breqs?.length?data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at})):null;
             if(_breqs){setBreqs(prev=>mergeLocalOnly(_breqs,prev));idbE.push([KEYS.breqs,_breqs]);}
-            const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[]})):null;
+            const _addenda=data.addenda?.length?data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null})):null;
             if(_addenda){setAddenda(prev=>mergeLocalOnly(_addenda,prev));idbE.push([KEYS.addenda,_addenda]);}
             const _checklist=data.checklist?.length?data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note})):null;
             if(_checklist){setChecklist(prev=>mergeLocalOnly(_checklist,prev));idbE.push([KEYS.checklist,_checklist]);}
@@ -3084,7 +3087,7 @@ export default function App(){
     if(data.prs?.length){const ps=data.prs.map(p=>({...p,dealId:p.deal_id,projectId:p.deal_id,itemName:p.item||"",estimatedCost:Number(p.estimated_cost)||0,estUnitCost:Number(p.estimated_cost)||0,actualCost:Number(p.actual_cost)||0,actUnitCost:Number(p.actual_cost)||0,budgetCategory:p.budget_category,qtyDelivered:Number(p.qty_delivered)||0,deliveryDate:p.delivery_date,deliveryNote:p.delivery_note||"",drNo:p.dr_no,createdBy:p.created_by,poNumber:p.po_number||"",poDate:p.po_date||"",requestedBy:p.requested_by||p.created_by||"",approvedBy:p.approved_by||"",projectName:p.project_name||"",acctStatus:p.acct_status||"",acctNotes:p.acct_notes||"",acctCheckedBy:p.acct_checked_by||"",acctCheckedAt:p.acct_checked_at||"",paymentBank:p.payment_bank||"",paymentRef:p.payment_ref||"",paymentOrderedBy:p.payment_ordered_by||"",paymentOrderedAt:p.payment_ordered_at||"",paidRef:p.paid_ref||"",paidDate:p.paid_date||"",paidAmt:p.paid_amt!=null?Number(p.paid_amt):null,paidBy:p.paid_by||"",discType:p.disc_type||"none",discValue:Number(p.disc_value)||0,poDiscType:p.po_discount_type||"none",poDiscValue:Number(p.po_discount_value)||0,withVat:p.with_vat||false,accountCode:p.account_code||""}));setPrs(prev=>mergeLocalOnly(ps,prev));idbE.push([KEYS.prs,ps]);}
     if(data.mreqs?.length){const ms=data.mreqs.map(m=>({...m,dealId:m.deal_id,projectId:m.deal_id,itemName:m.item||"",estimatedCost:Number(m.estimated_cost)||0,estUnitCost:Number(m.estimated_cost)||0,submittedBy:m.submitted_by,requestedBy:m.submitted_by||"",statusChangedAt:m.status_changed_at}));setMreqs(prev=>mergeLocalOnly(ms,prev));idbE.push([KEYS.mreqs,ms]);}
     if(data.breqs?.length){const bs2=data.breqs.map(b=>({...b,dealId:b.deal_id,projectId:b.deal_id,dateNeeded:b.date_needed,approvedBy:b.approved_by,submittedBy:b.submitted_by,requestedBy:b.submitted_by||"",releasedBy:b.released_by||"",releasedAt:b.released_at,statusChangedAt:b.status_changed_at}));setBreqs(prev=>mergeLocalOnly(bs2,prev));idbE.push([KEYS.breqs,bs2]);}
-    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[]}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
+    if(data.addenda?.length){const as=data.addenda.map(a=>({...a,dealId:a.deal_id,receiptType:a.receipt_type,salesNotified:a.sales_notified,discoveredBy:a.discovered_by,kind:a.kind||"Additive",scopeItems:Array.isArray(a.scope_items)?a.scope_items:[],coBoqData:a.co_boq_data||null}));setAddenda(prev=>mergeLocalOnly(as,prev));idbE.push([KEYS.addenda,as]);}
     if(data.checklist?.length){const cs=data.checklist.map(c=>({...c,projectId:c.deal_id,dealId:c.deal_id,assignedTo:c.assigned_to,dueDate:c.due_date,riskNote:c.risk_note,sortOrder:c.sort_order}));setChecklist(prev=>mergeLocalOnly(cs,prev));idbE.push([KEYS.checklist,cs]);}
     if(data.swatches?.length){const ss=data.swatches.map(s=>({...s,dealId:s.deal_id,refLink:s.ref_link}));setSwatches(prev=>mergeLocalOnly(ss,prev));idbE.push([KEYS.swatches,ss]);}
     if(data.actLog?.length)      setActLog(prev=>mergeLocalOnly(data.actLog.map(a=>({...a,dealId:a.deal_id})),prev));
@@ -3296,6 +3299,7 @@ export default function App(){
     cost_impact:Number(r.costImpact||r.value)||0,
     status:r.status||"Discovered", sales_notified:r.salesNotified||false,
     discovered_by:r.discoveredBy||"", client_approved:r.clientApproved||false,
+    co_boq_data:r.coBoqData||null,
   });
   const toSbSwatch = r=>({
     id:r.id, deal_id:r.dealId||r.projectId||null, name:r.name||"", category:r.category||"",
@@ -4093,7 +4097,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const rec=payload.new;
         const mapped={...rec,dealId:rec.deal_id,receiptType:rec.receipt_type,
           salesNotified:rec.sales_notified,discoveredBy:rec.discovered_by,
-          kind:rec.kind||"Additive",scopeItems:Array.isArray(rec.scope_items)?rec.scope_items:[]};
+          kind:rec.kind||"Additive",scopeItems:Array.isArray(rec.scope_items)?rec.scope_items:[],coBoqData:rec.co_boq_data||null};
         setAddenda(as=>{const ex=as.find(a=>a.id===rec.id);
           return ex?as.map(a=>a.id===rec.id?{...a,...mapped}:a):[...as,mapped];});
       }
@@ -5508,6 +5512,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[boqDealId,   setBoqDealId]    = useState(null);
   const[standaloneBoqs,setStandaloneBoqs]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:standaloneBoqs")||"[]");}catch{return [];}});
   const[boqStandaloneId,setBoqStandaloneId]=useState(null);
+  const[boqCoId,      setBoqCoId]     = useState(null);
   // Standalone BOQs all live in ONE app_settings blob. Writing the local array
   // wholesale is last-write-wins: a client with a stale copy clobbers BOQs
   // other users added (reported live — a saved BOQ vanished for everyone). So
@@ -6812,7 +6817,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
       return(
-        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);}}
+        <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
@@ -6963,7 +6968,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(id==="payables"){setFinTab("payables");pg="finance";}
       else if(id==="executive"){setFinTab("overview");pg="finance";}
       else if(id==="finance"){pg="acctdash";} // Finance home = ERP operational dashboard
-      setPage(pg);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);if(id==="home")setFromHome(false);
+      setPage(pg);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
     };
     // For Manager show fixed key tabs + More; others show first 4 + Me
     const primaryIds=role==="Manager"
@@ -7367,7 +7372,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{a.title||"Untitled Scope Change"}</div>
                         <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.status}</div>
                       </div>
-                      <button onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>Review →</button>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <button onClick={()=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Open this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 10px",color:"#1d4ed8",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer",whiteSpace:"nowrap"}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>
+                        <button onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{background:"#f59e0b",border:"none",borderRadius:7,padding:"5px 12px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".72rem",cursor:"pointer"}}>Review →</button>
+                      </div>
                     </div>
                   );
                 })}
@@ -7789,7 +7797,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <div style={{fontWeight:600,color:"#0f172a",fontSize:".83rem"}}>{a.title}</div>
                         <div style={{fontSize:".7rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy||"?"}</div>
                       </div>
-                      <span style={{fontSize:".7rem",background:"#fef9c3",color:"#92400e",border:"1px solid #fde047",borderRadius:20,padding:"2px 8px",fontWeight:600}}>Needs price</span>
+                      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+                        <button onClick={e=>{e.stopPropagation();setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>🧮 Build BOQ</button>
+                        <span style={{fontSize:".7rem",background:"#fef9c3",color:"#92400e",border:"1px solid #fde047",borderRadius:20,padding:"2px 8px",fontWeight:600}}>Needs price</span>
+                      </div>
                     </div>
                   );
                 })}
@@ -8736,9 +8747,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
                 :newScope.slice(0,5).map((a,i)=>{
                   const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",cursor:"pointer"}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy} · ₱{Number(a.value||0).toLocaleString()}</div>
+                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<4?"1px solid #f8fafc":"",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                      <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · {a.discoveredBy} · ₱{Number(a.value||0).toLocaleString()}</div>
+                    </div>
+                    <button onClick={e=>{e.stopPropagation();setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Build this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>
                   </div>);
                 })
               }
@@ -8860,10 +8874,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 ?<div style={{padding:"16px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>✅ No open scope changes</div>
                 :newScope.slice(0,5).map((a,i)=>{
                   const d=wonDeals.find(x=>x.id===a.dealId);
-                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<newScope.length-1?"1px solid #f8fafc":"",cursor:"pointer"}}>
-                    <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
-                    <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · AE: {d?.salesOwner||"—"} · {a.status}</div>
-                    {a.value>0&&<div style={{fontSize:".72rem",color:"#059669",marginTop:1}}>Est. ₱{Number(a.value).toLocaleString()} additional</div>}
+                  return(<div key={a.id} onClick={()=>{setJumpDeal(a.dealId);setPage("projects");}} style={{padding:"9px 14px",borderBottom:i<newScope.length-1?"1px solid #f8fafc":"",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",gap:8}}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontWeight:600,color:"#0f172a",fontSize:".82rem"}}>{a.title}</div>
+                      <div style={{fontSize:".72rem",color:"#94a3b8"}}>{d?.client||"?"} · AE: {d?.salesOwner||"—"} · {a.status}</div>
+                      {a.value>0&&<div style={{fontSize:".72rem",color:"#059669",marginTop:1}}>Est. ₱{Number(a.value).toLocaleString()} additional</div>}
+                    </div>
+                    <button onClick={e=>{e.stopPropagation();setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(a.id);setPage("boq");}} title="Open this change order's BOQ (sections, rate card, markup)" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"3px 9px",fontSize:".68rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",flexShrink:0}}>🧮 BOQ{(a.coBoqData?.items?.length)?` (${a.coBoqData.items.length})`:""}</button>
                   </div>);
                 })
               }
@@ -10453,7 +10470,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     <div style={{display:"flex",gap:4}}>
                       {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>✏</button>}
                       {role==="QS"&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>₱</button>}
-                      {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
+                      {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}} title="Open BOQ Builder">🧮</button>}
                       {(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>:<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",minHeight:36}}>🏆</button>}
                       {(canDeleteDeal||role==="Manager"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setRowMenu(rowMenu&&rowMenu.deal.id===d.id?null:{deal:d,top:r.bottom+4,right:Math.max(8,window.innerWidth-r.right)});}} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:6,padding:"11px 13px",fontSize:".8rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",minHeight:36,fontWeight:700}} title="More actions">⋯</button>}
                     </div>
@@ -10488,7 +10505,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 {(role==="Manager"||role==="Sales")&&<button onClick={()=>openEditDeal(d)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}} title="Edit">✏</button>}
                 {role==="QS"&&!d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#7c3aed",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Set Client Price">₱</button>}
                 {role==="QS"&&d.value&&<button onClick={()=>setPriceModal(d)} style={{background:"#ede9fe",border:"1px solid #c4b5fd",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#7c3aed",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Update Client Price">₱✏</button>}
-                {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">🧮 BOQ</button>}
+                {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={()=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"4px 9px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit",whiteSpace:"nowrap"}} title="Open BOQ Builder for this deal">🧮 BOQ</button>}
                 {(role==="Manager"||role==="Sales"||role==="SalesOpsAdmin")
                   ?<button onClick={()=>openAward(d)} style={{background:"#059669",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Award Project">🏆</button>
                   :<button onClick={()=>setAwardReqModal(d)} style={{background:"#f59e0b",border:"none",borderRadius:5,padding:"4px 7px",fontSize:".68rem",color:"#fff",cursor:"pointer",fontWeight:700,fontFamily:"inherit"}} title="Request Award">🏆</button>
@@ -10708,7 +10725,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </td>
                       <td style={{padding:cpA,verticalAlign:"middle",display:"flex",gap:4,alignItems:"center"}}>
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                        {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
+                        {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
                         {isChild&&canDeleteDeal&&<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
                       </td>
@@ -12095,7 +12112,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           name={session?.name?.split(" ")[0]||"Team"}
           subtitle={`QS / Cost Control · ${todayL}`}
           buttons={[
-            {label:"BOQ",   icon:"🧮", bg:"#8b5cf6", action:()=>{setBoqDealId(null);setBoqStandaloneId(null);setPage("boq");}},
+            {label:"BOQ",   icon:"🧮", bg:"#8b5cf6", action:()=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);setPage("boq");}},
             {label:"CE Request",    icon:"📐", bg:"#06b6d4", action:()=>setPage("ceqs")},
             {label:"Cost Analysis", icon:"💹", bg:"#059669", action:()=>setPage("costanalysis")},
             {label:"Budget",        icon:"📊", bg:"#1e293b", action:()=>setPage("budget")},
@@ -13125,7 +13142,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="addenda") return(
     <Wrap>
       <SecHead title="⚠️ Scope Changes" sub={["Sales","Finance"].includes(role)?"View all scope changes across active projects":"Flag addenda discovered on site — AE and Paolo will be notified"}/>
-      <AddendaPageContent role={role} wonDeals={wonDeals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity}/>
+      <AddendaPageContent role={role} wonDeals={wonDeals} jos={jos} session={session} addenda={addenda} upAddenda={upAddenda} logActivity={logActivity} onOpenCoBoq={id=>{setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(id);setPage("boq");}}/>
     </Wrap>
   );
 
@@ -13460,9 +13477,30 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(page==="subcontractors") return(<Wrap><SubconMasterView subcons={subcons} addSubcon={addSubcon} updateSubcon={updateSubcon} deleteSubcon={deleteSubcon} session={session} role={role}/></Wrap>);
   if(page==="ceqs") return(<Wrap><CEQSView ceReqs={ceReqs} addCEReq={addCEReq} updateCEReq={updateCEReq} session={session} role={role} toastEmit={toastEmit} deals={deals}/></Wrap>);
   if(page==="boq"){
+    if(boqCoId){
+      const co=addenda.find(a=>a.id===boqCoId);
+      if(!co){setBoqCoId(null);return null;}
+      // A change order builds its own BOQ. On save we derive the flat scope line
+      // items + a value from the built BOQ, so the existing approval → contract →
+      // BOQ merge → billing pipeline (syncCoBoq / syncCoBilling) keeps working.
+      const saveCoBoq=(coId,bd)=>{
+        const items=Array.isArray(bd.items)?bd.items:[];
+        const scopeItems=items.filter(it=>(it.description||"").trim()).map(it=>({
+          description:(it.description||"").trim(),
+          qty:Number(it.qty)||0,
+          unit:it.unit||"lot",
+          rate:Number(it.unitCost!=null?it.unitCost:it.baseCost)||0,
+          section:it.section||"CO",
+          subsection:it.subsection||"",
+        }));
+        const magnitude=Math.round(scopeItems.reduce((s,it)=>s+it.qty*it.rate,0)*100)/100;
+        updateAddendum(coId,{coBoqData:bd,scopeItems,value:magnitude});
+      };
+      return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialCoId={boqCoId} coRecord={co} saveCoBoq={saveCoBoq} onBack={()=>setBoqCoId(null)}/></Wrap>);
+    }
     if(boqDealId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} initialDealId={boqDealId} clearBoqDeal={()=>setBoqDealId(null)} onBack={()=>setBoqDealId(null)} onBoqValue={(dealId,netTotal)=>{const v=Math.round((Number(netTotal)||0)*100)/100;const cur=deals.find(d=>d.id===dealId);if(cur&&Math.round((Number(cur.value)||0)*100)/100===v)return;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:v}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:v}).catch(()=>{});}} onBoqData={(dealId,bd)=>upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData:bd}:d))} onUnlinkToStandalone={(b)=>{const did=boqDealId;const id=uid();saveStandaloneBoq({id,title:b.boqTitle||"",location:b.location||"",quotationNo:b.quotationNo||"",boqDate:b.boqDate||today,items:b.items||[],sections:b.sections||[],vatEnabled:b.vatEnabled!==false,discount:b.discount||"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");delete drafts[did];localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',did,{boq_data:null}).catch(()=>{});setBoqDealId(null);setBoqStandaloneId(id);toastEmit&&toastEmit("✅ BOQ unlinked to Standalone","success");}}/></Wrap>);
     if(boqStandaloneId) return(<Wrap><BOQBuilder wonDeals={wonDeals} deals={deals} jos={jos} session={session} role={role} toastEmit={toastEmit} boqLibrary={boqLibrary} setBoqLibrary={setBoqLibrary} standaloneBoqs={standaloneBoqs} saveStandaloneBoq={saveStandaloneBoq} initialStandaloneId={boqStandaloneId} clearBoqStandalone={()=>setBoqStandaloneId(null)} onBack={()=>setBoqStandaloneId(null)} onLinkToDeal={(dealId,boqData)=>{const sid=boqStandaloneId;try{const drafts=JSON.parse(localStorage.getItem(KEYS.boqDrafts)||"{}");drafts[dealId]=boqData;localStorage.setItem(KEYS.boqDrafts,JSON.stringify(drafts));}catch{}if(isSupabaseReady())sbUpdate('deals',dealId,{boq_data:boqData}).catch(()=>{});const bi=boqData.items||[];if(bi.length){const grand=bi.reduce((s,it)=>s+(Number(it.total)||0),0);const disc=Math.min(Math.max(Number(boqData.discount)||0,0),grand);const net=Math.round((grand-disc)*100)/100;upDeals(ds=>ds.map(d=>d.id===dealId?{...d,value:net,boqData}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{value:net}).catch(()=>{});}else{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,boqData}:d));}deleteStandaloneBoq(sid);setBoqStandaloneId(null);setBoqDealId(dealId);toastEmit&&toastEmit("✅ BOQ linked to project — deal value set from BOQ","success");}}/></Wrap>);
-    return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
+    return(<Wrap><BOQHomeView standaloneBoqs={standaloneBoqs} deals={deals} session={session} role={role} today={today} onOpenStandalone={id=>{setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onOpenDeal={id=>{setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(id);}} onNewStandalone={()=>{const id=uid();saveStandaloneBoq({id,title:"",location:"",quotationNo:"",boqDate:today,items:[],sections:[],vatEnabled:true,discount:"",createdBy:session?.name||"",createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});setBoqCoId(null);setBoqDealId(null);setBoqStandaloneId(id);}} onDeleteStandalone={deleteStandaloneBoq}/></Wrap>);
   }
 
   if(page==="coa") return(<Wrap><ChartOfAccountsView chartOfAccounts={chartOfAccounts} saveChartOfAccounts={saveChartOfAccounts} session={session} role={role}/></Wrap>);
