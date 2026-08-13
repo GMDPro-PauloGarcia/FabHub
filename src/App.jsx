@@ -6258,7 +6258,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const exp=exps.find(e=>e.id===expId);
     if(!exp) return;
     const payId=uid();
-    const payRec={vendor:exp.supplier||exp.payee||exp.note||"—",amount:Number(exp.amount||0),dueDate:exp.expDate||today,projectId:exp.projectId||null,category:exp.category||"Supplier",notes:exp.note||"",invoiceRef:exp.receipt||"",sourceExpenseId:expId,expenseId:expId,id:payId,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
+    const payRec={vendor:exp.supplier||exp.payee||exp.note||"—",amount:Number(exp.amount||0),dueDate:exp.expDate||today,projectId:exp.projectId||null,category:exp.category||"Supplier",accountCode:exp.accountCode||"6800",notes:exp.note||"",invoiceRef:exp.receipt||"",sourceExpenseId:expId,expenseId:expId,id:payId,status:"Unpaid",createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[payRec,...ps]);
     upExps(es=>es.map(e=>e.id===expId?{...e,acctStatus:"For Payment",paymentMethod:"BizLink",payableId:payId,routedBy:session?.name||"",routedAt:new Date().toISOString()}:e));
     if(isSupabaseReady()){sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});sbUpsert("expenses",toSbExpense({...exp,paymentMethod:"BizLink",payableId:payId}),"id").catch(()=>{});}
@@ -6540,7 +6540,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       return upd;
     }
     const rec={id:uid(),apNumber:nextApNumber(),vendor:supplier,amount,paidAmount:0,dueDate:"",category:"Supplier",
-      accountCode:active[0]?.accountCode||"",
+      accountCode:active[0]?.accountCode||"5000", // default supplier materials → Cost of Materials - Construction
       invoiceRef:poNo,invoiceNumber:"",invoiceDate:"",notes:`Auto-created from PO ${poNo}`,projectId:linkedProjectId,
       poNumber:poNo,poId:poNo,status:"Unpaid",verified:false,verificationPct:0,createdAt:today,createdBy:session?.name||""};
     upPayables(ps=>[rec,...ps]);
@@ -6577,6 +6577,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const savePayable=(data)=>{
     if(!data.vendor||!data.amount) return;
+    if(!String(data.accountCode||"").trim()){toastEmit("Select a Chart-of-Accounts code before saving — it drives the financial statements.","error");return;}
     const amount=Number(data.amount);
     const paidAmount=Number(data.paidAmount)||0;
     // Derive status from what's actually been paid so a manually entered payable
@@ -11837,11 +11838,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {payForm.dueDate&&payForm.dueDate<today&&<div style={{fontSize:".72rem",color:"#ef4444",marginTop:3,fontWeight:600}}>⚠ Due date is in the past — this payable is already overdue.</div>}
                 </Fld>
                 <Fld label="Category"><Sel value={payForm.category} onChange={e=>setPayForm(p=>({...p,category:e.target.value}))}>{["Supplier","Subcontractor","Utility","Rent","Labor","Government","Other"].map(c=><option key={c}>{c}</option>)}</Sel></Fld>
-                <Fld label="Account (Chart of Accounts)">
+                <Fld label="Account (Chart of Accounts)" required>
                   <Sel value={payForm.accountCode||""} onChange={e=>setPayForm(p=>({...p,accountCode:e.target.value}))}>
                     <option value="">— Select account —</option>
                     {[...chartOfAccounts].filter(a=>a.active!==false&&(a.type==="COGS"||a.type==="Expense"||a.type==="Asset")).sort((a,b)=>String(a.code).localeCompare(String(b.code))).map(a=><option key={a.id||a.code} value={a.code}>{a.code} · {a.name}</option>)}
                   </Sel>
+                  {!payForm.accountCode&&<div style={{fontSize:".72rem",color:"#b45309",marginTop:3,fontWeight:600}}>Required — this drives the account-code financial statements.</div>}
                 </Fld>
                 <Fld label="Link to Project"><Sel value={payForm.projectId||"none"} onChange={e=>setPayForm(p=>({...p,projectId:e.target.value==="none"?null:e.target.value}))}><option value="none">— No project</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" — "+d.contact:""}</option>)}</Sel></Fld>
                 <Fld label="Notes"><Inp value={payForm.notes||""} onChange={e=>setPayForm(p=>({...p,notes:e.target.value}))} placeholder="Optional details"/></Fld>
@@ -12756,7 +12758,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       payId=uid();
                       // Payment-due tracker: float a payable with a due date computed from the supplier's terms,
                       // so finance can see when it's due. It gets settled later via Check Payable / BizLink.
-                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
+                      const payRec={id:payId,vendor:receivingPr.supplier||"—",amount:recvAmt,dueDate:due,projectId:sProjId,category:"Supplier",accountCode:receivingPr.accountCode||"5000",invoiceRef:rxDrNo?`DR ${rxDrNo}`:"",notes:`${receivingPr.itemName||""} · PO ${receivingPr.poNumber||receivingPr.id.slice(-6)}${supTerms?` · Terms: ${supTerms}`:" · No terms on file"}`,status:"Unpaid",poNumber:receivingPr.poNumber||"",poId:receivingPr.id,expenseId:expId,createdAt:today,createdBy:session?.name||""};
                       upPayables(ps=>[payRec,...ps]);
                       if(isSupabaseReady()) sbUpsert("payables",payableToSb(payRec),"id").catch(()=>{});
                     }
