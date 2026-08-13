@@ -11561,9 +11561,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const openPay=payables.filter(p=>!isSettled(p));
           const paid=payables.filter(isSettled);
           const unpaid=openPay; // legacy alias used by summary/count below
-          const totalOutstanding=openPay.reduce((s,p)=>s+bal(p),0);
-          const grandTotal=totalPOPayables+totalOutstanding;
-          const overdueCount=poPayables.filter(g=>g.earliestDelivery&&g.earliestDelivery<today).length+openPay.filter(p=>p.dueDate&&p.dueDate<today).length;
+          // A PO/WO payable is a real liability only once the goods/works are
+          // RECEIVED & verified — before that it's a commitment (Awaiting Receipt),
+          // not an outstanding balance owed. Manual Other Payables owe immediately.
+          const receivedOpen=openPay.filter(p=>!payNeedsVerify(p)||p.verified);
+          const awaitingOpen=openPay.filter(p=>payNeedsVerify(p)&&!p.verified);
+          const outstandingReceived=receivedOpen.reduce((s,p)=>s+bal(p),0);
+          const awaitingReceipt=awaitingOpen.reduce((s,p)=>s+bal(p),0);
+          const totalOutstanding=outstandingReceived;
+          const grandTotal=outstandingReceived; // owed now — excludes not-yet-received items
+          const overdueCount=receivedOpen.filter(p=>p.dueDate&&p.dueDate<today).length;
           const paidThisMonth=paid.filter(p=>p.paidDate?.startsWith(today.slice(0,7))).reduce((s,p)=>s+Number(p.amount||0),0);
           // AP-log filter (All / Unpaid / Partial / Paid) — mirrors Aerwin's chips.
           const apRows=[...payables].sort((a,b)=>String(a.apNumber||"~").localeCompare(String(b.apNumber||"~"))||String(a.dueDate||"9999").localeCompare(String(b.dueDate||"9999")));
@@ -11585,9 +11592,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   style={{background:ERP.gold,border:"none",borderRadius:7,padding:"9px 16px",fontFamily:"inherit",fontSize:13,color:ERP.navy,cursor:"pointer",fontWeight:600}}>+ Other Payable</button>
               </div>
               {/* Summary */}
-              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
-                <ErpStat tone="warn" label="Outstanding Payables" value={fmtM(grandTotal)} foot={openPay.length+" open entr"+(openPay.length===1?"y":"ies")}/>
-                <ErpStat tone={overdueCount>0?"danger":"ok"} label="Overdue" value={overdueCount+" items"} foot="past due date"/>
+              <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
+                <ErpStat tone="warn" label="Outstanding Payables" value={fmtM(outstandingReceived)} foot={receivedOpen.length+" received · owed now"}/>
+                <ErpStat tone="purple" label="Awaiting Receipt" value={fmtM(awaitingReceipt)} foot={awaitingOpen.length+" not yet received/verified"}/>
+                <ErpStat tone={overdueCount>0?"danger":"ok"} label="Overdue" value={overdueCount+" items"} foot="received & past due"/>
                 <ErpStat tone="ok" label="Paid This Month" value={fmtM(paidThisMonth)} foot="settled this month"/>
               </div>
               {/* PO-derived payables — by supplier */}
@@ -14388,8 +14396,12 @@ First few:
         const _pN=v=>Number(v)||0;
         const _payBal=p=>Math.max(0,_pN(p.amount)-_pN(p.paidAmount));
         const openPOset=new Set(prs.filter(p=>["PO Issued","Partially Delivered"].includes(p.status)&&p.poNumber).map(p=>p.poNumber));
-        const outstandingPayables=payables.filter(p=>p.status!=="Paid").reduce((s,p)=>s+_payBal(p),0);
-        const overduePayList=payables.filter(p=>p.status!=="Paid"&&p.dueDate&&p.dueDate<today&&_payBal(p)>0);
+        // Only received/verified payables are truly owed; not-yet-received PO/WO
+        // payables are commitments awaiting receipt (see the AP ledger).
+        const _received=p=>!payNeedsVerify(p)||p.verified;
+        const outstandingPayables=payables.filter(p=>p.status!=="Paid"&&_received(p)).reduce((s,p)=>s+_payBal(p),0);
+        const awaitingReceiptAmt=payables.filter(p=>p.status!=="Paid"&&!_received(p)).reduce((s,p)=>s+_payBal(p),0);
+        const overduePayList=payables.filter(p=>p.status!=="Paid"&&_received(p)&&p.dueDate&&p.dueDate<today&&_payBal(p)>0);
         const overduePayAmt=overduePayList.reduce((s,p)=>s+_payBal(p),0);
         const paidPayMonth=payables.filter(p=>p.status==="Paid"&&(p.paidDate||"").slice(0,7)===today.slice(0,7));
         const paidByCheck=paidPayMonth.filter(p=>p.cvId||p.status==="Check Issued").reduce((s,p)=>s+_pN(p.amount),0);
@@ -14420,7 +14432,8 @@ First few:
           </div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginBottom:20}}>
             <ErpStat label="Open Purchase Orders" value={String(openPOset.size)} foot={openPOset.size===1?"PO awaiting invoice":"POs awaiting invoice"}/>
-            <ErpStat tone="warn" label="Outstanding Payables" value={fmt(outstandingPayables)} foot={payables.filter(p=>p.status!=="Paid").length+" open · "+payables.filter(p=>p.status==="Partial").length+" partial"}/>
+            <ErpStat tone="warn" label="Outstanding Payables" value={fmt(outstandingPayables)} foot="received & owed now"/>
+            <ErpStat tone="purple" label="Awaiting Receipt" value={fmt(awaitingReceiptAmt)} foot="not yet received/verified"/>
             <ErpStat tone={overduePayList.length>0?"danger":"ok"} label="Overdue Payables" value={fmt(overduePayAmt)} foot={overduePayList.length+" invoice(s) past due date"}/>
             <ErpStat tone="ok" label="Paid This Month" value={fmt(paidPayTotal)} foot={"Check "+fmt(paidByCheck)+" · Online "+fmt(paidByOnline)}/>
           </div>
