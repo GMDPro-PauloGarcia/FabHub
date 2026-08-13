@@ -11401,7 +11401,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               ))}
             </div>
             {cashSub==="daily"&&(
-              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""}/>
+              <DailyCashPosition cashPositions={cashPositions} saveDayPos={saveDayPos} wonDeals={wonDeals} billings={billings} totRev={totRev} totExp={totExp} totColl={totColl} totOut={totOut} exps={exps} updateMilestone={updateMilestone} upExps={upExps} toSbExpense={toSbExpense} isSupabaseReady={isSupabaseReady} sbUpsert={sbUpsert} sbDelete={sbDelete} toastEmit={toastEmit} vouchers={vouchers} payables={payables} loans={loans} inventory={inventory} userName={session?.name||""}/>
             )}
             {cashSub==="weekly"&&(
               <WeeklyCashFlow mode="weekly" cashPositions={cashPositions} billings={billings} exps={exps} chartOfAccounts={chartOfAccounts} setPage={setPage}/>
@@ -12307,6 +12307,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           totColl={totColl}
           totOut={totOut}
           exps={exps}
+          upExps={upExps}
+          toSbExpense={toSbExpense}
+          isSupabaseReady={isSupabaseReady}
+          sbUpsert={sbUpsert}
+          sbDelete={sbDelete}
+          toastEmit={toastEmit}
           payables={payables}
           vouchers={vouchers}
           loans={loans}

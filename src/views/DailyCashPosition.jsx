@@ -35,7 +35,9 @@ const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
 // are computed from three manual entry tables below the report. Floating checks
 // carry from day to day until they are marked cleared.
 function DailyCashPosition({
-  cashPositions={},saveDayPos=()=>{},billings=[],payables=[],loans=[],userName=""
+  isSupabaseReady,sbUpsert,sbDelete,toastEmit,
+  cashPositions={},saveDayPos=()=>{},billings=[],payables=[],loans=[],userName="",
+  exps=[],upExps=()=>{},toSbExpense=null
 }){
   const[selDate,setSelDate]=useState(today);
   const[saved,setSaved]    =useState(false);
@@ -125,6 +127,72 @@ function DailyCashPosition({
   const manualDisb=pos.disbursements?.manual||[];
   const disbByBank=useMemo(()=>byBank(manualDisb),[manualDisb]);
   const disbTotal =useMemo(()=>manualDisb.reduce((s,r)=>s+n(r.amount),0),[manualDisb]);
+
+  // ── Disbursement → Expense-log link ──
+  // Finance encodes each day's cash outflows here while the PO process is being
+  // fixed. Logging a row mirrors it into the Expenses tracker (a "Paid" expense
+  // dated for the day, no project tag yet) so the dashboard reflects real spend.
+  // The link is resolved by the row's saved expenseId OR by a source fingerprint
+  // (sourceDisbId + date) so an already-logged row still reads as linked even if
+  // the position wasn't saved after logging — which prevents double-logging.
+  const disbLabel=(row)=>String(row?.particulars??"").trim();
+  const linkedExp=(row)=>{
+    if(!row) return null;
+    if(row.expenseId){const e=exps.find(x=>x.id===row.expenseId);if(e)return e;}
+    if(row.id) return exps.find(x=>x.source==="cash-position"&&x.sourceDisbId===row.id&&x.sourceDate===selDate)||null;
+    return null;
+  };
+  const expOutOfSync=(row,exp)=>!!exp&&(n(row.amount)!==n(exp.amount)||disbLabel(row)!==String(exp.note||"").trim()||(row.bank||"")!==(exp.bankAccount||""));
+  const buildExpFromRow=(row,id)=>{
+    const name=disbLabel(row)||"Disbursement";const amt=n(row.amount);
+    return {id,expDate:selDate,note:name,payee:name,supplier:name,category:"Other",
+      qty:1,pricePerQty:amt,amount:amt,bankAccount:row.bank||"",projectId:null,dealId:null,
+      acctStatus:"Paid",paymentMethod:"Cash Position",paidDate:selDate,
+      source:"cash-position",sourceDisbId:row.id||null,sourceDate:selDate,
+      createdBy:userName||"",createdAt:new Date().toISOString()};
+  };
+  const pushExp=(rec)=>{if(isSupabaseReady()&&toSbExpense&&sbUpsert)sbUpsert("expenses",toSbExpense(rec),"id").catch(()=>{});};
+  const logRowToExpense=(ri)=>{
+    const row=manualDisb[ri];if(!row)return;
+    if(n(row.amount)<=0){toastEmit("Enter an amount before logging to the expense tracker.","error");return;}
+    if(!disbLabel(row)){toastEmit("Add a Payee / Particulars before logging.","error");return;}
+    if(linkedExp(row)){toastEmit("This disbursement is already in the expense tracker.","info");return;}
+    const rec=buildExpFromRow(row,uid());
+    upExps(es=>[...es,rec]);pushExp(rec);
+    const md=[...manualDisb];md[ri]={...md[ri],expenseId:rec.id};f("disbursements.manual",md);
+    toastEmit("✅ Logged to the expense tracker — remember to Save Position to keep the link.","success");
+  };
+  const syncRowToExpense=(ri)=>{
+    const row=manualDisb[ri];const exp=linkedExp(row);if(!exp)return;
+    const name=disbLabel(row)||"Disbursement";const amt=n(row.amount);
+    const rec={...exp,note:name,payee:name,supplier:name,amount:amt,qty:1,pricePerQty:amt,bankAccount:row.bank||"",expDate:selDate};
+    upExps(es=>es.map(e=>e.id===exp.id?rec:e));pushExp(rec);
+    if(row.expenseId!==exp.id){const md=[...manualDisb];md[ri]={...md[ri],expenseId:exp.id};f("disbursements.manual",md);}
+    toastEmit("↻ Expense entry updated to match this disbursement.","success");
+  };
+  const unlinkRowExpense=(ri)=>{
+    const row=manualDisb[ri];const exp=linkedExp(row);
+    if(exp){upExps(es=>es.filter(e=>e.id!==exp.id));if(isSupabaseReady()&&sbDelete)sbDelete("expenses",exp.id).catch(()=>{});}
+    const md=[...manualDisb];md[ri]={...md[ri],expenseId:null};f("disbursements.manual",md);
+    toastEmit("Removed from the expense tracker.","info");
+  };
+  const logAllToExpense=()=>{
+    const pending=manualDisb.map((row,ri)=>({row,ri})).filter(({row})=>n(row.amount)>0&&disbLabel(row)&&!linkedExp(row));
+    if(!pending.length){toastEmit("Nothing to log — every valid disbursement is already in the tracker.","info");return;}
+    const recs=pending.map(({row})=>buildExpFromRow(row,uid()));
+    upExps(es=>[...es,...recs]);recs.forEach(pushExp);
+    const md=[...manualDisb];pending.forEach(({ri},i)=>{md[ri]={...md[ri],expenseId:recs[i].id};});
+    f("disbursements.manual",md);
+    toastEmit(`✅ Logged ${recs.length} disbursement${recs.length!==1?"s":""} to the expense tracker — Save Position to keep the links.`,"success");
+  };
+  const disbLinkStats=useMemo(()=>{
+    let linked=0,loggable=0;
+    manualDisb.forEach(row=>{
+      const valid=n(row.amount)>0&&!!disbLabel(row);
+      if(linkedExp(row))linked++;else if(valid)loggable++;
+    });
+    return {linked,loggable};
+  },[manualDisb,exps,selDate]);
 
   // ── Floating checks — manual entry; carry over each day until cleared ──
   const floatChecks=pos.floatingChecks||[];
@@ -506,32 +574,57 @@ function DailyCashPosition({
         {/* DISBURSEMENTS DETAIL */}
         {sectionHdr("Disbursements Detail (for the day)","#7c2d12")}
         <div style={{padding:"10px 12px 14px"}}>
-          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:720}}>
+          {/* Expense-tracker link banner */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:10,background:"#fffbeb",border:"1px solid #fde68a",borderRadius:9,padding:"8px 12px"}}>
+            <div style={{fontSize:".72rem",color:"#78350f",lineHeight:1.5}}>
+              <b>Expense tracker link.</b> {disbLinkStats.linked} logged{disbLinkStats.loggable>0?<> · <b style={{color:"#b45309"}}>{disbLinkStats.loggable}</b> not yet in the tracker</>:null}. Logged rows post to the Expenses log (dated {fmtDate(selDate)}, no project tag yet) and flow into the dashboard Expenses total.
+            </div>
+            {disbLinkStats.loggable>0&&(
+              <button onClick={logAllToExpense} style={{background:"#7c2d12",border:"none",borderRadius:8,padding:"7px 13px",fontFamily:"inherit",fontSize:".74rem",fontWeight:800,color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>Log {disbLinkStats.loggable} to expenses</button>
+            )}
+          </div>
+          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:820}}>
             <thead>
               <tr>
-                <th style={{...th,textAlign:"left",width:mob?120:220}}>Bank</th>
+                <th style={{...th,textAlign:"left",width:mob?110:200}}>Bank</th>
                 <th style={{...th,textAlign:"left"}}>Payee / Particulars</th>
-                <th style={{...th,width:mob?110:170}}>Amount</th>
+                <th style={{...th,width:mob?100:150}}>Amount</th>
+                <th style={{...th,width:mob?96:150}}>Expense Log</th>
                 <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
               </tr>
             </thead>
             <tbody>
               {manualDisb.length===0&&(
-                <tr><td colSpan={4} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
+                <tr><td colSpan={5} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No disbursements for {fmtDate(selDate)}. Add rows below.</td></tr>
               )}
-              {manualDisb.map((row,ri)=>(
+              {manualDisb.map((row,ri)=>{
+                const exp=linkedExp(row);const stale=expOutOfSync(row,exp);
+                return(
                 <tr key={row.id||ri} style={{background:ri%2?C.zebra:"#fff"}}>
                   <td style={{...td,padding:2}}>{isUntagged(row)&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>{const md=[...manualDisb];md[ri]={...md[ri],bank:v};f("disbursements.manual",md);})}</td>
                   <td style={{...td,padding:2}}>{textCell(row.particulars??"",v=>{const md=[...manualDisb];md[ri]={...md[ri],particulars:v};f("disbursements.manual",md);},"Payee / particulars")}</td>
                   <td style={{...td,padding:2}}>
                     <CurrInp value={row.amount||""} onChange={e=>{const md=[...manualDisb];md[ri]={...md[ri],amount:e.target.value};f("disbursements.manual",md);}} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
                   </td>
+                  <td style={{...td,padding:2,textAlign:"center"}}>
+                    {exp?(
+                      <span style={{display:"inline-flex",gap:5,alignItems:"center",justifyContent:"center",flexWrap:"wrap"}}>
+                        <span title={stale?"This row changed after it was logged":"In the expense tracker"} style={{color:stale?"#b45309":"#059669",fontWeight:800,fontSize:".68rem",whiteSpace:"nowrap"}}>{stale?"⚠ edited":"✓ logged"}</span>
+                        {stale&&<button onClick={()=>syncRowToExpense(ri)} title="Update the expense entry to match this row" style={{background:"#fffbeb",border:"1px solid #fde68a",borderRadius:5,padding:"2px 7px",cursor:"pointer",color:"#b45309",fontWeight:700,fontSize:".68rem",fontFamily:"inherit"}}>Sync</button>}
+                        <button onClick={()=>unlinkRowExpense(ri)} title="Remove from the expense tracker" style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:5,padding:"2px 6px",cursor:"pointer",color:"#94a3b8",fontWeight:700,fontSize:".68rem",fontFamily:"inherit"}}>✕</button>
+                      </span>
+                    ):(
+                      <button onClick={()=>logRowToExpense(ri)} title="Create a matching entry in the Expenses tracker" style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:6,padding:"4px 10px",cursor:"pointer",color:"#1d4ed8",fontWeight:700,fontSize:".7rem",fontFamily:"inherit",whiteSpace:"nowrap"}}>＋ Log</button>
+                    )}
+                  </td>
                   <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("disbursements.manual",manualDisb.filter((_,j)=>j!==ri)))}</td>
                 </tr>
-              ))}
+                );
+              })}
               <tr style={{background:"#f1e9e2"}}>
                 <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={2}>TOTAL</td>
                 <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(disbTotal)}</td>
+                <td style={{...td,background:"#f1e9e2"}}></td>
                 <td style={{...td,border:"none",background:"#fff"}}></td>
               </tr>
             </tbody>
