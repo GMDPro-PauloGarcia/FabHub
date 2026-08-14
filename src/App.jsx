@@ -4536,20 +4536,45 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }));
     }
   };
-  const deleteMilestone=(id)=>{
+  const deleteMilestone=async(id)=>{
     const ms=billings.find(b=>b.id===id);
+    if(!ms) return;
+    const dealId=ms.dealId;
+    const deal=dealId?deals.find(d=>d.id===dealId):null;
+    const pays=ms.payments||[];
+    const paidTotal=pays.filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
+    // billing_payments cascade-delete when the milestone is removed, so ALWAYS
+    // archive the milestone AND its payments first (restorable) and require a
+    // reason — otherwise recorded collections vanish with no trail.
+    const reason=window.prompt(`Delete milestone "${ms.name||ms.title||"—"}"${paidTotal>0?`\n\n⚠️ This milestone has ${pays.length} recorded payment${pays.length!==1?"s":""} totalling ₱${paidTotal.toLocaleString("en-PH")} — they will be archived and removed too.`:""}\n\nIt will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,"");
+    if(reason===null) return;                                                    // cancelled
+    if(!reason.trim()){ toastEmit("A reason is required to delete a milestone.","error",5000); return; }
+    const why=reason.trim();
+    // Archive milestone + each of its payments before removal.
+    await archiveFinancial("billing_milestones",toSbBilling(ms),ms.id,why);
+    for(const p of pays) await archiveFinancial("billing_payments",toSbPayment({...p,milestoneId:ms.id}),p.id,why);
     upBillings(bs=>bs.filter(b=>b.id!==id));
-    if(ms?.dealId){
-      const remaining=billings.filter(b=>b.dealId===ms.dealId&&b.id!==id&&b.status!=='Cancelled');
+    if(dealId){
+      const remaining=billings.filter(b=>b.dealId===dealId&&b.id!==id&&b.status!=='Cancelled');
       const total=remaining.reduce((s,b)=>s+Number(b.amount||0),0);
+      // Recompute deal.amountPaid from surviving payments — the old code left it
+      // stale, overstating "Collected" after a paid milestone was deleted.
+      const newPaid=remaining.reduce((s,b)=>(b.payments||[]).filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
+      const refVal=Number(total||deal?.value||0);
+      const newStatus=newPaid>=refVal&&refVal>0?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>{
-        if(d.id!==ms.dealId) return d;
-        const nd={...d,invoiced:total};
+        if(d.id!==dealId) return d;
+        const nd={...d,invoiced:total,amountPaid:newPaid,paymentStatus:newStatus};
         if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
         return nd;
       }));
     }
-    if(isSupabaseReady()) sbDelete('billing_milestones',id).catch(()=>{});
+    if(isSupabaseReady()){
+      sbDeleteWhere('billing_payments','milestone_id',id);
+      sbDelete('billing_milestones',id).catch(()=>{});
+    }
+    logActivity(dealId,"Milestone Deleted",`${ms.name||ms.title||"Milestone"} removed — ${why}`,session?.name||role);
+    toastEmit("🗑 Milestone deleted and archived to Audit Trail.","success",5000);
   };
   // Delete an entire project's billing schedule — every milestone and its
   // payments — in one shot, then zero out the deal's billed/collected totals.
@@ -22639,7 +22664,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       )}
                       {canEdit&&<button onClick={()=>{setEditMs(editMs===ms.id?null:ms.id);setEditMsForm({name:ms.name,description:ms.description||"",amount:String(ms.amount||""),invoiceNo:ms.invoiceNo||"",invoiceDate:ms.invoiceDate||today,dueDate:ms.dueDate||"",receiptType:ms.receiptType??null,withholding:ms.withholding??null});setShowPay(null);}} style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:7,padding:"6px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".75rem",color:"#1d4ed8",cursor:"pointer"}}>✏ Edit</button>}
                       {canEdit&&<select value={ms.status} onChange={e=>updateMilestone(ms.id,{status:e.target.value})} style={{border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".72rem",color:"#0f172a",background:"#fff",cursor:"pointer"}}>{BILLING_STATUSES.map(s=><option key={s}>{s}</option>)}</select>}
-                      {canEdit&&<button onClick={()=>{if(window.confirm("Delete this milestone?"))deleteMilestone(ms.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontFamily:"inherit",fontWeight:600,fontSize:".7rem",color:"#dc2626",cursor:"pointer"}}>Delete</button>}
+                      {canEdit&&<button onClick={()=>deleteMilestone(ms.id)} title="Delete this milestone (archived to Audit Trail)" style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontFamily:"inherit",fontWeight:600,fontSize:".7rem",color:"#dc2626",cursor:"pointer"}}>Delete</button>}
                     </div>
                   </div>
                 </div>
