@@ -8652,7 +8652,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const totalCash     = latestCash?["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latestCash[b+"_end"]||latestCash[b+"End"]||0),0):0;
         const noBilling     = wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
         const collRate      = totalBilled>0?Math.round(totalPaid/totalBilled*100):0;
-        const totalPipeVal  = deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
+        const totalPipeVal  = deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* KPI Row 1 — Financial health */}
@@ -10742,12 +10742,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 const wonParents=wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&(pipeType==="all"||(d.ceType||"Other")===pipeType));
                 const activeWonBase=wonParents.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&matchSearch(d));
                 const doneWonBase  =wonParents.filter(d=>(d.stage==="12 · Close-Out"||d.stage==="14 · Completed")&&matchSearch(d));
-                // Addenda always nest under their parent's card, following the PARENT's bucket
-                // regardless of the addendum's own stage. (Otherwise a won-stage addendum whose
-                // parent is closed-out lands in the other bucket and disappears from both.)
+                // Addenda nest under their parent's card, following the PARENT's bucket
+                // regardless of the addendum's own WON stage. (Otherwise a won-stage addendum
+                // whose parent is closed-out lands in the other bucket and disappears from both.)
+                // Retired addenda (Did Not Win / Cancelled) are excluded here — they belong in
+                // their own sections below, and were previously leaking back into the awarded
+                // table so a linked deal "stayed" in the pipeline after being marked Did Not Win.
                 const activeIds=new Set(activeWonBase.map(d=>d.id));
                 const doneIds  =new Set(doneWonBase.map(d=>d.id));
-                const addenda=deals.filter(d=>d.parentDealId&&(activeIds.has(d.parentDealId)||doneIds.has(d.parentDealId)));
+                const addenda=deals.filter(d=>d.parentDealId&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"&&(activeIds.has(d.parentDealId)||doneIds.has(d.parentDealId)));
                 const activeWon=[...activeWonBase,...addenda.filter(d=>activeIds.has(d.parentDealId))];
                 const doneWon  =[...doneWonBase, ...addenda.filter(d=>doneIds.has(d.parentDealId))];
                 const STAGE_CLR_PIPE={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
