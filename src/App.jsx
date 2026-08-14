@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -5434,7 +5434,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   },[today]); // eslint-disable-line
 
   // ── Dashboard KPI memos — pre-computed so render is instant ──────────────
-  const pipeDeals      =useMemo(()=>deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)),[deals]);
+  const pipeDeals      =useMemo(()=>deals.filter(d=>isActivePipeline(d.stage)),[deals]);
   const pipeVal        =useMemo(()=>pipeDeals.reduce((s,d)=>s+Number(d.value||0),0),[pipeDeals]);
   const awardReqCnt    =useMemo(()=>deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST")).length,[deals]);
   const overdueInvCnt  =useMemo(()=>billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled").length,[billings]);
@@ -7439,7 +7439,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {(()=>{
         const myDeals=deals.filter(d=>d.salesOwner===session?.name);
         const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
-        const myPipe=myDeals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
+        const myPipe=myDeals.filter(d=>isActivePipeline(d.stage));
         const myUnpriced=myPipe.filter(d=>!Number(d.value)||Number(d.value)===0);
         const myColl=myWon.reduce((s,d)=>s+dealCollected(d),0);
         const myRev=myWon.reduce((s,d)=>s+Number(d.value||0),0);
@@ -7540,7 +7540,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ]}
       />
       {(()=>{
-        const activePipe=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
+        const activePipe=deals.filter(d=>isActivePipeline(d.stage));
         const pendingCE=ceReqs.filter(r=>r.status!=="Done");
         const allMs=billings.filter(b=>b.dealId);
         const outstanding=Math.max(0,allMs.reduce((s,m)=>s+Number(m.amount||0)-(m.payments||[]).reduce((ps,p)=>ps+Number(p.amount||0),0),0));
@@ -8652,7 +8652,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const totalCash     = latestCash?["bpi","metrobank","chinabank","bdo","secbank","unionbank"].reduce((s,b)=>s+Number(latestCash[b+"_end"]||latestCash[b+"End"]||0),0):0;
         const noBilling     = wonDeals.filter(d=>!billings.find(b=>b.dealId===d.id));
         const collRate      = totalBilled>0?Math.round(totalPaid/totalBilled*100):0;
-        const totalPipeVal  = deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
+        const totalPipeVal  = deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0);
 
         return(<div style={{display:"flex",flexDirection:"column",gap:16}}>
           {/* KPI Row 1 — Financial health */}
@@ -8929,7 +8929,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {(()=>{
         const today2=new Date();
-        const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage));
+        const activePipe=deals.filter(d=>isActivePipeline(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
         const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
         const thisMonth=new Date().toISOString().slice(0,7);
@@ -9356,7 +9356,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     // Change orders approved in the selected month (CM) — credited as sales value.
     const monthCO=addenda.filter(a=>{if(!CO_APPROVED(a)||!a.awardedDate)return false;const dt=new Date(a.awardedDate);return dt.getFullYear()===CY&&dt.getMonth()===CM;});
-    const openPipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
+    const openPipeline=deals.filter(d=>isActivePipeline(d.stage));
     const totalWonGross=monthWon.reduce((s,d)=>s+dealTax(d).gross,0)+monthCO.reduce((s,a)=>s+coTax(a).gross,0);
     const totalWonBase=monthWon.reduce((s,d)=>s+dealTax(d).base,0)+monthCO.reduce((s,a)=>s+coTax(a).base,0);
     const totalWonVat=monthWon.reduce((s,d)=>s+dealTax(d).vat,0)+monthCO.reduce((s,a)=>s+coTax(a).vat,0);
@@ -10263,7 +10263,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div>
             <PipeTabBar/>
             <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>Sales Pipeline</h2>
-            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length} active deals · {todayL}</div>
+            <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{deals.filter(d=>isActivePipeline(d.stage)).length} active deals · {todayL}</div>
             {/* Search bar */}
             <div style={{position:"relative",marginTop:8}}>
               <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#94a3b8",fontSize:".85rem"}}>🔍</span>
@@ -10410,9 +10410,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
-            {l:"Total Pipeline",    v:fmt(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
+            {l:"Total Pipeline",    v:fmt(deals.filter(d=>isActivePipeline(d.stage)).reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
             {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
-            {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length, c:"#f59e0b"},
+            {l:"Active Deals",      v:deals.filter(d=>isActivePipeline(d.stage)).length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
             <div key={l} style={{background:"#fff",borderRadius:12,padding:"15px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
@@ -10466,7 +10466,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               {["all",...aeList].map(ae=>(
                 <button key={ae} onClick={()=>setPipeAE(ae)}
                   style={{padding:"4px 11px",borderRadius:20,border:`1.5px solid ${pipeAE===ae?"#6366f1":"#e2e8f0"}`,background:pipeAE===ae?"#6366f1":"#fff",color:pipeAE===ae?"#fff":"#64748b",fontFamily:"inherit",fontWeight:pipeAE===ae?700:400,fontSize:".75rem",cursor:"pointer",whiteSpace:"nowrap"}}>
-                  {ae==="all"?`All (${deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length})`:ae}
+                  {ae==="all"?`All (${deals.filter(d=>isActivePipeline(d.stage)).length})`:ae}
                 </button>
               ))}
             </div>
@@ -10516,7 +10516,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {pipeSearch&&pipeSearch.length>=2&&(()=>{
           const q=pipeSearch.toLowerCase();
           const matches=d=>[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(q);
-          const visibleInPipe=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!d.parentDealId&&matches(d));
+          const visibleInPipe=deals.filter(d=>isActivePipeline(d.stage)&&!d.parentDealId&&matches(d));
           const hidden=deals.filter(d=>matches(d)&&!visibleInPipe.find(v=>v.id===d.id));
           if(!hidden.length) return null;
           const locationOf=d=>{
@@ -10552,7 +10552,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {(()=>{
           const daysSince=dt=>dt?Math.floor((new Date(today)-new Date(dt))/(864e5)):0;
           const allActive=deals.filter(d=>
-            !WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&
+            isActivePipeline(d.stage)&&
             (!pipeSearch||[d.client,d.contact,d.ceNo,d.salesOwner,d.product].join(" ").toLowerCase().includes(pipeSearch.toLowerCase()))&&
             (pipeAE==="all"||d.salesOwner===pipeAE)
           ).sort((a,b)=>new Date(b.dateAcquired||0)-new Date(a.dateAcquired||0));
@@ -10750,7 +10750,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 // table so a linked deal "stayed" in the pipeline after being marked Did Not Win.
                 const activeIds=new Set(activeWonBase.map(d=>d.id));
                 const doneIds  =new Set(doneWonBase.map(d=>d.id));
-                const addenda=deals.filter(d=>d.parentDealId&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"&&(activeIds.has(d.parentDealId)||doneIds.has(d.parentDealId)));
+                const addenda=deals.filter(d=>d.parentDealId&&!isLostStage(d.stage)&&(activeIds.has(d.parentDealId)||doneIds.has(d.parentDealId)));
                 const activeWon=[...activeWonBase,...addenda.filter(d=>activeIds.has(d.parentDealId))];
                 const doneWon  =[...doneWonBase, ...addenda.filter(d=>doneIds.has(d.parentDealId))];
                 const STAGE_CLR_PIPE={"06 · Kickoff":"#8b5cf6","07 · Briefing":"#6366f1","08 · Fabrication":"#f59e0b","09 · Site & Billing":"#f97316","10 · Installation":"#3b82f6","11 · Punchlist":"#ef4444","12 · Close-Out":"#059669","14 · Completed":"#059669"};
@@ -12253,9 +12253,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <Wrap>
         <SecHead title="My Pipeline" action={<Btn onClick={openAddDeal}>+ Add Deal</Btn>}/>
         <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"repeat(3,1fr)",gap:12,marginBottom:20}}>
-          <KPI label="Active Deals"    value={deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled").length} color="#3b82f6"/>
+          <KPI label="Active Deals"    value={deals.filter(d=>isActivePipeline(d.stage)).length} color="#3b82f6"/>
           <KPI label="Won Revenue"     value={fmtK(wonDeals.reduce((s,d)=>s+d.value,0))}     color="#10b981"/>
-          <KPI label="Follow-ups Due"  value={deals.filter(d=>d.followUp&&d.followUp<=today&&!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled").length} color="#ef4444"/>
+          <KPI label="Follow-ups Due"  value={deals.filter(d=>d.followUp&&d.followUp<=today&&isActivePipeline(d.stage)).length} color="#ef4444"/>
         </div>
         {deals.map(d=>(
           <Card key={d.id} accent={d.stage==="Did Not Win"||d.stage==="Cancelled"?"#fca5a5":WON_STAGES.includes(d.stage)?"#6ee7b7":d.followUp&&d.followUp<today?"#fed7aa":undefined}>
@@ -12268,7 +12268,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {d.salesOwner&&d.salesOwner!==session?.name&&<span style={{fontSize:".62rem",background:"#eef2ff",color:"#6366f1",borderRadius:20,padding:"1px 6px",fontWeight:700}}>👤 {d.salesOwner.split(" ")[0]}</span>}
                 </div>
                 <div style={{fontSize:".78rem",color:"#64748b"}}>{d.product} · {d.contact}</div>
-                {d.followUp&&<div style={{fontSize:".73rem",color:d.followUp<today&&!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"?"#ef4444":"#94a3b8",marginTop:5}}>📅 Follow-up: {d.followUp}{d.followUp<today&&!WON_STAGES.includes(d.stage)?" — OVERDUE":""}</div>}
+                {d.followUp&&<div style={{fontSize:".73rem",color:d.followUp<today&&isActivePipeline(d.stage)?"#ef4444":"#94a3b8",marginTop:5}}>📅 Follow-up: {d.followUp}{d.followUp<today&&!WON_STAGES.includes(d.stage)?" — OVERDUE":""}</div>}
                 {d.notes&&<div style={{fontSize:".73rem",color:"#94a3b8",marginTop:4,fontStyle:"italic"}}>{d.notes}</div>}
                 {WON_STAGES.includes(d.stage)&&d.invoiced>0&&(()=>{
                   const paid=dealCollected(d);
@@ -12287,7 +12287,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 <div style={{fontWeight:800,color:"#10b981",fontSize:"1.15rem"}}>{fmt(d.value)}</div>
                 <div style={{display:"flex",gap:6,marginTop:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
                   <Btn small variant="ghost" onClick={()=>openEditDeal(d)}>✏ Edit</Btn>
-                  {!WON_STAGES.includes(d.stage)&&d.stage!=="Did Not Win"&&d.stage!=="Cancelled"&&<Btn small onClick={()=>openAward(d)} style={{background:"#059669",color:"#fff",border:"none"}}>🏆 Award</Btn>}
+                  {isActivePipeline(d.stage)&&<Btn small onClick={()=>openAward(d)} style={{background:"#059669",color:"#fff",border:"none"}}>🏆 Award</Btn>}
                   {canDeleteDeal&&<Btn small variant="danger" onClick={()=>setConfirmDel(d.id)}>✕</Btn>}
                 </div>
               </div>
@@ -19472,7 +19472,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
 
 // ─── PROCUREMENT VIEW 2 (Full PO → Multi-item → Delivery) ───────────────────
 function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allDeals,budgets,exps,swos,session,role,toastEmit,suppliers,addSupplier,upPayables,payables,sendTelegramNotification,isSupabaseReady,sbUpsert,payableToSb,syncPoPayable,chartOfAccounts=[]}){
-  const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"),[allDeals,wonDeals]);
+  const activeDeals=React.useMemo(()=>(allDeals||wonDeals||[]).filter(d=>!isLostStage(d.stage)),[allDeals,wonDeals]);
   const today=new Date().toISOString().split("T")[0];
   const[mode,setMode]=useState("list");
   const[editingId,setEditingId]=useState(null);
@@ -25419,7 +25419,7 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
         {(()=>{
           const s=dq.trim().toLowerCase();
           const pickable=deals
-            .filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win")
+            .filter(d=>!isLostStage(d.stage))
             .filter(d=>!s||(d.client||"").toLowerCase().includes(s)||(d.ceNo||"").toLowerCase().includes(s)||(d.contact||"").toLowerCase().includes(s))
             .sort((a,b)=>String(b.dateAcquired||b.addedAt||"").localeCompare(String(a.dateAcquired||a.addedAt||"")));
           if(!pickable.length) return <div style={{padding:"24px",textAlign:"center",color:"#94a3b8",fontSize:".82rem"}}>No matching deals. Create the deal in the Pipeline first, then come back to build its BOQ.</div>;

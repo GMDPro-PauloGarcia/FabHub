@@ -65,6 +65,18 @@ export const WON_STAGES    = ["06 · Kickoff","07 · Briefing","08 · Fabricatio
 
 export const ACTIVE_STAGES = ["01 · BizDev","02 · Engagement","03 · Design & Folder","04 · CE in Progress","05 · For Approval"];
 
+// "Retired" / dead stages — a deal in one of these is out of the running and must
+// NOT count toward the active pipeline (counts, values, follow-ups, forecasts).
+// Historically each pipeline filter spelled this out as
+//   d.stage!=="Cancelled" && d.stage!=="Did Not Win"
+// and several spots forgot the "Did Not Win" half, so lost deals kept showing in
+// the pipeline totals. Use these helpers instead of re-typing the checks:
+//   isLostStage(d.stage)      → true for Cancelled / Did Not Win
+//   isActivePipeline(d.stage) → true for a live pipeline deal (not won, not lost)
+export const LOST_STAGES   = ["Cancelled","Did Not Win"];
+export const isLostStage      = (stage)=>LOST_STAGES.includes(stage);
+export const isActivePipeline = (stage)=>!WON_STAGES.includes(stage)&&!isLostStage(stage);
+
 export const PAULO_GATE    = ["05 · For Approval","06 · Kickoff"];
 
 export const CE_TYPES      = ["Fabrication / General","Construction","Retail Fit-Out","Kiosk","Signage","Event / Activation","Repair / Refurbishment","Other"];
