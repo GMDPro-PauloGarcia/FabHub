@@ -2804,7 +2804,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
@@ -3073,7 +3073,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -3107,7 +3107,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mergeLocalOnly(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mergeLocalOnly(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -3202,6 +3202,7 @@ export default function App(){
     added_by:r.addedBy||"", added_at:r.addedAt||null,
     award_request_data:r.awardRequestData||null,
     parent_deal_id:r.parentDealId||null,
+    billing_generated:r.billingGenerated||false,
     updated_at:new Date().toISOString(),
   });
   const toSbJO = r=>({
@@ -4087,6 +4088,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
           awardRequestData:rec.award_request_data||null,boqData:rec.boq_data||null,
+          billingGenerated:rec.billing_generated||false,
           paymentTerms:rec.payment_terms_json?(()=>{try{return JSON.parse(rec.payment_terms_json);}catch(e){return null;}})():null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
@@ -4454,6 +4456,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const generateBillingSchedule=(dealId,terms,contractVal)=>{
     const val=Number(contractVal)||0;
     if(!terms||val<=0) return;
+    // Idempotency: never regenerate once a schedule has been generated. The
+    // persistent deal.billingGenerated flag survives reloads / remounts / other
+    // devices (the in-memory billings check does not), which is what produced
+    // the 3–5× duplicate milestone sets. Both guards together cover the window
+    // before billings hydrates.
+    if(deals.find(d=>d.id===dealId)?.billingGenerated) return;
     if(billings.some(b=>b.dealId===dealId)) return; // already has milestones — never duplicate
     const milestones=[
       terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
@@ -4477,7 +4485,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const totalInvoiced=recs.reduce((s,r)=>s+Number(r.amount||0),0);
     upDeals(ds=>ds.map(d=>{
       if(d.id!==dealId) return d;
-      const nd={...d,invoiced:Math.round((Number(d.invoiced||0)+totalInvoiced)*100)/100};
+      // SET (not add) — the guards above guarantee no pre-existing milestones,
+      // so any prior invoiced is a stale/legacy lump figure; adding would double-count.
+      const nd={...d,invoiced:Math.round(totalInvoiced*100)/100,billingGenerated:true};
       if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
       return nd;
     }));
@@ -4509,7 +4519,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const od=deals.find(d=>d.id===n.dealId);
         const net=calcTax(Number(n.amount)||0,n.receiptType??od?.receiptType??"OR",n.withholding??od?.withholding??false).netReceivable;
         const paid=(n.payments||[]).filter(p=>!p.bounced).reduce((s,p)=>s+Number(p.amount||0),0);
-        n.status=(paid>=net&&net>0)?'Fully Paid':paid>0?'Partially Paid':b.status;
+        // When payments drop to 0 (bounce/clear/edit-to-zero), revert a paid-derived
+        // status to a neutral one instead of leaving a stale 'Partially/Fully Paid'.
+        n.status=(paid>=net&&net>0)?'Fully Paid':paid>0?'Partially Paid':(['Fully Paid','Partially Paid'].includes(b.status)?'Sent to Client':b.status);
       }
       savedMs=n;
       if(isSupabaseReady()) sbSyncOne("billing_milestones",n,toSbBilling);
@@ -4636,12 +4648,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       }
       return{...b,payments,status};
     }));
-    // Sync deal.amountPaid so Finance KPIs reflect billing collections
+    // Sync deal.amountPaid so Finance KPIs reflect billing collections.
+    // Recompute from ALL surviving non-bounced payments (mirroring
+    // deleteBillingPayment) rather than incrementing a possibly-stale base —
+    // incrementing drifts after bounces, edits, or duplicate-milestone cleanup.
     if(dealId){
       const d0=deals.find(d=>d.id===dealId);
-      const newPaid=Number(d0?.amountPaid||0)+Number(payment.amount||0);
+      const newPaid=billings
+        .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
+        .reduce((s,b)=>{
+          const ps=b.id===msId?[...(b.payments||[]),{...payment,id:payId}]:(b.payments||[]);
+          return ps.filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s);
+        },0);
       const refVal=Number(d0?.invoiced||d0?.value||0);
-      const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
+      const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
@@ -4663,7 +4683,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const payments=(b.payments||[]).filter(p=>p.id!==payId);
       const totalPaid=payments.reduce((s,p)=>s+Number(p.amount||0),0);
       const bTx=calcTax(b.amount||0,b.receiptType??b.receipt_type??delDeal?.receiptType??"OR",b.withholding??delDeal?.withholding??false);
-      const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':'Unpaid';
+      // 'Sent to Client' (a valid BILLING_STATUS) when payments drop to zero —
+      // 'Unpaid' is not a valid status (no badge, not selectable in the dropdown).
+      const status=totalPaid>=bTx.netReceivable?'Fully Paid':totalPaid>0?'Partially Paid':'Sent to Client';
       if(isSupabaseReady()){
         sbDelete('billing_payments',payId).catch(()=>{});
         sbUpdate('billing_milestones',msId,{status,updated_at:new Date().toISOString()}).catch(()=>{});
@@ -4681,7 +4703,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         .reduce((s,b)=>(b.payments||[]).filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
       const d0=deals.find(d=>d.id===dealId);
       const refVal=Number(d0?.invoiced||d0?.value||0);
-      const newStatus=newPaid>=refVal?'Paid':newPaid>0?'Deposited':'Unpaid';
+      const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
     }
@@ -13881,7 +13903,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       <BillingView
         billings={billings} wonDeals={wonDeals} completedDeals={completedDeals} deals={deals} addenda={addenda}
         addMilestone={addMilestone} updateMilestone={updateMilestone}
-        deleteMilestone={deleteMilestone} deleteProjectBilling={deleteProjectBilling} logBillingPayment={logBillingPayment}
+        deleteMilestone={deleteMilestone} deleteProjectBilling={deleteProjectBilling} generateBillingSchedule={generateBillingSchedule} logBillingPayment={logBillingPayment}
         deleteBillingPayment={deleteBillingPayment}
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
         clientProfiles={clientProfiles}
@@ -21446,7 +21468,7 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,generateBillingSchedule,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
@@ -21465,16 +21487,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
       const terms=d.paymentTerms;
       const val=Number(d.value||0);
       const existingMs=billings.filter(b=>b.dealId===d.id);
-      if(terms&&existingMs.length===0&&val>0&&!autoGenStartedRef.current.has(d.id)){
+      if(terms&&existingMs.length===0&&val>0&&!d.billingGenerated&&!autoGenStartedRef.current.has(d.id)){
         autoGenStartedRef.current.add(d.id);
-        const milestones=[
-          terms.dp>0&&{name:`Down Payment (${terms.dp}%)`,amount:Math.round(val*terms.dp/100),description:"Upon signing of contract / Purchase Order"},
-          terms.progress>0&&{name:`Progress Billing (${terms.progress}%)`,amount:Math.round(val*terms.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
-          terms.final>0&&{name:`Final Billing (${terms.final}%)`,amount:Math.round(val*terms.final/100),description:"Upon delivery and installation completion"},
-          terms.retention>0&&{name:`Retention (${terms.retention}%) — Release: ${terms.retentionRelease||"Project Completion"}`,amount:Math.round(val*terms.retention/100),description:`Held as retention. Release condition: ${terms.retentionRelease||"Project Completion"}`},
-        ].filter(Boolean);
-        const start=invMax()+1;
-        milestones.forEach((m,idx)=>addMilestone({...m,dealId:d.id,invoiceNo:invNo(start+idx),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));
+        // Single guarded, idempotent generator (also sets deal.billingGenerated).
+        generateBillingSchedule(d.id,terms,val);
         setAutoGenDone(p=>({...p,[d.id]:true}));
       }
     });
@@ -22321,17 +22337,11 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
             const val=Number(deal?.value||0);
-            const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0;
+            const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated;
             const autoGenerate=()=>{
-              const t=terms;
-              const milestones=[
-                t.dp>0&&{name:`Down Payment (${t.dp}%)`,amount:Math.round(val*t.dp/100),description:"Upon signing of contract / Purchase Order"},
-                t.progress>0&&{name:`Progress Billing (${t.progress}%)`,amount:Math.round(val*t.progress/100),description:"Upon completion of fabrication / midpoint delivery"},
-                t.final>0&&{name:`Final Billing (${t.final}%)`,amount:Math.round(val*t.final/100),description:"Upon delivery and installation completion"},
-                t.retention>0&&{name:`Retention (${t.retention}%) — Release: ${t.retentionRelease||"Project Completion"}`,amount:Math.round(val*t.retention/100),description:`Held as retention. Release condition: ${t.retentionRelease||"Project Completion"}`},
-              ].filter(Boolean);
-              {const start=invMax()+1;milestones.forEach((m,idx)=>addMilestone({...m,dealId:selDeal,invoiceNo:invNo(start+idx),invoiceDate:today,dueDate:"",status:"Draft",createdBy:session?.name||role,deductions:[]}));}
-              toastEmit&&toastEmit(`${milestones.length} billing milestones generated from payment terms`,"success");
+              // Single guarded, idempotent generator (sets deal.billingGenerated).
+              generateBillingSchedule(selDeal,terms,val);
+              toastEmit&&toastEmit("Billing milestones generated from payment terms","success");
             };
             return(
               <div style={{marginBottom:14}}>
