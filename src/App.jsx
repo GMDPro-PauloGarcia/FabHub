@@ -11056,7 +11056,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {rowMenu&&(()=>{
         const d=rowMenu.deal;
         const items=[];
-        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const nd={...x,stage:"Did Not Win",notes:(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]")};if(isSupabaseReady())sbSyncOne("deals",nd,toSbDeal);return nd;}));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");setRowMenu(null);}});
+        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
+          // Persist as a partial column UPDATE (like stageQ / payQ), NOT a full-row
+          // upsert. An upsert routes through the RLS INSERT/WITH CHECK policy and was
+          // failing silently for some roles, so the server kept the old stage and the
+          // next sbLoadAll refresh (via mergeLocalOnly, server-wins) pulled the deal
+          // right back into the pipeline after it had been marked Did Not Win.
+          if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Did Not Win",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});return{...x,stage:"Did Not Win",probability:0,notes};}));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");setRowMenu(null);}});
         if(canDeleteDeal) items.push({icon:"🗑",label:"Delete Deal",color:"#dc2626",onClick:()=>{setConfirmDel(d.id);setRowMenu(null);}});
         return(
           <>
