@@ -4426,6 +4426,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const upPrs      =useCallback(fn=>setPrs(p=>{const n=fn(p);persist(KEYS.prs,n);return n;}),[persist]);
   const upAddenda  =useCallback(fn=>setAddenda(p=>{const n=fn(p);persist(KEYS.addenda,n);return n;}),[persist]);
   const upBillings =useCallback(fn=>setBillings(p=>{const n=fn(p);persist(KEYS.billings,n);return n;}),[persist]);
+  // Net receivable actually collectible for a deal — the sum of each non-cancelled
+  // milestone's netReceivable (after output VAT and any EWT withheld). Collections
+  // are recorded net, so a deal only reaches 'Paid' when amountPaid meets this, NOT
+  // the gross `invoiced` (which under 2% EWT is never reachable → stuck 'Deposited').
+  const dealNetDue=(dealId,msList,dealObj)=>(msList||[])
+    .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
+    .reduce((s,b)=>s+calcTax(Number(b.amount)||0,b.receiptType??b.receipt_type??dealObj?.receiptType??"OR",b.withholding??dealObj?.withholding??false).netReceivable,0);
   const addMilestone=(ms)=>{
     const rec={...ms,id:uid(),createdDate:today};
     upBillings(bs=>[...bs,rec]);
@@ -4542,7 +4549,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       upDeals(ds=>ds.map(d=>{
         if(d.id!==dealId) return d;
         const nd={...d,invoiced};
-        if(touchesPayments){const refVal=Number(invoiced||d.value||0);nd.amountPaid=paid;nd.paymentStatus=paid>=refVal&&refVal>0?'Paid':paid>0?'Deposited':'Unpaid';}
+        if(touchesPayments){const refVal=dealNetDue(dealId,updatedBillings,d)||Number(d.value||0);nd.amountPaid=paid;nd.paymentStatus=paid>=refVal&&refVal>0?'Paid':paid>0?'Deposited':'Unpaid';}
         if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
         return nd;
       }));
@@ -4572,7 +4579,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       // Recompute deal.amountPaid from surviving payments — the old code left it
       // stale, overstating "Collected" after a paid milestone was deleted.
       const newPaid=remaining.reduce((s,b)=>(b.payments||[]).filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
-      const refVal=Number(total||deal?.value||0);
+      const refVal=dealNetDue(dealId,remaining,deal)||Number(total||deal?.value||0);
       const newStatus=newPaid>=refVal&&refVal>0?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>{
         if(d.id!==dealId) return d;
@@ -4660,7 +4667,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const ps=b.id===msId?[...(b.payments||[]),{...payment,id:payId}]:(b.payments||[]);
           return ps.filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s);
         },0);
-      const refVal=Number(d0?.invoiced||d0?.value||0);
+      const refVal=dealNetDue(dealId,billings,d0)||Number(d0?.value||0);
       const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
@@ -4702,7 +4709,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         .filter(b=>b.dealId===dealId&&b.status!=='Cancelled')
         .reduce((s,b)=>(b.payments||[]).filter(p=>!p.bounced).reduce((ss,p)=>ss+Number(p.amount||0),s),0);
       const d0=deals.find(d=>d.id===dealId);
-      const refVal=Number(d0?.invoiced||d0?.value||0);
+      const refVal=dealNetDue(dealId,updatedBillings,d0)||Number(d0?.value||0);
       const newStatus=(newPaid>=refVal&&refVal>0)?'Paid':newPaid>0?'Deposited':'Unpaid';
       upDeals(ds=>ds.map(d=>d.id===dealId?{...d,amountPaid:newPaid,paymentStatus:newStatus}:d));
       if(isSupabaseReady()) sbUpdate('deals',dealId,{amount_paid:newPaid,payment_status:newStatus}).catch(()=>{});
