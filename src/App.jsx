@@ -6850,6 +6850,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   };
   const issueJO=()=>{
     const d=deals.find(x=>x.id===joSel),p=projs[joSel];
+    // An addendum / linked deal must never spin up its own Job Order — added
+    // scope belongs to the parent project. Steer it to the change-order flow.
+    if(d?.parentDealId){
+      const par=deals.find(x=>x.id===d.parentDealId);
+      toastEmit(`"${d.contact||d.client}" is an addendum of ${par?.client||"another project"}${par?.ceNo?` (${par.ceNo})`:""}. Don't issue a Job Order for it — convert it to a Change Order (⇄ CO) so the scope rolls into the parent project.`,"error",9000);
+      return;
+    }
     const matT=(p?.materials||[]).reduce((s,m)=>s+m.cost,0);
     const totC=p?matT+(p.laborCost||0)+(p.overhead||0):0;
     const jo={joNum:`JO-${new Date().getFullYear()}-${String(jos.length+1).padStart(3,"0")}`,dateIssued:todayL,deal:d,project:p,matTotal:matT,totalCost:totC,...joExtra};
@@ -16348,7 +16355,16 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
       <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:16}}>
         <div>
           <SecHead title="Job Order Builder" sub="Select a Won deal to generate a job order"/>
-          {wonDeals.map(d=>{const p=projs[d.id];return(
+          {/* Addenda / linked deals are excluded — added scope belongs to the
+              parent project's Job Order, not its own. They're converted to Change
+              Orders (⇄ CO) instead. */}
+          {(()=>{const joEligible=wonDeals.filter(d=>!d.parentDealId),joAddenda=wonDeals.filter(d=>d.parentDealId);return(<>
+          {joAddenda.length>0&&(
+            <div style={{background:"#fffbeb",border:"1.5px solid #fde68a",borderRadius:10,padding:"9px 13px",marginBottom:10,fontSize:".76rem",color:"#92400e"}}>
+              ⚠️ {joAddenda.length} linked deal{joAddenda.length!==1?"s":""} (addend{joAddenda.length!==1?"a":"um"}) hidden — these belong to a parent project. Convert them to a <strong>Change Order (⇄ CO)</strong> in the Pipeline instead of issuing a separate Job Order.
+            </div>
+          )}
+          {joEligible.map(d=>{const p=projs[d.id];return(
             <Card key={d.id} onClick={()=>{setJoSel(d.id);setJoExtra({address:"",phone:"",priority:d.priority||"Normal",extraNotes:""});setJoStep("review");}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <div><div style={{fontWeight:700,color:"#0f172a"}}>{d.client}</div><div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{d.product} · {d.contact}</div></div>
@@ -16357,7 +16373,8 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
               {p&&<div style={{marginTop:10}}><ProgBar pct={overallProg(p)} color={PROD_CLR[p.currentStage]}/></div>}
             </Card>
           );})}
-          {wonDeals.length===0&&<EmptyState icon="📋" msg="No won deals yet. Mark a deal as Won in the Pipeline first."/>}
+          {joEligible.length===0&&<EmptyState icon="📋" msg="No won deals yet. Mark a deal as Won in the Pipeline first."/>}
+          </>);})()}
         </div>
         <div>
           <SecHead title="Issued JOs"/>
