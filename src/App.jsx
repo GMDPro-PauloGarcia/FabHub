@@ -9448,7 +9448,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const ceRows=Object.values(ceMap).sort((a,b)=>b.value-a.value);
     const revArr=Array(n).fill(0);billings.forEach(b=>{if(b.status==="Cancelled")return;const p=getFinPeriod(b.invoiceDate||b.dueDate);if(p>=0)revArr[p]+=Number(b.amount||0);});
     const collArr=Array(n).fill(0);billings.forEach(b=>{(b.payments||[]).forEach(pay=>{const p=getFinPeriod(pay.date);if(p>=0)collArr[p]+=Number(pay.amount||0);});});
-    const expArr=Array(n).fill(0);exps.forEach(e=>{const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);const p=getFinPeriod(ds);if(p>=0)expArr[p]+=Number(e.amount||0);});
+    // AP-ledger accrual basis (matches the account-code Income Statement below):
+    // payables + legacy expenses not routed to a payable (no double count).
+    const expArr=Array(n).fill(0);
+    exps.forEach(e=>{if(e.payableId||e.cvId)return;const ds=e.date||(e.year!=null&&e.month!=null?`${e.year}-${String(e.month+1).padStart(2,"0")}-01`:null);const p=getFinPeriod(ds);if(p>=0)expArr[p]+=Number(e.amount||0);});
+    payables.forEach(pp=>{const p=getFinPeriod(pp.invoiceDate||pp.createdAt||null);if(p>=0)expArr[p]+=Number(pp.amount||0);});
     const finPeriods=Array.from({length:n},(_,i)=>({label:getPLabel(i),revenue:revArr[i],collections:collArr[i],outstanding:Math.max(0,revArr[i]-collArr[i]),expenses:expArr[i],net:revArr[i]-expArr[i]}));
     const finTot={revenue:revArr.reduce((s,v)=>s+v,0),collections:collArr.reduce((s,v)=>s+v,0),expenses:expArr.reduce((s,v)=>s+v,0)};
     finTot.outstanding=Math.max(0,finTot.revenue-finTot.collections);finTot.net=finTot.revenue-finTot.expenses;
