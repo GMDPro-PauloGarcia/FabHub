@@ -8929,7 +8929,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
       {(()=>{
         const today2=new Date();
-        const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&!WON_STAGES.includes(d.stage));
+        const activePipe=deals.filter(d=>d.stage!=="Cancelled"&&d.stage!=="Did Not Win"&&!WON_STAGES.includes(d.stage));
         const totalPipeVal=activePipe.reduce((s,d)=>s+Number(d.value||0),0);
         const awardedVal=wonDeals.reduce((s,d)=>s+Number(d.value||0),0);
         const thisMonth=new Date().toISOString().slice(0,7);
@@ -9356,7 +9356,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const monthCancelled=deals.filter(d=>{if(d.stage!=="Cancelled")return false;const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY&&new Date(dt).getMonth()===CM;});
     // Change orders approved in the selected month (CM) — credited as sales value.
     const monthCO=addenda.filter(a=>{if(!CO_APPROVED(a)||!a.awardedDate)return false;const dt=new Date(a.awardedDate);return dt.getFullYear()===CY&&dt.getMonth()===CM;});
-    const openPipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled");
+    const openPipeline=deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win");
     const totalWonGross=monthWon.reduce((s,d)=>s+dealTax(d).gross,0)+monthCO.reduce((s,a)=>s+coTax(a).gross,0);
     const totalWonBase=monthWon.reduce((s,d)=>s+dealTax(d).base,0)+monthCO.reduce((s,a)=>s+coTax(a).base,0);
     const totalWonVat=monthWon.reduce((s,d)=>s+dealTax(d).vat,0)+monthCO.reduce((s,a)=>s+coTax(a).vat,0);
@@ -10410,9 +10410,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         })()}
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
           {[
-            {l:"Total Pipeline",    v:fmt(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
+            {l:"Total Pipeline",    v:fmt(deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").reduce((s,d)=>s+Number(d.value||0),0)), c:"#3b82f6"},
             {l:"Awarded Value",     v:fmt(wonDeals.reduce((s,d)=>s+Number(d.value||0),0)),   c:"#059669"},
-            {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled").length, c:"#f59e0b"},
+            {l:"Active Deals",      v:deals.filter(d=>!WON_STAGES.includes(d.stage)&&d.stage!=="Cancelled"&&d.stage!=="Did Not Win").length, c:"#f59e0b"},
             {l:"Awarded Projects",  v:wonDeals.length, c:"#8b5cf6"},
           ].map(({l,v,c,sub})=>(
             <div key={l} style={{background:"#fff",borderRadius:12,padding:"15px 16px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
