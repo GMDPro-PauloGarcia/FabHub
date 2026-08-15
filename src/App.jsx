@@ -6121,8 +6121,12 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     toastEmit("Audit finding issued — respondent has 3 days to reply","success");
   };
   const updateFinding=(id,ch)=>{
-    upAudit(fs=>fs.map(f=>f.id===id?{...f,...ch}:f));
-    if(isSupabaseReady()){const merged={...(auditFindings.find(f=>f.id===id)||{}),...ch};sbUpdate('audit_findings',id,findingToSb(merged)).catch(()=>{});}
+    // Build the persisted payload from the freshly-updated record inside the
+    // functional updater, not from the render-closure `auditFindings` snapshot,
+    // so back-to-back updates don't overwrite each other in the DB.
+    let merged=null;
+    upAudit(fs=>fs.map(f=>{if(f.id!==id)return f;merged={...f,...ch};return merged;}));
+    if(isSupabaseReady()&&merged) sbUpdate('audit_findings',id,findingToSb(merged)).catch(()=>{});
   };
 
   const openAward=(deal)=>setAwardModal(deal);
@@ -15119,6 +15123,10 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
   const opsAmt=(d)=>{if(BUDGET_ONLY_OPS.includes(role)){const t=qsBudgetTotalOps(d?.id);return t>0?fmt(t)+" (budget)":"Budget Pending";}return fmt(d?.value);};
   const uid2=()=>String(Date.now());
+  // Hoisted to component top (not inside the closeout tab's IIFE) so the hook
+  // order is stable across opsTab switches — a conditional hook would change
+  // OpsView's hook count and crash on tab change.
+  const[rptForm,setRptForm]=useState(emptyProjectReport("progress"));
   if(!selProj) return(
     <Wrap>
       <SecHead title="Active Projects" sub="Click any project to update stages, materials, and team"/>
@@ -15666,7 +15674,6 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
         );
       })()}
       {opsTab==="closeout"&&(()=>{
-        const[rptForm,setRptForm]=useState(emptyProjectReport("progress"));
         const warranty=proj?.warranty||{active:false,type:"30",startDate:"",endDate:"",notes:""};
         const reports=proj?.reports||[];
         const progRpt=latestReport(proj,"progress");
@@ -15681,7 +15688,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
           upProj(selProj,p=>({...p,reports:[...(p.reports||[]),rec]}));
           logActivity&&logActivity(selProj,"Report Submitted",`${kind==="progress"?"Progress":"Installation"} Report (${rec.pctComplete}%) for ${projDeal?.client}`,session?.name);
           const rmsg=`📄 <b>${kind==="progress"?"Progress":"Installation"} Report Filed</b>\nProject: <b>${projDeal?.contact||projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nCompletion: ${rec.pctComplete}%\nBy: ${session?.name||"PM"}\n\n${kind==="progress"?"💰 Finance: progress billing may proceed.":"💰 Finance: forwarded to Sales for client-satisfaction check before final billing."}`;
-          sendTelegramNotification("management",rmsg);sendTelegramNotification(kind==="progress"?"sales":"sales",rmsg);
+          sendTelegramNotification("management",rmsg);sendTelegramNotification(kind==="progress"?"finance":"sales",rmsg);
           setRptForm(emptyProjectReport(kind==="progress"?"installation":"progress"));
           toastEmit(`${kind==="progress"?"Progress":"Installation"} Report filed`,"success");
         };
