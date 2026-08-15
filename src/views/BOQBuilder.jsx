@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useLayoutEffect,useRef} from "react";
-import {today,uid,KEYS,Card} from "../shared";
+import {today,uid,KEYS,Card,uiConfirm} from "../shared";
 import {isSupabaseReady,sbInsert,sbUpdate,sbDelete} from "../supabaseClient";
 
 // A textarea that grows to fit its content. BOQ line-item descriptions are
@@ -828,11 +828,11 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
                 <span style={{fontSize:".8rem",color:"#0f172a",fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{coParentDeal?.client||"—"}{coParentDeal?.ceNo?` (${coParentDeal.ceNo})`:""}</span>
               </span>
               :standaloneId
-              ?<select value="" onChange={e=>{const v=e.target.value;if(!v||!onLinkToDeal)return;const d2=deals.find(d=>d.id===v);if(window.confirm(`Link this BOQ to ${d2?.client||"this project"}${d2?.ceNo?" ("+d2.ceNo+")":""}?\n\nYour sections and items are kept — the BOQ just moves out of Standalone and attaches to the project.`)){onLinkToDeal(v,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}}} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer"}}>
+              ?<select value="" onChange={async e=>{const v=e.target.value;if(!v||!onLinkToDeal)return;const d2=deals.find(d=>d.id===v);if((await uiConfirm(`Link this BOQ to ${d2?.client||"this project"}${d2?.ceNo?" ("+d2.ceNo+")":""}?\n\nYour sections and items are kept — the BOQ just moves out of Standalone and attaches to the project.`))){onLinkToDeal(v,{items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}}} style={{fontFamily:"inherit",fontSize:".78rem",color:"#7c3aed",fontWeight:700,background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"2px 10px",outline:"none",flex:1,minWidth:0,cursor:"pointer"}}>
                 <option value="">📄 Standalone BOQ — link to a project…</option>
                 {deals.filter(d=>d.stage!=="Did Not Win"&&d.stage!=="Cancelled").map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
               </select>
-              :<select value={selDeal} onChange={e=>{const v=e.target.value;if(v==="__unlink__"){if(onUnlinkToStandalone&&window.confirm("Unlink this BOQ from the project and move it to Standalone?\n\nUse this if a project was picked by mistake. Your sections and items are kept; the BOQ is detached from the project.")){onUnlinkToStandalone({items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}return;}setSelDeal(v);}} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
+              :<select value={selDeal} onChange={async e=>{const v=e.target.value;if(v==="__unlink__"){if(onUnlinkToStandalone&&(await uiConfirm("Unlink this BOQ from the project and move it to Standalone?\n\nUse this if a project was picked by mistake. Your sections and items are kept; the BOQ is detached from the project."))){onUnlinkToStandalone({items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount});}return;}setSelDeal(v);}} style={{border:"none",fontFamily:"inherit",fontSize:".8rem",color:"#0f172a",outline:"none",background:"transparent",flex:1,minWidth:0}}>
                 <option value="">— Select —</option>
                 {deals.filter(d=>d.id===selDeal||(d.stage!=="Did Not Win"&&d.stage!=="Cancelled")).map(d=><option key={d.id} value={d.id}>{d.client}{d.contact?" · "+d.contact:""}{d.ceNo?" ("+d.ceNo+")":""}</option>)}
               </select>

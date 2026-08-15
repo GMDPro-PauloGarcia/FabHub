@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
-import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
+import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
@@ -27,7 +27,7 @@ const useStableComponent=(impl)=>{
 // page is opened instead of being part of the initial bundle. _lazyView bakes
 // the Suspense boundary into the binding itself, so every existing render
 // site keeps working unchanged.
-const PageLoading=()=><div style={{padding:"60px 20px",textAlign:"center",color:"#94a3b8",fontSize:".85rem",fontFamily:"inherit"}}>Loading…</div>;
+const PageLoading=()=><div style={{padding:"24px 20px",maxWidth:1100,margin:"0 auto"}}><PageSkeleton/></div>;
 const _lazyView=(load)=>{const L=React.lazy(load);return function LazyView(props){return <React.Suspense fallback={<PageLoading/>}><L {...props}/></React.Suspense>;};};
 const ConstructionCalendar=_lazyView(()=>import('./views/ConstructionCalendar'));
 const BOQBuilder=_lazyView(()=>import('./views/BOQBuilder'));
@@ -340,7 +340,7 @@ const FileAttachments=({folder,label="Attachments"})=>{
   };
 
   const del=async(fileName)=>{
-    if(!window.confirm(`Delete "${fileName}"?`)) return;
+    if(!(await uiConfirm(`Delete "${fileName}"?`))) return;
     await sbDeleteFile(`${folder}/${fileName}`);
     await load();
   };
@@ -1271,7 +1271,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
   const inp={width:"100%",padding:"6px 9px",border:"1.5px solid #e2e8f0",borderRadius:7,fontSize:".8rem",fontFamily:"inherit",boxSizing:"border-box",outline:"none"};
   const errInp={...inp,borderColor:"#ef4444"};
   const lbl=t=><div style={{fontSize:".65rem",fontWeight:700,color:"#64748b",marginBottom:2,textTransform:"uppercase",letterSpacing:".3px"}}>{t}</div>;
-  const handleSave=()=>{
+  const handleSave=async ()=>{
     const errs={};
     rows.forEach((r,i)=>{
       if(!r.note?.trim()) errs[`${i}_note`]=true;
@@ -1298,7 +1298,7 @@ function ExpenseModal({open,onClose,form:initialExpForm,setForm:_setExpForm,onSa
       if(dupes.length){
         const lines=dupes.map(d=>`  • #${d.i+1}  ${d.row.expDate||"—"}  ${d.row.supplier||d.row.payee||d.row.note||"—"}  ₱${fmt(d.amt)}`).join("\n");
         const msg=`⚠️ Possible duplicate${dupes.length>1?"s":""} — the following already exist in your expenses:\n\n${lines}\n\nA logged expense won't show in Daily Payables until it's routed for payment, so it may already be saved. Save ${dupes.length>1?"these anyway":"it anyway"}?`;
-        if(!window.confirm(msg)) return;
+        if(!(await uiConfirm(msg))) return;
       }
     }
     if(editId){
@@ -2219,7 +2219,7 @@ function AuditTrailView({isMobile,fmt,setPage,restoreFinancial,labelFor,Wrap}){
   useEffect(()=>{load();},[load]);
   const onRestore=async(r)=>{
     const amt=r.snapshot?.amount!=null?fmt(Number(r.snapshot.amount)):null;
-    if(!window.confirm(`Restore this ${labelFor(r.table_name)}${amt?` (${amt})`:""}, deleted ${r.performed_at?new Date(r.performed_at).toLocaleDateString("en-PH"):"previously"}${r.performed_by?` by ${r.performed_by}`:""}?\n\nReason given for deletion: ${r.reason||"—"}`)) return;
+    if(!(await uiConfirm(`Restore this ${labelFor(r.table_name)}${amt?` (${amt})`:""}, deleted ${r.performed_at?new Date(r.performed_at).toLocaleDateString("en-PH"):"previously"}${r.performed_by?` by ${r.performed_by}`:""}?\n\nReason given for deletion: ${r.reason||"—"}`))) return;
     setBusy(r.id);
     const ok=await restoreFinancial(r);
     setBusy("");
@@ -2626,7 +2626,7 @@ function DailySiteLogView({dailyLogs,wonDeals,addDailyLog,delDailyLog,session,ro
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".92rem"}}>{dealName(l.dealId)}</div>
                   <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{l.date} · {l.weather||""} · 👷 {l.manpower||0} on site · by {l.loggedBy||"—"}</div>
                 </div>
-                {canDel&&<button onClick={()=>{if(window.confirm("Delete this site log?"))delDailyLog(l.id);}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"3px 9px",color:"#dc2626",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Delete</button>}
+                {canDel&&<button onClick={async ()=>{if((await uiConfirm("Delete this site log?")))delDailyLog(l.id);}} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"3px 9px",color:"#dc2626",fontSize:".72rem",fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>Delete</button>}
               </div>
               {l.workDone&&<div style={{fontSize:".85rem",color:"#334155",marginTop:8,lineHeight:1.5,whiteSpace:"pre-wrap"}}>{l.workDone}</div>}
               <div style={{display:"flex",flexWrap:"wrap",gap:8,marginTop:8}}>
@@ -3474,10 +3474,10 @@ export default function App(){
   // confirmation and no trace afterward (evouchers is outside FIN_AUDIT, whose
   // archive/restore is built for whole table rows, not items nested inside a
   // record) — at minimum, gate it and leave a trail in the activity log.
-  const deleteEVItem=(evId,itemId)=>{
+  const deleteEVItem=async (evId,itemId)=>{
     const ev=evouchers.find(e=>e.id===evId);
     const item=ev?.items?.find(i=>i.id===itemId);
-    if(item&&!window.confirm(`Delete this liquidation item?\n\n${item.description||"Item"} — ₱${Number(item.amount||0).toLocaleString("en-PH")}\n\nThis cannot be undone.`)) return;
+    if(item&&!(await uiConfirm(`Delete this liquidation item?\n\n${item.description||"Item"} — ₱${Number(item.amount||0).toLocaleString("en-PH")}\n\nThis cannot be undone.`))) return;
     upEvouchers(es=>es.map(e=>e.id===evId?{...e,items:(e.items||[]).filter(i=>i.id!==itemId)}:e));
     if(item) logActivity(ev?.dealId||null,"EV Item Deleted",`Liquidation item removed from ${ev?.evNo||evId}: ${item.description||"item"} (₱${Number(item.amount||0).toLocaleString("en-PH")})`,session?.name);
   };
@@ -3527,7 +3527,7 @@ export default function App(){
   const confirmFinancialDelete=async(table,record)=>{
     const cfg=FIN_AUDIT[table]||{};
     if(!record) return true; // nothing to snapshot — shouldn't happen, don't block
-    const reason=window.prompt(`Delete this ${cfg.label||"financial record"}?\n\nIt will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,"");
+    const reason=(await uiPrompt(`Delete this ${cfg.label||"financial record"}?\n\nIt will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,""));
     if(reason===null) return false;                 // cancelled
     if(!reason.trim()){ toastEmit("A reason is required to delete a financial record.","error",5000); return false; }
     const snap=cfg.toSb?cfg.toSb(record):record;
@@ -4601,7 +4601,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // billing_payments cascade-delete when the milestone is removed, so ALWAYS
     // archive the milestone AND its payments first (restorable) and require a
     // reason — otherwise recorded collections vanish with no trail.
-    const reason=window.prompt(`Delete milestone "${ms.name||ms.title||"—"}"${paidTotal>0?`\n\n⚠️ This milestone has ${pays.length} recorded payment${pays.length!==1?"s":""} totalling ₱${paidTotal.toLocaleString("en-PH")} — they will be archived and removed too.`:""}\n\nIt will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,"");
+    const reason=(await uiPrompt(`Delete milestone "${ms.name||ms.title||"—"}"${paidTotal>0?`\n\n⚠️ This milestone has ${pays.length} recorded payment${pays.length!==1?"s":""} totalling ₱${paidTotal.toLocaleString("en-PH")} — they will be archived and removed too.`:""}\n\nIt will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,""));
     if(reason===null) return;                                                    // cancelled
     if(!reason.trim()){ toastEmit("A reason is required to delete a milestone.","error",5000); return; }
     const why=reason.trim();
@@ -4639,7 +4639,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const ms=billings.filter(b=>b.dealId===dealId);
     if(!ms.length) return;
     const deal=deals.find(d=>d.id===dealId);
-    const reason=window.prompt(`Delete the ENTIRE billing schedule for ${deal?.client||"this project"} — all ${ms.length} milestone${ms.length!==1?"s":""} and their recorded payments?\n\nEverything will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,"");
+    const reason=(await uiPrompt(`Delete the ENTIRE billing schedule for ${deal?.client||"this project"} — all ${ms.length} milestone${ms.length!==1?"s":""} and their recorded payments?\n\nEverything will be archived in Finance ▸ Audit Trail and can be restored.\nReason (required):`,""));
     if(reason===null) return;                                                    // cancelled
     if(!reason.trim()){ toastEmit("A reason is required to delete billing.","error",5000); return; }
     const why=reason.trim();
@@ -5668,7 +5668,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
   const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
-  const[isMobile,     setIsMobile]     = useState(()=>window.innerWidth<768);
+  const isMobile = useIsMobile();
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   const mobileNavRef = React.useRef(null);
   const[blockers,     setBlockers]     = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.blockers)||"[]");}catch{return [];}});
@@ -5724,7 +5724,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     idbSetMany([["gmdv5:chartOfAccounts",next]]).catch(()=>{});
     if(isSupabaseReady()) sbUpsert('app_settings',{key:'chart_of_accounts',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
   },[]);
-  useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
+  // (viewport tracking now handled by the reactive useIsMobile() hook above)
   useEffect(()=>{const on=()=>setIsOnline(true);const off=()=>setIsOnline(false);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered
@@ -6409,11 +6409,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const paidExpId=cv?.sourceExpenseId||(payables.find(p=>p.id===cv?.payableId)||{}).expenseId;
     if(paidExpId) markExpensePaid(paidExpId);
   };
-  const clearCv=id=>{
+  const clearCv=async id=>{
     const cv=vouchers.find(v=>v.id===id);
     let checkNo=cv?.checkNo||"";
     if(!checkNo){
-      const input=window.prompt("Enter check number for bank clearance:");
+      const input=(await uiPrompt("Enter check number for bank clearance:"));
       if(input===null) return;
       checkNo=input.trim();
     }
@@ -6695,16 +6695,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // for Subcontractor. Manual Other Payables are verified by default.
   const payIsSubcon=p=>p&&(p.category==="Subcontractor"||String(p.accountCode||"").startsWith("52"));
   const payNeedsVerify=p=>p&&!!(p.poId||p.poNumber); // only PO/WO-sourced payables are gated
-  const verifyPayable=(id)=>{
+  const verifyPayable=async (id)=>{
     const p=payables.find(x=>x.id===id); if(!p) return;
     let pct=100;
     if(payIsSubcon(p)){
-      const inp=window.prompt("% of project completion verified by Operations (0–100):",String(p.verificationPct||0));
+      const inp=(await uiPrompt("% of project completion verified by Operations (0–100):",String(p.verificationPct||0)));
       if(inp==null) return;
       pct=Math.max(0,Math.min(100,Number(inp)||0));
       if(pct<=0){toastEmit("Enter a % greater than 0 to unlock payment.","warning");return;}
     } else {
-      if(!window.confirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`)) return;
+      if(!(await uiConfirm(`Confirm Warehouse received the items for ${p.vendor||"this vendor"}${p.apNumber?` (${p.apNumber})`:""}? This unlocks it for payment.`))) return;
     }
     const upd={...p,verified:true,verificationPct:pct,verifiedBy:session?.name||"",verifiedAt:today};
     upPayables(ps=>ps.map(x=>x.id===id?upd:x));
@@ -7315,6 +7315,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
           @media print{.noprint{display:none}}
           body{overflow-x:hidden}
+          /* Keyboard focus — visible ring for every interactive element. Uses
+             :focus-visible so it shows on Tab but not on mouse click. Previously
+             only <input> had any focus style, leaving keyboard users lost. */
+          button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible,
+          [role="button"]:focus-visible,[tabindex]:focus-visible{
+            outline:2px solid #f59e0b!important;outline-offset:2px!important;
+            border-radius:6px;
+          }
+          input:focus-visible{outline:none}
+          @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+          /* Loading skeleton shimmer */
+          @keyframes fhshimmer{0%{background-position:-360px 0}100%{background-position:360px 0}}
+          .fh-skel{background:#e9edf2;background-image:linear-gradient(90deg,#e9edf2 0px,#f4f6f9 160px,#e9edf2 320px);background-size:720px 100%;border-radius:8px;animation:fhshimmer 1.3s linear infinite}
           @media(max-width:767px){
             input,select,textarea{font-size:16px!important}
             select{max-width:100%}
@@ -7330,6 +7343,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         {!isMobile&&<Nav/>}
         <MobileHeader/>
         <Toaster/>
+        <DialogHost/>
         {!isOnline&&<div style={{position:"fixed",top:0,left:0,right:0,zIndex:2000,background:"#1e293b",color:"#fcd34d",padding:"8px 16px",textAlign:"center",fontSize:".78rem",fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>⚠️ You're offline — changes are saved locally and will sync when you reconnect.</div>}
         {pendingSync>0&&(
           <div onClick={async()=>{
@@ -7518,7 +7532,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   );
 
   // ── AUTH GATE ─────────────────────────────────────────────────────────────
-  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register} sbReady={sbReady}/><Toaster/></>;
+  if(!session) return <><AuthScreen authView={authView} setAuthView={setAuthView} onLogin={login} onRegister={register} sbReady={sbReady}/><Toaster/><DialogHost/></>;
 
 
 
@@ -10966,8 +10980,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         <button onClick={e=>{e.stopPropagation();openEditDeal(d);}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
                         {(role==="Manager"||role==="QS"||role==="Sales")&&<button onClick={e=>{e.stopPropagation();setBoqCoId(null);setBoqStandaloneId(null);setBoqDealId(d.id);setPage("boq");}} title={isChild?"Open BOQ Builder for this addendum":"Open BOQ Builder for this project"} style={{background:"#0ea5e9",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>🧮</button>}
                         <button onClick={e=>{e.stopPropagation();setJumpDeal(d.id);setPage("projects");}} title="Open Project Card" style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>📋</button>
-                        {isChild&&canDeleteDeal&&<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
-                        {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={e=>{e.stopPropagation();if(window.confirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
+                        {isChild&&canDeleteDeal&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert "${d.contact||d.client}" into an additive Change Order on the parent project and retire this linked deal?`)))convertChildToCO(d);}} title="Convert this linked deal into a Change Order and retire it" style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>⇄ CO</button>}
+                        {!isChild&&canDeleteDeal&&(()=>{const kids=deals.filter(x=>x.parentDealId===d.id);if(!kids.length)return null;return<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Convert all ${kids.length} linked deal${kids.length===1?"":"s"} on "${d.client||d.contact}" into additive Change Orders and retire them?`)))convertAllChildrenToCO(d);}} title={`Convert all ${kids.length} linked deal(s) into Change Orders`} style={{background:"#fef3c7",border:"1px solid #f59e0b",borderRadius:5,padding:"3px 8px",fontSize:".65rem",color:"#92400e",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>⇄ All→CO ({kids.length})</button>;})()}
                       </td>
                     </tr>
                   );
@@ -11163,7 +11177,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {rowMenu&&(()=>{
         const d=rowMenu.deal;
         const items=[];
-        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:()=>{const reason=window.prompt("Reason for not winning (optional):");if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
+        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:async ()=>{const reason=(await uiPrompt("Reason for not winning (optional):"));if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
           // Persist as a partial column UPDATE (like stageQ / payQ), NOT a full-row
           // upsert. An upsert routes through the RLS INSERT/WITH CHECK policy and was
           // failing silently for some roles, so the server kept the old stage and the
@@ -13018,9 +13032,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                 </div>
                 <div style={{display:"flex",gap:10,marginTop:20}}>
-                  <button disabled={!canConfirm} onClick={()=>{
+                  <button disabled={!canConfirm} onClick={async ()=>{
                     if(!item) return;
-                    if(remaining<0){if(!window.confirm(`Only ${item.qtyOnHand} ${item.unit} on hand. Issue ${issueForm.qty} anyway?`)) return;}
+                    if(remaining<0){if(!(await uiConfirm(`Only ${item.qtyOnHand} ${item.unit} on hand. Issue ${issueForm.qty} anyway?`))) return;}
                     const notesStr=[issueForm.requestedBy?`Requested by: ${issueForm.requestedBy}`:"",issueForm.deliveryLink?`Delivery link: ${issueForm.deliveryLink}`:""].filter(Boolean).join(" · ");
                     const ok=logStockMove({itemId:issueForm.itemId,moveType:"OUT — Issued to Site",qty:Number(issueForm.qty),unitCost:0,projectId:issueForm.projectId,notes:notesStr,date:issueForm.date||today});
                     if(!ok) return;
@@ -13099,9 +13113,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   </div>
                 </div>
                 <div style={{display:"flex",gap:10,marginTop:20}}>
-                  <button disabled={!canConfirm} onClick={()=>{
+                  <button disabled={!canConfirm} onClick={async ()=>{
                     if(!item) return;
-                    if(remaining<0){if(!window.confirm(`Only ${item.qtyOnHand} ${item.unit} on hand. Release ${fabForm.qty} anyway?`)) return;}
+                    if(remaining<0){if(!(await uiConfirm(`Only ${item.qtyOnHand} ${item.unit} on hand. Release ${fabForm.qty} anyway?`))) return;}
                     const notesStr=[fabForm.requestedBy?`Requested by: ${fabForm.requestedBy}`:"",fabForm.notes].filter(Boolean).join(" · ");
                     if(!logStockMove({itemId:fabForm.itemId,moveType:"OUT — Released for Fabrication",qty:Number(fabForm.qty),unitCost:0,projectId:fabForm.projectId||"",notes:notesStr,date:fabForm.date||today})) return;
                     const deal=fabForm.projectId?wonDeals.find(d=>d.id===fabForm.projectId):null;
@@ -14213,9 +14227,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                                 <button onClick={()=>printCheckVoucher(v)} title="Print Check Voucher" style={{background:"#eef2ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#4338ca",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🖨 Print</button>
                                 {canEdit&&<button onClick={()=>openEditCv(v)} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>}
                                 {canSubmit&&<button onClick={()=>submitCvForRelease(v.id)} style={{background:"#fef9c3",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#ca8a04",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
-                                {canRelease&&<button onClick={()=>{if(window.confirm(`Release CV ${v.cvNo||""} to ${v.payee||"payee"} for ${fmt(v.amount)}?\n\nThis marks the linked payable as Paid.`))releaseCv(v.id);}} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Release</button>}
-                                {canClear&&<button onClick={()=>{if(window.confirm(`Mark CV ${v.cvNo||""} to ${v.payee||"payee"} for ${fmt(v.amount)} as cleared by the bank?`))clearCv(v.id);}} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🏦 Cleared</button>}
-                                {canVoid&&<button onClick={()=>{if(window.confirm("Void this voucher?"))voidCv(v.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
+                                {canRelease&&<button onClick={async ()=>{if((await uiConfirm(`Release CV ${v.cvNo||""} to ${v.payee||"payee"} for ${fmt(v.amount)}?\n\nThis marks the linked payable as Paid.`)))releaseCv(v.id);}} style={{background:"#dcfce7",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#16a34a",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✓ Release</button>}
+                                {canClear&&<button onClick={async ()=>{if((await uiConfirm(`Mark CV ${v.cvNo||""} to ${v.payee||"payee"} for ${fmt(v.amount)} as cleared by the bank?`)))clearCv(v.id);}} style={{background:"#eff6ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#2563eb",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🏦 Cleared</button>}
+                                {canVoid&&<button onClick={async ()=>{if((await uiConfirm("Void this voucher?")))voidCv(v.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
                               </div>
                             </td>
                           </tr>
@@ -14825,8 +14839,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* Demo Data Loader */}
       {(()=>{
         const demoDealsExist=deals.some(d=>d.id?.startsWith("demo-"));
-        const loadDemo=()=>{
-          if(!window.confirm("Load demo data? This will add sample deals, projects, inventory, checklist tasks, and financials alongside any existing data.")) return;
+        const loadDemo=async ()=>{
+          if(!(await uiConfirm("Load demo data? This will add sample deals, projects, inventory, checklist tasks, and financials alongside any existing data."))) return;
           // Deals
           upDeals(ds=>{const ids=new Set(ds.map(d=>d.id));return[...ds,...SEED_DEALS.filter(d=>!ids.has(d.id))];});
           // Projects
@@ -14843,8 +14857,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           upDrfs(ds=>{const ids=new Set(ds.map(d=>d.id));return[...ds,...SEED_DRF.filter(d=>!ids.has(d.id))];});
           toastEmit("✅ Demo data loaded — 10 deals, 4 active projects, 8 inventory items, 10 tasks, 2 DRFs, and sample financials.","success");
         };
-        const clearDemo=()=>{
-          if(!window.confirm("Remove all demo data? This cannot be undone.")) return;
+        const clearDemo=async ()=>{
+          if(!(await uiConfirm("Remove all demo data? This cannot be undone."))) return;
           upDeals(ds=>ds.filter(d=>!d.id?.startsWith("demo-")));
           setProjs(ps=>{const n=Object.fromEntries(Object.entries(ps).filter(([k])=>!k.startsWith("demo-")));persist(KEYS.projects,n);return n;});
           upExps(es=>es.filter(e=>!e.id?.startsWith("demo-")));
@@ -15663,7 +15677,7 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                               style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 8px",fontFamily:"inherit",fontSize:".74rem",color:"#0f172a",background:"#fff",boxSizing:"border-box"}}/>
                           </div>
                         )}
-                        <button onClick={()=>{if(window.confirm("Delete this addendum?"))deleteAddendum(a.id);}}
+                        <button onClick={async ()=>{if((await uiConfirm("Delete this addendum?")))deleteAddendum(a.id);}}
                           style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
                           Delete
                         </button>
@@ -16103,7 +16117,7 @@ function DRFView({drfs,addDRF,updateDRF,deleteDRF,wonDeals,session,role}){
                       )}
                       <button onClick={e=>{e.stopPropagation();openEdit(drf);}} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"6px 14px",fontSize:".75rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏ Edit</button>
                       {(role==="Manager"||drf.createdBy===session?.name)&&(
-                        <button onClick={e=>{e.stopPropagation();if(window.confirm("Delete this DRF?"))deleteDRF(drf.id);}} style={{background:"#fef2f2",border:"none",borderRadius:8,padding:"6px 14px",fontSize:".75rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>
+                        <button onClick={async e=>{e.stopPropagation();if((await uiConfirm("Delete this DRF?")))deleteDRF(drf.id);}} style={{background:"#fef2f2",border:"none",borderRadius:8,padding:"6px 14px",fontSize:".75rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>
                       )}
                     </div>
                   </div>
@@ -16307,7 +16321,7 @@ function JOView({deals,wonDeals,projs,jos,joStep,setJoStep,joSel,setJoSel,joExtr
                     style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#1d4ed8",cursor:"pointer",fontWeight:600}}>
                     ✏ Edit
                   </button>}
-                  {canEdit&&<button onClick={e=>{e.stopPropagation();if(window.confirm(`Delete ${jo.joNo||jo.joNum}? This cannot be undone.`))delJo(jo.id);}}
+                  {canEdit&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm(`Delete ${jo.joNo||jo.joNum}? This cannot be undone.`)))delJo(jo.id);}}
                     style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"5px 9px",fontFamily:"inherit",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>
                     🗑
                   </button>}
@@ -16719,7 +16733,7 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
 
   return(
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);} input,select,textarea{font-size:16px;}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);} input,select,textarea{font-size:16px;} button:focus-visible,a:focus-visible{outline:2px solid #f59e0b;outline-offset:2px;border-radius:6px;}`}</style>
       <div style={{width:"100%",maxWidth:400}}>
         {/* Logo */}
         <div style={{textAlign:"center",marginBottom:32}}>
@@ -16892,7 +16906,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
                     {["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","SalesOpsAdmin","Manager"].map(r=><option key={r} value={r}>{roleLabel(r)}</option>)}
                   </select>
                   <button onClick={()=>onApprove(u.id,editRole[u.id]||u.role)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#059669",cursor:"pointer",fontFamily:"inherit"}}>✓ Approve</button>
-                  <button onClick={()=>{if(window.confirm(`Reject ${u.name}'s account request?`))onReject(u.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Reject</button>
+                  <button onClick={async ()=>{if((await uiConfirm(`Reject ${u.name}'s account request?`)))onReject(u.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 14px",fontWeight:700,fontSize:".78rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕ Reject</button>
                 </div>
               </div>
             </div>
@@ -16945,7 +16959,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
               </div>
               <div style={{display:"flex",gap:7}}>
                 <button onClick={()=>onApprove(u.id,u.role)} style={{background:"#f0fdf4",border:"1.5px solid #6ee7b7",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#059669",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Reactivate</button>
-                <button onClick={()=>{if(window.confirm(`Permanently delete ${u.name}'s account? This cannot be undone.`))onDelete(u.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Delete</button>
+                <button onClick={async ()=>{if((await uiConfirm(`Permanently delete ${u.name}'s account? This cannot be undone.`)))onDelete(u.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>Delete</button>
               </div>
             </div>
           ))}
@@ -19187,7 +19201,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                           <button onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
                           <button onClick={()=>printSubconContract(w)} title="Generate the Standard Subcontractor Contract" style={{background:"#0B2545",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📄 Contract</button>
                           <button onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
-                          {canManage&&<button onClick={()=>{if(window.confirm("Delete "+(w.woNumber||"this work order")+"?"))deleteSWO(w.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
+                          {canManage&&<button onClick={async ()=>{if((await uiConfirm("Delete "+(w.woNumber||"this work order")+"?")))deleteSWO(w.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                         </div>
                       </div>
                     </div>
@@ -19712,7 +19726,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   const allPosSelected=poGroupList.length>0&&selectedVisibleCount===poGroupList.length;
   const toggleSelectPO=(k)=>setSelectedPOs(prev=>{const s=new Set(prev);s.has(k)?s.delete(k):s.add(k);return s;});
   const toggleSelectAllPOs=()=>setSelectedPOs(prev=>poGroupList.every(g=>prev.has(g.groupKey))?new Set():new Set(poGroupList.map(g=>g.groupKey)));
-  const bulkDeletePOs=()=>{
+  const bulkDeletePOs=async ()=>{
     const groups=poGroupList.filter(g=>selectedPOs.has(g.groupKey));
     if(!groups.length) return;
     const poCount=groups.length;
@@ -19722,7 +19736,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
     // deletePR doesn't touch payables, so warn how many will be left behind.
     const linked=(payables||[]).filter(p=>poNos.has(p.poId)||poNos.has(p.poNumber));
     const note=linked.length?`\n\n⚠️ ${linked.length} linked Accounts Payable ${linked.length>1?"entries":"entry"} will remain — remove ${linked.length>1?"them":"it"} in Accounts Payable if needed.`:"";
-    if(!window.confirm(`Delete ${poCount} purchase order${poCount>1?"s":""} (${itemCount} line item${itemCount>1?"s":""})? This cannot be undone.${note}`)) return;
+    if(!(await uiConfirm(`Delete ${poCount} purchase order${poCount>1?"s":""} (${itemCount} line item${itemCount>1?"s":""})? This cannot be undone.${note}`))) return;
     groups.forEach(g=>g.items.forEach(i=>deletePR(i.id)));
     setSelectedPOs(new Set());
     toastEmit&&toastEmit(`Deleted ${poCount} purchase order${poCount>1?"s":""}.`,"success");
@@ -20160,7 +20174,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
                     <button onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
                     {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
-                    {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete PO "+poNo+"?"))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
+                    {(role==="Manager"||role==="Procurement")&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm("Delete PO "+poNo+"?")))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                   </div>
                 </div>
                 {/* Expanded line items */}
@@ -20181,7 +20195,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                             {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                           </select>
                           <button onClick={e=>{e.stopPropagation();setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#475569",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✏</button>
-                          {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();if(window.confirm("Delete this item?"))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
+                          {(role==="Manager"||role==="Procurement")&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm("Delete this item?")))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".7rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>✕</button>}
                         </div>
                       );
                     })}
@@ -20206,7 +20220,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                     {PROC_STATUSES.map(s=><option key={s}>{s}</option>)}
                   </select>
                   <button onClick={()=>{setEditForm({...pr});setEditingId(pr.id);setMode("editpr");}} style={{background:"#f1f5f9",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏</button>
-                  {(role==="Manager"||role==="Procurement")&&<button onClick={()=>{if(window.confirm(`Delete "${pr.itemName||pr.item||"this request"}"${pr.supplier?` from ${pr.supplier}`:""}?`))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
+                  {(role==="Manager"||role==="Procurement")&&<button onClick={async ()=>{if((await uiConfirm(`Delete "${pr.itemName||pr.item||"this request"}"${pr.supplier?` from ${pr.supplier}`:""}?`)))deletePR(pr.id);}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>✕</button>}
                 </div>
               </div>
             );
@@ -20837,7 +20851,7 @@ function MaterialRequestView({mreqs,addMR,updateMR,deleteMR,prs,addPR,wonDeals,s
                 </div>
                 <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"flex-start"}}>
                   <button onClick={()=>printMR(mr)} style={{background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>🖨️</button>
-                  {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete this material request?"))deleteMR(mr.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>}
+                  {role==="Manager"&&<button onClick={async ()=>{if((await uiConfirm("Delete this material request?")))deleteMR(mr.id);}} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕ Delete</button>}
                 </div>
               </div>
               {convertingId===mr.id ? (
@@ -21182,7 +21196,7 @@ function BudgetRequestView({breqs,addBR,updateBR,deleteBR,wonDeals,session,role,
                     }} style={{background:"#fef2f2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 12px",fontWeight:700,fontSize:".76rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit"}}>
                       ✕ Reject
                     </button>
-                    {role==="Manager"&&<button onClick={()=>{if(window.confirm("Delete this budget request?"))deleteBR(br.id);}} style={{background:"#fee2e2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 10px",fontWeight:700,fontSize:".73rem",color:"#991b1b",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
+                    {role==="Manager"&&<button onClick={async ()=>{if((await uiConfirm("Delete this budget request?")))deleteBR(br.id);}} style={{background:"#fee2e2",border:"1.5px solid #fecaca",borderRadius:8,padding:"6px 10px",fontWeight:700,fontSize:".73rem",color:"#991b1b",cursor:"pointer",fontFamily:"inherit"}}>🗑</button>}
                   </>)}
                   {br.status==="Approved"&&canApprove&&(
                     <button onClick={()=>{
@@ -21692,7 +21706,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     // Policy §3: retention is released on client satisfaction — gated on the COC.
     const cocOk=(cocDeals&&cocDeals.includes(selDeal))||projs?.[selDeal]?.cocCreated;
     if(!cocOk){toastEmit&&toastEmit("Retention can only be released after the COC is issued (§3). Complete Close-Out first.","warning",6000);return;}
-    if(!window.confirm(`Release retention of ₱${out.toLocaleString("en-PH")} for ${deal.client||"this project"}? This creates a Draft retention-release invoice.`)) return;
+    if(!(await uiConfirm(`Release retention of ₱${out.toLocaleString("en-PH")} for ${deal.client||"this project"}? This creates a Draft retention-release invoice.`))) return;
     addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
   };
@@ -22662,7 +22676,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                           style={{background:"#f0fdf4",border:"1px solid #bbf7d0",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#059669",cursor:"pointer",fontWeight:600}}>✓ Clear</button>
                                       )}
                                       {!p.bounced&&(
-                                        <button onClick={()=>{if(window.confirm("Mark this collection as bounced? It will stop counting as cleared cash."))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)});}}
+                                        <button onClick={async ()=>{if((await uiConfirm("Mark this collection as bounced? It will stop counting as cleared cash.")))updateMilestone(ms.id,{payments:(ms.payments||[]).map(px=>px.id===p.id?{...px,bounced:true}:px)});}}
                                           title="Mark cheque bounced"
                                           style={{background:"#fff7ed",border:"1px solid #fed7aa",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#c2410c",cursor:"pointer",fontWeight:600}}>⤺</button>
                                       )}
@@ -22673,7 +22687,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                                       )}
                                       <button onClick={()=>{setEditPay({msId:ms.id,payId:p.id});setEditPayForm({});}}
                                         style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#1d4ed8",cursor:"pointer",fontWeight:600}}>✏</button>
-                                      <button onClick={()=>{if(window.confirm("Remove this payment? This will reverse the collected amount."))deleteBillingPayment(ms.id,p.id);}}
+                                      <button onClick={async ()=>{if((await uiConfirm("Remove this payment? This will reverse the collected amount.")))deleteBillingPayment(ms.id,p.id);}}
                                         style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:5,padding:"2px 7px",fontFamily:"inherit",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontWeight:600}}>×</button>
                                     </div>
                                   )}
@@ -23575,17 +23589,17 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
                 {/* Stage selector */}
                 {(role==="Manager"||role==="Sales"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin")&&deal&&upDeals&&(()=>{
-                  const changeStage=st=>{
+                  const changeStage=async st=>{
                     const curIdx=WON_STAGES.indexOf(deal.stage||"");
                     const newIdx=WON_STAGES.indexOf(st);
                     // M8: warn if active CE/QS requests exist for this deal
                     const activeCE=(ceReqs||[]).filter(r=>r.dealId===selDeal&&!["Done","Cancelled"].includes(r.status));
                     if(activeCE.length>0&&newIdx>curIdx){
-                      if(!window.confirm(`⚠️ This project has ${activeCE.length} active CE/QS request${activeCE.length!==1?"s":""} not yet completed.\n\nAdvance stage anyway?`)) return;
+                      if(!(await uiConfirm(`⚠️ This project has ${activeCE.length} active CE/QS request${activeCE.length!==1?"s":""} not yet completed.\n\nAdvance stage anyway?`))) return;
                     }
                     // M1: warn if jumping more than 1 stage ahead (only when current stage is recognized)
                     if(curIdx!==-1&&newIdx>curIdx+1){
-                      if(!window.confirm(`⚠️ You're skipping ${newIdx-curIdx-1} stage${newIdx-curIdx-1!==1?"s":""} (${deal.stage||"?"} → ${st}).\n\nContinue?`)) return;
+                      if(!(await uiConfirm(`⚠️ You're skipping ${newIdx-curIdx-1} stage${newIdx-curIdx-1!==1?"s":""} (${deal.stage||"?"} → ${st}).\n\nContinue?`))) return;
                     }
                     // FINANCIAL GATE — a project cannot be marked Completed without a contract value
                     // and billing on record; if collections are short, require an explicit confirm.
@@ -23595,7 +23609,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       if(!Number(deal.invoiced)) miss.push("Billing (invoiced amount)");
                       if(miss.length){ toastEmit(`Can't mark Completed — ${miss.join(" & ")} must be recorded in Finance first.`,"error",9000); return; }
                       const outstanding=Math.round((Number(deal.invoiced||0)-Number(deal.amountPaid||0))*100)/100;
-                      if(outstanding>0.5 && !window.confirm(`⚠️ This project still has ₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} outstanding (collected is below billed).\n\nMark Completed anyway? Do this only if the balance is retention or a written-off amount.`)) return;
+                      if(outstanding>0.5 && !(await uiConfirm(`⚠️ This project still has ₱${outstanding.toLocaleString("en-PH",{minimumFractionDigits:2})} outstanding (collected is below billed).\n\nMark Completed anyway? Do this only if the balance is retention or a written-off amount.`))) return;
                     }
                     upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,stage:st}:d));
                     if(isSupabaseReady()) sbUpdate('deals',selDeal,{stage:st}).catch(()=>{});
@@ -23639,11 +23653,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                       {/* Complete project button — shown when stage is 06-11 */}
                       {!isAlreadyDone&&(
                         <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
-                          <button onClick={()=>{if(window.confirm(`Move "${deal.contact||deal.client}" to Close-Out?\n\nUse this when the project is finishing up (final billing, punch items, handover).`)) changeStage("12 · Close-Out");}}
+                          <button onClick={async ()=>{if((await uiConfirm(`Move "${deal.contact||deal.client}" to Close-Out?\n\nUse this when the project is finishing up (final billing, punch items, handover).`))) changeStage("12 · Close-Out");}}
                             style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#059669",border:"1.5px solid #059669"}}>
                             🔒 Move to Close-Out
                           </button>
-                          <button onClick={()=>{if(window.confirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`)) changeStage("14 · Completed");}}
+                          <button onClick={async ()=>{if((await uiConfirm(`Mark "${deal.contact||deal.client}" as Completed?\n\nUse this only when all work is done and the project is fully closed.`))) changeStage("14 · Completed");}}
                             style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,letterSpacing:".04em",padding:"5px 14px",borderRadius:20,cursor:"pointer",background:"#059669",color:"#fff",border:"1.5px solid #059669"}}>
                             ✅ Mark as Completed
                           </button>
@@ -23655,7 +23669,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                           <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".62rem",fontWeight:700,padding:"4px 12px",borderRadius:20,background:"#ecfdf5",color:"#059669",border:"1px solid #a7f3d0"}}>
                             {deal.stage==="14 · Completed"?"✅ Completed":"🔒 Close-Out"}
                           </span>
-                          <button onClick={()=>{if(window.confirm("Reopen this project? It will be moved back to 11 · Punchlist.")) changeStage("11 · Punchlist");}}
+                          <button onClick={async ()=>{if((await uiConfirm("Reopen this project? It will be moved back to 11 · Punchlist."))) changeStage("11 · Punchlist");}}
                             style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".58rem",fontWeight:600,padding:"3px 10px",borderRadius:20,cursor:"pointer",background:"transparent",color:"#94a3b8",border:"1px solid #e2e8f0"}}>
                             ↩ Reopen
                           </button>
@@ -24816,7 +24830,7 @@ function SupplierMasterView({suppliers,addSupplier,updateSupplier,deleteSupplier
                 {canEdit&&(
                   <div style={{display:"flex",gap:5,flexShrink:0}}>
                     <button onClick={()=>openEdit(g)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                    <button onClick={()=>{if(window.confirm(`Remove all ${g._ids.length} entr${g._ids.length===1?"y":"ies"} for ${name}?`))g._ids.forEach(id=>deleteSupplier(id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+                    <button onClick={async ()=>{if((await uiConfirm(`Remove all ${g._ids.length} entr${g._ids.length===1?"y":"ies"} for ${name}?`)))g._ids.forEach(id=>deleteSupplier(id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
                   </div>
                 )}
               </div>
@@ -24979,7 +24993,7 @@ function SubconMasterView({subcons,addSubcon,updateSubcon,deleteSubcon,session,r
                 {canEdit&&(
                   <div style={{display:"flex",gap:6,flexShrink:0}}>
                     <button onClick={()=>openEdit(s)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#475569",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✏</button>
-                    <button onClick={()=>{if(window.confirm(`Remove all ${s._ids.length} entr${s._ids.length>1?"ies":"y"} for ${s.companyName}?`))s._ids.forEach(id=>deleteSubcon(id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
+                    <button onClick={async ()=>{if((await uiConfirm(`Remove all ${s._ids.length} entr${s._ids.length>1?"ies":"y"} for ${s.companyName}?`)))s._ids.forEach(id=>deleteSubcon(id));}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"5px 11px",fontSize:".73rem",color:"#dc2626",cursor:"pointer",fontWeight:600,fontFamily:"inherit"}}>✕</button>
                   </div>
                 )}
               </div>
@@ -25336,23 +25350,23 @@ function ChartOfAccountsView({chartOfAccounts=[],saveChartOfAccounts,session,rol
   const sorted=[...chartOfAccounts].sort((a,b)=>String(a.code).localeCompare(String(b.code)));
   const ql=q.trim().toLowerCase();
   const filtered=ql?sorted.filter(a=>String(a.code).includes(ql)||(a.name||"").toLowerCase().includes(ql)):sorted;
-  const seedDefaults=()=>{
-    if(chartOfAccounts.length){if(!window.confirm("Append the default chart to your existing accounts? Duplicates (same code) are skipped."))return;}
+  const seedDefaults=async ()=>{
+    if(chartOfAccounts.length){if(!(await uiConfirm("Append the default chart to your existing accounts? Duplicates (same code) are skipped.")))return;}
     const have=new Set(chartOfAccounts.map(a=>String(a.code)));
     const add=DEFAULT_COA.filter(d=>!have.has(d.code)).map(d=>({id:uid(),code:d.code,name:d.name,type:d.type,active:true}));
-    if(!add.length){window.alert("All default accounts are already in your chart.");return;}
+    if(!add.length){uiAlert("All default accounts are already in your chart.");return;}
     saveChartOfAccounts([...chartOfAccounts,...add]);
   };
   const submit=()=>{
     const code=form.code.trim(),name=form.name.trim();
-    if(!code||!name){window.alert("Account code and name are required.");return;}
-    if(chartOfAccounts.some(a=>String(a.code)===code&&a.id!==editId)){window.alert(`Account code ${code} already exists.`);return;}
+    if(!code||!name){uiAlert("Account code and name are required.");return;}
+    if(chartOfAccounts.some(a=>String(a.code)===code&&a.id!==editId)){uiAlert(`Account code ${code} already exists.`);return;}
     if(editId) saveChartOfAccounts(chartOfAccounts.map(a=>a.id===editId?{...a,code,name,type:form.type}:a));
     else saveChartOfAccounts([...chartOfAccounts,{id:uid(),code,name,type:form.type,active:true}]);
     setForm({code:"",name:"",type:"Expense"});setEditId(null);
   };
   const startEdit=(a)=>{setEditId(a.id);setForm({code:String(a.code),name:a.name,type:a.type});};
-  const del=(a)=>{if(window.confirm(`Delete account ${a.code} — ${a.name}?`)) saveChartOfAccounts(chartOfAccounts.filter(x=>x.id!==a.id));};
+  const del=async (a)=>{if((await uiConfirm(`Delete account ${a.code} — ${a.name}?`))) saveChartOfAccounts(chartOfAccounts.filter(x=>x.id!==a.id));};
   const inpSt={border:"1.5px solid #e2e8f0",borderRadius:7,padding:"7px 10px",fontFamily:"inherit",fontSize:".82rem",outline:"none",boxSizing:"border-box"};
   return(
     <div style={{maxWidth:860,margin:"0 auto"}}>
@@ -25539,7 +25553,7 @@ function BOQHomeView({standaloneBoqs=[],deals=[],session,role,today,onOpenStanda
               onMouseLeave={ev=>{ev.currentTarget.style.borderColor="#e2e8f0";ev.currentTarget.style.boxShadow="none";}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8,marginBottom:8}}>
                 <span style={{fontSize:".6rem",fontWeight:800,textTransform:"uppercase",letterSpacing:".5px",padding:"2px 8px",borderRadius:20,background:e.kind==="standalone"?"#f5f3ff":"#eff6ff",color:e.kind==="standalone"?"#7c3aed":"#1d4ed8",border:`1px solid ${e.kind==="standalone"?"#ddd6fe":"#bfdbfe"}`}}>{e.kind==="standalone"?"📄 Standalone":"🔗 Pipeline"}</span>
-                {e.kind==="standalone"&&canDelete&&<button onClick={ev=>{ev.stopPropagation();if(window.confirm("Delete this BOQ? This cannot be undone."))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>}
+                {e.kind==="standalone"&&canDelete&&<button onClick={async ev=>{ev.stopPropagation();if((await uiConfirm("Delete this BOQ? This cannot be undone.")))onDeleteStandalone(e.id);}} title="Delete BOQ" style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:".8rem",opacity:.5,padding:0}} onMouseEnter={ev=>ev.currentTarget.style.opacity=1} onMouseLeave={ev=>ev.currentTarget.style.opacity=.5}>🗑</button>}
               </div>
               <div style={{fontWeight:800,color:"#0f172a",fontSize:".95rem",marginBottom:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.title||"Untitled BOQ"}</div>
               <div style={{fontSize:".72rem",color:"#94a3b8",marginBottom:10,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{e.sub||"—"}</div>
