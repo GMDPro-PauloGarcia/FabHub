@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -3810,12 +3810,19 @@ export default function App(){
   // Master "+ Add" UI for anything new instead of an automatic effect.
 
   const logStockMove=(move)=>{
+    const moveItem=inventory.find(i=>i.id===move.itemId);
     if(move.moveType?.startsWith("OUT")){
-      const item=inventory.find(i=>i.id===move.itemId);
-      if(!item){toastEmit("Stock OUT failed — inventory item not found. Check that the item still exists.","error");return false;}
-      if(Number(item.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${item.qtyOnHand} ${item.unit||""} on hand.`,"error");return false;}
+      if(!moveItem){toastEmit("Stock OUT failed — inventory item not found. Check that the item still exists.","error");return false;}
+      if(Number(moveItem.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${moveItem.qtyOnHand} ${moveItem.unit||""} on hand.`,"error");return false;}
     }
-    const entry={...move,id:uid(),date:move.date||today,recordedBy:session?.name||role};
+    // Policy §5.3 — Finance must witness release/return of high-value materials
+    // and all scrap. Enforced here so no UI path can bypass it.
+    const needsWitness=moveNeedsWitness(move.moveType,moveItem);
+    if(needsWitness&&!String(move.financeWitness||"").trim()){
+      toastEmit("This release requires a Finance witness (§5.3). Enter the Finance representative before recording.","error",7000);
+      return false;
+    }
+    const entry={...move,highValue:needsWitness||!!move.highValue,id:uid(),date:move.date||today,recordedBy:session?.name||role};
     upStocklog(sl=>[entry,...sl]);
     if(isSupabaseReady()) sbInsert('stock_movements',moveToSb(entry)).catch(()=>{});
     const qty=Number(move.qty)||0;

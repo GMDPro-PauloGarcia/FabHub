@@ -429,6 +429,17 @@ export const dealOnboardingGate=(deal)=>{
   return {ready:missing.length===0, missing, checks};
 };
 
+// Warehouse witnessing (§5.3): Finance must witness release/return of
+// high-value materials and ALL scrap. One rule, used by both the movement form
+// and the logStockMove choke point so they never disagree.
+export const SCRAP_MOVE_TYPE = "OUT — Scrap (Finance witnessed)";
+export const moveNeedsWitness = (moveType,item)=>{
+  const t=String(moveType||"");
+  const isScrap=/scrap/i.test(t);
+  const isOutOrReturn=t.startsWith("OUT")||t.startsWith("RETURN");
+  return isScrap || (isOutOrReturn && !!(item&&item.highValue));
+};
+
 export const emptyMilestone=()=>({
   id:"",dealId:"",name:"",description:"",
   amount:0,invoiceNo:"",invoiceDate:"",dueDate:"",
