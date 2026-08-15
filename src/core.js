@@ -372,6 +372,63 @@ export const BILLING_STATUS_CLR = {
   "Overdue":"#ef4444","Cancelled":"#475569",
 };
 
+// ── Receivables & Finance Policy v2.0 ────────────────────────────────────────
+// Pricing basis declared on the signed C.E. — policy §2.1 requires this be
+// unambiguous before Finance invoices.
+export const VAT_TREATMENTS = ["VAT-exclusive","VAT-inclusive"];
+
+// Document-gated billing. A filed report is what unlocks the next invoice:
+//   progress      — ≥90% completion (fabrication) → unlocks Progress Billing
+//   installation  — filed immediately after install → unlocks Final Billing
+//   coc           — Certificate of Completion → unlocks Retention release
+export const REPORT_KINDS = [
+  {k:"progress",     label:"Progress Report",     icon:"📈", minPct:90},
+  {k:"installation", label:"Installation Report", icon:"🔧", minPct:0},
+];
+export const REPORT_STATUSES = ["Submitted","Sales Review","Verified","Rejected"];
+export const REPORT_STATUS_CLR = {Submitted:"#f59e0b","Sales Review":"#3b82f6",Verified:"#059669",Rejected:"#ef4444"};
+
+export const emptyProjectReport=(kind="progress")=>({
+  id:"",kind,pctComplete:kind==="progress"?90:100,
+  scopeNote:"",photosLink:"",
+  status:"Submitted",submittedBy:"",submittedAt:"",
+  verifiedBy:"",verifiedAt:"",
+});
+
+// The most recent report of a kind on a project (or null).
+export const latestReport=(proj,kind)=>{
+  const list=(proj?.reports||[]).filter(r=>r.kind===kind);
+  if(!list.length) return null;
+  return list.slice().sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||"")))[0];
+};
+// Is a qualifying report on file? Progress must meet its ≥90% threshold; any
+// non-rejected report counts as "on file" for gating installation billing.
+export const progressReportOnFile=(proj)=>{
+  const r=latestReport(proj,"progress");
+  return !!r&&r.status!=="Rejected"&&(Number(r.pctComplete)||0)>=90;
+};
+export const installationReportOnFile=(proj)=>{
+  const r=latestReport(proj,"installation");
+  return !!r&&r.status!=="Rejected";
+};
+
+// Onboarding gate (§2.1): the facts Finance must have before the downpayment
+// invoice. Returns {ready, missing:[labels]} so the UI can show a checklist.
+export const dealOnboardingGate=(deal)=>{
+  const d=deal||{};
+  const terms=d.paymentTerms||{};
+  const dp=d.downpaymentPct??terms.dp;
+  const checks=[
+    {ok:!!d.ceNo,                       label:"Signed C.E. (CE No.)"},
+    {ok:!!d.bir2303OnFile||!!d.bir2303Url, label:"BIR Form 2303 on file"},
+    {ok:!!(d.paymentTermsText||terms.netDays||terms.notes), label:"Payment terms"},
+    {ok:!!d.vatTreatment,               label:"VAT treatment (incl./excl.)"},
+    {ok:dp!=null&&dp!==""&&Number(dp)>0, label:"Downpayment %"},
+  ];
+  const missing=checks.filter(c=>!c.ok).map(c=>c.label);
+  return {ready:missing.length===0, missing, checks};
+};
+
 export const emptyMilestone=()=>({
   id:"",dealId:"",name:"",description:"",
   amount:0,invoiceNo:"",invoiceDate:"",dueDate:"",
@@ -499,6 +556,10 @@ export const emptyProject=()=>({
   budgetCreated:false,budgetLink:"",budgetNotes:"",
   // COC
   cocCreated:false,cocDate:"",cocLink:"",
+  // Receivables-policy reports (Progress ≥90% / Installation) — see REPORT_KINDS.
+  // Stored inline in the project blob, like pmUpdates/addenda, so they sync
+  // through upProj with no separate synced entity.
+  reports:[],
   // Warranty
   warranty:{active:false,type:"30",startDate:"",endDate:"",notes:""},
   // PM Updates
