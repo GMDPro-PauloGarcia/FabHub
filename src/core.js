@@ -175,12 +175,12 @@ export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f
 
 export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],size:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
-export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8" };
+export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
 // them token-safe and map to a friendly label only at display sites).
-export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin", FinanceAssistant:"Finance Assistant" };
+export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin", FinanceAssistant:"Finance Assistant", HRAdmin:"HR & Admin", Audit:"Audit Team" };
 export const roleLabel = r => ROLE_LABEL[r] || r;
 
 export const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval","Module","Swatch","Risk Flag"];
@@ -428,6 +428,39 @@ export const dealOnboardingGate=(deal)=>{
   const missing=checks.filter(c=>!c.ok).map(c=>c.label);
   return {ready:missing.length===0, missing, checks};
 };
+
+// ── Audit engine (Policy §5) ─────────────────────────────────────────────────
+export const AUDIT_AREAS = [
+  "Warehouse — Inventory / PRF","High-value release","Scrap","Petty cash",
+  "Office supplies (HR & Admin)","Revolving funds (Procurement)",
+  "Inventory accuracy","Conduct / Policy adherence","Other",
+];
+export const AUDIT_SEVERITY = ["Low","Medium","High"];
+export const AUDIT_SEVERITY_CLR = {Low:"#3b82f6",Medium:"#f59e0b",High:"#ef4444"};
+// Open → respondent has 3 days → Responded, or (past due) Referred to HR → Closed.
+export const AUDIT_STATUSES = ["Open","Responded","Referred to HR","Closed"];
+export const AUDIT_STATUS_CLR = {Open:"#f59e0b",Responded:"#3b82f6","Referred to HR":"#ef4444",Closed:"#059669"};
+export const AUDIT_REPLY_DAYS = 3; // §5.2 — respondent has three (3) days to reply
+
+export const emptyFinding=()=>({
+  id:"",area:AUDIT_AREAS[0],finding:"",respondent:"",severity:"Medium",
+  status:"Open",issuedBy:"",issuedAt:"",replyDue:"",response:"",respondedAt:"",
+  hrReferral:false,kpiImpact:"",resolvedAt:"",
+});
+// A finding is overdue when it's still Open past its 3-day reply window.
+export const findingOverdue=(f,todayISO)=>!!f&&f.status==="Open"&&!!f.replyDue&&String(f.replyDue)<String(todayISO||"");
+
+// §7 — recurring audit & compliance calendar. Static schedule the app turns into
+// checklist items; no table needed.
+export const RECURRING_AUDITS = [
+  {area:"Warehouse inventory / PRF / releasing records", freq:"Twice a month", schedule:"1st & 15th",           responsible:"Finance"},
+  {area:"High-value material release & returns",         freq:"Every release", schedule:"At each transaction",  responsible:"Finance (witness)"},
+  {area:"Scrap sales",                                   freq:"As needed",     schedule:"Scheduled w/ Finance", responsible:"Finance + Warehouse"},
+  {area:"Petty cash",                                    freq:"Weekly",        schedule:"Every Friday",         responsible:"Finance"},
+  {area:"Office supplies",                               freq:"Monthly",       schedule:"Last week",            responsible:"HR & Admin"},
+  {area:"Revolving funds",                               freq:"Monthly",       schedule:"Last week",            responsible:"Procurement"},
+  {area:"Inventory accuracy",                            freq:"Monthly",       schedule:"Last week",            responsible:"Warehouse"},
+];
 
 // Warehouse witnessing (§5.3): Finance must witness release/return of
 // high-value materials and ALL scrap. One rule, used by both the movement form

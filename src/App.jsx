@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2744,7 +2744,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
+          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -2778,6 +2778,7 @@ export default function App(){
         if(idb["gmdv5:payables"]) setPayables(idb["gmdv5:payables"]);
         if(idb["gmdv5:loans"])    setLoans(idb["gmdv5:loans"]);
         if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
+        if(idb["gmdv5:auditFindings"]) setAuditFindings(idb["gmdv5:auditFindings"]);
         if(idb[KEYS.vouchers])    setVouchers(idb[KEYS.vouchers]);
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
@@ -2963,6 +2964,9 @@ export default function App(){
                 localOnly.forEach(u=>sbInsert('ae_updates',{id:u.id,by:u.by,role:u.role,date:u.date,time:u.time,text:u.text,deal_id:u.dealId||null}).catch(()=>{}));
               }
             }catch(e){console.error('ae_updates load failed:',e);}
+            try{
+              sbList('audit_findings',{order:'created_at',limit:500}).then(rows=>{if(rows)setAuditFindings(rows.map(findingFromSb));}).catch(()=>{});
+            }catch(e){console.error('audit_findings load failed:',e);}
             try{
               sbList('ce_requests',{order:'created_at',limit:500}).then(rows=>{if(rows?.length)setCeReqs(rows.map(r=>({id:r.id,clientName:r.client_name,projectName:r.project_name,location:r.location,projectType:r.project_type,priority:r.priority,status:r.status,submittedBy:r.submitted_by,targetDeadline:r.target_deadline,submissionDeadline:r.submission_deadline,targetBudget:r.target_budget,targetMargin:r.target_margin,plansLink:r.plans_link,skpLink:r.skp_link,scheduleOfFinish:r.schedule_of_finish,notes:r.notes,ceNotes:r.ce_notes,bidAmount:r.bid_amount,bidMarginPct:r.bid_margin_pct,awarded:r.awarded,awardDate:r.award_date,dealId:r.deal_id,createdAt:r.created_at})));}).catch(()=>{});
             }catch{}
@@ -4077,6 +4081,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checklists:["Manager","Sales","Finance","Accounting","QS","Procurement","Operations","Design","ProjectMover","Warehouse"],
       swatches:["Manager","Finance","Procurement","Operations","Design"],
       ae_updates:["Manager","Sales","Finance","QS","Operations","ProjectMover","Design"],
+      audit_findings:["Manager","Finance","Accounting","Audit","HRAdmin","Warehouse","Procurement"],
       project_blockers:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover"],
       inventory_items:["Manager","Finance","Procurement","Warehouse"],
       stock_movements:["Manager","Finance","Procurement","Warehouse"],
@@ -4359,6 +4364,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         });
       }
     });
+    const auditSub = !wantsRT('audit_findings')?null:sbSubscribe('audit-findings-rt','audit_findings',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setAuditFindings(fs=>fs.filter(f=>f.id!==oldRow.id));return;}
+      if(rec){
+        const item=findingFromSb(rec);
+        setAuditFindings(fs=>{
+          if(eventType==='UPDATE') return fs.map(f=>f.id===rec.id?item:f);
+          if(fs.find(f=>f.id===rec.id)) return fs;
+          return [item,...fs];
+        });
+      }
+    });
     const blockerSub = !wantsRT('project_blockers')?null:sbSubscribe('blockers-rt','project_blockers',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setBlockers(bs=>bs.filter(b=>b.id!==oldRow.id));return;}
@@ -4422,6 +4439,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checkSub?.unsubscribe?.();
       swatchSub?.unsubscribe?.();
       aeUpdateSub?.unsubscribe?.();
+      auditSub?.unsubscribe?.();
       blockerSub?.unsubscribe?.();
       invSub?.unsubscribe?.();
       stockSub?.unsubscribe?.();
@@ -5626,6 +5644,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "updates"
   const[aeUpdates,    setAeUpdates]    = useState([]);
+  const[auditFindings,setAuditFindings]= useState([]);
   const[aeUpdateText, setAeUpdateText] = useState("");
   const[aeUpdateDealId, setAeUpdateDealId] = useState("");
   const[aeUpdateDealType, setAeUpdateDealType] = useState("active");
@@ -6083,8 +6102,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const delAeUpdate=(id)=>{
     const next=aeUpdates.filter(u=>u.id!==id);
     setAeUpdates(next);
-    
+
     if(isSupabaseReady()) sbDelete('ae_updates',id).catch(()=>{});
+  };
+
+  // ── Audit findings (Policy §5) ─────────────────────────────────────────────
+  const findingToSb=f=>({id:f.id,area:f.area||"",finding:f.finding||"",respondent:f.respondent||"",severity:f.severity||"Medium",status:f.status||"Open",issued_by:f.issuedBy||"",issued_at:f.issuedAt||null,reply_due:f.replyDue||null,response:f.response||"",responded_at:f.respondedAt||null,hr_referral:!!f.hrReferral,kpi_impact:f.kpiImpact||"",resolved_at:f.resolvedAt||null});
+  const findingFromSb=r=>({...r,issuedBy:r.issued_by,issuedAt:r.issued_at,replyDue:r.reply_due,respondedAt:r.responded_at,hrReferral:r.hr_referral||false,kpiImpact:r.kpi_impact||"",resolvedAt:r.resolved_at});
+  const upAudit=fn=>setAuditFindings(p=>{const n=fn(p);persist("gmdv5:auditFindings",n);return n;});
+  const addFinding=(data)=>{
+    const issued=data.issuedAt||today;
+    const entry={...emptyFinding(),...data,id:uid(),issuedBy:session?.name||role,issuedAt:issued,replyDue:addDaysISO(issued,AUDIT_REPLY_DAYS),status:"Open"};
+    upAudit(fs=>[entry,...fs]);
+    if(isSupabaseReady()) sbInsert('audit_findings',findingToSb(entry)).catch(()=>{});
+    logActivity(null,"Audit Finding",`${entry.area}: ${entry.finding}`.slice(0,140),session?.name);
+    const amsg=`🔎 <b>Audit Finding Issued</b>\nArea: ${entry.area}\nRespondent: ${entry.respondent||"—"}\nReply due: ${entry.replyDue} (3 days)\n\n${entry.finding}`;
+    sendTelegramNotification("management",amsg);
+    toastEmit("Audit finding issued — respondent has 3 days to reply","success");
+  };
+  const updateFinding=(id,ch)=>{
+    upAudit(fs=>fs.map(f=>f.id===id?{...f,...ch}:f));
+    if(isSupabaseReady()){const merged={...(auditFindings.find(f=>f.id===id)||{}),...ch};sbUpdate('audit_findings',id,findingToSb(merged)).catch(()=>{});}
   };
 
   const openAward=(deal)=>setAwardModal(deal);
@@ -6872,7 +6910,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
@@ -6891,7 +6929,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+    ],
+    Audit:[
+      {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
+      {group:"Audit",    items:[{id:"audit",l:"Audit"}]},
+      {group:"Reference",items:[{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"billing",l:"Billing"}]},
+    ],
+    HRAdmin:[
+      {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
+      {group:"Audit",    items:[{id:"audit",l:"Audit"}]},
+      {group:"Admin",    items:[{id:"accounts",l:"Accounts"},{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
@@ -6950,7 +6998,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -7079,7 +7127,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -13837,6 +13885,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </Wrap>
   );
 
+  // ── AUDIT (Policy §5) ────────────────────────────────────────────────────────
+  if(page==="audit") return(
+    <Wrap>
+      <AuditView findings={auditFindings} addFinding={addFinding} updateFinding={updateFinding} session={session} role={role}/>
+    </Wrap>
+  );
+
   // ── BILLING ─────────────────────────────────────────────────────────────────
   if(page==="billing") return(
     <>
@@ -16763,7 +16818,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   const[cf,setCf]=useState({name:"",username:"",password:"",role:"Sales",title:""});
   const[createErr,setCreateErr]=useState("");
   const STATUS_CLR = {active:"#10b981",pending:"#f59e0b",inactive:"#94a3b8",rejected:"#ef4444"};
-  const ALL_ROLES=["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","ProjectMover","SalesOpsAdmin","Manager"];
+  const ALL_ROLES=["Sales","Finance","Accounting","Procurement","QS","Operations","Design","Warehouse","ProjectMover","SalesOpsAdmin","Audit","HRAdmin","Manager"];
 
   const pending  = users.filter(u=>u.status==="pending");
   const active   = users.filter(u=>u.status==="active");
@@ -21336,6 +21391,130 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
   return(
     <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>
       ⚡ Billing schedule generated from payment terms…
+    </div>
+  );
+}
+
+// ─── AUDIT VIEW (Policy §5) ──────────────────────────────────────────────────
+function AuditView({findings,addFinding,updateFinding,session,role}){
+  const[showForm,setShowForm]=useState(false);
+  const[form,setForm]=useState(emptyFinding());
+  const[replyFor,setReplyFor]=useState(null);
+  const[replyText,setReplyText]=useState("");
+  const ff=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const canIssue=role==="Audit"||role==="Manager";
+  const canManage=role==="Audit"||role==="Manager"||role==="HRAdmin";
+  const open=findings.filter(f=>f.status==="Open");
+  const overdue=open.filter(f=>findingOverdue(f,today));
+  const submit=()=>{
+    if(!form.finding.trim()){toastEmit("Describe the finding first","warning");return;}
+    addFinding(form);setForm(emptyFinding());setShowForm(false);
+  };
+  const sendReply=(id)=>{
+    if(!replyText.trim())return;
+    updateFinding(id,{response:replyText.trim(),respondedAt:today,status:"Responded"});
+    setReplyFor(null);setReplyText("");toastEmit("Response recorded","success");
+  };
+  const KPI2=({l,v,c})=>(
+    <div style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
+      <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
+    </div>
+  );
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.2rem"}}>🔎 Audit</h2>
+          <div style={{fontSize:".76rem",color:"#64748b",marginTop:2}}>Findings carry a 3-day reply window (§5.2); unanswered findings are referred to HR &amp; Admin.</div>
+        </div>
+        {canIssue&&<button onClick={()=>setShowForm(s=>!s)} style={{background:"#dc2626",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Issue Finding</button>}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        <KPI2 l="Open" v={open.length} c="#f59e0b"/>
+        <KPI2 l="Overdue (>3d)" v={overdue.length} c="#ef4444"/>
+        <KPI2 l="Referred to HR" v={findings.filter(f=>f.status==="Referred to HR").length} c="#dc2626"/>
+        <KPI2 l="Closed" v={findings.filter(f=>f.status==="Closed").length} c="#059669"/>
+      </div>
+
+      {showForm&&canIssue&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16}}>
+          <div style={{fontWeight:800,color:"#0f172a",marginBottom:12}}>New Audit Finding</div>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
+            <Fld label="Area"><Sel value={form.area} onChange={e=>ff("area",e.target.value)}>{AUDIT_AREAS.map(a=><option key={a}>{a}</option>)}</Sel></Fld>
+            <Fld label="Respondent"><Inp value={form.respondent} onChange={e=>ff("respondent",e.target.value)} placeholder="Person / department concerned"/></Fld>
+            <Fld label="Severity"><Sel value={form.severity} onChange={e=>ff("severity",e.target.value)}>{AUDIT_SEVERITY.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Date Issued"><Inp type="date" value={form.issuedAt||today} onChange={e=>ff("issuedAt",e.target.value)}/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Finding" required><Inp value={form.finding} onChange={e=>ff("finding",e.target.value)} placeholder="What was observed, with specifics"/></Fld></div>
+          </div>
+          <div style={{fontSize:".72rem",color:"#64748b",margin:"8px 0"}}>Reply due: <strong>{addDaysISO(form.issuedAt||today,AUDIT_REPLY_DAYS)}</strong> (3 days from issue).</div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={submit} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>Issue Finding</button>
+            <button onClick={()=>setShowForm(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring audit calendar (§7) */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:16}}>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem",marginBottom:4}}>🗓 Recurring Audit Calendar (§7)</div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem",minWidth:520}}>
+            <thead><tr style={{textAlign:"left",color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em"}}>
+              <th style={{padding:"6px 8px"}}>Area</th><th style={{padding:"6px 8px"}}>Frequency</th><th style={{padding:"6px 8px"}}>Schedule</th><th style={{padding:"6px 8px"}}>Responsible</th>
+            </tr></thead>
+            <tbody>
+              {RECURRING_AUDITS.map((r,i)=>(
+                <tr key={i} style={{borderTop:"1px solid #f1f5f9"}}>
+                  <td style={{padding:"6px 8px",fontWeight:600,color:"#334155"}}>{r.area}</td>
+                  <td style={{padding:"6px 8px",color:"#64748b"}}>{r.freq}</td>
+                  <td style={{padding:"6px 8px",color:"#64748b"}}>{r.schedule}</td>
+                  <td style={{padding:"6px 8px",color:"#64748b"}}>{r.responsible}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Findings list */}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {findings.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:"30px 0",fontSize:".85rem"}}>No audit findings on record.</div>}
+        {findings.map(f=>{
+          const od=findingOverdue(f,today);
+          return(
+            <div key={f.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${od?"#fecaca":"#e2e8f0"}`,padding:"14px 16px",borderLeft:`4px solid ${AUDIT_STATUS_CLR[f.status]||"#94a3b8"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:220}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                    <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:AUDIT_STATUS_CLR[f.status]+"22",color:AUDIT_STATUS_CLR[f.status]}}>{f.status}</span>
+                    <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:AUDIT_SEVERITY_CLR[f.severity]+"22",color:AUDIT_SEVERITY_CLR[f.severity]}}>{f.severity}</span>
+                    <span style={{fontSize:".72rem",color:"#64748b",fontWeight:600}}>{f.area}</span>
+                    {od&&<span style={{fontSize:".68rem",fontWeight:800,color:"#dc2626"}}>⚠ OVERDUE</span>}
+                  </div>
+                  <div style={{fontSize:".88rem",color:"#0f172a",fontWeight:600}}>{f.finding}</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>Respondent: {f.respondent||"—"} · Issued {f.issuedAt||"—"} by {f.issuedBy||"—"} · Reply due {f.replyDue||"—"}</div>
+                  {f.response&&<div style={{fontSize:".8rem",color:"#334155",marginTop:6,padding:"6px 10px",background:"#f8fafc",borderRadius:8}}>💬 {f.response} <span style={{color:"#94a3b8"}}>· {f.respondedAt}</span></div>}
+                  {f.hrReferral&&<div style={{fontSize:".72rem",color:"#dc2626",fontWeight:700,marginTop:4}}>Referred to HR &amp; Admin{f.kpiImpact?` · KPI: ${f.kpiImpact}`:""}</div>}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
+                {f.status==="Open"&&replyFor!==f.id&&<button onClick={()=>{setReplyFor(f.id);setReplyText(f.response||"");}} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",color:"#fff",cursor:"pointer"}}>Respond</button>}
+                {canManage&&f.status!=="Closed"&&!f.hrReferral&&<button onClick={()=>updateFinding(f.id,{status:"Referred to HR",hrReferral:true})} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",color:"#dc2626",cursor:"pointer"}}>Refer to HR</button>}
+                {canManage&&f.status!=="Closed"&&<button onClick={()=>updateFinding(f.id,{status:"Closed",resolvedAt:today})} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",color:"#059669",cursor:"pointer"}}>Close</button>}
+              </div>
+              {replyFor===f.id&&(
+                <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <input value={replyText} onChange={e=>setReplyText(e.target.value)} placeholder="Respondent's reply…" style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/>
+                  <button onClick={()=>sendReply(f.id)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>Save</button>
+                  <button onClick={()=>{setReplyFor(null);setReplyText("");}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
