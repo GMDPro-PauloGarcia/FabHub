@@ -7246,6 +7246,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
           @media print{.noprint{display:none}}
           body{overflow-x:hidden}
+          /* Keyboard focus — visible ring for every interactive element. Uses
+             :focus-visible so it shows on Tab but not on mouse click. Previously
+             only <input> had any focus style, leaving keyboard users lost. */
+          button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible,
+          [role="button"]:focus-visible,[tabindex]:focus-visible{
+            outline:2px solid #f59e0b!important;outline-offset:2px!important;
+            border-radius:6px;
+          }
+          input:focus-visible{outline:none}
+          @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+          /* Loading skeleton shimmer */
+          @keyframes fhshimmer{0%{background-position:-360px 0}100%{background-position:360px 0}}
+          .fh-skel{background:#e9edf2;background-image:linear-gradient(90deg,#e9edf2 0px,#f4f6f9 160px,#e9edf2 320px);background-size:720px 100%;border-radius:8px;animation:fhshimmer 1.3s linear infinite}
           @media(max-width:767px){
             input,select,textarea{font-size:16px!important}
             select{max-width:100%}
@@ -16532,7 +16545,7 @@ function AuthScreen({authView,setAuthView,onLogin,onRegister,sbReady}){
 
   return(
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:16,fontFamily:"'Segoe UI',system-ui,sans-serif"}}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);} input,select,textarea{font-size:16px;}`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&display=swap'); *{box-sizing:border-box;} input:focus{border-color:#f59e0b!important;outline:none;box-shadow:0 0 0 3px rgba(245,158,11,.15);} input,select,textarea{font-size:16px;} button:focus-visible,a:focus-visible{outline:2px solid #f59e0b;outline-offset:2px;border-radius:6px;}`}</style>
       <div style={{width:"100%",maxWidth:400}}>
         {/* Logo */}
         <div style={{textAlign:"center",marginBottom:32}}>
