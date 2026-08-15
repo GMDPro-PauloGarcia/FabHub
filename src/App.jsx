@@ -9069,10 +9069,11 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
 
   // ── PAULO GARCIA — CEO (full system overview) ──────────────────────────────
   const grossMar=totRev>0?Math.round((totRev-totExp)/totRev*100):0;
+  const ceoMob=window.innerWidth<768;
   return(
     <Wrap>
       {/* ── COMMAND BAR ─────────────────────────────────────────────── */}
-      <div style={{background:"#0f172a",borderRadius:14,padding:"16px 20px",marginBottom:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
+      <div style={{background:"#0f172a",borderRadius:14,padding:ceoMob?"11px 16px":"16px 20px",marginBottom:ceoMob?10:14,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12}}>
         <div>
           <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.4rem",color:"#fff",letterSpacing:"-.5px"}}>
             Good {new Date().getHours()<12?"morning":new Date().getHours()<17?"afternoon":"evening"}, {session?.name?.split(" ")[0]}
@@ -9097,18 +9098,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           </div>
         );
         return(
-          <div style={{marginBottom:14}}>
-            <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",fontWeight:700,marginBottom:8}}>⚡ Needs Attention</div>
-            <div style={{display:"grid",gridTemplateColumns:`repeat(auto-fit,minmax(${window.innerWidth<768?"140px":"168px"},1fr))`,gap:10}}>
+          <div style={{marginBottom:ceoMob?10:14}}>
+            <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",fontWeight:700,marginBottom:6}}>⚡ Needs Attention</div>
+            <div style={{display:"grid",gridTemplateColumns:ceoMob?"repeat(3,1fr)":`repeat(auto-fit,minmax(168px,1fr))`,gap:ceoMob?7:10}}>
               {items.map((a,i)=>{const t=TONE[a.tone];return(
-                <div key={i} onClick={a.action} style={{background:t.bg,border:`1.5px solid ${t.bd}`,borderRadius:12,padding:"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:2}}>
+                <div key={i} onClick={a.action} style={{background:t.bg,border:`1.5px solid ${t.bd}`,borderRadius:12,padding:ceoMob?"9px 10px":"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:1}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                    <span style={{fontSize:"1.05rem"}}>{a.icon}</span>
+                    <span style={{fontSize:ceoMob?".95rem":"1.05rem"}}>{a.icon}</span>
                     <span style={{fontSize:".7rem",color:t.fg,fontWeight:700}}>→</span>
                   </div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:"1.6rem",color:t.fg,lineHeight:1.05}}>{a.n}</div>
-                  <div style={{fontSize:".74rem",fontWeight:700,color:"#0f172a"}}>{a.l}</div>
-                  <div style={{fontSize:".64rem",color:"#94a3b8"}}>{a.sub}</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:900,fontSize:ceoMob?"1.35rem":"1.6rem",color:t.fg,lineHeight:1.05}}>{a.n}</div>
+                  <div style={{fontSize:ceoMob?".68rem":".74rem",fontWeight:700,color:"#0f172a",lineHeight:1.1}}>{a.l}</div>
+                  <div style={{fontSize:".6rem",color:"#94a3b8",lineHeight:1.1}}>{a.sub}</div>
                 </div>
               );})}
             </div>
@@ -9132,7 +9133,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const n=data.length;
           const gap=3;
           const barW=(100-gap*(n-1))/n;
-          const H=64;
+          const H=ceoMob?46:64;
           return(
             <svg viewBox={`0 0 100 ${H+10}`} style={{width:"100%",height:H+10,display:"block"}}>
               {data.map((v,i)=>{
@@ -9167,19 +9168,19 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           {key:"awarded",    title:"Projects Awarded",data:awardData,  color:"#f59e0b", fmt:v=>v+(v===1?" project":" projects"), icon:"🏆", action:()=>setPage("projects"), cur:pace(salesRec,cyr,cmo,D,true), prev:pace(salesRec,pyr,pmo,D,true)},
         ];
         return(
-          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,marginBottom:14}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:ceoMob?7:10,marginBottom:ceoMob?10:14}}>
             {charts.map(({key,title,data,color,fmt,icon,action,cur,prev,invert})=>{
               const chg=prev>0?Math.round((cur-prev)/prev*100):null;
               const good=chg!=null&&(invert?chg<=0:chg>=0);
               const prevFull=data[data.length-2]||0;
               return(
-                <div key={title} onClick={()=>setWidgetDrill({key,title,color,icon,fmt,action,cur,cyr,cmo})} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:"12px 14px",cursor:"pointer"}}>
+                <div key={title} onClick={()=>setWidgetDrill({key,title,color,icon,fmt,action,cur,cyr,cmo})} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:ceoMob?"9px 11px":"12px 14px",cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
                     <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>{icon} {title}</div>
                     {chg!==null?<span title={`vs. first ${D} days of last month`} style={{fontSize:".58rem",fontWeight:700,color:good?"#059669":"#ef4444",background:good?"#f0fdf4":"#fef2f2",borderRadius:5,padding:"1px 5px"}}>{chg>=0?"↑":"↓"}{Math.abs(chg)}% MTD</span>:<span style={{fontSize:".55rem",color:"#cbd5e1",fontWeight:600}}>—</span>}
                   </div>
-                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.15rem",color:color}}>{fmt(cur)}</div>
-                  <div style={{fontSize:".57rem",color:"#94a3b8",marginBottom:6}}>month-to-date · {fmt(prevFull)} last mo total</div>
+                  <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:ceoMob?"1.05rem":"1.15rem",color:color,lineHeight:1.1}}>{fmt(cur)}</div>
+                  <div style={{fontSize:".55rem",color:"#94a3b8",marginBottom:ceoMob?4:6,lineHeight:1.15}}>month-to-date · {fmt(prevFull)} last mo total</div>
                   <BarChart data={data} color={color} labels={months.map(m=>m.label)}/>
                 </div>
               );
