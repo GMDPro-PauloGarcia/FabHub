@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
-import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton} from './shared';
+import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
@@ -5632,7 +5632,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
   const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
-  const[isMobile,     setIsMobile]     = useState(()=>window.innerWidth<768);
+  const isMobile = useIsMobile();
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   const mobileNavRef = React.useRef(null);
   const[blockers,     setBlockers]     = useState(()=>{try{return JSON.parse(localStorage.getItem(KEYS.blockers)||"[]");}catch{return [];}});
@@ -5688,7 +5688,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     idbSetMany([["gmdv5:chartOfAccounts",next]]).catch(()=>{});
     if(isSupabaseReady()) sbUpsert('app_settings',{key:'chart_of_accounts',value:next,updated_at:new Date().toISOString()},'key').catch(()=>{});
   },[]);
-  useEffect(()=>{const h=()=>setIsMobile(window.innerWidth<768);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
+  // (viewport tracking now handled by the reactive useIsMobile() hook above)
   useEffect(()=>{const on=()=>setIsOnline(true);const off=()=>setIsOnline(false);window.addEventListener('online',on);window.addEventListener('offline',off);return()=>{window.removeEventListener('online',on);window.removeEventListener('offline',off);};},[]);
   const[dragDeal,    setDragDeal]    = useState(null);   // deal id being dragged
   const[dragOver,    setDragOver]    = useState(null);   // stage column being hovered

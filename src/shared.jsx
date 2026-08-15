@@ -24,6 +24,24 @@ export const BANKS = [
   { id:"union",    name:"Unionbank of the Philippines",short:"Unionbank",  color:"#0e7490", capital:true,  type:"Reserve",   acctNo:"0018 0000 8603",   branch:"ONLINE"        }, // GMD Capital — excluded from working capital
 ];
 
+// Reactive mobile-breakpoint hook — the sanctioned way to branch on viewport.
+// Prefer this over the ad-hoc `const mob=window.innerWidth<768` reads scattered
+// through the app: those only re-evaluate when their component happens to
+// re-render, so a memoized/stable subtree can get stuck at the wrong breakpoint
+// on resize/rotate. This subscribes to resize and re-renders on the crossing.
+// Must obey the rules of hooks (call at the top level of a component/hook).
+export const MOBILE_BP = 768;
+export function useIsMobile(bp=MOBILE_BP){
+  const [m,setM]=useState(()=>typeof window!=="undefined"&&window.innerWidth<bp);
+  useEffect(()=>{
+    const h=()=>setM(window.innerWidth<bp);
+    h();
+    window.addEventListener("resize",h);
+    return ()=>window.removeEventListener("resize",h);
+  },[bp]);
+  return m;
+}
+
 export const emptyBankRow = () => ({ beg:"", book:"", end:"", bizlink:"", float:"" });
 export const emptyDayPosition = (date) => ({
   date,
