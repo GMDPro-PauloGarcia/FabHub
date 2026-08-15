@@ -24697,6 +24697,7 @@ const DEFAULT_COA=[
   {code:"5000",name:"Cost of Materials - Construction",type:"COGS"},
   {code:"5010",name:"Cost of Materials - Signage",type:"COGS"},
   {code:"5020",name:"Cost of Materials - POP Displays",type:"COGS"},
+  {code:"5030",name:"Special Materials",type:"COGS"},
   {code:"5100",name:"Direct Labor - Production",type:"COGS"},
   {code:"5200",name:"Subcontractor Costs",type:"COGS"},
   {code:"5300",name:"Freight & Handling",type:"COGS"},
