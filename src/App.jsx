@@ -19708,6 +19708,47 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   })();
 
   const STATUS_CLR={"Draft":"#94a3b8","Pending Approval":"#f59e0b","PO Issued":"#3b82f6","Partially Delivered":"#8b5cf6","Delivered":"#10b981","Cancelled":"#ef4444"};
+  // Where a PO sits in the receive → pay chain (Policy v2.0: nothing is payable
+  // until goods are received and a payable is raised). Derived from the PR line
+  // items (delivery) and the linked Accounts Payable rows (poId/poNumber).
+  const poLifecycle=(items,poNo)=>{
+    const totQty=items.reduce((s,i)=>s+n(i.qty),0);
+    const delQty=items.reduce((s,i)=>s+n(i.qtyDelivered),0);
+    const anyDelivered=delQty>0||items.some(i=>["Delivered","Partially Delivered"].includes(i.status));
+    const fullyDelivered=(totQty>0&&delQty>=totQty)||(items.length>0&&items.every(i=>i.status==="Delivered"));
+    const linkedAP=(payables||[]).filter(p=>p.poId===poNo||p.poNumber===poNo);
+    const apNos=[...new Set(linkedAP.map(p=>p.apNumber).filter(Boolean))];
+    const isPaid=v=>v.status==="Paid"||v.acctStatus==="Paid"||(n(v.amount)>0&&n(v.paidAmount)>=n(v.amount));
+    const paid=linkedAP.length>0&&linkedAP.every(isPaid);
+    const partiallyPaid=linkedAP.some(p=>n(p.paidAmount)>0);
+    return {anyDelivered,fullyDelivered,hasPayable:linkedAP.length>0,linkedAP,apNos,paid,partiallyPaid};
+  };
+  // Slim 4-stage strip: Issued → Received → Payable → Paid. Answers "why can't
+  // Finance pay this yet?" at a glance, without opening the row.
+  const lifecycleStrip=(lc)=>{
+    const nodes=[
+      {k:"Issued",  done:true,             clr:STATUS_CLR["PO Issued"]},
+      {k:lc.fullyDelivered?"Received":lc.anyDelivered?"Part. recv":"Received", done:lc.anyDelivered, half:lc.anyDelivered&&!lc.fullyDelivered, clr:"#10b981"},
+      {k:lc.apNos[0]||"Payable", done:lc.hasPayable, clr:"#6366f1"},
+      {k:lc.paid?"Paid":lc.partiallyPaid?"Part. paid":"Paid", done:lc.paid, half:lc.partiallyPaid&&!lc.paid, clr:"#059669"},
+    ];
+    return(
+      <div role="img" aria-label={`Status: ${nodes.filter(x=>x.done).map(x=>x.k).join(", ")||"issued"}`}
+        style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap",padding:"0 2px 2px"}}>
+        {nodes.map((nd,i)=>(
+          <React.Fragment key={i}>
+            {i>0&&<span aria-hidden="true" style={{width:14,height:2,background:nd.done?nd.clr:"#e2e8f0",flexShrink:0}}/>}
+            <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
+              <span aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",flexShrink:0,
+                background:nd.done?(nd.half?"#fff":nd.clr):"#fff",
+                border:`2px solid ${nd.done?nd.clr:"#cbd5e1"}`}}/>
+              <span style={{fontSize:".6rem",fontWeight:nd.done?700:500,color:nd.done?nd.clr:"#94a3b8",whiteSpace:"nowrap",letterSpacing:".2px"}}>{nd.k}</span>
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
   const totalValue=filteredAll.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
   // Assign a distinct color to each PO number that appears more than once in the list
   const DUP_PALETTE=["#dc2626","#d97706","#059669","#7c3aed","#db2777","#0891b2","#65a30d","#ea580c"];
@@ -20151,6 +20192,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
           {poListTab==="list"&&grouped.map((g,gi)=>{
           if(g.type==="po"){
             const {poNo,groupKey,items,supplier,status,poDate:poD,total}=g;
+            const lc=poLifecycle(items,poNo);
             const projects=[...new Set(items.map(i=>i.projectName||"").filter(Boolean))].join(", ")||"—";
             // Keyed by groupKey (poNumber+supplier), not bare poNo — two different
             // suppliers can share the same PO number (dupPoColors below exists
@@ -20172,11 +20214,20 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
                   <div style={{textAlign:"right",fontWeight:800,color:"#10b981",fontSize:".85rem"}}>{fmt(total)}</div>
                   <div><span style={{fontSize:".62rem",background:STATUS_CLR[status]+"22",color:STATUS_CLR[status],border:`1px solid ${STATUS_CLR[status]}44`,borderRadius:20,padding:"2px 8px",fontWeight:700,whiteSpace:"nowrap"}}>{status}</span></div>
                   <div style={{display:"flex",gap:5,justifyContent:"flex-end"}}>
-                    <button onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
-                    {(role==="Manager"||role==="Procurement")&&<button onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
-                    {(role==="Manager"||role==="Procurement")&&<button onClick={async e=>{e.stopPropagation();if((await uiConfirm("Delete PO "+poNo+"?")))items.forEach(i=>deletePR(i.id));}} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
+                    <button aria-label={`Print PO ${poNo}`} title="Print PO" onClick={e=>{e.stopPropagation();printPO(poNo,supplier,poD,items,items[0]?.poDiscType,items[0]?.poDiscValue,items[0]?.withVat);}} style={{background:"#eff6ff",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨</button>
+                    {(role==="Manager"||role==="Procurement")&&<button aria-label={`Edit PO ${poNo}`} title="Edit PO" onClick={e=>{e.stopPropagation();openEditPO(poNo,items);}} style={{background:"#f0fdf4",border:"none",borderRadius:6,padding:"3px 8px",fontSize:".68rem",color:"#059669",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✏</button>}
+                    {(role==="Manager"||role==="Procurement")&&<button aria-label={`Delete PO ${poNo}`} title="Delete PO" onClick={async e=>{e.stopPropagation();
+                      // Policy v2.0: a PO that has already raised an Accounts Payable
+                      // entry can't be deleted silently — deleting the PR leaves the
+                      // payable (and any expense) orphaned and breaks the document
+                      // trail. Warn, name the AP, and let Finance clean up there.
+                      const apNote=lc.hasPayable?`\n\n⚠️ This PO has ${lc.linkedAP.length} linked Accounts Payable ${lc.linkedAP.length>1?"entries":"entry"}${lc.apNos.length?` (${lc.apNos.join(", ")})`:""} that will remain. Remove ${lc.linkedAP.length>1?"them":"it"} in Accounts Payable if this is a mistake.`:"";
+                      if((await uiConfirm({title:"Delete purchase order",tone:"danger",confirmLabel:"Delete PO",message:`Delete PO ${poNo}?${apNote}\n\nThis cannot be undone.`})))items.forEach(i=>deletePR(i.id));
+                    }} style={{background:"#fef2f2",border:"none",borderRadius:6,padding:"3px 7px",fontSize:".68rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                   </div>
                 </div>
+                {/* Lifecycle: where this PO sits in the receive → pay chain */}
+                <div style={{padding:"0 14px 7px 14px",background:open?"#f8fafc":"#fff"}}>{lifecycleStrip(lc)}</div>
                 {/* Expanded line items */}
                 {open&&(
                   <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"8px 14px 10px"}}>
