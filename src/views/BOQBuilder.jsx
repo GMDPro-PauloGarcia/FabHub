@@ -108,7 +108,11 @@ const GMD_DEFAULT_LIBRARY=[
 
 // ─── CHART OF ACCOUNTS ──────────────────────────────────────────────────────
 
-function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData,initialCoId,coRecord,saveCoBoq}){
+function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],setBoqLibrary,initialDealId,clearBoqDeal,onBack,standaloneBoqs=[],saveStandaloneBoq,initialStandaloneId,clearBoqStandalone,onLinkToDeal,onUnlinkToStandalone,onBoqValue,onBoqData,initialCoId,coRecord,saveCoBoq,readOnly=false}){
+  // Read-only mode: the BOQ can be viewed and printed/exported (e.g. Sales sending
+  // a change-order BOQ to a client) but never edited. Every mutator no-ops and the
+  // editing chrome is hidden, so the printed PDF always matches the saved figures.
+  const ro=!!readOnly;
   // Start blank — sections are added per BOQ, no fixed/preset sections
   const BLANK_ITEMS=()=>[];
   // Draft key used when no project is selected yet (work is migrated onto the deal once picked)
@@ -164,8 +168,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   const[addSecOpen,setAddSecOpen]=useState(false);
   const[newSecForm,setNewSecForm]=useState({id:"",label:""});
 
-  const renameSection=(id,label)=>setSections(ss=>ss.map(s=>s.id===id?{...s,label}:s));
+  const renameSection=(id,label)=>{if(ro)return;setSections(ss=>ss.map(s=>s.id===id?{...s,label}:s));};
   const addSection=()=>{
+    if(ro)return;
     const sid=newSecForm.id.trim()||String(sections.length+1);
     if(!newSecForm.label.trim()){toastEmit("Section name is required.");return;}
     if(sections.find(s=>s.id===sid)){toastEmit(`Section "${sid}" already exists.`);return;}
@@ -174,6 +179,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     setAddSecOpen(false);
   };
   const deleteSection=(id)=>{
+    if(ro)return;
     if(items.some(it=>it.section===id)){toastEmit("Move or delete all items in this section first.");return;}
     setSections(ss=>{
       const remaining=ss.filter(s=>s.id!==id);
@@ -261,6 +267,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   // Ensure legacy items (saved before markup existed) carry baseCost/markup fields.
   const normItem=it=>({...it,baseCost:it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0),markup:it.markup!=null?it.markup:0});
   const applyMarkupToAll=()=>{
+    if(ro)return;
     const m=Number(markupPct)||0;
     setItems(its=>its.map(it=>{const base=it.baseCost!=null?it.baseCost:(Number(it.unitCost)||0);const uc=applyMk(base,m);return{...it,baseCost:base,markup:m,unitCost:uc,total:roundP((it.qty||0)*uc)};}));
     toastEmit&&toastEmit(m>0?`${m}% standard markup applied to all items`:"Markup cleared — showing direct costs","success");
@@ -536,6 +543,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   },[selDeal,standaloneId,coId]);
 
   React.useEffect(()=>{
+    if(ro){setDraftSaved(true);return;}   // read-only view never persists
     if(coId){
       // Change-order BOQ — autosave back onto the addendum via the host. The host
       // derives the CO's scope line items + value from these, so it rolls into the
@@ -586,7 +594,7 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
   },[coId,standaloneId,selDeal,items,sections,boqTitle,location,quotationNo,boqDate,vatEnabled,discount,markupPct]);
 
 
-  const updateItem=(id,key,val)=>setItems(its=>its.map(it=>{
+  const updateItem=(id,key,val)=>{if(ro)return;setItems(its=>its.map(it=>{
     if(it._id!==id) return it;
     const upd={...it,[key]:["description","unit","section","subsection","remarks"].includes(key)?val:Number(val)||0};
     // Unit cost / markup / qty all derive the effective cost and line total from
@@ -597,9 +605,9 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
     upd.unitCost=applyMk(base,m);
     upd.total=roundP((upd.qty||0)*upd.unitCost);
     return upd;
-  }));
-  const removeItem=id=>setItems(its=>its.filter(it=>it._id!==id));
-  const addRow=(sec,subsection="")=>setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",subsection,description:"",unit:"lot",qty:1,baseCost:0,unitCost:0,total:0,remarks:"",markup:0}]);
+  }));};
+  const removeItem=id=>{if(ro)return;setItems(its=>its.filter(it=>it._id!==id));};
+  const addRow=(sec,subsection="")=>{if(ro)return;setItems(its=>[...its,{_id:uid(),section:sec||sections[0]?.id||"A",subsection,description:"",unit:"lot",qty:1,baseCost:0,unitCost:0,total:0,remarks:"",markup:0}]);};
 
   // ── Sub-sections ───────────────────────────────────────────────────────────
   // A section groups its items by an optional per-item `subsection` label. Items
@@ -853,21 +861,25 @@ function BOQBuilder({wonDeals,deals,jos,session,role,toastEmit,boqLibrary=[],set
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
           {onBack&&<button onClick={onBack} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>← Back</button>}
-          <span style={{fontSize:".7rem",fontWeight:600,color:"#64748b"}}>Add row:</span>
-          {sections.map(s=>(
-            <button key={s.id} onClick={()=>addRow(s.id)} style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:s.color,cursor:"pointer"}}>+ {s.id}</button>
-          ))}
-          <button onClick={()=>setAddSecOpen(o=>!o)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>✚ Section</button>
+          {ro
+            ?<span style={{fontSize:".72rem",fontWeight:700,color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"3px 10px"}}>👁 View only — print or export to send to client</span>
+            :<>
+              <span style={{fontSize:".7rem",fontWeight:600,color:"#64748b"}}>Add row:</span>
+              {sections.map(s=>(
+                <button key={s.id} onClick={()=>addRow(s.id)} style={{background:s.color+"14",border:`1.5px solid ${s.color}44`,borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:s.color,cursor:"pointer"}}>+ {s.id}</button>
+              ))}
+              <button onClick={()=>setAddSecOpen(o=>!o)} style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>✚ Section</button>
+            </>}
         </div>
         <div style={{display:"flex",gap:6}}>
-          <button onClick={()=>{setImportMode(items.length>0?"append":"replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}} title="Upload an Excel/CSV BOQ and build from it">⬆ Import Excel</button>
-          <button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
+          {!ro&&<button onClick={()=>{setImportMode(items.length>0?"append":"replace");setImportErr("");setImportPreview(null);setImportFileName("");setImportMarkup(markupPct||"50");setImportOpen(true);}} style={{background:"#eef2ff",border:"1.5px solid #c7d2fe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#4338ca",cursor:"pointer"}} title="Upload an Excel/CSV BOQ and build from it">⬆ Import Excel</button>}
+          {!ro&&<button onClick={()=>setLibOpen(o=>!o)} style={{background:libOpen?"#ede9fe":"#f5f3ff",border:`1.5px solid ${libOpen?"#7c3aed":"#c4b5fd"}`,borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#5b21b6",cursor:"pointer"}}>
             📚 Library{boqLibrary.length>0&&<span style={{background:"#7c3aed",color:"#fff",borderRadius:20,padding:"0 6px",fontSize:".62rem",fontWeight:800,marginLeft:4}}>{boqLibrary.length}</span>}
-          </button>
+          </button>}
           {items.length>0&&<button onClick={printBOQ} style={{background:"#f0fdf4",border:"1.5px solid #86efac",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#166534",cursor:"pointer"}}>🖨 Preview / Print</button>}
           {items.length>0&&<button onClick={exportCSV} style={{background:"#eff6ff",border:"1.5px solid #bfdbfe",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#1d4ed8",cursor:"pointer"}}>⬇ Export CSV</button>}
-          {(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
-          {draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
+          {!ro&&(selDeal||items.length>0||sections.length>0)&&<button onClick={()=>{deleteDraft(selDeal||BOQ_SCRATCH_KEY);if(selDeal&&isSupabaseReady())sbUpdate('deals',selDeal,{boq_data:null}).catch(()=>{});setItems(BLANK_ITEMS());setSections([]);setBoqTitle("");setLocation(deal?.location||"");setQuotationNo(deal?.ceNo||"");setBoqDate(today);setVatEnabled(true);setDiscount("");setMarkupPct("");setDraftSaved(false);}} style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:8,padding:"6px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,color:"#c2410c",cursor:"pointer"}} title="Clear saved draft and reset">✕ Clear Draft</button>}
+          {!ro&&draftSaved&&(items.length>0||sections.length>0)&&<span style={{fontSize:".72rem",color:"#16a34a",fontWeight:600,display:"flex",alignItems:"center",gap:4}}>✓ {selDeal?"Draft saved":"Saved (no project yet)"}</span>}
         </div>
       </div>
 
