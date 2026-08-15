@@ -1,5 +1,6 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
 import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert} from "../shared";
+import {moveNeedsWitness,SCRAP_MOVE_TYPE} from "../core";
 
 const INV_CATEGORIES = [
   {main:"Sheet Materials",  subs:["Board / Panel","Acrylic / Glass","Foam / Upholstery"]},
@@ -18,14 +19,14 @@ const INV_LOCATIONS = ["Main Warehouse","Site","Consignment","On Order"];
 // materials bought for a specific client project. Drives the asset-value KPI and filter.
 const INV_OWNERSHIP = ["Project Stock","GMD Asset — Inventory","GMD Asset — Fixed Asset"];
 const isGmdAsset = o => String(o||"").startsWith("GMD Asset");
-const STOCK_MOVE_TYPES = ["IN — Delivery","OUT — Issued to Site","OUT — Released for Fabrication","OUT — Used in Project","ADJUST — Stock Count","RETURN — Returned to Supplier"];
+const STOCK_MOVE_TYPES = ["IN — Delivery","OUT — Issued to Site","OUT — Released for Fabrication","OUT — Used in Project","ADJUST — Stock Count","RETURN — Returned to Supplier",SCRAP_MOVE_TYPE];
 
 const emptyItem = ()=>({
   id:"", code:"", name:"", category:"Sheet Materials", subCategory:"Board / Panel",
   brand:"", supplier:"", unit:"sheets", unitSize:"", location:"Main Warehouse",
   qtyOnHand:0, reorderPoint:0,
   lastPurchasePrice:0, avgCost:0,
-  ownership:"Project Stock",
+  ownership:"Project Stock", highValue:false,
   lastUpdated:today, notes:"", status:"Active",
   createdAt:today, createdBy:"",
 });
@@ -353,7 +354,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   };
   const submitMove=()=>{
     if(!moveForm.qty||!showMove)return;
-    logStockMove({...moveForm,itemId:showMove});
+    if(logStockMove({...moveForm,itemId:showMove})===false)return; // witness/stock guard rejected — keep form open
     setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});
     setShowMove(null);
   };
@@ -838,6 +839,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                 <Fld label="Reorder Point"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
                 <Fld label="Supplier"><Inp value={form.supplier} onChange={e=>f("supplier",e.target.value)} placeholder="Supplier name"/></Fld>
                 <Fld label="Ownership"><Sel value={form.ownership||"Project Stock"} onChange={e=>f("ownership",e.target.value)}>{INV_OWNERSHIP.map(o=><option key={o}>{o}</option>)}</Sel></Fld>
+                <Fld label="High-value" hint="Release/return needs a Finance witness (§5.3)"><label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:".82rem",color:"#475569",padding:"7px 0"}}><input type="checkbox" checked={!!form.highValue} onChange={e=>f("highValue",e.target.checked)}/> Requires Finance witness</label></Fld>
                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
               </div>
               <div style={{display:"flex",gap:8,marginTop:12}}>
@@ -955,6 +957,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                     <Fld label="Reorder Point"><Inp type="number" value={form.reorderPoint} onChange={e=>f("reorderPoint",e.target.value)} min={0}/></Fld>
                     <Fld label="Supplier"><SupplierPicker value={form.supplier} onChange={v=>f("supplier",v)} suppliers={suppliers} addSupplier={addSupplier}/></Fld>
                     <Fld label="Ownership"><Sel value={form.ownership||"Project Stock"} onChange={e=>f("ownership",e.target.value)}>{INV_OWNERSHIP.map(o=><option key={o}>{o}</option>)}</Sel></Fld>
+                <Fld label="High-value" hint="Release/return needs a Finance witness (§5.3)"><label style={{display:"inline-flex",alignItems:"center",gap:6,fontSize:".82rem",color:"#475569",padding:"7px 0"}}><input type="checkbox" checked={!!form.highValue} onChange={e=>f("highValue",e.target.checked)}/> Requires Finance witness</label></Fld>
                     <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="Specs, color, grade…"/></Fld></div>
                   </div>
                   <div style={{display:"flex",gap:8,marginTop:14}}>
@@ -1057,6 +1060,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                                 <Fld label="Qty"><Inp type="number" value={moveForm.qty} onChange={e=>fm("qty",e.target.value)} placeholder="0" min={0} style={{fontSize:11,padding:"5px 8px"}}/></Fld>
                                 {moveForm.moveType.startsWith("IN")&&<Fld label="Unit Cost (₱)"><Inp type="number" value={moveForm.unitCost} onChange={e=>fm("unitCost",e.target.value)} placeholder="0.00" style={{fontSize:11,padding:"5px 8px"}}/></Fld>}
                                 {moveForm.moveType.startsWith("OUT")&&<Fld label="Project"><Sel value={moveForm.projectId} onChange={e=>fm("projectId",e.target.value)} style={{fontSize:11,padding:"5px 8px"}}><option value="">— Select —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</Sel></Fld>}
+                                {moveNeedsWitness(moveForm.moveType,item)&&<div style={{gridColumn:"1/-1"}}><Fld label="🔒 Finance Witness (§5.3 — required)"><Inp value={moveForm.financeWitness||""} onChange={e=>fm("financeWitness",e.target.value)} placeholder="Finance rep present at release" style={{fontSize:11,padding:"5px 8px"}}/></Fld></div>}
                                 <div style={{gridColumn:"1/-1"}}><Fld label="Notes"><Inp value={moveForm.notes} onChange={e=>fm("notes",e.target.value)} placeholder="DR #, PO ref…" style={{fontSize:11,padding:"5px 8px"}}/></Fld></div>
                               </div>
                               <div style={{display:"flex",gap:6}}>
@@ -1425,7 +1429,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
 
   const submit=()=>{
     if(!form.qty||!form.itemId) return;
-    logStockMove({...form});
+    if(logStockMove({...form})===false)return; // witness/stock guard rejected — keep form open
     setForm({itemId:"",moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});
     setShowForm(false);
   };
@@ -1463,6 +1467,7 @@ function StockMovementView({inventory,stocklog,wonDeals,logStockMove,session,rol
             <Fld label="Date"><Inp type="date" value={form.date} onChange={e=>f("date",e.target.value)}/></Fld>
             {form.moveType.startsWith("IN")&&<Fld label="Unit Cost (₱)" hint="Updates average cost automatically"><Inp type="number" value={form.unitCost} onChange={e=>f("unitCost",e.target.value)} placeholder="0.00"/></Fld>}
             {form.moveType.startsWith("OUT")&&<Fld label="Project / CE No."><Sel value={form.projectId} onChange={e=>f("projectId",e.target.value)}><option value="">— Optional —</option>{wonDeals.map(d=><option key={d.id} value={d.id}>{d.client} {d.ceNo?`(${d.ceNo})`:""}</option>)}</Sel></Fld>}
+            {moveNeedsWitness(form.moveType,inventory.find(i=>i.id===form.itemId))&&<Fld label="🔒 Finance Witness (§5.3 — required)"><Inp value={form.financeWitness||""} onChange={e=>f("financeWitness",e.target.value)} placeholder="Finance rep present at release / scrap"/></Fld>}
             <div style={{gridColumn:"1/-1"}}><Fld label="Notes / Reference"><Inp value={form.notes} onChange={e=>f("notes",e.target.value)} placeholder="DR number, PO reference, project site, reason for adjustment…"/></Fld></div>
           </div>
           <div style={{display:"flex",gap:10,marginTop:14}}>

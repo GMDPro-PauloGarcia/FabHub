@@ -5,7 +5,7 @@ import{idbGetMany,idbSetMany}from'./idb.js';
 import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile} from './shared';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -2745,7 +2745,7 @@ export default function App(){
           KEYS.botsettings,KEYS.customclients,KEYS.addenda,KEYS.budgets,
           KEYS.billings,KEYS.vvip,KEYS.actlog,KEYS.pcards,KEYS.inventory,
           KEYS.stocklog,KEYS.swos,"gmdv5:payables","gmdv5:loans","gmdv5:clientprofiles",
-          "gmdv5:aeUpdates",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
+          "gmdv5:aeUpdates","gmdv5:auditFindings",KEYS.vouchers,"gmdv5:standaloneBoqs","gmdv5:chartOfAccounts",KEYS.dailylogs,KEYS.ceReqs
         ]);
         if(idb[KEYS.deals]){setDeals(idb[KEYS.deals].map(x=>({...x,stage:normalizeStage(x.stage)})));}
         if(idb[KEYS.projects])    setProjs(idb[KEYS.projects]);
@@ -2779,6 +2779,7 @@ export default function App(){
         if(idb["gmdv5:payables"]) setPayables(idb["gmdv5:payables"]);
         if(idb["gmdv5:loans"])    setLoans(idb["gmdv5:loans"]);
         if(idb["gmdv5:aeUpdates"]) setAeUpdates(idb["gmdv5:aeUpdates"]);
+        if(idb["gmdv5:auditFindings"]) setAuditFindings(idb["gmdv5:auditFindings"]);
         if(idb[KEYS.vouchers])    setVouchers(idb[KEYS.vouchers]);
         if(idb[KEYS.evouchers])   setEvouchers(idb[KEYS.evouchers]);
         if(idb[KEYS.dailylogs])   setDailyLogs(idb[KEYS.dailylogs]);
@@ -2805,7 +2806,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
@@ -2965,6 +2966,9 @@ export default function App(){
               }
             }catch(e){console.error('ae_updates load failed:',e);}
             try{
+              sbList('audit_findings',{order:'created_at',limit:500}).then(rows=>{if(rows)setAuditFindings(rows.map(findingFromSb));}).catch(()=>{});
+            }catch(e){console.error('audit_findings load failed:',e);}
+            try{
               sbList('ce_requests',{order:'created_at',limit:500}).then(rows=>{if(rows?.length)setCeReqs(rows.map(r=>({id:r.id,clientName:r.client_name,projectName:r.project_name,location:r.location,projectType:r.project_type,priority:r.priority,status:r.status,submittedBy:r.submitted_by,targetDeadline:r.target_deadline,submissionDeadline:r.submission_deadline,targetBudget:r.target_budget,targetMargin:r.target_margin,plansLink:r.plans_link,skpLink:r.skp_link,scheduleOfFinish:r.schedule_of_finish,notes:r.notes,ceNotes:r.ce_notes,bidAmount:r.bid_amount,bidMarginPct:r.bid_margin_pct,awarded:r.awarded,awardDate:r.award_date,dealId:r.deal_id,createdAt:r.created_at})));}).catch(()=>{});
             }catch{}
             if(idbE.length) idbSetMany(idbE).catch(()=>{});
@@ -3074,7 +3078,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -3108,7 +3112,7 @@ export default function App(){
     // clicks it is right after a save looked stuck, which is also the exact
     // moment a blind overwrite would erase the very record they're trying to
     // recover.
-    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
+    if(data.deals?.length){const ds=data.deals.map(d=>({...d,stage:normalizeStage(d.stage||d.stage),ceNo:d.ce_no,ceType:d.ce_type,product:d.product,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:d.amount_paid||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",awardRequestData:d.award_request_data||null,boqData:d.boq_data||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null}));setDeals(prev=>mergeLocalOnly(ds,prev));idbE.push([KEYS.deals,ds]);}
     if(data.jos?.length){const js=data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedBy:j.issued_by,issuedDate:j.issued_date,aeAssigned:j.ae_assigned}));setJos(prev=>mergeLocalOnly(js,prev));idbE.push([KEYS.jos,js]);}
     if(Object.keys(data.pcards||{}).length){setPcards(data.pcards);idbE.push([KEYS.pcards,data.pcards]);}
     if(data.billings?.length){const bs=data.billings.map(m=>({...m,dealId:m.deal_id,invoiceNo:m.invoice_no,invoiceDate:m.invoice_date,dueDate:m.due_date,createdBy:m.created_by,retentionHeld:m.retention_held!=null?Number(m.retention_held):undefined,isRetentionRelease:m.is_retention_release||undefined,payments:(m.payments||[]).map(p=>({...p,milestoneId:p.milestone_id??p.milestoneId,refNo:p.ref_no??p.refNo,recordedBy:p.recorded_by??p.recordedBy,valueDate:p.value_date??p.valueDate,method:p.payment_method??p.method,bounced:!!(p.bounced??false)}))}));setBillings(prev=>mergeLocalOnly(bs,prev));idbE.push([KEYS.billings,bs]);}
@@ -3204,6 +3208,12 @@ export default function App(){
     award_request_data:r.awardRequestData||null,
     parent_deal_id:r.parentDealId||null,
     billing_generated:r.billingGenerated||false,
+    // Receivables policy §2.1 onboarding facts + §2.3/§3 satisfaction
+    bir_2303_url:r.bir2303Url||null, bir_2303_on_file:!!r.bir2303OnFile,
+    vat_treatment:r.vatTreatment||null,
+    downpayment_pct:r.downpaymentPct!=null&&r.downpaymentPct!==""?Number(r.downpaymentPct):null,
+    payment_terms_text:r.paymentTermsText||null,
+    client_satisfied:!!r.clientSatisfied, satisfaction_note:r.satisfactionNote||null,
     updated_at:new Date().toISOString(),
   });
   const toSbJO = r=>({
@@ -3805,12 +3815,19 @@ export default function App(){
   // Master "+ Add" UI for anything new instead of an automatic effect.
 
   const logStockMove=(move)=>{
+    const moveItem=inventory.find(i=>i.id===move.itemId);
     if(move.moveType?.startsWith("OUT")){
-      const item=inventory.find(i=>i.id===move.itemId);
-      if(!item){toastEmit("Stock OUT failed — inventory item not found. Check that the item still exists.","error");return false;}
-      if(Number(item.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${item.qtyOnHand} ${item.unit||""} on hand.`,"error");return false;}
+      if(!moveItem){toastEmit("Stock OUT failed — inventory item not found. Check that the item still exists.","error");return false;}
+      if(Number(moveItem.qtyOnHand)<Number(move.qty||0)){toastEmit(`Insufficient stock — only ${moveItem.qtyOnHand} ${moveItem.unit||""} on hand.`,"error");return false;}
     }
-    const entry={...move,id:uid(),date:move.date||today,recordedBy:session?.name||role};
+    // Policy §5.3 — Finance must witness release/return of high-value materials
+    // and all scrap. Enforced here so no UI path can bypass it.
+    const needsWitness=moveNeedsWitness(move.moveType,moveItem);
+    if(needsWitness&&!String(move.financeWitness||"").trim()){
+      toastEmit("This release requires a Finance witness (§5.3). Enter the Finance representative before recording.","error",7000);
+      return false;
+    }
+    const entry={...move,highValue:needsWitness||!!move.highValue,id:uid(),date:move.date||today,recordedBy:session?.name||role};
     upStocklog(sl=>[entry,...sl]);
     if(isSupabaseReady()) sbInsert('stock_movements',moveToSb(entry)).catch(()=>{});
     const qty=Number(move.qty)||0;
@@ -4065,6 +4082,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checklists:["Manager","Sales","Finance","Accounting","QS","Procurement","Operations","Design","ProjectMover","Warehouse"],
       swatches:["Manager","Finance","Procurement","Operations","Design"],
       ae_updates:["Manager","Sales","Finance","QS","Operations","ProjectMover","Design"],
+      audit_findings:["Manager","Finance","Accounting","Audit","HRAdmin","Warehouse","Procurement"],
       project_blockers:["Manager","Sales","Finance","QS","Procurement","Operations","Design","ProjectMover"],
       inventory_items:["Manager","Finance","Procurement","Warehouse"],
       stock_movements:["Manager","Finance","Procurement","Warehouse"],
@@ -4090,6 +4108,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
           awardRequestData:rec.award_request_data||null,boqData:rec.boq_data||null,
           billingGenerated:rec.billing_generated||false,
+          bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
+          vatTreatment:rec.vat_treatment||"",downpaymentPct:rec.downpayment_pct??null,
+          paymentTermsText:rec.payment_terms_text||"",clientSatisfied:rec.client_satisfied||false,
+          satisfactionNote:rec.satisfaction_note||"",
           paymentTerms:rec.payment_terms_json?(()=>{try{return JSON.parse(rec.payment_terms_json);}catch(e){return null;}})():null};
         setDeals(ds=>{const ex=ds.find(d=>d.id===rec.id);
           return ex?ds.map(d=>d.id===rec.id?{...d,...mapped}:d):[mapped,...ds];});
@@ -4343,6 +4365,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         });
       }
     });
+    const auditSub = !wantsRT('audit_findings')?null:sbSubscribe('audit-findings-rt','audit_findings',payload=>{
+      const{eventType,new:rec,old:oldRow}=payload;
+      if(eventType==='DELETE'){setAuditFindings(fs=>fs.filter(f=>f.id!==oldRow.id));return;}
+      if(rec){
+        const item=findingFromSb(rec);
+        setAuditFindings(fs=>{
+          if(eventType==='UPDATE') return fs.map(f=>f.id===rec.id?item:f);
+          if(fs.find(f=>f.id===rec.id)) return fs;
+          return [item,...fs];
+        });
+      }
+    });
     const blockerSub = !wantsRT('project_blockers')?null:sbSubscribe('blockers-rt','project_blockers',payload=>{
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='DELETE'){setBlockers(bs=>bs.filter(b=>b.id!==oldRow.id));return;}
@@ -4406,6 +4440,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       checkSub?.unsubscribe?.();
       swatchSub?.unsubscribe?.();
       aeUpdateSub?.unsubscribe?.();
+      auditSub?.unsubscribe?.();
       blockerSub?.unsubscribe?.();
       invSub?.unsubscribe?.();
       stockSub?.unsubscribe?.();
@@ -5610,6 +5645,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
   const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "updates"
   const[aeUpdates,    setAeUpdates]    = useState([]);
+  const[auditFindings,setAuditFindings]= useState([]);
   const[aeUpdateText, setAeUpdateText] = useState("");
   const[aeUpdateDealId, setAeUpdateDealId] = useState("");
   const[aeUpdateDealType, setAeUpdateDealType] = useState("active");
@@ -6068,8 +6104,31 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const delAeUpdate=(id)=>{
     const next=aeUpdates.filter(u=>u.id!==id);
     setAeUpdates(next);
-    
+
     if(isSupabaseReady()) sbDelete('ae_updates',id).catch(()=>{});
+  };
+
+  // ── Audit findings (Policy §5) ─────────────────────────────────────────────
+  const findingToSb=f=>({id:f.id,area:f.area||"",finding:f.finding||"",respondent:f.respondent||"",severity:f.severity||"Medium",status:f.status||"Open",issued_by:f.issuedBy||"",issued_at:f.issuedAt||null,reply_due:f.replyDue||null,response:f.response||"",responded_at:f.respondedAt||null,hr_referral:!!f.hrReferral,kpi_impact:f.kpiImpact||"",resolved_at:f.resolvedAt||null});
+  const findingFromSb=r=>({...r,issuedBy:r.issued_by,issuedAt:r.issued_at,replyDue:r.reply_due,respondedAt:r.responded_at,hrReferral:r.hr_referral||false,kpiImpact:r.kpi_impact||"",resolvedAt:r.resolved_at});
+  const upAudit=fn=>setAuditFindings(p=>{const n=fn(p);persist("gmdv5:auditFindings",n);return n;});
+  const addFinding=(data)=>{
+    const issued=data.issuedAt||today;
+    const entry={...emptyFinding(),...data,id:uid(),issuedBy:session?.name||role,issuedAt:issued,replyDue:addDaysISO(issued,AUDIT_REPLY_DAYS),status:"Open"};
+    upAudit(fs=>[entry,...fs]);
+    if(isSupabaseReady()) sbInsert('audit_findings',findingToSb(entry)).catch(()=>{});
+    logActivity(null,"Audit Finding",`${entry.area}: ${entry.finding}`.slice(0,140),session?.name);
+    const amsg=`🔎 <b>Audit Finding Issued</b>\nArea: ${entry.area}\nRespondent: ${entry.respondent||"—"}\nReply due: ${entry.replyDue} (3 days)\n\n${entry.finding}`;
+    sendTelegramNotification("management",amsg);
+    toastEmit("Audit finding issued — respondent has 3 days to reply","success");
+  };
+  const updateFinding=(id,ch)=>{
+    // Build the persisted payload from the freshly-updated record inside the
+    // functional updater, not from the render-closure `auditFindings` snapshot,
+    // so back-to-back updates don't overwrite each other in the DB.
+    let merged=null;
+    upAudit(fs=>fs.map(f=>{if(f.id!==id)return f;merged={...f,...ch};return merged;}));
+    if(isSupabaseReady()&&merged) sbUpdate('audit_findings',id,findingToSb(merged)).catch(()=>{});
   };
 
   const openAward=(deal)=>setAwardModal(deal);
@@ -6857,7 +6916,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
@@ -6876,7 +6935,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"QS / Cost",   items:[{id:"ceqs",l:"CE/QS Queue"},{id:"costanalysis",l:"Cost Analysis"},{id:"boq",l:"BOQ"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+    ],
+    Audit:[
+      {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
+      {group:"Audit",    items:[{id:"audit",l:"Audit"}]},
+      {group:"Reference",items:[{id:"inventory",l:"Inventory"},{id:"stockmove",l:"Stock Movements"},{id:"billing",l:"Billing"}]},
+    ],
+    HRAdmin:[
+      {group:"Overview", items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
+      {group:"Audit",    items:[{id:"audit",l:"Audit"}]},
+      {group:"Admin",    items:[{id:"accounts",l:"Accounts"},{id:"activity",l:"Team Activity"}]},
     ],
     Accounting:[
       {group:"Overview",    items:[{id:"home",l:"Dashboard"},{id:"acctdash",l:"Accounting"}]},
@@ -6935,7 +7004,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -7064,7 +7133,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
       ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
-      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆",
+      masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
@@ -13837,6 +13906,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </Wrap>
   );
 
+  // ── AUDIT (Policy §5) ────────────────────────────────────────────────────────
+  if(page==="audit") return(
+    <Wrap>
+      <AuditView findings={auditFindings} addFinding={addFinding} updateFinding={updateFinding} session={session} role={role}/>
+    </Wrap>
+  );
+
   // ── BILLING ─────────────────────────────────────────────────────────────────
   if(page==="billing") return(
     <>
@@ -13922,6 +13998,21 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         nextInvoiceNo={nextInvoiceNo} session={session} role={role}
         clientProfiles={clientProfiles}
         upDeals={upDeals}
+        onSaveOnboarding={(dealId,fields)=>{
+          upDeals(ds=>ds.map(d=>d.id===dealId?{...d,...fields}:d));
+          if(isSupabaseReady()){
+            const snake={};
+            if('bir2303Url' in fields) snake.bir_2303_url=fields.bir2303Url||null;
+            if('bir2303OnFile' in fields) snake.bir_2303_on_file=!!fields.bir2303OnFile;
+            if('vatTreatment' in fields) snake.vat_treatment=fields.vatTreatment||null;
+            if('downpaymentPct' in fields) snake.downpayment_pct=fields.downpaymentPct!==""&&fields.downpaymentPct!=null?Number(fields.downpaymentPct):null;
+            if('paymentTermsText' in fields) snake.payment_terms_text=fields.paymentTermsText||null;
+            if('clientSatisfied' in fields) snake.client_satisfied=!!fields.clientSatisfied;
+            if('satisfactionNote' in fields) snake.satisfaction_note=fields.satisfactionNote||null;
+            snake.updated_at=new Date().toISOString();
+            sbUpdate('deals',dealId,snake).catch(()=>{});
+          }
+        }}
         onOpenPayTerms={id=>setPayTermsModal(id)}
         initialDeal={billingJumpDeal} clearInitialDeal={()=>setBillingJumpDeal(null)}
         cocDeals={Object.entries(projs).filter(([id,p])=>p?.cocCreated).map(([id])=>id)}
@@ -15049,6 +15140,10 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
   const qsBudgetTotalOps=id=>{const b=(budgets||{})[id]||{};return["Materials","Labor","Overhead","Subcon"].reduce((s,k)=>s+Number(b[k]||0),0);};
   const opsAmt=(d)=>{if(BUDGET_ONLY_OPS.includes(role)){const t=qsBudgetTotalOps(d?.id);return t>0?fmt(t)+" (budget)":"Budget Pending";}return fmt(d?.value);};
   const uid2=()=>String(Date.now());
+  // Hoisted to component top (not inside the closeout tab's IIFE) so the hook
+  // order is stable across opsTab switches — a conditional hook would change
+  // OpsView's hook count and crash on tab change.
+  const[rptForm,setRptForm]=useState(emptyProjectReport("progress"));
   if(!selProj) return(
     <Wrap>
       <SecHead title="Active Projects" sub="Click any project to update stages, materials, and team"/>
@@ -15597,6 +15692,27 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
       })()}
       {opsTab==="closeout"&&(()=>{
         const warranty=proj?.warranty||{active:false,type:"30",startDate:"",endDate:"",notes:""};
+        const reports=proj?.reports||[];
+        const progRpt=latestReport(proj,"progress");
+        const instRpt=latestReport(proj,"installation");
+        const hasProgress=progressReportOnFile(proj);
+        const hasInstall=installationReportOnFile(proj);
+        const satisfied=!!proj?.clientSatisfied;
+        const submitReport=(kind)=>{
+          const f=rptForm.kind===kind?rptForm:emptyProjectReport(kind);
+          if(kind==="progress"&&(Number(f.pctComplete)||0)<90){toastEmit("Progress Report must be at least 90% completion","warning");return;}
+          const rec={...emptyProjectReport(kind),...f,kind,id:uid(),submittedBy:session?.name||"",submittedAt:new Date().toISOString(),status:"Submitted"};
+          upProj(selProj,p=>({...p,reports:[...(p.reports||[]),rec]}));
+          logActivity&&logActivity(selProj,"Report Submitted",`${kind==="progress"?"Progress":"Installation"} Report (${rec.pctComplete}%) for ${projDeal?.client}`,session?.name);
+          const rmsg=`📄 <b>${kind==="progress"?"Progress":"Installation"} Report Filed</b>\nProject: <b>${projDeal?.contact||projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nCompletion: ${rec.pctComplete}%\nBy: ${session?.name||"PM"}\n\n${kind==="progress"?"💰 Finance: progress billing may proceed.":"💰 Finance: forwarded to Sales for client-satisfaction check before final billing."}`;
+          sendTelegramNotification("management",rmsg);sendTelegramNotification(kind==="progress"?"finance":"sales",rmsg);
+          setRptForm(emptyProjectReport(kind==="progress"?"installation":"progress"));
+          toastEmit(`${kind==="progress"?"Progress":"Installation"} Report filed`,"success");
+        };
+        const verifyReport=(id)=>{
+          upProj(selProj,p=>({...p,reports:(p.reports||[]).map(r=>r.id===id?{...r,status:"Verified",verifiedBy:session?.name||"",verifiedAt:new Date().toISOString()}:r)}));
+          toastEmit("Report verified","success");
+        };
         const wEnd=warranty.startDate?(()=>{const d=new Date(warranty.startDate);d.setDate(d.getDate()+Number(warranty.type||30));return d.toISOString().slice(0,10);})():"";
         const wExpired=wEnd&&wEnd<today;
         const wActive=warranty.active&&wEnd&&wEnd>=today;
@@ -15625,6 +15741,70 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
                 </div>
               )}
             </Card>
+            {/* ── Billing Documents (Progress + Installation Reports) — Policy §2.2/§2.3 ── */}
+            <Card accent={hasInstall?"#059669":"#3b82f6"}>
+              <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem",marginBottom:4}}>📄 Billing Documents</div>
+              <div style={{fontSize:".75rem",color:"#64748b",marginBottom:12}}>A Progress Report (≥90%) unlocks progress billing; an Installation Report triggers final billing.</div>
+              <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
+                {[{k:"progress",label:"Progress Report (≥90%)",rpt:progRpt,ok:hasProgress},{k:"installation",label:"Installation Report",rpt:instRpt,ok:hasInstall}].map(({k,label,rpt,ok})=>(
+                  <div key={k} style={{border:"1px solid #e2e8f0",borderRadius:10,padding:"10px 12px",background:"#f8fafc"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                      <span style={{fontSize:".8rem",fontWeight:700,color:"#334155"}}>{label}</span>
+                      {rpt?<span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:REPORT_STATUS_CLR[rpt.status]+"22",color:REPORT_STATUS_CLR[rpt.status]}}>{rpt.status} · {rpt.pctComplete}%</span>:<span style={{fontSize:".68rem",color:"#94a3b8"}}>Not filed</span>}
+                    </div>
+                    {rpt?(
+                      <div style={{fontSize:".72rem",color:"#64748b"}}>
+                        <div>By {rpt.submittedBy||"—"}{rpt.submittedAt?` · ${String(rpt.submittedAt).slice(0,10)}`:""}</div>
+                        {rpt.scopeNote&&<div style={{marginTop:2}}>{rpt.scopeNote}</div>}
+                        {rpt.photosLink&&<a href={rpt.photosLink} target="_blank" rel="noopener noreferrer" style={{color:"#3b82f6"}}>Photos ↗</a>}
+                        {rpt.status!=="Verified"&&(role==="Sales"||role==="Manager")&&<button onClick={()=>verifyReport(rpt.id)} style={{marginLeft:8,background:"none",border:"none",color:"#059669",cursor:"pointer",fontSize:".72rem",fontWeight:700,padding:0}}>✓ Verify</button>}
+                      </div>
+                    ):(
+                      <div style={{fontSize:".7rem",color:ok?"#059669":"#94a3b8"}}>{ok?"On file":"Awaiting submission"}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div style={{background:"#fff",border:"1px dashed #cbd5e1",borderRadius:10,padding:"10px 12px"}}>
+                <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap"}}>
+                  {REPORT_KINDS.map(rk=>(
+                    <button key={rk.k} onClick={()=>setRptForm(f=>({...emptyProjectReport(rk.k),...(f.kind===rk.k?f:{}),kind:rk.k}))} style={{background:rptForm.kind===rk.k?"#1e293b":"#fff",color:rptForm.kind===rk.k?"#fff":"#475569",border:"1px solid #cbd5e1",borderRadius:7,padding:"4px 12px",fontFamily:"inherit",fontSize:".74rem",fontWeight:700,cursor:"pointer"}}>{rk.icon} {rk.label}</button>
+                  ))}
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"90px 1fr",gap:8,marginBottom:8}}>
+                  <Fld label="% Complete"><Inp type="number" value={rptForm.pctComplete} onChange={e=>setRptForm(f=>({...f,pctComplete:e.target.value}))}/></Fld>
+                  <Fld label="Photos Link"><Inp type="url" value={rptForm.photosLink} onChange={e=>setRptForm(f=>({...f,photosLink:e.target.value}))} placeholder="Drive link to photos"/></Fld>
+                </div>
+                <Fld label="Scope / Notes"><Inp value={rptForm.scopeNote} onChange={e=>setRptForm(f=>({...f,scopeNote:e.target.value}))} placeholder="% of scope completed, remarks"/></Fld>
+                <div style={{marginTop:8}}><Btn onClick={()=>submitReport(rptForm.kind)}>📤 File {rptForm.kind==="progress"?"Progress":"Installation"} Report</Btn></div>
+              </div>
+            </Card>
+
+            {/* ── Client Satisfaction (Sales verifies before COC) — Policy §2.3 ── */}
+            <Card accent={satisfied?"#059669":"#94a3b8"}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>🤝 Client Satisfaction (Sales)</span>
+                {satisfied&&<span style={{background:"#dcfce7",color:"#059669",borderRadius:20,padding:"3px 10px",fontSize:".72rem",fontWeight:700}}>✓ VERIFIED</span>}
+              </div>
+              {!hasInstall&&!satisfied&&<div style={{fontSize:".74rem",color:"#94a3b8",marginBottom:8}}>Awaiting Installation Report before Sales verifies satisfaction.</div>}
+              {satisfied?(
+                <div style={{fontSize:".8rem",color:"#475569"}}>{proj?.satisfactionNote||"Client satisfaction confirmed."}</div>
+              ):(
+                <div>
+                  <Fld label="Verification Note"><Inp value={proj?.satisfactionNote||""} onChange={e=>upProj(selProj,p=>({...p,satisfactionNote:e.target.value}))} placeholder="Client confirmed satisfaction / no outstanding issues"/></Fld>
+                  <div style={{marginTop:8}}>
+                    <Btn disabled={!hasInstall||!(role==="Sales"||role==="Manager")} onClick={()=>{
+                      if(!hasInstall){toastEmit("Installation Report required first","warning");return;}
+                      upProj(selProj,p=>({...p,clientSatisfied:true}));
+                      logActivity&&logActivity(selProj,"Satisfaction Verified",`Sales verified client satisfaction for ${projDeal?.client}`,session?.name);
+                      toastEmit("Client satisfaction verified — Sales may prepare the COC","success");
+                    }}>✓ Verify Client Satisfaction</Btn>
+                  </div>
+                  {!(role==="Sales"||role==="Manager")&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:6}}>Only Sales verifies client satisfaction.</div>}
+                </div>
+              )}
+            </Card>
+
             <Card accent={proj?.cocCreated?"#059669":"#f59e0b"}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
                 <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem"}}>📋 Certificate of Completion (COC)</span>
@@ -15638,12 +15818,20 @@ function OpsView({projs,projList,deals,selProj,setSelProj,opsTab,setOpsTab,proj,
               ):(
                 <div>
                   <div style={{fontSize:".78rem",color:"#f59e0b",fontWeight:600,marginBottom:10}}>⚠️ COC not yet issued. Finance cannot finalize billing until COC is confirmed.</div>
+                  {(!hasInstall||!satisfied)&&(
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:10}}>
+                      <span style={{fontSize:".7rem",fontWeight:600,padding:"3px 9px",borderRadius:20,border:"1px solid",borderColor:hasInstall?"#6ee7b7":"#fecaca",background:hasInstall?"#f0fdf4":"#fef2f2",color:hasInstall?"#059669":"#b91c1c"}}>{hasInstall?"✓":"○"} Installation Report</span>
+                      <span style={{fontSize:".7rem",fontWeight:600,padding:"3px 9px",borderRadius:20,border:"1px solid",borderColor:satisfied?"#6ee7b7":"#fecaca",background:satisfied?"#f0fdf4":"#fef2f2",color:satisfied?"#059669":"#b91c1c"}}>{satisfied?"✓":"○"} Client Satisfaction</span>
+                    </div>
+                  )}
                   <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:8,marginBottom:10}}>
                     <Fld label="COC Date"><Inp type="date" value={proj?.cocDate||""} onChange={e=>upProj(selProj,p=>({...p,cocDate:e.target.value}))}/></Fld>
                     <Fld label="COC Link (optional)"><Inp type="url" value={proj?.cocLink||""} onChange={e=>upProj(selProj,p=>({...p,cocLink:e.target.value}))} placeholder="Google Drive link"/></Fld>
                   </div>
-                  <Btn onClick={()=>{
+                  <Btn disabled={!hasInstall||!satisfied} onClick={()=>{
                     if(!proj?.cocDate){toastEmit("Set a COC date first","warning");return;}
+                    if(!hasInstall){toastEmit("An Installation Report must be on file first (§2.3)","warning");return;}
+                    if(!satisfied){toastEmit("Sales must verify client satisfaction first (§2.3)","warning");return;}
                     upProj(selProj,p=>({...p,cocCreated:true}));
                     logActivity&&logActivity(selProj,"COC Issued",`COC issued for ${projDeal?.client}. Finance notified for final billing.`,session?.name);
                     const cocMsg=`📋 <b>Certificate of Completion Issued</b>\nClient: <b>${projDeal?.client||"?"}</b>${projDeal?.ceNo?`\nCE: ${projDeal.ceNo}`:""}\nCOC Date: ${proj?.cocDate||today}\nIssued by: ${session?.name||"Ops"}\n\n💰 Finance: please finalize billing.`;
@@ -16654,7 +16842,7 @@ function AccountsManager({users,session,onApprove,onReject,onDeactivate,onDelete
   const[cf,setCf]=useState({name:"",username:"",password:"",role:"Sales",title:""});
   const[createErr,setCreateErr]=useState("");
   const STATUS_CLR = {active:"#10b981",pending:"#f59e0b",inactive:"#94a3b8",rejected:"#ef4444"};
-  const ALL_ROLES=["Sales","Finance","Procurement","QS","Operations","Design","Warehouse","ProjectMover","SalesOpsAdmin","Manager"];
+  const ALL_ROLES=["Sales","Finance","Accounting","Procurement","QS","Operations","Design","Warehouse","ProjectMover","SalesOpsAdmin","Audit","HRAdmin","Manager"];
 
   const pending  = users.filter(u=>u.status==="pending");
   const active   = users.filter(u=>u.status==="active");
@@ -21231,7 +21419,131 @@ function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
   );
 }
 
-function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,generateBillingSchedule,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
+// ─── AUDIT VIEW (Policy §5) ──────────────────────────────────────────────────
+function AuditView({findings,addFinding,updateFinding,session,role}){
+  const[showForm,setShowForm]=useState(false);
+  const[form,setForm]=useState(emptyFinding());
+  const[replyFor,setReplyFor]=useState(null);
+  const[replyText,setReplyText]=useState("");
+  const ff=(k,v)=>setForm(f=>({...f,[k]:v}));
+  const canIssue=role==="Audit"||role==="Manager";
+  const canManage=role==="Audit"||role==="Manager"||role==="HRAdmin";
+  const open=findings.filter(f=>f.status==="Open");
+  const overdue=open.filter(f=>findingOverdue(f,today));
+  const submit=()=>{
+    if(!form.finding.trim()){toastEmit("Describe the finding first","warning");return;}
+    addFinding(form);setForm(emptyFinding());setShowForm(false);
+  };
+  const sendReply=(id)=>{
+    if(!replyText.trim())return;
+    updateFinding(id,{response:replyText.trim(),respondedAt:today,status:"Responded"});
+    setReplyFor(null);setReplyText("");toastEmit("Response recorded","success");
+  };
+  const KPI2=({l,v,c})=>(
+    <div style={{background:"#fff",borderRadius:12,padding:"14px 16px",border:"1.5px solid #e2e8f0"}}>
+      <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.4rem",color:c}}>{v}</div>
+      <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:4}}>{l}</div>
+    </div>
+  );
+  return(
+    <div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.2rem"}}>🔎 Audit</h2>
+          <div style={{fontSize:".76rem",color:"#64748b",marginTop:2}}>Findings carry a 3-day reply window (§5.2); unanswered findings are referred to HR &amp; Admin.</div>
+        </div>
+        {canIssue&&<button onClick={()=>setShowForm(s=>!s)} style={{background:"#dc2626",border:"none",borderRadius:10,padding:"9px 18px",fontFamily:"inherit",fontWeight:700,fontSize:".84rem",color:"#fff",cursor:"pointer"}}>+ Issue Finding</button>}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:16}}>
+        <KPI2 l="Open" v={open.length} c="#f59e0b"/>
+        <KPI2 l="Overdue (>3d)" v={overdue.length} c="#ef4444"/>
+        <KPI2 l="Referred to HR" v={findings.filter(f=>f.status==="Referred to HR").length} c="#dc2626"/>
+        <KPI2 l="Closed" v={findings.filter(f=>f.status==="Closed").length} c="#059669"/>
+      </div>
+
+      {showForm&&canIssue&&(
+        <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:18,marginBottom:16}}>
+          <div style={{fontWeight:800,color:"#0f172a",marginBottom:12}}>New Audit Finding</div>
+          <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:12}}>
+            <Fld label="Area"><Sel value={form.area} onChange={e=>ff("area",e.target.value)}>{AUDIT_AREAS.map(a=><option key={a}>{a}</option>)}</Sel></Fld>
+            <Fld label="Respondent"><Inp value={form.respondent} onChange={e=>ff("respondent",e.target.value)} placeholder="Person / department concerned"/></Fld>
+            <Fld label="Severity"><Sel value={form.severity} onChange={e=>ff("severity",e.target.value)}>{AUDIT_SEVERITY.map(s=><option key={s}>{s}</option>)}</Sel></Fld>
+            <Fld label="Date Issued"><Inp type="date" value={form.issuedAt||today} onChange={e=>ff("issuedAt",e.target.value)}/></Fld>
+            <div style={{gridColumn:"1/-1"}}><Fld label="Finding" required><Inp value={form.finding} onChange={e=>ff("finding",e.target.value)} placeholder="What was observed, with specifics"/></Fld></div>
+          </div>
+          <div style={{fontSize:".72rem",color:"#64748b",margin:"8px 0"}}>Reply due: <strong>{addDaysISO(form.issuedAt||today,AUDIT_REPLY_DAYS)}</strong> (3 days from issue).</div>
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={submit} style={{background:"#1e293b",border:"none",borderRadius:9,padding:"10px 22px",fontFamily:"inherit",fontWeight:700,fontSize:".85rem",color:"#fff",cursor:"pointer"}}>Issue Finding</button>
+            <button onClick={()=>setShowForm(false)} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"10px 18px",fontFamily:"inherit",fontWeight:600,fontSize:".84rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring audit calendar (§7) */}
+      <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:16,marginBottom:16}}>
+        <div style={{fontWeight:800,color:"#0f172a",fontSize:".92rem",marginBottom:4}}>🗓 Recurring Audit Calendar (§7)</div>
+        <div style={{overflowX:"auto"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:".78rem",minWidth:520}}>
+            <thead><tr style={{textAlign:"left",color:"#94a3b8",fontSize:".68rem",textTransform:"uppercase",letterSpacing:".05em"}}>
+              <th style={{padding:"6px 8px"}}>Area</th><th style={{padding:"6px 8px"}}>Frequency</th><th style={{padding:"6px 8px"}}>Schedule</th><th style={{padding:"6px 8px"}}>Responsible</th>
+            </tr></thead>
+            <tbody>
+              {RECURRING_AUDITS.map((r,i)=>(
+                <tr key={i} style={{borderTop:"1px solid #f1f5f9"}}>
+                  <td style={{padding:"6px 8px",fontWeight:600,color:"#334155"}}>{r.area}</td>
+                  <td style={{padding:"6px 8px",color:"#64748b"}}>{r.freq}</td>
+                  <td style={{padding:"6px 8px",color:"#64748b"}}>{r.schedule}</td>
+                  <td style={{padding:"6px 8px",color:"#64748b"}}>{r.responsible}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Findings list */}
+      <div style={{display:"flex",flexDirection:"column",gap:10}}>
+        {findings.length===0&&<div style={{textAlign:"center",color:"#94a3b8",padding:"30px 0",fontSize:".85rem"}}>No audit findings on record.</div>}
+        {findings.map(f=>{
+          const od=findingOverdue(f,today);
+          return(
+            <div key={f.id} style={{background:"#fff",borderRadius:12,border:`1.5px solid ${od?"#fecaca":"#e2e8f0"}`,padding:"14px 16px",borderLeft:`4px solid ${AUDIT_STATUS_CLR[f.status]||"#94a3b8"}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
+                <div style={{flex:1,minWidth:220}}>
+                  <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap",marginBottom:4}}>
+                    <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:AUDIT_STATUS_CLR[f.status]+"22",color:AUDIT_STATUS_CLR[f.status]}}>{f.status}</span>
+                    <span style={{fontSize:".68rem",fontWeight:700,padding:"2px 8px",borderRadius:20,background:AUDIT_SEVERITY_CLR[f.severity]+"22",color:AUDIT_SEVERITY_CLR[f.severity]}}>{f.severity}</span>
+                    <span style={{fontSize:".72rem",color:"#64748b",fontWeight:600}}>{f.area}</span>
+                    {od&&<span style={{fontSize:".68rem",fontWeight:800,color:"#dc2626"}}>⚠ OVERDUE</span>}
+                  </div>
+                  <div style={{fontSize:".88rem",color:"#0f172a",fontWeight:600}}>{f.finding}</div>
+                  <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:3}}>Respondent: {f.respondent||"—"} · Issued {f.issuedAt||"—"} by {f.issuedBy||"—"} · Reply due {f.replyDue||"—"}</div>
+                  {f.response&&<div style={{fontSize:".8rem",color:"#334155",marginTop:6,padding:"6px 10px",background:"#f8fafc",borderRadius:8}}>💬 {f.response} <span style={{color:"#94a3b8"}}>· {f.respondedAt}</span></div>}
+                  {f.hrReferral&&<div style={{fontSize:".72rem",color:"#dc2626",fontWeight:700,marginTop:4}}>Referred to HR &amp; Admin{f.kpiImpact?` · KPI: ${f.kpiImpact}`:""}</div>}
+                </div>
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:10,flexWrap:"wrap"}}>
+                {f.status==="Open"&&replyFor!==f.id&&<button onClick={()=>{setReplyFor(f.id);setReplyText(f.response||"");}} style={{background:"#3b82f6",border:"none",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",color:"#fff",cursor:"pointer"}}>Respond</button>}
+                {canManage&&f.status!=="Closed"&&!f.hrReferral&&<button onClick={()=>updateFinding(f.id,{status:"Referred to HR",hrReferral:true})} style={{background:"#fef2f2",border:"1px solid #fecaca",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",color:"#dc2626",cursor:"pointer"}}>Refer to HR</button>}
+                {canManage&&f.status!=="Closed"&&<button onClick={()=>updateFinding(f.id,{status:"Closed",resolvedAt:today})} style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontWeight:700,fontSize:".74rem",color:"#059669",cursor:"pointer"}}>Close</button>}
+              </div>
+              {replyFor===f.id&&(
+                <div style={{marginTop:10,display:"flex",gap:8,flexWrap:"wrap"}}>
+                  <input value={replyText} onChange={e=>setReplyText(e.target.value)} placeholder="Respondent's reply…" style={{flex:1,minWidth:200,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".82rem",outline:"none"}}/>
+                  <button onClick={()=>sendReply(f.id)} style={{background:"#1e293b",border:"none",borderRadius:8,padding:"8px 16px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>Save</button>
+                  <button onClick={()=>{setReplyFor(null);setReplyText("");}} style={{background:"transparent",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"8px 12px",fontFamily:"inherit",fontSize:".8rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMilestone,updateMilestone,deleteMilestone,deleteProjectBilling,generateBillingSchedule,logBillingPayment,deleteBillingPayment,nextInvoiceNo,session,role,cocDeals,clientProfiles,initialDeal,clearInitialDeal,upDeals,onSaveOnboarding,onOpenPayTerms,projs,overallProg,toastEmit,sendTelegramNotification}){
   const mob=window.innerWidth<768;
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
@@ -21391,6 +21703,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
     if(!deal) return;
     const out=retentionState.outstanding;
     if(out<=0){toastEmit&&toastEmit("No retention outstanding to release.","info");return;}
+    // Policy §3: retention is released on client satisfaction — gated on the COC.
+    const cocOk=(cocDeals&&cocDeals.includes(selDeal))||projs?.[selDeal]?.cocCreated;
+    if(!cocOk){toastEmit&&toastEmit("Retention can only be released after the COC is issued (§3). Complete Close-Out first.","warning",6000);return;}
     if(!(await uiConfirm(`Release retention of ₱${out.toLocaleString("en-PH")} for ${deal.client||"this project"}? This creates a Draft retention-release invoice.`))) return;
     addMilestone({name:"Retention Release",description:`Release of retention withheld across progress billings (${deal.paymentTerms?.retentionRelease||"on completion"}).`,amount:out,dealId:selDeal,isRetentionRelease:true,invoiceNo:await claimInv(),invoiceDate:today,dueDate:"",status:"Draft",receiptType:deal.receiptType||null,withholding:deal.withholding??null,createdBy:session?.name||role});
     toastEmit&&toastEmit(`Retention release drafted: ₱${out.toLocaleString("en-PH")}.`,"success",6000);
@@ -22095,12 +22410,60 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             return null;
           })()}
 
+          {/* Onboarding readiness gate (Policy §2.1) — Finance holds the first
+             invoice until the client's engagement facts are on file. */}
+          {(()=>{
+            const gate=dealOnboardingGate(deal);
+            const existingMs=billings.filter(b=>b.dealId===selDeal);
+            if(!deal||gate.ready||existingMs.length>0) return null; // satisfied, or already billing
+            const save=(fields)=>onSaveOnboarding&&onSaveOnboarding(selDeal,fields);
+            return(
+              <div style={{background:"#fff7ed",border:"1.5px solid #fed7aa",borderRadius:12,padding:"12px 16px",marginBottom:14}}>
+                <div style={{fontSize:".82rem",fontWeight:800,color:"#c2410c",marginBottom:8}}>🧾 Client onboarding incomplete — invoicing on hold (Policy §2.1)</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:12}}>
+                  {gate.checks.map(c=>(
+                    <span key={c.label} style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:".72rem",fontWeight:600,padding:"3px 10px",borderRadius:20,border:"1px solid",borderColor:c.ok?"#6ee7b7":"#fecaca",background:c.ok?"#f0fdf4":"#fef2f2",color:c.ok?"#059669":"#b91c1c"}}>
+                      {c.ok?"✓":"○"} {c.label}
+                    </span>
+                  ))}
+                </div>
+                {canEdit?(
+                  <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:10}}>
+                    <Fld label="BIR Form 2303">
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <Inp type="url" value={deal.bir2303Url||""} placeholder="Drive link to 2303" onChange={e=>save({bir2303Url:e.target.value})} style={{flex:1}}/>
+                        <label style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:".72rem",color:"#475569",whiteSpace:"nowrap"}}>
+                          <input type="checkbox" checked={!!deal.bir2303OnFile} onChange={e=>save({bir2303OnFile:e.target.checked})}/> On file
+                        </label>
+                      </div>
+                    </Fld>
+                    <Fld label="VAT Treatment">
+                      <Sel value={deal.vatTreatment||""} onChange={e=>save({vatTreatment:e.target.value})}>
+                        <option value="">— Select —</option>
+                        {VAT_TREATMENTS.map(v=><option key={v} value={v}>{v}</option>)}
+                      </Sel>
+                    </Fld>
+                    <Fld label="Downpayment %">
+                      <Inp type="number" value={deal.downpaymentPct??(deal.paymentTerms?.dp??"")} placeholder="e.g. 30" onChange={e=>save({downpaymentPct:e.target.value})}/>
+                    </Fld>
+                    <Fld label="Payment Terms (per signed C.E.)">
+                      <Inp value={deal.paymentTermsText||""} placeholder="e.g. 30% DP, 40% progress, Net 30" onChange={e=>save({paymentTermsText:e.target.value})}/>
+                    </Fld>
+                  </div>
+                ):(
+                  <div style={{fontSize:".72rem",color:"#9a3412"}}>Finance must complete these before the downpayment invoice can be generated.</div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Payment Terms & Auto-Generate Banner */}
           {(()=>{
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
             const val=Number(deal?.value||0);
-            const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated;
+            const onboardingReady=dealOnboardingGate(deal).ready;
+            const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated&&onboardingReady;
             const autoGenerate=()=>{
               // Single guarded, idempotent generator (sets deal.billingGenerated).
               generateBillingSchedule(selDeal,terms,val);
@@ -22137,9 +22500,9 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               <span style={{fontSize:".82rem",color:"#92400e"}}>Withheld: <strong>₱{retentionState.held.toLocaleString("en-PH")}</strong></span>
               {retentionState.released>0&&<span style={{fontSize:".82rem",color:"#92400e"}}>Released: <strong>₱{retentionState.released.toLocaleString("en-PH")}</strong></span>}
               <span style={{fontSize:".82rem",color:"#92400e"}}>Outstanding: <strong>₱{retentionState.outstanding.toLocaleString("en-PH")}</strong></span>
-              {canEdit&&retentionState.outstanding>0&&(
-                <button onClick={releaseRetention} style={{marginLeft:"auto",background:"#b45309",border:"none",borderRadius:8,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:"pointer"}}>Release Retention →</button>
-              )}
+              {(()=>{const cocOk=(cocDeals&&cocDeals.includes(selDeal))||projs?.[selDeal]?.cocCreated;return canEdit&&retentionState.outstanding>0&&(
+                <button onClick={releaseRetention} title={cocOk?"":"Retention releases after the COC is issued (§3)"} style={{marginLeft:"auto",background:cocOk?"#b45309":"#d6b68a",border:"none",borderRadius:8,padding:"6px 14px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",cursor:cocOk?"pointer":"not-allowed"}}>{cocOk?"Release Retention →":"🔒 Locked until COC"}</button>
+              );})()}
             </div>
           )}
 

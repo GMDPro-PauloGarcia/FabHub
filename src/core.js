@@ -175,12 +175,12 @@ export const DRF_CLR   = {New:"#94a3b8",Acknowledged:"#3b82f6","In Progress":"#f
 
 export const emptyDRF  = ()=>({dealId:"",client:"",location:"",designer:"",designDeadline:"",projectTitle:"",type:DRF_TYPES[0],size:"",description:"",accessories:[],refLinks:["","",""],notes:"",approvedLink:"",status:"New",createdBy:""});
 
-export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8" };
+export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",Accounting:"#6366f1",Procurement:"#06b6d4",QS:"#8b5cf6",Operations:"#f97316",Design:"#ec4899",ProjectMover:"#0ea5e9",Warehouse:"#64748b",SalesOpsAdmin:"#14b8a6",FinanceAssistant:"#1d4ed8",Audit:"#dc2626",HRAdmin:"#7c3aed" };
 
 // Human-readable labels for role codes that aren't self-explanatory when shown
 // raw (role codes are used directly in ===/object-key comparisons, so we keep
 // them token-safe and map to a friendly label only at display sites).
-export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin", FinanceAssistant:"Finance Assistant" };
+export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin", FinanceAssistant:"Finance Assistant", HRAdmin:"HR & Admin", Audit:"Audit Team" };
 export const roleLabel = r => ROLE_LABEL[r] || r;
 
 export const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval","Module","Swatch","Risk Flag"];
@@ -372,6 +372,107 @@ export const BILLING_STATUS_CLR = {
   "Overdue":"#ef4444","Cancelled":"#475569",
 };
 
+// ── Receivables & Finance Policy v2.0 ────────────────────────────────────────
+// Pricing basis declared on the signed C.E. — policy §2.1 requires this be
+// unambiguous before Finance invoices.
+export const VAT_TREATMENTS = ["VAT-exclusive","VAT-inclusive"];
+
+// Document-gated billing. A filed report is what unlocks the next invoice:
+//   progress      — ≥90% completion (fabrication) → unlocks Progress Billing
+//   installation  — filed immediately after install → unlocks Final Billing
+//   coc           — Certificate of Completion → unlocks Retention release
+export const REPORT_KINDS = [
+  {k:"progress",     label:"Progress Report",     icon:"📈", minPct:90},
+  {k:"installation", label:"Installation Report", icon:"🔧", minPct:0},
+];
+export const REPORT_STATUSES = ["Submitted","Sales Review","Verified","Rejected"];
+export const REPORT_STATUS_CLR = {Submitted:"#f59e0b","Sales Review":"#3b82f6",Verified:"#059669",Rejected:"#ef4444"};
+
+export const emptyProjectReport=(kind="progress")=>({
+  id:"",kind,pctComplete:kind==="progress"?90:100,
+  scopeNote:"",photosLink:"",
+  status:"Submitted",submittedBy:"",submittedAt:"",
+  verifiedBy:"",verifiedAt:"",
+});
+
+// The most recent report of a kind on a project (or null).
+export const latestReport=(proj,kind)=>{
+  const list=(proj?.reports||[]).filter(r=>r.kind===kind);
+  if(!list.length) return null;
+  return list.slice().sort((a,b)=>String(b.submittedAt||"").localeCompare(String(a.submittedAt||"")))[0];
+};
+// Is a qualifying report on file? Progress must meet its ≥90% threshold; any
+// non-rejected report counts as "on file" for gating installation billing.
+export const progressReportOnFile=(proj)=>{
+  const r=latestReport(proj,"progress");
+  return !!r&&r.status!=="Rejected"&&(Number(r.pctComplete)||0)>=90;
+};
+export const installationReportOnFile=(proj)=>{
+  const r=latestReport(proj,"installation");
+  return !!r&&r.status!=="Rejected";
+};
+
+// Onboarding gate (§2.1): the facts Finance must have before the downpayment
+// invoice. Returns {ready, missing:[labels]} so the UI can show a checklist.
+export const dealOnboardingGate=(deal)=>{
+  const d=deal||{};
+  const terms=d.paymentTerms||{};
+  const dp=d.downpaymentPct??terms.dp;
+  const checks=[
+    {ok:!!d.ceNo,                       label:"Signed C.E. (CE No.)"},
+    {ok:!!d.bir2303OnFile||!!d.bir2303Url, label:"BIR Form 2303 on file"},
+    {ok:!!(d.paymentTermsText||terms.netDays||terms.notes), label:"Payment terms"},
+    {ok:!!d.vatTreatment,               label:"VAT treatment (incl./excl.)"},
+    {ok:dp!=null&&dp!==""&&Number(dp)>0, label:"Downpayment %"},
+  ];
+  const missing=checks.filter(c=>!c.ok).map(c=>c.label);
+  return {ready:missing.length===0, missing, checks};
+};
+
+// ── Audit engine (Policy §5) ─────────────────────────────────────────────────
+export const AUDIT_AREAS = [
+  "Warehouse — Inventory / PRF","High-value release","Scrap","Petty cash",
+  "Office supplies (HR & Admin)","Revolving funds (Procurement)",
+  "Inventory accuracy","Conduct / Policy adherence","Other",
+];
+export const AUDIT_SEVERITY = ["Low","Medium","High"];
+export const AUDIT_SEVERITY_CLR = {Low:"#3b82f6",Medium:"#f59e0b",High:"#ef4444"};
+// Open → respondent has 3 days → Responded, or (past due) Referred to HR → Closed.
+export const AUDIT_STATUSES = ["Open","Responded","Referred to HR","Closed"];
+export const AUDIT_STATUS_CLR = {Open:"#f59e0b",Responded:"#3b82f6","Referred to HR":"#ef4444",Closed:"#059669"};
+export const AUDIT_REPLY_DAYS = 3; // §5.2 — respondent has three (3) days to reply
+
+export const emptyFinding=()=>({
+  id:"",area:AUDIT_AREAS[0],finding:"",respondent:"",severity:"Medium",
+  status:"Open",issuedBy:"",issuedAt:"",replyDue:"",response:"",respondedAt:"",
+  hrReferral:false,kpiImpact:"",resolvedAt:"",
+});
+// A finding is overdue when it's still Open past its 3-day reply window.
+export const findingOverdue=(f,todayISO)=>!!f&&f.status==="Open"&&!!f.replyDue&&String(f.replyDue)<String(todayISO||"");
+
+// §7 — recurring audit & compliance calendar. Static schedule the app turns into
+// checklist items; no table needed.
+export const RECURRING_AUDITS = [
+  {area:"Warehouse inventory / PRF / releasing records", freq:"Twice a month", schedule:"1st & 15th",           responsible:"Finance"},
+  {area:"High-value material release & returns",         freq:"Every release", schedule:"At each transaction",  responsible:"Finance (witness)"},
+  {area:"Scrap sales",                                   freq:"As needed",     schedule:"Scheduled w/ Finance", responsible:"Finance + Warehouse"},
+  {area:"Petty cash",                                    freq:"Weekly",        schedule:"Every Friday",         responsible:"Finance"},
+  {area:"Office supplies",                               freq:"Monthly",       schedule:"Last week",            responsible:"HR & Admin"},
+  {area:"Revolving funds",                               freq:"Monthly",       schedule:"Last week",            responsible:"Procurement"},
+  {area:"Inventory accuracy",                            freq:"Monthly",       schedule:"Last week",            responsible:"Warehouse"},
+];
+
+// Warehouse witnessing (§5.3): Finance must witness release/return of
+// high-value materials and ALL scrap. One rule, used by both the movement form
+// and the logStockMove choke point so they never disagree.
+export const SCRAP_MOVE_TYPE = "OUT — Scrap (Finance witnessed)";
+export const moveNeedsWitness = (moveType,item)=>{
+  const t=String(moveType||"");
+  const isScrap=/scrap/i.test(t);
+  const isOutOrReturn=t.startsWith("OUT")||t.startsWith("RETURN");
+  return isScrap || (isOutOrReturn && !!(item&&item.highValue));
+};
+
 export const emptyMilestone=()=>({
   id:"",dealId:"",name:"",description:"",
   amount:0,invoiceNo:"",invoiceDate:"",dueDate:"",
@@ -499,6 +600,10 @@ export const emptyProject=()=>({
   budgetCreated:false,budgetLink:"",budgetNotes:"",
   // COC
   cocCreated:false,cocDate:"",cocLink:"",
+  // Receivables-policy reports (Progress ≥90% / Installation) — see REPORT_KINDS.
+  // Stored inline in the project blob, like pmUpdates/addenda, so they sync
+  // through upProj with no separate synced entity.
+  reports:[],
   // Warranty
   warranty:{active:false,type:"30",startDate:"",endDate:"",notes:""},
   // PM Updates
