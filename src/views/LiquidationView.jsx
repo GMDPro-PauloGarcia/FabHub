@@ -1,5 +1,5 @@
 import React from "react";
-import {fmt,today,BANKS,KPI,Modal} from "../shared";
+import {fmt,today,BANKS,KPI,Modal,uiConfirm} from "../shared";
 // ─── LIQUIDATION VIEW ─────────────────────────────────────────────────────────
 function LiquidationView({evouchers,addEV,updateEV,deleteEV,addEVItem,updateEVItem,deleteEVItem,submitEV,markEVPaid,wonDeals,session,role,today,fmt,BANKS,isMobile}){
   const[collapsed,setCollapsed]=React.useState(new Set());
@@ -252,9 +252,9 @@ tr:nth-child(even) td{background:#f9f9f9;}
                                     setAddingItemFor(isAddingItem?null:ev.id);
                                     if(!isItemsOpen)setExpandedItems(s=>{const n=new Set(s);n.add(ev.id);return n;});
                                   }} style={{background:"#f5f3ff",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>+ Item</button>}
-                                  {(role==="Accounting"||role==="Manager")&&ev.status==="Draft"&&<button onClick={()=>{if(window.confirm("Submit for payment?"))submitEV(ev.id);}} style={{background:"#fffbeb",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
+                                  {(role==="Accounting"||role==="Manager")&&ev.status==="Draft"&&<button onClick={async ()=>{if((await uiConfirm("Submit for payment?")))submitEV(ev.id);}} style={{background:"#fffbeb",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#b45309",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>→ Submit</button>}
                                   {(role==="Finance"||role==="Manager")&&ev.status==="For Payment"&&<button onClick={()=>{setShowPay(ev.id);setPayBank(ev.bank||"");setPayRef("");}} style={{background:"#f0fdf4",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#166534",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>✅ Paid</button>}
-                                  {(role==="Accounting"||role==="Manager")&&ev.status==="Draft"&&<button onClick={()=>{if(window.confirm("Void this EV?"))updateEV(ev.id,{status:"Cancelled"});}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
+                                  {(role==="Accounting"||role==="Manager")&&ev.status==="Draft"&&<button onClick={async ()=>{if((await uiConfirm("Void this EV?")))updateEV(ev.id,{status:"Cancelled"});}} style={{background:"#fef2f2",border:"none",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>Void</button>}
                                   {ev.status==="Paid"&&<span style={{fontSize:".65rem",color:"#059669",fontWeight:600,whiteSpace:"nowrap"}}>✅ {ev.paidRef||""}</span>}
                                   <button onClick={()=>printEV(ev)} style={{background:"#f0f9ff",border:"1px solid #bae6fd",borderRadius:5,padding:"3px 7px",fontSize:".65rem",color:"#0369a1",cursor:"pointer",fontFamily:"inherit",fontWeight:700,whiteSpace:"nowrap"}}>🖨 Print</button>
                                 </div>

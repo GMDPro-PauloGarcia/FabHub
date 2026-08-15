@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {today,uid,BANKS,emptyBankRow,emptyDayPosition} from "../shared";
+import {today,uid,BANKS,emptyBankRow,emptyDayPosition,uiConfirm} from "../shared";
 
 // ── Currency input: shows grouped digits, edits raw ────────────────────────────
 const CurrInp=({value,onChange,placeholder="—",style:sx={}})=>{
@@ -95,7 +95,7 @@ function DailyCashPosition({
   // edits, auto-save them — same save-by-default policy used when switching dates.
   useEffect(()=>()=>{ if(dirtyRef.current){ try{ saveRef.current(); }catch(_){} } },[]);
 
-  const switchDate=(d)=>{
+  const switchDate=async (d)=>{
     if(d===selDate) return;
     // Non-destructive switch: never silently drop unsaved finance data. If the
     // current day has unsaved edits, SAVE them by default before leaving — the
@@ -103,14 +103,14 @@ function DailyCashPosition({
     // disbursements and floating-check changes could vanish just by clicking
     // another date. The user can still explicitly discard.
     if(dirtyRef.current){
-      const save=window.confirm(
+      const save=(await uiConfirm(
         `You have unsaved changes for ${fmtDate(selDate)}.\n\n`+
         `• OK = Save them, then open ${fmtDate(d)}\n`+
         `• Cancel = Discard the changes and open ${fmtDate(d)}`
-      );
+      ));
       if(save){
         handleSave();           // persists selDate + appends an audit entry
-      }else if(!window.confirm(`Discard all unsaved changes for ${fmtDate(selDate)}? This cannot be undone.`)){
+      }else if(!(await uiConfirm(`Discard all unsaved changes for ${fmtDate(selDate)}? This cannot be undone.`))){
         return;                 // second Cancel = stay put, keep editing
       }
     }

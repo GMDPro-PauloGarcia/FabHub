@@ -149,3 +149,107 @@ export function Toaster(){
     </div>
   );
 }
+
+// ─── DIALOGS ──────────────────────────────────────────────────────────────────
+// Promise-based confirm / prompt / alert built on the same in-app Modal styling
+// as the rest of FabHub, replacing the browser's blocking window.confirm/prompt/
+// alert. They mirror the native signatures so call sites migrate 1:1:
+//   if(await uiConfirm(msg)) …            // → true / false
+//   const v = await uiPrompt(msg, def);   // → string / null   (null = cancelled)
+//   uiAlert(msg);                         // fire-and-forget, resolves when closed
+// A single <DialogHost/> mounted once at the app root renders whatever is queued.
+export let _dialogListeners=[];
+const _emitDialog=(spec)=>new Promise(resolve=>{
+  const req={id:Date.now()+Math.random(),resolve,...spec};
+  if(_dialogListeners.length===0){
+    // No host mounted (e.g. unit/headless context) — fail safe to the browser
+    // primitive so a missing provider never silently swallows a confirmation.
+    if(spec.kind==="prompt") return resolve(window.prompt(spec.message,spec.defaultValue||""));
+    if(spec.kind==="alert")  { window.alert(spec.message); return resolve(); }
+    return resolve(window.confirm(spec.message));
+  }
+  _dialogListeners.forEach(fn=>fn(req));
+});
+// Accept either a plain message string or a full options object, so both
+// uiConfirm("Delete?") and uiConfirm({title,message,tone,confirmLabel}) work.
+const _norm=(msgOrOpts)=>typeof msgOrOpts==="string"?{message:msgOrOpts}:(msgOrOpts||{});
+export const uiConfirm=(msgOrOpts)=>_emitDialog({kind:"confirm",..._norm(msgOrOpts)});
+export const uiPrompt=(msgOrOpts,defaultValue="")=>_emitDialog({kind:"prompt",defaultValue,..._norm(msgOrOpts)});
+export const uiAlert=(msgOrOpts)=>_emitDialog({kind:"alert",..._norm(msgOrOpts)});
+
+export function DialogHost(){
+  const[queue,setQueue]=useState([]);
+  const cur=queue[0]||null;
+  const[val,setVal]=useState("");
+  const inputRef=React.useRef(null);
+  const confirmRef=React.useRef(null);
+  useEffect(()=>{
+    const handler=req=>setQueue(q=>[...q,req]);
+    _dialogListeners.push(handler);
+    return()=>{_dialogListeners=_dialogListeners.filter(f=>f!==handler);};
+  },[]);
+  // Reset the field and move focus whenever a new dialog reaches the front.
+  useEffect(()=>{
+    if(!cur) return;
+    setVal(cur.kind==="prompt"?(cur.defaultValue||""):"");
+    const t=setTimeout(()=>{
+      if(cur.kind==="prompt"&&inputRef.current){inputRef.current.focus();inputRef.current.select();}
+      else if(confirmRef.current){confirmRef.current.focus();}
+    },30);
+    return()=>clearTimeout(t);
+  },[cur?.id]);
+  if(!cur) return null;
+  const close=(result)=>{cur.resolve(result);setQueue(q=>q.slice(1));};
+  const onConfirm=()=>close(cur.kind==="prompt"?val:cur.kind==="alert"?undefined:true);
+  const onCancel =()=>close(cur.kind==="prompt"?null:cur.kind==="alert"?undefined:false);
+  const tone=cur.tone||(cur.kind==="alert"?"info":"default");
+  const TONE={
+    danger: {accent:"#dc2626",btnBg:"#dc2626",icon:"🗑️"},
+    warning:{accent:"#d97706",btnBg:"#d97706",icon:"⚠️"},
+    info:   {accent:"#2563eb",btnBg:"#2563eb",icon:"ℹ️"},
+    default:{accent:"#f59e0b",btnBg:"#0f172a",icon:"❓"},
+  };
+  const t=TONE[tone]||TONE.default;
+  const confirmLabel=cur.confirmLabel||(cur.kind==="alert"?"OK":cur.kind==="prompt"?"Save":"Confirm");
+  const cancelLabel=cur.cancelLabel||"Cancel";
+  const mob=window.innerWidth<768;
+  const titleId="dlg-title-"+cur.id;
+  const onKey=e=>{
+    if(e.key==="Escape"){e.preventDefault();onCancel();}
+    else if(e.key==="Enter"&&(cur.kind!=="prompt"||!e.shiftKey)){e.preventDefault();onConfirm();}
+  };
+  return(
+    <div role="presentation" onKeyDown={onKey}
+      style={{position:"fixed",inset:0,background:"rgba(15,23,42,.55)",zIndex:2000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16,animation:"fadein .15s ease"}}
+      onClick={cur.kind==="alert"?onCancel:undefined}>
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={e=>e.stopPropagation()}
+        style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,padding:mob?"22px 18px 24px":26,width:"100%",maxWidth:mob?undefined:420,boxShadow:"0 24px 80px rgba(0,0,0,.28)",borderTop:`4px solid ${t.accent}`}}>
+        <div style={{display:"flex",gap:12,alignItems:"flex-start",marginBottom:cur.title?10:6}}>
+          <span aria-hidden="true" style={{fontSize:"1.3rem",flexShrink:0,lineHeight:1.2}}>{t.icon}</span>
+          <div style={{flex:1}}>
+            <div id={titleId} style={{fontWeight:800,fontSize:"1.02rem",color:"#0f172a",lineHeight:1.35}}>
+              {cur.title||(cur.kind==="alert"?"Notice":cur.kind==="prompt"?"Input required":"Please confirm")}
+            </div>
+            <div style={{fontSize:".88rem",color:"#475569",lineHeight:1.5,marginTop:5,whiteSpace:"pre-wrap"}}>{cur.message}</div>
+          </div>
+        </div>
+        {cur.kind==="prompt"&&(
+          <input ref={inputRef} value={val} onChange={e=>setVal(e.target.value)} placeholder={cur.placeholder||""}
+            style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".9rem",color:"#1e293b",boxSizing:"border-box",marginTop:8,marginBottom:2}}/>
+        )}
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:18}}>
+          {cur.kind!=="alert"&&(
+            <button onClick={onCancel}
+              style={{background:"#f1f5f9",border:"1.5px solid #e2e8f0",borderRadius:9,padding:"9px 16px",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>
+              {cancelLabel}
+            </button>
+          )}
+          <button ref={confirmRef} onClick={onConfirm}
+            style={{background:t.btnBg,border:"none",borderRadius:9,padding:"9px 18px",fontFamily:"inherit",fontSize:".85rem",fontWeight:700,color:"#fff",cursor:"pointer"}}>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

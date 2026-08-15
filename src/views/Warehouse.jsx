@@ -1,5 +1,5 @@
 import React,{useState,useMemo,useEffect,useRef} from "react";
-import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI} from "../shared";
+import {fmt,today,uid,toastEmit,Fld,Inp,Sel,KPI,uiConfirm,uiAlert} from "../shared";
 
 const INV_CATEGORIES = [
   {main:"Sheet Materials",  subs:["Board / Panel","Acrylic / Glass","Foam / Upholstery"]},
@@ -337,13 +337,13 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
   const subs=useMemo(()=>(INV_CATEGORIES.find(c=>c.main===form.category)?.subs||["Other"]),[form.category]);
   const openEdit=(item)=>{setForm({...item});setEditId(item.id);setShowForm(true);};
   const openNew=()=>{setForm(emptyItem());setEditId(null);setShowForm(true);};
-  const saveItem=()=>{
+  const saveItem=async ()=>{
     if(!form.name)return;
     if(editId){updateInventoryItem(editId,form);}
     else{
       const existing=inventory.find(i=>i.name.trim().toLowerCase()===form.name.trim().toLowerCase());
       if(existing){
-        if(!window.confirm(`"${existing.name}" already exists. Update it instead of creating a duplicate?`))return;
+        if(!(await uiConfirm(`"${existing.name}" already exists. Update it instead of creating a duplicate?`)))return;
         updateInventoryItem(existing.id,{...form,id:existing.id,code:existing.code});
       } else {
         addInventoryItem(form);
@@ -628,10 +628,10 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
           {canEdit&&<button onClick={()=>{setShowImport(true);setImportText("");setImportPreview([]);setImportErr("");}} style={{background:"#7c3aed",border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>⬆ Import CSV</button>}
           {canEdit&&<button onClick={openAddModal} style={{background:C.accent,border:"none",borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:"#fff",cursor:"pointer"}}>＋ Add / Restock</button>}
           {role==="Manager"&&clearAllInventory&&(inventory.length>0||stocklog.length>0)&&<button onClick={async()=>{
-            if(!window.confirm(`Start fresh? This permanently deletes ALL ${inventory.length} inventory item(s) and ${stocklog.length} stock movement(s) — for everyone, on every device. This cannot be undone.`)) return;
-            if(!window.confirm("Final confirmation: delete the entire inventory now?")) return;
+            if(!(await uiConfirm(`Start fresh? This permanently deletes ALL ${inventory.length} inventory item(s) and ${stocklog.length} stock movement(s) — for everyone, on every device. This cannot be undone.`))) return;
+            if(!(await uiConfirm("Final confirmation: delete the entire inventory now?"))) return;
             const ok=await clearAllInventory();
-            if(ok) window.alert("Inventory cleared. You're starting from scratch.");
+            if(ok) uiAlert("Inventory cleared. You're starting from scratch.");
           }} style={{background:"#fff",border:`1.5px solid ${C.red}`,borderRadius:8,padding:"7px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".8rem",color:C.red,cursor:"pointer"}} title="Permanently delete all inventory items and stock movements">🗑 Clear All</button>}
         </div>
       </div>
@@ -1047,7 +1047,7 @@ function InventoryView({inventory,stocklog,wonDeals,prs=[],updatePR,addInventory
                             <button onClick={()=>{setMoveForm({moveType:"IN — Delivery",qty:"",unitCost:"",projectId:"",notes:"",date:today});setShowMove(showMove===item.id?null:item.id);}} title="Receive stock"
                               style={{padding:"3px 7px",border:`1px solid ${C.blue}40`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,fontWeight:700,color:C.blue}}>↓</button>
                             <button onClick={()=>openEdit(item)} style={{padding:"3px 7px",border:`1px solid ${C.border}`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,color:C.muted}}>✏</button>
-                            {canDelete&&<button onClick={()=>{if(window.confirm("Delete "+item.name+"?"))deleteInventoryItem(item.id);}} style={{padding:"3px 7px",border:`1px solid ${C.red}30`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,color:C.red}}>✕</button>}
+                            {canDelete&&<button onClick={async ()=>{if((await uiConfirm("Delete "+item.name+"?")))deleteInventoryItem(item.id);}} style={{padding:"3px 7px",border:`1px solid ${C.red}30`,borderRadius:4,background:"#fff",cursor:"pointer",fontSize:10,color:C.red}}>✕</button>}
                           </div>
                           {/* Inline move form */}
                           {showMove===item.id&&(
