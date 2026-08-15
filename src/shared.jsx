@@ -2,6 +2,7 @@
 // code-split views in src/views/. Moved out of App.jsx verbatim so the lazy
 // chunks don't have to pull in the whole main bundle.
 import React,{useState,useEffect} from "react";
+import {T} from "./theme";
 
 export const fmt   = n => "₱" + Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:0});
 export const today=(()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
@@ -47,29 +48,29 @@ export const emptyDayPosition = (date) => ({
 
 export const Inp=({value,onChange,type="text",placeholder,min,max,readOnly,rows,style:sx})=>{
   // Using key+defaultValue pattern — safest focus fix, no hooks needed
-  const base={width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:readOnly?"#f8fafc":"#fff",boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
+  const base={width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:readOnly?T.surface2:T.surface,boxSizing:"border-box",transition:"border-color .15s",...(sx||{})};
   if(rows) return <textarea value={value||""} onChange={onChange} placeholder={placeholder} rows={rows} style={{...base,resize:"vertical"}}/>;
   return <input type={type} value={value||""} onChange={onChange} placeholder={placeholder} min={min} max={max} readOnly={readOnly} style={base}/>;
 };
 export const Sel=({value,onChange,children})=>(
-  <select value={value} onChange={onChange} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:"#1e293b",background:"#fff",boxSizing:"border-box",cursor:"pointer"}}>
+  <select value={value} onChange={onChange} style={{width:"100%",border:`1.5px solid ${T.line}`,borderRadius:T.radius.md,padding:"10px 13px",fontFamily:"inherit",fontSize:".87rem",color:T.inkStrong,background:T.surface,boxSizing:"border-box",cursor:"pointer"}}>
     {children}
   </select>
 );
 
 export const Fld=({label,required,children,hint})=>(
   <div style={{marginBottom:16}}>
-    <label style={{display:"block",fontSize:".72rem",fontWeight:700,color:"#475569",textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>
-      {label}{required&&<span style={{color:"#ef4444",marginLeft:2}}>*</span>}
+    <label style={{display:"block",fontSize:".72rem",fontWeight:700,color:T.inkSoft,textTransform:"uppercase",letterSpacing:".8px",marginBottom:6}}>
+      {label}{required&&<span style={{color:T.danger,marginLeft:2}}>*</span>}
     </label>
     {children}
-    {hint&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:4}}>{hint}</div>}
+    {hint&&<div style={{fontSize:".7rem",color:T.inkFaint,marginTop:4}}>{hint}</div>}
   </div>
 );
 export const Card=({children,onClick,accent,style:sx={}})=>(
-  <div onClick={onClick} style={{background:"#fff",borderRadius:14,border:`1.5px solid ${accent||"#e2e8f0"}`,padding:20,marginBottom:12,cursor:onClick?"pointer":"default",boxShadow:"0 1px 6px rgba(0,0,0,.05)",transition:"box-shadow .15s,border-color .15s",...sx}}
-    onMouseEnter={e=>{if(onClick){e.currentTarget.style.boxShadow="0 6px 20px rgba(0,0,0,.1)";e.currentTarget.style.borderColor=accent||"#94a3b8";}}}
-    onMouseLeave={e=>{if(onClick){e.currentTarget.style.boxShadow="0 1px 6px rgba(0,0,0,.05)";e.currentTarget.style.borderColor=accent||"#e2e8f0";}}}>
+  <div onClick={onClick} style={{background:T.surface,borderRadius:T.radius.xl,border:`1.5px solid ${accent||T.line}`,padding:20,marginBottom:12,cursor:onClick?"pointer":"default",boxShadow:T.shadow.card,transition:"box-shadow .15s,border-color .15s",...sx}}
+    onMouseEnter={e=>{if(onClick){e.currentTarget.style.boxShadow=T.shadow.cardHover;e.currentTarget.style.borderColor=accent||T.inkFaint;}}}
+    onMouseLeave={e=>{if(onClick){e.currentTarget.style.boxShadow=T.shadow.card;e.currentTarget.style.borderColor=accent||T.line;}}}>
     {children}
   </div>
 );
@@ -78,10 +79,10 @@ export const Modal=({open,onClose,title,children,wide,maxWidth})=>{
   if(!open) return null;
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(15,23,42,.5)",zIndex:1000,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:16}} onClick={mob?undefined:onClose}>
-      <div style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:(maxWidth||wide?640:480),maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:"0 24px 80px rgba(0,0,0,.2)"}} onClick={e=>e.stopPropagation()}>
+      <div style={{background:T.surface,borderRadius:mob?"18px 18px 0 0":18,padding:mob?"20px 16px 28px":28,width:"100%",maxWidth:mob?undefined:(maxWidth||wide?640:480),maxHeight:mob?"92vh":"94vh",overflowY:"auto",boxShadow:T.shadow.modal}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:mob?16:22}}>
-          <div style={{fontWeight:800,fontSize:mob?"1rem":"1.1rem",color:"#0f172a"}}>{title}</div>
-          <button onClick={onClose} style={{background:"#f1f5f9",border:"none",borderRadius:8,width:32,height:32,cursor:"pointer",color:"#64748b",fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <div style={{fontWeight:800,fontSize:mob?"1rem":"1.1rem",color:T.ink}}>{title}</div>
+          <button onClick={onClose} aria-label="Close" style={{background:T.surface3,border:"none",borderRadius:T.radius.md,width:32,height:32,cursor:"pointer",color:T.inkMuted,fontSize:"1rem",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
         {children}
       </div>
@@ -89,10 +90,36 @@ export const Modal=({open,onClose,title,children,wide,maxWidth})=>{
   );
 };
 export const KPI=({label,value,color,sub,small})=>(
-  <div style={{background:"#fff",borderRadius:12,padding:small?"14px 16px":"18px 20px",border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}>
-    <div style={{fontSize:small?"1.2rem":"1.55rem",fontWeight:800,color,fontFamily:"'Barlow Condensed',sans-serif",lineHeight:1}}>{value}</div>
+  <div style={{background:T.surface,borderRadius:T.radius.lg,padding:small?"14px 16px":"18px 20px",border:`1.5px solid ${T.line}`,boxShadow:T.shadow.kpi}}>
+    <div style={{fontSize:small?"1.2rem":"1.55rem",fontWeight:800,color,fontFamily:T.displayFont,lineHeight:1}}>{value}</div>
     {sub&&<div style={{fontSize:".7rem",color,marginTop:3,opacity:.75}}>{sub}</div>}
-    <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",marginTop:7}}>{label}</div>
+    <div style={{fontSize:".65rem",textTransform:"uppercase",letterSpacing:"1px",color:T.inkFaint,marginTop:7}}>{label}</div>
+  </div>
+);
+// Loading skeleton block — pulls the shimmer class defined in App.jsx's global
+// stylesheet. Use for placeholder rows/cards while data is fetching.
+export const Skeleton=({w="100%",h=16,r=8,style:sx})=>(
+  <div className="fh-skel" aria-hidden="true" style={{width:w,height:h,borderRadius:r,...(sx||{})}}/>
+);
+// A titled loading placeholder for a whole page/panel while a lazy view or its
+// data loads. Announced politely to assistive tech.
+export const PageSkeleton=({rows=5,label="Loading…"})=>(
+  <div role="status" aria-live="polite" style={{padding:"20px 4px"}}>
+    <span style={{position:"absolute",width:1,height:1,overflow:"hidden",clip:"rect(0 0 0 0)"}}>{label}</span>
+    <Skeleton w="38%" h={22} style={{marginBottom:18}}/>
+    <div style={{display:"flex",gap:12,marginBottom:20}}>
+      {[0,1,2,3].map(i=><Skeleton key={i} h={64} r={12}/>)}
+    </div>
+    {Array.from({length:rows}).map((_,i)=>(
+      <div key={i} style={{display:"flex",gap:12,alignItems:"center",padding:"12px 0",borderBottom:`1px solid ${T.lineSoft}`}}>
+        <Skeleton w={40} h={40} r={10}/>
+        <div style={{flex:1}}>
+          <Skeleton w={`${70-i*6}%`} h={13} style={{marginBottom:8}}/>
+          <Skeleton w={`${45-i*4}%`} h={11}/>
+        </div>
+        <Skeleton w={64} h={26} r={20}/>
+      </div>
+    ))}
   </div>
 );
 export let _toastListeners=[];
