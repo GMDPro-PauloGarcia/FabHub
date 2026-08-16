@@ -22386,7 +22386,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
           if(mob){
             // Stacked card — no horizontal scroll, everything visible incl. SOA button
             return(
-              <div key={d.id} onClick={()=>setSelDeal(d.id)}
+              <div key={d.id} {...clickable(()=>setSelDeal(d.id))} aria-label={`Open billing for ${d.client||d.contact||"project"}`}
                 style={{padding:"14px 16px",borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":"#fff",cursor:"pointer"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10}}>
                   {projectCell}
@@ -22413,7 +22413,7 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
 
           return(
             <div key={d.id}
-              onClick={()=>setSelDeal(d.id)}
+              {...clickable(()=>setSelDeal(d.id))} aria-label={`Open billing for ${d.client||d.contact||"project"}`}
               style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 100px 190px",padding:"12px 18px",gap:12,borderBottom:"1px solid #f1f5f9",background:hasOverdue?"#fffafa":i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
               onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
               onMouseLeave={e=>e.currentTarget.style.background=hasOverdue?"#fffafa":i%2?"#fafafa":"#fff"}>
@@ -22666,6 +22666,15 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
               const pct=tx.netReceivable>0?Math.round(paidTotal/tx.netReceivable*100):0;
               const sClr=BILLING_STATUS_CLR[ms.status]||"#94a3b8";
               const isOverdue=ms.dueDate&&ms.dueDate<today&&ms.status!=="Fully Paid"&&ms.status!=="Cancelled";
+              // Receivables lifecycle: Drafted → Sent → Paid (half = partially paid).
+              const msSent=["Sent to Client","Partially Paid","Fully Paid","Overdue"].includes(ms.status);
+              const msFullyPaid=ms.status==="Fully Paid"||(tx.netReceivable>0&&paidTotal>=tx.netReceivable);
+              const msPartlyPaid=paidTotal>0&&!msFullyPaid;
+              const msNodes=[
+                {label:"Drafted", done:true, color:BILLING_STATUS_CLR["Draft"]||T.inkFaint},
+                {label:"Sent", done:msSent, color:BILLING_STATUS_CLR["Sent to Client"]||T.info},
+                {label:msFullyPaid?"Paid":msPartlyPaid?"Part. paid":"Paid", done:msFullyPaid, half:msPartlyPaid, color:T.success},
+              ];
               return(
                 <div key={ms.id} style={{background:"#f8fafc",borderRadius:10,border:`1.5px solid ${isOverdue?"#fecaca":sClr+"33"}`,padding:"12px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,flexWrap:"wrap"}}>
@@ -22673,9 +22682,10 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                       <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap",marginBottom:5}}>
                         <span style={{fontWeight:700,color:"#0f172a"}}>{ms.name}</span>
                         <span style={{fontSize:".68rem",background:sClr+"22",color:sClr,border:`1px solid ${sClr}44`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>{ms.status}</span>
-                        {isOverdue&&<span style={{fontSize:".68rem",color:"#ef4444",background:"#fef2f2",border:"1px solid #fecaca",borderRadius:20,padding:"1px 8px",fontWeight:700}}>🚨 Overdue</span>}
-                        <span style={{fontSize:".68rem",color:"#94a3b8"}}>{ms.invoiceNo}</span>
+                        {isOverdue&&<span style={{fontSize:".68rem",color:T.danger,background:T.dangerBg,border:`1px solid ${T.dangerLine}`,borderRadius:20,padding:"1px 8px",fontWeight:700}}>🚨 Overdue</span>}
+                        <span style={{fontSize:".68rem",color:T.inkFaint}}>{ms.invoiceNo}</span>
                       </div>
+                      {!ms.isRetentionRelease&&<div style={{marginBottom:8}}><LifecycleStrip nodes={msNodes}/></div>}
                       <div style={{display:"flex",gap:14,flexWrap:"wrap",fontSize:".78rem",marginBottom:8}}>
                         <span><span style={{color:"#94a3b8"}}>Base: </span>₱{n(ms.amount).toLocaleString("en-PH")}</span>
                         {tx.vat>0&&<span><span style={{color:"#94a3b8"}}>VAT 12%: </span><strong style={{color:"#f59e0b"}}>+₱{tx.vat.toLocaleString("en-PH",{minimumFractionDigits:0})}</strong></span>}
