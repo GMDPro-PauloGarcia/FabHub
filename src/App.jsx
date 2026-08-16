@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useCallback, useRef, useContext, c
 const WrapCtx = createContext(false);
 import {supabase,isSupabaseReady,sbList,sbInsert,sbUpdate,sbUpsert,sbDelete,sbDeleteWhere,sbLoadAll,sbSubscribe,sbClear,sbUploadFile,sbDeleteFile,sbGetPublicUrl,sbListFiles,setSbErrorHandler,setSbDropHandler,sbFlushQueue,sbQueueSize,sbOnQueueChange,appLogin,appLogout,restoreAppToken,logClientError} from './supabaseClient';
 import{idbGetMany,idbSetMany}from'./idb.js';
-import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile} from './shared';
+import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,Modal,KPI,toastEmit,toastUpdate,Toaster,uiConfirm,uiPrompt,uiAlert,DialogHost,Skeleton,PageSkeleton,useIsMobile,LifecycleStrip,clickable} from './shared';
+import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
 import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
@@ -18444,25 +18445,12 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
   };
   const swoLifecycleStrip=(lc)=>{
     const nodes=[
-      {k:"Issued",                                          done:lc.issued,        clr:SWO_STATUS_CLR["Issued"]},
-      {k:lc.completed?"Completed":"Complete work",           done:lc.completed,     clr:SWO_STATUS_CLR["Completed"]},
-      {k:lc.acct?`Accounting · ${lc.acct}`:"To Accounting",  done:lc.inAccounting,  half:lc.inAccounting&&!lc.paymentOrdered, clr:"#8b5cf6"},
-      {k:lc.paid?"Paid":"Paid",                              done:lc.paid,          half:lc.paymentOrdered&&!lc.paid, clr:"#059669"},
+      {label:"Issued",                                          done:lc.issued,       color:SWO_STATUS_CLR["Issued"]},
+      {label:lc.completed?"Completed":"Complete work",          done:lc.completed,    color:SWO_STATUS_CLR["Completed"]},
+      {label:lc.acct?`Accounting · ${lc.acct}`:"To Accounting", done:lc.inAccounting, half:lc.inAccounting&&!lc.paymentOrdered, color:"#8b5cf6"},
+      {label:"Paid",                                            done:lc.paid,         half:lc.paymentOrdered&&!lc.paid, color:T.success},
     ];
-    return(
-      <div role="img" aria-label={`Status: ${nodes.filter(x=>x.done).map(x=>x.k).join(", ")||"draft"}`}
-        style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap",padding:"0 2px"}}>
-        {nodes.map((nd,i)=>(
-          <React.Fragment key={i}>
-            {i>0&&<span aria-hidden="true" style={{width:14,height:2,background:nd.done?nd.clr:"#e2e8f0",flexShrink:0}}/>}
-            <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
-              <span aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:nd.done&&!nd.half?nd.clr:"#fff",border:`2px solid ${nd.done?nd.clr:"#cbd5e1"}`}}/>
-              <span style={{fontSize:".6rem",fontWeight:nd.done?700:500,color:nd.done?nd.clr:"#94a3b8",whiteSpace:"nowrap",letterSpacing:".2px"}}>{nd.k}</span>
-            </span>
-          </React.Fragment>
-        ))}
-      </div>
-    );
+    return <LifecycleStrip nodes={nodes}/>;
   };
 
   const openNew=()=>{
@@ -19130,7 +19118,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
               const lc=swoLifecycle(w);
               return(
                 <div key={w.id} style={{borderBottom:wi<filtered.length-1?"1px solid #f1f5f9":"none"}}>
-                  <div onClick={()=>setExpanded(p=>({...p,[w.id]:!p[w.id]}))}
+                  <div {...clickable(()=>setExpanded(p=>({...p,[w.id]:!p[w.id]})))} aria-expanded={isOpen} aria-label={`Work order ${w.woNumber||""}, ${w.status||""} — expand details`}
                     style={{display:"grid",gridTemplateColumns:WO_GRID,gap:0,padding:"9px 16px",alignItems:"center",cursor:"pointer",background:isOpen?"#f8fafc":"#fff",transition:"background .12s",minWidth:660}}
                     onMouseEnter={e=>{if(!isOpen)e.currentTarget.style.background="#f8fafc";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=isOpen?"#f8fafc":"#fff";}}>
@@ -19771,27 +19759,12 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
   // Finance pay this yet?" at a glance, without opening the row.
   const lifecycleStrip=(lc)=>{
     const nodes=[
-      {k:"Issued",  done:true,             clr:STATUS_CLR["PO Issued"]},
-      {k:lc.fullyDelivered?"Received":lc.anyDelivered?"Part. recv":"Received", done:lc.anyDelivered, half:lc.anyDelivered&&!lc.fullyDelivered, clr:"#10b981"},
-      {k:lc.apNos[0]||"Payable", done:lc.hasPayable, clr:"#6366f1"},
-      {k:lc.paid?"Paid":lc.partiallyPaid?"Part. paid":"Paid", done:lc.paid, half:lc.partiallyPaid&&!lc.paid, clr:"#059669"},
+      {label:"Issued", done:true, color:STATUS_CLR["PO Issued"]},
+      {label:lc.fullyDelivered?"Received":lc.anyDelivered?"Part. recv":"Received", done:lc.anyDelivered, half:lc.anyDelivered&&!lc.fullyDelivered, color:STATUS_CLR["Delivered"]},
+      {label:lc.apNos[0]||"Payable", done:lc.hasPayable, color:"#6366f1"},
+      {label:lc.paid?"Paid":lc.partiallyPaid?"Part. paid":"Paid", done:lc.paid, half:lc.partiallyPaid&&!lc.paid, color:T.success},
     ];
-    return(
-      <div role="img" aria-label={`Status: ${nodes.filter(x=>x.done).map(x=>x.k).join(", ")||"issued"}`}
-        style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap",padding:"0 2px 2px"}}>
-        {nodes.map((nd,i)=>(
-          <React.Fragment key={i}>
-            {i>0&&<span aria-hidden="true" style={{width:14,height:2,background:nd.done?nd.clr:"#e2e8f0",flexShrink:0}}/>}
-            <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
-              <span aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",flexShrink:0,
-                background:nd.done?(nd.half?"#fff":nd.clr):"#fff",
-                border:`2px solid ${nd.done?nd.clr:"#cbd5e1"}`}}/>
-              <span style={{fontSize:".6rem",fontWeight:nd.done?700:500,color:nd.done?nd.clr:"#94a3b8",whiteSpace:"nowrap",letterSpacing:".2px"}}>{nd.k}</span>
-            </span>
-          </React.Fragment>
-        ))}
-      </div>
-    );
+    return <LifecycleStrip nodes={nodes}/>;
   };
   const totalValue=filteredAll.reduce((s,p)=>(n(p.actUnitCost)||n(p.estUnitCost))*n(p.qty)+s,0);
   // Assign a distinct color to each PO number that appears more than once in the list
@@ -20246,7 +20219,7 @@ function ProcurementView2({prs,addPR,updatePR,deletePR,upPrs,wonDeals,deals:allD
             return(
               <div key={groupKey} style={{borderBottom:gi<grouped.length-1?"1px solid #f1f5f9":"none"}}>
                 {/* Compact row */}
-                <div onClick={()=>setExpandedPo(o=>o===groupKey?null:groupKey)} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
+                <div {...clickable(()=>setExpandedPo(o=>o===groupKey?null:groupKey))} aria-expanded={open} aria-label={`PO ${poNo}, ${status} — expand line items`} style={{display:"grid",gridTemplateColumns:"90px 1fr 1fr 110px 100px 90px",padding:"9px 14px",gap:8,alignItems:"center",cursor:"pointer",background:open?"#f8fafc":"#fff"}}
                   onMouseEnter={e=>{if(!open)e.currentTarget.style.background="#f8fafc";}} onMouseLeave={e=>{e.currentTarget.style.background=open?"#f8fafc":"#fff";}}>
                   <div style={{fontWeight:700,color:dupPoColors[poNo]||"#6366f1",fontSize:".75rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:4}}>
                     {(role==="Manager"||role==="Procurement")&&<input type="checkbox" checked={selectedPOs.has(groupKey)} onClick={e=>e.stopPropagation()} onChange={()=>toggleSelectPO(groupKey)} title="Select for bulk delete" style={{width:14,height:14,cursor:"pointer",accentColor:"#dc2626",flexShrink:0,margin:0}}/>}
