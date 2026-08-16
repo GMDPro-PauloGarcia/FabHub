@@ -298,3 +298,43 @@ export function DialogHost(){
     </div>
   );
 }
+
+// ─── LIFECYCLE STRIP ──────────────────────────────────────────────────────────
+// Slim, horizontal "where does this sit in the pipeline" indicator shared by the
+// Procurement PO list and the Subcon Work Order list (and anywhere a document
+// moves through ordered stages toward payment). Pass an array of stage nodes;
+// reached stages fill in their color, the current partial stage shows hollow,
+// and pending stages stay grey. Neutral colors come from the design tokens.
+//   nodes: [{ label, done, half?, color }]
+export const LifecycleStrip=({nodes=[],style:sx})=>{
+  const summary=nodes.filter(x=>x.done).map(x=>x.label).join(", ")||"not started";
+  return(
+    <div role="img" aria-label={`Status: ${summary}`}
+      style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap",padding:"0 2px",...(sx||{})}}>
+      {nodes.map((nd,i)=>(
+        <React.Fragment key={i}>
+          {i>0&&<span aria-hidden="true" style={{width:14,height:2,background:nd.done?nd.color:T.line,flexShrink:0}}/>}
+          <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
+            <span aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",flexShrink:0,
+              background:nd.done&&!nd.half?nd.color:T.surface,
+              border:`2px solid ${nd.done?nd.color:"#cbd5e1"}`}}/>
+            <span style={{fontSize:".6rem",fontWeight:nd.done?700:500,color:nd.done?nd.color:T.inkFaint,whiteSpace:"nowrap",letterSpacing:".2px"}}>{nd.label}</span>
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+// Make a non-<button> element (an expandable row, a clickable card) operable by
+// keyboard, not just mouse: spreads role="button", tabIndex, and an Enter/Space
+// handler that fires the same onClick. The global :focus-visible ring then gives
+// it a visible focus state. Use: <div {...clickable(()=>toggle())}> … </div>
+export const clickable=(onActivate)=>({
+  role:"button",
+  tabIndex:0,
+  onClick:onActivate,
+  onKeyDown:e=>{
+    if(e.key==="Enter"||e.key===" "){ e.preventDefault(); onActivate&&onActivate(e); }
+  },
+});
