@@ -18429,6 +18429,41 @@ function SubconWOView({swos,addSWO,addSWOBatch,updateSWO,deleteSWO,wonDeals,subc
   const f=(k,v)=>setForm(p=>({...p,[k]:v}));
   const canManage=role==="Manager"||role==="Procurement";
   const woDirect=canApprovePO(role,session?.name||"",session?.name||"",poApprovers);
+  // Where a WO sits in the engage → complete → pay chain (Policy v2.0). Derived
+  // from the WO's own workflow + accounting fields: a subcontractor is only
+  // payable once the work is issued, and paid via the Accounting board
+  // (acctStatus: For Accounting → Checked → Payment Ordered → Paid).
+  const swoLifecycle=(w)=>{
+    const st=w.status||"", acct=w.acctStatus||"";
+    const issued=["Issued","In Progress","Completed"].includes(st);
+    const completed=st==="Completed";
+    const inAccounting=["For Accounting","Checked","Payment Ordered","Paid"].includes(acct);
+    const paymentOrdered=["Payment Ordered","Paid"].includes(acct);
+    const paid=acct==="Paid"||(Number(w.paidAmt)||0)>0;
+    return {issued,completed,inAccounting,paymentOrdered,paid,acct};
+  };
+  const swoLifecycleStrip=(lc)=>{
+    const nodes=[
+      {k:"Issued",                                          done:lc.issued,        clr:SWO_STATUS_CLR["Issued"]},
+      {k:lc.completed?"Completed":"Complete work",           done:lc.completed,     clr:SWO_STATUS_CLR["Completed"]},
+      {k:lc.acct?`Accounting · ${lc.acct}`:"To Accounting",  done:lc.inAccounting,  half:lc.inAccounting&&!lc.paymentOrdered, clr:"#8b5cf6"},
+      {k:lc.paid?"Paid":"Paid",                              done:lc.paid,          half:lc.paymentOrdered&&!lc.paid, clr:"#059669"},
+    ];
+    return(
+      <div role="img" aria-label={`Status: ${nodes.filter(x=>x.done).map(x=>x.k).join(", ")||"draft"}`}
+        style={{display:"flex",alignItems:"center",gap:0,flexWrap:"wrap",padding:"0 2px"}}>
+        {nodes.map((nd,i)=>(
+          <React.Fragment key={i}>
+            {i>0&&<span aria-hidden="true" style={{width:14,height:2,background:nd.done?nd.clr:"#e2e8f0",flexShrink:0}}/>}
+            <span style={{display:"inline-flex",alignItems:"center",gap:4}}>
+              <span aria-hidden="true" style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:nd.done&&!nd.half?nd.clr:"#fff",border:`2px solid ${nd.done?nd.clr:"#cbd5e1"}`}}/>
+              <span style={{fontSize:".6rem",fontWeight:nd.done?700:500,color:nd.done?nd.clr:"#94a3b8",whiteSpace:"nowrap",letterSpacing:".2px"}}>{nd.k}</span>
+            </span>
+          </React.Fragment>
+        ))}
+      </div>
+    );
+  };
 
   const openNew=()=>{
     const sug=computeNextWoNo(swos);
@@ -19092,6 +19127,7 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
             {filtered.map((w,wi)=>{
               const isOpen=!!expanded[w.id];
               const retAmt=woRetentionAmt(w);
+              const lc=swoLifecycle(w);
               return(
                 <div key={w.id} style={{borderBottom:wi<filtered.length-1?"1px solid #f1f5f9":"none"}}>
                   <div onClick={()=>setExpanded(p=>({...p,[w.id]:!p[w.id]}))}
@@ -19111,6 +19147,8 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                     </div>
                     <div style={{textAlign:"center",color:"#94a3b8",fontSize:".65rem",userSelect:"none"}}>{isOpen?"▲":"▼"}</div>
                   </div>
+                  {/* Lifecycle: where this WO sits in the engage → complete → pay chain */}
+                  <div style={{padding:"0 16px 7px",background:isOpen?"#f8fafc":"#fff",overflowX:"auto"}}>{swoLifecycleStrip(lc)}</div>
                   {isOpen&&(
                     <div style={{background:"#fafafa",borderTop:"1px solid #f1f5f9",padding:"10px 16px"}}>
                       <div style={{fontSize:".72rem",color:"#475569",whiteSpace:"pre-wrap",background:"#fff",border:"1px solid #f1f5f9",borderRadius:8,padding:"8px 12px",marginBottom:8}}>{w.scopeOfWork||"No scope recorded."}</div>
@@ -19198,10 +19236,16 @@ ${w.notes?`<div class="sec-title">Notes</div><div class="scope" style="min-heigh
                           {(w.status==="Pending Approval"||w.status==="Draft")&&!canApprovePO(role,session?.name||"",w.requestedBy,poApprovers)&&(
                             <span style={{fontSize:".68rem",color:"#b45309",fontWeight:600,alignSelf:"center"}}>⏳ Awaiting approval</span>
                           )}
-                          <button onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
-                          <button onClick={()=>printSubconContract(w)} title="Generate the Standard Subcontractor Contract" style={{background:"#0B2545",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📄 Contract</button>
-                          <button onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
-                          {canManage&&<button onClick={async ()=>{if((await uiConfirm("Delete "+(w.woNumber||"this work order")+"?")))deleteSWO(w.id);}} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
+                          <button aria-label={`Print work order ${w.woNumber||""}`.trim()} title="Print work order" onClick={()=>printWO(w)} style={{background:"#eff6ff",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#1e40af",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>🖨 Print</button>
+                          <button aria-label="Generate subcontractor contract" onClick={()=>printSubconContract(w)} title="Generate the Standard Subcontractor Contract" style={{background:"#0B2545",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#fff",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>📄 Contract</button>
+                          <button aria-label={`Edit work order ${w.woNumber||""}`.trim()} title="Edit work order" onClick={()=>openEdit(w)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#475569",cursor:"pointer",fontFamily:"inherit"}}>✏ Edit</button>
+                          {canManage&&<button aria-label={`Delete work order ${w.woNumber||""}`.trim()} title="Delete work order" onClick={async ()=>{
+                            // Policy v2.0: a WO already in Accounting (or paid) can't be
+                            // deleted silently — it breaks the finance/document trail.
+                            const inFinance=["For Accounting","Checked","Payment Ordered","Paid"].includes(w.acctStatus||"")||(Number(w.paidAmt)||0)>0;
+                            const note=inFinance?`\n\n⚠️ This WO is already with Accounting${w.acctStatus?` (status: ${w.acctStatus})`:""}${(Number(w.paidAmt)||0)>0?` and has a recorded payment`:""}. Deleting it breaks the finance trail — handle it in the Accounting board instead if this is a mistake.`:"";
+                            if((await uiConfirm({title:"Delete work order",tone:"danger",confirmLabel:"Delete WO",message:`Delete ${w.woNumber||"this work order"}?${note}\n\nThis cannot be undone.`})))deleteSWO(w.id);
+                          }} style={{background:"#fef2f2",border:"none",borderRadius:7,padding:"4px 10px",fontSize:".72rem",color:"#dc2626",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>✕</button>}
                         </div>
                       </div>
                     </div>
