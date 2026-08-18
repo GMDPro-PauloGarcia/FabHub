@@ -9218,7 +9218,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",fontWeight:700,marginBottom:6}}>⚡ Needs Attention</div>
             <div style={{display:"grid",gridTemplateColumns:ceoMob?"repeat(3,1fr)":`repeat(auto-fit,minmax(168px,1fr))`,gap:ceoMob?7:10}}>
               {items.map((a,i)=>{const t=TONE[a.tone];return(
-                <div key={i} onClick={()=>setAttnDrill({...a,fg:t.fg})} style={{background:t.bg,border:`1.5px solid ${t.bd}`,borderRadius:12,padding:ceoMob?"9px 10px":"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:1}}>
+                <div key={i} {...clickable(()=>setAttnDrill({...a,fg:t.fg}))} aria-label="Open attention item details" style={{background:t.bg,border:`1.5px solid ${t.bd}`,borderRadius:12,padding:ceoMob?"9px 10px":"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:1}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:ceoMob?".95rem":"1.05rem"}}>{a.icon}</span>
                     <span style={{fontSize:".7rem",color:t.fg,fontWeight:700}}>→</span>
@@ -9290,7 +9290,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
               const good=chg!=null&&(invert?chg<=0:chg>=0);
               const prevFull=data[data.length-2]||0;
               return(
-                <div key={title} onClick={()=>setWidgetDrill({key,title,color,icon,fmt,action,cur,cyr,cmo})} style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",padding:ceoMob?"9px 11px":"12px 14px",cursor:"pointer"}}>
+                <div key={title} {...clickable(()=>setWidgetDrill({key,title,color,icon,fmt,action,cur,cyr,cmo}))} aria-label={`Open ${title} details`} style={{background:T.surface,borderRadius:T.radius.lg,border:`1.5px solid ${T.line}`,padding:ceoMob?"9px 11px":"12px 14px",cursor:"pointer"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:2}}>
                     <div style={{fontSize:".6rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>{icon} {title}</div>
                     {chg!==null?<span title={`vs. first ${D} days of last month`} style={{fontSize:".58rem",fontWeight:700,color:good?"#059669":"#ef4444",background:good?"#f0fdf4":"#fef2f2",borderRadius:5,padding:"1px 5px"}}>{chg>=0?"↑":"↓"}{Math.abs(chg)}% MTD</span>:<span style={{fontSize:".55rem",color:"#cbd5e1",fontWeight:600}}>—</span>}
@@ -13310,7 +13310,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                           {projItems.map((it,i)=>{
                             const c=DS_CLR[it.status]||"#94a3b8";
                             return(
-                              <div key={"p"+it.id} onClick={()=>{setSelProj(it.id);setOpsTab("design");}} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
+                              <div key={"p"+it.id} {...clickable(()=>{setSelProj(it.id);setOpsTab("design");})} aria-label="Open project design" style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"11px 16px",borderBottom:"1px solid #f8fafc",cursor:"pointer"}}>
                                 <div style={{flex:1,minWidth:0}}>
                                   <div style={{fontWeight:600,color:"#0f172a",fontSize:".85rem",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{it.client}</div>
                                   <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:1}}>{it.title}</div>
@@ -17426,7 +17426,7 @@ function ClientDirectory({deals, session, role, vvipClients, toggleVvip, customC
           const hasBalance  = c.balance>0;
           const hasDeals    = clientDeals.length>0;
           return(
-            <div key={i} onClick={()=>setSelClient(c.name)} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:0,padding:"12px 18px",cursor:"pointer",borderBottom:"1px solid #f1f5f9",background:hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa",alignItems:"center",transition:"background .1s"}}
+            <div key={i} {...clickable(()=>setSelClient(c.name))} aria-label={`Open client ${c.name}`} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr",gap:0,padding:"12px 18px",cursor:"pointer",borderBottom:"1px solid #f1f5f9",background:hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa",alignItems:"center",transition:"background .1s"}}
               onMouseEnter={e=>e.currentTarget.style.background="#f0f9ff"}
               onMouseLeave={e=>e.currentTarget.style.background=hasBalance?"#fef9f9":i%2===0?"#fff":"#fafafa"}>
               <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
