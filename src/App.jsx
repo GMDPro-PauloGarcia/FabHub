@@ -259,14 +259,14 @@ const Badge=({label,color})=>(
 );
 const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"})=>{
   const styles={
-    primary:{bg:"#1e293b",color:"#fff",border:"none"},
-    ghost:{bg:"transparent",color:"#64748b",border:"1.5px solid #cbd5e1"},
-    danger:{bg:"#fef2f2",color:"#ef4444",border:"1.5px solid #fca5a5"},
-    green:{bg:"#f0fdf4",color:"#059669",border:"1.5px solid #6ee7b7"},
-    accent:{bg:"#eff6ff",color:"#3b82f6",border:"1.5px solid #93c5fd"},
-  }[variant]||{bg:"#1e293b",color:"#fff",border:"none"};
+    primary:{bg:T.navy,color:"#fff",border:"none"},
+    ghost:{bg:"transparent",color:T.inkMuted,border:"1.5px solid #cbd5e1"},
+    danger:{bg:T.dangerBg,color:"#ef4444",border:`1.5px solid ${T.dangerLine}`},
+    green:{bg:T.successBg,color:T.successAlt,border:`1.5px solid ${T.successLine}`},
+    accent:{bg:T.infoBg,color:"#3b82f6",border:`1.5px solid ${T.infoLine}`},
+  }[variant]||{bg:T.navy,color:"#fff",border:"none"};
   return(
-    <button type={type} onClick={onClick} disabled={disabled} style={{background:disabled?"#f1f5f9":styles.bg,color:disabled?"#94a3b8":styles.color,border:styles.border,borderRadius:8,padding:small?"5px 12px":"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:small?".76rem":".84rem",cursor:disabled?"not-allowed":"pointer",width:full?"100%":"auto",transition:"opacity .15s,box-shadow .15s",whiteSpace:"nowrap"}}
+    <button type={type} onClick={onClick} disabled={disabled} style={{background:disabled?T.surface3:styles.bg,color:disabled?T.inkFaint:styles.color,border:styles.border,borderRadius:T.radius.md,padding:small?"5px 12px":"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:small?".76rem":".84rem",cursor:disabled?"not-allowed":"pointer",width:full?"100%":"auto",transition:"opacity .15s,box-shadow .15s",whiteSpace:"nowrap"}}
       onMouseEnter={e=>{if(!disabled)e.currentTarget.style.opacity=".85";}}
       onMouseLeave={e=>{e.currentTarget.style.opacity="1";}}>
       {children}
