@@ -29,7 +29,11 @@
 --
 -- SELECT is kept deliberately broad (lockouts are the top risk); DELETE on deals
 -- and every financial record is Manager-only (owner decision 2026-07-08), except
--- deals, which also allow the named Sales users jena/wyn.
+-- deals, which also allow the named Sales users jena/wyn, and billing_milestones/
+-- billing_payments, which also allow Finance/FinanceAssistant/SalesOpsAdmin per
+-- the 2026-08-18 owner call (see migration 049 — the delete flow archives to the
+-- Audit Trail first, so Finance-initiated billing deletes stay reversible). The
+-- del arrays below already reflect this so a fresh replay lands in the final state.
 --
 -- ⚠️ HIGH-IMPACT: this flips every table from allow-all to role-gated. Validate
 -- against the app (branch or staging) before applying to production, and keep a
@@ -94,8 +98,8 @@ declare
     {"t":"design_request_forms","sel":["Manager","ProjectMover","Sales","Finance","Design","SalesOpsAdmin"],"ins":["Manager","Sales","Design","SalesOpsAdmin"],"upd":["Manager","Design"],"del":["Manager"]},
     {"t":"inflows","sel":["Manager","Finance","FinanceAssistant"],"ins":["Manager","Finance","FinanceAssistant"],"upd":["Manager","Finance","FinanceAssistant"],"del":["Manager"]},
     {"t":"cash_positions","sel":["Manager","Finance","FinanceAssistant"],"ins":["Manager","Finance","FinanceAssistant"],"upd":["Manager","Finance","FinanceAssistant"],"del":["Manager"]},
-    {"t":"billing_milestones","sel":["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"],"ins":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"upd":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"del":["Manager"]},
-    {"t":"billing_payments","sel":["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"],"ins":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"upd":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"del":["Manager"]},
+    {"t":"billing_milestones","sel":["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"],"ins":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"upd":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"del":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"]},
+    {"t":"billing_payments","sel":["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"],"ins":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"upd":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"],"del":["Manager","Finance","FinanceAssistant","SalesOpsAdmin"]},
     {"t":"expenses","sel":"AUTH","ins":["Manager","Finance","Accounting","FinanceAssistant"],"upd":["Manager","Finance","Accounting","FinanceAssistant"],"del":["Manager"]},
     {"t":"payables","sel":["Manager","Finance","Accounting","FinanceAssistant","Procurement"],"ins":["Manager","Finance","Accounting","FinanceAssistant","Procurement"],"upd":["Manager","Finance","Accounting","FinanceAssistant","Procurement"],"del":["Manager"]},
     {"t":"check_vouchers","sel":["Manager","Finance","Accounting","FinanceAssistant"],"ins":["Manager","Accounting"],"upd":["Manager","Finance","Accounting","FinanceAssistant"],"del":["Manager"]},
