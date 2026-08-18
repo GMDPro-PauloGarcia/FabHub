@@ -11162,12 +11162,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     Cancelled ({deals.filter(d=>d.stage==="Cancelled").length})
                   </summary>
                   <div style={{marginTop:6}}>
-                  {deals.filter(d=>d.stage==="Cancelled").map(d=>(
-                    <div key={d.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"#f8fafc",borderRadius:8,marginBottom:4,opacity:.55}}>
-                      <span style={{fontSize:".8rem",color:"#64748b"}}>{d.client}{d.contact?" · "+d.contact:""}</span>
-                      <span style={{fontSize:".8rem",color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
+                  {deals.filter(d=>d.stage==="Cancelled").map(d=>{
+                    // Surface the cancellation reason stamped into notes as "[CANCELLED <date>]: <reason>".
+                    const cm=[...String(d.notes||"").matchAll(/\[CANCELLED[^\]]*\]:?\s*(.*)/gi)];
+                    const cancelReason=cm.length?(cm[cm.length-1][1]||"").trim():"";
+                    return(
+                    <div key={d.id} style={{padding:"8px 12px",background:"#f8fafc",borderRadius:8,marginBottom:4,opacity:.65}}>
+                      <div style={{display:"flex",justifyContent:"space-between"}}>
+                        <span style={{fontSize:".8rem",color:"#64748b"}}>{d.client}{d.contact?" · "+d.contact:""}</span>
+                        <span style={{fontSize:".8rem",color:"#94a3b8"}}>{d.value?fmtK(Number(d.value)):"—"}</span>
+                      </div>
+                      {cancelReason&&<div style={{fontSize:".7rem",color:"#b45309",marginTop:3,fontStyle:"italic"}}>⊘ {cancelReason}</div>}
                     </div>
-                  ))}
+                    );
+                  })}
                   </div>
                 </details>
               )}
@@ -11178,13 +11186,47 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {rowMenu&&(()=>{
         const d=rowMenu.deal;
         const items=[];
-        if(role==="Manager"||role==="Sales") items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:async ()=>{const reason=(await uiPrompt("Reason for not winning (optional):"));if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
+        const isWonDeal=WON_STAGES.includes(d.stage);
+        if((role==="Manager"||role==="Sales")&&!isWonDeal) items.push({icon:"✗",label:"Mark Did Not Win",color:"#64748b",onClick:async ()=>{const reason=(await uiPrompt("Reason for not winning (optional):"));if(reason===null)return;const stamp=new Date().toISOString().slice(0,10);upDeals(ds=>ds.map(x=>{if(x.id!==d.id)return x;const notes=(x.notes||"")+(reason?"\n[DID NOT WIN "+stamp+"]: "+reason:"\n[DID NOT WIN "+stamp+"]");
           // Persist as a partial column UPDATE (like stageQ / payQ), NOT a full-row
           // upsert. An upsert routes through the RLS INSERT/WITH CHECK policy and was
           // failing silently for some roles, so the server kept the old stage and the
           // next sbLoadAll refresh (via mergeLocalOnly, server-wins) pulled the deal
           // right back into the pipeline after it had been marked Did Not Win.
           if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Did Not Win",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});return{...x,stage:"Did Not Win",probability:0,notes};}));logActivity(d.id,"Did Not Win",d.client+" — did not win");toastEmit("Moved to Did Not Win.");setRowMenu(null);}});
+        // Cancel Project — for AWARDED projects the client backs out of. Unlike
+        // Delete (which wipes the record) this retires the project to the Cancelled
+        // stage: the CE record, award value, billing and history all stay intact and
+        // it drops out of active Awarded totals. A reason is REQUIRED and the action
+        // is logged, so cancelling an awarded project is a deliberate, auditable step.
+        if((role==="Manager"||role==="Sales")&&isWonDeal) items.push({icon:"⊘",label:"Cancel Project",color:"#b45309",onClick:async ()=>{
+          const reason=(await uiPrompt("Cancelling an AWARDED project — this is logged and removes it from active projects.\n\nReason for cancellation (required):"));
+          if(reason===null) return;                                                   // dialog dismissed
+          if(!reason.trim()){ toastEmit("A reason is required to cancel a project.","error"); return; }
+          // Warn if money is already in motion — cancelling does NOT reverse billing.
+          const collected=dealCollected(d);
+          const activeMs=billings.filter(b=>b.dealId===d.id&&b.status!=='Cancelled');
+          if(collected>0||activeMs.length>0){
+            const warn=`⚠️ This project has money in motion:\n\n`
+              +(activeMs.length?`• ${activeMs.length} active billing milestone${activeMs.length===1?"":"s"}\n`:"")
+              +(collected>0?`• ₱${Number(collected).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2})} already collected\n`:"")
+              +`\nCancelling moves the project to Cancelled but does NOT reverse or refund any billing. Handle refunds/forfeiture separately in Finance.\n\nCancel this project anyway?`;
+            if(!(await uiConfirm(warn))) return;
+          }
+          const stamp=new Date().toISOString().slice(0,10);
+          upDeals(ds=>ds.map(x=>{
+            if(x.id!==d.id) return x;
+            const notes=(x.notes||"")+"\n[CANCELLED "+stamp+"]: "+reason.trim();
+            // Partial column UPDATE (like Did Not Win), NOT a full-row upsert — an
+            // upsert routes through the RLS INSERT/WITH CHECK policy and can silently
+            // keep the old stage for some roles, pulling the deal back into pipeline.
+            if(isSupabaseReady())sbUpdate('deals',x.id,{stage:"Cancelled",probability:0,notes,updated_at:new Date().toISOString()}).catch(()=>{});
+            return{...x,stage:"Cancelled",probability:0,notes};
+          }));
+          logActivity(d.id,"Project Cancelled",d.client+" — project cancelled");
+          toastEmit("Project moved to Cancelled.");
+          setRowMenu(null);
+        }});
         if(canDeleteDeal) items.push({icon:"🗑",label:"Delete Deal",color:"#dc2626",onClick:()=>{setConfirmDel(d.id);setRowMenu(null);}});
         return(
           <>
