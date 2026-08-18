@@ -11,6 +11,7 @@ const WORK_CATEGORIES=[
   {code:"R",label:"Repair",       color:"#3b82f6"}, // blue
   {code:"P",label:"Punchlist",    color:"#f59e0b"}, // amber
   {code:"C",label:"Construction", color:"#c0392b"}, // red
+  {code:"O",label:"Others",       color:"#64748b"}, // slate — free-text describes the job
 ];
 const CAT_COLOR=Object.fromEntries(WORK_CATEGORIES.map(c=>[c.code,c.color]));
 const CAT_LABEL_BY_CODE=Object.fromEntries(WORK_CATEGORIES.map(c=>[c.code,c.label]));
@@ -19,8 +20,8 @@ const codeFromLabel=Object.fromEntries(WORK_CATEGORIES.map(c=>[c.label,c.code]))
 // The calendar also surfaces auto-derived events (turnovers, PO deliveries,
 // billing, DRF) alongside these field-board work types.
 const OPS_EVENT_TYPES=[...WORK_CATEGORIES.map(c=>c.label),"Turnover","PO Delivery","Billing Due","DRF Deadline","Backjob","Maintenance","Site Visit","Inspection","Site Meeting"];
-const OPS_EVENT_COLORS={Installation:"#17998a",Repair:"#3b82f6",Punchlist:"#f59e0b",Construction:"#c0392b",Turnover:"#3b82f6","PO Delivery":"#f97316","Billing Due":"#10b981","DRF Deadline":"#ec4899",Backjob:"#dc2626",Maintenance:"#f59e0b","Site Visit":"#0ea5e9",Inspection:"#8b5cf6","Site Meeting":"#059669"};
-const OPS_EVENT_ICONS={Installation:"🏗",Repair:"🔧",Punchlist:"📋",Construction:"🧱",Turnover:"🏗","PO Delivery":"📦","Billing Due":"💵","DRF Deadline":"📝",Backjob:"🔄",Maintenance:"⚙️","Site Visit":"🏗","Inspection":"🔍","Site Meeting":"👥"};
+const OPS_EVENT_COLORS={Installation:"#17998a",Repair:"#3b82f6",Punchlist:"#f59e0b",Construction:"#c0392b",Others:"#64748b",Turnover:"#3b82f6","PO Delivery":"#f97316","Billing Due":"#10b981","DRF Deadline":"#ec4899",Backjob:"#dc2626",Maintenance:"#f59e0b","Site Visit":"#0ea5e9",Inspection:"#8b5cf6","Site Meeting":"#059669"};
+const OPS_EVENT_ICONS={Installation:"🏗",Repair:"🔧",Punchlist:"📋",Construction:"🧱",Others:"📌",Turnover:"🏗","PO Delivery":"📦","Billing Due":"💵","DRF Deadline":"📝",Backjob:"🔄",Maintenance:"⚙️","Site Visit":"🏗","Inspection":"🔍","Site Meeting":"👥"};
 // Map any event type to a field-board code (new events store the code as their type).
 const catFromType=t=>codeFromLabel[t]||({Turnover:"I","Site Visit":"P",Inspection:"P","Site Meeting":"P",Backjob:"R",Maintenance:"R"}[t])||"R";
 const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
@@ -32,7 +33,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   const[calTab,setCalTab]=React.useState("board");
   const[eventModal,setEventModal]=React.useState(null); // {event}
   const[schedModal,setSchedModal]=React.useState(false);
-  const[schedForm,setSchedForm]=React.useState({date:today,category:"R",location:"",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});
+  const[schedForm,setSchedForm]=React.useState({date:today,category:"R",location:"",projectId:"",title:"",workDetail:"",assignedTo:"",notes:"",status:"Scheduled"});
   const[editSchedId,setEditSchedId]=React.useState(null);
   const[projQuery,setProjQuery]=React.useState(""); // searchable project picker
   const[projOpen,setProjOpen]=React.useState(false);
@@ -65,8 +66,8 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   const boardMaxLoad=boardCoordLoad.length?boardCoordLoad[0].count:0;
 
   const openSched=(date=today,ev=null)=>{
-    if(ev){const cat=ev.category||catFromType(ev.type);setSchedForm({date:ev.dueDate||today,category:cat,location:ev.location||"",projectId:ev.projectId||"",title:ev.projectId?"":(ev.title||""),assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setProjQuery(projLabel(projById[ev.projectId]));setEditSchedId(ev.id);}
-    else{setSchedForm({date,category:"R",location:"",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});setProjQuery("");setEditSchedId(null);}
+    if(ev){const cat=ev.category||catFromType(ev.type);setSchedForm({date:ev.dueDate||today,category:cat,location:ev.location||"",projectId:ev.projectId||"",title:ev.projectId?"":(ev.title||""),workDetail:ev.workDetail||"",assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setProjQuery(projLabel(projById[ev.projectId]));setEditSchedId(ev.id);}
+    else{setSchedForm({date,category:"R",location:"",projectId:"",title:"",workDetail:"",assignedTo:"",notes:"",status:"Scheduled"});setProjQuery("");setEditSchedId(null);}
     setProjOpen(false);
     setSchedModal(true);
   };
@@ -74,11 +75,13 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
     // A job belongs to a project (its title IS the project) OR carries a free-text
     // title for work not yet tied to a won project. One of the two is required.
     const customTitle=(schedForm.title||"").trim();
-    if(!schedForm.date||!schedForm.category||(!schedForm.projectId&&!customTitle)) return;
+    const workDetail=(schedForm.workDetail||"").trim();
+    // "Others" work needs a free-text description of what the job is.
+    if(!schedForm.date||!schedForm.category||(!schedForm.projectId&&!customTitle)||(schedForm.category==="O"&&!workDetail)) return;
     const proj=schedForm.projectId?projById[schedForm.projectId]:null;
     const cat=schedForm.category;
     const title=proj?(projLabel(proj)||proj.client||""):customTitle;
-    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
+    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,workDetail:cat==="O"?workDetail:"",location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
     else addOpsEvent?.(data);
     setSchedModal(false);setEditSchedId(null);
@@ -338,6 +341,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                         style={{background:"#fff",border:"1px solid #c9d2dd",borderLeft:`4px solid ${clr}`,borderRadius:6,padding:"7px 8px",position:"relative",cursor:"pointer",opacity:done?.6:1}}>
                         <span style={{position:"absolute",top:7,right:7,width:18,height:18,borderRadius:5,fontFamily:"monospace",fontWeight:700,fontSize:".68rem",color:"#fff",background:clr,display:"flex",alignItems:"center",justifyContent:"center"}}>{j.cat}</span>
                         <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:700,fontSize:".95rem",lineHeight:1.05,color:"#14243f",paddingRight:22,textDecoration:done?"line-through":"none"}}>{j.projName}</div>
+                        {j.workDetail&&<div style={{fontSize:".68rem",color:clr,marginTop:2,fontWeight:700}}>{j.workDetail}</div>}
                         {j.location&&<div style={{fontSize:".7rem",color:"#5a6a80",marginTop:2,fontWeight:500}}>{j.location}</div>}
                         {j.client&&j.client!==j.projName&&<div style={{fontSize:".64rem",color:"#94a3b8",marginTop:1}}>{j.client}</div>}
                         {j.notes&&<div style={{fontSize:".66rem",color:"#7a869a",marginTop:3,lineHeight:1.25}}>{j.notes}</div>}
@@ -352,7 +356,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
           </div>
           <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:8,display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
             <span>Jobs added here appear on the Monthly calendar and This Week too. Sunday is a rest day and is hidden.</span>
-            <span style={{fontFamily:"monospace"}}>I · Installation&nbsp; R · Repair&nbsp; P · Punchlist&nbsp; C · Construction</span>
+            <span style={{fontFamily:"monospace"}}>I · Installation&nbsp; R · Repair&nbsp; P · Punchlist&nbsp; C · Construction&nbsp; O · Others</span>
           </div>
         </div>
         );
@@ -497,6 +501,14 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                 <input value={schedForm.location||""} onChange={e=>setSchedForm(p=>({...p,location:e.target.value}))} placeholder="e.g. BGC, Shangri-La" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
               </div>
             </div>
+            {/* Others — describe what the job actually is */}
+            {schedForm.category==="O"&&(
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Describe the work *</div>
+                <input value={schedForm.workDetail||""} onChange={e=>setSchedForm(p=>({...p,workDetail:e.target.value}))} placeholder="e.g. Ocular / site measurement, Client meeting"
+                  style={{width:"100%",border:`1.5px solid ${(schedForm.workDetail||"").trim()?"#e2e8f0":"#f0b4a8"}`,borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+              </div>
+            )}
             <div style={{marginBottom:10}}>
               <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Assigned To</div>
               <input value={schedForm.assignedTo||""} onChange={e=>setSchedForm(p=>({...p,assignedTo:e.target.value}))} placeholder="e.g. Rodel, PM Team" style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
@@ -512,7 +524,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
               <textarea value={schedForm.notes||""} onChange={e=>setSchedForm(p=>({...p,notes:e.target.value}))} placeholder="Additional details…" rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box",resize:"vertical"}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
-              {(()=>{const dis=!schedForm.date||!schedForm.category||(!schedForm.projectId&&!(schedForm.title||"").trim());return(<button onClick={saveSched} disabled={dis} title={dis?"Add a date, type of work, and a project or job title":""} style={{flex:1,padding:"9px",background:dis?"#cbd5e1":(CAT_COLOR[schedForm.category]||"#3b82f6"),color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:dis?"not-allowed":"pointer"}}>{editSchedId?"Save Changes":"Add to Board"}</button>);})()}
+              {(()=>{const dis=!schedForm.date||!schedForm.category||(!schedForm.projectId&&!(schedForm.title||"").trim())||(schedForm.category==="O"&&!(schedForm.workDetail||"").trim());return(<button onClick={saveSched} disabled={dis} title={dis?"Add a date, type of work, and a project or job title":""} style={{flex:1,padding:"9px",background:dis?"#cbd5e1":(CAT_COLOR[schedForm.category]||"#3b82f6"),color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:dis?"not-allowed":"pointer"}}>{editSchedId?"Save Changes":"Add to Board"}</button>);})()}
               <button onClick={()=>{setSchedModal(false);setEditSchedId(null);}} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
@@ -576,6 +588,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                       <span style={{fontSize:".65rem",fontWeight:700,padding:"1px 8px",borderRadius:20,background:clr+"22",color:clr}}>{ev.type}</span>
                       {isOverdue&&<span style={{fontSize:".65rem",fontWeight:700,padding:"1px 8px",borderRadius:20,background:"#fef2f2",color:"#ef4444"}}>OVERDUE</span>}
                     </div>
+                    {ev.workDetail&&<div style={{fontSize:".75rem",color:clr,fontWeight:600,marginBottom:2}}>📌 {ev.workDetail}</div>}
                     {proj&&<div style={{fontSize:".75rem",color:"#8b5cf6",marginBottom:2}}>📁 {proj.client}{proj.contact?" — "+proj.contact:""}</div>}
                     {ev.assignedTo&&<div style={{fontSize:".72rem",color:"#64748b"}}>👤 {ev.assignedTo}</div>}
                     {ev.notes&&<div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{ev.notes}</div>}
