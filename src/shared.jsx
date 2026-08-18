@@ -85,8 +85,13 @@ export const Fld=({label,required,children,hint})=>(
     {hint&&<div style={{fontSize:".7rem",color:T.inkFaint,marginTop:4}}>{hint}</div>}
   </div>
 );
-export const Card=({children,onClick,accent,style:sx={}})=>(
-  <div onClick={onClick} style={{background:T.surface,borderRadius:T.radius.xl,border:`1.5px solid ${accent||T.line}`,padding:20,marginBottom:12,cursor:onClick?"pointer":"default",boxShadow:T.shadow.card,transition:"box-shadow .15s,border-color .15s",...sx}}
+export const Card=({children,onClick,accent,ariaLabel,style:sx={}})=>(
+  // When onClick is set the card is an interactive control, so it takes button
+  // semantics + keyboard activation (Enter/Space) and shows the global focus
+  // ring; a plain card stays a non-interactive <div>.
+  <div onClick={onClick}
+    {...(onClick?{role:"button",tabIndex:0,"aria-label":ariaLabel,onKeyDown:e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();onClick(e);}}}:{})}
+    style={{background:T.surface,borderRadius:T.radius.xl,border:`1.5px solid ${accent||T.line}`,padding:20,marginBottom:12,cursor:onClick?"pointer":"default",boxShadow:T.shadow.card,transition:"box-shadow .15s,border-color .15s",...sx}}
     onMouseEnter={e=>{if(onClick){e.currentTarget.style.boxShadow=T.shadow.cardHover;e.currentTarget.style.borderColor=accent||T.inkFaint;}}}
     onMouseLeave={e=>{if(onClick){e.currentTarget.style.boxShadow=T.shadow.card;e.currentTarget.style.borderColor=accent||T.line;}}}>
     {children}
