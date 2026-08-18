@@ -259,14 +259,14 @@ const Badge=({label,color})=>(
 );
 const Btn=({children,onClick,variant="primary",small,full,disabled,type="button"})=>{
   const styles={
-    primary:{bg:"#1e293b",color:"#fff",border:"none"},
-    ghost:{bg:"transparent",color:"#64748b",border:"1.5px solid #cbd5e1"},
-    danger:{bg:"#fef2f2",color:"#ef4444",border:"1.5px solid #fca5a5"},
-    green:{bg:"#f0fdf4",color:"#059669",border:"1.5px solid #6ee7b7"},
-    accent:{bg:"#eff6ff",color:"#3b82f6",border:"1.5px solid #93c5fd"},
-  }[variant]||{bg:"#1e293b",color:"#fff",border:"none"};
+    primary:{bg:T.navy,color:"#fff",border:"none"},
+    ghost:{bg:"transparent",color:T.inkMuted,border:"1.5px solid #cbd5e1"},
+    danger:{bg:T.dangerBg,color:"#ef4444",border:`1.5px solid ${T.dangerLine}`},
+    green:{bg:T.successBg,color:T.successAlt,border:`1.5px solid ${T.successLine}`},
+    accent:{bg:T.infoBg,color:"#3b82f6",border:`1.5px solid ${T.infoLine}`},
+  }[variant]||{bg:T.navy,color:"#fff",border:"none"};
   return(
-    <button type={type} onClick={onClick} disabled={disabled} style={{background:disabled?"#f1f5f9":styles.bg,color:disabled?"#94a3b8":styles.color,border:styles.border,borderRadius:8,padding:small?"5px 12px":"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:small?".76rem":".84rem",cursor:disabled?"not-allowed":"pointer",width:full?"100%":"auto",transition:"opacity .15s,box-shadow .15s",whiteSpace:"nowrap"}}
+    <button type={type} onClick={onClick} disabled={disabled} style={{background:disabled?T.surface3:styles.bg,color:disabled?T.inkFaint:styles.color,border:styles.border,borderRadius:T.radius.md,padding:small?"5px 12px":"9px 18px",fontFamily:"inherit",fontWeight:600,fontSize:small?".76rem":".84rem",cursor:disabled?"not-allowed":"pointer",width:full?"100%":"auto",transition:"opacity .15s,box-shadow .15s",whiteSpace:"nowrap"}}
       onMouseEnter={e=>{if(!disabled)e.currentTarget.style.opacity=".85";}}
       onMouseLeave={e=>{e.currentTarget.style.opacity="1";}}>
       {children}
@@ -17209,7 +17209,7 @@ function SalesCalendarView({deals, session, role, pcards, jos, billings}){
               const evts=events[dayStr]||[];
               const isPast=fullDate<todayStr;
               return(
-                <div key={day} onClick={()=>setSelectedDay(isSel?null:fullDate)}
+                <div key={day} {...clickable(()=>setSelectedDay(isSel?null:fullDate))} aria-label={`Select day ${fullDate}`}
                   style={{minHeight:72,padding:"4px 6px",borderRight:"1px solid #f1f5f9",background:isSel?"#eff6ff":isToday?"#fefce8":isPast?"#fafafa":"#fff",cursor:"pointer"}}>
                   <div style={{fontWeight:isToday?800:500,fontSize:".75rem",marginBottom:2,width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:"50%",background:isToday?"#fef9c3":undefined,color:isToday?"#92400e":"#0f172a"}}>{day}</div>
                   {evts.slice(0,3).map((ev,i)=>{
@@ -17890,7 +17890,7 @@ function BudgetView({wonDeals,budgets,saveBudget,prs,exps,role}){
           const healthClr=isOver?"#ef4444":!hasBudget?"#94a3b8":pctUsed>80?"#f59e0b":"#059669";
           const healthLabel=isOver?"Over Budget":!hasBudget?"No Budget":pctUsed>80?"At Risk":"On Track";
           return(
-            <div key={d.id} onClick={()=>setSelDeal(d.id)}
+            <div key={d.id} {...clickable(()=>setSelDeal(d.id))} aria-label={`Open ${d.client||d.contact||"deal"}`}
               style={{background:"#fff",borderRadius:14,border:`1.5px solid ${isOver?"#fecaca":"#e2e8f0"}`,borderLeft:`4px solid ${healthClr}`,padding:"16px 18px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:"0 1px 4px rgba(0,0,0,.04)"}}
               onMouseEnter={e=>e.currentTarget.style.boxShadow="0 4px 16px rgba(59,130,246,.12)"}
               onMouseLeave={e=>e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,.04)"}>
@@ -19482,7 +19482,7 @@ ${a.acctNotes?`<div class="trail"><b>Accounting notes:</b><br>${esc(a.acctNotes)
       {/* AP Aging Summary */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:10,marginBottom:14}}>
         {agingTotals.map(a=>(
-          <div key={a.stage} onClick={()=>setStageFilter(a.stage)} style={{background:"#fff",border:`1.5px solid ${STAGE_CLR[a.stage]}44`,borderRadius:10,padding:"10px 14px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:stageFilter===a.stage?"0 0 0 2px "+STAGE_CLR[a.stage]:"0 1px 3px rgba(0,0,0,.05)"}}>
+          <div key={a.stage} {...clickable(()=>setStageFilter(a.stage))} aria-label={`Filter by stage ${a.stage}`} style={{background:T.surface,border:`1.5px solid ${STAGE_CLR[a.stage]}44`,borderRadius:10,padding:"10px 14px",cursor:"pointer",transition:"box-shadow .15s",boxShadow:stageFilter===a.stage?"0 0 0 2px "+STAGE_CLR[a.stage]:"0 1px 3px rgba(0,0,0,.05)"}}>
             <div style={{fontSize:".68rem",color:STAGE_CLR[a.stage],fontWeight:700,textTransform:"uppercase",letterSpacing:".5px",marginBottom:2}}>{a.stage}</div>
             <div style={{fontWeight:800,fontSize:"1rem",color:"#0f172a"}}>{fmt(a.total)}</div>
             <div style={{fontSize:".68rem",color:"#94a3b8"}}>{a.count} doc{a.count!==1?"s":""}</div>
@@ -20660,7 +20660,7 @@ function CostingStudy({wonDeals,budgets,prs,exps,projs,role}){
             const isOver=pd.isOverBudget;
             const isLow=pd.grossMargin!==null&&pd.grossMargin<20;
             return(
-              <div key={pd.deal.id} onClick={()=>{setSelCostProject(pd.deal.id);setView("project");}} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
+              <div key={pd.deal.id} {...clickable(()=>{setSelCostProject(pd.deal.id);setView("project");})} aria-label="Open project cost detail" style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",padding:"11px 16px",gap:12,borderBottom:"1px solid #f1f5f9",background:i%2?"#fafafa":"#fff",cursor:"pointer",alignItems:"center",transition:"background .1s"}}
                 onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
                 onMouseLeave={e=>e.currentTarget.style.background=i%2?"#fafafa":"#fff"}>
                 <div>
@@ -23052,7 +23052,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:160,overflowY:"auto"}}>
           {refEntries.map(([cat,ref])=>(
-            <div key={cat} onClick={()=>{setCategory(cat);setDate(awardPlusDays(ref.days));}}
+            <div key={cat} {...clickable(()=>{setCategory(cat);setDate(awardPlusDays(ref.days));})} aria-label={`Select category ${cat}`}
               style={{display:"flex",justifyContent:"space-between",padding:"5px 8px",borderRadius:6,cursor:"pointer",background:category===cat?"#eff6ff":"#f8fafc",border:`1px solid ${category===cat?"#93c5fd":"#f1f5f9"}`,transition:"all .1s"}}
               onMouseEnter={e=>e.currentTarget.style.background="#eff6ff"}
               onMouseLeave={e=>e.currentTarget.style.background=category===cat?"#eff6ff":"#f8fafc"}>
@@ -23306,7 +23306,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             {l:"Past Deadline",v:wonDeals.filter(d=>pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done)).length,c:"#c2410c",f:"overdue"},
             {l:"All Projects", v:wonDeals.length,c:"#64748b",f:"all"},
           ].map(({l,v,c,f})=>(
-            <div key={l} onClick={()=>setPcFilter(x=>x===f?null:f)}
+            <div key={l} {...clickable(()=>setPcFilter(x=>x===f?null:f))} aria-label={`Filter ${l}`}
               style={{background:pcFilter===f?"#1e293b":"#fff",borderRadius:12,padding:"14px 16px",border:`1.5px solid ${pcFilter===f?c:"#e2e8f0"}`,cursor:"pointer",transition:"all .15s"}}>
               <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.3rem",color:pcFilter===f?"#fff":c}}>{v}</div>
               <div style={{fontSize:".63rem",textTransform:"uppercase",letterSpacing:"1px",color:pcFilter===f?"rgba(255,255,255,.6)":"#94a3b8",marginTop:5}}>{l}</div>
@@ -23452,7 +23452,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
               const ae=pc?.aeAssigned||joR?.aeAssigned||d.salesOwner||"—";
               const dLeft=pc?.targetEndDate?Math.ceil((new Date(pc.targetEndDate)-today2)/86400000):null;
               return(
-                <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
+                <div key={d.id} {...clickable(()=>{setSelDeal(d.id);setShowTeamEdit(false);})} aria-label={`Open ${d.client||d.contact||"deal"}`}
                   style={{display:"grid",gridTemplateColumns:"minmax(160px,1fr) 140px 120px 140px 80px 80px",gap:0,padding:isChild?"7px 14px 7px 28px":"10px 14px",alignItems:"center",cursor:"pointer",borderBottom:idx<total-1?"1px solid #f1f5f9":"none",borderLeft:`3px solid ${isChild?"#f59e0b":g.color}`,background:isChild?"#fffbeb":"#fff",transition:"background .1s",minWidth:720}}
                   onMouseEnter={e=>e.currentTarget.style.background=isChild?"#fef3c7":"#f8fafc"}
                   onMouseLeave={e=>e.currentTarget.style.background=isChild?"#fffbeb":"#fff"}>
@@ -23498,7 +23498,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   const lastNoteTxtC=lastNoteC?(lastNoteC.note||lastNoteC.text||""):"";
                   const[,hLabelC]=HC[h];
                   return(
-                    <div key={d.id} onClick={()=>{setSelDeal(d.id);setShowTeamEdit(false);}}
+                    <div key={d.id} {...clickable(()=>{setSelDeal(d.id);setShowTeamEdit(false);})} aria-label={`Open ${d.client||d.contact||"deal"}`}
                       style={{background:"#fff",border:"1px solid #e2e8f0",borderLeft:`4px solid ${hc}`,borderRadius:"2px 10px 10px 2px",overflow:"hidden",
                         boxShadow:"0 1px 4px rgba(0,0,0,.05)",cursor:"pointer",transition:"box-shadow .15s,transform .15s"}}
                       onMouseEnter={e=>{e.currentTarget.style.boxShadow="0 4px 16px rgba(0,0,0,.09)";e.currentTarget.style.transform="translateY(-1px)";}}
