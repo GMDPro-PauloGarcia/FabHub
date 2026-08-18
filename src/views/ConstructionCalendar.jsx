@@ -32,7 +32,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   const[calTab,setCalTab]=React.useState("board");
   const[eventModal,setEventModal]=React.useState(null); // {event}
   const[schedModal,setSchedModal]=React.useState(false);
-  const[schedForm,setSchedForm]=React.useState({date:today,category:"R",location:"",projectId:"",assignedTo:"",notes:"",status:"Scheduled"});
+  const[schedForm,setSchedForm]=React.useState({date:today,category:"R",location:"",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});
   const[editSchedId,setEditSchedId]=React.useState(null);
   const[projQuery,setProjQuery]=React.useState(""); // searchable project picker
   const[projOpen,setProjOpen]=React.useState(false);
@@ -65,17 +65,20 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
   const boardMaxLoad=boardCoordLoad.length?boardCoordLoad[0].count:0;
 
   const openSched=(date=today,ev=null)=>{
-    if(ev){const cat=ev.category||catFromType(ev.type);setSchedForm({date:ev.dueDate||today,category:cat,location:ev.location||"",projectId:ev.projectId||"",assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setProjQuery(projLabel(projById[ev.projectId]));setEditSchedId(ev.id);}
-    else{setSchedForm({date,category:"R",location:"",projectId:"",assignedTo:"",notes:"",status:"Scheduled"});setProjQuery("");setEditSchedId(null);}
+    if(ev){const cat=ev.category||catFromType(ev.type);setSchedForm({date:ev.dueDate||today,category:cat,location:ev.location||"",projectId:ev.projectId||"",title:ev.projectId?"":(ev.title||""),assignedTo:ev.assignedTo||"",notes:ev.notes||"",status:ev.status||"Scheduled"});setProjQuery(projLabel(projById[ev.projectId]));setEditSchedId(ev.id);}
+    else{setSchedForm({date,category:"R",location:"",projectId:"",title:"",assignedTo:"",notes:"",status:"Scheduled"});setProjQuery("");setEditSchedId(null);}
     setProjOpen(false);
     setSchedModal(true);
   };
   const saveSched=()=>{
-    // Project is required; the event's title IS the project it belongs to.
-    if(!schedForm.date||!schedForm.projectId||!schedForm.category) return;
-    const proj=projById[schedForm.projectId];
+    // A job belongs to a project (its title IS the project) OR carries a free-text
+    // title for work not yet tied to a won project. One of the two is required.
+    const customTitle=(schedForm.title||"").trim();
+    if(!schedForm.date||!schedForm.category||(!schedForm.projectId&&!customTitle)) return;
+    const proj=schedForm.projectId?projById[schedForm.projectId]:null;
     const cat=schedForm.category;
-    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,location:schedForm.location||"",title:projLabel(proj)||proj?.client||"",dueDate:schedForm.date,projectId:schedForm.projectId,dealId:schedForm.projectId,assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
+    const title=proj?(projLabel(proj)||proj.client||""):customTitle;
+    const data={type:CAT_LABEL_BY_CODE[cat]||"Repair",category:cat,location:schedForm.location||"",title,dueDate:schedForm.date,projectId:schedForm.projectId||"",dealId:schedForm.projectId||"",assignedTo:schedForm.assignedTo||"",notes:schedForm.notes||"",status:schedForm.status||"Scheduled",priority:"Normal"};
     if(editSchedId) updateOpsEvent?.(editSchedId,data);
     else addOpsEvent?.(data);
     setSchedModal(false);setEditSchedId(null);
@@ -445,16 +448,17 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
               <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Date *</div>
               <input type="date" value={schedForm.date||""} onChange={e=>setSchedForm(p=>({...p,date:e.target.value}))} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
             </div>
-            {/* Project — required, searchable by project name */}
+            {/* Project — optional, searchable by project name. Leave blank for
+                work not yet tied to a won project and give it a title below. */}
             <div style={{marginBottom:10,position:"relative"}}>
-              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Project *</div>
+              <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Project <span style={{color:"#94a3b8",fontWeight:600,textTransform:"none"}}>(leave blank if none yet)</span></div>
               <input
                 value={projQuery}
                 onChange={e=>{setProjQuery(e.target.value);setProjOpen(true);if(schedForm.projectId)setSchedForm(p=>({...p,projectId:""}));}}
                 onFocus={()=>setProjOpen(true)}
                 onBlur={()=>setTimeout(()=>setProjOpen(false),150)}
                 placeholder="Search project name…"
-                style={{width:"100%",border:`1.5px solid ${schedForm.projectId?"#e2e8f0":"#f0b4a8"}`,borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+                style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
               {projOpen&&(()=>{
                 const q=projQuery.trim().toLowerCase();
                 const matches=wonDeals.filter(d=>!q||projLabel(d).toLowerCase().includes(q)).slice(0,10);
@@ -472,6 +476,14 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
                 );
               })()}
             </div>
+            {/* Job title — required only when no project is chosen */}
+            {!schedForm.projectId&&(
+              <div style={{marginBottom:10}}>
+                <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",marginBottom:4}}>Job Title *</div>
+                <input value={schedForm.title||""} onChange={e=>setSchedForm(p=>({...p,title:e.target.value}))} placeholder="e.g. Site survey — Ayala Malls (no project yet)"
+                  style={{width:"100%",border:`1.5px solid ${(schedForm.title||"").trim()?"#e2e8f0":"#f0b4a8"}`,borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box"}}/>
+              </div>
+            )}
             {/* Type of Work (I/R/P/C) — colour-coded — + Location */}
             <div style={{display:"flex",gap:10,marginBottom:10}}>
               <div style={{flex:1}}>
@@ -500,7 +512,7 @@ function ConstructionCalendar({wonDeals,completedDeals,deals,pcards,jos,prs,bill
               <textarea value={schedForm.notes||""} onChange={e=>setSchedForm(p=>({...p,notes:e.target.value}))} placeholder="Additional details…" rows={2} style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:8,padding:"7px 10px",fontFamily:"inherit",fontSize:".85rem",boxSizing:"border-box",resize:"vertical"}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
-              {(()=>{const dis=!schedForm.date||!schedForm.projectId||!schedForm.category;return(<button onClick={saveSched} disabled={dis} title={dis?"Pick a project, date and type of work":""} style={{flex:1,padding:"9px",background:dis?"#cbd5e1":(CAT_COLOR[schedForm.category]||"#3b82f6"),color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:dis?"not-allowed":"pointer"}}>{editSchedId?"Save Changes":"Add to Board"}</button>);})()}
+              {(()=>{const dis=!schedForm.date||!schedForm.category||(!schedForm.projectId&&!(schedForm.title||"").trim());return(<button onClick={saveSched} disabled={dis} title={dis?"Add a date, type of work, and a project or job title":""} style={{flex:1,padding:"9px",background:dis?"#cbd5e1":(CAT_COLOR[schedForm.category]||"#3b82f6"),color:"#fff",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:700,fontSize:".85rem",cursor:dis?"not-allowed":"pointer"}}>{editSchedId?"Save Changes":"Add to Board"}</button>);})()}
               <button onClick={()=>{setSchedModal(false);setEditSchedId(null);}} style={{padding:"9px 16px",background:"#f1f5f9",color:"#64748b",border:"none",borderRadius:8,fontFamily:"inherit",fontWeight:600,fontSize:".85rem",cursor:"pointer"}}>Cancel</button>
             </div>
           </div>
