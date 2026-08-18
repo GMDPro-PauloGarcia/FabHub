@@ -5562,6 +5562,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[jumpDeal,  setJumpDeal] =useState(null);
   const[jumpFilter,setJumpFilter]=useState(null);
   const[widgetDrill,setWidgetDrill]=useState(null); // which home widget's detail panel is open
+  const[attnDrill,setAttnDrill]=useState(null);     // which "Needs Attention" card's detail panel is open
   const[opsTab,    setOpsTab]   =useState("progress");
   const[finTab,    setFinTab]   =useState("overview");
   const[cashSub,   setCashSub]  =useState("daily");   // Cash Position sub-tab: daily | weekly | monthly
@@ -9171,12 +9172,41 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {/* ── ACTION CENTER (what needs attention, promoted to the top) ── */}
       {(()=>{
         const items=[];
-        if(escalations.length){const j=escalations.length===1?(()=>{setJumpDeal(escalations[0].dealId);setPage("projects");}):(()=>setPage("projects"));const hi=escalations.filter(e=>e.severity==="high").length;items.push({icon:"⚠️",n:escalations.length,l:"Escalations",sub:hi?`${hi} high severity`:"needs review",tone:"crit",action:j});}
-        if(overdueInvCnt){const ov=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");const j=ov.length===1?(()=>{setJumpDeal(ov[0].dealId);setPage("projects");}):(()=>setPage("billing"));items.push({icon:"🚨",n:overdueInvCnt,l:"Overdue Invoices",sub:"past due date",tone:"crit",action:j});}
-        if(overdueTATCnt)items.push({icon:"⏰",n:overdueTATCnt,l:"Past Deadline",sub:"projects overdue",tone:"warn",action:()=>{setJumpFilter("overdue");setPage("projects");}});
-        if(awardReqCnt){const ar=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));const j=ar.length===1?(()=>{setJumpDeal(ar[0].id);setPage("projects");}):(()=>setPage("pipeline"));items.push({icon:"🏆",n:awardReqCnt,l:"Award Approvals",sub:"awaiting sign-off",tone:"warn",action:j});}
-        if(mrPendingCnt)items.push({icon:"📋",n:mrPendingCnt,l:"Material Requests",sub:"pending",tone:"info",action:()=>setPage("requests")});
-        if(addendaAlertCnt){const sc=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");const j=sc.length===1?(()=>{setJumpDeal(sc[0].dealId);setPage("projects");}):(()=>setPage("addenda"));items.push({icon:"📝",n:addendaAlertCnt,l:"Scope Changes",sub:"need Sales action",tone:"info",action:j});}
+        const attnWonMap=new Map(wonDeals.map(d=>[d.id,d]));
+        // Each card carries a `rows` list (shown in a drill-down modal, like the
+        // Collections widget) plus a `fullPage` navigation used by the modal's
+        // "Open full page →" button. Clicking a card opens the modal; only the
+        // modal navigates away.
+        if(escalations.length){
+          const hi=escalations.filter(e=>e.severity==="high").length;
+          const rows=escalations.map(e=>({name:e.client||"—",sub:e.label,id:e.dealId,sev:e.severity}));
+          items.push({icon:"⚠️",n:escalations.length,l:"Escalations",sub:hi?`${hi} high severity`:"needs review",tone:"crit",rows,unit:"escalation",fullPage:()=>setPage("projects"),fullPageLabel:"Open Projects →"});
+        }
+        if(overdueInvCnt){
+          const ov=billings.filter(b=>b.dueDate&&b.dueDate<today&&b.status!=="Fully Paid"&&b.status!=="Cancelled");
+          const rows=ov.map(b=>{const d=attnWonMap.get(b.dealId);const paid=(b.payments||[]).reduce((s,p)=>s+Number(p.amount||0),0);return{name:d?.contact||d?.client||b.client||"Invoice",sub:`${b.name||b.label||"Invoice"} · due ${b.dueDate}`,amt:Math.max(0,Number(b.amount||0)-paid),id:b.dealId};});
+          items.push({icon:"🚨",n:overdueInvCnt,l:"Overdue Invoices",sub:"past due date",tone:"crit",rows,unit:"invoice",fullPage:()=>setPage("billing"),fullPageLabel:"Open Billing →"});
+        }
+        if(overdueTATCnt){
+          const od=wonDeals.filter(d=>d.stage!=="12 · Close-Out"&&d.stage!=="14 · Completed"&&pcards[d.id]?.targetEndDate&&pcards[d.id].targetEndDate<today&&!DEPT_ORDER.every(dept=>pcards[d.id]?.departments?.[dept]?.done));
+          const rows=od.map(d=>({name:d.contact||d.client||"Project",sub:`${d.ceNo||"No CE"} · due ${pcards[d.id]?.targetEndDate}`,id:d.id}));
+          items.push({icon:"⏰",n:overdueTATCnt,l:"Past Deadline",sub:"projects overdue",tone:"warn",rows,unit:"project",fullPage:()=>{setJumpFilter("overdue");setPage("projects");},fullPageLabel:"Open Projects →"});
+        }
+        if(awardReqCnt){
+          const ar=deals.filter(d=>d.notes&&d.notes.includes("[AWARD REQUEST"));
+          const rows=ar.map(d=>({name:d.contact||d.client||"Deal",sub:d.ceNo||"Awaiting sign-off",id:d.id}));
+          items.push({icon:"🏆",n:awardReqCnt,l:"Award Approvals",sub:"awaiting sign-off",tone:"warn",rows,unit:"request",fullPage:()=>setPage("pipeline"),fullPageLabel:"Open Pipeline →"});
+        }
+        if(mrPendingCnt){
+          const mr=mreqs.filter(m=>m.status==="Submitted");
+          const rows=mr.map(m=>{const d=attnWonMap.get(m.dealId||m.projectId);return{name:d?.contact||d?.client||m.title||"Material Request",sub:m.item||m.note||m.title||"Pending",id:m.dealId||m.projectId};});
+          items.push({icon:"📋",n:mrPendingCnt,l:"Material Requests",sub:"pending",tone:"info",rows,unit:"request",fullPage:()=>setPage("requests"),fullPageLabel:"Open Requests →"});
+        }
+        if(addendaAlertCnt){
+          const sc=addenda.filter(a=>!a.salesNotified&&a.status!=="Rejected");
+          const rows=sc.map(a=>{const d=attnWonMap.get(a.dealId);return{name:d?.contact||d?.client||"Scope Change",sub:a.title||"Addendum",id:a.dealId};});
+          items.push({icon:"📝",n:addendaAlertCnt,l:"Scope Changes",sub:"need Sales action",tone:"info",rows,unit:"change",fullPage:()=>setPage("addenda"),fullPageLabel:"Open Addenda →"});
+        }
         const TONE={crit:{bg:"#fef2f2",bd:"#fecaca",fg:"#dc2626"},warn:{bg:"#fff7ed",bd:"#fed7aa",fg:"#c2410c"},info:{bg:"#eff6ff",bd:"#bfdbfe",fg:"#1d4ed8"}};
         if(!items.length)return(
           <div style={{background:"#f0fdf4",border:"1.5px solid #bbf7d0",borderRadius:12,padding:"14px 16px",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
@@ -9188,7 +9218,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1.2px",color:"#94a3b8",fontWeight:700,marginBottom:6}}>⚡ Needs Attention</div>
             <div style={{display:"grid",gridTemplateColumns:ceoMob?"repeat(3,1fr)":`repeat(auto-fit,minmax(168px,1fr))`,gap:ceoMob?7:10}}>
               {items.map((a,i)=>{const t=TONE[a.tone];return(
-                <div key={i} onClick={a.action} style={{background:t.bg,border:`1.5px solid ${t.bd}`,borderRadius:12,padding:ceoMob?"9px 10px":"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:1}}>
+                <div key={i} onClick={()=>setAttnDrill({...a,fg:t.fg})} style={{background:t.bg,border:`1.5px solid ${t.bd}`,borderRadius:12,padding:ceoMob?"9px 10px":"12px 14px",cursor:"pointer",display:"flex",flexDirection:"column",gap:1}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <span style={{fontSize:ceoMob?".95rem":"1.05rem"}}>{a.icon}</span>
                     <span style={{fontSize:".7rem",color:t.fg,fontWeight:700}}>→</span>
@@ -9335,6 +9365,57 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   <div style={{fontSize:".72rem",color:"#64748b"}}>Total <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem",marginLeft:4}}>{money(total)}</span></div>
                 ):<div/>}
                 <button onClick={()=>{setWidgetDrill(null);action&&action();}} style={{background:color,border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",whiteSpace:"nowrap"}}>Open full page →</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── NEEDS-ATTENTION DRILL-DOWN DETAIL ───────────────────────── */}
+      {attnDrill&&(()=>{
+        const{icon,l,n,rows,unit,fg,fullPage,fullPageLabel}=attnDrill;
+        const mob=window.innerWidth<768;
+        const money=v=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
+        const hasAmt=rows.some(r=>r.amt!=null);
+        const total=rows.reduce((s,r)=>s+(Number(r.amt)||0),0);
+        const SEV={high:{bg:"#fef2f2",fg:"#dc2626",t:"HIGH"},medium:{bg:"#fff7ed",fg:"#c2410c",t:"MED"},low:{bg:"#f8fafc",fg:"#64748b",t:"LOW"}};
+        const jump=id=>{if(!id)return;setAttnDrill(null);setJumpDeal(id);setPage("projects");};
+        return(
+          <div onClick={()=>setAttnDrill(null)} style={{position:"fixed",inset:0,background:"rgba(15,23,42,.65)",zIndex:900,display:"flex",alignItems:mob?"flex-end":"center",justifyContent:"center",padding:mob?0:20}}>
+            <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:mob?"18px 18px 0 0":16,width:"100%",maxWidth:mob?undefined:520,boxShadow:"0 24px 64px rgba(0,0,0,.25)",maxHeight:"88vh",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+              {/* header */}
+              <div style={{padding:"18px 20px 14px",borderBottom:"1px solid #f1f5f9"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+                  <div>
+                    <div style={{fontSize:".62rem",textTransform:"uppercase",letterSpacing:"1px",color:"#94a3b8",fontWeight:700}}>{icon} {l}</div>
+                    <div style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.7rem",color:fg,lineHeight:1.1,marginTop:2}}>{n}</div>
+                    <div style={{fontSize:".68rem",color:"#94a3b8",marginTop:1}}>{rows.length} {unit}{rows.length===1?"":"s"}</div>
+                  </div>
+                  <button onClick={()=>setAttnDrill(null)} style={{background:"#f1f5f9",border:"none",borderRadius:9,width:30,height:30,fontSize:"1rem",color:"#64748b",cursor:"pointer",fontFamily:"inherit",lineHeight:1}}>✕</button>
+                </div>
+              </div>
+              {/* list */}
+              <div style={{overflowY:"auto",flex:1}}>
+                {rows.length===0?(
+                  <div style={{padding:"34px 20px",textAlign:"center",color:"#94a3b8",fontSize:".84rem"}}>Nothing to show.</div>
+                ):rows.map((r,i)=>{const sv=r.sev&&SEV[r.sev];return(
+                  <div key={i} onClick={()=>jump(r.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 20px",borderBottom:i<rows.length-1?"1px solid #f8fafc":"",cursor:r.id?"pointer":"default"}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:".84rem",fontWeight:600,color:"#0f172a",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.name}</div>
+                      <div style={{fontSize:".68rem",color:"#94a3b8",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{r.sub}</div>
+                    </div>
+                    {sv&&<span style={{fontSize:".55rem",fontWeight:700,color:sv.fg,background:sv.bg,borderRadius:5,padding:"2px 6px",flexShrink:0}}>{sv.t}</span>}
+                    {r.amt!=null&&<div style={{fontSize:".84rem",fontWeight:700,color:fg,flexShrink:0}}>{money(r.amt)}</div>}
+                    {r.id&&<span style={{fontSize:".7rem",color:"#cbd5e1",flexShrink:0}}>→</span>}
+                  </div>
+                );})}
+              </div>
+              {/* footer */}
+              <div style={{borderTop:"1px solid #f1f5f9",padding:"12px 20px",display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+                {hasAmt?(
+                  <div style={{fontSize:".72rem",color:"#64748b"}}>Total <span style={{fontWeight:800,color:"#0f172a",fontSize:".92rem",marginLeft:4}}>{money(total)}</span></div>
+                ):<div/>}
+                <button onClick={()=>{setAttnDrill(null);fullPage&&fullPage();}} style={{background:fg,border:"none",borderRadius:9,padding:"9px 18px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer",whiteSpace:"nowrap"}}>{fullPageLabel||"Open full page →"}</button>
               </div>
             </div>
           </div>
