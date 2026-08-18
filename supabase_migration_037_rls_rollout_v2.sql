@@ -114,7 +114,7 @@ declare
     {"t":"project_budgets","sel":["Manager","Finance","FinanceAssistant","QS","ProjectMover","Design"],"ins":["Manager","QS"],"upd":["Manager","Finance","FinanceAssistant","QS"],"del":["Manager"]},
     {"t":"inventory_items","sel":["Manager","Finance","FinanceAssistant","Procurement","Warehouse"],"ins":["Manager","Warehouse"],"upd":["Manager","Warehouse"],"del":["Manager","Warehouse"]},
     {"t":"stock_movements","sel":["Manager","Finance","FinanceAssistant","Procurement","Warehouse"],"ins":["Manager","Warehouse"],"upd":["Manager","Warehouse"],"del":["Manager"]},
-    {"t":"checklists","sel":"AUTH","ins":["Manager","ProjectMover"],"upd":["Manager","ProjectMover"],"del":["Manager"]},
+    {"t":"checklists","sel":"AUTH","ins":"AUTH","upd":"AUTH","del":["Manager"]},
     {"t":"project_blockers","sel":"AUTH","ins":["Manager","ProjectMover"],"upd":["Manager","ProjectMover"],"del":["Manager"]},
     {"t":"ae_updates","sel":["Manager","ProjectMover","Sales","Finance","QS","Design","SalesOpsAdmin"],"ins":["Manager","ProjectMover","Sales","Finance","QS","Design","SalesOpsAdmin"],"upd":["Manager","ProjectMover"],"del":["Manager","ProjectMover","Sales","Finance","QS","Design","SalesOpsAdmin"]},
     {"t":"activity_log","sel":"AUTH","ins":"AUTH","del":["Manager"]},
