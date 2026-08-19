@@ -483,6 +483,7 @@ export const sbLoadAll = async () => {
         tatCategory: card.tat_category || '',
         tatSetBy: card.tat_set_by || null,
         tatSetAt: card.tat_set_at || null,
+        manualProgress: card.manual_progress != null ? card.manual_progress : null,
         warehouseOnly: card.warehouse_only || false,
         departments: Object.fromEntries(DEPT_ORDER.map(d => [d, { done: false, doneAt: null, doneBy: null, tasks: [] }]))
       }

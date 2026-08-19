@@ -13640,6 +13640,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ceReqs={ceReqs}
         toastEmit={toastEmit}
         customMembers={customMembers} setCustomMembers={setCustomMembers}
+        setPage={setPage} setJumpDeal={setJumpDeal}
         sendTelegramNotification={sendTelegramNotification}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
@@ -23110,7 +23111,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{}}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
@@ -24022,8 +24023,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
                   {(role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin")&&selDeal&&!showDateEdit&&(
-                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||""});setShowDateEdit(true);}}
-                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit Dates</button>
+                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowDateEdit(true);}}
+                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
                   )}
                 </div>
                 {showDateEdit?(
@@ -24046,6 +24047,20 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         })()}
                       </div>
                     </div>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>📍 Location</div>
+                        <input type="text" value={dateForm.location||""} onChange={e=>fdt("location",e.target.value)} placeholder="Site / delivery address"
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>CE Type</div>
+                        <select value={dateForm.ceType||"Fabrication / General"} onChange={e=>fdt("ceType",e.target.value)}
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box",background:"#fff"}}>
+                          {CE_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                    </div>
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={()=>{
                         if(!dateForm.awardDate) return;
@@ -24053,6 +24068,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
                         if(isSupabaseReady()){
                           sbUpsert('project_cards',{deal_id:selDeal,award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})},'deal_id').catch(()=>{});
+                        }
+                        // Location & CE Type live on the deal, not the card
+                        if(upDeals&&(dateForm.location!==(deal?.location||"")||dateForm.ceType!==(deal?.ceType||""))){
+                          upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,location:dateForm.location||"",ceType:dateForm.ceType||d.ceType}:d));
+                          if(isSupabaseReady()) sbUpdate('deals',selDeal,{location:dateForm.location||"",ce_type:dateForm.ceType||deal?.ceType||""}).catch(()=>{});
                         }
                         logActivity(selDeal,"Dates Updated",`Award: ${dateForm.awardDate}${dateForm.targetEndDate?` → Turnover: ${dateForm.targetEndDate}`:""}`,session?.name);
                         toastEmit&&toastEmit("Dates saved ✓","success");
@@ -24099,6 +24119,82 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   })}
                 </div>
               </div>
+
+              {/* ── Department Progress (click to toggle done / expand tasks) ── */}
+              {card&&(()=>{
+                const doneDepts=DEPT_ORDER.filter(d=>card.departments?.[d]?.done).length;
+                const autoPct=Math.round(doneDepts/6*100);
+                const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
+                const setManual=(val)=>{
+                  upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
+                  if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,manual_progress:val},'deal_id').catch(()=>{});
+                };
+                return(
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>🏗 Department Progress</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:".72rem",fontWeight:700,color:pct>=100?"#059669":"#64748b"}}>{pct}%{card.manualProgress!=null&&<span style={{color:"#8b5cf6",fontWeight:600}}> (manual)</span>}</span>
+                      <span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneDepts}/6 done</span>
+                    </div>
+                  </div>
+                  {/* progress bar */}
+                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:12}}>
+                    <div style={{height:"100%",width:pct+"%",background:pct>=100?"#059669":pct>=50?"#10b981":"#f59e0b",borderRadius:4,transition:"width .2s"}}/>
+                  </div>
+                  {/* department rows */}
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {DEPT_ORDER.map(dept=>{
+                      const dd=card.departments?.[dept]||{done:false,tasks:[]};
+                      const canEditDept=editableDepts.includes(dept);
+                      const clr=DEPT_CLR[dept]||"#64748b";
+                      const tasks=dd.tasks||[];
+                      const doneTasks=tasks.filter(t=>t.done).length;
+                      return(
+                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"8px 12px"}}>
+                          <summary style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",listStyle:"none"}}>
+                            <input type="checkbox" checked={!!dd.done} disabled={!canEditDept}
+                              onChange={e=>{e.stopPropagation();markDeptDone(selDeal,dept,e.target.checked);}}
+                              onClick={e=>e.stopPropagation()}
+                              style={{width:17,height:17,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
+                            <span style={{width:8,height:8,borderRadius:"50%",background:clr,flexShrink:0}}/>
+                            <span style={{fontWeight:700,fontSize:".8rem",color:dd.done?"#059669":"#0f172a",flex:1}}>{dept}</span>
+                            {tasks.length>0&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneTasks}/{tasks.length} tasks</span>}
+                            {dd.done&&dd.doneBy&&<span style={{fontSize:".62rem",color:"#059669"}}>✓ {dd.doneBy}</span>}
+                            {tasks.length>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>▾</span>}
+                          </summary>
+                          {tasks.length>0&&(
+                            <div style={{marginTop:8,paddingLeft:27,display:"flex",flexDirection:"column",gap:5}}>
+                              {tasks.map(t=>(
+                                <label key={t.id} style={{display:"flex",alignItems:"center",gap:8,cursor:canEditDept?"pointer":"default"}}>
+                                  <input type="checkbox" checked={!!t.done} disabled={!canEditDept}
+                                    onChange={()=>toggleDeptTask(selDeal,dept,t.id)}
+                                    style={{width:14,height:14,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
+                                  <span style={{fontSize:".76rem",color:t.done?"#94a3b8":"#334155",textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {tasks.length===0&&<div style={{marginTop:6,paddingLeft:27,fontSize:".72rem",color:"#94a3b8"}}>No sub-tasks — use the checkbox to mark this department done.</div>}
+                        </details>
+                      );
+                    })}
+                  </div>
+                  {/* manual progress override */}
+                  {canEditManual&&(
+                    <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>Manual override:</span>
+                      <input type="number" min={0} max={100} value={card.manualProgress!=null?card.manualProgress:""}
+                        placeholder={`auto ${autoPct}`}
+                        onChange={e=>{const v=e.target.value===""?null:Math.max(0,Math.min(100,Number(e.target.value)));setManual(v);}}
+                        style={{width:72,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem"}}/>
+                      <span style={{fontSize:".72rem",color:"#64748b"}}>%</span>
+                      {card.manualProgress!=null&&<button onClick={()=>setManual(null)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>↺ Use auto ({autoPct}%)</button>}
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
 
               {/* ── Blockers ── */}
               <div style={{background:openProjB.length>0?"#fef2f2":"#fff",borderRadius:14,border:`1.5px solid ${openProjB.length>0?"#fecaca":"#e2e8f0"}`,padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -24175,32 +24271,21 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
               )}
 
-              {/* ── PM Updates / Team Chat ── */}
+              {/* ── Team Updates (single unified feed — posts via the canonical Log Update modal) ── */}
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
+                const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
+                const canPost=role==="Manager"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin"||isPM;
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                   <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div style={{fontWeight:700,color:"#4ade80",fontSize:".82rem"}}>💬 Team Updates ({allProjUpdates.length})</div>
-                    {!showUForm&&["Manager","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&<button onClick={()=>{setShowUForm(true);setUText("");}} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
+                    {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
                   </div>
-                  {/* Post form */}
-                  {showUForm&&(
-                    <div style={{padding:"12px 16px",background:"#f0fdf4",borderBottom:"1px solid #e2e8f0"}}>
-                      <textarea value={uText} onChange={e=>setUText(e.target.value)} rows={3}
-                        placeholder={"What's the update? @mention teammates (e.g. @Mark please confirm delivery date)\nProgress, decisions, blockers, next steps..."}
-                        style={{width:"100%",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".84rem",resize:"vertical",boxSizing:"border-box",marginBottom:8,outline:"none"}}/>
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>{if(!uText.trim())return;logActivity(selDeal,"PM Update",uText.trim(),session?.name);setShowUForm(false);setUText("");}}
-                          style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Post</button>
-                        <button onClick={()=>setShowUForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-                      </div>
-                    </div>
-                  )}
                   {/* Chat messages */}
                   <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:400,overflowY:"auto"}}>
-                    {allProjUpdates.length===0&&!showUForm&&(
-                      <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet. Post the first update above.</div>
+                    {allProjUpdates.length===0&&(
+                      <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet.{canPost&&" Tap + Post Update to add the first one."}</div>
                     )}
                     {allProjUpdates.map((u,i)=>{
                       const isMe=u.by===session?.name;
@@ -24301,49 +24386,20 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
               </div>
 
-              {/* ── PM Updates ── */}
-              {(()=>{
-                const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date));
-                const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
-                const canPost=role==="Manager"||role==="Operations"||isPM||role==="SalesOpsAdmin";
-                return(
-                  <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                    <div style={{padding:"12px 18px",background:"#0ea5e9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div>
-                        <span style={{fontWeight:700,color:"#fff",fontSize:".84rem"}}>📝 PM Updates</span>
-                        <span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>{allProjUpdates.length} total</span>
-                        {allProjUpdates[0]&&<span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>· last: {allProjUpdates[0].date}</span>}
-                      </div>
-                      {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})}
-                        style={{background:"#fff",border:"none",borderRadius:8,padding:"5px 13px",fontFamily:"inherit",fontSize:".75rem",color:"#0ea5e9",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
-                    </div>
-                    {allProjUpdates.length===0
-                      ?<div style={{padding:"14px 18px",fontSize:".8rem",color:"#94a3b8",textAlign:"center"}}>No updates yet.{canPost&&" Be the first to post one!"}</div>
-                      :<div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
-                        {allProjUpdates.slice(0,5).map((u,i)=>{
-                          const match=u.detail?.match(/^\[([^\]]+)\]:\s*(.*)/s);
-                          const meta=match?match[1]:"";
-                          const text=match?match[2].trim():(u.detail||"");
-                          const isToday=u.date===today;
-                          return(
-                            <div key={u.id||i} style={{padding:"9px 12px",borderRadius:9,background:i===0?"#f0f9ff":"#f8fafc",border:i===0?"1.5px solid #bae6fd":"1px solid #f1f5f9"}}>
-                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                                <span style={{fontSize:".65rem",fontWeight:700,color:isToday?"#0ea5e9":"#94a3b8"}}>{isToday?"Today":u.date} · {u.by}</span>
-                                {meta&&<span style={{fontSize:".6rem",color:"#8b5cf6",background:"#f5f3ff",borderRadius:4,padding:"1px 6px"}}>{meta.split("·")[0]?.trim()}</span>}
-                              </div>
-                              <div style={{fontSize:".78rem",color:"#0f172a",lineHeight:1.45}}>{text}</div>
-                            </div>
-                          );
-                        })}
-                        {allProjUpdates.length>5&&<div style={{fontSize:".68rem",color:"#94a3b8",textAlign:"center",padding:"2px 0"}}>+{allProjUpdates.length-5} older updates</div>}
-                      </div>}
-                  </div>
-                );
-              })()}
 
               {/* ── Finance Snapshot ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>💰 Finance Snapshot</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8,flexWrap:"wrap"}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>💰 Finance Snapshot</div>
+                  {["Manager","Finance","FinanceAssistant","Accounting","Operations","Sales"].includes(role)&&(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      <button onClick={()=>{setJumpDeal(selDeal);setPage("budget");}}
+                        style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:7,padding:"4px 11px",fontFamily:"inherit",fontSize:".72rem",color:"#2563eb",cursor:"pointer",fontWeight:700}}>📊 Budget →</button>
+                      <button onClick={()=>{setJumpDeal(selDeal);setPage("billing");}}
+                        style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:7,padding:"4px 11px",fontFamily:"inherit",fontSize:".72rem",color:"#059669",cursor:"pointer",fontWeight:700}}>🧾 Billing →</button>
+                    </div>
+                  )}
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8}}>
                   {[
                     {l:"Contract",v:fmtPHP(deal?.value||0),c:"#0f172a"},
