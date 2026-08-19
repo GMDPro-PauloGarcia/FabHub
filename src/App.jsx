@@ -24082,6 +24082,82 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
               </div>
 
+              {/* ── Department Progress (click to toggle done / expand tasks) ── */}
+              {card&&(()=>{
+                const doneDepts=DEPT_ORDER.filter(d=>card.departments?.[d]?.done).length;
+                const autoPct=Math.round(doneDepts/6*100);
+                const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
+                const setManual=(val)=>{
+                  upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
+                  if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,manual_progress:val},'deal_id').catch(()=>{});
+                };
+                return(
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>🏗 Department Progress</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:".72rem",fontWeight:700,color:pct>=100?"#059669":"#64748b"}}>{pct}%{card.manualProgress!=null&&<span style={{color:"#8b5cf6",fontWeight:600}}> (manual)</span>}</span>
+                      <span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneDepts}/6 done</span>
+                    </div>
+                  </div>
+                  {/* progress bar */}
+                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:12}}>
+                    <div style={{height:"100%",width:pct+"%",background:pct>=100?"#059669":pct>=50?"#10b981":"#f59e0b",borderRadius:4,transition:"width .2s"}}/>
+                  </div>
+                  {/* department rows */}
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {DEPT_ORDER.map(dept=>{
+                      const dd=card.departments?.[dept]||{done:false,tasks:[]};
+                      const canEditDept=editableDepts.includes(dept);
+                      const clr=DEPT_CLR[dept]||"#64748b";
+                      const tasks=dd.tasks||[];
+                      const doneTasks=tasks.filter(t=>t.done).length;
+                      return(
+                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"8px 12px"}}>
+                          <summary style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",listStyle:"none"}}>
+                            <input type="checkbox" checked={!!dd.done} disabled={!canEditDept}
+                              onChange={e=>{e.stopPropagation();markDeptDone(selDeal,dept,e.target.checked);}}
+                              onClick={e=>e.stopPropagation()}
+                              style={{width:17,height:17,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
+                            <span style={{width:8,height:8,borderRadius:"50%",background:clr,flexShrink:0}}/>
+                            <span style={{fontWeight:700,fontSize:".8rem",color:dd.done?"#059669":"#0f172a",flex:1}}>{dept}</span>
+                            {tasks.length>0&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneTasks}/{tasks.length} tasks</span>}
+                            {dd.done&&dd.doneBy&&<span style={{fontSize:".62rem",color:"#059669"}}>✓ {dd.doneBy}</span>}
+                            {tasks.length>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>▾</span>}
+                          </summary>
+                          {tasks.length>0&&(
+                            <div style={{marginTop:8,paddingLeft:27,display:"flex",flexDirection:"column",gap:5}}>
+                              {tasks.map(t=>(
+                                <label key={t.id} style={{display:"flex",alignItems:"center",gap:8,cursor:canEditDept?"pointer":"default"}}>
+                                  <input type="checkbox" checked={!!t.done} disabled={!canEditDept}
+                                    onChange={()=>toggleDeptTask(selDeal,dept,t.id)}
+                                    style={{width:14,height:14,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
+                                  <span style={{fontSize:".76rem",color:t.done?"#94a3b8":"#334155",textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {tasks.length===0&&<div style={{marginTop:6,paddingLeft:27,fontSize:".72rem",color:"#94a3b8"}}>No sub-tasks — use the checkbox to mark this department done.</div>}
+                        </details>
+                      );
+                    })}
+                  </div>
+                  {/* manual progress override */}
+                  {canEditManual&&(
+                    <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>Manual override:</span>
+                      <input type="number" min={0} max={100} value={card.manualProgress!=null?card.manualProgress:""}
+                        placeholder={`auto ${autoPct}`}
+                        onChange={e=>{const v=e.target.value===""?null:Math.max(0,Math.min(100,Number(e.target.value)));setManual(v);}}
+                        style={{width:72,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem"}}/>
+                      <span style={{fontSize:".72rem",color:"#64748b"}}>%</span>
+                      {card.manualProgress!=null&&<button onClick={()=>setManual(null)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>↺ Use auto ({autoPct}%)</button>}
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
+
               {/* ── Blockers ── */}
               <div style={{background:openProjB.length>0?"#fef2f2":"#fff",borderRadius:14,border:`1.5px solid ${openProjB.length>0?"#fecaca":"#e2e8f0"}`,padding:isMobile?"12px 14px":"14px 20px"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:openProjB.length>0||showBForm?10:0}}>
