@@ -10766,8 +10766,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           const childPipeDeals=allActive.filter(d=>d.parentDealId);
           const parentActive=allActive.filter(d=>!d.parentDealId);
           const overdueFollowUps=parentActive.filter(d=>d.followUp&&d.followUp<today).sort((a,b)=>new Date(a.followUp)-new Date(b.followUp));
-          const funnel=ACTIVE_STAGES.map(s=>{const list=parentActive.filter(d=>d.stage===s);return{stage:s,label:s.replace(/^\d+ · /,""),count:list.length,value:list.reduce((a,x)=>a+Number(x.value||0),0),clr:STAGE_CLR[s]||"#94a3b8"};});
-          const funnelMax=Math.max(1,...funnel.map(f=>f.count));
 
           // Helpers: hide contract value from Ops/Design/PM — show QS budget instead
           const BUDGET_ONLY=["Design","Operations","ProjectMover"];
@@ -10875,27 +10873,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       </button>
                     ))}
                     {overdueFollowUps.length>6&&<span style={{fontSize:".72rem",color:"#dc2626",alignSelf:"center",fontWeight:600}}>+{overdueFollowUps.length-6} more</span>}
-                  </div>
-                </div>
-              )}
-
-              {/* Pipeline stage funnel */}
-              {parentActive.length>0&&(
-                <div style={{background:"#fff",borderRadius:12,border:"1.5px solid #e2e8f0",boxShadow:"0 1px 4px rgba(0,0,0,.04)",padding:"12px 14px",marginBottom:20}}>
-                  <div style={{fontSize:".62rem",fontWeight:700,color:"#94a3b8",textTransform:"uppercase",letterSpacing:".5px",marginBottom:10}}>Pipeline by Stage</div>
-                  <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":`repeat(${funnel.length},1fr)`,gap:isMobile?10:8}}>
-                    {funnel.map(f=>(
-                      <div key={f.stage} style={{display:"flex",flexDirection:"column",gap:5}}>
-                        <div style={{display:"flex",alignItems:"baseline",gap:6}}>
-                          <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.25rem",color:f.count?f.clr:"#cbd5e1",lineHeight:1}}>{f.count}</span>
-                          {f.value>0&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".6rem",fontWeight:700,color:"#94a3b8"}}>{fmtK(f.value)}</span>}
-                        </div>
-                        <div style={{height:4,borderRadius:3,background:"#f1f5f9",overflow:"hidden"}}>
-                          <div style={{height:"100%",width:`${Math.round(f.count/funnelMax*100)}%`,background:f.clr,borderRadius:3,transition:"width .2s"}}/>
-                        </div>
-                        <span style={{fontSize:".64rem",fontWeight:600,color:"#64748b",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.label}</span>
-                      </div>
-                    ))}
                   </div>
                 </div>
               )}
