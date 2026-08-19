@@ -5670,7 +5670,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
-  const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
+  const[navCollapsed, setNavCollapsed] = useState(()=>{try{return localStorage.getItem("gmdv5:navCollapsed")==="1";}catch{return false;}});  // sidebar collapsed (persisted)
+  useEffect(()=>{try{localStorage.setItem("gmdv5:navCollapsed",navCollapsed?"1":"0");}catch{}},[navCollapsed]);
   const isMobile = useIsMobile();
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   const mobileNavRef = React.useRef(null);
