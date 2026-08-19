@@ -5670,7 +5670,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
-  const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
+  const[navCollapsed, setNavCollapsed] = useState(()=>{try{return localStorage.getItem("gmdv5:navCollapsed")==="1";}catch{return false;}});  // sidebar collapsed (persisted)
+  useEffect(()=>{try{localStorage.setItem("gmdv5:navCollapsed",navCollapsed?"1":"0");}catch{}},[navCollapsed]);
+  // Sidebar favorites: pinned nav items (by id) surface in a ⭐ FAVORITES group at the
+  // top of the sidebar, so the pages a user works with most are reachable without scrolling.
+  const[favNav, setFavNav] = useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:favNav")||"[]");}catch{return[];}});
+  useEffect(()=>{try{localStorage.setItem("gmdv5:favNav",JSON.stringify(favNav));}catch{}},[favNav]);
+  const toggleFav=(id)=>setFavNav(f=>f.includes(id)?f.filter(x=>x!==id):[...f,id]);
   const isMobile = useIsMobile();
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   const mobileNavRef = React.useRef(null);
@@ -7025,15 +7031,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :id==="finance"?(page==="acctdash")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
+      const fav=favNav.includes(id);
       return(
         <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
-          {!collapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+          {!collapsed&&<span style={{flex:1,textAlign:"left",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+          {!collapsed&&<span role="button" tabIndex={-1} onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:".82rem",lineHeight:1,color:fav?"#f59e0b":"#475569",cursor:"pointer",padding:"0 2px"}}>{fav?"★":"☆"}</span>}
         </button>
       );
     };
+    // Resolve favorited ids to {id,l} for the pinned group (drop any no longer in this role's nav).
+    const itemLookup={};[...allItems,...pauloExtra].forEach(it=>{itemLookup[it.id]=it;});
+    const favItems=favNav.map(id=>itemLookup[id]).filter(Boolean);
     const W = navCollapsed ? 64 : 220;
     return(
       <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
@@ -7050,6 +7061,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             [...allItems,...pauloExtra].map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={true}/>)
           ) : (
             <>
+              {favItems.length>0&&(
+                <div style={{marginBottom:4}}>
+                  <div style={{padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.08em"}}>
+                    ★ Favorites
+                  </div>
+                  {favItems.map(({id,l})=><NavBtn key={"fav-"+id} id={id} l={l} collapsed={false}/>)}
+                </div>
+              )}
               {groups.map((section,si)=>(
                 <div key={si} style={{marginBottom:4}}>
                   <div style={{padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>
