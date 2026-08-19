@@ -230,7 +230,7 @@ const DEFAULT_USERS = [
   { id:"u17", name:"Marian Prile",       username:"marian",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"Procurement",  status:"active", createdAt:today },
   { id:"u27", name:"Mark Acejo",         username:"mark",     passwordHash:legacyHashPwSync("GMD2026!"),   role:"FinanceAssistant", title:"Finance Assistant",          status:"active", createdAt:today },
   // ── Sales & Ops Admin ─────────────────────────────────────────────────────
-  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"SalesOpsAdmin",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
+  { id:"u26", name:"Jessica Castro",     username:"jessica",  passwordHash:legacyHashPwSync("GMD2026!"),   role:"Manager",    title:"Operations & Sales Admin",   status:"active", createdAt:today },
   // ── QS / Cost Estimator ───────────────────────────────────────────────────
   { id:"u23", name:"Rodney",             username:"rodney",   passwordHash:legacyHashPwSync("GMD2026!"),   role:"QS",           status:"active", createdAt:today },
   // ── Warehouse ─────────────────────────────────────────────────────────────
@@ -2688,9 +2688,9 @@ export default function App(){
   // Sales users explicitly granted deal-delete rights (for clearing duplicate /
   // double-entered deals). Kept to named individuals rather than the whole Sales
   // role; the server-side RLS in migration 033 mirrors this exact allow-list.
-  // "jessica" (Jessica Castro / SalesOpsAdmin) added in migration 051 so she can
-  // clear bad pipeline entries like a Manager.
-  const DEAL_DELETE_USERS=["jena","wyn","paolo","jessica"];
+  // (Jessica Castro / "jessica" is a full Manager as of migration 051, so she is
+  // covered by the role==="Manager" check below and does not need a named grant.)
+  const DEAL_DELETE_USERS=["jena","wyn","paolo"];
   const canDeleteDeal=role==="Manager"||DEAL_DELETE_USERS.includes(session?.username);
   const[deals,    setDeals]   = useState([]);
   const[projs,    setProjs]   = useState({});
