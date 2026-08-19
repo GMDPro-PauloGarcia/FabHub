@@ -7203,10 +7203,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(id==="finance"){pg="acctdash";} // Finance home = ERP operational dashboard
       setPage(pg);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
     };
-    // For Manager show fixed key tabs + More; others show first 4 + Me
-    const primaryIds=role==="Manager"
-      ? ["home","pipeline","projects","finance"]
-      : allItems.slice(0,4).map(x=>x.id);
+    // Favorites (if the user set any) drive the mobile bottom bar and lead the More sheet,
+    // matching the desktop sidebar. Only ids present in this role's nav are kept.
+    const favItemsM=favNav.map(id=>allItems.find(x=>x.id===id)).filter(Boolean);
+    // For Manager show fixed key tabs + More; others show first 4 + Me.
+    // When favorites exist, the first 4 favorites take the primary slots instead.
+    const primaryIds=favItemsM.length>0
+      ? favItemsM.slice(0,4).map(x=>x.id)
+      : role==="Manager"
+        ? ["home","pipeline","projects","finance"]
+        : allItems.slice(0,4).map(x=>x.id);
     const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
     const tabs=[
       ...primaryIds.map(id=>({id,l:allItems.find(x=>x.id===id)?.l||id})),
@@ -7223,9 +7229,33 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{position:"fixed",bottom:62,left:0,right:0,maxHeight:"70vh",overflowY:"auto",background:"#1e293b",zIndex:299,borderRadius:"18px 18px 0 0",borderTop:"1px solid rgba(255,255,255,.12)",boxShadow:"0 -4px 24px rgba(0,0,0,.35)",paddingBottom:8}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
               <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:"#f8fafc",letterSpacing:.5}}>All Sections</span>
-              <button onClick={()=>setMoreNavOpen(false)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,width:28,height:28,color:"#94a3b8",cursor:"pointer",fontSize:".9rem"}}>✕</button>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                {favItemsM.length>0&&(
+                  <button onClick={()=>setFavOnly(v=>!v)} style={{background:"transparent",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",fontFamily:"inherit"}}>{favOnly?"Show all":"Hide rest"}</button>
+                )}
+                <button onClick={()=>setMoreNavOpen(false)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,width:28,height:28,color:"#94a3b8",cursor:"pointer",fontSize:".9rem"}}>✕</button>
+              </div>
             </div>
-            {groups.map((sec,si)=>(
+            {favItemsM.length>0&&(
+              <div style={{padding:"6px 0"}}>
+                <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:".08em"}}>★ Favorites</div>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
+                  {favItemsM.map(({id,l})=>{
+                    const active=page===id;
+                    const icon=NAV_ICONS[id]||"•";
+                    const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+                    return(
+                      <button key={"favm-"+id} onClick={()=>navigate(id)}
+                        style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",textAlign:"left"}}>
+                        <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {!(favOnly&&favItemsM.length>0)&&groups.map((sec,si)=>(
               <div key={si} style={{padding:"6px 0"}}>
                 <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".08em"}}>{sec.group}</div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
@@ -7233,11 +7263,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const active=page===id;
                     const icon=NAV_ICONS[id]||"•";
                     const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+                    const fav=favNav.includes(id);
                     return(
                       <button key={id} onClick={()=>navigate(id)}
                         style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",textAlign:"left"}}>
                         <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
-                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+                        <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+                        <span role="button" tabIndex={-1} onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:"1rem",lineHeight:1,color:fav?"#f59e0b":"#475569",padding:"0 4px"}}>{fav?"★":"☆"}</span>
                       </button>
                     );
                   })}
