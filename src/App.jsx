@@ -5676,6 +5676,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // top of the sidebar, so the pages a user works with most are reachable without scrolling.
   const[favNav, setFavNav] = useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:favNav")||"[]");}catch{return[];}});
   useEffect(()=>{try{localStorage.setItem("gmdv5:favNav",JSON.stringify(favNav));}catch{}},[favNav]);
+  // "Favorites only" hides every non-favorited page for a clean sidebar; a Show-all toggle
+  // brings them back so other pages stay reachable and favorites remain editable.
+  const[favOnly, setFavOnly] = useState(()=>{try{return localStorage.getItem("gmdv5:favOnly")==="1";}catch{return false;}});
+  useEffect(()=>{try{localStorage.setItem("gmdv5:favOnly",favOnly?"1":"0");}catch{}},[favOnly]);
   const toggleFav=(id)=>setFavNav(f=>f.includes(id)?f.filter(x=>x!==id):[...f,id]);
   const isMobile = useIsMobile();
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
@@ -7063,13 +7067,14 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             <>
               {favItems.length>0&&(
                 <div style={{marginBottom:4}}>
-                  <div style={{padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.08em"}}>
-                    ★ Favorites
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 3px"}}>
+                    <span style={{fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.08em"}}>★ Favorites</span>
+                    <span role="button" tabIndex={-1} onClick={()=>setFavOnly(v=>!v)} title={favOnly?"Show all pages":"Hide the pages you haven't favorited"} style={{fontSize:".58rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.04em",cursor:"pointer"}}>{favOnly?"Show all":"Hide rest"}</span>
                   </div>
                   {favItems.map(({id,l})=><NavBtn key={"fav-"+id} id={id} l={l} collapsed={false}/>)}
                 </div>
               )}
-              {groups.map((section,si)=>(
+              {!(favOnly&&favItems.length>0)&&groups.map((section,si)=>(
                 <div key={si} style={{marginBottom:4}}>
                   <div style={{padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>
                     {section.group}
@@ -7077,7 +7082,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {(section.items||[]).map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
                 </div>
               ))}
-              {pauloExtra.map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
+              {!(favOnly&&favItems.length>0)&&pauloExtra.map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
             </>
           )}
         </div>
