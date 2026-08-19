@@ -25512,6 +25512,7 @@ const erpThNum={...erpTh,textAlign:"right"};
 const erpTdNum={...erpTd,textAlign:"right",fontVariantNumeric:"tabular-nums"};
 
 function FinanceErpBar({active,go,counts={}}){
+  const mob=window.innerWidth<768;
   const tabs=[
     {k:"dashboard",l:"Dashboard"},
     {k:"po",l:"Purchase Orders",n:counts.po},
@@ -25520,19 +25521,25 @@ function FinanceErpBar({active,go,counts={}}){
     {k:"cv",l:"Check Vouchers",n:counts.cv},
   ];
   return(
-    <div style={{marginBottom:18}}>
-      <div style={{background:"linear-gradient(135deg,#0B2545 0%,#132F5C 100%)",borderRadius:12,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,boxShadow:"0 4px 14px rgba(11,37,69,0.18)"}}>
-        <div>
-          <div style={{fontSize:18,fontWeight:700,color:"#fff",letterSpacing:".3px"}}>GMD <span style={{color:"#C9A24B"}}>Production Inc.</span></div>
-          <div style={{fontSize:12,color:"#C7D4E8",marginTop:2,fontWeight:500}}>Purchase-to-Payment · Accounts Payable · Check Voucher · Chart of Accounts</div>
+    <div style={{marginBottom:mob?12:18}}>
+      {/* The full GMD banner is desktop-only — on mobile it eats a whole screen
+          of vertical space, so we drop it and let the tab strip lead. */}
+      {!mob&&(
+        <div style={{background:"linear-gradient(135deg,#0B2545 0%,#132F5C 100%)",borderRadius:12,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,boxShadow:"0 4px 14px rgba(11,37,69,0.18)"}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:700,color:"#fff",letterSpacing:".3px"}}>GMD <span style={{color:"#C9A24B"}}>Production Inc.</span></div>
+            <div style={{fontSize:12,color:"#C7D4E8",marginTop:2,fontWeight:500}}>Purchase-to-Payment · Accounts Payable · Check Voucher · Chart of Accounts</div>
+          </div>
+          <span style={{background:"rgba(201,162,75,0.18)",border:"1px solid #C9A24B",color:"#C9A24B",borderRadius:20,padding:"5px 10px",fontSize:11,fontWeight:600,letterSpacing:"1.2px",textTransform:"uppercase"}}>Finance Module</span>
         </div>
-        <span style={{background:"rgba(201,162,75,0.18)",border:"1px solid #C9A24B",color:"#C9A24B",borderRadius:20,padding:"5px 10px",fontSize:11,fontWeight:600,letterSpacing:"1.2px",textTransform:"uppercase"}}>Finance Module</span>
-      </div>
-      <div style={{background:"#fff",border:"1px solid #DCE2EC",borderRadius:10,padding:6,marginTop:18,display:"flex",gap:6,flexWrap:"wrap"}}>
+      )}
+      {/* Mobile: a horizontal-scroll tab strip (no wrapping, no huge min-widths).
+          Desktop: keep the even flex row. */}
+      <div style={{background:"#fff",border:"1px solid #DCE2EC",borderRadius:10,padding:mob?4:6,marginTop:mob?0:18,display:"flex",gap:6,flexWrap:mob?"nowrap":"wrap",overflowX:mob?"auto":"visible",WebkitOverflowScrolling:"touch"}}>
         {tabs.map(t=>{
           const on=t.k===active;
           return(
-            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:1,minWidth:108,background:on?"#0B2545":"transparent",color:on?"#fff":"#5B6472",border:"none",borderRadius:8,padding:"10px 10px",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:on?"default":"pointer",transition:"all .15s ease"}}>
+            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:mob?"0 0 auto":1,minWidth:mob?"auto":108,whiteSpace:"nowrap",background:on?"#0B2545":"transparent",color:on?"#fff":"#5B6472",border:"none",borderRadius:8,padding:mob?"9px 14px":"10px 10px",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:on?"default":"pointer",transition:"all .15s ease"}}>
               {t.l}
               {t.n>0&&<span style={{background:on?"rgba(255,255,255,0.85)":"#C9A24B",color:"#0B2545",borderRadius:10,padding:"1px 7px",fontSize:11,fontWeight:700}}>{t.n}</span>}
             </button>
