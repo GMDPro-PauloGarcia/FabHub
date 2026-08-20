@@ -583,6 +583,11 @@ export const emptyDeal={
   addenda:[],
   // Parent-child linking
   parentDealId:null,
+  // Standby PO / Adhoc umbrella — when true, this parent deal is a client PO
+  // (standby fund) rather than earned revenue: its own contract value is held
+  // at 0 and its child jobs (drawdowns) carry the value. poBudget is the PO
+  // ceiling the drawdowns count down against (remaining = poBudget − Σ children).
+  standbyPO:false,poBudget:"",
   // Feedback
   clientFeedback:"",feedbackDate:"",feedbackScore:"",
   // Payment Terms (set at award)

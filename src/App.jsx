@@ -1036,7 +1036,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" min={0} value={form.value} onChange={e=>{const v=e.target.value;f("value",v===""?"":Math.max(0,Number(v)||0));}} placeholder="To be confirmed"/></Fld>
+        <Fld label={form.standbyPO?"Deal Value (₱) — held at 0 for standby PO":"Deal Value (₱)"} hint={form.standbyPO?"Standby POs earn nothing on the umbrella itself — value lives on the drawdown jobs":"Leave blank if not yet finalized"}><Inp type="number" min={0} value={form.standbyPO?0:form.value} disabled={form.standbyPO} onChange={e=>{const v=e.target.value;f("value",v===""?"":Math.max(0,Number(v)||0));}} placeholder="To be confirmed" style={form.standbyPO?{background:"#f1f5f9",color:"#94a3b8",cursor:"not-allowed"}:undefined}/></Fld>
         <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
         <Fld label="CE Type">
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
@@ -1068,6 +1068,29 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             />
           </Fld>
         </div>
+        {/* Standby PO / Adhoc umbrella — only for parent (non-linked) deals. Marks
+            this deal as a client PO / standby fund: the umbrella carries no
+            contract revenue of its own (value pinned to 0), and its child jobs
+            draw down against poBudget. Prevents the PO from being double-counted
+            on top of the jobs charged against it. */}
+        {!form.parentDealId&&(
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{background:form.standbyPO?"#eff6ff":"#f8fafc",borderRadius:12,padding:"12px 14px",border:`1.5px solid ${form.standbyPO?"#bfdbfe":"#e2e8f0"}`}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:".82rem",fontWeight:700,color:form.standbyPO?"#1d4ed8":"#475569"}}>
+                <input type="checkbox" checked={!!form.standbyPO} onChange={e=>{const on=e.target.checked;f("standbyPO",on);if(on)f("value",0);}} style={{width:18,height:18,cursor:"pointer",accentColor:"#2563eb"}}/>
+                💳 Standby PO / Adhoc umbrella
+              </label>
+              <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>Tick when this is a client PO / standby fund drawn down by individual jobs. The umbrella stays at ₱0 revenue; each linked job counts as it's charged, drawing the PO ceiling down toward ₱0.</div>
+              {form.standbyPO&&(
+                <div style={{marginTop:10}}>
+                  <Fld label="PO Ceiling / Budget (₱)" hint="Total the client committed — drawdown jobs count down against this">
+                    <Inp type="number" min={0} value={form.poBudget} onChange={e=>{const v=e.target.value;f("poBudget",v===""?"":Math.max(0,Number(v)||0));}} placeholder="e.g. 854000"/>
+                  </Fld>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {isWon&&(
           <div style={{gridColumn:"1/-1"}}>
             <Fld label="🏁 Client Turnover Date" hint="Date promised to client — notifies Ops & Management when changed">
@@ -2808,7 +2831,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
@@ -3080,7 +3103,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -3209,6 +3232,7 @@ export default function App(){
     added_by:r.addedBy||"", added_at:r.addedAt||null,
     award_request_data:r.awardRequestData||null,
     parent_deal_id:r.parentDealId||null,
+    standby_po:!!r.standbyPO, po_budget:r.standbyPO?(Number(r.poBudget)||0):0,
     billing_generated:r.billingGenerated||false,
     // Receivables policy §2.1 onboarding facts + §2.3/§3 satisfaction
     bir_2303_url:r.bir2303Url||null, bir_2303_on_file:!!r.bir2303OnFile,
@@ -4109,6 +4133,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
           awardRequestData:rec.award_request_data||null,boqData:rec.boq_data||null,
+          standbyPO:rec.standby_po||false,poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
           billingGenerated:rec.billing_generated||false,
           bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
           vatTreatment:rec.vat_treatment||"",downpaymentPct:rec.downpayment_pct??null,
@@ -5774,6 +5799,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         withholding:rec.withholding||false, comms_group:rec.commsGroup,
         sales_repo_link:rec.salesRepoLink, proposal_folder_link:rec.proposalFolderLink,
         notes:rec.notes, probability:rec.probability||0,
+        standby_po:!!rec.standbyPO, po_budget:rec.standbyPO?(Number(rec.poBudget)||0):0,
         updated_at:new Date().toISOString(),
       };
       // Check if UUID (Supabase) or old ID
@@ -5813,7 +5839,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // since then.
     const claimedCeNo=editDeal?data.ceNo:await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
     const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
-    const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
+    const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:data.standbyPO?0:Number(data.value),poBudget:data.standbyPO?(Number(data.poBudget)||0):"",invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,
     };
@@ -11011,7 +11037,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   };
                   const paid=dealCollected(d);
                   const inv=Number(d.invoiced)||0;
-                  const contractVal=Number(d.value)||0;
+                  // Standby PO / Adhoc umbrella: the parent carries no contract
+                  // revenue of its own (held at 0). Instead it shows a drawdown of
+                  // its PO ceiling — used = Σ of its active child jobs, remaining
+                  // counts down toward 0 as jobs are charged against the fund.
+                  const isStandby=!isChild&&!!d.standbyPO;
+                  const poBudget=Number(d.poBudget)||0;
+                  const drawUsed=isStandby?deals.filter(c=>c.parentDealId===d.id&&!isLostStage(c.stage)).reduce((s,c)=>s+(Number(c.value)||0),0):0;
+                  const drawLeft=Math.max(0,poBudget-drawUsed);
+                  const drawPct=poBudget>0?Math.min(100,Math.round(drawUsed/poBudget*100)):0;
+                  const contractVal=isStandby?0:Number(d.value)||0;
                   const outstanding=Math.max(0,contractVal-paid);
                   const pctPaid=contractVal>0?Math.min(100,Math.round(paid/contractVal*100)):0;
                   const sc=STAGE_CLR_PIPE[d.stage]||"#94a3b8";
@@ -11043,6 +11078,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:isChild?2:4}}>
                           {!isChild&&(()=>{const t=d.ceType||"Other";const tc=TYPE_CLR_PIPE[t]||"#64748b";return(<span style={{fontSize:".56rem",fontWeight:700,letterSpacing:".02em",padding:"1px 6px",borderRadius:3,background:tc+"18",color:tc,border:`1px solid ${tc}55`}}>{t}</span>);})()}
+                          {isStandby&&<span title="Standby PO — umbrella fund drawn down by its jobs" style={{fontSize:".56rem",fontWeight:700,letterSpacing:".02em",padding:"1px 6px",borderRadius:3,background:"#dbeafe",color:"#1d4ed8",border:"1px solid #93c5fd"}}>💳 STANDBY PO</span>}
                           {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
                           {jo?.joNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{jo.joNo}</span>}
                         </div>
@@ -11053,7 +11089,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.aeAssigned||jo?.aeAssigned||d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
                       <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.pm1||jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
                       <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
-                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
+                        {isStandby?(
+                          <div style={{minWidth:120}}>
+                            <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:drawLeft===0?"#64748b":"#2563eb"}} title={`Standby PO drawdown — ₱${drawUsed.toLocaleString("en-PH")} used of ₱${poBudget.toLocaleString("en-PH")}`}>₱{drawLeft.toLocaleString("en-PH")} <span style={{fontSize:".82em",fontWeight:600,color:"#94a3b8"}}>left</span></div>
+                            <div style={{height:4,borderRadius:3,background:"#e2e8f0",marginTop:3,overflow:"hidden"}}><div style={{width:`${drawPct}%`,height:"100%",background:drawPct>=100?"#059669":"#3b82f6"}}/></div>
+                            <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".54rem",fontWeight:700,color:"#94a3b8",marginTop:2}}>💳 PO ₱{poBudget.toLocaleString("en-PH")} · {drawPct}% used</div>
+                          </div>
+                        ):(
+                          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
+                        )}
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
                         <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs2,fontWeight:700,color:pctPaid===100?"#059669":"#0d1117"}}>₱{paid.toLocaleString("en-PH")}</div>
@@ -11155,7 +11199,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&matchSearch(d))
                   .forEach(d=>{const t=d.ceType||"Other";typeCounts[t]=(typeCounts[t]||0)+1;});
                 const typeList=Object.keys(typeCounts).sort();
-                const grandTotal=activeWon.reduce((s,d)=>s+Number(d.value||0),0);
+                // Standby PO umbrellas contribute 0 (their value lives on the
+                // drawdown jobs) so the total reflects charged work, never the PO
+                // ceiling stacked on top of the jobs drawn against it.
+                const grandTotal=activeWon.reduce((s,d)=>s+((d.standbyPO&&!d.parentDealId)?0:Number(d.value||0)),0);
                 return(<>
                   {/* Active Awarded — flat table with a project-type filter */}
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
