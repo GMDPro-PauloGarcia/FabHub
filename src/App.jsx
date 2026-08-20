@@ -5404,7 +5404,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Depends on both wonDeals.length AND projs key count so it re-runs after Supabase loads projs
   const projsKeyCount=Object.keys(projs).length;
   useEffect(()=>{
-    const missing=wonDeals.filter(d=>!projs[d.id]);
+    // Standby PO umbrellas have no production of their own (their jobs do),
+    // so don't spin up an empty ₱0 project shell for them.
+    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO);
     if(missing.length>0){
       const patch={};
       missing.forEach(d=>{patch[d.id]=emptyProject();});
@@ -23359,6 +23361,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const buildRollup=(tab)=>{
     const map={};
     wonDeals.forEach(d=>{
+      if(d.standbyPO&&!d.parentDealId) return;   // umbrella has no production — don't count it in team load
       const st=dealStatus(d);
       ownerKeys(d,tab).forEach(k=>{
         if(!k)return;
@@ -23544,7 +23547,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             });
             // Separate parent deals from child deals for nested display
             const childDeals=list.filter(d=>d.parentDealId);
-            const parentList=list.filter(d=>!d.parentDealId);
+            // Standby PO umbrellas carry no production of their own — their
+            // drawdown jobs are independent fabrications. So in Project HQ we
+            // hide the ₱0 umbrella card and promote its jobs to top-level
+            // project cards. Normal addendum children stay nested as before.
+            const standbyParentIds=new Set(deals.filter(x=>x.standbyPO).map(x=>x.id));
+            const parentList=list.filter(d=>{
+              if(d.standbyPO&&!d.parentDealId) return false;              // hide the umbrella itself
+              if(!d.parentDealId) return true;                            // normal top-level project
+              return standbyParentIds.has(d.parentDealId);                // promote standby-PO jobs
+            });
             const renderPCRow=(d,idx,total,isChild=false)=>{
               const pc=pcards[d.id];
               const g=calcCardGrade(d,pc);
