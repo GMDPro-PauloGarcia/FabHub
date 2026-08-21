@@ -1050,6 +1050,11 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             {SALES_TEAM.map(m=><option key={m}>{m}</option>)}
           </Sel>
         </Fld>
+        <Fld label="Lead Origin" hint="Sets the sales commission on collected payments: Self-sourced = 1.5%, Given to the team = 0.5%">
+          <Sel value={form.leadOrigin||DEFAULT_LEAD_ORIGIN} onChange={e=>f("leadOrigin",e.target.value)}>
+            {LEAD_ORIGINS.map(o=><option key={o} value={o}>{o==="Self-sourced"?"Self-sourced (AE brought the client) · 1.5%":"Given to the sales team · 0.5%"}</option>)}
+          </Sel>
+        </Fld>
         <Fld label="Date Acquired"><Inp type="date" value={form.dateAcquired||today} onChange={e=>f("dateAcquired",e.target.value)}/></Fld>
         <div style={{gridColumn:"1/-1"}}>
           <Fld label="Project Location" hint="e.g. SM North EDSA 3F Activity Area, BGC Taguig, Makati CBD">
@@ -3220,7 +3225,7 @@ export default function App(){
     id:r.id, ce_no:r.ceNo, client:r.client, contact:r.contact,
     ce_type:r.ceType, product:r.product, stage:r.stage,
     priority:r.priority||"Normal", sales_owner:r.salesOwner||"",
-    biz_dev_source:r.bizDevSource||"", date_acquired:r.dateAcquired||null,
+    biz_dev_source:r.bizDevSource||"", lead_origin:leadOriginOf(r), date_acquired:r.dateAcquired||null,
     due_date:r.dueDate||null, follow_up:r.followUp||null,
     value:Number(r.value)||0,
     invoiced:Number(r.invoiced)||0, amount_paid:Number(r.amountPaid)||0,
@@ -4126,7 +4131,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       const{eventType,new:rec,old:oldRow}=payload;
       if(eventType==='INSERT'||eventType==='UPDATE'){
         const mapped={...rec,ceNo:rec.ce_no,ceType:rec.ce_type,salesOwner:rec.sales_owner,
-          bizDevSource:rec.biz_dev_source,dateAcquired:rec.date_acquired,
+          bizDevSource:rec.biz_dev_source,leadOrigin:rec.lead_origin||DEFAULT_LEAD_ORIGIN,dateAcquired:rec.date_acquired,
           dueDate:rec.due_date,amountPaid:Number(rec.amount_paid)||0,
           paymentStatus:rec.payment_status,receiptType:rec.receipt_type,
           commsGroup:rec.comms_group,salesRepoLink:rec.sales_repo_link,
@@ -5819,7 +5824,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ce_no:rec.ceNo, client:rec.client, contact:rec.contact,
         ce_type:rec.ceType, product:rec.product||rec.ceType||"", stage:rec.stage,
         priority:rec.priority, sales_owner:rec.salesOwner,
-        biz_dev_source:rec.bizDevSource, date_acquired:rec.dateAcquired||null,
+        biz_dev_source:rec.bizDevSource, lead_origin:leadOriginOf(rec), date_acquired:rec.dateAcquired||null,
         due_date:rec.dueDate||null, value:Number(rec.value)||0,
         invoiced:Number(rec.invoiced)||0, amount_paid:Number(rec.amountPaid)||0,
         payment_status:rec.paymentStatus, receipt_type:rec.receiptType,

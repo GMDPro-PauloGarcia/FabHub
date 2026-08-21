@@ -588,7 +588,7 @@ export const emptyDeal={
   progressBilled:0,progressPaid:0,finalBilled:0,finalPaid:0,
   // GMD fields
   ceNo:"",ceType:"Fabrication / General",salesOwner:"",dateAcquired:today,
-  assignedAE:"",bizDevSource:"",location:"",
+  assignedAE:"",bizDevSource:"",leadOrigin:DEFAULT_LEAD_ORIGIN,location:"",
   // File links (Drive + FabHub)
   salesRepoLink:"",proposalFolderLink:"",salesRepoNote:"",
   // Design Request (inline DRF)
