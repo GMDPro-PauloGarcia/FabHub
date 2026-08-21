@@ -184,6 +184,78 @@ export const ROLE_CLR  = { Manager:"#f59e0b",Sales:"#10b981",Finance:"#3b82f6",A
 export const ROLE_LABEL = { SalesOpsAdmin:"Sales & Ops Admin", FinanceAssistant:"Finance Assistant", HRAdmin:"HR & Admin", Audit:"Audit Team" };
 export const roleLabel = r => ROLE_LABEL[r] || r;
 
+// ── PERMISSIONS — client-side mirror of the Supabase RLS write policies ───────
+// Single source of truth for (a) the pre-write "your role can't do this" dialog,
+// (b) the in-app Permissions matrix (Manager → Admin → Permissions), and (c) the
+// exported permissions doc. This MUST track the server RLS policies — it does not
+// grant anything (the server is always the final authority); it only lets the app
+// warn a user BEFORE a doomed write instead of letting it silently revert.
+//
+// Values are canonical RLS role codes (after the mint-session ROLE_MAP: Operations
+// /Ops→ProjectMover, Cost Control→Finance, Admin→Manager). The token "AUTH" means
+// any logged-in user. Grants transcribed from supabase_migration_037_rls_rollout_v2
+// and the later overlays (042 design tiers, 043/044 accounting, 049 billing/
+// checklists, 050/051 BOQ). Keep in lock-step with those migrations.
+// NOTE: a few tables carry finer server rules than a role list can express — deals
+// DELETE is Manager + the named sales leads (jena/wyn/paolo); design UPDATE/senior
+// reads are username-tiered. Those are flagged in PERM_NOTES and shown as caveats.
+export const PERM_ROLES = ["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","QS","SalesOpsAdmin","Design","Warehouse"];
+
+const AUTH = "AUTH";
+export const PERMISSIONS = {
+  deals:               { label:"Deals / Pipeline",        group:"Sales",       select:["Manager","Sales","ProjectMover","Finance","FinanceAssistant","Accounting","Procurement","QS","SalesOpsAdmin"], insert:["Manager","Sales","SalesOpsAdmin"], update:["Manager","Sales","SalesOpsAdmin","QS"], delete:["Manager"] },
+  ce_requests:         { label:"CE / QS Requests",         group:"Sales",       select:["Manager","Sales","Finance","FinanceAssistant","QS","SalesOpsAdmin"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
+  design_requests:     { label:"Design Requests (DRF)",    group:"Design",      select:["Manager","Sales","ProjectMover","Finance","Design","SalesOpsAdmin"], insert:["Manager","Sales","Design","SalesOpsAdmin"], update:["Manager","Design"], delete:["Manager"] },
+  swatches:            { label:"Swatches",                 group:"Design",      select:["Manager","Finance","FinanceAssistant","Procurement","Design"], insert:["Manager","Procurement","Design"], update:["Manager","Procurement","Design"], delete:["Manager","Procurement"] },
+  projects:            { label:"Projects",                 group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
+  project_cards:       { label:"Project Cards",            group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover","Finance"], update:["Manager","ProjectMover","Finance"], delete:["Manager"] },
+  daily_logs:          { label:"Daily Site Logs",          group:"Operations",  select:["Manager","ProjectMover","Sales"], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
+  checklists:          { label:"Calendar / Checklists",    group:"Operations",  select:[AUTH], insert:[AUTH], update:[AUTH], delete:["Manager"] },
+  addenda:             { label:"Scope Changes (Addenda)",  group:"Operations",  select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","ProjectMover","Procurement","Design"], update:["Manager"], delete:["Manager"] },
+  project_blockers:    { label:"Project Blockers",         group:"Operations",  select:[AUTH], insert:["Manager","ProjectMover"], update:["Manager","ProjectMover"], delete:["Manager"] },
+  ae_updates:          { label:"Account / PM Updates",     group:"Operations",  select:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"], insert:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"], update:["Manager","ProjectMover"], delete:["Manager","ProjectMover","Sales","Finance","QS","SalesOpsAdmin"] },
+  billing_milestones:  { label:"Billing Milestones",       group:"Finance",     select:["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], delete:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"] },
+  billing_payments:    { label:"Billing Payments",         group:"Finance",     select:["Manager","Sales","Finance","Accounting","FinanceAssistant","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"], delete:["Manager","Finance","FinanceAssistant","SalesOpsAdmin"] },
+  expenses:            { label:"Expenses",                 group:"Finance",     select:[AUTH], insert:["Manager","Finance","Accounting","FinanceAssistant"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:["Manager"] },
+  payables:            { label:"Payables",                 group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant","Procurement"], insert:["Manager","Finance","Accounting","FinanceAssistant","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement"], delete:["Manager"] },
+  check_vouchers:      { label:"Check Vouchers",           group:"Finance",     select:["Manager","Finance","Accounting","FinanceAssistant"], insert:["Manager","Accounting"], update:["Manager","Finance","Accounting","FinanceAssistant"], delete:["Manager"] },
+  purchase_requests:   { label:"Purchase Orders",          group:"Procurement", select:["Manager","Finance","Accounting","FinanceAssistant","Procurement","QS"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
+  subcon_work_orders:  { label:"Subcon Work Orders",       group:"Procurement", select:["Manager","Sales","Finance","Accounting","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Finance","FinanceAssistant","Procurement"], update:["Manager","Finance","Accounting","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
+  material_requests:   { label:"Material Requests",        group:"Procurement", select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Sales","Procurement","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
+  budget_requests:     { label:"Budget Requests",          group:"Procurement", select:["Manager","ProjectMover","Sales","Finance","FinanceAssistant","Procurement","SalesOpsAdmin"], insert:["Manager","Sales","Procurement","SalesOpsAdmin"], update:["Manager","Finance","FinanceAssistant","Procurement"], delete:["Manager","Procurement"] },
+  suppliers:           { label:"Suppliers",                group:"Procurement", select:["Manager","Finance","FinanceAssistant","Procurement"], insert:["Manager","Procurement"], update:["Manager","Procurement"], delete:["Manager","Procurement"] },
+  subcontractors:      { label:"Subcontractors",           group:"Procurement", select:["Manager","Finance","FinanceAssistant","Procurement"], insert:["Manager","Procurement"], update:["Manager","Procurement"], delete:["Manager","Procurement"] },
+  inventory_items:     { label:"Inventory Items",          group:"Warehouse",   select:["Manager","Finance","FinanceAssistant","Procurement","Warehouse"], insert:["Manager","Warehouse"], update:["Manager","Warehouse"], delete:["Manager","Warehouse"] },
+  stock_movements:     { label:"Stock Movements",          group:"Warehouse",   select:["Manager","Finance","FinanceAssistant","Procurement","Warehouse"], insert:["Manager","Warehouse"], update:["Manager","Warehouse"], delete:["Manager"] },
+  boq_library:         { label:"BOQ Library",              group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","QS"], delete:["Manager"] },
+  project_budgets:     { label:"Project Budgets",          group:"QS / Cost",   select:["Manager","Finance","FinanceAssistant","QS","ProjectMover"], insert:["Manager","QS"], update:["Manager","Finance","FinanceAssistant","QS"], delete:["Manager"] },
+};
+
+// Human-readable caveats for rules a plain role list can't express.
+export const PERM_NOTES = {
+  deals:"Delete is limited to Managers plus the named sales leads (Jena, Wyn, Paolo).",
+  design_requests:"Design reads/edits are further tiered by designer — senior designers (Gab, Miaa) see more than the rest of the team.",
+  project_budgets:"Finance can edit an existing budget, but creating the first budget row for a project is limited to Managers and QS.",
+};
+
+const PERM_ACTIONS = ["select","insert","update","delete"];
+// True if `role` (already canonical) may perform `action` on `table`. Unknown
+// tables default to allowed so this never blocks a write the RLS map doesn't cover.
+export const roleCan = (role, action, table) => {
+  const t = PERMISSIONS[table];
+  if(!t || !t[action]) return true;
+  const allowed = t[action];
+  return allowed.includes(AUTH) || allowed.includes(role);
+};
+// The roles allowed to perform an action, as a friendly display string.
+export const rolesAllowedLabel = (action, table) => {
+  const t = PERMISSIONS[table];
+  if(!t || !t[action]) return "any role";
+  if(t[action].includes(AUTH)) return "everyone";
+  return t[action].map(roleLabel).join(", ");
+};
+export { PERM_ACTIONS };
+
 export const CL_TYPES  = ["Purchase","Supplier Job","Permit","Task","Site Visit","Client Approval","Module","Swatch","Risk Flag"];
 
 export const CL_STATUS = ["To Do","In Progress","Done"];
