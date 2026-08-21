@@ -26,7 +26,7 @@ const Cell = ({ ok }) => (
   </td>
 );
 
-export default function PermissionsMatrix({ Wrap, isMobile }) {
+export default function PermissionsMatrix({ Wrap, isMobile, embedded }) {
   const [action, setAction] = React.useState("update");
   const [filter, setFilter] = React.useState("");
 
@@ -43,7 +43,8 @@ export default function PermissionsMatrix({ Wrap, isMobile }) {
   });
 
   return (
-    <div style={{ maxWidth: 1180, margin: "0 auto", padding: isMobile ? "14px 10px" : "20px" }}>
+    <div style={{ maxWidth: 1180, margin: "0 auto", padding: embedded ? 0 : (isMobile ? "14px 10px" : "20px") }}>
+      {!embedded && (
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 800, fontSize: "1.6rem", color: "#0f172a", margin: 0, letterSpacing: .3 }}>
           🔐 Permissions
@@ -54,6 +55,7 @@ export default function PermissionsMatrix({ Wrap, isMobile }) {
           is set in the backend (RLS), not on this page.
         </p>
       </div>
+      )}
 
       {/* Action selector */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>

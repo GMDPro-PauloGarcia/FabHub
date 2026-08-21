@@ -3080,6 +3080,7 @@ export default function App(){
 
   // Offline write queue: track how many writes are still pending and keep
   // retrying them on mount / focus / reconnect until they reach the server.
+  const[accountsPermOpen,setAccountsPermOpen]=useState(false); // Role Permissions panel on the Accounts page
   const[pendingSync,setPendingSync]=useState(sbQueueSize());
   useEffect(()=>{
     const off=sbOnQueueChange(n=>setPendingSync(n));
@@ -7002,7 +7003,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Design",      items:[{id:"drf",l:"Design Requests"}]},
       {group:"Procurement", items:[{id:"procurement",l:"Purchase Orders"},{id:"subconwo",l:"Subcon Work Orders"},{id:"masters",l:"Master Lists"}]},
       {group:"Warehousing", items:[{id:"inventory",l:"Inventory"},{id:"deliveries",l:"Deliveries"},{id:"stockmove",l:"Stock Movements"}]},
-      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"permissions",l:"Permissions"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
+      {group:"Admin",       items:[{id:"accounts",l:"Accounts"},{id:"audit",l:"Audit"},{id:"botsettings",l:"Bot Settings"},{id:"activity",l:"Team Activity"}]},
     ],
     Sales:[
       {group:"Pipeline",     items:[{id:"pipeline",l:"Sales Pipeline"},{id:"calendar",l:"Calendar"},{id:"clients",l:"Clients"},{id:"sales-reports",l:"Reports"}]},
@@ -7095,7 +7096,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
-      permissions:"🔐",
     };
     const groups=navMap[role]||[];
     const allItems=groups.flatMap(g=>g.items||[]);
@@ -7239,7 +7239,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
       subcontractors:"👷",materialreq:"🔧",budgetreq:"💳",collections:"💵",
       checklist:"✅",joborders:"📄", ops:"⚙️",        datamanagement:"⚙️", myfolder:"📁",
-      permissions:"🔐",
     };
     const NAV_LABELS={
       home:"Home",pipeline:"Pipeline",projects:"Projects",finance:"Finance",executive:"Executive",
@@ -7250,7 +7249,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       stockmove:"Stock",reports:"Reports",suppliers:"Suppliers",
       subcontractors:"Subcon",calendar:"Calendar",inventory:"Inventory",
       pmupdates:"Updates",addenda:"Scope",botsettings:"Bot",activity:"Activity",
-      requests:"Requests",masters:"Masters",permissions:"Permissions",
+      requests:"Requests",masters:"Masters",
     };
     // Notification badge counts per tab
     const openBlockersAll=(blockers||[]).filter(b=>b.status==="Open").length;
@@ -14303,7 +14302,6 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <div style={{fontSize:".85rem",marginTop:6,color:"#64748b"}}>Data management is restricted to Paulo Garcia.</div>
       </div></Wrap>);
     }
-  if(page==="permissions"&&role==="Manager") return(<Wrap><PermissionsMatrix Wrap={Wrap} isMobile={isMobile}/></Wrap>);
   if(page==="datamanagement"&&role==="Manager") return(
     <Wrap>
       <DataManagement
@@ -15109,6 +15107,25 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   if(role==="Manager"&&page==="accounts") return(
     <Wrap>
       <AccountsManager users={users} session={session} onApprove={approveUser} onReject={rejectUser} onDeactivate={deactivateUser} onDelete={deleteUser} onResetPw={resetPw} onCreateUser={createUser} ROLES={ROLES}/>
+      {/* Permissions reference — who each role can view/create/edit/delete.
+          Lives alongside account management so it's one place to answer
+          "what can this person do?" right where you set their role. */}
+      {(()=>{
+        const open=accountsPermOpen;
+        return(
+          <div style={{maxWidth:1180,margin:"18px auto 0",padding:isMobile?"0 10px":"0 20px"}}>
+            <button onClick={()=>setAccountsPermOpen(o=>!o)}
+              style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"14px 16px",cursor:"pointer",fontFamily:"inherit",textAlign:"left"}}>
+              <span>
+                <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:"1.1rem",color:"#0f172a"}}>🔐 Role Permissions</span>
+                <span style={{display:"block",fontSize:".76rem",color:"#64748b",marginTop:2}}>Who can view, create, edit or delete each record type — mirrors the database security rules.</span>
+              </span>
+              <span style={{fontSize:".9rem",color:"#64748b",transform:open?"rotate(180deg)":"none",transition:"transform .15s"}}>▾</span>
+            </button>
+            {open&&<div style={{marginTop:10}}><PermissionsMatrix Wrap={Wrap} isMobile={isMobile} embedded/></div>}
+          </div>
+        );
+      })()}
       {/* Demo Data Loader */}
       {(()=>{
         const demoDealsExist=deals.some(d=>d.id?.startsWith("demo-"));
