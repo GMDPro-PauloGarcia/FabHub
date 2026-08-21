@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -5694,7 +5694,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[confirmDel, setConfirmDel] =useState(null);
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
-  const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "updates"
+  const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "awarded" | "updates"
+  const[awardScope,   setAwardScope]   = useState("mine");     // Awarded tab: "mine" | "team" (team is manager-only)
   const[aeUpdates,    setAeUpdates]    = useState([]);
   const[auditFindings,setAuditFindings]= useState([]);
   const[aeUpdateText, setAeUpdateText] = useState("");
@@ -10346,7 +10347,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Pipeline tab bar (shared) ───────────────────────────────────────────
   const PipeTabBar=()=>(
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
-      {[["pipeline","📊 Pipeline"],["updates","📝 AE Updates"]].map(([t,l])=>(
+      {[["pipeline","📊 Pipeline"],["awarded","🏆 Awarded"],["updates","📝 AE Updates"]].map(([t,l])=>(
         <button key={t} onClick={()=>setPipeTab(t)}
           style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:pipeTab===t?700:500,color:pipeTab===t?"#3b82f6":"#64748b",borderBottom:pipeTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
           {l}{t==="updates"&&aeUpdates.length>0&&<span style={{marginLeft:5,background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".65rem",fontWeight:700}}>{aeUpdates.filter(u=>u.date===today).length||""}</span>}
@@ -10571,6 +10572,138 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <div style={{fontSize:".82rem",color:"#64748b",lineHeight:1.5}}>Pipeline access is limited to the Head Designer. Head to your design queue and folder to see your assigned projects.</div>
         <button onClick={()=>setPage("home")} style={{marginTop:16,background:"#ec4899",border:"none",borderRadius:10,padding:"9px 20px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Go to My Projects →</button>
       </div>
+    </Wrap>
+  );
+
+  if(page==="pipeline"&&pipeTab==="awarded") return(
+    <Wrap>
+      <PipeTabBar/>
+      {(()=>{
+        const peso   =(v)=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
+        const isMgr  =role==="Manager";
+        // Awarded = deal in a WON stage (06→14). Exclude standby-PO umbrellas (0 value carriers).
+        const awarded=wonDeals.filter(d=>!d.standbyPO);
+        // Visibility: everyone sees their own; managers can flip to the whole team.
+        const mine   =d=>[d.salesOwner,d.assignedAE].filter(Boolean).includes(session?.name);
+        const scope  =(isMgr&&awardScope==="team")?"team":"mine";
+        const rows   =(scope==="team"?awarded:awarded.filter(mine))
+                        .slice().sort((a,b)=>(commissionEarned(b)-commissionEarned(a)));
+        const done   =s=>["12 · Close-Out","14 · Completed"].includes(s);
+        // Totals
+        const tVal   =rows.reduce((s,d)=>s+(Number(d.value)||0),0);
+        const tColl  =rows.reduce((s,d)=>s+(Number(d.amountPaid)||0),0);
+        const tOut   =Math.max(0,tVal-tColl);
+        const tEarn  =rows.reduce((s,d)=>s+commissionEarned(d),0);
+        const tProj  =rows.reduce((s,d)=>s+commissionProjected(d),0);
+        const who    =scope==="team"?"the sales team":(session?.name||"you");
+
+        const kpi=(lbl,val,sub,accent)=>(
+          <div style={{flex:"1 1 180px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"13px 15px",...(accent?{background:"linear-gradient(180deg,#ecfdf5,#fff)",borderColor:"#a7f3d0"}:{})}}>
+            <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:accent?"#059669":"#94a3b8"}}>{lbl}</div>
+            <div style={{fontSize:"1.4rem",fontWeight:800,marginTop:5,color:accent?"#047857":"#0f172a",fontVariantNumeric:"tabular-nums"}}>{val}</div>
+            {sub&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>{sub}</div>}
+          </div>
+        );
+
+        return(
+          <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:6}}>
+              <div>
+                <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🏆 Awarded Projects</h2>
+                <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{rows.length} awarded project{rows.length!==1?"s":""} · {scope==="team"?"whole team":"your projects"} · {todayL}</div>
+              </div>
+              {isMgr&&(
+                <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
+                  {[["mine","My projects"],["team","Whole team"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setAwardScope(v)} style={{border:"none",background:awardScope===v?"#3b82f6":"transparent",color:awardScope===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:6,cursor:"pointer"}}>{l}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
+              {kpi("Awarded value",peso(tVal),`${rows.length} projects · ${who}`)}
+              {kpi("Collected",peso(tColl),tVal>0?`${Math.round(tColl/tVal*100)}% of contract value in`:"—")}
+              {kpi("Outstanding",peso(tOut),"still to be collected")}
+              {kpi("Commission · earned",peso(tEarn),`${peso(tProj)} projected at full collection`,true)}
+            </div>
+
+            <div style={{display:"flex",gap:10,alignItems:"flex-start",background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:12,padding:"11px 15px",marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.55}}>
+              <span style={{fontSize:"1rem",flexShrink:0}}>💡</span>
+              <div>
+                <b style={{color:"#065f46"}}>Commission accrues on cash collected, not on award.</b> Each awarded deal earns
+                its sales owner <b>{(COMMISSION_RATE["Self-sourced"]*100)}%</b> (self-sourced client) or <b>{(COMMISSION_RATE["Given"]*100)}%</b> (client given to the team) of every peso collected.
+                <b style={{color:"#059669"}}> Earned</b> moves each time a payment is logged; <b>Projected</b> is the full commission once the contract is paid off.
+                <span style={{color:"#94a3b8"}}> Lead origin is set per deal — deals default to the {DEFAULT_LEAD_ORIGIN.toLowerCase()} rate until flagged.</span>
+              </div>
+            </div>
+
+            <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}>
+                <table style={{borderCollapse:"collapse",width:"100%",minWidth:820,fontSize:".82rem"}}>
+                  <thead>
+                    <tr style={{background:"#f8fafc",textAlign:"left"}}>
+                      {["Project","Owner","Stage","Contract","Collected","Payment","Commission"].map((h,i)=>(
+                        <th key={h} style={{padding:"10px 13px",fontSize:".65rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:"#94a3b8",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap",textAlign:i>=3&&i!==5?"right":"left"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(d=>{
+                      const collected=Number(d.amountPaid)||0, contract=Number(d.value)||0;
+                      const pct=contract>0?Math.min(100,Math.round(collected/contract*100)):0;
+                      const earned=commissionEarned(d), proj=commissionProjected(d);
+                      const payClr=PAY_CLR[d.paymentStatus]||"#94a3b8";
+                      const stgClr=STAGE_CLR[d.stage]||"#64748b";
+                      return(
+                        <tr key={d.id} onClick={()=>openEditDeal(d)} style={{borderBottom:"1px solid #f1f5f9",cursor:"pointer"}}
+                          onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                          <td style={{padding:"11px 13px",verticalAlign:"middle"}}>
+                            <div style={{fontFamily:"monospace",fontSize:".68rem",color:"#94a3b8"}}>{d.ceNo||"—"}</div>
+                            <div style={{fontWeight:700,color:"#0f172a"}}>{d.contact||d.client}</div>
+                            {d.contact&&d.client&&<div style={{fontSize:".72rem",color:"#64748b"}}>{d.client}</div>}
+                          </td>
+                          <td style={{padding:"11px 13px",whiteSpace:"nowrap",color:"#475569"}}>{d.salesOwner||"—"}</td>
+                          <td style={{padding:"11px 13px"}}>
+                            <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,whiteSpace:"nowrap",color:done(d.stage)?"#065f46":stgClr,background:done(d.stage)?"#dcfce7":stgClr+"1a"}}>{d.stage}</span>
+                          </td>
+                          <td style={{padding:"11px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap",color:"#0f172a"}}>{peso(contract)}</td>
+                          <td style={{padding:"11px 13px",textAlign:"right",minWidth:130}}>
+                            <div style={{fontVariantNumeric:"tabular-nums",color:"#0f172a"}}>{peso(collected)}</div>
+                            <div style={{height:5,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:pct+"%",background:"#059669",borderRadius:20}}/></div>
+                            <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:2}}>{pct}% collected</div>
+                          </td>
+                          <td style={{padding:"11px 13px"}}>
+                            <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,color:payClr,background:payClr+"1a",whiteSpace:"nowrap"}}>{d.paymentStatus||"Unpaid"}</span>
+                          </td>
+                          <td style={{padding:"11px 13px",textAlign:"right",whiteSpace:"nowrap"}}>
+                            <div style={{fontWeight:800,color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(earned)}</div>
+                            <div style={{fontSize:".66rem",color:"#94a3b8",fontVariantNumeric:"tabular-nums"}}>of {peso(proj)}</div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {rows.length===0&&(
+                      <tr><td colSpan={7} style={{padding:"36px 16px",textAlign:"center",color:"#94a3b8"}}>No awarded projects{scope==="mine"?" credited to you yet":" yet"}. Deals appear here once they reach stage 06 · Kickoff.</td></tr>
+                    )}
+                  </tbody>
+                  {rows.length>0&&(
+                    <tfoot>
+                      <tr style={{background:"#f8fafc",fontWeight:800}}>
+                        <td style={{padding:"12px 13px"}} colSpan={3}>{scope==="team"?"Team totals":"My totals"} · {rows.length} project{rows.length!==1?"s":""}</td>
+                        <td style={{padding:"12px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{peso(tVal)}</td>
+                        <td style={{padding:"12px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{peso(tColl)}</td>
+                        <td></td>
+                        <td style={{padding:"12px 13px",textAlign:"right",color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(tEarn)}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </Wrap>
   );
 
