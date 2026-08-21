@@ -414,7 +414,7 @@ export const sbLoadAll = async () => {
       drfs, inventory, stocklog, projRows,
       suppliers, subcontractors,
       payables, loans, loanPayments,
-      swos, boqLibrary, checkVouchers, blockers, dailyLogs, ceReqs
+      swos, boqLibrary, standaloneBoqRows, checkVouchers, blockers, dailyLogs, ceReqs
     ] = await _mapLimit([
       () => sbList('deals',                    { order: 'created_at', limit: 1000 }),
       () => sbList('job_orders',               { order: 'created_at', limit: 500 }),
@@ -458,6 +458,7 @@ export const sbLoadAll = async () => {
       () => sbList('loan_payments',   { order: 'date',        limit: 1000 }),
       () => sbList('subcon_work_orders', { order: 'created_at', limit: 500 }),
       () => sbList('boq_library',        { order: 'name', asc: true, limit: 2000 }),
+      () => sbList('standalone_boqs',    { order: 'updated_at', limit: 2000 }),
       () => sbList('check_vouchers',     { order: 'date', limit: 500 }),
       () => sbList('project_blockers',   { order: 'created_at', limit: 1000 }),
       () => sbList('daily_logs',         { order: 'log_date', limit: 1000 }),
@@ -483,6 +484,7 @@ export const sbLoadAll = async () => {
         tatCategory: card.tat_category || '',
         tatSetBy: card.tat_set_by || null,
         tatSetAt: card.tat_set_at || null,
+        manualProgress: card.manual_progress != null ? card.manual_progress : null,
         warehouseOnly: card.warehouse_only || false,
         departments: Object.fromEntries(DEPT_ORDER.map(d => [d, { done: false, doneAt: null, doneBy: null, tasks: [] }]))
       }
@@ -510,6 +512,24 @@ export const sbLoadAll = async () => {
     const budgetsObj  = Object.fromEntries(budgets.map(b  => [b.deal_id, b]))
     const cashPosObj  = Object.fromEntries(cashPos.map(c  => [c.date, c]))
 
+    // Standalone BOQs live one-row-per-BOQ in their own table (migration 051).
+    // Map snake_case columns back to the camelCase shape the app/UI uses.
+    const standaloneBoqs = (standaloneBoqRows || []).map(r => ({
+      id: r.id,
+      title: r.title || '',
+      location: r.location || '',
+      quotationNo: r.quotation_no || '',
+      boqDate: r.boq_date || '',
+      items: Array.isArray(r.items) ? r.items : [],
+      sections: Array.isArray(r.sections) ? r.sections : [],
+      vatEnabled: r.vat_enabled !== false,
+      discount: r.discount || '',
+      markupPct: r.markup_pct || '',
+      createdBy: r.created_by || '',
+      createdAt: r.created_at || '',
+      updatedAt: r.updated_at || ''
+    }))
+
     const settingsObj = Object.fromEntries((appSettings||[]).map(s => [s.key, s.value]))
     const projsObj    = Object.fromEntries((projRows||[]).map(r => [r.deal_id, r.data]))
 
@@ -525,7 +545,7 @@ export const sbLoadAll = async () => {
              prs, mreqs, breqs, addenda, cashPositions: cashPosObj, budgets: budgetsObj,
              checklist: checklists, swatches, actLog, users, settings: settingsObj,
              drfs, inventory, stocklog, projs: projsObj, suppliers, subcontractors,
-             payables, loans: loansArr, swos, boqLibrary, checkVouchers, blockers, dailyLogs, ceReqs,
+             payables, loans: loansArr, swos, boqLibrary, standaloneBoqs, checkVouchers, blockers, dailyLogs, ceReqs,
              _failed: consumeReadFailures() }
   } catch (err) {
     console.error('sbLoadAll failed:', err)

@@ -155,6 +155,8 @@ function DailyCashPosition({
   const openFloat  =useMemo(()=>floatChecks.filter(c=>!c.cleared),[floatChecks]);
   const floatByBank=useMemo(()=>byBank(openFloat),[openFloat]);
   const floatingTotal=useMemo(()=>openFloat.reduce((s,r)=>s+n(r.amount),0),[openFloat]);
+  const clearedFloat =useMemo(()=>floatChecks.filter(c=>c.cleared),[floatChecks]);
+  const clearedTotal =useMemo(()=>clearedFloat.reduce((s,r)=>s+n(r.amount),0),[clearedFloat]);
 
   // Recorded but not assigned to a bank — surfaced so the TOTAL row and per-bank columns reconcile
   const isUntagged=(r)=>!BANKS.some(b=>b.id===r.bank);
@@ -285,8 +287,13 @@ function DailyCashPosition({
     manualDisb.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||"",n(r.amount).toFixed(2)]);});
     rows.push(["TOTAL","",disbTotal.toFixed(2)]);
     rows.push([],["FLOATING CHECKS (UNCLEARED)"],["Bank","Payee / Particulars","Check No.","Amount","Status"]);
-    floatChecks.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||r.payee||"",r.checkNo||"",n(r.amount).toFixed(2),r.cleared?`Cleared ${r.clearedDate||""}`.trim():"Floating"]);});
+    openFloat.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||r.payee||"",r.checkNo||"",n(r.amount).toFixed(2),"Floating"]);});
     rows.push(["TOTAL","","",floatingTotal.toFixed(2),"(uncleared)"]);
+    if(clearedFloat.length){
+      rows.push([],["CLEARED CHECKS"],["Bank","Payee / Particulars","Check No.","Amount","Status"]);
+      clearedFloat.forEach(r=>{const bk=BANKS.find(x=>x.id===r.bank);rows.push([bk?bk.name:"",r.particulars||r.payee||"",r.checkNo||"",n(r.amount).toFixed(2),`Cleared ${r.clearedDate||""}`.trim()]);});
+      rows.push(["TOTAL","","",clearedTotal.toFixed(2),"(cleared)"]);
+    }
     const csv=rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
     const a=document.createElement("a");
     a.href="data:text/csv;charset=utf-8,"+encodeURIComponent("﻿"+csv);
@@ -585,62 +592,98 @@ function DailyCashPosition({
         </div>
 
         {/* FLOATING CHECKS */}
-        {sectionHdr("Floating Checks (uncleared)","#b45309",
-          <span style={{fontWeight:800,fontSize:".72rem",color:"#fff"}}>{peso(floatingTotal)}</span>
-        )}
-        <div style={{padding:"10px 12px 14px"}}>
-          <table style={{borderCollapse:"collapse",width:"100%",maxWidth:820}}>
-            <thead>
-              <tr>
-                <th style={{...th,textAlign:"left",width:mob?110:180}}>Bank</th>
-                <th style={{...th,textAlign:"left"}}>Payee / Particulars</th>
-                <th style={{...th,width:mob?80:120}}>Check No.</th>
-                <th style={{...th,width:mob?100:150}}>Amount</th>
-                <th style={{...th,width:mob?96:150}}>Status</th>
-                <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
+        {(()=>{
+          // Shared row renderer — `ri` is the original index into floatChecks so edits/deletes stay correct
+          const checkRow=(row,ri,zebra)=>{
+            const set=(patch)=>{const fc=[...floatChecks];fc[ri]={...fc[ri],...patch};f("floatingChecks",fc);};
+            return(
+              <tr key={row.id||ri} style={{background:row.cleared?"#f0fdf4":zebra%2?C.zebra:"#fff",opacity:row.cleared?.85:1}}>
+                <td style={{...td,padding:2}}>{isUntagged(row)&&!row.cleared&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>set({bank:v}))}</td>
+                <td style={{...td,padding:2}}>{textCell(row.particulars??row.payee??"",v=>set({particulars:v}),"Payee / particulars")}</td>
+                <td style={{...td,padding:2}}>{textCell(row.checkNo??"",v=>set({checkNo:v}),"#")}</td>
+                <td style={{...td,padding:2}}>
+                  <CurrInp value={row.amount||""} onChange={e=>set({amount:e.target.value})} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
+                </td>
+                <td style={{...td,textAlign:"center"}}>
+                  {row.cleared
+                    ?<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
+                      <span title={row.clearedDate?`Cleared ${fmtDate(row.clearedDate)}`:"Cleared"} style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#047857",background:"#dcfce7",border:"1px solid #86efac"}}>✓ Cleared{row.clearedDate?` · ${fmtDate(row.clearedDate)}`:""}</span>
+                      <button onClick={()=>set({cleared:false,clearedDate:null})} title="Mark as still floating" style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".66rem",padding:0}}>undo</button>
+                    </span>
+                    :<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
+                      <span style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#b45309",background:"#fef3c7",border:"1px solid #fde68a"}}>● Floating{row.carried?" · carried":""}</span>
+                      <button onClick={()=>set({cleared:true,clearedDate:selDate})} title="Mark this check cleared" style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:5,padding:"2px 7px",color:"#047857",cursor:"pointer",fontSize:".64rem",fontWeight:700,fontFamily:"inherit"}}>Mark cleared</button>
+                    </span>}
+                </td>
+                <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("floatingChecks",floatChecks.filter((_,j)=>j!==ri)))}</td>
               </tr>
-            </thead>
-            <tbody>
-              {floatChecks.length===0&&(
-                <tr><td colSpan={6} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No floating checks. Add released cheques below — they stay here every day until you mark them cleared.</td></tr>
-              )}
-              {floatChecks.map((row,ri)=>{
-                const set=(patch)=>{const fc=[...floatChecks];fc[ri]={...fc[ri],...patch};f("floatingChecks",fc);};
-                return(
-                  <tr key={row.id||ri} style={{background:row.cleared?"#f0fdf4":ri%2?C.zebra:"#fff",opacity:row.cleared?.75:1}}>
-                    <td style={{...td,padding:2}}>{isUntagged(row)&&!row.cleared&&<span style={{color:"#dc2626",fontWeight:700,fontSize:".62rem",marginLeft:4}}>⚠</span>}{bankSelect(row.bank,v=>set({bank:v}))}</td>
-                    <td style={{...td,padding:2}}>{textCell(row.particulars??row.payee??"",v=>set({particulars:v}),"Payee / particulars")}</td>
-                    <td style={{...td,padding:2}}>{textCell(row.checkNo??"",v=>set({checkNo:v}),"#")}</td>
-                    <td style={{...td,padding:2}}>
-                      <CurrInp value={row.amount||""} onChange={e=>set({amount:e.target.value})} style={{textAlign:"right",fontSize:".8rem",padding:"5px 8px"}}/>
-                    </td>
-                    <td style={{...td,textAlign:"center"}}>
-                      {row.cleared
-                        ?<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
-                          <span title={row.clearedDate?`Cleared ${fmtDate(row.clearedDate)}`:"Cleared"} style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#047857",background:"#dcfce7",border:"1px solid #86efac"}}>✓ Cleared</span>
-                          <button onClick={()=>set({cleared:false,clearedDate:null})} title="Mark as still floating" style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:".66rem",padding:0}}>undo</button>
-                        </span>
-                        :<span style={{display:"inline-flex",alignItems:"center",gap:5}}>
-                          <span style={{fontSize:".64rem",fontWeight:800,padding:"2px 8px",borderRadius:20,color:"#b45309",background:"#fef3c7",border:"1px solid #fde68a"}}>● Floating{row.carried?" · carried":""}</span>
-                          <button onClick={()=>set({cleared:true,clearedDate:selDate})} title="Mark this check cleared" style={{background:"#ecfdf5",border:"1px solid #a7f3d0",borderRadius:5,padding:"2px 7px",color:"#047857",cursor:"pointer",fontSize:".64rem",fontWeight:700,fontFamily:"inherit"}}>Mark cleared</button>
-                        </span>}
-                    </td>
-                    <td style={{...td,padding:2,textAlign:"center",border:"none"}}>{delBtn(()=>f("floatingChecks",floatChecks.filter((_,j)=>j!==ri)))}</td>
+            );
+          };
+          const headRow=(
+            <tr>
+              <th style={{...th,textAlign:"left",width:mob?110:180}}>Bank</th>
+              <th style={{...th,textAlign:"left"}}>Payee / Particulars</th>
+              <th style={{...th,width:mob?80:120}}>Check No.</th>
+              <th style={{...th,width:mob?100:150}}>Amount</th>
+              <th style={{...th,width:mob?96:150}}>Status</th>
+              <th style={{...th,width:40,background:"#fff",border:"none"}}></th>
+            </tr>
+          );
+          // Pair each check with its original index, then split by cleared status
+          const indexed=floatChecks.map((row,ri)=>({row,ri}));
+          const openRows=indexed.filter(x=>!x.row.cleared);
+          const clearedRows=indexed.filter(x=>x.row.cleared);
+          return(
+          <>
+            {sectionHdr("Floating Checks (uncleared)","#b45309",
+              <span style={{fontWeight:800,fontSize:".72rem",color:"#fff"}}>{peso(floatingTotal)}</span>
+            )}
+            <div style={{padding:"10px 12px 14px"}}>
+              <table style={{borderCollapse:"collapse",width:"100%",maxWidth:820}}>
+                <thead>{headRow}</thead>
+                <tbody>
+                  {openRows.length===0&&(
+                    <tr><td colSpan={6} style={{...td,color:"#94a3b8",fontStyle:"italic",padding:"10px"}}>No floating checks. Add released cheques below — they stay here every day until you mark them cleared.</td></tr>
+                  )}
+                  {openRows.map(({row,ri},i)=>checkRow(row,ri,i))}
+                  <tr style={{background:"#f1e9e2"}}>
+                    <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL FLOATING (uncleared)</td>
+                    <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(floatingTotal)}</td>
+                    <td style={{...td,border:"none",background:"#fff"}} colSpan={2}></td>
                   </tr>
-                );
-              })}
-              <tr style={{background:"#f1e9e2"}}>
-                <td style={{...td,fontWeight:900,color:"#7c2d12"}} colSpan={3}>TOTAL FLOATING (uncleared)</td>
-                <td style={{...td,...numCell,fontWeight:900,color:"#b45309"}}>{fmt2(floatingTotal)}</td>
-                <td style={{...td,border:"none",background:"#fff"}} colSpan={2}></td>
-              </tr>
-            </tbody>
-          </table>
-          <button onClick={()=>f("floatingChecks",[...floatChecks,{id:uid(),bank:"",particulars:"",checkNo:"",amount:"",cleared:false}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add floating check</button>
-          <div style={{marginTop:8,fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
-            Uncleared checks feed the <b>Float Check</b> column and lower the <b>Book</b> balance. They carry into each new day automatically until you click <b>Mark cleared</b> — clearing simply drops the check from Float; adjust the affected bank's Beginning balance to reflect the cash leaving.
-          </div>
-        </div>
+                </tbody>
+              </table>
+              <button onClick={()=>f("floatingChecks",[...floatChecks,{id:uid(),bank:"",particulars:"",checkNo:"",amount:"",cleared:false}])} style={{marginTop:10,background:"#f8fafc",border:"1.5px dashed #cbd5e1",borderRadius:8,padding:"5px 14px",fontFamily:"inherit",fontSize:".76rem",fontWeight:700,color:"#475569",cursor:"pointer"}}>+ Add floating check</button>
+              <div style={{marginTop:8,fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
+                Uncleared checks feed the <b>Float Check</b> column and lower the <b>Book</b> balance. They carry into each new day automatically until you click <b>Mark cleared</b> — clearing simply drops the check from Float; adjust the affected bank's Beginning balance to reflect the cash leaving.
+              </div>
+            </div>
+
+            {/* CLEARED FLOATING CHECKS — separated out once marked cleared */}
+            {clearedRows.length>0&&<>
+              {sectionHdr("Cleared Checks","#047857",
+                <span style={{fontWeight:800,fontSize:".72rem",color:"#fff"}}>{peso(clearedTotal)}</span>
+              )}
+              <div style={{padding:"10px 12px 14px"}}>
+                <table style={{borderCollapse:"collapse",width:"100%",maxWidth:820}}>
+                  <thead>{headRow}</thead>
+                  <tbody>
+                    {clearedRows.map(({row,ri},i)=>checkRow(row,ri,i))}
+                    <tr style={{background:"#e7f5ef"}}>
+                      <td style={{...td,fontWeight:900,color:"#065f46"}} colSpan={3}>TOTAL CLEARED</td>
+                      <td style={{...td,...numCell,fontWeight:900,color:"#047857"}}>{fmt2(clearedTotal)}</td>
+                      <td style={{...td,border:"none",background:"#fff"}} colSpan={2}></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div style={{marginTop:8,fontSize:".68rem",color:"#94a3b8",fontStyle:"italic",lineHeight:1.5}}>
+                  These checks have been marked cleared — they no longer feed the <b>Float Check</b> column and do not carry into the next day. Click <b>undo</b> to move one back to floating.
+                </div>
+              </div>
+            </>}
+          </>
+          );
+        })()}
 
         {/* NOTES */}
         <div style={{borderTop:`1px solid ${C.grid}`,padding:"12px 14px"}}>

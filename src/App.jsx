@@ -6,7 +6,7 @@ import {fmt,today,uid,KEYS,BANKS,emptyBankRow,emptyDayPosition,Inp,Sel,Fld,Card,
 import {T} from './theme';
 import {DEFAULT_DEPT_TASKS,GMD_CHECKLIST_TEMPLATE,GMD_CLIENTS,mkDesign,SEED_DEALS,SEED_PROJECTS,SEED_EXP,SEED_INF,SEED_SWATCHES,SEED_CHECKLIST,SEED_INVENTORY,SEED_DRF} from './data/seed';
 import {drfToSb,drfFromSb,invToSb,invFromSb,moveToSb,moveFromSb,supToSb,payableToSb,loanToSb,subconToSb,cvToSb,swoToSb,swoFromSb,ceReqFromSb} from './data/mappers';
-import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
+import {DEAL_STAGES, STAGE_ALIASES, normalizeStage, clientKey, WON_STAGES, ACTIVE_STAGES, LOST_STAGES, isLostStage, isActivePipeline, PAULO_GATE, CE_TYPES, STAGE_OWNER, STAGE_DURATION, PROD_STAGES, DESIGN_STATUSES, PRODUCT_TYPES, SALES_TEAM, COST_CONTROL_TEAM, OPS_TEAM, DESIGN_MEMBERS, HEAD_DESIGNER, isHeadDesigner, ALL_MEMBERS, PROD_MEMBERS, MAT_UNITS, PO_UNITS, EXP_CATS, SWATCH_CATS, SWATCH_STATUS, PAY_STATUS, LEAD_ORIGINS, DEFAULT_LEAD_ORIGIN, COMMISSION_RATE, leadOriginOf, commissionRate, commissionEarned, commissionProjected, MONTHS, PRIORITIES, STAGE_CLR, PROD_CLR, PAY_CLR, PRI_CLR, DS_CLR, SW_CLR, DRF_TYPES, DRF_STATUSES, DRF_CLR, emptyDRF, ROLE_CLR, roleLabel, CL_TYPES, CL_STATUS, CL_DEPT, TYPE_ICON, TYPE_CLR, CS_CLR, fmtK, fmtPHP, BUSINESS_DAYS_SLA, bizDaysElapsed, bizDaysRemaining, calcTax, calcInputTax, EWT_RATES, todayL, mergeLocalOnly, mergeLocalOnlyObj, addDaysISO, dueDateFromTerms, ADDENDUM_STATUSES, ADDENDUM_STATUS_CLR, CO_KINDS, coSignedValue, TAT_REFERENCE, DEPT_ORDER, HAS_ADDENDA_PAGE, DEPT_CLR, ACT_SCORE, emptyProjectCard, nextItemCode, BILLING_STATUSES, BILLING_STATUS_CLR, emptyMilestone, MR_STATUSES, BR_STATUSES, BR_PURPOSES, PR_STATUSES, PROC_STATUSES, PR_CATS, BUDGET_CATS, BUDGET_CAT_CLR, projectCostBreakdown, emptyPR, canApprovePO, woRetentionAmt, SWO_STATUSES, SWO_STATUS_CLR, emptySWO, emptyDelivery, projDisplayName, projOptions, emptyBudget, ACCT_CLR, emptyDeal, emptyProject, dealCompleteness, calcStreak, PM_UPDATE_TYPES, PM_TYPE_COLOR, PM_TYPE_ICON, WEATHER_OPTS, PAYMENT_METHODS, paymentClearDate, isPaymentCleared, VAT_TREATMENTS, REPORT_KINDS, REPORT_STATUSES, REPORT_STATUS_CLR, emptyProjectReport, latestReport, progressReportOnFile, installationReportOnFile, dealOnboardingGate, moveNeedsWitness, SCRAP_MOVE_TYPE, AUDIT_AREAS, AUDIT_SEVERITY, AUDIT_SEVERITY_CLR, AUDIT_STATUSES, AUDIT_STATUS_CLR, AUDIT_REPLY_DAYS, emptyFinding, findingOverdue, RECURRING_AUDITS} from './core';
 
 // Returns a component whose function IDENTITY is stable across renders while its
 // implementation closure stays fresh (always the latest `impl` passed in). React
@@ -35,6 +35,7 @@ const BOQBuilder=_lazyView(()=>import('./views/BOQBuilder'));
 const LiquidationView=_lazyView(()=>import('./views/LiquidationView'));
 const DailyCashPosition=_lazyView(()=>import('./views/DailyCashPosition'));
 const WeeklyCashFlow=_lazyView(()=>import('./views/WeeklyCashFlow'));
+const FinanceWeeklyDues=_lazyView(()=>import('./views/FinanceWeeklyDues'));
 const InventoryView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.InventoryView})));
 const StockMovementView=_lazyView(()=>import('./views/Warehouse').then(m=>({default:m.StockMovementView})));
 
@@ -1035,7 +1036,7 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
           </Fld>
         </div>
         <Fld label="Project Name" hint="e.g. SM Megamall Fit-Out Phase 1"><Inp value={form.contact} onChange={e=>f("contact",e.target.value)} placeholder="e.g. SM Megamall Fit-Out Phase 1"/></Fld>
-        <Fld label="Deal Value (₱)" hint="Leave blank if not yet finalized"><Inp type="number" min={0} value={form.value} onChange={e=>{const v=e.target.value;f("value",v===""?"":Math.max(0,Number(v)||0));}} placeholder="To be confirmed"/></Fld>
+        <Fld label={form.standbyPO?"Deal Value (₱) — held at 0 for standby PO":"Deal Value (₱)"} hint={form.standbyPO?"Standby POs earn nothing on the umbrella itself — value lives on the drawdown jobs":"Leave blank if not yet finalized"}><Inp type="number" min={0} value={form.standbyPO?0:form.value} disabled={form.standbyPO} onChange={e=>{const v=e.target.value;f("value",v===""?"":Math.max(0,Number(v)||0));}} placeholder="To be confirmed" style={form.standbyPO?{background:"#f1f5f9",color:"#94a3b8",cursor:"not-allowed"}:undefined}/></Fld>
         <Fld label="CE Number"><Inp value={form.ceNo||""} onChange={e=>f("ceNo",e.target.value)} placeholder="CE-2026-005"/></Fld>
         <Fld label="CE Type">
           <Sel value={form.ceType||"Fabrication / General"} onChange={e=>f("ceType",e.target.value)}>
@@ -1067,6 +1068,29 @@ function DealModal({open,onClose,form:initialForm,setForm:_setForm,onSave,editId
             />
           </Fld>
         </div>
+        {/* Standby PO / Adhoc umbrella — only for parent (non-linked) deals. Marks
+            this deal as a client PO / standby fund: the umbrella carries no
+            contract revenue of its own (value pinned to 0), and its child jobs
+            draw down against poBudget. Prevents the PO from being double-counted
+            on top of the jobs charged against it. */}
+        {!form.parentDealId&&(
+          <div style={{gridColumn:"1/-1"}}>
+            <div style={{background:form.standbyPO?"#eff6ff":"#f8fafc",borderRadius:12,padding:"12px 14px",border:`1.5px solid ${form.standbyPO?"#bfdbfe":"#e2e8f0"}`}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:".82rem",fontWeight:700,color:form.standbyPO?"#1d4ed8":"#475569"}}>
+                <input type="checkbox" checked={!!form.standbyPO} onChange={e=>{const on=e.target.checked;f("standbyPO",on);if(on)f("value",0);}} style={{width:18,height:18,cursor:"pointer",accentColor:"#2563eb"}}/>
+                💳 Standby PO / Adhoc umbrella
+              </label>
+              <div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>Tick when this is a client PO / standby fund drawn down by individual jobs. The umbrella stays at ₱0 revenue; each linked job counts as it's charged, drawing the PO ceiling down toward ₱0.</div>
+              {form.standbyPO&&(
+                <div style={{marginTop:10}}>
+                  <Fld label="PO Ceiling / Budget (₱)" hint="Total the client committed — drawdown jobs count down against this">
+                    <Inp type="number" min={0} value={form.poBudget} onChange={e=>{const v=e.target.value;f("poBudget",v===""?"":Math.max(0,Number(v)||0));}} placeholder="e.g. 854000"/>
+                  </Fld>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {isWon&&(
           <div style={{gridColumn:"1/-1"}}>
             <Fld label="🏁 Client Turnover Date" hint="Date promised to client — notifies Ops & Management when changed">
@@ -2807,7 +2831,7 @@ export default function App(){
           console.info("[FabHub] sbLoadAll result — deals:",data?.deals?.length||0,"jos:",data?.jos?.length||0,"users:",data?.users?.length||0);
           if(data){
             const idbE=[];
-            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
+            const _deals=data.deals?.length?data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",boqData:d.boq_data||null,paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})):null;
             if(_deals){setDeals(prev=>mergeLocalOnly(_deals,prev));idbE.push([KEYS.deals,_deals]);}
             const _jos=data.jos?.length?data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no,projectName:j.project_name,awardTrigger:j.award_trigger,triggerDate:j.trigger_date,startDate:j.start_date,commsLink:j.comms_link,scopeNotes:j.scope_notes,specialInstructions:j.special_instructions,designer:j.designer||"",location:j.location||"",budgetStatus:j.budget_status,issuedDate:j.issued_date,aeAssigned:j.ae_assigned})):null;
             if(_jos){setJos(prev=>mergeLocalOnly(_jos,prev));idbE.push([KEYS.jos,_jos]);}
@@ -2882,20 +2906,20 @@ export default function App(){
             if(data.settings?.custom_members){const cm=data.settings.custom_members;setCustomMembers(cm);localStorage.setItem("gmdv5:customMembers",JSON.stringify(cm));idbE.push(["gmdv5:customMembers",cm]);}
             if(data.settings?.evouchers){const ev=data.settings.evouchers;setEvouchers(ev);idbE.push([KEYS.evouchers,ev]);}
             if(data.settings?.clientprofiles){const cp=data.settings.clientprofiles;setClientProfiles(cp);idbE.push(["gmdv5:clientprofiles",cp]);}
-            if(data.settings?.standalone_boqs){
-              const serverBoqs=data.settings.standalone_boqs;
-              // Merge local-only BOQs instead of blindly replacing. Standalone
-              // BOQs all share ONE app_settings blob, so a client that saved
-              // with a stale array could have clobbered a BOQ another user had
-              // just added. Keeping local-only entries (and pushing the union
-              // back up) recovers such a BOQ and makes the server whole again —
-              // same server-authoritative-with-local-merge pattern as deals/JOs.
+            if(data.standaloneBoqs){
+              // Standalone BOQs now come from their own table, one row per BOQ
+              // (migration 051). Server is authoritative; keep any local-only
+              // BOQ that hasn't reached the server yet (offline draft) and push
+              // it up, so an in-flight save is never lost on refresh.
+              const serverBoqs=data.standaloneBoqs;
               setStandaloneBoqs(prev=>{
-                const merged=mergeLocalOnly(serverBoqs,prev);
+                const serverIds=new Set(serverBoqs.map(b=>b.id));
+                const localOnly=prev.filter(b=>!serverIds.has(b.id));
+                const merged=[...serverBoqs,...localOnly];
                 localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(merged));
                 idbSetMany([["gmdv5:standaloneBoqs",merged]]).catch(()=>{});
-                if(merged.length>serverBoqs.length&&isSupabaseReady())
-                  sbUpsert('app_settings',{key:'standalone_boqs',value:merged,updated_at:new Date().toISOString()},'key').catch(()=>{});
+                if(localOnly.length&&isSupabaseReady())
+                  localOnly.forEach(b=>sbUpsert('standalone_boqs',_boqToRow(b),'id').catch(()=>{}));
                 return merged;
               });
             }
@@ -3079,7 +3103,7 @@ export default function App(){
         // once/30s) — far more often than a manual page refresh — so a blind
         // overwrite here was the single biggest way to lose a just-added record
         // that hadn't synced yet (e.g. still in flight when the user tabbed away).
-        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
+        if(data?.deals?.length) setDeals(prev=>mergeLocalOnly(data.deals.map(d=>({...d,ceNo:d.ce_no,ceType:d.ce_type,salesOwner:d.sales_owner,bizDevSource:d.biz_dev_source,dateAcquired:d.date_acquired,dueDate:d.due_date,followUp:d.follow_up||"",amountPaid:Number(d.amount_paid)||0,paymentStatus:d.payment_status,billingGenerated:d.billing_generated||false,receiptType:d.receipt_type,commsGroup:d.comms_group,salesRepoLink:d.sales_repo_link,proposalFolderLink:d.proposal_folder_link,salesRepoNote:d.sales_repo_note||"",location:d.location||"",addedBy:d.added_by||"",addedAt:d.added_at||"",stage:normalizeStage(d.stage),awardRequestData:d.award_request_data||null,parentDealId:d.parent_deal_id||null,standbyPO:d.standby_po||false,poBudget:d.standby_po?(Number(d.po_budget)||0):"",bir2303Url:d.bir_2303_url||"",bir2303OnFile:d.bir_2303_on_file||false,vatTreatment:d.vat_treatment||"",downpaymentPct:d.downpayment_pct??null,paymentTermsText:d.payment_terms_text||"",clientSatisfied:d.client_satisfied||false,satisfactionNote:d.satisfaction_note||"",paymentTerms:d.payment_terms_json?(()=>{try{return JSON.parse(d.payment_terms_json);}catch(e){return null;}})():null})),prev));
         if(data?.jos?.length) setJos(prev=>mergeLocalOnly(data.jos.map(j=>({...j,dealId:j.deal_id,joNo:j.jo_no})),prev));
         if(Object.keys(data?.pcards||{}).length) setPcards(prev=>mergeLocalOnlyObj(data.pcards,prev));
         // Map the same camelCase fields the initial load does. Omitting dueDate
@@ -3208,6 +3232,7 @@ export default function App(){
     added_by:r.addedBy||"", added_at:r.addedAt||null,
     award_request_data:r.awardRequestData||null,
     parent_deal_id:r.parentDealId||null,
+    standby_po:!!r.standbyPO, po_budget:r.standbyPO?(Number(r.poBudget)||0):0,
     billing_generated:r.billingGenerated||false,
     // Receivables policy §2.1 onboarding facts + §2.3/§3 satisfaction
     bir_2303_url:r.bir2303Url||null, bir_2303_on_file:!!r.bir2303OnFile,
@@ -4108,6 +4133,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           proposalFolderLink:rec.proposal_folder_link,stage:normalizeStage(rec.stage),
           location:rec.location||"",addedBy:rec.added_by||"",addedAt:rec.added_at||"",
           awardRequestData:rec.award_request_data||null,boqData:rec.boq_data||null,
+          standbyPO:rec.standby_po||false,poBudget:rec.standby_po?(Number(rec.po_budget)||0):"",
           billingGenerated:rec.billing_generated||false,
           bir2303Url:rec.bir_2303_url||"",bir2303OnFile:rec.bir_2303_on_file||false,
           vatTreatment:rec.vat_treatment||"",downpaymentPct:rec.downpayment_pct??null,
@@ -4535,6 +4561,27 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       if(isSupabaseReady()) sbSyncOne("deals",nd,toSbDeal);
       return nd;
     }));
+  };
+  // Notify Jessica (Operations & Sales Admin) that a project was awarded and needs
+  // its billing milestones set up. Billing schedules are no longer auto-generated —
+  // this is the hand-off that prompts her to open Billing and use the
+  // "Set Up Billing Milestones" dialogue for the project.
+  const notifyBillingSetup=(dealId,client,contractVal,terms)=>{
+    const termLine=terms
+      ?`\n📄 Terms on file: DP ${terms.dp||0}% · Progress ${terms.progress||0}% · Final ${terms.final||0}% · Retention ${terms.retention||0}%`
+      :`\n⚠️ No payment terms captured yet — set terms first, then create the milestones.`;
+    const msg=
+      `💳 <b>Billing Milestones Needed</b>\n`+
+      `Jessica — a project was just awarded and needs its billing milestones set up.\n\n`+
+      `Client: <b>${client||dealId}</b>\n`+
+      (botSettings.hideValueInBots?"":`Contract Value: ₱${Number(contractVal||0).toLocaleString("en-PH",{maximumFractionDigits:0})}\n`)+
+      termLine+
+      `\n\n👉 Open <b>Billing</b> and use “Set Up Billing Milestones” to create the schedule.`;
+    // Finance is where billing setup lives; sales and management are copied for visibility.
+    sendTelegramNotification("finance",msg);
+    sendTelegramNotification("sales",msg);
+    sendTelegramNotification("management",msg);
+    logActivity(dealId,"Billing Setup Requested",`Jessica notified to set up billing milestones for ${client||"the awarded project"}.`,session?.name||role);
   };
   const updateMilestone=(id,ch)=>{
     if(ch.status==='Fully Paid'){
@@ -5378,7 +5425,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // Depends on both wonDeals.length AND projs key count so it re-runs after Supabase loads projs
   const projsKeyCount=Object.keys(projs).length;
   useEffect(()=>{
-    const missing=wonDeals.filter(d=>!projs[d.id]);
+    // Standby PO umbrellas have no production of their own (their jobs do),
+    // so don't spin up an empty ₱0 project shell for them.
+    const missing=wonDeals.filter(d=>!projs[d.id]&&!d.standbyPO);
     if(missing.length>0){
       const patch={};
       missing.forEach(d=>{patch[d.id]=emptyProject();});
@@ -5645,7 +5694,8 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[confirmDel, setConfirmDel] =useState(null);
   const[stageFilter,  setStageFilter]  = useState(false);  // pipeline stage click filter
   const[pipeSearch,   setPipeSearch]   = useState("");     // pipeline search query
-  const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "updates"
+  const[pipeTab,      setPipeTab]      = useState("pipeline"); // "pipeline" | "awarded" | "updates"
+  const[awardScope,   setAwardScope]   = useState("mine");     // Awarded tab: "mine" | "team" (team is manager-only)
   const[aeUpdates,    setAeUpdates]    = useState([]);
   const[auditFindings,setAuditFindings]= useState([]);
   const[aeUpdateText, setAeUpdateText] = useState("");
@@ -5669,7 +5719,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[smartImport,  setSmartImport]  = useState(null);   // {rows, summary, rawData} — AI import preview
   const[importLoading,setImportLoading]= useState(false);  // AI analyzing flag
   const[importReview, setImportReview] = useState(null);   // [{...mapped deal fields}] for review step
-  const[navCollapsed, setNavCollapsed] = useState(false);  // sidebar collapsed
+  const[navCollapsed, setNavCollapsed] = useState(()=>{try{return localStorage.getItem("gmdv5:navCollapsed")==="1";}catch{return false;}});  // sidebar collapsed (persisted)
+  useEffect(()=>{try{localStorage.setItem("gmdv5:navCollapsed",navCollapsed?"1":"0");}catch{}},[navCollapsed]);
+  // Sidebar favorites: pinned nav items (by id) surface in a ⭐ FAVORITES group at the
+  // top of the sidebar, so the pages a user works with most are reachable without scrolling.
+  const[favNav, setFavNav] = useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:favNav")||"[]");}catch{return[];}});
+  useEffect(()=>{try{localStorage.setItem("gmdv5:favNav",JSON.stringify(favNav));}catch{}},[favNav]);
+  // "Favorites only" hides every non-favorited page for a clean sidebar; a Show-all toggle
+  // brings them back so other pages stay reachable and favorites remain editable.
+  const[favOnly, setFavOnly] = useState(()=>{try{return localStorage.getItem("gmdv5:favOnly")==="1";}catch{return false;}});
+  useEffect(()=>{try{localStorage.setItem("gmdv5:favOnly",favOnly?"1":"0");}catch{}},[favOnly]);
+  const toggleFav=(id)=>setFavNav(f=>f.includes(id)?f.filter(x=>x!==id):[...f,id]);
   const isMobile = useIsMobile();
   const[moreNavOpen,  setMoreNavOpen]  = useState(false);
   const mobileNavRef = React.useRef(null);
@@ -5680,44 +5740,47 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   const[boqStandaloneId,setBoqStandaloneId]=useState(null);
   const[boqCoId,      setBoqCoId]     = useState(null);
   const[boqCoReadOnly,setBoqCoReadOnly]=useState(false);
-  // Standalone BOQs all live in ONE app_settings blob. Writing the local array
-  // wholesale is last-write-wins: a client with a stale copy clobbers BOQs
-  // other users added (reported live — a saved BOQ vanished for everyone). So
-  // read the server's current blob, apply this single change on top of it, and
-  // write the result — server-only BOQs survive. A failed read keeps the local
-  // copy, which the load-time merge re-syncs. `transform` maps the server array
-  // (or []) to the array to persist.
-  const _pushStandaloneBoqs=useCallback(async(transform)=>{
-    if(!isSupabaseReady()) return;
-    try{
-      const rows=await sbList('app_settings',{eq:{key:'standalone_boqs'}});
-      const server=Array.isArray(rows?.[0]?.value)?rows[0].value:[];
-      const merged=transform(server);
-      await sbUpsert('app_settings',{key:'standalone_boqs',value:merged,updated_at:new Date().toISOString()},'key');
-    }catch(_){/* offline/failed — local copy retained, re-synced on next load */}
-  },[]);
+  // Standalone BOQs now live ONE ROW PER BOQ in their own `standalone_boqs`
+  // table (migration 051) — Supabase is the source of truth. Each save/delete
+  // touches only that BOQ's row, so concurrent authors can never clobber each
+  // other (the old single app_settings blob could). localStorage/IndexedDB is
+  // kept purely as an offline cache, reconciled per id on the next load.
+  const _boqToRow=(b)=>({
+    id:b.id,
+    title:b.title||"",
+    location:b.location||"",
+    quotation_no:b.quotationNo||"",
+    boq_date:b.boqDate||null,
+    items:b.items||[],
+    sections:b.sections||[],
+    vat_enabled:b.vatEnabled!==false,
+    discount:b.discount||"",
+    markup_pct:b.markupPct||"",
+    created_by:b.createdBy||"",
+    created_at:b.createdAt||new Date().toISOString(),
+    updated_at:b.updatedAt||new Date().toISOString(),
+  });
   const saveStandaloneBoq=useCallback((boq)=>{
     setStandaloneBoqs(prev=>{
       const next=prev.some(b=>b.id===boq.id)?prev.map(b=>b.id===boq.id?{...b,...boq}:b):[...prev,boq];
       localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(next));
       idbSetMany([["gmdv5:standaloneBoqs",next]]).catch(()=>{});
-      // Apply this save on top of the server's latest array (local wins per id,
-      // server-only BOQs kept) rather than overwriting with the local array.
-      _pushStandaloneBoqs(server=>mergeLocalOnly(next,server));
+      // Upsert just this BOQ's row. A failed write is surfaced (and queued for
+      // retry) by sbUpsert's central error handling — no longer swallowed.
+      const merged=next.find(b=>b.id===boq.id)||boq;
+      if(isSupabaseReady()) sbUpsert('standalone_boqs',_boqToRow(merged),'id').catch(()=>{});
       return next;
     });
-  },[_pushStandaloneBoqs]);
+  },[]);
   const deleteStandaloneBoq=useCallback((id)=>{
     setStandaloneBoqs(prev=>{
       const next=prev.filter(b=>b.id!==id);
       localStorage.setItem("gmdv5:standaloneBoqs",JSON.stringify(next));
       idbSetMany([["gmdv5:standaloneBoqs",next]]).catch(()=>{});
-      // Merge with the server's latest, then drop the deleted id, so a
-      // concurrent BOQ added elsewhere isn't resurrected or clobbered.
-      _pushStandaloneBoqs(server=>mergeLocalOnly(next,server).filter(b=>b.id!==id));
+      if(isSupabaseReady()) sbDelete('standalone_boqs',id);
       return next;
     });
-  },[_pushStandaloneBoqs]);
+  },[]);
   // ── Chart of Accounts (synced via app_settings, like standalone BOQs) ──
   const[chartOfAccounts,setChartOfAccounts]=useState(()=>{try{return JSON.parse(localStorage.getItem("gmdv5:chartOfAccounts")||"[]");}catch{return [];}});
   const saveChartOfAccounts=useCallback((next)=>{
@@ -5763,6 +5826,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         withholding:rec.withholding||false, comms_group:rec.commsGroup,
         sales_repo_link:rec.salesRepoLink, proposal_folder_link:rec.proposalFolderLink,
         notes:rec.notes, probability:rec.probability||0,
+        standby_po:!!rec.standbyPO, po_budget:rec.standbyPO?(Number(rec.poBudget)||0):0,
         updated_at:new Date().toISOString(),
       };
       // Check if UUID (Supabase) or old ID
@@ -5781,7 +5845,9 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const data = overrideData||dealForm;
     if(!data.client||!data.client.trim()){toastEmit("Client name is required.","error");return;}
     if(!data.stage){toastEmit("Stage is required.","error");return;}
-    if(WON_STAGES.includes(data.stage)&&(!data.value||Number(data.value)<=0)){toastEmit("Contract value is required for awarded projects.","error");return;}
+    // Standby PO umbrellas are intentionally ₱0 (their value lives on the
+    // drawdown jobs), so exempt them from the awarded-value requirement.
+    if(WON_STAGES.includes(data.stage)&&!data.standbyPO&&(!data.value||Number(data.value)<=0)){toastEmit("Contract value is required for awarded projects.","error");return;}
     // Duplicate detection — only on new deals, not edits or forced saves
     if(!editDeal&&!skipDupCheck){
       const clientLower=data.client.toLowerCase();
@@ -5802,7 +5868,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     // since then.
     const claimedCeNo=editDeal?data.ceNo:await claimCENo(data.ceNo,deals.map(d=>d.ceNo));
     const prob=WON_STAGES.includes(data.stage)?100:data.stage==="Cancelled"?0:Number(data.probability);
-    const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:Number(data.value),invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
+    const rec={...data,ceNo:claimedCeNo,product:data.product||data.ceType||"",id:editDeal||uid(),value:data.standbyPO?0:Number(data.value),poBudget:data.standbyPO?(Number(data.poBudget)||0):"",invoiced:Number(data.invoiced||0),amountPaid:Number(data.amountPaid||0),probability:prob,
       addedBy:editDeal?(data.addedBy||""):(session?.name||""),
       addedAt:editDeal?(data.addedAt||today):today,
     };
@@ -6067,10 +6133,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     if(WON_STAGES.includes(st)) upProjs(ps=>ps[id]?ps:{...ps,[id]:emptyProject()});
     if(st==="14 · Completed"){
       const d=deals.find(x=>x.id===id);
-      const missing=[];
-      if(!d?.value||Number(d.value)===0) missing.push("Contract Value");
-      if(!d?.amountPaid||Number(d?.amountPaid)===0) missing.push("Payments Received");
-      if(missing.length>0) toastEmit(`⚠ Before closing: please ensure ${missing.join(" and ")} are recorded in Finance.`,"warning");
+      // Standby PO umbrellas have no contract value/payments of their own.
+      if(!d?.standbyPO){
+        const missing=[];
+        if(!d?.value||Number(d.value)===0) missing.push("Contract Value");
+        if(!d?.amountPaid||Number(d?.amountPaid)===0) missing.push("Payments Received");
+        if(missing.length>0) toastEmit(`⚠ Before closing: please ensure ${missing.join(" and ")} are recorded in Finance.`,"warning");
+      }
     }
     upDeals(ds=>ds.map(d=>{
       if(d.id!==id) return d;
@@ -6270,16 +6339,17 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       (form.specialInstructions?`\n⚠️ Special Instructions:\n${form.specialInstructions}\n`:"")+
       `\n🚀 All departments — please mobilize!`
     );
-    // Save payment terms if set in Step 3, and generate the billing schedule
-    // immediately so an awarded project never sits with terms on file but no
-    // invoices — see generateBillingSchedule for why this can't wait for
-    // someone to happen to open the Billing page.
+    // Save payment terms if set in Step 3. Billing milestones are NOT generated
+    // automatically anymore — instead Jessica (Operations & Sales Admin) is
+    // notified that a project was awarded and sets up the billing milestones
+    // deliberately through the Set Up Billing Milestones dialogue in Billing.
     if(form.paymentTerms){
       upDeals(ds=>ds.map(d=>d.id===id?{...d,paymentTerms:form.paymentTerms}:d));
       const termsOk=isSupabaseReady()?await sbUpdate('deals',id,{payment_terms_json:JSON.stringify(form.paymentTerms),updated_at:new Date().toISOString()}):true;
       stepResults.push({label:"Payment Terms",ok:termsOk});
-      generateBillingSchedule(id,form.paymentTerms,contractVal);
     }
+    // Notify Jessica to set up the billing milestones for the newly awarded project.
+    notifyBillingSetup(id,awardModal.client,contractVal,form.paymentTerms);
     const failedSteps=stepResults.filter(s=>!s.ok);
     if(failedSteps.length) toastEmit(`⚠️ ${awardModal.client} awarded, but needs attention: ${failedSteps.map(f=>f.label).join(", ")} — check console.`,"warning",10000);
     }catch(err){
@@ -6992,6 +7062,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       {group:"Overview",   items:[{id:"home",l:"Dashboard"},{id:"calendar",l:"Calendar"}]},
       {group:"Sales",      items:[{id:"pipeline",l:"Sales Pipeline"},{id:"clients",l:"Clients"},{id:"ceqs",l:"CE Requests"}]},
       {group:"Billing",    items:[{id:"billing",l:"Billing"}]},
+      {group:"Finance",    items:[{id:"financecal",l:"Finance Calendar"}]},
       {group:"Operations", items:[{id:"projects",l:"Projects"},{id:"addenda",l:"Scope Changes"}]},
     ],
     FinanceAssistant:[
@@ -7004,7 +7075,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
-      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
+      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
@@ -7023,15 +7094,20 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         :id==="finance"?(page==="acctdash")
         :page===id;
       const icon=NAV_ICONS[id]||NAV_ICONS[l]||"•";
+      const fav=favNav.includes(id);
       return(
         <button key={id} onClick={()=>{if(id==="payables"){setPage("finance");setFinTab("payables");}else if(id==="cashposition"){setPage("finance");setFinTab("cash");}else if(id==="executive"){setPage("finance");setFinTab("overview");}else if(id==="finance"){setPage("acctdash");}else{setPage(id);}setSelProj(null);setJoStep("select");setDealModal(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);}}
           title={collapsed?l:""}
           style={{display:"flex",alignItems:"center",gap:10,width:"100%",border:"none",borderRadius:0,padding:collapsed?"10px 0":"8px 16px",justifyContent:collapsed?"center":"flex-start",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#94a3b8",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",transition:"all .12s"}}>
           <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
-          {!collapsed&&<span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+          {!collapsed&&<span style={{flex:1,textAlign:"left",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{l}</span>}
+          {!collapsed&&<span role="button" tabIndex={-1} onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:".82rem",lineHeight:1,color:fav?"#f59e0b":"#475569",cursor:"pointer",padding:"0 2px"}}>{fav?"★":"☆"}</span>}
         </button>
       );
     };
+    // Resolve favorited ids to {id,l} for the pinned group (drop any no longer in this role's nav).
+    const itemLookup={};[...allItems,...pauloExtra].forEach(it=>{itemLookup[it.id]=it;});
+    const favItems=favNav.map(id=>itemLookup[id]).filter(Boolean);
     const W = navCollapsed ? 64 : 220;
     return(
       <aside style={{position:"fixed",left:0,top:0,height:"100vh",width:W,background:"#1e293b",display:"flex",flexDirection:"column",zIndex:200,transition:"width .2s",overflow:"hidden",boxShadow:"2px 0 12px rgba(0,0,0,.15)"}} className="noprint">
@@ -7048,7 +7124,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
             [...allItems,...pauloExtra].map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={true}/>)
           ) : (
             <>
-              {groups.map((section,si)=>(
+              {favItems.length>0&&(
+                <div style={{marginBottom:4}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 16px 3px"}}>
+                    <span style={{fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:"0.08em"}}>★ Favorites</span>
+                    <span role="button" tabIndex={-1} onClick={()=>setFavOnly(v=>!v)} title={favOnly?"Show all pages":"Hide the pages you haven't favorited"} style={{fontSize:".58rem",fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:"0.04em",cursor:"pointer"}}>{favOnly?"Show all":"Hide rest"}</span>
+                  </div>
+                  {favItems.map(({id,l})=><NavBtn key={"fav-"+id} id={id} l={l} collapsed={false}/>)}
+                </div>
+              )}
+              {!(favOnly&&favItems.length>0)&&groups.map((section,si)=>(
                 <div key={si} style={{marginBottom:4}}>
                   <div style={{padding:"8px 16px 3px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:"0.08em"}}>
                     {section.group}
@@ -7056,7 +7141,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {(section.items||[]).map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
                 </div>
               ))}
-              {pauloExtra.map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
+              {!(favOnly&&favItems.length>0)&&pauloExtra.map(({id,l})=><NavBtn key={id} id={id} l={l} collapsed={false}/>)}
             </>
           )}
         </div>
@@ -7133,7 +7218,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const NAV_ICONS={
       home:"🏠",    pipeline:"📊",   projects:"📋",   finance:"💰",   cashposition:"🏦",   cashflow:"📈",   payables:"📤",   billing:"🧾",
       reports:"📈", "sales-reports":"📈", "finance-reports":"📈", acctdash:"📒", executive:"🎯", accounting:"💸", checkvouchers:"✅", evouchers:"🧾", coa:"📚", acctreport:"📊", dailylog:"📓",
-      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅",
+      ceqs:"📐",    costanalysis:"💹",boq:"🧮",       inventory:"🗃️", calendar:"📅", financecal:"📅",
       drf:"🖌️",    procurement:"📦", subconwo:"🔨",   requests:"📋",   swatchboard:"🎨",
       masters:"🗂️",clients:"🏢",    accounts:"👥",   botsettings:"🤖",activity:"🏆", audit:"🔎",
       deliveries:"🚚",stockmove:"🔄",addenda:"⚠️",   pmupdates:"📝",  pmfeed:"📋",  suppliers:"🏭",
@@ -7177,10 +7262,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
       else if(id==="finance"){pg="acctdash";} // Finance home = ERP operational dashboard
       setPage(pg);setSelProj(null);setJoStep("select");setDealModal(false);setMoreNavOpen(false);setBoqDealId(null);setBoqStandaloneId(null);setBoqCoId(null);if(id==="home")setFromHome(false);
     };
-    // For Manager show fixed key tabs + More; others show first 4 + Me
-    const primaryIds=role==="Manager"
-      ? ["home","pipeline","projects","finance"]
-      : allItems.slice(0,4).map(x=>x.id);
+    // Favorites (if the user set any) drive the mobile bottom bar and lead the More sheet,
+    // matching the desktop sidebar. Only ids present in this role's nav are kept.
+    const favItemsM=favNav.map(id=>allItems.find(x=>x.id===id)).filter(Boolean);
+    // For Manager show fixed key tabs + More; others show first 4 + Me.
+    // When favorites exist, the first 4 favorites take the primary slots instead.
+    const primaryIds=favItemsM.length>0
+      ? favItemsM.slice(0,4).map(x=>x.id)
+      : role==="Manager"
+        ? ["home","pipeline","projects","finance"]
+        : allItems.slice(0,4).map(x=>x.id);
     const moreBadge=Object.entries(BADGE_MAP).filter(([id])=>!primaryIds.includes(id)).reduce((s,[,v])=>s+v,0);
     const tabs=[
       ...primaryIds.map(id=>({id,l:allItems.find(x=>x.id===id)?.l||id})),
@@ -7197,9 +7288,33 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
           <div style={{position:"fixed",bottom:62,left:0,right:0,maxHeight:"70vh",overflowY:"auto",background:"#1e293b",zIndex:299,borderRadius:"18px 18px 0 0",borderTop:"1px solid rgba(255,255,255,.12)",boxShadow:"0 -4px 24px rgba(0,0,0,.35)",paddingBottom:8}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px 8px",borderBottom:"1px solid rgba(255,255,255,.08)"}}>
               <span style={{fontFamily:"'Barlow Condensed',sans-serif",fontWeight:800,fontSize:".95rem",color:"#f8fafc",letterSpacing:.5}}>All Sections</span>
-              <button onClick={()=>setMoreNavOpen(false)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,width:28,height:28,color:"#94a3b8",cursor:"pointer",fontSize:".9rem"}}>✕</button>
+              <div style={{display:"flex",alignItems:"center",gap:10}}>
+                {favItemsM.length>0&&(
+                  <button onClick={()=>setFavOnly(v=>!v)} style={{background:"transparent",border:"none",color:"#94a3b8",cursor:"pointer",fontSize:".62rem",fontWeight:700,textTransform:"uppercase",letterSpacing:".04em",fontFamily:"inherit"}}>{favOnly?"Show all":"Hide rest"}</button>
+                )}
+                <button onClick={()=>setMoreNavOpen(false)} style={{background:"rgba(255,255,255,.1)",border:"none",borderRadius:6,width:28,height:28,color:"#94a3b8",cursor:"pointer",fontSize:".9rem"}}>✕</button>
+              </div>
             </div>
-            {groups.map((sec,si)=>(
+            {favItemsM.length>0&&(
+              <div style={{padding:"6px 0"}}>
+                <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#f59e0b",textTransform:"uppercase",letterSpacing:".08em"}}>★ Favorites</div>
+                <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
+                  {favItemsM.map(({id,l})=>{
+                    const active=page===id;
+                    const icon=NAV_ICONS[id]||"•";
+                    const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+                    return(
+                      <button key={"favm-"+id} onClick={()=>navigate(id)}
+                        style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",textAlign:"left"}}>
+                        <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
+                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {!(favOnly&&favItemsM.length>0)&&groups.map((sec,si)=>(
               <div key={si} style={{padding:"6px 0"}}>
                 <div style={{padding:"4px 16px 2px",fontSize:".58rem",fontWeight:800,color:"#475569",textTransform:"uppercase",letterSpacing:".08em"}}>{sec.group}</div>
                 <div style={{display:"grid",gridTemplateColumns:window.innerWidth<768?"1fr":"1fr 1fr",gap:0}}>
@@ -7207,11 +7322,13 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                     const active=page===id;
                     const icon=NAV_ICONS[id]||"•";
                     const label=NAV_LABELS[id]||l?.replace(/📅|📋|📝|⚠️|📊|📦/g,"").trim()||l;
+                    const fav=favNav.includes(id);
                     return(
                       <button key={id} onClick={()=>navigate(id)}
                         style={{display:"flex",alignItems:"center",gap:10,border:"none",padding:"10px 16px",background:active?"rgba(245,158,11,.15)":"transparent",color:active?"#f59e0b":"#cbd5e1",fontFamily:"inherit",fontSize:".82rem",fontWeight:active?700:400,cursor:"pointer",borderLeft:active?"3px solid #f59e0b":"3px solid transparent",textAlign:"left"}}>
                         <span style={{fontSize:"1rem",flexShrink:0}}>{icon}</span>
-                        <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+                        <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{label}</span>
+                        <span role="button" tabIndex={-1} onClick={(e)=>{e.stopPropagation();toggleFav(id);}} title={fav?"Remove from favorites":"Pin to favorites"} style={{flexShrink:0,fontSize:"1rem",lineHeight:1,color:fav?"#f59e0b":"#475569",padding:"0 4px"}}>{fav?"★":"☆"}</span>
                       </button>
                     );
                   })}
@@ -7558,7 +7675,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const myDeals=deals.filter(d=>d.salesOwner===session?.name);
         const myWon=myDeals.filter(d=>WON_STAGES.includes(d.stage));
         const myPipe=myDeals.filter(d=>isActivePipeline(d.stage));
-        const myUnpriced=myPipe.filter(d=>!Number(d.value)||Number(d.value)===0);
+        const myUnpriced=myPipe.filter(d=>!d.standbyPO&&(!Number(d.value)||Number(d.value)===0));
         const myColl=myWon.reduce((s,d)=>s+dealCollected(d),0);
         const myRev=myWon.reduce((s,d)=>s+Number(d.value||0),0);
         const myOut=Math.max(0,myWon.reduce((s,d)=>s+Number(d.invoiced||0)-dealCollected(d),0));
@@ -7855,7 +7972,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         const autoBudgets=wonDeals.filter(d=>budgets[d.id]?.autoGenerated);
         // Unpriced pipeline deals — Sales created but QS has not set value yet
         const wonIds=new Set(wonDeals.map(d=>d.id));
-        const unpricedDeals=deals.filter(d=>!wonIds.has(d.id)&&(!Number(d.value)||Number(d.value)===0)&&d.stage&&!["12 · Close-Out","14 · Completed"].includes(d.stage));
+        const unpricedDeals=deals.filter(d=>!wonIds.has(d.id)&&!d.standbyPO&&(!Number(d.value)||Number(d.value)===0)&&d.stage&&!["12 · Close-Out","14 · Completed"].includes(d.stage));
         const withBudget=wonDeals.filter(d=>budgets[d.id]);
         const overBudget=withBudget.filter(d=>{
           const b=budgets[d.id];const total=(b.Materials||0)+(b.Labor||0)+(b.Overhead||0)+(b.Subcon||0);
@@ -9572,18 +9689,18 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     const filteredPipeline=repAEFilter?openPipeline.filter(d=>(d.salesOwner||"Unassigned")===repAEFilter):openPipeline;
     const allAEs=[...new Set([...monthWon,...openPipeline].map(d=>d.salesOwner||"Unassigned"))].sort();
     const dataFlags=[];
-    const zeroWon=monthWon.filter(d=>!Number(d.value));
+    const zeroWon=monthWon.filter(d=>!Number(d.value)&&!d.standbyPO);
     if(zeroWon.length)dataFlags.push({n:dataFlags.length+1,issue:"Won deal with no value",detail:zeroWon.map(d=>`${d.client} — ${d.product||"(no project)"}`).join("; "),stake:"unknown"});
     const noCE=monthWon.filter(d=>!d.ceNo);
     if(noCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Missing CE# on won deal",detail:noCE.map(d=>d.client).join(", "),stake:"—"});
     const ceCounts={};deals.filter(d=>d.ceNo).forEach(d=>{ceCounts[d.ceNo]=(ceCounts[d.ceNo]||0)+1;});
     const dupCE=Object.entries(ceCounts).filter(([,c])=>c>1);
     if(dupCE.length)dataFlags.push({n:dataFlags.length+1,issue:"Duplicate CE numbers",detail:dupCE.map(([ce,c])=>`${ce} (${c}x)`).join(", "),stake:"—"});
-    const noBilling=monthWon.filter(d=>!billings.some(b=>b.dealId===d.id));
+    const noBilling=monthWon.filter(d=>!d.standbyPO&&!billings.some(b=>b.dealId===d.id));
     if(noBilling.length)dataFlags.push({n:dataFlags.length+1,issue:"Won project — no billing milestones",detail:noBilling.map(d=>d.client).join(", "),stake:fmt(noBilling.reduce((s,d)=>s+Number(d.value||0),0))});
     const noClient=openPipeline.filter(d=>!d.client);
     if(noClient.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals missing client name",detail:`${noClient.length} deal(s) with no client`,stake:"—"});
-    const noVal=openPipeline.filter(d=>!Number(d.value));
+    const noVal=openPipeline.filter(d=>!Number(d.value)&&!d.standbyPO);
     if(noVal.length)dataFlags.push({n:dataFlags.length+1,issue:"Pipeline deals with no value",detail:`${noVal.length} deal(s) have ₱0 value — pipeline understated`,stake:"unknown"});
     const yearDeals=deals.filter(d=>{const dt=acqDate(d);return dt&&new Date(dt).getFullYear()===CY;});
     const yearWon=yearDeals.filter(d=>WON_STAGES.includes(d.stage));
@@ -10230,7 +10347,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
   // ── Pipeline tab bar (shared) ───────────────────────────────────────────
   const PipeTabBar=()=>(
     <div style={{display:"flex",gap:0,borderBottom:"2px solid #e2e8f0",marginBottom:20}}>
-      {[["pipeline","📊 Pipeline"],["updates","📝 AE Updates"]].map(([t,l])=>(
+      {[["pipeline","📊 Pipeline"],["awarded","🏆 Awarded"],["updates","📝 AE Updates"]].map(([t,l])=>(
         <button key={t} onClick={()=>setPipeTab(t)}
           style={{padding:"9px 20px",border:"none",background:"none",cursor:"pointer",fontSize:".88rem",fontWeight:pipeTab===t?700:500,color:pipeTab===t?"#3b82f6":"#64748b",borderBottom:pipeTab===t?"2px solid #3b82f6":"2px solid transparent",marginBottom:-2,fontFamily:"inherit"}}>
           {l}{t==="updates"&&aeUpdates.length>0&&<span style={{marginLeft:5,background:"#3b82f6",color:"#fff",borderRadius:20,padding:"1px 6px",fontSize:".65rem",fontWeight:700}}>{aeUpdates.filter(u=>u.date===today).length||""}</span>}
@@ -10455,6 +10572,138 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         <div style={{fontSize:".82rem",color:"#64748b",lineHeight:1.5}}>Pipeline access is limited to the Head Designer. Head to your design queue and folder to see your assigned projects.</div>
         <button onClick={()=>setPage("home")} style={{marginTop:16,background:"#ec4899",border:"none",borderRadius:10,padding:"9px 20px",color:"#fff",fontFamily:"inherit",fontWeight:700,fontSize:".82rem",cursor:"pointer"}}>Go to My Projects →</button>
       </div>
+    </Wrap>
+  );
+
+  if(page==="pipeline"&&pipeTab==="awarded") return(
+    <Wrap>
+      <PipeTabBar/>
+      {(()=>{
+        const peso   =(v)=>"₱"+Math.round(Number(v)||0).toLocaleString("en-PH");
+        const isMgr  =role==="Manager";
+        // Awarded = deal in a WON stage (06→14). Exclude standby-PO umbrellas (0 value carriers).
+        const awarded=wonDeals.filter(d=>!d.standbyPO);
+        // Visibility: everyone sees their own; managers can flip to the whole team.
+        const mine   =d=>[d.salesOwner,d.assignedAE].filter(Boolean).includes(session?.name);
+        const scope  =(isMgr&&awardScope==="team")?"team":"mine";
+        const rows   =(scope==="team"?awarded:awarded.filter(mine))
+                        .slice().sort((a,b)=>(commissionEarned(b)-commissionEarned(a)));
+        const done   =s=>["12 · Close-Out","14 · Completed"].includes(s);
+        // Totals
+        const tVal   =rows.reduce((s,d)=>s+(Number(d.value)||0),0);
+        const tColl  =rows.reduce((s,d)=>s+(Number(d.amountPaid)||0),0);
+        const tOut   =Math.max(0,tVal-tColl);
+        const tEarn  =rows.reduce((s,d)=>s+commissionEarned(d),0);
+        const tProj  =rows.reduce((s,d)=>s+commissionProjected(d),0);
+        const who    =scope==="team"?"the sales team":(session?.name||"you");
+
+        const kpi=(lbl,val,sub,accent)=>(
+          <div style={{flex:"1 1 180px",background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,padding:"13px 15px",...(accent?{background:"linear-gradient(180deg,#ecfdf5,#fff)",borderColor:"#a7f3d0"}:{})}}>
+            <div style={{fontSize:".68rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:accent?"#059669":"#94a3b8"}}>{lbl}</div>
+            <div style={{fontSize:"1.4rem",fontWeight:800,marginTop:5,color:accent?"#047857":"#0f172a",fontVariantNumeric:"tabular-nums"}}>{val}</div>
+            {sub&&<div style={{fontSize:".7rem",color:"#94a3b8",marginTop:2}}>{sub}</div>}
+          </div>
+        );
+
+        return(
+          <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:6}}>
+              <div>
+                <h2 style={{margin:0,fontWeight:800,color:"#0f172a",fontSize:"1.15rem"}}>🏆 Awarded Projects</h2>
+                <div style={{fontSize:".75rem",color:"#64748b",marginTop:2}}>{rows.length} awarded project{rows.length!==1?"s":""} · {scope==="team"?"whole team":"your projects"} · {todayL}</div>
+              </div>
+              {isMgr&&(
+                <div style={{display:"flex",background:"#f1f5f9",borderRadius:9,padding:3}}>
+                  {[["mine","My projects"],["team","Whole team"]].map(([v,l])=>(
+                    <button key={v} onClick={()=>setAwardScope(v)} style={{border:"none",background:awardScope===v?"#3b82f6":"transparent",color:awardScope===v?"#fff":"#475569",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",padding:"6px 14px",borderRadius:6,cursor:"pointer"}}>{l}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:12}}>
+              {kpi("Awarded value",peso(tVal),`${rows.length} projects · ${who}`)}
+              {kpi("Collected",peso(tColl),tVal>0?`${Math.round(tColl/tVal*100)}% of contract value in`:"—")}
+              {kpi("Outstanding",peso(tOut),"still to be collected")}
+              {kpi("Commission · earned",peso(tEarn),`${peso(tProj)} projected at full collection`,true)}
+            </div>
+
+            <div style={{display:"flex",gap:10,alignItems:"flex-start",background:"#ecfdf5",border:"1.5px solid #a7f3d0",borderRadius:12,padding:"11px 15px",marginBottom:16,fontSize:".78rem",color:"#334155",lineHeight:1.55}}>
+              <span style={{fontSize:"1rem",flexShrink:0}}>💡</span>
+              <div>
+                <b style={{color:"#065f46"}}>Commission accrues on cash collected, not on award.</b> Each awarded deal earns
+                its sales owner <b>{(COMMISSION_RATE["Self-sourced"]*100)}%</b> (self-sourced client) or <b>{(COMMISSION_RATE["Given"]*100)}%</b> (client given to the team) of every peso collected.
+                <b style={{color:"#059669"}}> Earned</b> moves each time a payment is logged; <b>Projected</b> is the full commission once the contract is paid off.
+                <span style={{color:"#94a3b8"}}> Lead origin is set per deal — deals default to the {DEFAULT_LEAD_ORIGIN.toLowerCase()} rate until flagged.</span>
+              </div>
+            </div>
+
+            <div style={{background:"#fff",border:"1.5px solid #e2e8f0",borderRadius:12,overflow:"hidden"}}>
+              <div style={{overflowX:"auto"}}>
+                <table style={{borderCollapse:"collapse",width:"100%",minWidth:820,fontSize:".82rem"}}>
+                  <thead>
+                    <tr style={{background:"#f8fafc",textAlign:"left"}}>
+                      {["Project","Owner","Stage","Contract","Collected","Payment","Commission"].map((h,i)=>(
+                        <th key={h} style={{padding:"10px 13px",fontSize:".65rem",fontWeight:700,letterSpacing:".5px",textTransform:"uppercase",color:"#94a3b8",borderBottom:"1.5px solid #e2e8f0",whiteSpace:"nowrap",textAlign:i>=3&&i!==5?"right":"left"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(d=>{
+                      const collected=Number(d.amountPaid)||0, contract=Number(d.value)||0;
+                      const pct=contract>0?Math.min(100,Math.round(collected/contract*100)):0;
+                      const earned=commissionEarned(d), proj=commissionProjected(d);
+                      const payClr=PAY_CLR[d.paymentStatus]||"#94a3b8";
+                      const stgClr=STAGE_CLR[d.stage]||"#64748b";
+                      return(
+                        <tr key={d.id} onClick={()=>openEditDeal(d)} style={{borderBottom:"1px solid #f1f5f9",cursor:"pointer"}}
+                          onMouseEnter={e=>e.currentTarget.style.background="#f8fafc"} onMouseLeave={e=>e.currentTarget.style.background="#fff"}>
+                          <td style={{padding:"11px 13px",verticalAlign:"middle"}}>
+                            <div style={{fontFamily:"monospace",fontSize:".68rem",color:"#94a3b8"}}>{d.ceNo||"—"}</div>
+                            <div style={{fontWeight:700,color:"#0f172a"}}>{d.contact||d.client}</div>
+                            {d.contact&&d.client&&<div style={{fontSize:".72rem",color:"#64748b"}}>{d.client}</div>}
+                          </td>
+                          <td style={{padding:"11px 13px",whiteSpace:"nowrap",color:"#475569"}}>{d.salesOwner||"—"}</td>
+                          <td style={{padding:"11px 13px"}}>
+                            <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,whiteSpace:"nowrap",color:done(d.stage)?"#065f46":stgClr,background:done(d.stage)?"#dcfce7":stgClr+"1a"}}>{d.stage}</span>
+                          </td>
+                          <td style={{padding:"11px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums",whiteSpace:"nowrap",color:"#0f172a"}}>{peso(contract)}</td>
+                          <td style={{padding:"11px 13px",textAlign:"right",minWidth:130}}>
+                            <div style={{fontVariantNumeric:"tabular-nums",color:"#0f172a"}}>{peso(collected)}</div>
+                            <div style={{height:5,borderRadius:20,background:"#e2e8f0",overflow:"hidden",marginTop:4}}><div style={{height:"100%",width:pct+"%",background:"#059669",borderRadius:20}}/></div>
+                            <div style={{fontSize:".66rem",color:"#94a3b8",marginTop:2}}>{pct}% collected</div>
+                          </td>
+                          <td style={{padding:"11px 13px"}}>
+                            <span style={{fontSize:".68rem",fontWeight:700,padding:"3px 9px",borderRadius:20,color:payClr,background:payClr+"1a",whiteSpace:"nowrap"}}>{d.paymentStatus||"Unpaid"}</span>
+                          </td>
+                          <td style={{padding:"11px 13px",textAlign:"right",whiteSpace:"nowrap"}}>
+                            <div style={{fontWeight:800,color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(earned)}</div>
+                            <div style={{fontSize:".66rem",color:"#94a3b8",fontVariantNumeric:"tabular-nums"}}>of {peso(proj)}</div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {rows.length===0&&(
+                      <tr><td colSpan={7} style={{padding:"36px 16px",textAlign:"center",color:"#94a3b8"}}>No awarded projects{scope==="mine"?" credited to you yet":" yet"}. Deals appear here once they reach stage 06 · Kickoff.</td></tr>
+                    )}
+                  </tbody>
+                  {rows.length>0&&(
+                    <tfoot>
+                      <tr style={{background:"#f8fafc",fontWeight:800}}>
+                        <td style={{padding:"12px 13px"}} colSpan={3}>{scope==="team"?"Team totals":"My totals"} · {rows.length} project{rows.length!==1?"s":""}</td>
+                        <td style={{padding:"12px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{peso(tVal)}</td>
+                        <td style={{padding:"12px 13px",textAlign:"right",fontVariantNumeric:"tabular-nums"}}>{peso(tColl)}</td>
+                        <td></td>
+                        <td style={{padding:"12px 13px",textAlign:"right",color:"#059669",fontVariantNumeric:"tabular-nums"}}>{peso(tEarn)}</td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </Wrap>
   );
 
@@ -10782,7 +11031,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       {vvipClients?.has(d.client)&&<span style={{fontSize:".6rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⭐</span>}
                       {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".6rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700}}>₱3M+</span>}
                       {d.awardRequestData&&<span style={{fontSize:".6rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700}}>🏆 Pending</span>}
-                      {(!Number(d.value)||Number(d.value)===0)&&<span style={{fontSize:".6rem",color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⏳ Awaiting QS Price</span>}
+                      {!d.standbyPO&&(!Number(d.value)||Number(d.value)===0)&&<span style={{fontSize:".6rem",color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"1px 5px",fontWeight:700}}>⏳ Awaiting QS Price</span>}
                     </div>
                     <div style={{fontSize:".72rem",color:"#64748b",display:"flex",gap:6,flexWrap:"wrap"}}>
                       {d.ceNo&&<span style={{fontWeight:600}}>{d.ceNo}</span>}
@@ -10818,7 +11067,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   {vvipClients?.has(d.client)&&<span style={{fontSize:".58rem",color:"#d97706",background:"#fef3c7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⭐</span>}
                   {!BUDGET_ONLY.includes(role)&&Number(d.value)>=3000000&&<span style={{fontSize:".58rem",color:"#dc2626",background:"#fef2f2",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>₱3M+</span>}
                   {d.awardRequestData&&<span style={{fontSize:".58rem",color:"#059669",background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>🏆 Pending</span>}
-                  {(!Number(d.value)||Number(d.value)===0)&&<span style={{fontSize:".58rem",color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⏳ Awaiting QS Price</span>}
+                  {!d.standbyPO&&(!Number(d.value)||Number(d.value)===0)&&<span style={{fontSize:".58rem",color:"#7c3aed",background:"#f5f3ff",border:"1px solid #ddd6fe",borderRadius:20,padding:"1px 5px",fontWeight:700,flexShrink:0}}>⏳ Awaiting QS Price</span>}
                 </div>
                 <div style={{fontSize:".67rem",color:"#94a3b8",marginTop:1,display:"flex",gap:8,flexWrap:"wrap"}}>
                   {d.ceNo&&<span style={{color:"#475569",fontWeight:600}}>{d.ceNo}</span>}
@@ -10953,7 +11202,16 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                   };
                   const paid=dealCollected(d);
                   const inv=Number(d.invoiced)||0;
-                  const contractVal=Number(d.value)||0;
+                  // Standby PO / Adhoc umbrella: the parent carries no contract
+                  // revenue of its own (held at 0). Instead it shows a drawdown of
+                  // its PO ceiling — used = Σ of its active child jobs, remaining
+                  // counts down toward 0 as jobs are charged against the fund.
+                  const isStandby=!isChild&&!!d.standbyPO;
+                  const poBudget=Number(d.poBudget)||0;
+                  const drawUsed=isStandby?deals.filter(c=>c.parentDealId===d.id&&!isLostStage(c.stage)).reduce((s,c)=>s+(Number(c.value)||0),0):0;
+                  const drawLeft=Math.max(0,poBudget-drawUsed);
+                  const drawPct=poBudget>0?Math.min(100,Math.round(drawUsed/poBudget*100)):0;
+                  const contractVal=isStandby?0:Number(d.value)||0;
                   const outstanding=Math.max(0,contractVal-paid);
                   const pctPaid=contractVal>0?Math.min(100,Math.round(paid/contractVal*100)):0;
                   const sc=STAGE_CLR_PIPE[d.stage]||"#94a3b8";
@@ -10985,6 +11243,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                         </div>
                         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginTop:isChild?2:4}}>
                           {!isChild&&(()=>{const t=d.ceType||"Other";const tc=TYPE_CLR_PIPE[t]||"#64748b";return(<span style={{fontSize:".56rem",fontWeight:700,letterSpacing:".02em",padding:"1px 6px",borderRadius:3,background:tc+"18",color:tc,border:`1px solid ${tc}55`}}>{t}</span>);})()}
+                          {isStandby&&<span title="Standby PO — umbrella fund drawn down by its jobs" style={{fontSize:".56rem",fontWeight:700,letterSpacing:".02em",padding:"1px 6px",borderRadius:3,background:"#dbeafe",color:"#1d4ed8",border:"1px solid #93c5fd"}}>💳 STANDBY PO</span>}
                           {d.ceNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#eff6ff",color:"#1d4ed8",border:"1px solid #bfdbfe"}}>{d.ceNo}</span>}
                           {jo?.joNo&&<span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".56rem",fontWeight:600,padding:"1px 5px",borderRadius:3,background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0"}}>{jo.joNo}</span>}
                         </div>
@@ -10995,7 +11254,15 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                       <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.aeAssigned||jo?.aeAssigned||d.salesOwner||<span style={{color:"#cbd5e1"}}>—</span>}</td>
                       <td style={{padding:cp,fontSize:metaFs,fontWeight:500,color:"#0d1117",verticalAlign:"middle",whiteSpace:"nowrap"}}>{pc?.pm1||jo?.pm1||<span style={{color:"#cbd5e1"}}>—</span>}</td>
                       <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
-                        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
+                        {isStandby?(
+                          <div style={{minWidth:120}}>
+                            <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:drawLeft===0?"#64748b":"#2563eb"}} title={`Standby PO drawdown — ₱${drawUsed.toLocaleString("en-PH")} used of ₱${poBudget.toLocaleString("en-PH")}`}>₱{drawLeft.toLocaleString("en-PH")} <span style={{fontSize:".82em",fontWeight:600,color:"#94a3b8"}}>left</span></div>
+                            <div style={{height:4,borderRadius:3,background:"#e2e8f0",marginTop:3,overflow:"hidden"}}><div style={{width:`${drawPct}%`,height:"100%",background:drawPct>=100?"#059669":"#3b82f6"}}/></div>
+                            <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:".54rem",fontWeight:700,color:"#94a3b8",marginTop:2}}>💳 PO ₱{poBudget.toLocaleString("en-PH")} · {drawPct}% used</div>
+                          </div>
+                        ):(
+                          <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs,fontWeight:700,color:"#10b981"}}>₱{contractVal.toLocaleString("en-PH")}</div>
+                        )}
                       </td>
                       <td style={{padding:cp,verticalAlign:"middle",textAlign:"right",whiteSpace:"nowrap"}}>
                         <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:moneyFs2,fontWeight:700,color:pctPaid===100?"#059669":"#0d1117"}}>₱{paid.toLocaleString("en-PH")}</div>
@@ -11097,7 +11364,10 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
                 wonDeals.filter(d=>!d.parentDealId&&(pipeAE==="all"||d.salesOwner===pipeAE)&&matchSearch(d))
                   .forEach(d=>{const t=d.ceType||"Other";typeCounts[t]=(typeCounts[t]||0)+1;});
                 const typeList=Object.keys(typeCounts).sort();
-                const grandTotal=activeWon.reduce((s,d)=>s+Number(d.value||0),0);
+                // Standby PO umbrellas contribute 0 (their value lives on the
+                // drawdown jobs) so the total reflects charged work, never the PO
+                // ceiling stacked on top of the jobs drawn against it.
+                const grandTotal=activeWon.reduce((s,d)=>s+((d.standbyPO&&!d.parentDealId)?0:Number(d.value||0)),0);
                 return(<>
                   {/* Active Awarded — flat table with a project-type filter */}
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".84rem",marginBottom:10,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
@@ -11457,12 +11727,28 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
     </>
     );
 
+    // SalesOpsAdmin (Jessica) is scoped to ONLY the Weekly Dues board — she can
+    // see when collections are due and when payments are scheduled, but not the
+    // executive P&L, cash position, or AP ledger.
+    if((page==="financecal"||page==="finance")&&role==="SalesOpsAdmin") return(
+      <Wrap>
+        <FinanceWeeklyDues billings={billings} payables={payables} wonDeals={wonDeals} deals={deals} completedDeals={completedDeals} today={today} setPage={setPage} setFinTab={setFinTab} role={role}/>
+      </Wrap>
+    );
+
     if(page==="finance"&&(role==="Finance"||role==="Manager"||role==="FinanceAssistant"||role==="Accounting")) return(
       <Wrap>
         {/* Aerwin's Purchase-to-Payment ERP header shows only on the ERP operational
             tabs (Accounts Payable, Payments). The owner/executive views — Executive
             dashboard (overview/P&L/Loans) and Cash Position — are their own pages. */}
         {["payables","payments"].includes(finTab)&&<FinanceErpBar active={finTab==="payables"?"ap":"payments"} go={financeErpGo} counts={financeErpCounts()}/>}
+        {/* Weekly Dues board toggle — always reachable from anywhere in Finance. */}
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+          <button onClick={()=>setFinTab(finTab==="duesboard"?"overview":"duesboard")} style={{whiteSpace:"nowrap",padding:"6px 14px",borderRadius:20,border:`1px solid ${finTab==="duesboard"?ERP.navy:ERP.line}`,background:finTab==="duesboard"?ERP.navy:"#fff",color:finTab==="duesboard"?"#fff":ERP.muted,cursor:"pointer",fontSize:".78rem",fontWeight:600,fontFamily:"inherit"}}>📅 Weekly Dues</button>
+        </div>
+        {finTab==="duesboard"&&(
+          <FinanceWeeklyDues billings={billings} payables={payables} wonDeals={wonDeals} deals={deals} completedDeals={completedDeals} today={today} setPage={setPage} setFinTab={setFinTab} role={role}/>
+        )}
         {/* The old Finance sub-tab bar (Overview/Cash/Payables/Payments) was removed —
             those views are reached from the left nav (Finance, Cash Position,
             Accounts Payable) and the ERP bar (Accounts Payable, Payments). Only
@@ -13599,6 +13885,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         ceReqs={ceReqs}
         toastEmit={toastEmit}
         customMembers={customMembers} setCustomMembers={setCustomMembers}
+        setPage={setPage} setJumpDeal={setJumpDeal}
         sendTelegramNotification={sendTelegramNotification}/>
       {/* ── SMART IMPORT PREVIEW MODAL ──────────────────────────────── */}
       {smartImport&&(
@@ -14120,7 +14407,7 @@ ${Number(qty)<Number(pr.qty)?`<div class="notes-box">⚠️ <strong>Partial Deli
         projs={projs} overallProg={overallProg}
         toastEmit={toastEmit} sendTelegramNotification={sendTelegramNotification}/>
     </Wrap>
-    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});generateBillingSchedule(dealId,terms,deals.find(d=>d.id===dealId)?.value);toastEmit("✅ Payment terms saved — billing schedule generated.","success");setPayTermsModal(null);}} session={session}/>}
+    {payTermsModal&&<PaymentTermsModal dealId={payTermsModal} deals={deals} onClose={()=>setPayTermsModal(null)} onSave={(dealId,terms)=>{upDeals(ds=>ds.map(d=>d.id===dealId?{...d,paymentTerms:terms}:d));if(isSupabaseReady())sbUpdate('deals',dealId,{payment_terms_json:JSON.stringify(terms),updated_at:new Date().toISOString()}).catch(()=>{});toastEmit("✅ Payment terms saved. Use “Set Up Billing Milestones” in Billing to create the schedule.","success");setPayTermsModal(null);}} session={session}/>}
     </>
   );
 
@@ -21575,18 +21862,6 @@ function DeductionForm({ms,updateMilestone,session,role,today,toastEmit,sendTele
   );
 }
 
-function AutoGenerateBilling({selDeal,autoGenerate,setAutoGenDone}){
-  React.useEffect(()=>{
-    autoGenerate();
-    setAutoGenDone(p=>({...p,[selDeal]:true}));
-  },[selDeal]);
-  return(
-    <div style={{background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px",fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>
-      ⚡ Billing schedule generated from payment terms…
-    </div>
-  );
-}
-
 // ─── AUDIT VIEW (Policy §5) ──────────────────────────────────────────────────
 function AuditView({findings,addFinding,updateFinding,session,role}){
   const[showForm,setShowForm]=useState(false);
@@ -21716,28 +21991,13 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
   const[selDeal,  setSelDeal]  =useState(initialDeal||null);
   React.useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearInitialDeal&&clearInitialDeal();}},[]);
   const[showForm, setShowForm] =useState(false);
-  const[autoGenDone,setAutoGenDone]=useState({});
-  // Deals whose schedule this session already kicked off. addMilestone updates the
-  // billings store asynchronously, so between the calls and the re-render the effect
-  // could fire again (its deps include billings.length) with existingMs still empty
-  // and generate a SECOND full schedule. This ref is the synchronous latch that
-  // stops the duplicate before the store catches up.
-  const autoGenStartedRef=React.useRef(new Set());
-  React.useEffect(()=>{
-    const canEdit=["Manager","Finance","SalesOpsAdmin"].includes(role);
-    if(!canEdit) return;
-    wonDeals.forEach(d=>{
-      const terms=d.paymentTerms;
-      const val=Number(d.value||0);
-      const existingMs=billings.filter(b=>b.dealId===d.id);
-      if(terms&&existingMs.length===0&&val>0&&!d.billingGenerated&&!autoGenStartedRef.current.has(d.id)){
-        autoGenStartedRef.current.add(d.id);
-        // Single guarded, idempotent generator (also sets deal.billingGenerated).
-        generateBillingSchedule(d.id,terms,val);
-        setAutoGenDone(p=>({...p,[d.id]:true}));
-      }
-    });
-  },[wonDeals.length,billings.length]);
+  // Tracks which deals had their schedule set up this session so the "Set Up
+  // Billing Milestones" call-to-action collapses immediately after Jessica (or
+  // Finance) confirms the dialogue, without waiting for the billings store to
+  // round-trip. Billing schedules are NEVER auto-generated — the old useEffect
+  // that silently created them for every awarded deal was removed; Jessica is
+  // notified on award and sets them up deliberately via the dialogue below.
+  const[setupDone,setSetupDone]=useState({});
   const[showPay,  setShowPay]  =useState(null);
   const[editPay,  setEditPay]  =useState(null);     // {msId, payId} being edited
   const[editMs,   setEditMs]   =useState(null);     // milestone id being edited
@@ -22625,17 +22885,32 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
             );
           })()}
 
-          {/* Payment Terms & Auto-Generate Banner */}
+          {/* Payment Terms & Manual Milestone Setup */}
           {(()=>{
             const terms=deal?.paymentTerms;
             const existingMs=billings.filter(b=>b.dealId===selDeal);
             const val=Number(deal?.value||0);
             const onboardingReady=dealOnboardingGate(deal).ready;
             const canGenerate=canEdit&&terms&&existingMs.length===0&&val>0&&!deal?.billingGenerated&&onboardingReady;
-            const autoGenerate=()=>{
-              // Single guarded, idempotent generator (sets deal.billingGenerated).
+            // Billing schedules are no longer created automatically. This opens a
+            // confirmation dialogue previewing the milestones derived from the
+            // saved payment terms; only on explicit confirmation are they created.
+            const setupMilestones=async()=>{
+              const lines=[
+                terms.dp>0&&`• Down Payment (${terms.dp}%) — ₱${Math.round(val*terms.dp/100).toLocaleString("en-PH")}`,
+                terms.progress>0&&`• Progress Billing (${terms.progress}%) — ₱${Math.round(val*terms.progress/100).toLocaleString("en-PH")}`,
+                terms.final>0&&`• Final Billing (${terms.final}%) — ₱${Math.round(val*terms.final/100).toLocaleString("en-PH")}`,
+                terms.retention>0&&`• Retention (${terms.retention}%) — ₱${Math.round(val*terms.retention/100).toLocaleString("en-PH")}`,
+              ].filter(Boolean).join("\n");
+              const ok=await uiConfirm({
+                title:"Set Up Billing Milestones",
+                message:`Create the following billing milestones for ${deal?.client||"this project"} from the payment terms on file?\n\n${lines}\n\nYou can edit each milestone's amount and dates after they're created.`,
+                confirmLabel:"Create Milestones",
+              });
+              if(!ok) return;
               generateBillingSchedule(selDeal,terms,val);
-              toastEmit&&toastEmit("Billing milestones generated from payment terms","success");
+              setSetupDone(p=>({...p,[selDeal]:true}));
+              toastEmit&&toastEmit("Billing milestones created from payment terms","success");
             };
             return(
               <div style={{marginBottom:14}}>
@@ -22656,7 +22931,12 @@ function BillingView({billings,wonDeals,completedDeals,deals,addenda,addMileston
                     </div>
                   )}
                 </div>
-                {canGenerate&&!autoGenDone[selDeal]&&<AutoGenerateBilling selDeal={selDeal} autoGenerate={autoGenerate} setAutoGenDone={setAutoGenDone}/>}
+                {canGenerate&&!setupDone[selDeal]&&(
+                  <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:"#eff6ff",border:"1.5px solid #93c5fd",borderRadius:10,padding:"10px 14px"}}>
+                    <span style={{fontSize:".78rem",color:"#1d4ed8",fontWeight:600}}>💳 No billing milestones set up yet — create them from the payment terms on file.</span>
+                    <button onClick={setupMilestones} style={{marginLeft:"auto",background:"#1d4ed8",border:"none",borderRadius:8,padding:"6px 14px",fontFamily:"inherit",fontWeight:700,fontSize:".78rem",color:"#fff",cursor:"pointer",whiteSpace:"nowrap"}}>📋 Set Up Billing Milestones</button>
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -23069,7 +23349,7 @@ function TATSetter({deal,card,onSet,refTable,ceType}){
 }
 
 // ─── INVENTORY VIEW ───────────────────────────────────────────────────────────
-function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{}}){
+function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markDeptDone,setProjectTAT,jos,delDeal,delPcard,session,role,budgets,blockers,addBlocker,resolveBlocker,logActivity,actLog,addenda,billings,mreqs,breqs,prs=[],exps=[],isMobile,createCard,updateJO,upPcards,addAddendum2,checklist,openAddCl,openEditCl,delCl,clStatusQ,clModal,setClModal,clForm,setClForm,editCl,saveCl,upDeals,ceReqs,toastEmit,sendTelegramNotification,initialDeal,clearJump,initialFilter,clearJumpFilter,loadChecklistTemplate,swos=[],addPmUpdate,setConfirmDel,customMembers=[],setCustomMembers=()=>{},setPage=()=>{},setJumpDeal=()=>{}}){
   const todayStr=new Date().toISOString().split("T")[0];
   const[selDeal,setSelDeal]=useState(initialDeal||null);
   useEffect(()=>{if(initialDeal){setSelDeal(initialDeal);clearJump&&clearJump();}},[]);
@@ -23232,6 +23512,7 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
   const buildRollup=(tab)=>{
     const map={};
     wonDeals.forEach(d=>{
+      if(d.standbyPO&&!d.parentDealId) return;   // umbrella has no production — don't count it in team load
       const st=dealStatus(d);
       ownerKeys(d,tab).forEach(k=>{
         if(!k)return;
@@ -23417,7 +23698,16 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
             });
             // Separate parent deals from child deals for nested display
             const childDeals=list.filter(d=>d.parentDealId);
-            const parentList=list.filter(d=>!d.parentDealId);
+            // Standby PO umbrellas carry no production of their own — their
+            // drawdown jobs are independent fabrications. So in Project HQ we
+            // hide the ₱0 umbrella card and promote its jobs to top-level
+            // project cards. Normal addendum children stay nested as before.
+            const standbyParentIds=new Set(deals.filter(x=>x.standbyPO).map(x=>x.id));
+            const parentList=list.filter(d=>{
+              if(d.standbyPO&&!d.parentDealId) return false;              // hide the umbrella itself
+              if(!d.parentDealId) return true;                            // normal top-level project
+              return standbyParentIds.has(d.parentDealId);                // promote standby-PO jobs
+            });
             const renderPCRow=(d,idx,total,isChild=false)=>{
               const pc=pcards[d.id];
               const g=calcCardGrade(d,pc);
@@ -23781,7 +24071,9 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                     }
                     // FINANCIAL GATE — a project cannot be marked Completed without a contract value
                     // and billing on record; if collections are short, require an explicit confirm.
-                    if(st==="14 · Completed"){
+                    // Standby PO umbrellas carry no contract value or billing of
+                    // their own (their jobs do), so skip the financial gate for them.
+                    if(st==="14 · Completed"&&!deal.standbyPO){
                       const miss=[];
                       if(!Number(deal.value)) miss.push("Contract Value");
                       if(!Number(deal.invoiced)) miss.push("Billing (invoiced amount)");
@@ -23981,8 +24273,8 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>📌 Project Vitals</div>
                   {(role==="Manager"||role==="Operations"||role==="QS"||role==="SalesOpsAdmin")&&selDeal&&!showDateEdit&&(
-                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||""});setShowDateEdit(true);}}
-                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit Dates</button>
+                    <button onClick={()=>{setDateForm({awardDate:card?.awardDate||"",targetEndDate:card?.targetEndDate||"",location:deal?.location||"",ceType:deal?.ceType||"Fabrication / General"});setShowDateEdit(true);}}
+                      style={{background:"#f1f5f9",border:"none",borderRadius:6,padding:"4px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>✏️ Edit</button>
                   )}
                 </div>
                 {showDateEdit?(
@@ -24005,6 +24297,20 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         })()}
                       </div>
                     </div>
+                    <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:12}}>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>📍 Location</div>
+                        <input type="text" value={dateForm.location||""} onChange={e=>fdt("location",e.target.value)} placeholder="Site / delivery address"
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box"}}/>
+                      </div>
+                      <div>
+                        <div style={{fontSize:".72rem",fontWeight:700,color:"#64748b",marginBottom:4}}>CE Type</div>
+                        <select value={dateForm.ceType||"Fabrication / General"} onChange={e=>fdt("ceType",e.target.value)}
+                          style={{width:"100%",border:"1.5px solid #e2e8f0",borderRadius:7,padding:"8px 10px",fontFamily:"inherit",fontSize:".84rem",color:"#0f172a",outline:"none",boxSizing:"border-box",background:"#fff"}}>
+                          {CE_TYPES.map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </div>
+                    </div>
                     <div style={{display:"flex",gap:8}}>
                       <button onClick={()=>{
                         if(!dateForm.awardDate) return;
@@ -24012,6 +24318,11 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                         upPcards(ps=>({...ps,[selDeal]:{...(ps[selDeal]||{deal_id:selDeal,dealId:selDeal}),awardDate:dateForm.awardDate,targetEndDate:dateForm.targetEndDate||ps[selDeal]?.targetEndDate,targetDays:newDays||ps[selDeal]?.targetDays}}));
                         if(isSupabaseReady()){
                           sbUpsert('project_cards',{deal_id:selDeal,award_date:dateForm.awardDate,...(dateForm.targetEndDate?{target_end_date:dateForm.targetEndDate,target_days:newDays}:{})},'deal_id').catch(()=>{});
+                        }
+                        // Location & CE Type live on the deal, not the card
+                        if(upDeals&&(dateForm.location!==(deal?.location||"")||dateForm.ceType!==(deal?.ceType||""))){
+                          upDeals(ds=>ds.map(d=>d.id===selDeal?{...d,location:dateForm.location||"",ceType:dateForm.ceType||d.ceType}:d));
+                          if(isSupabaseReady()) sbUpdate('deals',selDeal,{location:dateForm.location||"",ce_type:dateForm.ceType||deal?.ceType||""}).catch(()=>{});
                         }
                         logActivity(selDeal,"Dates Updated",`Award: ${dateForm.awardDate}${dateForm.targetEndDate?` → Turnover: ${dateForm.targetEndDate}`:""}`,session?.name);
                         toastEmit&&toastEmit("Dates saved ✓","success");
@@ -24058,6 +24369,82 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                   })}
                 </div>
               </div>
+
+              {/* ── Department Progress (click to toggle done / expand tasks) ── */}
+              {card&&(()=>{
+                const doneDepts=DEPT_ORDER.filter(d=>card.departments?.[d]?.done).length;
+                const autoPct=Math.round(doneDepts/6*100);
+                const canEditManual=role==="Manager"||role==="Operations"||role==="SalesOpsAdmin";
+                const setManual=(val)=>{
+                  upPcards(ps=>({...ps,[selDeal]:{...ps[selDeal],manualProgress:val}}));
+                  if(isSupabaseReady()) sbUpsert('project_cards',{deal_id:selDeal,manual_progress:val},'deal_id').catch(()=>{});
+                };
+                return(
+                <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8}}>
+                    <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>🏗 Department Progress</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:".72rem",fontWeight:700,color:pct>=100?"#059669":"#64748b"}}>{pct}%{card.manualProgress!=null&&<span style={{color:"#8b5cf6",fontWeight:600}}> (manual)</span>}</span>
+                      <span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneDepts}/6 done</span>
+                    </div>
+                  </div>
+                  {/* progress bar */}
+                  <div style={{height:7,background:"#f1f5f9",borderRadius:4,overflow:"hidden",marginBottom:12}}>
+                    <div style={{height:"100%",width:pct+"%",background:pct>=100?"#059669":pct>=50?"#10b981":"#f59e0b",borderRadius:4,transition:"width .2s"}}/>
+                  </div>
+                  {/* department rows */}
+                  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                    {DEPT_ORDER.map(dept=>{
+                      const dd=card.departments?.[dept]||{done:false,tasks:[]};
+                      const canEditDept=editableDepts.includes(dept);
+                      const clr=DEPT_CLR[dept]||"#64748b";
+                      const tasks=dd.tasks||[];
+                      const doneTasks=tasks.filter(t=>t.done).length;
+                      return(
+                        <details key={dept} style={{background:dd.done?"#f0fdf4":"#f8fafc",border:`1px solid ${dd.done?"#a7f3d0":"#e2e8f0"}`,borderRadius:10,padding:"8px 12px"}}>
+                          <summary style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer",listStyle:"none"}}>
+                            <input type="checkbox" checked={!!dd.done} disabled={!canEditDept}
+                              onChange={e=>{e.stopPropagation();markDeptDone(selDeal,dept,e.target.checked);}}
+                              onClick={e=>e.stopPropagation()}
+                              style={{width:17,height:17,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
+                            <span style={{width:8,height:8,borderRadius:"50%",background:clr,flexShrink:0}}/>
+                            <span style={{fontWeight:700,fontSize:".8rem",color:dd.done?"#059669":"#0f172a",flex:1}}>{dept}</span>
+                            {tasks.length>0&&<span style={{fontSize:".66rem",color:"#94a3b8"}}>{doneTasks}/{tasks.length} tasks</span>}
+                            {dd.done&&dd.doneBy&&<span style={{fontSize:".62rem",color:"#059669"}}>✓ {dd.doneBy}</span>}
+                            {tasks.length>0&&<span style={{fontSize:".7rem",color:"#94a3b8"}}>▾</span>}
+                          </summary>
+                          {tasks.length>0&&(
+                            <div style={{marginTop:8,paddingLeft:27,display:"flex",flexDirection:"column",gap:5}}>
+                              {tasks.map(t=>(
+                                <label key={t.id} style={{display:"flex",alignItems:"center",gap:8,cursor:canEditDept?"pointer":"default"}}>
+                                  <input type="checkbox" checked={!!t.done} disabled={!canEditDept}
+                                    onChange={()=>toggleDeptTask(selDeal,dept,t.id)}
+                                    style={{width:14,height:14,accentColor:clr,cursor:canEditDept?"pointer":"not-allowed",flexShrink:0}}/>
+                                  <span style={{fontSize:".76rem",color:t.done?"#94a3b8":"#334155",textDecoration:t.done?"line-through":"none"}}>{t.text}</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {tasks.length===0&&<div style={{marginTop:6,paddingLeft:27,fontSize:".72rem",color:"#94a3b8"}}>No sub-tasks — use the checkbox to mark this department done.</div>}
+                        </details>
+                      );
+                    })}
+                  </div>
+                  {/* manual progress override */}
+                  {canEditManual&&(
+                    <div style={{marginTop:12,paddingTop:10,borderTop:"1px solid #f1f5f9",display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                      <span style={{fontSize:".68rem",color:"#94a3b8",fontWeight:600}}>Manual override:</span>
+                      <input type="number" min={0} max={100} value={card.manualProgress!=null?card.manualProgress:""}
+                        placeholder={`auto ${autoPct}`}
+                        onChange={e=>{const v=e.target.value===""?null:Math.max(0,Math.min(100,Number(e.target.value)));setManual(v);}}
+                        style={{width:72,border:"1.5px solid #e2e8f0",borderRadius:8,padding:"5px 8px",fontFamily:"inherit",fontSize:".8rem"}}/>
+                      <span style={{fontSize:".72rem",color:"#64748b"}}>%</span>
+                      {card.manualProgress!=null&&<button onClick={()=>setManual(null)} style={{background:"#f1f5f9",border:"none",borderRadius:7,padding:"5px 10px",fontFamily:"inherit",fontSize:".72rem",color:"#64748b",cursor:"pointer",fontWeight:600}}>↺ Use auto ({autoPct}%)</button>}
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
 
               {/* ── Blockers ── */}
               <div style={{background:openProjB.length>0?"#fef2f2":"#fff",borderRadius:14,border:`1.5px solid ${openProjB.length>0?"#fecaca":"#e2e8f0"}`,padding:isMobile?"12px 14px":"14px 20px"}}>
@@ -24134,32 +24521,21 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 </div>
               )}
 
-              {/* ── PM Updates / Team Chat ── */}
+              {/* ── Team Updates (single unified feed — posts via the canonical Log Update modal) ── */}
               {(()=>{
                 const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date)||b.time?.localeCompare(a.time||""));
+                const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
+                const canPost=role==="Manager"||role==="Operations"||role==="ProjectMover"||role==="SalesOpsAdmin"||isPM;
                 return(
                 <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
                   <div style={{background:"#1e293b",padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                     <div style={{fontWeight:700,color:"#4ade80",fontSize:".82rem"}}>💬 Team Updates ({allProjUpdates.length})</div>
-                    {!showUForm&&["Manager","Operations","ProjectMover","SalesOpsAdmin"].includes(role)&&<button onClick={()=>{setShowUForm(true);setUText("");}} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
+                    {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})} style={{background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",borderRadius:7,padding:"5px 12px",fontFamily:"inherit",fontSize:".75rem",color:"#4ade80",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
                   </div>
-                  {/* Post form */}
-                  {showUForm&&(
-                    <div style={{padding:"12px 16px",background:"#f0fdf4",borderBottom:"1px solid #e2e8f0"}}>
-                      <textarea value={uText} onChange={e=>setUText(e.target.value)} rows={3}
-                        placeholder={"What's the update? @mention teammates (e.g. @Mark please confirm delivery date)\nProgress, decisions, blockers, next steps..."}
-                        style={{width:"100%",border:"1.5px solid #6ee7b7",borderRadius:8,padding:"9px 12px",fontFamily:"inherit",fontSize:".84rem",resize:"vertical",boxSizing:"border-box",marginBottom:8,outline:"none"}}/>
-                      <div style={{display:"flex",gap:8}}>
-                        <button onClick={()=>{if(!uText.trim())return;logActivity(selDeal,"PM Update",uText.trim(),session?.name);setShowUForm(false);setUText("");}}
-                          style={{background:"#059669",border:"none",borderRadius:8,padding:"8px 18px",fontFamily:"inherit",fontSize:".82rem",color:"#fff",cursor:"pointer",fontWeight:700}}>Post</button>
-                        <button onClick={()=>setShowUForm(false)} style={{background:"#f1f5f9",border:"none",borderRadius:8,padding:"8px 14px",fontFamily:"inherit",fontSize:".82rem",color:"#64748b",cursor:"pointer"}}>Cancel</button>
-                      </div>
-                    </div>
-                  )}
                   {/* Chat messages */}
                   <div style={{padding:"12px 16px",display:"flex",flexDirection:"column",gap:10,maxHeight:400,overflowY:"auto"}}>
-                    {allProjUpdates.length===0&&!showUForm&&(
-                      <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet. Post the first update above.</div>
+                    {allProjUpdates.length===0&&(
+                      <div style={{textAlign:"center",padding:"16px 0",color:"#94a3b8",fontSize:".8rem"}}>No updates yet.{canPost&&" Tap + Post Update to add the first one."}</div>
                     )}
                     {allProjUpdates.map((u,i)=>{
                       const isMe=u.by===session?.name;
@@ -24260,49 +24636,20 @@ function ProjectCards({pcards,wonDeals,completedDeals,deals,toggleDeptTask,markD
                 {projAddenda.length>3&&<div style={{fontSize:".72rem",color:"#94a3b8",marginTop:4}}>+{projAddenda.length-3} more — see Scope Changes page</div>}
               </div>
 
-              {/* ── PM Updates ── */}
-              {(()=>{
-                const allProjUpdates=(actLog||[]).filter(a=>a.dealId===selDeal&&a.action==="PM Update").sort((a,b)=>b.date.localeCompare(a.date));
-                const isPM=card&&[card.pm1,card.pm2,card.pm3].filter(Boolean).some(pm=>pm===session?.name);
-                const canPost=role==="Manager"||role==="Operations"||isPM||role==="SalesOpsAdmin";
-                return(
-                  <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",overflow:"hidden"}}>
-                    <div style={{padding:"12px 18px",background:"#0ea5e9",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div>
-                        <span style={{fontWeight:700,color:"#fff",fontSize:".84rem"}}>📝 PM Updates</span>
-                        <span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>{allProjUpdates.length} total</span>
-                        {allProjUpdates[0]&&<span style={{marginLeft:8,fontSize:".65rem",color:"#bae6fd"}}>· last: {allProjUpdates[0].date}</span>}
-                      </div>
-                      {canPost&&<button onClick={()=>setPmUpdateModal({dealId:selDeal,dealName:deal?.client||"",stage:deal?.stage||"",pct})}
-                        style={{background:"#fff",border:"none",borderRadius:8,padding:"5px 13px",fontFamily:"inherit",fontSize:".75rem",color:"#0ea5e9",cursor:"pointer",fontWeight:700}}>+ Post Update</button>}
-                    </div>
-                    {allProjUpdates.length===0
-                      ?<div style={{padding:"14px 18px",fontSize:".8rem",color:"#94a3b8",textAlign:"center"}}>No updates yet.{canPost&&" Be the first to post one!"}</div>
-                      :<div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:6}}>
-                        {allProjUpdates.slice(0,5).map((u,i)=>{
-                          const match=u.detail?.match(/^\[([^\]]+)\]:\s*(.*)/s);
-                          const meta=match?match[1]:"";
-                          const text=match?match[2].trim():(u.detail||"");
-                          const isToday=u.date===today;
-                          return(
-                            <div key={u.id||i} style={{padding:"9px 12px",borderRadius:9,background:i===0?"#f0f9ff":"#f8fafc",border:i===0?"1.5px solid #bae6fd":"1px solid #f1f5f9"}}>
-                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                                <span style={{fontSize:".65rem",fontWeight:700,color:isToday?"#0ea5e9":"#94a3b8"}}>{isToday?"Today":u.date} · {u.by}</span>
-                                {meta&&<span style={{fontSize:".6rem",color:"#8b5cf6",background:"#f5f3ff",borderRadius:4,padding:"1px 6px"}}>{meta.split("·")[0]?.trim()}</span>}
-                              </div>
-                              <div style={{fontSize:".78rem",color:"#0f172a",lineHeight:1.45}}>{text}</div>
-                            </div>
-                          );
-                        })}
-                        {allProjUpdates.length>5&&<div style={{fontSize:".68rem",color:"#94a3b8",textAlign:"center",padding:"2px 0"}}>+{allProjUpdates.length-5} older updates</div>}
-                      </div>}
-                  </div>
-                );
-              })()}
 
               {/* ── Finance Snapshot ── */}
               <div style={{background:"#fff",borderRadius:14,border:"1.5px solid #e2e8f0",padding:isMobile?"12px 14px":"14px 20px",marginBottom:8}}>
-                <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem",marginBottom:10}}>💰 Finance Snapshot</div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,gap:8,flexWrap:"wrap"}}>
+                  <div style={{fontWeight:700,color:"#0f172a",fontSize:".82rem"}}>💰 Finance Snapshot</div>
+                  {["Manager","Finance","FinanceAssistant","Accounting","Operations","Sales"].includes(role)&&(
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      <button onClick={()=>{setJumpDeal(selDeal);setPage("budget");}}
+                        style={{background:"#eff6ff",border:"1px solid #bfdbfe",borderRadius:7,padding:"4px 11px",fontFamily:"inherit",fontSize:".72rem",color:"#2563eb",cursor:"pointer",fontWeight:700}}>📊 Budget →</button>
+                      <button onClick={()=>{setJumpDeal(selDeal);setPage("billing");}}
+                        style={{background:"#f0fdf4",border:"1px solid #6ee7b7",borderRadius:7,padding:"4px 11px",fontFamily:"inherit",fontSize:".72rem",color:"#059669",cursor:"pointer",fontWeight:700}}>🧾 Billing →</button>
+                    </div>
+                  )}
+                </div>
                 <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:8}}>
                   {[
                     {l:"Contract",v:fmtPHP(deal?.value||0),c:"#0f172a"},
@@ -25489,6 +25836,7 @@ const erpThNum={...erpTh,textAlign:"right"};
 const erpTdNum={...erpTd,textAlign:"right",fontVariantNumeric:"tabular-nums"};
 
 function FinanceErpBar({active,go,counts={}}){
+  const mob=window.innerWidth<768;
   const tabs=[
     {k:"dashboard",l:"Dashboard"},
     {k:"po",l:"Purchase Orders",n:counts.po},
@@ -25497,19 +25845,25 @@ function FinanceErpBar({active,go,counts={}}){
     {k:"cv",l:"Check Vouchers",n:counts.cv},
   ];
   return(
-    <div style={{marginBottom:18}}>
-      <div style={{background:"linear-gradient(135deg,#0B2545 0%,#132F5C 100%)",borderRadius:12,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,boxShadow:"0 4px 14px rgba(11,37,69,0.18)"}}>
-        <div>
-          <div style={{fontSize:18,fontWeight:700,color:"#fff",letterSpacing:".3px"}}>GMD <span style={{color:"#C9A24B"}}>Production Inc.</span></div>
-          <div style={{fontSize:12,color:"#C7D4E8",marginTop:2,fontWeight:500}}>Purchase-to-Payment · Accounts Payable · Check Voucher · Chart of Accounts</div>
+    <div style={{marginBottom:mob?12:18}}>
+      {/* The full GMD banner is desktop-only — on mobile it eats a whole screen
+          of vertical space, so we drop it and let the tab strip lead. */}
+      {!mob&&(
+        <div style={{background:"linear-gradient(135deg,#0B2545 0%,#132F5C 100%)",borderRadius:12,padding:"18px 24px",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,boxShadow:"0 4px 14px rgba(11,37,69,0.18)"}}>
+          <div>
+            <div style={{fontSize:18,fontWeight:700,color:"#fff",letterSpacing:".3px"}}>GMD <span style={{color:"#C9A24B"}}>Production Inc.</span></div>
+            <div style={{fontSize:12,color:"#C7D4E8",marginTop:2,fontWeight:500}}>Purchase-to-Payment · Accounts Payable · Check Voucher · Chart of Accounts</div>
+          </div>
+          <span style={{background:"rgba(201,162,75,0.18)",border:"1px solid #C9A24B",color:"#C9A24B",borderRadius:20,padding:"5px 10px",fontSize:11,fontWeight:600,letterSpacing:"1.2px",textTransform:"uppercase"}}>Finance Module</span>
         </div>
-        <span style={{background:"rgba(201,162,75,0.18)",border:"1px solid #C9A24B",color:"#C9A24B",borderRadius:20,padding:"5px 10px",fontSize:11,fontWeight:600,letterSpacing:"1.2px",textTransform:"uppercase"}}>Finance Module</span>
-      </div>
-      <div style={{background:"#fff",border:"1px solid #DCE2EC",borderRadius:10,padding:6,marginTop:18,display:"flex",gap:6,flexWrap:"wrap"}}>
+      )}
+      {/* Mobile: a horizontal-scroll tab strip (no wrapping, no huge min-widths).
+          Desktop: keep the even flex row. */}
+      <div style={{background:"#fff",border:"1px solid #DCE2EC",borderRadius:10,padding:mob?4:6,marginTop:mob?0:18,display:"flex",gap:6,flexWrap:mob?"nowrap":"wrap",overflowX:mob?"auto":"visible",WebkitOverflowScrolling:"touch"}}>
         {tabs.map(t=>{
           const on=t.k===active;
           return(
-            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:1,minWidth:108,background:on?"#0B2545":"transparent",color:on?"#fff":"#5B6472",border:"none",borderRadius:8,padding:"10px 10px",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:on?"default":"pointer",transition:"all .15s ease"}}>
+            <button key={t.k} onClick={()=>!on&&go&&go(t.k)} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,flex:mob?"0 0 auto":1,minWidth:mob?"auto":108,whiteSpace:"nowrap",background:on?"#0B2545":"transparent",color:on?"#fff":"#5B6472",border:"none",borderRadius:8,padding:mob?"9px 14px":"10px 10px",fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:on?"default":"pointer",transition:"all .15s ease"}}>
               {t.l}
               {t.n>0&&<span style={{background:on?"rgba(255,255,255,0.85)":"#C9A24B",color:"#0B2545",borderRadius:10,padding:"1px 7px",fontSize:11,fontWeight:700}}>{t.n}</span>}
             </button>
